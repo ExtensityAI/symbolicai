@@ -72,7 +72,7 @@ def _start_botdyn():
         _bd_config_ = json.load(f)
     
     if _bd_config_['NEUROSYMBOLIC_ENGINE_API_KEY'] is None or len(_bd_config_['NEUROSYMBOLIC_ENGINE_API_KEY']) == 0:
-        logging.error('The mandatory neuro-symbolic engine is not initialized. Please get a key from https://beta.openai.com/account/api-keys and either a general environment variable OPENAI_API_KEY or the missing module specific environment variable NEUROSYMBOLIC_ENGINE_API_KEY.')
+        logging.error('The mandatory neuro-symbolic engine is not initialized. Please get a key from https://beta.openai.com/account/api-keys and set either a general environment variable OPENAI_API_KEY or a module specific environment variable NEUROSYMBOLIC_ENGINE_API_KEY.')
 
     import botdyn.backend.settings as settings
     settings.BOTDYN_CONFIG = _bd_config_

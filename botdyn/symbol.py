@@ -144,11 +144,8 @@ class Symbol(ABC):
         return f"{type(self)}(value={str(self.value)})"
     
     def _repr_html_(self):
-        return f"""<div class="alert alert-success" role="alert">
-  <h4 class="alert-heading">Well done!</h4>
-  <p>{str(self.value)}</p>
-  <hr>
-  <p class="mb-0">Whenever you need to, be sure to use margin utilities to keep things nice and tidy.</p>
+        return f"""<div class="alert alert-primary" role="alert">
+  <h4 class="alert-heading">{str(self.value)}</h4>
 </div>"""
     
     def __iter__(self):
