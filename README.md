@@ -69,6 +69,9 @@ export OPENAI_API_KEY="<OPENAI_API_KEY>"
 
 # Windows (PowerShell)
 $Env:OPENAI_API_KEY="<OPENAI_API_KEY>"
+
+# Jupyter Notebooks (important: do not use quotes)
+%env OPENAI_API_KEY=<OPENAI_API_KEY>
 ```
 
 
