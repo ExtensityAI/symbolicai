@@ -73,7 +73,7 @@ $Env:OPENAI_API_KEY="<OPENAI_API_KEY>"
 ```
 
 
-**To get started import our library simply use:**
+**To get started import our library by using:**
 
 ```python
 import botdyn as bd
