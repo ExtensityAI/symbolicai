@@ -4,7 +4,7 @@
 
 *Building applications with LLMs at its core through our `Semantic API` leverages the power of classical and differential programming in Python.*
 
-[![PyPI version](https://badge.fury.io/py/botdynamics.svg)](https://badge.fury.io/py/botdynamics) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/langchainai.svg?style=social&label=Follow%20%40DinuMariusC)](https://twitter.com/DinuMariusC) [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/Xpitfire/botdynamics/issues) ![visitor badge](https://visitor-badge.glitch.me/badge?page_id=botdynamics)
+[![PyPI version](https://badge.fury.io/py/botdynamics.svg)](https://badge.fury.io/py/botdynamics) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/langchainai.svg?style=social&label=Follow%20%40DinuMariusC)](https://twitter.com/DinuMariusC) [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/Xpitfire/botdynamics/issues) ![Profile views](https://komarev.com/ghpvc/?username=Xpitfire&color=blue)
 
 ## 📖 Table of Contents
 
