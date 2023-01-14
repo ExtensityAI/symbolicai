@@ -698,16 +698,16 @@ Research challenges:
 
 ## 🥠 Future Work
 
-We are constantly working on improving the framework and are open to any suggestions. However, we try to think ahead of time and have some general ideas for future work in mind:
+We are constantly working on improving the framework and are open to any suggestions, feedback or comments. However, we try to think ahead of time and have some general ideas for future work in mind:
 
-* Meta-Learning Semantic Concepts on top of Neuro-Symbolic Expressions
+* Meta-Learning Semantic Concepts on top of Neuro-Symbolic Expressions:
 * Self-evolving and self-healing API
 
 We believe that LLMs as neuro-symbolic computation engines enable us a new class of applications, with tools and API that can self-analyze and self-heal. We are excited to see what the future brings and are looking forward to your feedback and contributions.
 
 ## Conclusion
 
-We have presented 
+We have presented a neuro-symbolic view on LLMs and showed how they can be a central pillar for many multi-model operations. We gave an technical report on how to utilize our framework and also hinted the capabilities and propspects theres models can be used to leverage modern software development. 
 
 
 
