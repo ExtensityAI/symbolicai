@@ -4,7 +4,7 @@
 
 *Building applications with LLMs at its core through our `Semantic API` leverages the power of classical and differential programming in Python.*
 
-[![PyPI version](https://badge.fury.io/py/botdynamics.svg)](https://badge.fury.io/py/botdynamics) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/langchainai.svg?style=social&label=Follow%20%40DinuMariusC)](https://twitter.com/DinuMariusC) [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/Xpitfire/botdynamics/issues) ![Profile views](https://komarev.com/ghpvc/?username=Xpitfire&color=blue)
+[![PyPI version](https://badge.fury.io/py/botdynamics.svg)](https://badge.fury.io/py/botdynamics) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/langchainai.svg?style=social&label=Follow%20%40DinuMariusC)](https://twitter.com/DinuMariusC) [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/Xpitfire/botdynamics/issues) [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FXpitfire%2Fbotdynamics&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)](https://hits.seeyoufarm.com)
 
 ## 📖 Table of Contents
 
