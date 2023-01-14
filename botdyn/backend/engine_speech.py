@@ -32,7 +32,7 @@ class WhisperEngine(Engine):
             rsp = max(probs, key=probs.get)
         elif prompt == 'decode':
             # decode the audio
-            options = whisper.DecodingOptions()
+            options = whisper.DecodingOptions(fp16 = False)
             result = whisper.decode(self.model, mel, options)
             rsp = result.text
         else:

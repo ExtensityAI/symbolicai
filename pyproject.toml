@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "botdynamics"
-version = "0.1.10"
+version = "0.1.11"
 authors = [
     {name = "Marius-Constantin Dinu", email = "office@alphacoreai.eu"},
 ]
@@ -21,8 +21,8 @@ classifiers = [
 dependencies = [
     "natsort", "numpy", "tqdm", "python-box",
     "scikit-learn", "torch", "torchvision", "pyyaml", "transformers", 
-    "openai", "google-search-results", "PyPDF2",
-    "beautifulsoup4", "selenium", "webdriver-manager", "whisper"
+    "openai", "google-search-results", "PyPDF2", "ipython",
+    "beautifulsoup4", "selenium", "webdriver-manager", "git+https://github.com/openai/whisper.git"
 ]
 dynamic = []
 
