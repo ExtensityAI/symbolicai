@@ -114,17 +114,16 @@ brew install ffmpeg
 chco install ffmpeg
 ```
 
-* **WebCrawler Engine**: Download for `selenium` the corresponding [browser driver](https://www.selenium.dev/documentation/webdriver/getting_started/install_drivers/) (e.g. `chromedriver` or `geckodriver`) and set the path variable:
+Additionally, you need to install the newest version directly from their repository, since the version available via `pip` is outdated:
 
 ```bash
-# Linux and MacOS
-export PATH=$PATH:/path/to/driver
+pip install git+https://github.com/openai/whisper.git
 ```
 
-Additionally you need to set the corresponding driver version via the `SELENIUM_CHROME_DRIVER_VERSION` environment variable. ChromeDriver versions are available [here](https://chromedriver.chromium.org/downloads). For example, if you use `chromedriver` version `110.0.5481.30` you need to set the following environment variable:
+* **WebCrawler Engine**: Download for `selenium` the corresponding driver version by setting the `SELENIUM_CHROME_DRIVER_VERSION` environment variable. Currently we use Chrome as the default browser. This means that the Chrome version major number must match the ChromeDriver version. All versions are available [here](https://chromedriver.chromium.org/downloads). For example, if you use chrome version `109.0.5414.74`, you can set any `109.x.x.x` version for the `chromedriver`. In this case the `109.0.5414.74` is available on the selenium page and is for the environment variable available:
 
 ```bash
-export SELENIUM_CHROME_DRIVER_VERSION="110.0.5481.30"
+export SELENIUM_CHROME_DRIVER_VERSION="109.0.5414.74"
 ```
 
 
