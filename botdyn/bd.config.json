@@ -1,0 +1,13 @@
+{
+    "NEUROSYMBOLIC_ENGINE_API_KEY": "",
+    "NEUROSYMBOLIC_ENGINE_MODEL": "text-davinci-003",
+    "EMBEDDING_ENGINE_API_KEY": "",
+    "EMBEDDING_ENGINE_MODEL": "text-embedding-ada-002",
+    "IMAGERENDERING_ENGINE_API_KEY": "",
+    "VISION_ENGINE_MODEL": "openai/clip-vit-base-patch32",
+    "SEARCH_ENGINE_API_KEY": "",
+    "SEARCH_ENGINE_MODEL": "google",
+    "OCR_ENGINE_API_KEY": "",
+    "SPEECH_ENGINE_MODEL": "base",
+    "SELENIUM_CHROME_DRIVER_VERSION": "110.0.5481.30"
+}

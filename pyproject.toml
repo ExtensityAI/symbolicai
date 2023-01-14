@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "botdynamics"
+version = "0.1.10"
+authors = [
+    {name = "Marius-Constantin Dinu", email = "office@alphacoreai.eu"},
+]
+description = "A Neuro-Symbolic Framework for Python"
+readme = "README.md"
+requires-python = ">=3.7"
+keywords = ["symbolic programming", "machine learning"]
+license = {file = "LICENSE"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "natsort", "numpy", "tqdm", "python-box",
+    "scikit-learn", "torch", "torchvision", "pyyaml", "transformers", 
+    "openai", "google-search-results", "PyPDF2",
+    "beautifulsoup4", "selenium", "webdriver-manager", "whisper"
+]
+dynamic = []
+
+[tool.setuptools.package-data]
+"*" = ["*.json"]
+
+[tool.setuptools.packages.find]
+include = ["botdyn", "bin"]
+exclude = ["bin/ffmpeg-git-20220910-amd64-static", "tests", "examples", "notebooks", "outputs", "assets"]
+
+[project.urls]
+"Homepage" = "https://alphacoreai.eu/"
+"GitHub" = "https://github.com/Xpitfire/botdynamics"

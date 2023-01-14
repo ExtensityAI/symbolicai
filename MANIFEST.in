@@ -1,0 +1,4 @@
+global-exclude test_*.py
+include botdyn/**/*
+include botdyn/backend/driver/*
+exclude **/*.pyc

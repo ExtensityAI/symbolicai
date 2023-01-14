@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Dinu"
+  given-names: "Marius-Constantin"
+  orcid: "https://orcid.org/my-orcid?orcid=0000-0002-7518-3337"
+- family-names: "Co"
+  given-names: "Pilot"
+- family-names: "GPT-3"
+  given-names: "Davinci-003"
+title: "BotDynamics"
+version: 0.0.1
+date-released: 2022-11-30
+url: "https://github.com/Xpitfire/botdynamics"
