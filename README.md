@@ -111,7 +111,7 @@ sudo apt update && sudo apt install ffmpeg
 brew install ffmpeg
 
 # Windows
-chco install ffmpeg
+choco install ffmpeg
 ```
 
 Additionally, you need to install the newest version directly from their repository, since the version available via `pip` is outdated:
