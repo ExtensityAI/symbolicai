@@ -22,7 +22,7 @@ dependencies = [
     "natsort", "numpy", "tqdm", "python-box",
     "scikit-learn", "torch", "torchvision", "pyyaml", "transformers", 
     "openai", "google-search-results", "PyPDF2", "ipython",
-    "beautifulsoup4", "selenium", "webdriver-manager", "git+https://github.com/openai/whisper.git"
+    "beautifulsoup4", "selenium", "webdriver-manager", "whisper @ git+https://github.com/openai/whisper.git"
 ]
 dynamic = []
 
