@@ -65,9 +65,13 @@ pip install botdynamics
 Before the first run, define exports for the required `API keys` to enable the respective engines. This will register the keys in the internal storage. By default BotDynamics currently uses OpenAI's neural engines, i.e. GPT-3 Davinci-003, DALL·E 2 and Embedding Ada-002, for the neuro-symbolic computations, image generation and embeddings computation respectively. However, these modules can easily be replaced with open-source alternatives. Examples are [OPT](https://huggingface.co/docs/transformers/model_doc/opt) or [Bloom](https://huggingface.co/bigscience/bloom) for neuro-symbolic computations, [Craiyon](https://www.craiyon.com/) for image generation, and any [BERT variants](https://huggingface.co/models) for semantic embedding computations. To set the OpenAI API Keys use the following command:
 
 ```bash
-# neuro-symbolic engine, image generation and embeddings computation
+# Linux / MacOS
 export OPENAI_API_KEY="<OPENAI_API_KEY>"
+
+# Windows (PowerShell)
+$Env:OPENAI_API_KEY="<OPENAI_API_KEY>"
 ```
+
 
 **To get started import our library simply use:**
 
@@ -94,8 +98,13 @@ BotDynamics uses multiple engines to process text, speech and images. We also in
 If you want to use the `Search Engine` and `OCR Engine` you will need to export the following API keys:
 
 ```bash
+# Linux / MacOS
 export SEARCH_ENGINE_API_KEY="<SERP_API_KEY>"
 export OCR_ENGINE_API_KEY="<APILAYER_API_KEY>"
+
+# Windows (PowerShell)
+$Env:SEARCH_ENGINE_API_KEY="<SERP_API_KEY>"
+$Env:OCR_ENGINE_API_KEY="<APILAYER_API_KEY>"
 ```
 
 To use them, you will also need to install the following dependencies:
@@ -123,7 +132,11 @@ pip install git+https://github.com/openai/whisper.git
 * **WebCrawler Engine**: Download for `selenium` the corresponding driver version by setting the `SELENIUM_CHROME_DRIVER_VERSION` environment variable. Currently we use Chrome as the default browser. This means that the Chrome version major number must match the ChromeDriver version. All versions are available [here](https://chromedriver.chromium.org/downloads). For example, if you use chrome version `109.0.5414.74`, you can set any `109.x.x.x` version for the `chromedriver`. In this case the `109.0.5414.74` is available on the selenium page and is for the environment variable available:
 
 ```bash
+# Linux / MacOS
 export SELENIUM_CHROME_DRIVER_VERSION="109.0.5414.74"
+
+# Windows (PowerShell)
+$Env:SELENIUM_CHROME_DRIVER_VERSION="109.0.5414.74"
 ```
 
 
