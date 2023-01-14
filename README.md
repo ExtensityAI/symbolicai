@@ -1,4 +1,4 @@
-# <img src="assets/images/bot.png" width="100px"> BotDynamics
+# <img src="https://raw.githubusercontent.com/Xpitfire/botdynamics/main/assets/images/bot.png" width="100px"> BotDynamics
 
 ## **A Neuro-Symbolic Perspective on Large Language Models (LLMs)**
 
@@ -6,6 +6,9 @@
 
 [![PyPI version](https://badge.fury.io/py/botdynamics.svg)](https://badge.fury.io/py/botdynamics) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/langchainai.svg?style=social&label=Follow%20%40DinuMariusC)](https://twitter.com/DinuMariusC)
 
+<!-- paste anywhere in your site -->
+<a href="https://github.com/Xpitfire/botdynamics" id="github-stats-badge">GitHub Repo</a>
+<script src="https://swharden.github.io/repo-badge/badge.js" defer></script>
 
 ## 📖 Table of Contents
 
@@ -146,7 +149,7 @@ BotDynamics tries to close the gap between classical programming or Software 1.0
 
 This allows us now to move along a spectrum between these two worlds as illustrated in the following figure:
 
-<img src="assets/images/img5.png" width="720px">
+<img src="https://raw.githubusercontent.com/Xpitfire/botdynamics/main/assets/images/img5.png" width="720px">
 
 Conceptually, BotDynamics is a framework that uses machine learning - and specifically LLMs - at its core, and curates operations based on dedicated zero or few-shot learning prompt designs. Each operation solves atomic tasks, however, by chaining these operations together we can solve more complex problems. Our main philosophy is to divide and conquer a complex problem into manageable smaller problems. 
 
@@ -166,12 +169,12 @@ In its essence, BotDynamics was inspired by the [`neuro-symbolic programming par
 
 **On a grander scale of things**, we believe that future computation platforms, such as wearables, SmartPhones, tables or notebooks will contain their own embedded LLMs (similar to GPT-3, ChatGPT, OPT or Bloom). 
 
-<img src="assets/images/img1.png" width="720px">
+<img src="https://raw.githubusercontent.com/Xpitfire/botdynamics/main/assets/images/img1.png" width="720px">
 
 These LLMs will be able to perform a wide range of computations, such as natural language understanding or decision making. Furthermore, neuro-symbolic computation engines will be able to learn concepts how to tackle unseen tasks and solve complex problems by querying various data sources for solutions and operating logical statements on top. 
 In this turn, to ensure the generated content is in alignment with our goals, we need to develop ways to instruct, steer and control their generative processes. Therefore, our approach is an attempt to enable active and transparent flow control of these generative processes.
 
-<img src="assets/images/img7.png" width="720px">
+<img src="https://raw.githubusercontent.com/Xpitfire/botdynamics/main/assets/images/img7.png" width="720px">
 
 As shown in the figure above, we can think of it as shifting a probability mass from an input stream towards an output stream, in a contextualize manner. With proper designed conditions and expressions, we can also validate and steer the behavior towards our desired outcome, or repeat expressions that failed to fulfil our requirements. Our approach is to define a set of `fuzzy` operations that manipulate our data stream and conditions the LLMs. In essence, we consider all objects as symbols, and we can create operations that manipulate these symbols and generate new symbols. Each symbol can be interpreted as a statement. Multiple statements can be combined to form a logical expression.
 
@@ -217,7 +220,7 @@ As an inspiration, we relate to an approach demonstrated with [word2vec](https:/
 Below we can see an example how one can perform operations on the word embeddings (colored boxes).
 The words are tokenized and mapped to a vector space, where we can perform semantic operations via vector arithmetics. 
 
-<img src="assets/images/img3.png" width="450px">
+<img src="https://raw.githubusercontent.com/Xpitfire/botdynamics/main/assets/images/img3.png" width="450px">
 
 Similar to word2vec we intend to preform contextualized operations on different symbols, however, instead of operating in the vector space, we operate in the natural language space. This gives us the ability to perform arithmetics on words, sentences, paragraphs, etc. and verify the results in a human readable format. 
 
@@ -363,7 +366,7 @@ True
 
 In a more general notion, depending on the context, hierarchy of the expression class and used operations the semantics of the Symbol manipulations may vary. To better illustrate this, we show our conceptual prompt design in the following figure:
 
-<img src="assets/images/img4.png" width="350px">
+<img src="https://raw.githubusercontent.com/Xpitfire/botdynamics/main/assets/images/img4.png" width="350px">
 
 The figure above shows the our context-based prompt design as a container of all the information that is provided to the neural computation engine to define a specific operation. 
 
@@ -388,7 +391,7 @@ Other important properties that are inherited from the Symbol class are the `_sy
 
 Expressions can of course have more complex structures and be further sub-classed, such as shown in the example of the `Sequence` expression in the following figure:
 
-<img src="assets/images/img2.png" width="720px">
+<img src="https://raw.githubusercontent.com/Xpitfire/botdynamics/main/assets/images/img2.png" width="720px">
 
 A Sequence expression can hold multiple expressions, which are evaluated at runtime.
 
@@ -426,7 +429,7 @@ The stream operation chunks the long input text into smaller chunks and passes t
 
 The issue with that approach is only that the resulting chunks are processed independently from each other. This means that the context of the chunks is not preserved. To solve this issue, we can use the `Cluster` expression instead, where the independent chunks are recombined based on their similarity. We illustrate this in the following figure:
 
-<img src="assets/images/img6.png" width="720px">
+<img src="https://raw.githubusercontent.com/Xpitfire/botdynamics/main/assets/images/img6.png" width="720px">
 
 In the shown example we recombine all individual chunks again by clustering the information among the chunks. This gives us a way to consolidate contextually related information and recombine them in a meaningful way. Furthermore, the clustered information can then be labeled by looking / streaming through the values within the cluster and collecting the most relevant labels.
 
@@ -519,12 +522,12 @@ res = expr()
 
 Here is the corresponding StackTrace of the model:
 
-<img src="assets/images/img8.png" width="900px">
+<img src="https://raw.githubusercontent.com/Xpitfire/botdynamics/main/assets/images/img8.png" width="900px">
 
-The above code creates a webpage with the crawled content from the original source. See the preview below, the entire [rendered webpage image here](examples/results/news.png) and resulting [code of webpage here](examples/results/news.html). 
+The above code creates a webpage with the crawled content from the original source. See the preview below, the entire [rendered webpage image here](https://raw.githubusercontent.com/Xpitfire/botdynamics/main/examples/results/news.png) and resulting [code of webpage here](https://raw.githubusercontent.com/Xpitfire/botdynamics/main/examples/results/news.html). 
 
 
-<img src="examples/results/news_prev.png" width="900px">
+<img src="https://raw.githubusercontent.com/Xpitfire/botdynamics/main/examples/results/news_prev.png" width="900px">
 
 Launch and explore the notebook here:
 
