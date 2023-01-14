@@ -145,7 +145,7 @@ class Symbol(ABC):
     
     def _repr_html_(self):
         return f"""<div class="alert alert-success" role="alert">
-  <h4 class="alert-heading">{str(self.value)}</h4>
+  <strong>{str(self.value)}</strong>
 </div>"""
     
     def __iter__(self):
