@@ -131,7 +131,7 @@ Additionally, you need to install the newest version directly from their reposit
 pip install git+https://github.com/openai/whisper.git
 ```
 
-* **WebCrawler Engine**: Download for `selenium` the corresponding driver version by setting the `SELENIUM_CHROME_DRIVER_VERSION` environment variable. Currently we use Chrome as the default browser. This means that the Chrome version major number must match the ChromeDriver version. All versions are available [here](https://chromedriver.chromium.org/downloads). For example, if you use chrome version `109.0.5414.74`, you can set any `109.x.x.x` version for the `chromedriver`. In this case the `109.0.5414.74` is available on the selenium page and is for the environment variable available:
+* **WebCrawler Engine**: For `selenium`, download the corresponding driver version by setting the `SELENIUM_CHROME_DRIVER_VERSION` environment variable. Currently we use Chrome as the default browser. This means that the Chrome version major number must match the ChromeDriver version. All versions are available [here](https://chromedriver.chromium.org/downloads). For example, if you use chrome version `109.0.5414.74`, you can set any `109.x.x.x` version for the `chromedriver`. In this case the `109.0.5414.74` is available on the selenium page, therefore the environment variable is set to it:
 
 ```bash
 # Linux / MacOS
@@ -144,9 +144,9 @@ $Env:SELENIUM_CHROME_DRIVER_VERSION="109.0.5414.74"
 
 ## 🤷‍♂️ Why BotDynamics?
 
-BotDynamics tries to close the gap between classical programming or Software 1.0 and modern data-driven development (aka Software 2.0). It is a framework that allows us to build applications with large language models (LLMs) through composability and inheritance - two powerful concepts from object-oriented programming paradigm. However, leveraging ideas from differential programming in Python.
+BotDynamics tries to close the gap between classical programming or Software 1.0 and modern data-driven programming (aka Software 2.0). It is a framework that allows to build software applications, which are able to utilize the power of large language models (LLMs), but are based on composability and inheritance - two powerful concepts from the object-oriented classical programming paradigm.
 
-This allows us now to move along a spectrum between these two worlds as illustrated in the following figure:
+This allows to move along the spectrum between the classical programming and the data-driven programming world as illustrated in the following figure:
 
 <img src="https://raw.githubusercontent.com/Xpitfire/botdynamics/main/assets/images/img5.png" width="720px">
 
@@ -162,11 +162,11 @@ In its essence, BotDynamics was inspired by the [`neuro-symbolic programming par
 
 **Deep neural networks** are a type of machine learning algorithms that are inspired by the structure and function of biological neural networks. They are particularly good at tasks such as image recognition, natural language processing, and decision making. However, they are not as good at tasks that require explicit reasoning, such as planning, problem solving, and understanding causal relationships.
 
-**Symbolic reasoning**, on the other hand, is a type of reasoning that uses formal languages and logical rules to represent knowledge and perform tasks such as planning, problem solving, and understanding causal relationships. Symbolic reasoning systems are good at tasks that require explicit reasoning but are not as good at tasks that require pattern recognition or generalization, such as image recognition or natural language processing.
+**Symbolic reasoning**, on the other hand uses formal languages and logical rules to represent knowledge and perform tasks such as planning, problem solving, and understanding causal relationships. Symbolic reasoning systems are good at tasks that require explicit reasoning, but are not as good at tasks that require pattern recognition or generalization, such as image recognition or natural language processing.
 
-**Neuro-symbolic programming** aims to combine the strengths of both neural networks and symbolic reasoning to create AI systems that can perform a wide range of tasks. One way this is done is by using neural networks to extract information from data and then using symbolic reasoning to make inferences and decisions based on that information. Another way is by using symbolic reasoning to guide the generative process of neural networks and make them more interpretable.
+**Neuro-symbolic programming** aims to combine the strengths of both neural networks and symbolic reasoning to create AI systems that can perform a wide range of tasks. One way this is done is by using neural networks to extract information from data and then using symbolic reasoning to make inferences and decisions based on that information. Another way is to use symbolic reasoning to guide the generative process of neural networks and make them more interpretable.
 
-**On a grander scale of things**, we believe that future computation platforms, such as wearables, SmartPhones, tables or notebooks will contain their own embedded LLMs (similar to GPT-3, ChatGPT, OPT or Bloom). 
+**On a grander scale of things**, we believe that future computation platforms, such as wearables, Smartphones, tablets or notebooks will contain their own embedded LLMs (similar to GPT-3, ChatGPT, OPT or Bloom). 
 
 <img src="https://raw.githubusercontent.com/Xpitfire/botdynamics/main/assets/images/img1.png" width="720px">
 
@@ -175,7 +175,7 @@ In this turn, to ensure the generated content is in alignment with our goals, we
 
 <img src="https://raw.githubusercontent.com/Xpitfire/botdynamics/main/assets/images/img7.png" width="720px">
 
-As shown in the figure above, we can think of it as shifting a probability mass from an input stream towards an output stream, in a contextualize manner. With proper designed conditions and expressions, we can also validate and steer the behavior towards our desired outcome, or repeat expressions that failed to fulfil our requirements. Our approach is to define a set of `fuzzy` operations that manipulate our data stream and conditions the LLMs. In essence, we consider all objects as symbols, and we can create operations that manipulate these symbols and generate new symbols. Each symbol can be interpreted as a statement. Multiple statements can be combined to form a logical expression.
+As shown in the figure above, one can think of it as shifting a probability mass from an input stream towards an output stream, in a contextualized manner. With properly designed conditions and expressions, one can also validate and steer the behavior towards a desired outcome, or repeat expressions that failed to fulfil the requirements. Our approach is to define a set of `fuzzy` operations that manipulate the data stream and conditions the LLMs. In essence, we consider all objects as symbols, and create operations that manipulate existing or generate new symbols. Each symbol can be interpreted as a statement. Multiple statements can be combined to form a logical expression.
 
 Therefore, by chaining statements together we can build causal relationships and computations, instead of relying only on inductive approaches. Consequently, the outlook towards an updated computational stack resembles a neuro-symbolic computation engine at its core and, in combination with established frameworks, enables new applications. 
 
@@ -212,7 +212,7 @@ res = sym.rank(measure='numerical', order='descending')
 
 ### Evaluating Expressions by best effort
 
-As an inspiration, we relate to an approach demonstrated with [word2vec](https://arxiv.org/abs/1301.3781). 
+As an inspiration, we relate to an approach demonstrated by [word2vec](https://arxiv.org/abs/1301.3781). 
 
 **Word2Vec** generates dense vector representations of words by training a shallow neural network to predict a word given its neighbors in a text corpus. The resulting vectors are then used in a wide range of natural language processing applications, such as sentiment analysis, text classification, and clustering.
 
@@ -221,7 +221,7 @@ The words are tokenized and mapped to a vector space, where we can perform seman
 
 <img src="https://raw.githubusercontent.com/Xpitfire/botdynamics/main/assets/images/img3.png" width="450px">
 
-Similar to word2vec we intend to preform contextualized operations on different symbols, however, instead of operating in the vector space, we operate in the natural language space. This gives us the ability to perform arithmetics on words, sentences, paragraphs, etc. and verify the results in a human readable format. 
+Similar to word2vec we intend to perform contextualized operations on different symbols, however, instead of operating in the vector space, we operate in the natural language space. This gives us the ability to perform arithmetics on words, sentences, paragraphs, etc. and verify the results in a human readable format. 
 
 The following examples shows how to evaluate such an expression via a string representation:
 
@@ -235,7 +235,7 @@ Symbol('King - Man + Women').expression()
 
 ### Dynamic casting
 
-We can also subtract sentences from each other, where our operations condition the neural computation engine to evaluate the Symbols by best effort. In the following example, it determines that the word `enemy` is present in the sentence, therefore, deletes it and replaces it with the word `friend` (which is added):
+We can also subtract sentences from each other, where our operations condition the neural computation engine to evaluate the Symbols by best effort. In the following example, it determines that the word `enemy` is present in the sentence, therefore deletes it and replaces it with the word `friend` (which is added):
 
 ```python
 res = bd.Symbol('Hello my enemy') - 'enemy' + 'friend'
@@ -249,7 +249,7 @@ What we also see is that the API performs dynamic casting, when data types are c
 
 ### Fuzzy Comparisons
 
-In this example we are fuzzily comparing two number objects, where the Symbol variant is only an approximation of `numpy.pi`. Given the context of the fuzzy equals `==` operation this comparison still succeeds and return `True`. 
+In this example we are fuzzily comparing two number objects, where the Symbol variant is only an approximation of `numpy.pi`. Given the context of the fuzzy equals `==` operation, this comparison still succeeds and return `True`. 
 
 ```python
 sym = bd.Symbol('3.1415...')
@@ -272,7 +272,7 @@ res = Symbol('The horn only sounds on Sundays.') & Symbol('I hear the horn.')
 <class 'botdyn.expressions.Symbol'>(value=It is Sunday.)
 ```
 
-The current `&`-operation uses very simple logical statements `and`, `or` and `xor` via prompts to compute the logical implication. However, one can also define custom operations to perform more complex and robust logical operations, which also can use verification constraints to validate the outcomes and ensure a desired behavior, which we will explore in the next sections.
+The current `&`-operation uses very simple logical statements `and`, `or` and `xor` via prompts to compute the logical implication. However, one can also define custom operations to perform more complex and robust logical operations, which can also use verification constraints to validate the outcomes and ensure a desired behavior. We will explore this in the next sections.
 
 ## Custom Operations
 
@@ -292,7 +292,7 @@ class Demo(bd.Symbol):
         pass
 ```
 
-As we show, the Semantic API uses Python `Decorators` to define operations. The `@bd.zero_shot` decorator is used to define a custom operation that does not require any demonstration examples, since the prompt is expressive enough. In the shown example, the `zero_shot` decorator takes in two arguments: `prompt` and `constraints`. The `prompt` argument is used to define the prompt that is used to condition on our desired  operation behavior. The `constraints` argument is used to define validation constraints of the computed outcome, and if it fulfils our expectations.
+As we show, the Semantic API uses Python `Decorators` to define operations. The `@bd.zero_shot` decorator is used to define a custom operation that does not require any demonstration examples, since the prompt is expressive enough. In the shown example, the `zero_shot` decorator takes in two arguments: `prompt` and `constraints`. The `prompt` argument is used to define the prompt that is used to condition on our desired operation behavior. The `constraints` argument is used to define validation constraints of the computed outcome, to ensure it fulfils our expectations.
 
 If the constraint is not fulfilled, the above implementation would reach out to the specified `default` implementation or default value. If no default implementation or value was found, the Semantic API would raise an `ConstraintViolationException`.
 
@@ -313,7 +313,7 @@ def few_shot(prompt: str,
              **wrp_kwargs):
 ```
 
-The `prompt` and `constraints` behave similar to the `zero_shot` decorator. However, as we see the `examples` and `limit` arguments are new. The `examples` argument is used to define a list of demonstration examples that are used to train the neural computation engine. The `limit` argument is used to define the maximum number of examples that are returned, give that there are more results. The `pre_processor` argument takes a list of `PreProcessor` objects which can be used to pre-process the input before it is fed into the neural computation engine. The `post_processor` argument takes a list of `PostProcessor` objects which can be used to post-process the output before it is returned to the user. The `wrp_kwargs` argument is used to pass additional arguments to the wrapped function, which are also stream-lined towards the neural computation engine and other engines.
+The `prompt` and `constraints` behave similar to the `zero_shot` decorator. However, as we see the `examples` and `limit` arguments are new. The `examples` argument is used to define a list of demonstration examples that are used to condition the neural computation engine. The `limit` argument is used to define the maximum number of examples that are returned, give that there are more results. The `pre_processor` argument takes a list of `PreProcessor` objects which can be used to pre-process the input before it is fed into the neural computation engine. The `post_processor` argument takes a list of `PostProcessor` objects which can be used to post-process the output before it is returned to the user. The `wrp_kwargs` argument is used to pass additional arguments to the wrapped function, which are also stream-lined towards the neural computation engine and other engines.
 
 Here is an example how to write an Japanese name generator:
 
@@ -356,7 +356,7 @@ For example, when calling the `<=` operation on two Symbols, the neural computat
 res = bd.Symbol(1) <= bd.Symbol('one')
 ```
 
-This statement evaluates to `True`, since the fuzzy compare operation was enforced to compare the two Symbols based on its semantic meaning, hence, this is the reason we call our framework also `Semantic API`.
+This statement evaluates to `True`, since the fuzzy compare operation was enforced to compare the two Symbols based on their semantic meaning, hence, this is the reason we call our framework also `Semantic API`.
 
 ```bash
 :[Output]:
@@ -367,11 +367,11 @@ In a more general notion, depending on the context, hierarchy of the expression 
 
 <img src="https://raw.githubusercontent.com/Xpitfire/botdynamics/main/assets/images/img4.png" width="350px">
 
-The figure above shows the our context-based prompt design as a container of all the information that is provided to the neural computation engine to define a specific operation. 
+The figure above shows our context-based prompt design as a container of all the information that is provided to the neural computation engine to define a specific operation. 
 
 Conceptually we consider three main prompt concepts: `Global Context`, `Operation` and `Examples`. The prompts can be curated either by inheritance or by composition. For example, the `Global Context` can be defined by inheriting from the `Expression` class and overriding the `static_context` property. An `Operation` and `Template` prompt can be created by providing an `PreProcessor` to modify the input. 
 
-The `Global Context` concept is considered optional and can be defined in a static manner either by sub-classing the Expression class and overriding the `static_context` property, or at runtime by updating the `dynamic_context` kwargs. Nevertheless, the global context is conceptually meant to define the overall context of an expression. For example, if we want to operate in the context of a domain-specific language, without having to override each base class function over and over again.
+The `Global Context` concept is considered optional and can be defined in a static manner, either by sub-classing the Expression class and overriding the `static_context` property, or at runtime by updating the `dynamic_context` kwargs. Nevertheless, the global context is conceptually meant to define the overall context of an expression. For example, if we want to operate in the context of a domain-specific language, without having to override each base class function over and over again.
 
 The `Operation` prompt concept defines the behavior of an atomic operation and is therefore mandatory to express the nature of such an operation. For example, the `+` operation is used to add two Symbols together and therefore the `+`-operation prompt explains its behavior. 
 
@@ -386,7 +386,7 @@ An `Expression` is a non-terminal symbol, which can be further evaluated. It inh
 
 BotDynamics' API closely follows best practices and ideas from `PyTorch`, therefore, one can build complex expressions by combining multiple expressions as an computation graph. Each Expression has its own `forward` function, which has to be overridden. The `forward` function is used to define the behavior of the expression. The `forward` function is called by the `__call__` function, which is inherited from the Symbol class. The `__call__` function is used to evaluate the expression and return the result. The `__call__` function is also used to evaluate the expression in a lazy manner, which means that the expression is only evaluated when the result is needed. This is a very important feature, since it allows us to build complex expressions without having to evaluate the whole expression at once. We already implemented many useful expressions, which can be imported from the `botdyn.components` file.
 
-Other important properties that are inherited from the Symbol class are the `_sym_return_type` and `static_context`. These two properties define the context in which the current Expression operations as described in the [Prompt Design](#prompt-design) section. The static_context therefore influences all operations held by the current Expression. The _sym_return_type ensures that after each Expression evaluation we obtain the desired return object type. This is usually the current type, but can be modified to return a different type. 
+Other important properties that are inherited from the Symbol class are the `_sym_return_type` and `static_context`. These two properties define the context in which the current Expression operates, as described in the [Prompt Design](#prompt-design) section. The static_context therefore influences all operations held by the current Expression. The _sym_return_type ensures that after each evaluation of an Expression, we obtain the desired return object type. This is usually the current type, but can be modified to return a different type. 
 
 Expressions can of course have more complex structures and be further sub-classed, such as shown in the example of the `Sequence` expression in the following figure:
 
@@ -412,7 +412,7 @@ Sequence(
 
 ### Stream expressions
 
-As we saw earlier, we can create contextual prompts to define the context and operations of our neural engine. However, this also takes away a lot of the available context size and since i.e. the GPT-3 Davinci context length is already limited to 4097 tokens, this might quickly become a problem. Luckily, we can use the `Stream` processing expression. This expression opens up a data stream and performs chunks-based operations on the input stream. 
+As we saw earlier, we can create contextual prompts to define the context and operations of our neural engine. However, this also takes away a lot of the available context size and since i.e. the GPT-3 Davinci context length is limited to 4097 tokens, this might quickly become a problem. Luckily, we can use the `Stream` processing expression. This expression opens up a data stream and performs chunks-based operations on the input stream. 
 
 A Stream expression can easily be wrapped around other expressions. For example, the chunks can be processed with a `Sequence` expression, that allows multiple chained operations in sequential manner. Here is an example how to define such a Stream expression:
 
@@ -424,9 +424,9 @@ Stream(Sequence(
     Embed()
 ))
 ```
-The stream operation chunks the long input text into smaller chunks and passes them to the inner expression, which returns us a `generator` object. In this case, to perform more complex operations, we open a stream and pass in a `Sequence` object which cleans, translates, outlines and embeds the information. 
+The stream operation chunks the long input text into smaller chunks and passes them to the inner expression, which returns a `generator` object. In this case, to perform more complex operations, we open a stream and pass a `Sequence` object which cleans, translates, outlines and embeds the information. 
 
-The issue with that approach is only that the resulting chunks are processed independently from each other. This means that the context of the chunks is not preserved. To solve this issue, we can use the `Cluster` expression instead, where the independent chunks are recombined based on their similarity. We illustrate this in the following figure:
+The issue with this approach is, that the resulting chunks are processed independently from each other. This means that the context of the chunks is not preserved. To solve this issue, we can use the `Cluster` expression instead, where the independent chunks are recombined based on their similarity. We illustrate this in the following figure:
 
 <img src="https://raw.githubusercontent.com/Xpitfire/botdynamics/main/assets/images/img6.png" width="720px">
 
@@ -446,15 +446,15 @@ expr = Cluster()
 expr(res)
 ```
 
-In a next step, conceptually we could recursively repeat this process on each summary node, therefore, build a hierarchical clustering structure. Since each Node resembles the a summarized sub-set of the original information we can use it as an index of our larger content. The resulting tree can then be used to navigate and retrieve the original information, turning our large data stream problem into a search problem.
+In a next step, we could recursively repeat this process on each summary node, therefore, build a hierarchical clustering structure. Since each Node resembles a summarized sub-set of the original information we can use it as an index of the larger content. The resulting tree can then be used to navigate and retrieve the original information, turning the large data stream problem into a search problem.
 
 For searching in a vector space we can use dedicated libraries such as [Annoy](https://github.com/spotify/annoy), [Faiss](https://github.com/facebookresearch/faiss) or [Milvus](https://github.com/milvus-io/milvus). 
 
 ## ❌ Error Handling
 
-A key idea of the BotDynamics API is to be able to also generate code. This also means that errors may occur that we need to handle in a contextual manner. In future terms we even want our API to self extend and therefore we need to be able to resolve issues automatically. To do so, we propose the `Try` expression, which has a fallback statement built in and retries an execution with dedicated error analysis and correction. This expression analyses the input and the error, and conditions itself to resolve the error by manipulating the original code. If the fallback expression succeeds, the result is returned, otherwise, this process is repeated for the number of `retries` specified. If the maximum number of retries is reached and the problem not resolved, the error is raised again. 
+A key idea of the BotDynamics API is to be able to generate code. This in turns means that errors may occur, which we need to handle in a contextual manner. As a future vision, we even want our API to self extend and therefore need to be able to resolve issues automatically. To do so, we propose the `Try` expression, which has a fallback statement built in and retries an execution with dedicated error analysis and correction. This expression analyses the input and the error, and conditions itself to resolve the error by manipulating the original code. If the fallback expression succeeds, the result is returned. Otherwise, this process is repeated for the number of `retries` specified. If the maximum number of retries is reached and the problem not resolved, the error is raised again. 
 
-Let us assume, we have some executable code that was previously generated. However, by the nature of generative processes syntax errors may occur. And we also have the `Execute` expression, which takes in a symbol and tries to execute it. Naturally, this will fail and in the following example we illustrate how the `Try` expression resolves this syntactic error.
+Let us assume, we have some executable code that was previously generated. However, by the nature of generative processes syntax errors may occur. Furthermore, we have the `Execute` expression, which takes in a symbol and tries to execute it. Naturally, this will fail. In the following example we illustrate how the `Try` expression resolves this syntactic error.
 
 ```python
 expr = Try(expr=Execute())
@@ -469,21 +469,21 @@ The resulting output is the evaluated code, which was corrected:
 a = 3
 ```
 
-Nevertheless, we are aware that not all errors are as simple as the shown syntactic error example, which can be resolved automatically. Many errors occur due to semantic misconceptions. Such issues, require contextual information and therefore we are further exploring means towards more sophisticated error handling mechanism.
+We are aware that not all errors are as simple as the shown syntactic error example, which can be resolved automatically. Many errors occur due to semantic misconceptions. Such issues require contextual information. Therefore, we are further exploring means towards more sophisticated error handling mechanism.
 This includes also the usage of streams and clustering to resolve errors in a more hierarchical contextual manner.
 
 
 ## 🕷️ Explainability, Testing & Debugging
 
-Perhaps one of the greatest benefits when using neuro-symbolic programming is that we can get a clear understanding of how well our LLMs understand atomic operations, if they fail and more specifically, when they fail to be able to follow their StackTraces to determine the failure points. Neuro-symbolic programming allows us to debug the model predictions and understand how they came about. Furthermore, we can Unit Test them to detect conceptual misalignments. 
+Perhaps one of the greatest benefits of using neuro-symbolic programming is, that we can get a clear understanding of how well our LLMs understand atomic operations. Specifically we gain knowledge about if and and if yes at which point they fail, enabling to follow their StackTraces and determine the failure points. Neuro-symbolic programming allows us to debug the model predictions and understand how they came about. Furthermore, we can Unit Test them to detect conceptual misalignments. 
 
 ### Unit Testing Models
 
-Since our premise is to divide and conquer complex problems, we can now curate conceptual Unit Test and target very specific and trackable sub-problems. The resulting measure, i.e. success rate of model predictions, can then be used to evaluate their conceptual performance, and hint towards undesired flaws or biases.
+Since our premise is to divide and conquer complex problems, we can curate conceptual Unit Test and target very specific and tracktable sub-problems. The resulting measure, i.e. success rate of model predictions, can then be used to evaluate their conceptual performance, and hint towards undesired flaws or biases.
 
-This allows us now to design domain-specific benchmarks and see how well general learners, such as GPT-3, adapt to these tasks. 
+This allows us to design domain-specific benchmarks and see how well general learners, such as GPT-3, adapt to these tasks. 
 
-For example, we can write a fuzzy comparison operation, that can take in digits and strings alike and perform a semantic comparison. LLMs can then be asked to evaluate these expressions. Often times, these LLMs still fail to understand the semantic meaning these tokens and predict wrong answers. 
+For example, we can write a fuzzy comparison operation, that can take in digits and strings alike and perform a semantic comparison. LLMs can then be asked to evaluate these expressions. Often times, these LLMs still fail to understand the semantic meaning of these tokens and give wrong answers. 
 
 The following code snipped shows a Unit Test to perform semantic comparison of numbers (between digits and strings):
 
@@ -502,12 +502,12 @@ class TestComposition(unittest.TestCase):
 
 ### 🔥Debugging
 
-When creating very complex expressions, we we debug them by using the `Trace` expression, which allows us to print out and follow the StackTrace of the neuro-symbolic operations. Combined with the `Log` expression, which creates a dump of all prompts and results to a log file, we can analyze where our models potentially failed.
+When creating very complex expressions, we we debug them by using the `Trace` expression, which allows to print out and follow the StackTrace of the neuro-symbolic operations. Combined with the `Log` expression, which creates a dump of all prompts and results to a log file, we can analyze where our models potentially failed.
 
 
 ### Examples
 
-In the following example we create a news summary expression that crawls the given URL and streams the site content through multiple expressions. The outcome is a news website that is created based on the crawled content. The `Trace` expression allows us to follow the StackTrace of the operations and see what operations are currently executed. If we open the `outputs/engine.log` file we can see the dumped traces with all the prompts and results.
+In the following example we create a news summary expression that crawls the given URL and streams the site content through multiple expressions. The outcome is a news website that is created based on the crawled content. The `Trace` expression allows to follow the StackTrace of the operations and see what operations are currently executed. If we open the `outputs/engine.log` file we can see the dumped traces with all the prompts and results.
 
 ```python
 # crawling the website and creating an own website based on its facts
@@ -537,7 +537,7 @@ There many more examples in the [examples folder](examples/) and in the [noteboo
 
 ## 📈 Concepts for Data Collection \& Analytics
 
-BotDynamics is by design a data-driven framework. This means that we can collect data from API interactions while we provide the requested responses. For very agile, dynamic adaptations or prototyping we can integrate user desired behavior quickly into existing prompts. However, we can also log the user queries and model predictions to make them available for post-analysis, and fine-tuning. Therefore, we can quickly iterate, customize and improve our model responses based on real-world data.
+BotDynamics is by design a data-driven framework. This means that we can collect data from API interactions while we provide the requested responses. For very agile, dynamic adaptations or prototyping we can integrate user desired behavior quickly into existing prompts. However, we can also log the user queries and model predictions to make them available for post-analysis, and fine-tuning. Therefore, we can quickly iterate, customize and improve the model's responses based on real-world data.
 
 In the following example, we show how we can use an `Output` expression to pass a handler function and access input prompts of the model and model predictions. These, can be used for data collection and later fine-tunning stages. The handler function provides a dictionary and offers keys for `input` and `output` values. The content can then be sent to a data pipeline for further processing.
 
@@ -565,7 +565,7 @@ Output: Hallo Welt!
 
 ## 🤖 Engines
 
-To to limited compute resources we currently only rely on OpenAI's API. However, given the right compute resources, we could use local machines to avoid high latencies and costs, with alternative engines such as OPT or Bloom. This would allow for recursive executions, loops, and more complex expressions.
+Due to limited compute resources we currently rely on OpenAI's GPT-3 API for the neuro-symbolic engine. However, given the right compute resources, is it possible to use local machines to avoid high latencies and costs, with alternative engines such as OPT or Bloom. This would allow for recursive executions, loops, and more complex expressions.
 
 However, we already integrated a set of useful engines that are capable of providing language tokens to perform symbolic operations. 
 
@@ -651,7 +651,7 @@ Don't worry, we would never hide an image of a cat with a hat from you. Here is 
 
 ### File Engine
 
-To perform file operations we currently only use the file system of your OS. We support currently only PDF files and plain text files. This is a very early stage and we are working on a more sophisticated file system access and remote storages. The following example shows how to read a PDF file and return the text:
+To perform file operations we currently use the file system of the OS. At the moment, we support only PDF files and plain text files. This is a very early stage and we are working on more sophisticated file system access and remote storages. The following example shows how to read a PDF file and return the text:
 
 ```python
 expr = Expression()
@@ -666,7 +666,7 @@ MIT License\n\nCopyright (c) 2023 Marius-Constantin Dinu\n\nPermission is hereby
 
 ### CLIP Engine
 
-To perform text-based image few-shot classification we use `CLIP`. This implementation is very experimental and does not conceptually fully integrate the way we intend it, since the embeddings of CLIP and GPT-3 do not yet aline. This is an open problem for future research. The following example shows how to classify the image of our generate cat from above and return the results as an array of probabilities:
+To perform text-based image few-shot classification we use `CLIP`. This implementation is very experimental and does not conceptually fully integrate the way we intend it, since the embeddings of CLIP and GPT-3 are not aligned, i.e. embeddings of the same word are not identical for these two models. Aligning them is an open problem for future research. The following example shows how to classify the image of our generated cat from above and return the results as an array of probabilities:
 
 ```python
 expr = Expression()
@@ -703,14 +703,14 @@ Research challenges:
 
 We are constantly working on improving the framework and are open to any suggestions, feedback or comments. However, we try to think ahead of time and have some general ideas for future work in mind:
 
-* Meta-Learning Semantic Concepts on top of Neuro-Symbolic Expressions:
+* Meta-Learning Semantic Concepts on top of Neuro-Symbolic Expressions
 * Self-evolving and self-healing API
 
 We believe that LLMs as neuro-symbolic computation engines enable us a new class of applications, with tools and API that can self-analyze and self-heal. We are excited to see what the future brings and are looking forward to your feedback and contributions.
 
 ## Conclusion
 
-We have presented a neuro-symbolic view on LLMs and showed how they can be a central pillar for many multi-model operations. We gave an technical report on how to utilize our framework and also hinted the capabilities and propspects theres models can be used to leverage modern software development. 
+We have presented a neuro-symbolic view on LLMs and showed how they can be a central pillar for many multi-model operations. We gave an technical report on how to utilize our framework and also hinted at the capabilities and propspects of these models to be leveraged by modern software development. 
 
 
 
@@ -780,4 +780,4 @@ If you have any questions about this project, please contact us via [email](mail
 
 [![Discord](https://img.shields.io/discord/768087161878085643?label=Discord&logo=Discord&logoColor=white)](https://discord.gg/azDQxCHeDA)
 
-If you want to contact me directly, you can reach me directly on [LinkedIn](https://www.linkedin.com/in/mariusconstantindinu/), on [Twitter](https://twitter.com/DinuMariusC) at my personal [website](https://www.dinu.at/).
+If you want to contact me directly, you can reach me directly on [LinkedIn](https://www.linkedin.com/in/mariusconstantindinu/), on [Twitter](https://twitter.com/DinuMariusC), or at my personal [website](https://www.dinu.at/).
