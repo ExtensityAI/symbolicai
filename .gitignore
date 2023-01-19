@@ -129,4 +129,4 @@ dmypy.json
 .pyre/
 
 results/
-./ai.config.json
+./symai.config.json

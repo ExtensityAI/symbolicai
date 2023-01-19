@@ -1,0 +1,4 @@
+global-exclude test_*.py
+include symai/**/*
+include symai/backend/driver/*
+exclude **/*.pyc

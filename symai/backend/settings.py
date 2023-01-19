@@ -1,0 +1,1 @@
+SYMAI_CONFIG = {}
