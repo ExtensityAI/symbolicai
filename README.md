@@ -7,6 +7,8 @@
 
 [![PyPI version](https://badge.fury.io/py/symbolicai.svg)](https://badge.fury.io/py/symbolicai) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/langchainai.svg?style=social&label=Follow%20%40DinuMariusC)](https://twitter.com/DinuMariusC) [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/Xpitfire/symbolicai/issues) [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FXpitfire%2Fsymbolicai&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)](https://hits.seeyoufarm.com)
 
+<img src="assets/images/preview.gif">
+
 ## Abstract
 
 Conceptually, SymbolicAI is a framework that uses machine learning - and specifically LLMs - at its core, and curates' operations based on dedicated `zero` or `few-shot` learning prompt designs. Our main philosophy is to divide and conquer a complex problem into more manageable, smaller problems. Each operation solves an atomic task, however, by chaining these operations back together we can solve more complex problems. Furthermore, our design principles allow us to transition between differentiable and classical programming, and to leverage the power of both worlds.
@@ -192,6 +194,7 @@ Alternatively, you can specify in your project path a `symai.config.json` file w
 We compiled a few examples to show how to use our Symbolic API. You can find them in the `notebooks` folder.
 
 - *Basics*: See our data types notebook to show how to use our data types and data structures ([notebooks/Basics.ipynb](notebooks/Basics.ipynb))
+- *Queries*: See our query manipulation notebook ([notebooks/Queries.ipynb](notebooks/Basics.ipynb))
 - *News & Docs Generation*: See our news generation notebook to show how to generate news articles ([notebooks/News.ipynb](notebooks/News.ipynb))
 - *ChatBot*: See our chat bot notebook ([notebooks/ChatBot.ipynb](notebooks/ChatBot.ipynb))
 

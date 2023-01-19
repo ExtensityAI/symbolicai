@@ -464,6 +464,7 @@ class ReplaceText(Prompt):
         super().__init__([
             "text 'a + b' replace 'b' with '' =>a",
             "text 'a + b' replace 'c' with '' =>a + b",
+            "text 'SELECT title, author, pub_date FROM catalog WHERE pub_date = 2021;' replace 'WHERE ...' with '' =>SELECT title, author, pub_date FROM catalog;",
             "text 'a + b ^ 2' replace 'b' with '' =>a",
             "text '(a + b)^2 - 6 = 18' replace 'b' with '' =>a^2 - 6 = 18",
             "text 'The green fox jumps of the brown chair.' replace 'green' with 'red' =>The red fox jumps of the brown chair.",

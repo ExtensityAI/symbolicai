@@ -3,7 +3,7 @@ from symai.chat import ChatBot
 
 class SymbiaChat(ChatBot):
     def format(self, text: str) -> str:
-        message = self.narrate('Symbia writes greeting message and asks how to help.')        
+        message = self.narrate('Symbia introduces herself, writes a greeting message and asks how to help.')        
         while True:
             # query user
             res = self.input(message)
