@@ -40,7 +40,7 @@ Conceptually, SymbolicAI is a framework that uses machine learning - and specifi
     - [Sequence expressions](#sequence-expressions)
     - [Stream expressions](#stream-expressions)
   - [❌ Error Handling](#-error-handling)
-  - [🕷️ Explainability, Testing \& Debugging](#️-explainability-testing--debugging)
+  - [🕷️ Interpretability, Testing \& Debugging](#️-interpretability-testing--debugging)
     - [Unit Testing Models](#unit-testing-models)
     - [🔥Debugging](#debugging)
     - [Example: News Summary](#example-news-summary)
@@ -192,10 +192,10 @@ Alternatively, you can specify in your project path a `symai.config.json` file w
 
 We compiled a few examples to show how to use our Symbolic API. You can find them in the `notebooks` folder.
 
-- *Basics*: See our data types notebook to show how to use our data types and data structures ([notebooks/Basics.ipynb](notebooks/Basics.ipynb))
-- *Queries*: See our query manipulation notebook ([notebooks/Queries.ipynb](notebooks/Basics.ipynb))
-- *News & Docs Generation*: See our news generation notebook to show how to generate news articles ([notebooks/News.ipynb](notebooks/News.ipynb))
-- *ChatBot*: See our chat bot notebook ([notebooks/ChatBot.ipynb](notebooks/ChatBot.ipynb))
+- *Basics*: See our basics notebook to get familiar with our API structure ([notebooks/Basics.ipynb](notebooks/Basics.ipynb))
+- *Queries*: See our query manipulation notebook for contextualized operations ([notebooks/Queries.ipynb](notebooks/Basics.ipynb))
+- *News & Docs Generation*: See our news and documentation generation notebook for stream processing ([notebooks/News.ipynb](notebooks/News.ipynb))
+- *ChatBot*: See how to implement a custom chatbot based on semantic narrations ([notebooks/ChatBot.ipynb](notebooks/ChatBot.ipynb))
 
 
 You can solve many more problems with our Symbolic API. We are looking forward to see what you will build with it. Keep us posted on our shared community space on [Discord: RL Is All You Need / SymbolicAI](https://discord.gg/QYMNnh9ra8).
@@ -225,7 +225,7 @@ In its essence, SymbolicAI was inspired by the [`neuro-symbolic programming para
 
 **Neuro-symbolic programming** aims to combine the strengths of both neural networks and symbolic reasoning to create AI systems that can perform a wide range of tasks. One way this is done is by using neural networks to extract information from data and then using symbolic reasoning to make inferences and decisions based on that information. Another way is to use symbolic reasoning to guide the generative process of neural networks and make them more interpretable.
 
-**Embedded accelerators for LLMs** will, in our opinion, be ubiquitous in future computation platforms, such as wearables, smartphones, tablets or notebooks will contain their own embedded LLMs (similar to GPT-3, ChatGPT, OPT or Bloom). 
+**Embedded accelerators for LLMs** will, in our opinion, be ubiquitous in future computation platforms, such as wearables, smartphones, tablets or notebooks. They will contain models similar to GPT-3, ChatGPT, OPT or Bloom. 
 
 <img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img1.png" width="720px">
 
@@ -582,7 +582,7 @@ We are aware that not all errors are as simple as the shown syntactic error exam
 This includes also the usage of streams and clustering to resolve errors in a more hierarchical contextual manner.
 
 
-## 🕷️ Explainability, Testing & Debugging
+## 🕷️ Interpretability, Testing & Debugging
 
 Perhaps one of the greatest benefits of using neuro-symbolic programming is, that we can get a clear understanding of how well our LLMs understand atomic operations. Specifically we gain knowledge about if, and at which point they fail, enabling to follow their StackTraces and determine the failure points. Neuro-symbolic programming allows us to debug the model predictions and understand how they came about. Furthermore, we can unit test them to detect conceptual misalignments. 
 
@@ -884,7 +884,7 @@ We believe that LLMs as neuro-symbolic computation engines enable us a new class
 
 ## Conclusion
 
-We have presented a neuro-symbolic view on LLMs and showed how they can be a central pillar for many multi-model operations. We gave an technical report on how to utilize our framework and also hinted at the capabilities and prospects of these models to be leveraged by modern software development. 
+We have presented a neuro-symbolic view on LLMs and showed how they can be a central pillar for many multi-modal operations. We gave an technical report on how to utilize our framework and also hinted at the capabilities and prospects of these models to be leveraged by modern software development. 
 
 
 
@@ -922,7 +922,7 @@ Also this is a long list. Great thanks to my colleagues and friends at the [Inst
 And finally, thanks to the open source community for making their APIs and tools available to the public, including (but not exclusive to) [PyTorch](https://pytorch.org/), [HuggingFace](https://huggingface.co/), [OpenAI](https://openai.com/), [GitHub](https://github.com/), [Microsoft Research](https://www.microsoft.com/en-us/research/), and many more. 
 
 
-Special thanks to the editors [Kajetan Schweighofer](https://www.linkedin.com/in/kajetan-schweighofer-a61113202/?originalSubdomain=at), [Markus Hofmarcher](https://www.linkedin.com/in/markus-hofmarcher-2722141b8/?originalSubdomain=at), [Thomas Natschläger](https://www.linkedin.com/in/thomas-natschlaeger/?originalSubdomain=at) and [Sepp Hochreiter](https://scholar.google.at/citations?user=tvUH3WMAAAAJ&hl=en).
+Special thanks to the contributions from [Kajetan Schweighofer](https://www.linkedin.com/in/kajetan-schweighofer-a61113202/?originalSubdomain=at), [Markus Hofmarcher](https://www.linkedin.com/in/markus-hofmarcher-2722141b8/?originalSubdomain=at), [Thomas Natschläger](https://www.linkedin.com/in/thomas-natschlaeger/?originalSubdomain=at) and [Sepp Hochreiter](https://scholar.google.at/citations?user=tvUH3WMAAAAJ&hl=en).
 
 
 ### Contribution
