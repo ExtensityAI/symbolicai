@@ -460,11 +460,11 @@ This statement evaluates to `True`, since the fuzzy compare operation was enforc
 True
 ```
 
-In a more general notion, depending on the context, hierarchy of the expression class and used operations the semantics of the Symbol operations may vary. To better illustrate this, we show our conceptual prompt design in the following figure:
+In a more general notion, depending on the context hierarchy of the expression class and used operations the semantics of the Symbol operations may vary. To better illustrate this, we show our conceptual prompt design in the following figure:
 
 <img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img4.png" width="350px">
 
-The figure above shows our hierarchical prompt design as a container of all the information that is provided to the neural computation engine to define a specific operation. The `Yellow`, `Green` and `Red` highlighted colors are mandatory. The dashed boxes are optional.
+The figure above shows our hierarchical prompt design as a container of all the information that is provided to the neural computation engine to define a specific operation. The `Yellow`, `Green` and `Red` highlighted boxes are mandatory. The dashed boxes are optional.
 
 Conceptually we consider three main prompt designs: `Context-based Prompts`, `Operational Prompts`, and `Templates`. The prompts can be curated either by inheritance or by composition. For example, the `Static Context` can be defined by inheriting from the `Expression` class and overriding the `static_context` property. An `Operation` and `Template` prompt can be created by providing an `PreProcessor` to modify the input data. 
 
