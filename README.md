@@ -958,7 +958,7 @@ We are also looking for contributors or investors to grow and support this proje
 
 ### 📫 Contact
 
-If you have any questions about this project, please contact us via [email](mailto:office@alphacoreai.eu), on our [website](www.alphacoreai.eu/symbolicai) or find us on Discord:
+If you have any questions about this project, please contact us via [email](mailto:office@alphacoreai.eu), on our [website](https://alphacoreai.eu/symbolic-ai/) or find us on Discord:
 
 [![Discord](https://img.shields.io/discord/768087161878085643?label=Discord&logo=Discord&logoColor=white)](https://discord.gg/QYMNnh9ra8)
 
