@@ -11,7 +11,7 @@
 
 ## Abstract
 
-Conceptually, SymbolicAI is a framework that uses machine learning - and specifically LLMs - at its core, and curates' operations based on dedicated `zero` or `few-shot` learning prompt designs. Our main philosophy is to divide and conquer a complex problem into more manageable, smaller problems. Each operation solves an atomic task, however, by chaining these operations back together we can solve more complex problems. Furthermore, our design principles allow us to transition between differentiable and classical programming, and to leverage the power of both worlds.
+Conceptually, SymbolicAI is a framework that uses machine learning - and specifically LLMs - at its core, and composes operations based on task-specific `zero` or `few-shot` prompting. Our main philosophy is to divide and conquer a complex problem into more manageable, smaller problems. Each operation solves an atomic task, however, by chaining these operations back together we can solve more complex problems. Furthermore, our design principles allow us to transition between differentiable and classical programming, and to leverage the power of both worlds.
 
 ## 📖 Table of Contents
 
@@ -209,7 +209,7 @@ This allows to move along the spectrum between the classical programming realm a
 
 <img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img5.png" width="720px">
 
-As briefly mentioned, our main philosophy is to divide and conquer a complex problem into smaller and more manageable problems. We then use the expressiveness and flexibility of LLMs to evaluate these sub-problems and by chaining these operations back together, solve the original task. 
+As briefly mentioned, we adopt a divide and conquer approach to decompose a complex problem into smaller problems. We then use the expressiveness and flexibility of LLMs to evaluate these sub-problems and by re-combining these operations we can solve the complex problem. 
 
 In this turn, and with enough data, we can gradually transition between general purpose LLMs with `zero` and `few-shot` learning capabilities, and specialized fine-tuned models to solve specific problems (see above). 
 
