@@ -308,7 +308,7 @@ What we also see is that the API performs dynamic casting, when data types are c
 
 ### Fuzzy Comparisons
 
-In this example we are fuzzily comparing two number objects, where the Symbol variant is only an approximation of `numpy.pi`. Given the context of the fuzzy equals `==` operation, this comparison still succeeds and return `True`. 
+In this example we are fuzzily comparing two number objects, where the Symbol variant is only an approximation of `numpy.pi`. Given the context of the fuzzy equals `==` operation, this comparison still succeeds and returns `True`. 
 
 ```python
 sym = ai.Symbol('3.1415...')
@@ -359,7 +359,7 @@ class Demo(ai.Symbol):
         return _func(self, other)
 ```
 
-As shown in the above example, this is also the way we implemented the basic operations in `Symbol`, by defining local functions that are then decorated with the respective operation decorator from the `symai/core.py` file. The `symai/core.py` holds a list of pre-defined operation decorators that we can quickly apply to any function. The reason why we use locally defined functions instead of directly annotating the main methods, is that we do not necessarily want that all our operations are sent to the neural engine and could implement a default behavior. Another reason is that we want to cast return types of the operation outcome to symbols or other derived classes thereof. This is done by the by using `self._sym_return_type(...)` method and can give contextualized behavior based on the return type. See more details in the actual [`Symbol` class](https://github.com/Xpitfire/symbolicai/blob/main/symbolicai/symbol.py).
+As shown in the above example, this is also the way we implemented the basic operations in `Symbol`, by defining local functions that are then decorated with the respective operation decorator from the `symai/core.py` file. The `symai/core.py` holds a list of pre-defined operation decorators that we can quickly apply to any function. The reason why we use locally defined functions instead of directly annotating the main methods, is that we do not necessarily want that all our operations are sent to the neural engine and could implement a default behavior. Another reason is that we want to cast return types of the operation outcome to symbols or other derived classes thereof. This is done by using the `self._sym_return_type(...)` method and can give contextualized behavior based on the return type. See more details in the actual [`Symbol` class](https://github.com/Xpitfire/symbolicai/blob/main/symbolicai/symbol.py).
 
 In the next section, we will show that actually almost all operations  in `symai/core.py` are derived from the more generic `few_shot` decorator.
 
@@ -403,7 +403,7 @@ def few_shot(prompt: str,
              **wrp_kwargs):
 ```
 
-The `prompt` and `constraints` behave similar to the `zero_shot` decorator. However, as we see the `examples` and `limit` arguments are new. The `examples` argument is used to define a list of demonstration examples that are used to condition the neural computation engine. The `limit` argument is used to define the maximum number of examples that are returned, give that there are more results. The `pre_processor` argument takes a list of `PreProcessor` objects which can be used to pre-process the input before it is fed into the neural computation engine. The `post_processor` argument takes a list of `PostProcessor` objects which can be used to post-process the output before it is returned to the user. The `wrp_kwargs` argument is used to pass additional arguments to the wrapped function, which are also stream-lined towards the neural computation engine and other engines.
+The `prompt` and `constraints` behave is similar to the `zero_shot` decorator. However, as we see the `examples` and `limit` arguments are new. The `examples` argument is used to define a list of demonstration examples that are used to condition the neural computation engine. The `limit` argument is used to define the maximum number of examples that are returned, give that there are more results. The `pre_processor` argument takes a list of `PreProcessor` objects which can be used to pre-process the input before it is fed into the neural computation engine. The `post_processor` argument takes a list of `PostProcessor` objects which can be used to post-process the output before it is returned to the user. The `wrp_kwargs` argument is used to pass additional arguments to the wrapped function, which are also stream-lined towards the neural computation engine and other engines.
 
 To give a more holistic picture ouf our conceptional implementation, see the following flow diagram containing the most important classes:
 
