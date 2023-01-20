@@ -61,7 +61,6 @@ Conceptually, SymbolicAI is a framework that uses machine learning - and specifi
   - [Conclusion](#conclusion)
   - [👥 References, Related Work \& Credits](#-references-related-work--credits)
     - [Acknowledgements](#acknowledgements)
-      - [**Editors**](#editors)
     - [Contribution](#contribution)
     - [📜 Citation](#-citation)
     - [📝 License](#-license)
@@ -922,9 +921,8 @@ Also this is a long list. Great thanks to my colleagues and friends at the [Inst
 
 And finally, thanks to the open source community for making their APIs and tools available to the public, including (but not exclusive to) [PyTorch](https://pytorch.org/), [HuggingFace](https://huggingface.co/), [OpenAI](https://openai.com/), [GitHub](https://github.com/), [Microsoft Research](https://www.microsoft.com/en-us/research/), and many more. 
 
-#### **Editors**
 
-Special thanks to the editors [Kajetan Schweighofer](https://www.linkedin.com/in/kajetan-schweighofer-a61113202/?originalSubdomain=at), [Markus Hofmarcher](https://www.linkedin.com/in/markus-hofmarcher-2722141b8/?originalSubdomain=at) and [Thomas Natschläger](https://www.linkedin.com/in/thomas-natschlaeger/?originalSubdomain=at).
+Special thanks to the editors [Kajetan Schweighofer](https://www.linkedin.com/in/kajetan-schweighofer-a61113202/?originalSubdomain=at), [Markus Hofmarcher](https://www.linkedin.com/in/markus-hofmarcher-2722141b8/?originalSubdomain=at), [Thomas Natschläger](https://www.linkedin.com/in/thomas-natschlaeger/?originalSubdomain=at) and [Sepp Hochreiter](https://scholar.google.at/citations?user=tvUH3WMAAAAJ&hl=en).
 
 
 ### Contribution
