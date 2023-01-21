@@ -348,22 +348,21 @@ Here is an example of how to define a custom `==` operation by overriding the `_
 ```python
 class Demo(ai.Symbol):
     def __eq__(self, other) -> bool:
-        @ai.equals(examples=[
-          examples=ai.Prompt([
+        @ai.equals(examples=ai.Prompt([
               "1 == 'ONE' =>True",
               "'six' == 7 =>False",
               "'Acht' == 'eight' =>True",
               ...
           ])
-        ])
+        )
         def _func(_, other) -> bool:
             return False # default behavior on failure
         return _func(self, other)
 ```
 
-As shown in the above example, this is also the way we implemented the basic operations in `Symbol`, by defining local functions that are then decorated with the respective operation decorator from the `symai/core.py` file. The `symai/core.py` holds a list of pre-defined operation decorators that we can quickly apply to any function. The reason why we use locally defined functions instead of directly annotating the main methods, is that we do not necessarily want that all our operations are sent to the neural engine and could implement a default behavior. Another reason is that we want to cast return types of the operation outcome to symbols or other derived classes thereof. This is done by using the `self._sym_return_type(...)` method and can give contextualized behavior based on the return type. See more details in the actual [`Symbol` class](https://github.com/Xpitfire/symbolicai/blob/main/symbolicai/symbol.py).
+As shown in the above example, this is also the way we implemented the basic operations in `Symbol`, by defining local functions that are then decorated with the respective operation decorator from the `symai/core.py` file. The `symai/core.py` is a collection of pre-defined operation decorators that we can quickly apply to any function. The reason why we use locally defined functions instead of directly decorating the main methods, is that we do not necessarily want that all our operations are sent to the neural engine and could implement a default behavior. Another reason is that we want to cast return types of the operation outcome to symbols or other derived classes thereof. This is done by using the `self._sym_return_type(...)` method and can give contextualized behavior based on the defined return type. See more details in the actual [`Symbol` class](https://github.com/Xpitfire/symbolicai/blob/main/symbolicai/symbol.py).
 
-In the next section, we will show that actually almost all operations  in `symai/core.py` are derived from the more generic `few_shot` decorator.
+In the next section, we will show that almost all operations in `symai/core.py` are derived from the more generic `few_shot` decorator.
 
 
 ### 🧪 Custom Operations
@@ -384,7 +383,7 @@ class Demo(ai.Symbol):
         pass
 ```
 
-As we show, the Symbolic API uses Python `Decorators` to define operations. The `@ai.zero_shot` decorator is used to define a custom operation that does not require any demonstration examples, since the prompt is expressive enough. In the shown example, the `zero_shot` decorator takes in two arguments: `prompt` and `constraints`. The `prompt` argument is used to define the prompt that is used to condition on our desired operation behavior. The `constraints` argument is used to define validation constraints of the computed outcome, to ensure it fulfills our expectations.
+As we show, the Symbolic API uses Python `Decorators` to define operations. The `@ai.zero_shot` decorator is used to define a custom operation that does not require any demonstration examples, since the prompt is expressive enough. In the shown example, the `zero_shot` decorator takes in two arguments: `prompt` and `constraints`. The former is used to define the prompt that conditions our desired operation behavior. The latter is used to define validation constraints of the computed outcome, to ensure it fulfills our expectations.
 
 If the constraint is not fulfilled, the above implementation would reach out to the specified `default` implementation or default value. If no default implementation or value was found, the Symbolic API would raise an `ConstraintViolationException`.
 
