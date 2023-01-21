@@ -521,7 +521,7 @@ Sequence(
 
 ### Stream expressions
 
-As we saw earlier, we can create contextual prompts to define the context and operations of our neural engine. However, this also takes away a lot of the available context size and since e.g. the GPT-3 Davinci context length is limited to 4097 tokens, this might quickly become a problem. Luckily, we can use the `Stream` processing expression. This expression opens up a data stream and performs chunks-based operations on the input stream. 
+As we saw earlier, we can create contextualized prompts to define the behavior of operations on our neural engine. However, this also takes away a lot of the available context size and since e.g. the GPT-3 Davinci context length is limited to 4097 tokens, this might quickly become a problem. Luckily, we can use the `Stream` processing expression. This expression opens up a data stream and performs chunk-based operations on the input stream. 
 
 A Stream expression can easily be wrapped around other expressions. For example, the chunks can be processed with a `Sequence` expression, that allows multiple chained operations in sequential manner. Here is an example how to define such a Stream expression:
 
@@ -539,7 +539,7 @@ The issue with this approach is, that the resulting chunks are processed indepen
 
 <img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img6.png" width="720px">
 
-In the shown example we recombine all individual chunks again by clustering the information among the chunks. This gives us a way to consolidate contextually related information and recombine them in a meaningful way. Furthermore, the clustered information can then be labeled by looking / streaming through the values within the cluster and collecting the most relevant labels.
+In the shown example we recombine all individual chunks again by clustering the information among the chunks. This gives us a way to consolidate contextually related information and recombine them in a meaningful way. Furthermore, the clustered information can then be labeled by looking / streaming through the values within the clusters and collecting the most relevant labels.
 
 The full example is shown below:
 
@@ -561,7 +561,7 @@ For searching in a vector space we can use dedicated libraries such as [Annoy](h
 
 ## ❌ Error Handling
 
-A key idea of the SymbolicAI API is to be able to generate code. This in turns means that errors may occur, which we need to handle in a contextual manner. As a future vision, we even want our API to self extend and therefore need to be able to resolve issues automatically. To do so, we propose the `Try` expression, which has a fallback statement built in and retries an execution with dedicated error analysis and correction. This expression analyses the input and the error, and conditions itself to resolve the error by manipulating the original code. If the fallback expression succeeds, the result is returned. Otherwise, this process is repeated for the number of `retries` specified. If the maximum number of retries is reached and the problem not resolved, the error is raised again. 
+A key idea of the SymbolicAI API is to be able to generate code. This in turn means that errors may occur, which we need to handle in a contextual manner. As a future vision, we even want our API to self extend and therefore need to be able to resolve issues automatically. To do so, we propose the `Try` expression, which has a fallback statement built in and retries an execution with dedicated error analysis and correction. This expression analyses the input and the error, and conditions itself to resolve the error by manipulating the original code. If the fallback expression succeeds, the result is returned. Otherwise, this process is repeated for the number of `retries` specified. If the maximum number of retries is reached and the problem was not resolved, the error is raised again. 
 
 Let us assume, we have some executable code that was previously generated. However, by the nature of generative processes syntax errors may occur. Furthermore, we have the `Execute` expression, which takes in a symbol and tries to execute it. Naturally, this will fail. In the following example we illustrate how the `Try` expression resolves this syntactic error.
 
@@ -584,7 +584,7 @@ This includes also the usage of streams and clustering to resolve errors in a mo
 
 ## 🕷️ Interpretability, Testing & Debugging
 
-Perhaps one of the greatest benefits of using neuro-symbolic programming is, that we can get a clear understanding of how well our LLMs understand atomic operations. Specifically we gain knowledge about if, and at which point they fail, enabling to follow their StackTraces and determine the failure points. Neuro-symbolic programming allows us to debug the model predictions and understand how they came about. Furthermore, we can unit test them to detect conceptual misalignments. 
+Perhaps one of the greatest benefits of using neuro-symbolic programming is, that we can get a clear understanding of how well our LLMs understand simple operations. Specifically we gain knowledge about if, and at which point they fail, enabling to follow their StackTraces and determine the failure points. Neuro-symbolic programming allows us to debug the model predictions and understand how they came about. In our case, this is done by unit test them to detect conceptual misalignments. 
 
 ### Unit Testing Models
 
