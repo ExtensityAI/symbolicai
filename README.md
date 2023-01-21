@@ -692,7 +692,7 @@ res = expr.expression('x^2 + 2x + 1')
 
 ```bash
 :Output:
-25
+x = -1
 ```
 
 ### Speech Engine
