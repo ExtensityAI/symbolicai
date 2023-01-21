@@ -3,7 +3,7 @@ import json
 import logging
 
 
-SYMAI_VERSION = "0.2.3"
+SYMAI_VERSION = "0.2.4"
 
 
 def _start_symai():
