@@ -431,7 +431,7 @@ Should the neural computation engine not be able to compute the desired outcome,
 
 The way all the above operations are performed is by using a `Prompt` class. The Prompt class is a container for all the information that is needed to define a specific operation. The Prompt class is also the base class for all other Prompt classes. 
 
-Here is an example how to define a Prompt to enforce the neural computation engine to compare two values:
+Here is an example how to define a Prompt to enforce the neural computation engine on how to compare two values:
 
 ```python
 class CompareValues(ai.Prompt):
@@ -469,7 +469,7 @@ Conceptually we consider three main prompt designs: `Context-based Prompts`, `Op
 
 We will now explain each prompt concept in more detail:
 
-- The `Context-based Prompts (Static, Dynamic and Attachment)` are considered optional and can be defined in a static manner, either by sub-classing the Expression class and overriding the `static_context` property, or at runtime by updating the `dynamic_context` property or passing a`attach` kwargs to a method. Here is an example how to use the `attach` kwargs via the method signature:
+- The `Context-based Prompts (Static, Dynamic and Attachment)` are considered optional and can be defined in a static manner, either by sub-classing the Expression class and overriding the `static_context` property, or at runtime by updating the `dynamic_context` property or passing an `attach` kwargs to a method. Here is an example how to use the `attach` kwargs via the method signature:
   ```python
   # creating a query to ask if an issue was resolve or not
   sym = Symbol("<some-community-conversation>")
@@ -482,9 +482,9 @@ We will now explain each prompt concept in more detail:
   else:
       pass # all good
   ```
-  Nevertheless, how it is set, context-based prompts are conceptually meant to define the overall behavior of an expression. For example, if we want to operate in the context of a domain-specific language, without having to override each base class function over and over again. See more details in [this notebook](notebooks/demo.ipynb).
+  Regardless how we set the context, our contextualized prompt defines the behavior of the Expression operations. For example, if we want to operate in the context of a domain-specific language, without having to override each base class function over and over again. See more details in [this notebook](notebooks/demo.ipynb).
 
-- The `Operation` prompts define the behavior of an atomic operation and is therefore mandatory to express the nature of such an operation. For example, the `+` operation is used to add two Symbols together and therefore the `+`-operation prompt explains its behavior. `Examples` defines another optional structure that provides the neural computation engine with a set of demonstrations that are used to properly condition the engine. For example, the `+`-operation prompt can be conditioned on how to add numbers by providing a set of demonstrations, such as `1 + 1 = 2`, `2 + 2 = 4`, etc.
+- The `Operation` prompts define the behavior of an atomic operation and is therefore mandatory to express the nature of such an operation. For example, the `+`-operation is used to add two Symbols together and therefore the `+`-operation prompt explains its behavior. `Examples` defines another optional structure that provides the neural computation engine with a set of demonstrations that are used to properly condition the engine. For example, the `+`-operation prompt can be conditioned on how to add numbers by providing a set of demonstrations, such as `1 + 1 = 2`, `2 + 2 = 4`, etc.
 
 - The `Template` prompts are optional and encapsulates the resulting prediction to enforce a specific format. For example, to generate HTML tags we can use a curated `<html>{{placeholder}}</html>` template. This template will enforce the neural computation engine to generate only HTML tags to replace the `{{placeholder}}` tag.
 
