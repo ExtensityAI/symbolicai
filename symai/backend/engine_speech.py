@@ -55,7 +55,7 @@ class WhisperEngine(Engine):
     
     def prepare(self, args, kwargs, wrp_params):
         assert 'audio' in wrp_params, "Whisper requires audio input."
-        audio_file = wrp_params['audio']
+        audio_file = str(wrp_params['audio'])
         # load audio and pad/trim it to fit 30 seconds
         audio = whisper.load_audio(audio_file)
         audio = whisper.pad_or_trim(audio)

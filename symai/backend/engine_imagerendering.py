@@ -96,6 +96,6 @@ class ImageRenderingEngine(Engine):
         return [rsp]
     
     def prepare(self, args, kwargs, wrp_params):
-        prompt = wrp_params['prompt']
+        prompt = str(wrp_params['prompt'])
         prompt += wrp_params['processed_input']
         wrp_params['prompt'] = prompt

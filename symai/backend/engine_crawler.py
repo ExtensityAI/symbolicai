@@ -47,7 +47,7 @@ class CrawlerEngine(Engine):
 
     def prepare(self, args, kwargs, wrp_params):
         if 'url' in wrp_params and 'pattern' in wrp_params:
-            wrp_params['urls'] = [wrp_params['url']]
+            wrp_params['urls'] = [str(wrp_params['url'])]
             wrp_params['patterns'] = [wrp_params['pattern']]
         else:
             assert len(kwargs) >= 1 or len(args) >= 1

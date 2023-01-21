@@ -55,4 +55,4 @@ class GoogleEngine(Engine):
         return rsp if isinstance(queries, list) else rsp[0]
     
     def prepare(self, args, kwargs, wrp_params):
-        wrp_params['queries'] = [wrp_params['query']]
+        wrp_params['queries'] = [str(wrp_params['query'])]

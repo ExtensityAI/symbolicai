@@ -7,7 +7,7 @@ import unittest
 import numpy as np
 
 from symai import *
-from examples.symbia import SymbiaChat
+from symai.chat import SymbiaChat
 from examples.paper import Paper
 from examples.news import News
 

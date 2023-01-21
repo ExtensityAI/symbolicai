@@ -277,10 +277,9 @@ class ListPreProcessor(PreProcessor):
 class QueryPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
-        val = prep_as_str(wrp_self)
-        val = f'Context:\n{str(val)}\n'
-        query = wrp_params['context']
-        return f"{val}{query}\n"
+        val = f'Context:\n{str(wrp_self)}\n'
+        query = f"Query: {wrp_params['context']}\n"
+        return f"{val}{query}Answer:"
 
         
 class SufficientInformationPreProcessor(PreProcessor):
