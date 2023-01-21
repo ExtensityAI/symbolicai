@@ -866,7 +866,8 @@ Finally, let's assume you want to create a entirely new engine, but still keep o
 Uff... this is a long list. We are still in the early stages of development and are working hard to overcome these limitations. Just to name a few:
 
 Engineering challenges:
-* Our framework is still in its early stages of development and is not yet meant for production use. For example, the Stream class only estimates the prompt size by an approximation, which can be easily exceeded. One can also create more sophisticated prompt hierarchies and dynamically adjust the global context based on a state-based approach. This would allow making consistent predictions even for long text streams.
+* Our framework is still in its early stages of development and is not yet meant for production use. For example, the Stream class only estimates the prompt size by an approximation, which sometimes can fail. One can also create more sophisticated prompt hierarchies and dynamically adjust the global context based on a state-based approach. This would allow making consistent predictions even for long text streams.
+* Many operations need to be further improved: verified for biases, fairness, robustness, etc.
 * The code may not be complete and is not yet optimized for speed and memory usage, and uses API-based LLMs due to limitations of compute resources.
 * Code coverage is not yet complete and we are still working on the documentation.
 * Integrate with a more diverse set of models from [HuggingFace](https://huggingface.co/) or other platforms.
@@ -874,6 +875,7 @@ Engineering challenges:
 * Vector-based search indexes, i.e. [Annoy](https://github.com/spotify/annoy), [Faiss](https://github.com/facebookresearch/faiss) or [Milvus](https://github.com/milvus-io/milvus), are not yet integrated into the framework to enable fast content retrieval.
 
 Research challenges:
+* To reliably use our framework, one needs to further explore how to fine-tune LLMs to specifically solve many of the proposed operations in a more robust and efficient way. 
 * The experimental integration of CLIP is meant to align image and text embeddings. To enable decision-making of LLMs based on observations and perform symbolic operations on objects in images or videos would be a huge leap forward. This would perfectly integrate with reinforcement learning approaches and enable us to control policies in a systematic way (see also [GATO](https://www.deepmind.com/publications/a-generalist-agent)). Therefore, we need to train large multi-modal variants with image / video data and text data, describing in high details the scenes to obtain neuro-symbolic computation engines that can perform semantic operations similar to `move-towards-tree`, `open-door`, etc.
 * Generalist LLMs are still highly over-parameterized and hardware has not yet caught up to host these models on arbitrary day-to-day machines. This limits the applicability of our approach not only on small data streams, but also gives high latencies and therefore limits the amount of complexity and expressiveness we can achieve with our expressions.
 
@@ -886,7 +888,7 @@ We are constantly working on improving the framework and are open to any suggest
 * Self-evolving and self-healing API
 * Integrate our neuro-symbolic framework with Reinforcement Learning
 
-We believe that LLMs as neuro-symbolic computation engines enable us a new class of applications, with tools and API that can self-analyze and self-heal. We are excited to see what the future brings and are looking forward to your feedback and contributions.
+We believe that LLMs as neuro-symbolic computation engines enable us a new class of applications, with tools and APIs that can self-analyze and self-heal. We are excited to see what the future brings and are looking forward to your feedback and contributions.
 
 ## Conclusion
 
