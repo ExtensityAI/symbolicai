@@ -241,7 +241,7 @@ Therefore, by chaining statements together we can build causal relationships and
 
 ## 😶‍🌫️ How does it work?
 
-We now show how we define our `Symbolic API`, which is based on object-oriented and compositional design patterns. The `Symbol` class is the base class for all functional operations, which we refer to as a terminal symbol in the context of symbolic programming (fully resolved expressions). The Symbol class holds helpful operations and functions that can be interpreted as expressions to manipulate its content and evaluate to new Symbols. 
+We now show how we define our `Symbolic API`, which is based on object-oriented and compositional design patterns. The `Symbol` class is the base class for all functional operations, which we refer to as a terminal symbol in the context of symbolic programming (fully resolved expressions). The Symbol class holds helpful operations that can be interpreted as expressions to manipulate its content and evaluate to new Symbols. 
 
 ### 📚 Symbolic operations
 
@@ -341,7 +341,7 @@ Operations are at the core of our framework. They are the building blocks of our
 
 The way we execute operations is by using the `Symbol` object `value` attribute containing the original data type that is then sent as a string representations to the engines to perform the operations. Therefore all values are casted to a string representation. This also means, that for custom objects one needs to define a proper `__str__` method to cast the object to a string representation and ensure preservation of the semantics of that object. 
 
-Lastly, we need to talk about inheritance. Our API is built on top of the `Symbol` class, which is the base class of all operations. This means that all operations are inherited from the `Symbol` class. This provides a convenient modality to add new custom operations by sub-classing `Symbol`, yet, ensuring to always have a set of base operations at our disposal without bloating the syntax or re-implementing many existing functionalities. This also means that we can define contextualized operations with individual constraints, prompt designs and therefore behaviors by simply sub-classing the `Symbol` class and overriding the corresponding method.
+Lastly, we need to talk about inheritance. Our API is built on top of the `Symbol` class, which is the base class of all operations. This means that all operations are inherited from the `Symbol` class. This provides a convenient modality to add new custom operations by sub-classing `Symbol`, yet, ensuring to always have a set of base operations at our disposal without bloating the syntax or re-implementing many existing functionalities. This also means that we can define contextualized operations with individual constraints, prompt designs and therefore behaviors by simply sub-classing the `Symbol` class and overriding the corresponding method. However, we recommend sub-classing the `Expression` class as we will see later, it adds additional functionalities.
 
 Here is an example of how to define a custom `==` operation by overriding the `__eq__` method and providing a custom prompt object with a list of examples:
 
@@ -391,7 +391,7 @@ We also see that in the above example the return type is defined as `int`. There
 
 ### Few-shot operations
 
-The `@ai.few_shot` decorator is the more general version of `@ai.zero_shot` and is used to define a custom operation that requires demonstration examples. To give a more complete picture, we present the function signature of the `few_shot` decorator:
+The `@ai.few_shot` decorator is the a generalized version of `@ai.zero_shot` and is used to define a custom operation that requires demonstration examples. To give a more complete picture, we present the function signature of the `few_shot` decorator:
 
 ```python
 def few_shot(prompt: str,
@@ -404,13 +404,13 @@ def few_shot(prompt: str,
              **wrp_kwargs):
 ```
 
-The `prompt` and `constraints` behave is similar to the `zero_shot` decorator. However, as we see the `examples` and `limit` arguments are new. The `examples` argument is used to define a list of demonstration examples that are used to condition the neural computation engine. The `limit` argument is used to define the maximum number of examples that are returned, give that there are more results. The `pre_processor` argument takes a list of `PreProcessor` objects which can be used to pre-process the input before it is fed into the neural computation engine. The `post_processor` argument takes a list of `PostProcessor` objects which can be used to post-process the output before it is returned to the user. The `wrp_kwargs` argument is used to pass additional arguments to the wrapped function, which are also stream-lined towards the neural computation engine and other engines.
+The `prompt` and `constraints` attributes behavior is similar to the `zero_shot` decorator. The `examples` and `limit` arguments are new. The `examples` argument is used to define a list of demonstrations that are used to condition the neural computation engine. The `limit` argument is used to define the maximum number of examples that are returned, give that there are more results. The `pre_processor` argument takes a list of `PreProcessor` objects which can be used to pre-process the input before it is fed into the neural computation engine. The `post_processor` argument takes a list of `PostProcessor` objects which can be used to post-process the output before it is returned to the user. The `wrp_kwargs` argument is used to pass additional arguments to the wrapped method, which are also stream-lined towards the neural computation engine and other engines.
 
 To give a more holistic picture ouf our conceptional implementation, see the following flow diagram containing the most important classes:
 
 <img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img9.png" width="600px">
 
-The color indicates logical groups of data manipulation. `Yellow` indicates the input and output data. `Blue` indicates places you can customize or prepare the input of your engine. `Green` indicates post-processing steps of the engine response. `Red` indicates the application of constraints (which also includes the attempted casting of the `return type signature`, if specified in the decorated method). And `Grey` indication the custom method which defines all properties, therefore has access to all the above mentioned data.
+The colors indicate logical groups of data processing steps. `Yellow` indicates the input and output data. `Blue` indicates places you can customize or prepare the input of your engine. `Green` indicates post-processing steps of the engine response. `Red` indicates the application of constraints (which also includes the attempted casting of the `return type signature`, if specified in the decorated method). `Grey` indicates the custom method which defines all properties, therefore has access to all the above mentioned objects.
 
 To conclude this section, here is an example how to write a custom Japanese name generator with our `@ai.zero_shot` decorator:
 
@@ -425,14 +425,14 @@ class Demo(ai.Symbol):
         return ['愛子', '和花'] # dummy implementation
 ```
 
-Should the neural computation engine not be able to compute the desired outcome, it will reach out to the `default` implementation or default value. If no default implementation or value was found, the Symbolic API would raise an exception.
+Should the neural computation engine not be able to compute the desired outcome, it will reach out to the `default` implementation or default value. If no default implementation or value was found, the method call will raise an exception.
 
 
 ## Prompt Design
 
 The way all the above operations are performed is by using a `Prompt` class. The Prompt class is a container for all the information that is needed to define a specific operation. The Prompt class is also the base class for all other Prompt classes. 
 
-Here is an example how to define a Prompt to enforce the neural computation engine on how to compare two values:
+Here is an example how to define a Prompt to enforce the neural computation engine for comparing two values:
 
 ```python
 class CompareValues(ai.Prompt):
@@ -447,13 +447,13 @@ class CompareValues(ai.Prompt):
         ])
 ```
 
-For example, when calling the `<=` operation on two Symbols, the neural computation engine will evaluate the two Symbols and compare them based on the `CompareValues` prompt.
+For example, when calling the `<=` operation on two Symbols, the neural computation engine will evaluate the symbols in the context of the `CompareValues` prompt.
 
 ```python
 res = ai.Symbol(1) <= ai.Symbol('one')
 ```
 
-This statement evaluates to `True`, since the fuzzy compare operation was enforced to compare the two Symbols based on their semantic meaning.
+This statement evaluates to `True`, since the fuzzy compare operation was conditions our engine to compare the two Symbols based on their semantic meaning.
 
 ```bash
 :[Output]:
@@ -464,11 +464,11 @@ In a more general notion, depending on the context hierarchy of the expression c
 
 <img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img4.png" width="350px">
 
-The figure above shows our hierarchical prompt design as a container of all the information that is provided to the neural computation engine to define a specific operation. The `Yellow`, `Green` and `Red` highlighted boxes are mandatory. The dashed boxes are optional.
+The figure shows our hierarchical prompt design as a container of all the information that is provided to the neural computation engine to define a task-specific operation. The `Yellow` and `Green` highlighted boxes indicate mandatory string placements. The dashed boxes are optional placeholders. and the `Red` box indicates the starting point of the model prediction.
 
 Conceptually we consider three main prompt designs: `Context-based Prompts`, `Operational Prompts`, and `Templates`. The prompts can be curated either by inheritance or by composition. For example, the `Static Context` can be defined by inheriting from the `Expression` class and overriding the `static_context` property. An `Operation` and `Template` prompt can be created by providing an `PreProcessor` to modify the input data. 
 
-We will now explain each prompt concept in more detail:
+We will now explain each prompt concept in more details:
 
 - The `Context-based Prompts (Static, Dynamic and Attachment)` are considered optional and can be defined in a static manner, either by sub-classing the Expression class and overriding the `static_context` property, or at runtime by updating the `dynamic_context` property or passing an `attach` kwargs to a method. Here is an example how to use the `attach` kwargs via the method signature:
   ```python
@@ -483,20 +483,20 @@ We will now explain each prompt concept in more detail:
   else:
       pass # all good
   ```
-  Regardless how we set the context, our contextualized prompt defines the behavior of the Expression operations. For example, if we want to operate in the context of a domain-specific language, without having to override each base class function over and over again. See more details in [this notebook](notebooks/demo.ipynb).
+  Regardless of how we set the context, our contextualized prompt defines the desired behavior of the Expression operations. For example, if we want to operate in the context of a domain-specific language, without having to override each base class method. See more details in [this notebook](notebooks/demo.ipynb).
 
 - The `Operation` prompts define the behavior of an atomic operation and is therefore mandatory to express the nature of such an operation. For example, the `+`-operation is used to add two Symbols together and therefore the `+`-operation prompt explains its behavior. `Examples` defines another optional structure that provides the neural computation engine with a set of demonstrations that are used to properly condition the engine. For example, the `+`-operation prompt can be conditioned on how to add numbers by providing a set of demonstrations, such as `1 + 1 = 2`, `2 + 2 = 4`, etc.
 
-- The `Template` prompts are optional and encapsulates the resulting prediction to enforce a specific format. For example, to generate HTML tags we can use a curated `<html>{{placeholder}}</html>` template. This template will enforce the neural computation engine to generate only HTML tags.
+- The `Template` prompts are optional and encapsulates the resulting prediction to enforce a specific format. For example, to generate HTML tags we can use a curated `<html>{{placeholder}}</html>` template. This template will enforce the neural computation engine to start the generation process already in the context of a HTML tags format, and not produce irrelevant descriptions about its task.
 
 
 ## 😑 Expressions
 
-An `Expression` is a non-terminal symbol, which can be further evaluated. It inherits all the properties from Symbol and overrides the `__call__` function to evaluate its expressions or values. From the `Expression` class, all other expressions are derived. The Expression class also adds additional capabilities i.e. to `fetch` data from URLs, `search` on the internet or `open` files.
+An `Expression` is a non-terminal symbol, which can be further evaluated. It inherits all the properties from Symbol and overrides the `__call__` method to evaluate its expressions or values. From the `Expression` class, all other expressions are derived. The Expression class also adds additional capabilities i.e. to `fetch` data from URLs, `search` on the internet or `open` files. These operations are specifically separated from `Symbol` since they do not use the `value` attribute of the Symbol class. 
 
-SymbolicAI' API closely follows best practices and ideas from `PyTorch`, therefore, one can build complex expressions by combining multiple expressions as a computational graph. Each Expression has its own `forward` function, which has to be overridden. The `forward` function is used to define the behavior of the expression. The `forward` function is called by the `__call__` function, which is inherited from the Symbol class. The `__call__` function is used to evaluate the expression and return the result. This design pattern is used to evaluate the expressions in a lazy manner, which means that the expression is only evaluated when the result is needed. This is a very important feature, since it allows us to chain complex expressions together. We already implemented many useful expressions, which can be imported from the `symai.components` file.
+SymbolicAI' API closely follows best practices and ideas from `PyTorch`, therefore, one can build complex expressions by combining multiple expressions as a computational graph. Each Expression has its own `forward` method, which has to be overridden. The `forward` method is used to define the behavior of the expression. The `forward` method is called by the `__call__` method, which is inherited from the `Expression` base class. The `__call__` evaluates an expression and returns the result from the implemented `forward` method. This design pattern is used to evaluate the expressions in a lazy manner, which means that the expression is only evaluated when the result is needed. This is a very important feature, since it allows us to chain complex expressions together. We already implemented many useful expressions, which can be imported from the `symai.components` file.
 
-Other important properties that are inherited from the Symbol class are `_sym_return_type` and `static_context`. These two properties define the context in which the current Expression operates, as described in the [Prompt Design](#prompt-design) section. The static_context therefore influences all operations held by the current Expression. The _sym_return_type ensures that after each evaluation of an Expression, we obtain the desired return object type. This is usually the current type, but can be modified to return a different type. 
+Other important properties that are inherited from the Symbol class are `_sym_return_type` and `static_context`. These two properties define the context in which the current Expression operates, as described in the [Prompt Design](#prompt-design) section. The static_context therefore influences all operations of the current Expression sub-class. The _sym_return_type ensures that after each evaluation of an Expression, we obtain the desired return object type. This is usually implemented to return the current type, but can be set to return a different type. 
 
 Expressions can of course have more complex structures and be further sub-classed, such as shown in the example of the `Sequence` expression in the following figure:
 
@@ -534,13 +534,14 @@ Stream(Sequence(
     Embed()
 ))
 ```
-The stream operation chunks the long input text into smaller chunks and passes them to the inner expression, which returns a `generator` object. In this case, to perform more complex operations, we open a stream and pass a `Sequence` object which cleans, translates, outlines and embeds the information. 
+The shown example opens a stream, passes a `Sequence` object which cleans, translates, outlines and embeds the input. 
+Internally, the stream operation estimates the available model context size and chunks the long input text into smaller chunks, which are passed to the inner expression. The returned object type is a `generator`. 
 
-The issue with this approach is, that the resulting chunks are processed independently of each other. This means that the context of the chunks is not preserved. To solve this issue, we can use the `Cluster` expression instead, where the independent chunks are recombined based on their similarity. We illustrate this in the following figure:
+The issue with this approach is, that the resulting chunks are processed independently. This means there is no shared context or information among chunks. To solve this issue, we can use the `Cluster` expression instead, where the independent chunks are merged based on their similarity. We illustrate this in the following figure:
 
 <img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img6.png" width="720px">
 
-In the shown example we recombine all individual chunks again by clustering the information among the chunks. This gives us a way to consolidate contextually related information and recombine them in a meaningful way. Furthermore, the clustered information can then be labeled by looking / streaming through the values within the clusters and collecting the most relevant labels.
+In the shown example all individual chunks are merged by clustering the information within each chunk. This gives us a way to consolidate contextually related information and merge them in a meaningful way. Furthermore, the clustered information can then be labeled by streaming through the content of each cluster and extracting the most relevant labels, providing us with interpretable node summaries.
 
 The full example is shown below:
 
@@ -556,15 +557,16 @@ expr = Cluster()
 expr(res)
 ```
 
-In a next step, we could recursively repeat this process on each summary node, therefore, build a hierarchical clustering structure. Since each Node resembles a summarized sub-set of the original information we can use it as an index of the larger content. The resulting tree can then be used to navigate and retrieve the original information, turning the large data stream problem into a search problem.
+In a next step, we could recursively repeat this process on each summary node, therefore, build a hierarchical clustering structure. Since each Node resembles a summarized sub-set of the original information we can use the summary as an index. The resulting tree can then be used to navigate and retrieve the original information, turning the large data stream problem into a search problem.
 
+Alternatively, we could use vector-base similarity search to find similar nodes.
 For searching in a vector space we can use dedicated libraries such as [Annoy](https://github.com/spotify/annoy), [Faiss](https://github.com/facebookresearch/faiss) or [Milvus](https://github.com/milvus-io/milvus). 
 
 ## ❌ Error Handling
 
-A key idea of the SymbolicAI API is to be able to generate code. This in turn means that errors may occur, which we need to handle in a contextual manner. As a future vision, we even want our API to self extend and therefore need to be able to resolve issues automatically. To do so, we propose the `Try` expression, which has a fallback statement built in and retries an execution with dedicated error analysis and correction. This expression analyses the input and the error, and conditions itself to resolve the error by manipulating the original code. If the fallback expression succeeds, the result is returned. Otherwise, this process is repeated for the number of `retries` specified. If the maximum number of retries is reached and the problem was not resolved, the error is raised again. 
+A key idea of the SymbolicAI API is to be able to generate code. This in turn means that errors may occur, which we need to handle in a contextual manner. As a future vision, we even want our API to self extend and therefore need to be able to resolve issues automatically. To do so, we propose the `Try` expression, which has a fallback statements built-in and retries an execution with dedicated error analysis and correction. This expression analyses the input and the error, and conditions itself to resolve the error by manipulating the original code. If the fallback expression succeeds, the result is returned. Otherwise, this process is repeated for the number of `retries` specified. If the maximum number of retries is reached and the problem was not resolved, the error is raised again. 
 
-Let us assume, we have some executable code that was previously generated. However, by the nature of generative processes syntax errors may occur. Furthermore, we have the `Execute` expression, which takes in a symbol and tries to execute it. Naturally, this will fail. In the following example we illustrate how the `Try` expression resolves this syntactic error.
+Let us assume, we have some executable code that was previously generated. However, by the nature of generative processes syntax errors may occur. By using the `Execute` expression, we can evaluate our generated code, which takes in a symbol and tries to execute it. Naturally, this will fail. However, in the following example the `Try` expression resolves this syntactic error and the receive a computed result.
 
 ```python
 expr = Try(expr=Execute())
@@ -580,12 +582,12 @@ a = 3
 ```
 
 We are aware that not all errors are as simple as the shown syntactic error example, which can be resolved automatically. Many errors occur due to semantic misconceptions. Such issues require contextual information. Therefore, we are further exploring means towards more sophisticated error handling mechanism.
-This includes also the usage of streams and clustering to resolve errors in a more hierarchical contextual manner.
+This includes also the usage of streams and clustering to resolve errors in a more hierarchical contextual manner. It is also noteworthy that neural computations engines need to be further improved to better detect and resolve errors.
 
 
 ## 🕷️ Interpretability, Testing & Debugging
 
-Perhaps one of the greatest benefits of using neuro-symbolic programming is, that we can get a clear understanding of how well our LLMs understand simple operations. Specifically we gain knowledge about if, and at which point they fail, enabling to follow their StackTraces and determine the failure points. Neuro-symbolic programming allows us to debug the model predictions and understand how they came about. In our case, this is done by unit test them to detect conceptual misalignments. 
+Perhaps one of the greatest benefits of using neuro-symbolic programming is, that we can get a clear understanding of how well our LLMs understand simple operations. Specifically we gain knowledge about if, and at which point they fail, enabling us to follow their StackTraces and determine the failure points. Neuro-symbolic programming allows us to debug the model predictions and understand how they came about. In our case, this is done by unit test them to detect conceptual misalignments. 
 
 ### Unit Testing Models
 
@@ -826,7 +828,7 @@ sym.setup(engines={'neurosymbolic': custom_engine})
 res = sym.compose()
 ```
 
-To configure an engine, we can use the `command` method. In this example, we will enable `verbose` mode, where the engine will print out what function it is executing and the parameters it is using. This is useful for debugging purposes:
+To configure an engine, we can use the `command` method. In this example, we will enable `verbose` mode, where the engine will print out what methods it is executing and the parameters it is using. This is useful for debugging purposes:
 
 ```python
 sym = Symbol('Hello World!')
