@@ -813,6 +813,7 @@ If you want to replace or extend the functionality of our framework, you can do 
 
 Here is an example how to initialize your own engine. We will sub-class the existing `GPT3Engine` and override the `prepare` method. This method is called before the neural computation and can be used to modify the parameters of the actual input prompt that will be passed in for execution. In this example, we will replace the prompt with dummy text for illustration purposes:
 
+
 ```python
 from symai.backend.engine_gpt3 import GPT3Engine
 class DummyEngine(GPT3Engine):
