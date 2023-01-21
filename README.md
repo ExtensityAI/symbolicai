@@ -79,7 +79,7 @@ Conceptually, SymbolicAI is a framework that uses machine learning - and specifi
 pip install symbolicai
 ```
 
-Before the first run, define exports for the required `API keys` to enable the respective engines. This will register the keys in the internal storage. By default `SymbolicAI` currently uses OpenAI's neural engines, i.e. GPT-3 Davinci-003, DALL·E 2 and Embedding Ada-002, for the neuro-symbolic computations, image generation and embeddings computation respectively. However, these modules can easily be replaced with open-source alternatives. Examples are 
+Before the first run, define exports for the required `API keys` to enable the respective engines. This will register the keys in the internally for subsequent runs. By default `SymbolicAI` currently uses OpenAI's neural engines, i.e. GPT-3 Davinci-003, DALL·E 2 and Embedding Ada-002, for the neuro-symbolic computations, image generation and embeddings computation respectively. However, these modules can easily be replaced with open-source alternatives. Examples are 
 - [OPT](https://huggingface.co/docs/transformers/model_doc/opt) or [Bloom](https://huggingface.co/bigscience/bloom) for neuro-symbolic computations, 
 - [Craiyon](https://www.craiyon.com/) for image generation, 
 - and any [BERT variants](https://huggingface.co/models) for semantic embedding computations. 
@@ -151,7 +151,7 @@ brew install ffmpeg
 choco install ffmpeg
 ```
 
-Additionally, you need to install the newest version directly from their repository, since the version available via `pip` is outdated:
+[Note] Additionally, you need to install the newest version directly from their repository, since the version available via `pip` is outdated:
 
 ```bash
 pip install git+https://github.com/openai/whisper.git
@@ -203,7 +203,7 @@ You can solve many more problems with our Symbolic API. We are looking forward t
 
 ## 🤷‍♂️ Why SymbolicAI?
 
-SymbolicAI tries to close the gap between classical programming or Software 1.0 and modern data-driven programming (aka Software 2.0). It is a framework that allows to build software applications, which are able to utilize the power of large language models (LLMs), but are based on composability and inheritance - two powerful concepts from the object-oriented classical programming paradigm.
+SymbolicAI tries to close the gap between classical programming or Software 1.0 and modern data-driven programming (aka Software 2.0). It is a framework that allows to build software applications, which are able to utilize the power of large language models (LLMs) wtih composability and inheritance - two powerful concepts from the object-oriented classical programming paradigm.
 
 This allows to move along the spectrum between the classical programming realm and data-driven programming realm as illustrated in the following figure:
 
