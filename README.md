@@ -193,7 +193,7 @@ Alternatively, you can specify in your project path a `symai.config.json` file w
 We compiled a few examples to show how to use our Symbolic API. You can find them in the `notebooks` folder.
 
 - *Basics*: See our basics notebook to get familiar with our API structure ([notebooks/Basics.ipynb](notebooks/Basics.ipynb))
-- *Queries*: See our query manipulation notebook for contextualized operations ([notebooks/Queries.ipynb](notebooks/Basics.ipynb))
+- *Queries*: See our query manipulation notebook for contextualized operations ([notebooks/Queries.ipynb](notebooks/Queries.ipynb))
 - *News & Docs Generation*: See our news and documentation generation notebook for stream processing ([notebooks/News.ipynb](notebooks/News.ipynb))
 - *ChatBot*: See how to implement a custom chatbot based on semantic narrations ([notebooks/ChatBot.ipynb](notebooks/ChatBot.ipynb))
 
