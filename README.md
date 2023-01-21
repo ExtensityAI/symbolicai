@@ -211,7 +211,7 @@ This allows to move along the spectrum between the classical programming realm a
 
 As briefly mentioned, we adopt a divide and conquer approach to decompose a complex problem into smaller problems. We then use the expressiveness and flexibility of LLMs to evaluate these sub-problems and by re-combining these operations we can solve the complex problem. 
 
-In this turn, and with enough data, we can gradually transition between general purpose LLMs with `zero` and `few-shot` learning capabilities, and specialized fine-tuned models to solve specific problems (see above). 
+In this turn, and with enough data, we can gradually transition between general purpose LLMs with `zero` and `few-shot` learning capabilities, and specialized fine-tuned models to solve specific problems (see above). This means that each operations could be designed to use a model with fine-tuned task-specific behavior. 
 
 ## <img src="https://media.giphy.com/media/mGcNjsfWAjY5AEZNw6/giphy.gif" width="50"> Tell me some more fun facts!
 
@@ -234,7 +234,7 @@ In this turn, to ensure the generated content is in alignment with our goals, we
 
 <img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img7.png" width="720px">
 
-As shown in the figure above, one can think of this generative process as shifting a probability mass of an input stream of data towards an output stream of data, in a contextualized manner. With properly designed conditions and expressions, one can also validate and steer the behavior towards a desired outcome, or repeat expressions that failed to fulfil the requirements. Our approach is to define a set of `fuzzy` operations that manipulate the data stream and conditions the LLMs to align with our goals. In essence, we consider all data objects, such as strings, letters, integers, arrays, etc. as symbols, and create operations that manipulate these symbols to generate new symbols from them. Each symbol can be interpreted as a statement. Multiple statements can be combined to form a logical expression.
+As shown in the figure above, one can think of this generative process as shifting a probability mass of an input stream of data towards an output stream of data, in a contextualized manner. With properly designed conditions and expressions, one can also validate and steer the behavior towards a desired outcome, or repeat expressions that failed to fulfil our requirements. Our approach is to define a set of `fuzzy` operations that manipulate the data stream and conditions the LLMs to align with our goals. In essence, we consider all data objects, such as strings, letters, integers, arrays, etc. as symbols, and create operations that manipulate these symbols to generate new symbols from them. Each symbol can be interpreted as a statement. Multiple statements can be combined to form a logical expression.
 
 Therefore, by chaining statements together we can build causal relationships and computations, instead of relying only on inductive approaches. Consequently, the outlook towards an updated computational stack resembles a neuro-symbolic computation engine at its core and, in combination with established frameworks, enables new applications. 
 
@@ -304,7 +304,7 @@ res = ai.Symbol('Hello my enemy') - 'enemy' + 'friend'
 <class 'symai.expressions.Symbol'>(value=Hello my friend)
 ```
 
-What we also see is that the API performs dynamic casting, when data types are combined with a Symbol object. If an overloaded operation of the Symbol class is used, the Symbol class automatically casts the second object to Symbol. This is a convenient modality to perform operations between Symbol and other types of data, such as strings, integers, floats, lists, etc. without bloating the syntax.
+What we also see is that the API performs dynamic casting, when data types are combined with a Symbol object. If an overloaded operation of the Symbol class is used, the Symbol class can automatically cast the second object to a Symbol. This is a convenient modality to perform operations between `Symbol`objects and other types of data, such as strings, integers, floats, lists, etc. without bloating the syntax.
 
 ### Fuzzy Comparisons
 
@@ -331,13 +331,15 @@ res = Symbol('The horn only sounds on Sundays.') & Symbol('I hear the horn.')
 <class 'symai.expressions.Symbol'>(value=It is Sunday.)
 ```
 
-The current `&`-operation uses very simple logical statements `and`, `or` and `xor` via prompts to compute the logical implication. However, one can also define custom operations to perform more complex and robust logical operations, which can also use verification constraints to validate the outcomes and ensure a desired behavior. We will explore this in the next sections.
+The current `&`-operation overloads the `and` logical operator and sends `few-shot` prompts how to evaluate the statement to the neural computation engine. However, we can define more sophisticated logical operators for `and`, `or` and `xor` via formal proof statements and use the neural engines to parse data structures prior to our expression evaluation. Therefore, one can also define custom operations to perform more complex and robust logical operations, including constraints to validate the outcomes and ensure a desired behavior. We will explore this in the next sections.
 
 Next we will talk about operations.
 
 ## 😷 Operations
 
-Operations are at the core of our framework. They are the building blocks of our API and are used to define the behavior of our symbols. We can think of operations as contextualized functions that take in a `Symbol` object, send it to the neuro-symbolic engine for evaluation, and return one or multiple new objects (mainly new symbols; but not necessarily limited to that). Another fundamental property is polymorphism, which means that operations can be applied to different types of data, such as strings, integers, floats, lists, etc. The way this works is that a `Symbol` object stores in its `value` attribute the original data that is then sent as a string representations to the engines to perform the operations. Therefore all values are casted to a string representation. This also means, that for custom objects one needs to define a proper `__str__` method to cast the object to a string representation and ensure preservation of the semantics of that object. 
+Operations are at the core of our framework. They are the building blocks of our API and are used to define the behavior of our symbols. We can think of operations as contextualized functions that take in a `Symbol` object, send it to the neuro-symbolic engine for evaluation, and return one or multiple new objects (mainly new symbols; but not necessarily limited to that). Another fundamental property is polymorphism, which means that operations can be applied to different types of data, such as strings, integers, floats, lists, etc. with different behaviors, depending on the object instance. 
+
+The way we execute operations is by using the `Symbol` object `value` attribute containing the original data type that is then sent as a string representations to the engines to perform the operations. Therefore all values are casted to a string representation. This also means, that for custom objects one needs to define a proper `__str__` method to cast the object to a string representation and ensure preservation of the semantics of that object. 
 
 Lastly, we need to talk about inheritance. Our API is built on top of the `Symbol` class, which is the base class of all operations. This means that all operations are inherited from the `Symbol` class. This provides a convenient modality to add new custom operations by sub-classing `Symbol`, yet, ensuring to always have a set of base operations at our disposal without bloating the syntax or re-implementing many existing functionalities. This also means that we can define contextualized operations with individual constraints, prompt designs and therefore behaviors by simply sub-classing the `Symbol` class and overriding the corresponding method.
 
