@@ -786,7 +786,7 @@ res = expr.open('./LICENSE')
 
 ```bash
 :Output:
-MIT License\n\nCopyright (c) 2023 Marius-Constantin Dinu\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation ...
+BSD 3-Clause License\n\nCopyright (c) 2023 Marius-Constantin Dinu\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation ...
 ```
 
 
