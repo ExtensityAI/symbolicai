@@ -280,7 +280,7 @@ The words are tokenized and mapped to a vector space, where we can perform seman
 
 <img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img3.png" width="450px">
 
-Similar to word2vec we intend to perform contextualized operations on different symbols, however, instead of operating in the vector space, we operate in the natural language space. This gives us the ability to perform arithmetics on words, sentences, paragraphs, etc. and verify the results in a human readable format. 
+Similar to word2vec we intend to perform contextualized operations on different symbols, however, instead of operating in the vector space, we operate in the natural language domain. This gives us the ability to perform arithmetics on words, sentences, paragraphs, etc. and verify the results in a human readable format. 
 
 The following examples show how to evaluate such an expression via a string representation:
 
@@ -587,15 +587,15 @@ This includes also the usage of streams and clustering to resolve errors in a mo
 
 ## 🕷️ Interpretability, Testing & Debugging
 
-Perhaps one of the greatest benefits of using neuro-symbolic programming is, that we can get a clear understanding of how well our LLMs understand simple operations. Specifically we gain knowledge about if, and at which point they fail, enabling us to follow their StackTraces and determine the failure points. Neuro-symbolic programming allows us to debug the model predictions and understand how they came about. In our case, this is done by unit test them to detect conceptual misalignments. 
+Perhaps one of the greatest benefits of using neuro-symbolic programming is, that we can get a clear understanding of how well our LLMs understand simple operations. Specifically we gain knowledge about if, and at which point they fail, enabling us to follow their StackTraces and determine the failure points. In our case, neuro-symbolic programming allows us to debug the model predictions based on dedicated unit test for simple operations. To detect conceptual misalignments we can also use a chain of neuro-symbolic operations and validate the generative process. This is of course not a perfect solution, since the verification may also be error prone, but it gives us at least a principle way to detect conceptual flaws and biases in our LLMs.
 
 ### Unit Testing Models
 
-Since our premise is to divide and conquer complex problems, we can curate conceptual unit test and target very specific and tracktable sub-problems. The resulting measure, i.e. success rate of model predictions, can then be used to evaluate their conceptual performance, and hint towards undesired flaws or biases.
+Since our premise is to divide and conquer complex problems, we can curate conceptual unit test and target very specific and tracktable sub-problems. The resulting measure, i.e. success rate of the model prediction, can then be used to evaluate their performance, and hint towards undesired flaws or biases.
 
-This allows us to design domain-specific benchmarks and see how well general learners, such as GPT-3, adapt to these tasks. 
+This allows us to design domain-specific benchmarks and see how well general learners, such as GPT-3, adapt with certain prompts to a set of tasks. 
 
-For example, we can write a fuzzy comparison operation, that can take in digits and strings alike and perform a semantic comparison. LLMs can then be asked to evaluate these expressions. Often times, these LLMs still fail to understand the semantic meaning of these tokens and give wrong answers. 
+For example, we can write a fuzzy comparison operation, that can take in digits and strings alike, and perform a semantic comparison. LLMs can then be asked to evaluate these expressions. Often times, these LLMs still fail to understand the semantic equivalence of tokens in digits vs strings and give wrong answers. 
 
 The following code snipped shows a unit test to perform semantic comparison of numbers (between digits and strings):
 
@@ -614,7 +614,7 @@ class TestComposition(unittest.TestCase):
 
 ### 🔥Debugging
 
-When creating very complex expressions, we debug them by using the `Trace` expression, which allows to print out and follow the StackTrace of the neuro-symbolic operations. Combined with the `Log` expression, which creates a dump of all prompts and results to a log file, we can analyze where our models potentially failed.
+When creating very complex expressions, we debug them by using the `Trace` expression, which allows to print out the used expressions, and follow the StackTrace of the neuro-symbolic operations. Combined with the `Log` expression, which creates a dump of all prompts and results to a log file, we can analyze where our models potentially failed.
 
 
 ### Example: News Summary
@@ -681,11 +681,11 @@ Output: Hallo Welt!
 
 Due to limited compute resources we currently rely on OpenAI's GPT-3 API for the neuro-symbolic engine. However, given the right compute resources, it is possible to use local machines to avoid high latencies and costs, with alternative engines such as OPT or Bloom. This would allow for recursive executions, loops, and more complex expressions.
 
-However, we already integrated a set of useful engines that are capable of providing language tokens to perform symbolic operations. 
+Furthermore, as we interpret all objects as symbols only with a different encodings, we integrated a set of useful engines that transform these objects to the natural language domain to perform our operations.
 
 ### Symbolic Engine
 
-Although in our work, we mainly focus on how LLMs can evaluate symbolic expressions, many formal statements were already well implemented in existing symbolic engines, like WolframAlpha. Therefore, to avoid reinventing the wheel we we leverage their expressiveness by allowing to define the `expression_engine`. The following example shows how to use WolframAlpha to perform the symbolic operation:
+Although in our work, we mainly focus on how LLMs can evaluate symbolic expressions, many formal statements were already well implemented in existing symbolic engines, like WolframAlpha. Therefore, given an API KEY from WolframAlpha, we can use their engine by setting the `expression_engine` attribute. This avoids error prune evaluations from neuro-symbolic engines for mathematical operations. The following example shows how to use WolframAlpha to compute the result of the variable `x`:
 
 ```python
 expr = Expression()
@@ -700,7 +700,7 @@ x = -1
 
 ### Speech Engine
 
-To perform speech transcription we use `whisper`. The following example shows how to transcribe an audio file and return the text:
+To interpret audio files we can perform speech transcription by using `whisper`. The following example shows how to transcribe an audio file and return the text:
 
 ```python
 expr = Expression()
@@ -714,7 +714,7 @@ I may have overslept.
 
 ### OCR Engine
 
-To perform OCR we use `APILayer`. The following example shows how to transcribe an image and return the text:
+To "read" text from images we can perform optical character recognition (OCR) with `APILayer`. The following example shows how to transcribe an image and return the text:
 
 ```python
 expr = Expression()
@@ -731,7 +731,7 @@ China Restaurant\nMaixim,s\nSegeberger Chaussee 273\n22851 Norderstedt\nTelefon 
 
 ### Search Engine
 
-To perform search queries we use `SerpApi` with `Google` backend. The following example shows how to search for a query and return the results:
+To obtain fact-based content we perform search queries via `SerpApi` with a `Google` backend. The following example shows how to search for a query and return the results:
 
 ```python
 expr = Expression()
@@ -745,7 +745,7 @@ August 4, 1961
 
 ### WebCrawler Engine
 
-To perform web crawling we use `Selenium`. The following example shows how to crawl a website and return the results:
+To access any data source from the web, we can use `Selenium`. The following example shows how to crawl a website and return the results:
 
 ```python
 expr = Expression()
@@ -780,7 +780,7 @@ Don't worry, we would never hide an image of a cat with a hat from you. Here is 
 
 ### File Engine
 
-To perform file operations we currently use the file system of the OS. At the moment, we support only PDF files and plain text files. This is a very early stage and we are working on more sophisticated file system access and remote storage. The following example shows how to read a PDF file and return the text:
+To perform file operations we use the file system of the OS. At the moment, we support only PDF files and plain text files. This is a very early stage and we are working on more sophisticated file system access and also remote storage. The following example shows how to read a PDF file and return the text:
 
 ```python
 expr = Expression()
@@ -795,7 +795,9 @@ BSD 3-Clause License\n\nCopyright (c) 2023 Marius-Constantin Dinu\n\nPermission 
 
 ### CLIP Engine
 
-To perform text-based image few-shot classification we use `CLIP`. This implementation is very experimental and does not conceptually fully integrate the way we intend it, since the embeddings of CLIP and GPT-3 are not aligned, i.e. embeddings of the same word are not identical for these two models. Aligning them is an open problem for future research. The following example shows how to classify the image of our generated cat from above and return the results as an array of probabilities:
+To perform text-based image few-shot classification we use `CLIP`. This implementation is very experimental and conceptually does not fully integrate the way we intend it, since the embeddings of CLIP and GPT-3 are not aligned (embeddings of the same word are not identical for both models). Aligning them is an open problem for future research. For example, one could learn linear projections from one embedding space to the other.
+
+The following example shows how to classify the image of our generated cat from above and return the results as an array of probabilities:
 
 ```python
 expr = Expression()
