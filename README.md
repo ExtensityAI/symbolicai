@@ -114,7 +114,7 @@ Overall, the following engines are currently supported:
 * **[Optional] SpeechToText Engine**: [OpenAI's Whisper](https://openai.com/blog/whisper/)
 * **[Optional] WebCrawler Engine**: [Selenium](https://selenium-python.readthedocs.io/)
 * **[Optional] Image Rendering Engine**: [DALL·E 2](https://openai.com/dall-e-2/)
-* **[Optional] [CLIP](https://openai.com/blog/clip/) Engine**: 🤗 [HuggingFace](https://huggingface.co/) (experimental image and text embeddings)
+* **[Optional] [CLIP](https://openai.com/blog/clip/) Engine**: 🤗 [Hugging Face](https://huggingface.co/) (experimental image and text embeddings)
 
 
 ### *[Optional]* Installs
@@ -870,7 +870,7 @@ Engineering challenges:
 * Many operations need to be further improved: verified for biases, fairness, robustness, etc.
 * The code may not be complete and is not yet optimized for speed and memory usage, and uses API-based LLMs due to limitations of compute resources.
 * Code coverage is not yet complete and we are still working on the documentation.
-* Integrate with a more diverse set of models from [HuggingFace](https://huggingface.co/) or other platforms.
+* Integrate with a more diverse set of models from [Hugging Face](https://huggingface.co/) or other platforms.
 * Currently we did not account for multi-threading and multi-processing.
 * Vector-based search indexes, i.e. [Annoy](https://github.com/spotify/annoy), [Faiss](https://github.com/facebookresearch/faiss) or [Milvus](https://github.com/milvus-io/milvus), are not yet integrated into the framework to enable fast content retrieval.
 
@@ -927,7 +927,7 @@ This project is inspired by the following works, but not limited to them:
 
 Also this is a long list. Great thanks to my colleagues and friends at the [Institute for Machine Learning at Johannes Kepler University (JKU), Linz](https://www.jku.at/institut-fuer-machine-learning/) for their great support and feedback; great thanks to [Dynatrace Research](https://engineering.dynatrace.com/research/) for supporting this project. Thanks also to the [AI Austria RL Community](https://aiaustria.com/rl-community). Thanks to all the people who contributed to this project. Be it by providing feedback, bug reports, code, or just by using the framework. We are very grateful for your support. 
 
-And finally, thanks to the open source community for making their APIs and tools available to the public, including (but not exclusive to) [PyTorch](https://pytorch.org/), [HuggingFace](https://huggingface.co/), [OpenAI](https://openai.com/), [GitHub](https://github.com/), [Microsoft Research](https://www.microsoft.com/en-us/research/), and many more. 
+And finally, thanks to the open source community for making their APIs and tools available to the public, including (but not exclusive to) [PyTorch](https://pytorch.org/), [Hugging Face](https://huggingface.co/), [OpenAI](https://openai.com/), [GitHub](https://github.com/), [Microsoft Research](https://www.microsoft.com/en-us/research/), and many more. 
 
 
 Special thanks to the contributions from [Kajetan Schweighofer](https://www.linkedin.com/in/kajetan-schweighofer-a61113202/?originalSubdomain=at), [Markus Hofmarcher](https://www.linkedin.com/in/markus-hofmarcher-2722141b8/?originalSubdomain=at), [Thomas Natschläger](https://www.linkedin.com/in/thomas-natschlaeger/?originalSubdomain=at) and [Sepp Hochreiter](https://scholar.google.at/citations?user=tvUH3WMAAAAJ&hl=en).
