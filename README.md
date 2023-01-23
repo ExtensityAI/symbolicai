@@ -54,6 +54,7 @@ Conceptually, SymbolicAI is a framework that uses machine learning - and specifi
     - [WebCrawler Engine](#webcrawler-engine)
     - [Drawing Engine](#drawing-engine)
     - [File Engine](#file-engine)
+    - [Indexing Engine](#indexing-engine)
     - [CLIP Engine](#clip-engine)
     - [Custom Engine](#custom-engine)
   - [⚡Limitations](#limitations)
@@ -114,6 +115,7 @@ Overall, the following engines are currently supported:
 * **[Optional] SpeechToText Engine**: [OpenAI's Whisper](https://openai.com/blog/whisper/)
 * **[Optional] WebCrawler Engine**: [Selenium](https://selenium-python.readthedocs.io/)
 * **[Optional] Image Rendering Engine**: [DALL·E 2](https://openai.com/dall-e-2/)
+* **[Optional] Indexing Engine**: [Pinecone](https://app.pinecone.io/)
 * **[Optional] [CLIP](https://openai.com/blog/clip/) Engine**: 🤗 [Hugging Face](https://huggingface.co/) (experimental image and text embeddings)
 
 
@@ -128,11 +130,13 @@ If you want to use the `WolframAlpha Engine`, `Search Engine` or `OCR Engine` yo
 export SYMBOLIC_ENGINE_API_KEY="<WOLFRAMALPHA_API_KEY>"
 export SEARCH_ENGINE_API_KEY="<SERP_API_KEY>"
 export OCR_ENGINE_API_KEY="<APILAYER_API_KEY>"
+export INDEXING_ENGINE_API_KEY="<PINECONE_API_KEY>"
 
 # Windows (PowerShell)
 $Env:SYMBOLIC_ENGINE_API_KEY="<WOLFRAMALPHA_API_KEY>"
 $Env:SEARCH_ENGINE_API_KEY="<SERP_API_KEY>"
 $Env:OCR_ENGINE_API_KEY="<APILAYER_API_KEY>"
+$Env:INDEXING_ENGINE_API_KEY="<PINECONE_API_KEY>"
 ```
 
 To use them, you will also need to install the following dependencies:
@@ -184,7 +188,9 @@ Alternatively, you can specify in your project path a `symai.config.json` file w
     "SEARCH_ENGINE_MODEL": "google",
     "OCR_ENGINE_API_KEY": "<APILAYER_API_KEY>",
     "SPEECH_ENGINE_MODEL": "base",
-    "SELENIUM_CHROME_DRIVER_VERSION": "110.0.5481.30"
+    "SELENIUM_CHROME_DRIVER_VERSION": "110.0.5481.30",
+    "INDEXING_ENGINE_API_KEY": "<PINECONE_API_KEY>",
+    "INDEXING_ENGINE_ENVIRONMENT": "us-west1-gcp"
 }
 ```
 
@@ -234,7 +240,14 @@ In this turn, to ensure the generated content is in alignment with our goals, we
 
 <img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img7.png" width="720px">
 
-As shown in the figure above, one can think of this generative process as shifting a probability mass of an input stream of data towards an output stream of data, in a contextualized manner. With properly designed conditions and expressions, one can also validate and steer the behavior towards a desired outcome, or repeat expressions that failed to fulfil our requirements. Our approach is to define a set of `fuzzy` operations that manipulate the data stream and conditions the LLMs to align with our goals. In essence, we consider all data objects, such as strings, letters, integers, arrays, etc. as symbols, and create operations that manipulate these symbols to generate new symbols from them. Each symbol can be interpreted as a statement. Multiple statements can be combined to form a logical expression.
+As shown in the figure above, one can think of this generative process as shifting a probability mass of an input stream of data towards an output stream of data, in a contextualized manner. With properly designed conditions and expressions, one can also validate and steer the behavior towards a desired outcome, or repeat expressions that failed to fulfil our requirements. Our approach is to define a set of `fuzzy` operations that manipulate the data stream and conditions the LLMs to align with our goals. In essence, we consider all data objects, such as strings, letters, integers, arrays, etc. as symbols and we see natural language as the main interface to interact with. See the following figure:
+
+
+![Language Interface](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img10.png)
+
+
+We show that as long as we can express our goals in natural language, we can use the power of LLMs for neuro-symbolic computations.
+In this turn, we create operations that manipulate these symbols to generate new symbols from them. Each symbol can be interpreted as a statement. Multiple statements can be combined to form a logical expression.
 
 Therefore, by chaining statements together we can build causal relationships and computations, instead of relying only on inductive approaches. Consequently, the outlook towards an updated computational stack resembles a neuro-symbolic computation engine at its core and, in combination with established frameworks, enables new applications. 
 
@@ -683,6 +696,7 @@ Output: Hallo Welt!
 
 Due to limited compute resources we currently rely on OpenAI's GPT-3 API for the neuro-symbolic engine. However, given the right compute resources, it is possible to use local machines to avoid high latencies and costs, with alternative engines such as OPT or Bloom. This would allow for recursive executions, loops, and more complex expressions.
 
+
 Furthermore, as we interpret all objects as symbols only with a different encodings, we integrated a set of useful engines that transform these objects to the natural language domain to perform our operations.
 
 ### Symbolic Engine
@@ -793,6 +807,27 @@ res = expr.open('./LICENSE')
 :Output:
 BSD 3-Clause License\n\nCopyright (c) 2023 Marius-Constantin Dinu\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation ...
 ```
+
+### Indexing Engine
+We use `Pinecone` to index and search for text. The following example shows how to store text as an index and then retrieve the most related match of it:
+
+```python
+expr = Expression()
+expr.add(Expression('Hello World!').zip())
+expr.add(Expression('I like cookies!').zip())
+res = expr.get(Expression('hello').embed().value).ast()
+res['matches'][0]['id']
+```
+
+```bash
+:Output:
+Hello World
+```
+
+Here the `zip` method creates a pair of strings and embedding vectors. Afterwards they are added to the index. The line with `get` basically retrieves the original source based on the vector value of `hello` and uses `ast` to cast the value to a dictionary.
+
+One can set several kwargs for the indexing engine. See the `symai/backend/engine_index.py` file for more details.
+
 
 
 ### CLIP Engine

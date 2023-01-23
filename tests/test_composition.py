@@ -598,6 +598,13 @@ modified:   tests/test_composition.py
         chat = SymbiaChat()
         chat()
 
+    def test_index(self):
+        expr = Expression()
+        expr.add(Expression('Hello World!').zip())
+        expr.add(Expression('I like cookies!').zip())
+        res = expr.get(Expression('hello').embed().value).ast()
+        self.assertTrue(res['matches'][0]['id'] == 'Hello World!')        
+
 
 if __name__ == '__main__':
     unittest.main()

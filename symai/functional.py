@@ -9,10 +9,10 @@ from .post_processors import *
 
 # all engines are initialized after first usage
 neurosymbolic_engine = None
-_eval_symbolic_expressions_engine = None
 symbolic_engine = None
 ocr_engine = None
 vision_engine = None
+index_engine = None
 speech_engine = None
 embedding_engine = None
 userinput_engine = None
@@ -613,6 +613,45 @@ def vision_func(wrp_self,
                           examples=None,
                           constraints=[],
                           default=None,
+                          limit=1,
+                          trials=trials,
+                          pre_processor=pre_processor,
+                          post_processor=post_processor,
+                          wrp_args=wrp_args,
+                          wrp_kwargs=wrp_kwargs,
+                          args=args,
+                          kwargs=kwargs)
+
+
+def check_or_init_index_func(engine = None):
+    global index_engine
+    if engine is not None:
+        index_engine = engine
+    elif index_engine is None:
+        from .backend.engine_index import IndexEngine
+        index_engine = IndexEngine()
+
+
+def index_func(wrp_self,
+               func: Callable,
+               prompt: str,
+               operation: str,
+               default: Optional[str] = None,
+               constraints: List[Callable] = [],
+               trials: int = 1,
+               pre_processor: Optional[List[PreProcessor]] = None,
+               post_processor: Optional[List[PostProcessor]] = None,
+               wrp_args = [], wrp_kwargs = [],
+               args = [], kwargs = []):
+    check_or_init_index_func()
+    wrp_kwargs['operation'] = operation
+    return _process_query(engine=index_engine,
+                          wrp_self=wrp_self,
+                          func=func,
+                          prompt=prompt,
+                          examples=None,
+                          constraints=constraints,
+                          default=default,
                           limit=1,
                           trials=trials,
                           pre_processor=pre_processor,
