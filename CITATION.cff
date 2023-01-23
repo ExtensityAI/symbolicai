@@ -4,10 +4,6 @@ authors:
 - family-names: "Dinu"
   given-names: "Marius-Constantin"
   orcid: "https://orcid.org/my-orcid?orcid=0000-0002-7518-3337"
-- family-names: "Co"
-  given-names: "Pilot"
-- family-names: "GPT-3"
-  given-names: "Davinci-003"
-title: "symai"
+title: "SymbolicAI"
 date-released: 2022-11-30
-url: "https://github.com/Xpitfire/symai"
+url: "https://github.com/Xpitfire/symbolicai"
