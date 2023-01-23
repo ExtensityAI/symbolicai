@@ -242,9 +242,7 @@ In this turn, to ensure the generated content is in alignment with our goals, we
 
 As shown in the figure above, one can think of this generative process as shifting a probability mass of an input stream of data towards an output stream of data, in a contextualized manner. With properly designed conditions and expressions, one can also validate and steer the behavior towards a desired outcome, or repeat expressions that failed to fulfil our requirements. Our approach is to define a set of `fuzzy` operations that manipulate the data stream and conditions the LLMs to align with our goals. In essence, we consider all data objects, such as strings, letters, integers, arrays, etc. as symbols and we see natural language as the main interface to interact with. See the following figure:
 
-
-![Language Interface](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img10.png)
-
+<img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img10.png" width="720px">
 
 We show that as long as we can express our goals in natural language, we can use the power of LLMs for neuro-symbolic computations.
 In this turn, we create operations that manipulate these symbols to generate new symbols from them. Each symbol can be interpreted as a statement. Multiple statements can be combined to form a logical expression.
