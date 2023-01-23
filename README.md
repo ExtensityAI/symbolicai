@@ -418,7 +418,9 @@ To conclude this section, here is an example how to write a custom Japanese name
 import symai as ai
 class Demo(ai.Symbol):
     @ai.few_shot(prompt="Generate Japanese names: ",
-                 examples=["愛子", "和花", "一郎", "和枝"],
+                 examples=ai.Prompt(
+                   ["愛子", "和花", "一郎", "和枝"]
+                 ),
                  limit=2,
                  constraints=[lambda x: len(x) > 1])
     def generate_japanese_names(self) -> list:
