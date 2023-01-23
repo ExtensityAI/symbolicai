@@ -395,7 +395,7 @@ The `@ai.few_shot` decorator is the a generalized version of `@ai.zero_shot` and
 
 ```python
 def few_shot(prompt: str,
-             examples: List[str], 
+             examples: Prompt, 
              constraints: List[Callable] = [],
              default: Optional[object] = None, 
              limit: int = 1,
