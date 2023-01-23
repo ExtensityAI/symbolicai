@@ -3,7 +3,7 @@ import json
 import logging
 
 
-SYMAI_VERSION = "0.2.5"
+SYMAI_VERSION = "0.2.6"
 
 
 def _start_symai():
@@ -42,6 +42,9 @@ def _start_symai():
     _speech_engine_model_ = os.environ.get('SPEECH_ENGINE_MODEL', None)
     
     _selenium_chrome_driver_version_ = os.environ.get('SELENIUM_CHROME_DRIVER_VERSION', None)
+    
+    _indexing_engine_api_key_ = os.environ.get('INDEXING_ENGINE_API_KEY', None)
+    _indexing_engine_environment_ = os.environ.get('INDEXING_ENGINE_ENVIRONMENT', None)
 
     # set or update the symai.config.json file
     if _neurosymbolic_engine_api_key_: _ai_config_['NEUROSYMBOLIC_ENGINE_API_KEY'] = _neurosymbolic_engine_api_key_
@@ -63,6 +66,8 @@ def _start_symai():
     if _ocr_engine_api_key_: _ai_config_['OCR_ENGINE_API_KEY'] = _ocr_engine_api_key_
     if _speech_engine_model_: _ai_config_['SPEECH_ENGINE_MODEL'] = _speech_engine_model_
     if _selenium_chrome_driver_version_: _ai_config_['SELENIUM_CHROME_DRIVER_VERSION'] = _selenium_chrome_driver_version_
+    if _indexing_engine_api_key_: _ai_config_['INDEXING_ENGINE_API_KEY'] = _indexing_engine_api_key_
+    if _indexing_engine_environment_: _ai_config_['INDEXING_ENGINE_ENVIRONMENT'] = _indexing_engine_environment_
 
     # verify if the symai.config.json file has changed
     _updated_key_ = {k: not _tmp_ai_config_[k] == _ai_config_[k] for k in _tmp_ai_config_.keys()}
