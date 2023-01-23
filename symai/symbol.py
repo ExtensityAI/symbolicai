@@ -5,6 +5,7 @@ from json import JSONEncoder
 from typing import Dict, Iterator, List, Any, Optional
 import numpy as np
 import symai as ai
+import pandas as pd
 from transformers import GPT2Tokenizer
 
 
@@ -555,6 +556,8 @@ class Symbol(ABC):
         return self._sym_return_type(_func(self))
     
     def embed(self, **kwargs) -> "Symbol":
+        if not isinstance(self.value, list):
+            self.value = [self.value]
         @ai.embed(entries=self.value, **kwargs)
         def _func(_) -> list:
             pass
@@ -697,6 +700,35 @@ class Expression(Symbol):
     
     def open(self, path: str, **kwargs) -> "Symbol":
         @ai.opening(path=path, **kwargs)
+        def _func(_) -> str:
+            pass
+        return self._sym_return_type(_func(self))
+    
+    def zip(self, ids: Optional[List[str]] = None, embeds: Optional[List[list]] = None, **kwargs):
+        if ids is None:
+            ids = [self.value]
+            embeds = [self.embed(**kwargs).value]
+        df = pd.DataFrame(
+        data={
+            "id": ids, 
+            "vector": embeds
+        })
+        return zip(df.id, df.vector)
+    
+    def index(self, path: str, **kwargs) -> "Symbol":
+        @ai.index(prompt=path, operation='config', **kwargs)
+        def _func(_) -> str:
+            pass
+        return self._sym_return_type(_func(self))
+    
+    def add(self, query: str, **kwargs) -> "Symbol":
+        @ai.index(prompt=query, operation='add', **kwargs)
+        def _func(_) -> str:
+            pass
+        return self._sym_return_type(_func(self))
+    
+    def get(self, query: str, **kwargs) -> "Symbol":
+        @ai.index(prompt=query, operation='search', **kwargs)
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(self))

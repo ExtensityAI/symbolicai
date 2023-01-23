@@ -4,7 +4,7 @@ from .prompts import *
 from .pre_processors import *
 from .post_processors import *
 from .functional import few_shot_func, symbolic_func, search_func, crawler_func, userinput_func, execute_func, open_func, output_func, \
-    command_func, embed_func, vision_func, ocr_func, speech_func, imagerendering_func, setup_func
+    command_func, embed_func, vision_func, ocr_func, speech_func, imagerendering_func, setup_func, index_func
 
 
 _symbolic_expression_engine = None
@@ -1803,6 +1803,48 @@ def execute(default: Optional[str] = None,
                                 wrp_args=wrp_args,
                                 wrp_kwargs=wrp_kwargs,
                                 args=args, kwargs=kwargs)
+        return wrapper
+    return decorator
+
+
+
+def index(prompt: str,
+          operation: str = 'search', # | add | config
+          default: Optional[str] = None,
+          constraints: List[Callable] = [],
+          pre_processor: Optional[List[PreProcessor]] = [],
+          post_processor: Optional[List[PostProcessor]] = [],
+          *wrp_args,
+          **wrp_kwargs):
+    """Query for a given index and returns the result through a decorator.
+
+    Args:
+        prompt (str): The query to be used by the search, add or config of the index.
+        operation (str, optional): The operation to be performed on the index. Defaults to 'search'.
+        default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None.
+        constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
+        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [].
+        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [].
+        *wrp_args (optional): The additional arguments to be passed to the decorated function.
+        **wrp_kwargs (optional): The additional keyword arguments to be passed to the decorated function.
+
+    Returns:
+        Callable: The decorated function that returns the indexed object after applying constraints, pre-processing and post-processing.
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(wrp_self, *args, **kwargs):
+            return index_func(wrp_self, 
+                              func=func,
+                              prompt=prompt,
+                              operation=operation,
+                              constraints=constraints, 
+                              default=default, 
+                              pre_processor=pre_processor, 
+                              post_processor=post_processor,
+                              wrp_args=wrp_args,
+                              wrp_kwargs=wrp_kwargs,
+                              args=args, kwargs=kwargs)
         return wrapper
     return decorator
 

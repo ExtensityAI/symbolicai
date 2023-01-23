@@ -22,7 +22,7 @@ dependencies = [
     "natsort", "numpy", "tqdm", "python-box", "wolframalpha",
     "scikit-learn", "torch", "torchvision", "pyyaml", "transformers", 
     "openai", "google-search-results", "PyPDF2", "ipython",
-    "beautifulsoup4", "selenium", "webdriver-manager", "whisper"
+    "beautifulsoup4", "selenium", "webdriver-manager", "whisper", "pinecone-client"
 ]
 
 [tool.setuptools.dynamic]
