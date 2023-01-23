@@ -198,7 +198,7 @@ We compiled a few examples to show how to use our Symbolic API. You can find the
 - *ChatBot*: See how to implement a custom chatbot based on semantic narrations ([notebooks/ChatBot.ipynb](notebooks/ChatBot.ipynb))
 
 
-You can solve many more problems with our Symbolic API. We are looking forward to see what you will build with it. Keep us posted on our shared community space on [Discord: RL Is All You Need / SymbolicAI](https://discord.gg/QYMNnh9ra8).
+You can solve many more problems with our Symbolic API. We are looking forward to see what you will build with it. Keep us posted on our shared community space on [Discord: AI Is All You Need / SymbolicAI](https://discord.gg/QYMNnh9ra8).
 
 
 ## 🤷‍♂️ Why SymbolicAI?
