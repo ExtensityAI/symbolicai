@@ -740,6 +740,9 @@ def command_func(wrp_self,
     if 'all' in engines or 'execute' in engines:
         check_or_init_execute_func()
         execute_engine.command(wrp_params)
+    if 'all' in engines or 'index' in engines:
+        check_or_init_index_func()
+        execute_engine.command(wrp_params)        
     if 'all' in engines or 'open' in engines:
         check_or_init_open_func()
         file_engine.command(wrp_params)
@@ -776,6 +779,8 @@ def setup_func(wrp_self,
         check_or_init_crawler_func(engine=engines['crawler'])
     if 'execute' in engines:
         check_or_init_execute_func(engine=engines['execute'])
+    if 'index' in engines:
+        check_or_init_index_func(engine=engines['index'])
     if 'open' in engines:
         check_or_init_open_func(engine=engines['open'])
     if 'output' in engines:
