@@ -890,6 +890,7 @@ Here is the list of names of the engines that are currently supported:
 * `search` - SerpApi (Google search)
 * `crawler` - Selenium
 * `execute` - Python Interpreter
+* `index` - Pinecone
 * `open` - File System
 * `output` - Output Callbacks (e.g. for printing to console or storage)
 * `imagerendering` - DALL·E 2
