@@ -1,13 +1,11 @@
 # **SymbolicAI**
-<img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/symai_logo.png" width="200px">
+<img src="assets/images/symai_logo.png" width="200px">
 
 ## **A Neuro-Symbolic Perspective on Large Language Models (LLMs)**
 
 *Building applications with LLMs at its core through our `Symbolic API` leverages the power of classical and differentiable programming in Python.*
 
-[![PyPI version](https://badge.fury.io/py/symbolicai.svg)](https://badge.fury.io/py/symbolicai) [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause) [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/langchainai.svg?style=social&label=Follow%20%40DinuMariusC)](https://twitter.com/DinuMariusC) [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/Xpitfire/symbolicai/issues) [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FXpitfire%2Fsymbolicai&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)](https://hits.seeyoufarm.com)
-
-<img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/preview.gif">
+<img src="assets/images/preview.gif">
 
 ## Abstract
 
@@ -44,7 +42,6 @@ Conceptually, SymbolicAI is a framework that uses machine learning - and specifi
     - [Unit Testing Models](#unit-testing-models)
     - [🔥Debugging](#debugging)
     - [Example: News Summary](#example-news-summary)
-  - [▶️ Play around with our API](#️-play-around-with-our-api)
   - [📈 Interface for Query and Response Inspection](#-interface-for-query-and-response-inspection)
   - [🤖 Engines](#-engines)
     - [Symbolic Engine](#symbolic-engine)
@@ -62,12 +59,6 @@ Conceptually, SymbolicAI is a framework that uses machine learning - and specifi
   - [Conclusion](#conclusion)
   - [👥 References, Related Work \& Credits](#-references-related-work--credits)
     - [Comparison to other frameworks](#comparison-to-other-frameworks)
-    - [Acknowledgements](#acknowledgements)
-    - [Contribution](#contribution)
-    - [📜 Citation](#-citation)
-    - [📝 License](#-license)
-    - [Like this project?](#like-this-project)
-    - [📫 Contact](#-contact)
 
 
 
@@ -214,7 +205,7 @@ SymbolicAI tries to close the gap between classical programming or Software 1.0 
 
 This allows to move along the spectrum between the classical programming realm and data-driven programming realm as illustrated in the following figure:
 
-<img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img5.png" width="720px">
+<img src="assets/images/img5.png" width="720px">
 
 As briefly mentioned, we adopt a divide and conquer approach to decompose a complex problem into smaller problems. We then use the expressiveness and flexibility of LLMs to evaluate these sub-problems and by re-combining these operations we can solve the complex problem. 
 
@@ -234,16 +225,16 @@ In its essence, SymbolicAI was inspired by the [`neuro-symbolic programming para
 
 **Embedded accelerators for LLMs** will, in our opinion, be ubiquitous in future computation platforms, such as wearables, smartphones, tablets or notebooks. They will contain models similar to GPT-3, ChatGPT, OPT or Bloom. 
 
-<img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img1.png" width="720px">
+<img src="assets/images/img1.png" width="720px">
 
 These LLMs will be able to perform a wide range of computations, such as natural language understanding or decision making. Furthermore, neuro-symbolic computation engines will be able to learn concepts how to tackle unseen tasks and solve complex problems by querying various data sources for solutions and executing logical statements on top. 
 In this turn, to ensure the generated content is in alignment with our goals, we need to develop ways to instruct, steer and control the generative processes of machine learning models. Therefore, our approach is an attempt to enable active and transparent flow control of these generative processes.
 
-<img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img7.png" width="720px">
+<img src="assets/images/img7.png" width="720px">
 
 As shown in the figure above, one can think of this generative process as shifting a probability mass of an input stream of data towards an output stream of data, in a contextualized manner. With properly designed conditions and expressions, one can also validate and steer the behavior towards a desired outcome, or repeat expressions that failed to fulfil our requirements. Our approach is to define a set of `fuzzy` operations that manipulate the data stream and conditions the LLMs to align with our goals. In essence, we consider all data objects, such as strings, letters, integers, arrays, etc. as symbols and we see natural language as the main interface to interact with. See the following figure:
 
-<img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img10.png" width="720px">
+<img src="assets/images/img10.png" width="720px">
 
 We show that as long as we can express our goals in natural language, we can use the power of LLMs for neuro-symbolic computations.
 In this turn, we create operations that manipulate these symbols to generate new symbols from them. Each symbol can be interpreted as a statement. Multiple statements can be combined to form a logical expression.
@@ -290,7 +281,7 @@ As an inspiration, we relate to an approach demonstrated by [word2vec](https://a
 Below we can see an example how one can perform operations on the word embeddings (colored boxes).
 The words are tokenized and mapped to a vector space, where we can perform semantic operations via vector arithmetics. 
 
-<img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img3.png" width="450px">
+<img src="assets/images/img3.png" width="450px">
 
 Similar to word2vec we intend to perform contextualized operations on different symbols, however, instead of operating in the vector space, we operate in the natural language domain. This gives us the ability to perform arithmetics on words, sentences, paragraphs, etc. and verify the results in a human readable format. 
 
@@ -440,7 +431,7 @@ class Demo(ai.Symbol):
         return _func(self, other)
 ```
 
-As shown in the above example, this is also the way we implemented the basic operations in `Symbol`, by defining local functions that are then decorated with the respective operation decorator from the `symai/core.py` file. The `symai/core.py` is a collection of pre-defined operation decorators that we can quickly apply to any function. The reason why we use locally defined functions instead of directly decorating the main methods, is that we do not necessarily want that all our operations are sent to the neural engine and could implement a default behavior. Another reason is that we want to cast return types of the operation outcome to symbols or other derived classes thereof. This is done by using the `self._sym_return_type(...)` method and can give contextualized behavior based on the defined return type. See more details in the actual [`Symbol` class](https://github.com/Xpitfire/symbolicai/blob/main/symbolicai/symbol.py).
+As shown in the above example, this is also the way we implemented the basic operations in `Symbol`, by defining local functions that are then decorated with the respective operation decorator from the `symai/core.py` file. The `symai/core.py` is a collection of pre-defined operation decorators that we can quickly apply to any function. The reason why we use locally defined functions instead of directly decorating the main methods, is that we do not necessarily want that all our operations are sent to the neural engine and could implement a default behavior. Another reason is that we want to cast return types of the operation outcome to symbols or other derived classes thereof. This is done by using the `self._sym_return_type(...)` method and can give contextualized behavior based on the defined return type. See more details in the actual [`Symbol` class](symai/symbol.py).
 
 In the next section, we will show that almost all operations in `symai/core.py` are derived from the more generic `few_shot` decorator.
 
@@ -488,7 +479,7 @@ The `prompt` and `constraints` attributes behavior is similar to the `zero_shot`
 
 To give a more holistic picture ouf our conceptional implementation, see the following flow diagram containing the most important classes:
 
-<img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img9.png" width="600px">
+<img src="assets/images/img9.png" width="600px">
 
 The colors indicate logical groups of data processing steps. `Yellow` indicates the input and output data. `Blue` indicates places you can customize or prepare the input of your engine. `Green` indicates post-processing steps of the engine response. `Red` indicates the application of constraints (which also includes the attempted casting of the `return type signature`, if specified in the decorated method). `Grey` indicates the custom method which defines all properties, therefore has access to all the above mentioned objects.
 
@@ -544,7 +535,7 @@ True
 
 In a more general notion, depending on the context hierarchy of the expression class and used operations the semantics of the Symbol operations may vary. To better illustrate this, we show our conceptual prompt design in the following figure:
 
-<img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img4.png" width="350px">
+<img src="assets/images/img4.png" width="350px">
 
 The figure shows our hierarchical prompt design as a container of all the information that is provided to the neural computation engine to define a task-specific operation. The `Yellow` and `Green` highlighted boxes indicate mandatory string placements. The dashed boxes are optional placeholders. and the `Red` box indicates the starting point of the model prediction.
 
@@ -582,7 +573,7 @@ Other important properties that are inherited from the Symbol class are `_sym_re
 
 Expressions can of course have more complex structures and be further sub-classed, such as shown in the example of the `Sequence` expression in the following figure:
 
-<img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img2.png" width="720px">
+<img src="assets/images/img2.png" width="720px">
 
 A Sequence expression can hold multiple expressions, which are evaluated at runtime.
 
@@ -621,7 +612,7 @@ Internally, the stream operation estimates the available model context size and 
 
 The issue with this approach is, that the resulting chunks are processed independently. This means there is no shared context or information among chunks. To solve this issue, we can use the `Cluster` expression instead, where the independent chunks are merged based on their similarity. We illustrate this in the following figure:
 
-<img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img6.png" width="720px">
+<img src="assets/images/img6.png" width="720px">
 
 In the shown example all individual chunks are merged by clustering the information within each chunk. This gives us a way to consolidate contextually related information and merge them in a meaningful way. Furthermore, the clustered information can then be labeled by streaming through the content of each cluster and extracting the most relevant labels, providing us with interpretable node summaries.
 
@@ -715,20 +706,12 @@ res = expr()
 
 Here is the corresponding StackTrace of the model:
 
-<img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img8.png" width="900px">
+<img src="assets/images/img8.png" width="900px">
 
-The above code creates a webpage with the crawled content from the original source. See the preview below, the entire [rendered webpage image here](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/examples/results/news.png) and resulting [code of webpage here](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/examples/results/news.html). 
+The above code creates a webpage with the crawled content from the original source. See the preview below, the entire [rendered webpage image here](examples/results/news.png) and resulting [code of webpage here](examples/results/news.html). 
 
 
-<img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/examples/results/news_prev.png" width="900px">
-
-## ▶️ Play around with our API
-
-Launch and explore the notebook here:
-
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Xpitfire/symbolicai/HEAD)
-
-There are many more examples in the [examples folder](examples/) and in the [notebooks folder](notebooks/). You can also explore the test cases in the [tests folder](tests/).
+<img src="examples/results/news_prev.png" width="900px">
 
 
 ## 📈 Interface for Query and Response Inspection
@@ -872,7 +855,7 @@ res = expr.open('./LICENSE')
 
 ```bash
 :Output:
-BSD 3-Clause License\n\nCopyright (c) 2023 Marius-Constantin Dinu\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation ...
+BSD 3-Clause License\n\nCopyright (c) 2023 ...
 ```
 
 ### Indexing Engine
@@ -1043,50 +1026,3 @@ Consequently, this will result to much shorter zero- or few-shot examples (at le
 * We propose a general approach how to handle large context sizes and how to transform a data stream problem into a search problem, related to the **reasoning as a search problem** in [Search and Reasoning in Problem Solving](https://www.sciencedirect.com/science/article/abs/pii/S0004370283800034).
 
 We also want to state, that we highly value and support the further development of LangChain. We believe that for the community they offer very important contributions and help advance the commercialization of LLMs. We hope that our work can be seen as complementary, and future outlook on how we would like to use machine learning models as an integral part of programming languages and therefore its entire computational stack.
-
-### Acknowledgements
-
-Also this is a long list. Great thanks to my colleagues and friends at the [Institute for Machine Learning at Johannes Kepler University (JKU), Linz](https://www.jku.at/institut-fuer-machine-learning/) for their great support and feedback; great thanks to [Dynatrace Research](https://engineering.dynatrace.com/research/) for supporting this project. Thanks also to the [AI Austria RL Community](https://aiaustria.com/rl-community). Thanks to all the people who contributed to this project. Be it by providing feedback, bug reports, code, or just by using the framework. We are very grateful for your support. 
-
-And finally, thanks to the open source community for making their APIs and tools available to the public, including (but not exclusive to) [PyTorch](https://pytorch.org/), [Hugging Face](https://huggingface.co/), [OpenAI](https://openai.com/), [GitHub](https://github.com/), [Microsoft Research](https://www.microsoft.com/en-us/research/), and many more. 
-
-
-Special thanks to the contributions from [Kajetan Schweighofer](https://www.linkedin.com/in/kajetan-schweighofer-a61113202/?originalSubdomain=at), [Markus Hofmarcher](https://www.linkedin.com/in/markus-hofmarcher-2722141b8/?originalSubdomain=at), [Thomas Natschläger](https://www.linkedin.com/in/thomas-natschlaeger/?originalSubdomain=at) and [Sepp Hochreiter](https://scholar.google.at/citations?user=tvUH3WMAAAAJ&hl=en).
-
-
-### Contribution
-
-If you want to contribute to this project, please read the [CONTRIBUTING.md](CONTRIBUTING.md) file for details on our code of conduct, and the process for submitting pull requests to us. Any contributions are highly appreciated.
-
-### 📜 Citation
-
-```bibtex
-@software{Dinu_SymbolicAI_2022,
-  author = {Dinu, Marius-Constantin},
-  title = {{SymbolicAI}},
-  url = {https://github.com/Xpitfire/symbolicai},
-  month = {11},
-  year = {2022}
-}
-```
-
-### 📝 License
-
-This project is licensed under the BSD-3-Clause License - see the [LICENSE](LICENSE) file for details.
-
-### Like this project?
-
-If you like this project, leave a star ⭐️ and share it with your friends and colleagues.
-And if you want to support this project even further, please consider donating to support the continuous development of this project. Thank you!
-
-[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/donate/?hosted_button_id=WCWP5D2QWZXFQ)
-
-We are also looking for contributors or investors to grow and support this project. If you are interested, please contact us.
-
-### 📫 Contact
-
-If you have any questions about this project, please contact us via [email](mailto:office@alphacoreai.eu), on our [website](https://alphacoreai.eu/symbolic-ai/) or find us on Discord:
-
-[![Discord](https://img.shields.io/discord/768087161878085643?label=Discord&logo=Discord&logoColor=white)](https://discord.gg/QYMNnh9ra8)
-
-If you want to contact me directly, you can reach me directly on [LinkedIn](https://www.linkedin.com/in/mariusconstantindinu/), on [Twitter](https://twitter.com/DinuMariusC), or at my personal [website](https://www.dinu.at/).

@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "symbolicai"
 dynamic = ["version"]
 authors = [
-    {name = "Marius-Constantin Dinu", email = "office@alphacoreai.eu"},
+    {name = "Anonymous", email = ""},
 ]
 description = "A Neuro-Symbolic Framework for Python"
 readme = "README.md"
@@ -37,7 +37,7 @@ exclude = ["tests", "examples", "notebooks", "outputs", "assets"]
 
 [project.urls]
 "Homepage" = "https://alphacoreai.eu/"
-"GitHub" = "https://github.com/Xpitfire/symai"
+"GitHub" = ""
 
 [project.scripts]
 symai = "symai.bin:run"
