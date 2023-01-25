@@ -1032,7 +1032,7 @@ This project is inspired by the following works, but not limited to them:
 
 ### Comparison to other frameworks
 
-Since an often received request is to state the differences between our project and LangChain, this is a short list and by no means complete of contrast ourselves to other frameworks:
+Since an often received request is to state the differences between our project and LangChain, this is a short list and by no means complete to contrast ourselves to other frameworks:
 
 * We focus on cognitive science and cognitive architectures research, and therefore, do not consider our framework as a production-ready implementation. We believe that the current state of the art in LLMs is not yet ready for general purpose tasks, and therefore, we focus on the advances of concept learning, reasoning and flow control of the generative process.
 * We consider LLMs as one type of neuro-symbolic computation engines, which could be of any shape or form, such as knowledge graphs, rule-based systems, etc., therefore, not necessarily limited to Transformers or LLMs.
