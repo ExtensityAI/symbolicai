@@ -359,9 +359,9 @@ val = "<one of the examples above>"
 
 # First define a class that inherits from the Expression class
 class ComplexExpression(Expression): # more to the Expression class in later sections
-  # write a method that returns the causal evaluation
-  def causal_expression(self):
-    pass # see below for implementation
+    # write a method that returns the causal evaluation
+    def causal_expression(self):
+        pass # see below for implementation
 
 # instantiate an object of the class
 expr = ComplexExpression(val)
@@ -375,38 +375,38 @@ Now, the implementation of `causal_expression` could in principle look like this
 
 ```python
 def causal_expression(self):
-  # very which case to use `self.value` contains the input
-  if self.isinstanceof('mathematics'):
-    # get the mathematical formula
-    formula = self.extract('mathematical formula')
-    # verify which problem type we have
-    if formula.isinstanceof('linear function'):
-      # prepare for wolframalpha
-      question = self.extract('question sentence')
-      req = question.extract('what is requested?')
-      x = self.extract('coordinate point (.,.)') # get coordinate point / could also ask for other points
-      query = formula @ f', point x = {x}' @ f', solve {req}' # concatenate to the question and formula
-      res = query.expression(query) # send prepared query to wolframalpha
-      
-    elif formula.isinstanceof('number comparison'):
-      res = formula.expression() # send directly to wolframalpha
-    
-    ... # more cases
-    
-  elif self.isinstanceof('linguistic problem'):
-    sentences = self / '.' # first split into sentences
-    graph = {} # define graph
-    for s in sentences:
-      sym = Symbol(s)
-      relations = sym.extract('connected entities (e.g. A has three B => A | A: three B)') / '|' # and split by pipe
-      for r in relations:
-        k, v = r / ':'
-        if k not in graph:
-            graph[k] = v
-    ... # add more relations and populate graph => read also about CycleGT
+    # very which case to use `self.value` contains the input
+    if self.isinstanceof('mathematics'):
+        # get the mathematical formula
+        formula = self.extract('mathematical formula')
+        # verify which problem type we have
+        if formula.isinstanceof('linear function'):
+            # prepare for wolframalpha
+            question = self.extract('question sentence')
+            req = question.extract('what is requested?')
+            x = self.extract('coordinate point (.,.)') # get coordinate point / could also ask for other points
+            query = formula @ f', point x = {x}' @ f', solve {req}' # concatenate to the question and formula
+            res = query.expression(query) # send prepared query to wolframalpha
 
-  ... # more cases
-  return res
+        elif formula.isinstanceof('number comparison'):
+            res = formula.expression() # send directly to wolframalpha
+
+        ... # more cases
+
+    elif self.isinstanceof('linguistic problem'):
+        sentences = self / '.' # first split into sentences
+        graph = {} # define graph
+        for s in sentences:
+            sym = Symbol(s)
+            relations = sym.extract('connected entities (e.g. A has three B => A | A: three B)') / '|' # and split by pipe
+            for r in relations:
+                k, v = r / ':'
+                if k not in graph:
+                    graph[k] = v
+        ... # add more relations and populate graph => read also about CycleGT
+
+    ... # more cases
+    return res
 ```
 
 The above example shows how we can use the `causal_expression` expression method to step-wise iterate and extract information which we can then either manually or using external solvers resolve. 
