@@ -1,11 +1,11 @@
 # **SymbolicAI**
-<img src="/assets/images/symai_logo.png" width="200px">
+<img src="https://anonymous.4open.science/r/symbolicai-F360//assets/images/symai_logo.png" width="200px">
 
 ## **A Neuro-Symbolic Perspective on Large Language Models (LLMs)**
 
 *Building applications with LLMs at its core through our `Symbolic API` leverages the power of classical and differentiable programming in Python.*
 
-<img src="/assets/images/preview.gif">
+<img src="https://anonymous.4open.science/r/symbolicai-F360//assets/images/preview.gif">
 
 ## Abstract
 
@@ -205,7 +205,7 @@ SymbolicAI tries to close the gap between classical programming or Software 1.0 
 
 This allows to move along the spectrum between the classical programming realm and data-driven programming realm as illustrated in the following figure:
 
-<img src="/assets/images/img5.png" width="720px">
+<img src="https://anonymous.4open.science/r/symbolicai-F360//assets/images/img5.png" width="720px">
 
 As briefly mentioned, we adopt a divide and conquer approach to decompose a complex problem into smaller problems. We then use the expressiveness and flexibility of LLMs to evaluate these sub-problems and by re-combining these operations we can solve the complex problem. 
 
@@ -225,16 +225,16 @@ In its essence, SymbolicAI was inspired by the [`neuro-symbolic programming para
 
 **Embedded accelerators for LLMs** will, in our opinion, be ubiquitous in future computation platforms, such as wearables, smartphones, tablets or notebooks. They will contain models similar to GPT-3, ChatGPT, OPT or Bloom. 
 
-<img src="/assets/images/img1.png" width="720px">
+<img src="https://anonymous.4open.science/r/symbolicai-F360//assets/images/img1.png" width="720px">
 
 These LLMs will be able to perform a wide range of computations, such as natural language understanding or decision making. Furthermore, neuro-symbolic computation engines will be able to learn concepts how to tackle unseen tasks and solve complex problems by querying various data sources for solutions and executing logical statements on top. 
 In this turn, to ensure the generated content is in alignment with our goals, we need to develop ways to instruct, steer and control the generative processes of machine learning models. Therefore, our approach is an attempt to enable active and transparent flow control of these generative processes.
 
-<img src="/assets/images/img7.png" width="720px">
+<img src="https://anonymous.4open.science/r/symbolicai-F360//assets/images/img7.png" width="720px">
 
 As shown in the figure above, one can think of this generative process as shifting a probability mass of an input stream of data towards an output stream of data, in a contextualized manner. With properly designed conditions and expressions, one can also validate and steer the behavior towards a desired outcome, or repeat expressions that failed to fulfil our requirements. Our approach is to define a set of `fuzzy` operations that manipulate the data stream and conditions the LLMs to align with our goals. In essence, we consider all data objects, such as strings, letters, integers, arrays, etc. as symbols and we see natural language as the main interface to interact with. See the following figure:
 
-<img src="/assets/images/img10.png" width="720px">
+<img src="https://anonymous.4open.science/r/symbolicai-F360//assets/images/img10.png" width="720px">
 
 We show that as long as we can express our goals in natural language, we can use the power of LLMs for neuro-symbolic computations.
 In this turn, we create operations that manipulate these symbols to generate new symbols from them. Each symbol can be interpreted as a statement. Multiple statements can be combined to form a logical expression.
@@ -281,7 +281,7 @@ As an inspiration, we relate to an approach demonstrated by [word2vec](https://a
 Below we can see an example how one can perform operations on the word embeddings (colored boxes).
 The words are tokenized and mapped to a vector space, where we can perform semantic operations via vector arithmetics. 
 
-<img src="/assets/images/img3.png" width="450px">
+<img src="https://anonymous.4open.science/r/symbolicai-F360//assets/images/img3.png" width="450px">
 
 Similar to word2vec we intend to perform contextualized operations on different symbols, however, instead of operating in the vector space, we operate in the natural language domain. This gives us the ability to perform arithmetics on words, sentences, paragraphs, etc. and verify the results in a human readable format. 
 
@@ -479,7 +479,7 @@ The `prompt` and `constraints` attributes behavior is similar to the `zero_shot`
 
 To give a more holistic picture ouf our conceptional implementation, see the following flow diagram containing the most important classes:
 
-<img src="/assets/images/img9.png" width="600px">
+<img src="https://anonymous.4open.science/r/symbolicai-F360//assets/images/img9.png" width="600px">
 
 The colors indicate logical groups of data processing steps. `Yellow` indicates the input and output data. `Blue` indicates places you can customize or prepare the input of your engine. `Green` indicates post-processing steps of the engine response. `Red` indicates the application of constraints (which also includes the attempted casting of the `return type signature`, if specified in the decorated method). `Grey` indicates the custom method which defines all properties, therefore has access to all the above mentioned objects.
 
@@ -535,7 +535,7 @@ True
 
 In a more general notion, depending on the context hierarchy of the expression class and used operations the semantics of the Symbol operations may vary. To better illustrate this, we show our conceptual prompt design in the following figure:
 
-<img src="/assets/images/img4.png" width="350px">
+<img src="https://anonymous.4open.science/r/symbolicai-F360//assets/images/img4.png" width="350px">
 
 The figure shows our hierarchical prompt design as a container of all the information that is provided to the neural computation engine to define a task-specific operation. The `Yellow` and `Green` highlighted boxes indicate mandatory string placements. The dashed boxes are optional placeholders. and the `Red` box indicates the starting point of the model prediction.
 
@@ -573,7 +573,7 @@ Other important properties that are inherited from the Symbol class are `_sym_re
 
 Expressions can of course have more complex structures and be further sub-classed, such as shown in the example of the `Sequence` expression in the following figure:
 
-<img src="/assets/images/img2.png" width="720px">
+<img src="https://anonymous.4open.science/r/symbolicai-F360//assets/images/img2.png" width="720px">
 
 A Sequence expression can hold multiple expressions, which are evaluated at runtime.
 
@@ -612,7 +612,7 @@ Internally, the stream operation estimates the available model context size and 
 
 The issue with this approach is, that the resulting chunks are processed independently. This means there is no shared context or information among chunks. To solve this issue, we can use the `Cluster` expression instead, where the independent chunks are merged based on their similarity. We illustrate this in the following figure:
 
-<img src="/assets/images/img6.png" width="720px">
+<img src="https://anonymous.4open.science/r/symbolicai-F360//assets/images/img6.png" width="720px">
 
 In the shown example all individual chunks are merged by clustering the information within each chunk. This gives us a way to consolidate contextually related information and merge them in a meaningful way. Furthermore, the clustered information can then be labeled by streaming through the content of each cluster and extracting the most relevant labels, providing us with interpretable node summaries.
 
@@ -706,7 +706,7 @@ res = expr()
 
 Here is the corresponding StackTrace of the model:
 
-<img src="/assets/images/img8.png" width="900px">
+<img src="https://anonymous.4open.science/r/symbolicai-F360//assets/images/img8.png" width="900px">
 
 The above code creates a webpage with the crawled content from the original source. See the preview below, the entire [rendered webpage image here](examples/results/news.png) and resulting [code of webpage here](examples/results/news.html). 
 
