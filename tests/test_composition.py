@@ -603,7 +603,54 @@ modified:   tests/test_composition.py
         expr.add(Expression('Hello World!').zip())
         expr.add(Expression('I like cookies!').zip())
         res = expr.get(Expression('hello').embed().value).ast()
-        self.assertTrue(res['matches'][0]['id'] == 'Hello World!')        
+        self.assertTrue(res['matches'][0]['id'] == 'Hello World!')
+        
+    def test_complex_causal_example(self):
+        #val = "A line parallel to y = 4x + 6 passes through (5, 10). What is the y-coordinate of the point where this line crosses the y-axis?"
+        #val = "Bob has two sons, John and Jay. Jay has one brother and father. The father has two sons. Jay's brother has a brother and a father. Who is Jay's brother."
+        val = "is 1000 bigger than 1063.472?"
+        
+        class ComplexExpression(Expression):
+            def causal_expression(self):
+                res = None
+                
+                if self.isinstanceof('mathematics'):
+                    formula = self.extract('mathematical formula')
+                    if formula.isinstanceof('linear function'):
+                        # prepare for wolframalpha
+                        question = self.extract('question sentence')
+                        req = question.extract('what is requested?')
+                        x = self.extract('coordinate point (.,.)') # get coordinate point / could also ask for other points
+                        query = formula @ f', point x = {x}' @ f', solve {req}' # concatenate to the question and formula
+                        res = query.expression(query) # TODO: wolframalpha python api does not give answer but on website this works -> triggered pull request
+                        
+                    elif formula.isinstanceof('number comparison'):
+                        res = formula.expression() # send directly to wolframalpha
+                        
+                    else:
+                        pass # TODO: do something else
+                    
+                elif self.isinstanceof('linguistic problem'):
+                    sentences = self / '.' # first split into sentences
+                    graph = {} # define graph
+                    for s in sentences:
+                        sym = Symbol(s)
+                        relations = sym.extract('connected entities (e.g. A has three B => A | A: three B)') / '|' # and split by spaces
+                        for r in relations:
+                            k, v = r / ':'
+                            if k not in graph:
+                                graph[k] = v
+                        # TODO: add more relations and populate graph => read also about CycleGT
+
+                else:
+                    pass # TODO: do something else
+                
+                return res
+        
+        expr = ComplexExpression(val)
+        expr.command(engines=['symbolic'], expression_engine='wolframalpha')
+        res = expr.causal_expression()
+        self.assertIsNotNone(res, res)
 
 
 if __name__ == '__main__':

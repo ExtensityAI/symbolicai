@@ -10,9 +10,11 @@ class WolframAlphaEngine(Engine):
         super().__init__()
         config = SYMAI_CONFIG         
         self.api_key = config['SYMBOLIC_ENGINE_API_KEY']
-        self.client = wa.Client(self.api_key)
+        self.client = wa.Client(self.api_key) if len(self.api_key) > 0 else None
 
     def forward(self, queries: List[str], *args, **kwargs) -> List[str]:
+        assert self.client is not None, "WolframAlpha API key is not set."
+        
         queries_ = queries if isinstance(queries, list) else [queries]
         rsp = []
         
@@ -20,7 +22,7 @@ class WolframAlphaEngine(Engine):
         if input_handler:
             input_handler((queries_,))
         
-        rsp = self.client.query(queries[0])
+        rsp = self.client.query(str(queries[0]))
         
         output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
         if output_handler:
