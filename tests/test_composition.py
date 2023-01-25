@@ -564,7 +564,7 @@ modified:   tests/test_composition.py
     def test_open(self):
         expr = Expression()
         res = expr.open('./LICENSE')
-        self.assertTrue('Marius-Constantin Dinu' in res, res)
+        self.assertTrue('Anonymous' in res, res)
         
     def test_output_component(self):
         sym = Symbol('Hello World!')
