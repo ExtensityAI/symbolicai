@@ -400,10 +400,7 @@ def causal_expression(self):
             sym = Symbol(s)
             relations = sym.extract('connected entities (e.g. A has three B => A | A: three B)') / '|' # and split by pipe
             for r in relations:
-                k, v = r / ':'
-                if k not in graph:
-                    graph[k] = v
-        ... # add more relations and populate graph => read also about CycleGT
+                ... # add relations and populate graph => alternatively, read also about CycleGT
 
     ... # more cases
     return res
