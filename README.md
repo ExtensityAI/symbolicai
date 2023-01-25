@@ -977,7 +977,6 @@ Engineering challenges:
 * Code coverage is not yet complete and we are still working on the documentation.
 * Integrate with a more diverse set of models from [Hugging Face](https://huggingface.co/) or other platforms.
 * Currently we did not account for multi-threading and multi-processing.
-* Vector-based search indexes, i.e. [Annoy](https://github.com/spotify/annoy), [Faiss](https://github.com/facebookresearch/faiss) or [Milvus](https://github.com/milvus-io/milvus), are not yet integrated into the framework to enable fast content retrieval.
 
 Research challenges:
 * To reliably use our framework, one needs to further explore how to fine-tune LLMs to specifically solve many of the proposed operations in a more robust and efficient way. 
