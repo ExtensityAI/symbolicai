@@ -1,0 +1,33 @@
+name: symai
+
+channels:
+  - default
+  - conda-forge
+  - pytorch
+  - nvidia
+
+dependencies:
+  - python
+  - natsort
+  - numpy
+  - tqdm
+  - python-box
+  - scikit-learn
+  - pytorch
+  - pytorch-cuda
+  - torchvision
+  - pyyaml
+  - transformers
+  - openai
+  - pypdf2
+  - ipython
+  - beautifulsoup4
+  - selenium
+  - webdriver-manager
+  - pip
+
+  - pip:
+    - git+https://github.com/openai/whisper.git
+    - wolframalpha
+    - google-search-results
+    - pinecone-client
