@@ -61,6 +61,7 @@ Conceptually, SymbolicAI is a framework that uses machine learning - and specifi
   - [🥠 Future Work](#-future-work)
   - [Conclusion](#conclusion)
   - [👥 References, Related Work \& Credits](#-references-related-work--credits)
+    - [Comparison to other frameworks](#comparison-to-other-frameworks)
     - [Acknowledgements](#acknowledgements)
     - [Contribution](#contribution)
     - [📜 Citation](#-citation)
@@ -354,11 +355,13 @@ To provide a more complete picture, we also sketch more comprehensive causal exa
 To give an rough idea of how we would approach this with our framework is by, first, using a chain of operations to detect the neural engine that is best suited to handle this task, and second, prepare the input for the respective engine. Let's see an example:
 
 ```python
+val = "<one of the examples above>"
+
 # First define a class that inherits from the Expression class
 class ComplexExpression(Expression): # more to the Expression class in later sections
-    # write a method that returns the causal evaluation
-    def causal_expression(self):
-        pass # see below for implementation
+  # write a method that returns the causal evaluation
+  def causal_expression(self):
+    pass # see below for implementation
 
 # instantiate an object of the class
 expr = ComplexExpression(val)
@@ -372,35 +375,38 @@ Now, the implementation of `causal_expression` could in principle look like this
 
 ```python
 def causal_expression(self):
-    if self.isinstanceof('mathematics'):
-        formula = self.extract('mathematical formula')
-        if formula.isinstanceof('linear function'):
-            # prepare for wolframalpha
-            question = self.extract('question sentence')
-            req = question.extract('what is requested?')
-            x = self.extract('coordinate point (.,.)') # get coordinate point / could also ask for other points
-            query = formula @ f', point x = {x}' @ f', solve {req}' # concatenate to the question and formula
-            res = query.expression(query) # send prepared query to wolframalpha
-            
-        elif formula.isinstanceof('number comparison'):
-            res = formula.expression() # send directly to wolframalpha
-        
-        ... # more cases
-        
-    elif self.isinstanceof('linguistic problem'):
-        sentences = self / '.' # first split into sentences
-        graph = {} # define graph
-        for s in sentences:
-            sym = Symbol(s)
-            relations = sym.extract('connected entities (e.g. A has three B => A | A: three B)') / '|' # and split by pipe
-            for r in relations:
-                k, v = r / ':'
-                if k not in graph:
-                    graph[k] = v
-            ... # add more relations and populate graph => read also about CycleGT
-
+  # very which case to use `self.value` contains the input
+  if self.isinstanceof('mathematics'):
+    # get the mathematical formula
+    formula = self.extract('mathematical formula')
+    # verify which problem type we have
+    if formula.isinstanceof('linear function'):
+      # prepare for wolframalpha
+      question = self.extract('question sentence')
+      req = question.extract('what is requested?')
+      x = self.extract('coordinate point (.,.)') # get coordinate point / could also ask for other points
+      query = formula @ f', point x = {x}' @ f', solve {req}' # concatenate to the question and formula
+      res = query.expression(query) # send prepared query to wolframalpha
+      
+    elif formula.isinstanceof('number comparison'):
+      res = formula.expression() # send directly to wolframalpha
+    
     ... # more cases
-    return res
+    
+  elif self.isinstanceof('linguistic problem'):
+    sentences = self / '.' # first split into sentences
+    graph = {} # define graph
+    for s in sentences:
+      sym = Symbol(s)
+      relations = sym.extract('connected entities (e.g. A has three B => A | A: three B)') / '|' # and split by pipe
+      for r in relations:
+        k, v = r / ':'
+        if k not in graph:
+            graph[k] = v
+    ... # add more relations and populate graph => read also about CycleGT
+
+  ... # more cases
+  return res
 ```
 
 The above example shows how we can use the `causal_expression` expression method to step-wise iterate and extract information which we can then either manually or using external solvers resolve. 
@@ -1002,6 +1008,8 @@ We have presented a neuro-symbolic view on LLMs and showed how they can be a cen
 
 This project is inspired by the following works, but not limited to them:
 
+* [Newell and Simon's Logic Theorist: Historical Background and Impact on Cognitive Modeling](https://www.researchgate.net/publication/276216226_Newell_and_Simon's_Logic_Theorist_Historical_Background_and_Impact_on_Cognitive_Modeling)
+* [Search and Reasoning in Problem Solving](https://www.sciencedirect.com/science/article/abs/pii/S0004370283800034)
 * [The Algebraic Theory of Context-Free Languages](http://www-igm.univ-mlv.fr/~berstel/Mps/Travaux/A/1963-7ChomskyAlgebraic.pdf)
 * [Tracr: Compiled Transformers as a Laboratory for Interpretability](https://arxiv.org/abs/2301.05062)
 * [How can computers get common sense?](https://www.science.org/doi/10.1126/science.217.4566.1237)
@@ -1025,6 +1033,20 @@ This project is inspired by the following works, but not limited to them:
 * [Wolfram|Alpha as the Way to Bring Computational Knowledge Superpowers to ChatGPT](https://writings.stephenwolfram.com/2023/01/wolframalpha-as-the-way-to-bring-computational-knowledge-superpowers-to-chatgpt/)
 * [Build a GitHub support bot with GPT3, LangChain, and Python](https://dagster.io/blog/chatgpt-langchain)
 
+
+### Comparison to other frameworks
+
+Since an often received request is to state the differences between our project and LangChain, this is a short list and by no means complete of contrast ourselves to other frameworks:
+
+* We focus on cognitive science and cognitive architectures, and therefore, do not consider our framework as a production-ready implementation. We believe that the current state of the art in LLMs is not yet ready for general purpose tasks, and therefore, we focus on the advances of concept learning and reasoning.
+* We consider LLMs as one type of neuro-symbolic computation engines, which could be of any shape or form, such as knowledge graphs, rule-based systems, etc., therefore, not necessarily limited to Transformers or LLMs.
+* We focus on advancing the development of programming languages and new programming paradigms, and subsequently its programming stack, including neuro-symbolic design patterns to integrate with operators, inheritance, polymorphism, compositionality, etc. Classical object-oriented and compositional design pattern have been well studied in the literature, however, we bring a novel view on how LLMs integrate and augment fuzzy logic and neuro-symbolic computation.
+* We do not consider our main attention towards prompt engineering. Our proposed prompt design helps the purpose to combine object-oriented paradigms with machine learning models. We believe that prompt misalignments in their current form will alleviate with further advances in Reinforcement Learning from Human Feedback and other value alignment methods. Therefore, these approaches will solve the necessity to prompt engineer or the ability to prompt hack statements.
+Consequently, this will result to much shorter zero- or few-shot examples (at least for small enough tasks). This is where we see the power of a divide an conquer approach, performing basic operations and re-combining them to solve the complex tasks.
+* We see operators / methods as being able to move along a spectrum between zero- or few-shot prompting and fine-tuning, base on task-specific requirements and availability of data. We believe that this is a more general approach, compared to prompting frameworks.
+* We propose a general approach how to handle large context sizes and how to transform a data stream problem into a search problem, related to the **reasoning as a search problem** in [Search and Reasoning in Problem Solving](https://www.sciencedirect.com/science/article/abs/pii/S0004370283800034).
+
+We also want to state, that we highly value and support the further development of LangChain. We believe that for the community they offer very important contributions and help advance the commercialization of LLMs. We hope that our work can be seen as complementary, and future outlook on how we would like to use machine learning models as an integral part of programming languages and therefore its entire computational stack.
 
 ### Acknowledgements
 
