@@ -355,7 +355,7 @@ To give an rough idea of how we would approach this with our framework is by, fi
 
 ```python
 # First define a class that inherits from the Expression class
-class ComplexExpression(Expression):
+class ComplexExpression(Expression): # more to the Expression class in later sections
     # write a method that returns the causal evaluation
     def causal_expression(self):
         pass # see below for implementation
