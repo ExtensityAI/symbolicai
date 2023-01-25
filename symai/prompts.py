@@ -523,6 +523,7 @@ class CombineText(Prompt):
             "'One' + 'Two' =>3",
             "'Three' + 4 =>7",
             "'a + b' + 'c + d' =>a + b + c + d",
+            "'My cat has four legs equals to x. If x1 (front leg) goes with a velocity of ...' + 'y = 3x + 2' =>My cat has four legs equals to x. If x1 (front leg) goes with a velocity of ... y = 3x + 2",
             "'x1, x2, x3' + 'y1, y2, y3' =>x1, x2, x3, y1, y2, y3",
             "'house | car | boat' + 'plane | train | ship' =>house | car | boat | plane | train | ship",
             "'The green fox jumps of the brown chair.' + 'The red fox jumps of the brown chair.' =>A green and a red fox jump of the brown chair.",

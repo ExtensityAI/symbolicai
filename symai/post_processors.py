@@ -52,7 +52,16 @@ class SplitNewLinePostProcessor(PostProcessor):
     
 class WolframAlphaPostProcessor(PostProcessor):
     def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
-        return next(response.results).text
+        try:
+            return next(response.results).text
+        except StopIteration:
+            vals = ''
+            for pod in response.pods:
+                for sub in pod.subpods:
+                    vals += f'{sub.plaintext}\n'
+            if len(vals) > 0:
+                return vals
+            return response
 
 
 class SplitPipePostProcessor(PostProcessor):

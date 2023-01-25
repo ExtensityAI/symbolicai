@@ -342,9 +342,75 @@ res = Symbol('The horn only sounds on Sundays.') & Symbol('I hear the horn.')
 <class 'symai.expressions.Symbol'>(value=It is Sunday.)
 ```
 
-The current `&`-operation overloads the `and` logical operator and sends `few-shot` prompts how to evaluate the statement to the neural computation engine. However, we can define more sophisticated logical operators for `and`, `or` and `xor` via formal proof statements and use the neural engines to parse data structures prior to our expression evaluation. Therefore, one can also define custom operations to perform more complex and robust logical operations, including constraints to validate the outcomes and ensure a desired behavior. We will explore this in the next sections.
+The current `&`-operation overloads the `and` logical operator and sends `few-shot` prompts how to evaluate the statement to the neural computation engine. However, we can define more sophisticated logical operators for `and`, `or` and `xor` via formal proof statements and use the neural engines to parse data structures prior to our expression evaluation. Therefore, one can also define custom operations to perform more complex and robust logical operations, including constraints to validate the outcomes and ensure a desired behavior. 
 
-Next we will talk about operations.
+To provide a more complete picture, we also sketch more comprehensive causal examples below, where one tries to obtain logical answers, based on questions of the kind:
+
+```python
+# 1) "A line parallel to y = 4x + 6 passes through (5, 10). What is the y-coordinate of the point where this line crosses the y-axis?"
+# 2) "Bob has two sons, John and Jay. Jay has one brother and father. The father has two sons. Jay's brother has a brother and a father. Who is Jay's brother."
+# 3) "is 1000 bigger than 1063.472?"
+```
+To give an rough idea of how we would approach this with our framework is by, first, using a chain of operations to detect the neural engine that is best suited to handle this task, and second, prepare the input for the respective engine. Let's see an example:
+
+```python
+# First define a class that inherits from the Expression class
+class ComplexExpression(Expression):
+    # write a method that returns the causal evaluation
+    def causal_expression(self):
+        pass # see below for implementation
+
+# instantiate an object of the class
+expr = ComplexExpression(val)
+# set WolframAlpha as the main expression engine to use
+expr.command(engines=['symbolic'], expression_engine='wolframalpha')
+# evaluate the expression
+res = expr.causal_expression()
+```
+
+Now, the implementation of `causal_expression` could in principle look like this:
+
+```python
+def causal_expression(self):
+    if self.isinstanceof('mathematics'):
+        formula = self.extract('mathematical formula')
+        if formula.isinstanceof('linear function'):
+            # prepare for wolframalpha
+            question = self.extract('question sentence')
+            req = question.extract('what is requested?')
+            x = self.extract('coordinate point (.,.)') # get coordinate point / could also ask for other points
+            query = formula @ f', point x = {x}' @ f', solve {req}' # concatenate to the question and formula
+            res = query.expression(query) # send prepared query to wolframalpha
+            
+        elif formula.isinstanceof('number comparison'):
+            res = formula.expression() # send directly to wolframalpha
+        
+        ... # more cases
+        
+    elif self.isinstanceof('linguistic problem'):
+        sentences = self / '.' # first split into sentences
+        graph = {} # define graph
+        for s in sentences:
+            sym = Symbol(s)
+            relations = sym.extract('connected entities (e.g. A has three B => A | A: three B)') / '|' # and split by pipe
+            for r in relations:
+                k, v = r / ':'
+                if k not in graph:
+                    graph[k] = v
+            ... # add more relations and populate graph => read also about CycleGT
+
+    ... # more cases
+    return res
+```
+
+The above example shows how we can use the `causal_expression` expression method to step-wise iterate and extract information which we can then either manually or using external solvers resolve. 
+
+**Attention:** We hint the reader that this is a very rough sketch and that the implementation of the `causal_expression` method would need much more engineering effort. Furthermore, the currently used GPT-3 LLM backend often fails to extract the correct information or resolve the right comparison. However, we strongly believe in the advances of the field and that this will change in the future, specifically with fine-tuned models like ChatGPT with Reinforcement Learning from Human Feedback (RLHF).
+
+Lastly, it is also noteworthy that given enough data, we could fine-tune methods that extract information or build our knowledge graph from natural language. This would enable us to perform more complex reasoning tasks, such as the ones mentioned above. Therefore, we also point the reader to recent publications for translating [Text-to-Graphs](https://aclanthology.org/2020.webnlg-1.8.pdf). This means that in the attempt to answer the query, we can simply traverse the graph and extract the information we need.
+
+
+In the next section, we will explore operations.
 
 ## 😷 Operations
 
