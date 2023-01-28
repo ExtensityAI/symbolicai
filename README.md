@@ -1065,7 +1065,7 @@ If you want to contribute to this project, please read the [CONTRIBUTING.md](CON
 ```bibtex
 @software{Dinu_SymbolicAI_2022,
   author = {Dinu, Marius-Constantin},
-  title = {{SymbolicAI}},
+  title = {{SymbolicAI: A Neuro-Symbolic Perspective on Large Language Models (LLMs)}},
   url = {https://github.com/Xpitfire/symbolicai},
   month = {11},
   year = {2022}
