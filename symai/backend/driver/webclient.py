@@ -1,12 +1,15 @@
 import os
+os.environ['WDM_LOG'] = '0' # disable webdriver-manager logging
 import sys
 import re
 import time
 import urllib.request
 import random
+import logging
 import symai.backend.settings as settings
 from random import choice
-from datetime import datetime
+from selenium.webdriver.remote.remote_connection import LOGGER
+LOGGER.setLevel(logging.ERROR)
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
@@ -71,6 +74,7 @@ def connect_chrome(debug, proxy=None):
     options.add_argument('--ignore-certificate-errors')
     options.add_argument('--incognito')
     options.add_argument("--headless")
+    options.add_argument("--log-level=3")
     driver = webdriver.Chrome(ChromeDriverManager(version=settings.SYMAI_CONFIG['SELENIUM_CHROME_DRIVER_VERSION']).install(), chrome_options=options)
     if debug: print("Chrome Headless Browser Invoked")
     return driver
