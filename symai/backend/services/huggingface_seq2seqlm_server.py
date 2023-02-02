@@ -155,6 +155,8 @@ class HuggingFaceService(rpyc.Service):
         if _model_ is None:
             _model_ = HuggingFaceModel()
             _model_.init_model(device=_args_.device)
+        if len(args) == 0:
+            return '<startup_sequence/>'
         return _model_.predict(*args, **kwargs)
 
 

@@ -1,6 +1,6 @@
 {
     "model": "allenai/tk-instruct-11b-def",
-    "device": "cuda:4",
+    "device": "cuda",
     "port": 18100,
     "seed": null,
     "dtype": "float16",
