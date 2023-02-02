@@ -95,7 +95,7 @@ class HuggingFaceModel(ABC):
                 top_k: int,
                 stop: str = None, 
                 suffix: str = '', # TODO: think of proper equivalent to OPENAI's suffix
-                do_sample=True):
+                do_sample=True):        
         top_k = top_k if do_sample else 0
         top_p = top_p if do_sample else 0
         
@@ -158,6 +158,8 @@ class HuggingFaceService(rpyc.Service):
         if _model_ is None:
             _model_ = HuggingFaceModel()
             _model_.init_model(device=_args_.device)
+        if len(args) == 0:
+            return '<startup_sequence/>'
         return _model_.predict(*args, **kwargs)
 
 
