@@ -1,0 +1,13 @@
+{
+    "model": "allenai/tk-instruct-11b-def",
+    "device": "cuda",
+    "port": 18100,
+    "seed": null,
+    "dtype": "float16",
+    "num_beams": 3,
+    "no_repeat_ngram_size":  1,
+    "temperature": 0.9,
+    "top_k": 50,
+    "top_p": 0.95,
+    "max_tokens": 128
+}

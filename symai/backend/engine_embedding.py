@@ -17,6 +17,13 @@ class EmbeddingEngine(Engine):
         self.max_retry = max_retry
         self.api_cooldown_delay = api_cooldown_delay
 
+    def command(self, wrp_params):
+        super().command(wrp_params)
+        if 'EMBEDDING_ENGINE_API_KEY' in wrp_params:
+            openai.api_key = wrp_params['EMBEDDING_ENGINE_API_KEY']
+        if 'EMBEDDING_ENGINE_MODEL' in wrp_params:
+            self.model = wrp_params['EMBEDDING_ENGINE_MODEL']
+
     def forward(self, prompts: List[str], *args, **kwargs) -> List[str]:
         prompts_ = prompts if isinstance(prompts, list) else [prompts]
         retry: int = 0
