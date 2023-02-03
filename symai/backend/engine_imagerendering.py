@@ -16,6 +16,11 @@ class ImageRenderingEngine(Engine):
         self.max_retry = max_retry
         self.api_cooldown_delay = api_cooldown_delay
         self.size = size
+        
+    def command(self, wrp_params):
+        super().command(wrp_params)
+        if 'IMAGERENDERING_ENGINE_API_KEY' in wrp_params:
+            openai.api_key = wrp_params['IMAGERENDERING_ENGINE_API_KEY']
 
     def forward(self, prompt: str, *args, **kwargs) -> List[str]:
         retry: int = 0
