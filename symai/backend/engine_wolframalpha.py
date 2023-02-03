@@ -12,6 +12,12 @@ class WolframAlphaEngine(Engine):
         self.api_key = config['SYMBOLIC_ENGINE_API_KEY']
         self.client = wa.Client(self.api_key) if len(self.api_key) > 0 else None
 
+    def command(self, wrp_params):
+        super().command(wrp_params)
+        if 'SYMBOLIC_ENGINE_API_KEY' in wrp_params:
+            self.api_key = wrp_params['SYMBOLIC_ENGINE_API_KEY']
+            self.client = wa.Client(self.api_key) if len(self.api_key) > 0 else None
+
     def forward(self, queries: List[str], *args, **kwargs) -> List[str]:
         assert self.client is not None, "WolframAlpha API key is not set."
         

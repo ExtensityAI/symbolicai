@@ -12,6 +12,13 @@ class OCREngine(Engine):
         self.headers = {
             "apikey": config['OCR_ENGINE_API_KEY']
         }
+        
+    def command(self, wrp_params):
+        super().command(wrp_params)
+        if 'OCR_ENGINE_API_KEY' in wrp_params:
+            self.headers = {
+                "apikey": wrp_params['INDEXING_ENGINE_API_KEY']
+            }
 
     def forward(self, *args, **kwargs) -> List[str]:
         assert 'image' in kwargs, "APILayer requires image input."

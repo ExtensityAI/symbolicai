@@ -17,10 +17,19 @@ class IndexEngine(Engine):
         config = SYMAI_CONFIG
         self.api_key = config['INDEXING_ENGINE_API_KEY']
         self.environment = config['INDEXING_ENGINE_ENVIRONMENT']
+        self.old_api_key = self.api_key
+        self.old_environment = self.environment
         self.index = None
+        
+    def command(self, wrp_params):
+        super().command(wrp_params)
+        if 'INDEXING_ENGINE_API_KEY' in wrp_params:
+            self.api_key = wrp_params['INDEXING_ENGINE_API_KEY']
+        if 'INDEXING_ENGINE_ENVIRONMENT' in wrp_params:
+            self.environment = wrp_params['INDEXING_ENGINE_ENVIRONMENT']
 
     def forward(self, *args, **kwargs) -> List[str]:
-        if self.documents is None:
+        if self.documents is None or self.old_api_key != self.api_key or self.old_environment != self.environment:
             index_name = kwargs['index_name'] if 'index_name' in kwargs else self.index_name
             index_dims = kwargs['index_dims'] if 'index_dims' in kwargs else self.index_dims
             index_metric = kwargs['index_metric'] if 'index_metric' in kwargs else self.index_metric
@@ -28,6 +37,8 @@ class IndexEngine(Engine):
             if index_name not in pinecone.list_indexes():
                 pinecone.create_index(name=index_name, dimension=index_dims, metric=index_metric)
             self.index = pinecone.Index(index_name=index_name)
+            self.old_api_key = self.api_key
+            self.old_environment = self.environment
         
         operation = kwargs['operation']
         query = kwargs['prompt']
