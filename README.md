@@ -9,7 +9,7 @@
 
 ## Abstract
 
-Conceptually, SymbolicAI is a framework that uses machine learning - and specifically LLMs - at its core, and composes operations based on task-specific `zero` or `few-shot` prompting. We adopt a divide and conquer approach to decompose a complex problem into smaller problems. Therefore, each operation solves a simple task. By re-combining these operations we can solve the complex problem. Furthermore, our design principles allow us to transition between differentiable and classical programming, and to leverage the power of both worlds.
+Conceptually, SymbolicAI is a framework that uses machine learning - and specifically LLMs - at its core, and composes operations based on task-specific  prompting. We adopt a divide and conquer approach to decompose a complex problem into smaller problems. Therefore, each operation solves a simple task. By re-combining these operations we can solve the complex problem. Furthermore, our design principles allow us to transition between differentiable and classical programming, and to leverage the power of both worlds.
 
 ## 📖 Table of Contents
 
