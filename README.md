@@ -13,7 +13,7 @@ Read further [**documentation here**](https://symbolicai.readthedocs.io/).
 
 ## Abstract
 
-Conceptually, SymbolicAI is a framework that uses machine learning - and specifically LLMs - at its core, and composes operations based on task-specific `zero` or `few-shot` prompting. We adopt a divide and conquer approach to decompose a complex problem into smaller problems. Therefore, each operation solves a simple task. By re-combining these operations we can solve the complex problem. Furthermore, our design principles allow us to transition between differentiable and classical programming, and to leverage the power of both worlds.
+Conceptually, SymbolicAI is a framework that uses machine learning - and specifically LLMs - at its core, and composes operations based on task-specific prompting. We adopt a divide and conquer approach to decompose a complex problem into smaller problems. Therefore, each operation solves a simple task. By re-combining these operations we can solve the complex problem. Furthermore, our design principles allow us to transition between differentiable and classical programming, and to leverage the power of both worlds.
 
 ## 📖 Table of Contents
 
@@ -719,7 +719,7 @@ Here is the corresponding StackTrace of the model:
 
 <img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img8.png" width="900px">
 
-The above code creates a webpage with the crawled content from the original source. See the preview below, the entire [rendered webpage image here](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/examples/results/news.png) and resulting [code of webpage here](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/examples/results/news.html). 
+The above code creates a webpage with the crawled content from the original source. See the preview below, the entire [rendered webpage image here](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/examples/results/news.png) and resulting [code of webpage here](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/examples/results/news.html. 
 
 
 <img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/examples/results/news_prev.png" width="900px">
@@ -731,7 +731,6 @@ Launch and explore the notebook here:
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Xpitfire/symbolicai/HEAD)
 
 There are many more examples in the [examples folder](examples/) and in the [notebooks folder](notebooks/). You can also explore the test cases in the [tests folder](tests/).
-
 
 ## 📈 Interface for Query and Response Inspection
 
@@ -874,7 +873,7 @@ res = expr.open('./LICENSE')
 
 ```bash
 :Output:
-BSD 3-Clause License\n\nCopyright (c) 2023 Marius-Constantin Dinu\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation ...
+BSD 3-Clause License\n\nCopyright (c) 2023 ...
 ```
 
 ### Indexing Engine
@@ -1092,3 +1091,4 @@ If you have any questions about this project, please contact us via [email](mail
 [![Discord](https://img.shields.io/discord/768087161878085643?label=Discord&logo=Discord&logoColor=white)](https://discord.gg/QYMNnh9ra8)
 
 If you want to contact me directly, you can reach me directly on [LinkedIn](https://www.linkedin.com/in/mariusconstantindinu/), on [Twitter](https://twitter.com/DinuMariusC), or at my personal [website](https://www.dinu.at/).
+

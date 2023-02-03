@@ -11,6 +11,13 @@ class GoogleEngine(Engine):
         config = SYMAI_CONFIG         
         self.api_key = config['SEARCH_ENGINE_API_KEY']
         self.engine = config['SEARCH_ENGINE_MODEL']
+        
+    def command(self, wrp_params):
+        super().command(wrp_params)
+        if 'SEARCH_ENGINE_API_KEY' in wrp_params:
+            self.api_key = wrp_params['SEARCH_ENGINE_API_KEY']
+        if 'SEARCH_ENGINE_API_KEY' in wrp_params:
+            self.engine = wrp_params['SEARCH_ENGINE_MODEL']
 
     def forward(self, queries: List[str], *args, **kwargs) -> List[str]:
         queries_ = queries if isinstance(queries, list) else [queries]

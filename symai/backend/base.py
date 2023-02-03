@@ -1,5 +1,6 @@
 import os
 import logging
+import time
 from abc import ABC
 from typing import Any, List
 
@@ -9,6 +10,7 @@ class Engine(ABC):
         super().__init__()
         self.verbose = False
         self.logging = False
+        self.time_clock = False
         # create formatter
         os.makedirs('outputs', exist_ok=True)
         logging.basicConfig(filename="outputs/engine.log", filemode="w", format='%(asctime)s %(name)s %(levelname)s %(message)s')
@@ -29,7 +31,12 @@ class Engine(ABC):
                 **kwds
             }
         }
+        start_time = None
+        if self.time_clock:
+            start_time = time.time()
         res = self.forward(*args, **kwds)
+        if start_time is not None:
+            print(f"{kwds['func']}: {(time.time() - start_time)} sec")
         log['Output'] = res
         if self.verbose:
             view = {k: v for k, v in list(log['Input'].items()) if k != 'self' and k != 'func' and k != 'args'}
@@ -50,3 +57,5 @@ class Engine(ABC):
             self.verbose = wrp_params['verbose']
         if 'logging' in wrp_params:
             self.logging = wrp_params['logging']
+        if 'time_clock' in wrp_params:
+            self.time_clock = wrp_params['time_clock']

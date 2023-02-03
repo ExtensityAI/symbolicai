@@ -11,8 +11,11 @@ from symai.chat import SymbiaChat
 from examples.paper import Paper
 from examples.news import News
 
-
+# test with huggingface backend
+from symai.backend.engine_nesy_client import NeSyClientEngine
+engine = NeSyClientEngine()
 setting = Expression()
+setting.setup(engines={'neurosymbolic': engine})
 setting.command(time_clock=True)
 
 
@@ -568,7 +571,7 @@ modified:   tests/test_composition.py
     def test_open(self):
         expr = Expression()
         res = expr.open('./LICENSE')
-        self.assertTrue('Copyright (c)' in res, res)
+        self.assertTrue('Anonymous' in res, res)
         
     def test_output_component(self):
         sym = Symbol('Hello World!')
@@ -580,26 +583,6 @@ modified:   tests/test_composition.py
                       verbose=True)
         res = expr('German')
         self.assertTrue('Hallo Welt!' in res, res)
-        
-    def test_setup_engine(self):
-        from symai.backend.engine_gpt3 import GPT3Engine
-        class TestEngine(GPT3Engine):
-            def prepare(self, args, kwargs, wrp_params):
-                wrp_params['prompts'] = ['Write about cats.']
-        custom_engine = TestEngine(max_retry=1)
-        sym = Symbol('Write about dogs.')
-        sym.setup(engines={'neurosymbolic': custom_engine})
-        res = sym.compose()
-        self.assertTrue('cat' in str(res).lower(), res)
-        
-    def test_huggingface_engine(self):
-        from symai.backend.engine_nesy_client import NeSyClientEngine
-        model = NeSyClientEngine()
-        model.init_model('cuda:4')
-        sym = Symbol('Write about dogs.')
-        sym.setup(engines={'neurosymbolic': model})
-        res = sym.compose(max_tokens=500)
-        self.assertTrue('dog' in str(res).lower(), res)
         
     def test_command(self):
         sym = Symbol('Hello World!')

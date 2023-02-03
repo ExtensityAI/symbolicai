@@ -14,11 +14,18 @@ class CLIPEngine(Engine):
         
         config = SYMAI_CONFIG
         self.model_id = config['VISION_ENGINE_MODEL']
+        self.old_model_id = config['VISION_ENGINE_MODEL']
+        
+    def command(self, wrp_params):
+        super().command(wrp_params)
+        if 'VISION_ENGINE_MODEL' in wrp_params:
+            self.model_id = wrp_params['VISION_ENGINE_MODEL']
 
     def forward(self, *args, **kwargs) -> List[str]:        
-        if self.model is None:
+        if self.model is None or self.model_id != self.old_model_id:
             self.model = CLIPModel.from_pretrained(self.model_id)
             self.processor = CLIPProcessor.from_pretrained(self.model_id)
+            self.old_model_id = self.model_id
         
         image_url = kwargs['image'] if 'image' in kwargs else None
         text = kwargs['prompt']
