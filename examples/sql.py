@@ -1,7 +1,7 @@
-from botdyn.symbol import Symbol, Expression
-from botdyn.post_processors import StripPostProcessor
-from botdyn.pre_processors import PreProcessor
-import botdyn as bd
+from symai.symbol import Symbol, Expression
+from symai.post_processors import StripPostProcessor
+from symai.pre_processors import PreProcessor
+import symai as ai
 
 
 SQL_CONTEXT = """[Description]
@@ -51,7 +51,7 @@ class SQL(Expression):
         return SQL_CONTEXT
     
     def forward(self, sym: Symbol, *args, **kwargs):
-        @bd.few_shot(prompt="Generate queries based on the SQL domain specific language description\n", 
+        @ai.few_shot(prompt="Generate queries based on the SQL domain specific language description\n", 
                      examples=[],
                      pre_processor=[SQLPreProcessor()],
                      post_processor=[StripPostProcessor()],

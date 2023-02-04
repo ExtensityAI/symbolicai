@@ -7,7 +7,7 @@
 
 Read further [**documentation here**](https://symbolicai.readthedocs.io/).
 
-[![PyPI version](https://badge.fury.io/py/symbolicai.svg)](https://badge.fury.io/py/symbolicai) [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause) [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/langchainai.svg?style=social&label=Follow%20%40DinuMariusC)](https://twitter.com/DinuMariusC) [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/Xpitfire/symbolicai/issues)
+[![PyPI version](https://badge.fury.io/py/symbolicai.svg)](https://badge.fury.io/py/symbolicai) [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause) [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/dinumariusc.svg?style=social&label=Follow%20%40DinuMariusC)](https://twitter.com/DinuMariusC) [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/symbolicapi.svg?style=social&label=Follow%20%40SymbolicAI)](https://twitter.com/SymbolicAPI) [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/Xpitfire/symbolicai/issues)
 [![Discord](https://img.shields.io/discord/768087161878085643?label=Discord&logo=Discord&logoColor=white)](https://discord.gg/QYMNnh9ra8) [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FXpitfire%2Fsymbolicai&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)](https://hits.seeyoufarm.com)
 
 <img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/preview.gif">
@@ -24,8 +24,13 @@ Conceptually, SymbolicAI is a framework that uses machine learning - and specifi
   - [📖 Table of Contents](#-table-of-contents)
   - [🔧 Get Started](#-get-started)
     - [➡️ Quick Install](#️-quick-install)
+    - [API Keys](#api-keys)
     - [*\[Optional\]* Installs](#optional-installs)
-    - [💯 Use Cases](#-use-cases)
+  - [🦖 Apps](#-apps)
+    - [Shell Command Tool](#shell-command-tool)
+    - [Chatbot](#chatbot)
+    - [💯 Other Use Cases](#-other-use-cases)
+    - [Community demos](#community-demos)
   - [🤷‍♂️ Why SymbolicAI?](#️-why-symbolicai)
   - [ Tell me some more fun facts!](#-tell-me-some-more-fun-facts)
   - [😶‍🌫️ How does it work?](#️-how-does-it-work)
@@ -59,6 +64,7 @@ Conceptually, SymbolicAI is a framework that uses machine learning - and specifi
     - [File Engine](#file-engine)
     - [Indexing Engine](#indexing-engine)
     - [CLIP Engine](#clip-engine)
+    - [Local Neuro-Symbolic Engine](#local-neuro-symbolic-engine)
     - [Custom Engine](#custom-engine)
   - [⚡Limitations](#limitations)
   - [🥠 Future Work](#-future-work)
@@ -73,16 +79,20 @@ Conceptually, SymbolicAI is a framework that uses machine learning - and specifi
     - [📫 Contact](#-contact)
 
 
-
 ## 🔧 Get Started
 
-
 ### ➡️ Quick Install
-
 
 ```bash
 pip install symbolicai
 ```
+
+One can run our framework in two ways:
+
+* using local engines (`experimental`) that are run on your local machine ([see Local Neuro-Symbolic Engine section](#local-neuro-symbolic-engine)), or
+* using engines powered by external APIs, i.e. using OpenAI's API ([see API Keys](#api-keys)).
+
+### API Keys
 
 Before the first run, define exports for the required `API keys` to enable the respective engines. This will register the keys in the internally for subsequent runs. By default `SymbolicAI` currently uses OpenAI's neural engines, i.e. GPT-3 Davinci-003, DALL·E 2 and Embedding Ada-002, for the neuro-symbolic computations, image generation and embeddings computation respectively. However, these modules can easily be replaced with open-source alternatives. Examples are 
 - [OPT](https://huggingface.co/docs/transformers/model_doc/opt) or [Bloom](https://huggingface.co/bigscience/bloom) for neuro-symbolic computations, 
@@ -198,7 +208,42 @@ Alternatively, you can specify in your project path a `symai.config.json` file w
 }
 ```
 
-### 💯 Use Cases
+## 🦖 Apps
+
+Over the course of th next weeks, we will expand our experimental demo apps and provide a set of useful tools that showcase how to interact with our framework. These apps are made available by calling the `sym+<shortcut-name-of-app>` command in your `terminal` or `PowerShell`.
+
+### Shell Command Tool
+
+You can start a basic shell command support tool that translates natural language commands into shell commands. To start the shell command tool, simply run:
+
+```bash
+symsh "<your-query>"
+```
+
+You can also use the `--help` flag to get more information about the tool and available arguments.
+
+```bash
+symsh --help
+```
+
+### Chatbot
+
+You can start a basic conversation with `Symbia`. `Symbia` is a chatbot that uses `SymbolicAI` to detect the content of your request and switch between different contextual modes to answer your questions. These mode include search engines, speech engines and more. To start the chatbot, simply run:
+
+```bash
+symchat
+```
+
+This will start now a chatbot interface:
+
+```bash
+Symbia: Hi there! I'm Symbia, your virtual assistant. How may I help you?
+$> 
+```
+
+You can exit the conversation by either typing `exit`, `quit` or pressing `Ctrl+C`.
+
+### 💯 Other Use Cases
 
 We compiled a few examples to show how to use our Symbolic API. You can find them in the `notebooks` folder.
 
@@ -210,6 +255,10 @@ We compiled a few examples to show how to use our Symbolic API. You can find the
 
 You can solve many more problems with our Symbolic API. We are looking forward to see what you will build with it. Keep us posted on our shared community space on [Discord: AI Is All You Need / SymbolicAI](https://discord.gg/QYMNnh9ra8).
 
+
+### Community demos
+
+We are listing all your cool demos and tools that you build with our framework. If you want to add your project just PM on Twitter at [@SymbolicAPI](https://twitter.com/SymbolicAPI) or via [Discord](https://discord.gg/QYMNnh9ra8).
 
 ## 🤷‍♂️ Why SymbolicAI?
 
@@ -917,6 +966,41 @@ array([[9.72840726e-01, 6.34790864e-03, 2.59368378e-03, 3.41371237e-03,
         3.71197984e-03, 8.53193272e-03, 1.03346225e-04, 2.08464009e-03,
         1.77942711e-04, 1.94185617e-04]], dtype=float32)
 ```
+
+### Local Neuro-Symbolic Engine
+
+One can use the a locally hosted instance for the Neuro-Symbolic Engine. Out of the box we provide a Hugging Face client-server backend and host the model `EleutherAI/gpt-j-6B` to perform the inference. As the name suggests this is a six billion parameter model and requires a GPU with ~16GB RAM to run properly. The following example shows how to host and configure the usage of the local Neuro-Symbolic Engine.
+
+Fist we start the backend server:
+
+```bash
+# optional: set cache folder for transformers (Linux/MacOS)
+export TRANSFORMERS_CACHE="<path-to-cache-folder>"
+# start server backend (default model is EleutherAI/gpt-j-6B)
+symsvr
+# initialize server with client call
+symclient
+```
+
+Then use once the following code to set up the local engine:
+
+```python
+from symai.backend.engine_nesy_client import NeSyClientEngine
+# setup local engine
+engine = NeSyClientEngine()
+setting = Expression()
+setting.setup(engines={'neurosymbolic': engine})
+setting.command(time_clock=True)
+```
+
+Now you can use the local engine to perform symbolic computation:
+```python
+# do some symbolic computation with the local engine
+sym = Symbol('cats are cute')
+res = sym.compose()
+...
+```
+
 
 ### Custom Engine
 

@@ -40,4 +40,7 @@ exclude = ["tests", "examples", "notebooks", "outputs", "assets"]
 "GitHub" = "https://github.com/Xpitfire/symai"
 
 [project.scripts]
-symai = "symai.bin:run"
+symchat = "symai.chat:run"
+symsvr = "symai.nesy_server:run"
+symclient = "symai.nesy_client:run"
+symsh = "symai.shell:run"
