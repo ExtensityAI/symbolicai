@@ -243,6 +243,11 @@ $> symsh "Set-ItemProperty -Path '/Users/myuser' -Name Demo -Value SymbolicAI" -
 
 # :Output:
 # Set-ItemProperty -Path /Users/myuser -Name Demo -Value SymbolicAI
+
+$> symsh "Set-ItemProperty -Path '/Users/myuser' -Name Demo -Value SymbolicAI" --convert "linux"
+
+# :Output:
+# export Demo="SymbolicAI"
 ```
 
 ### Chatbot
