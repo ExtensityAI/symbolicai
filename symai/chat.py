@@ -161,3 +161,8 @@ class SymbiaChat(ChatBot):
 
             else: # repeat
                 message = self.narrate('Symbia apologizes and asks the user to restate the question and add more context.')
+
+
+def run() -> None:
+    chat = SymbiaChat()
+    chat()

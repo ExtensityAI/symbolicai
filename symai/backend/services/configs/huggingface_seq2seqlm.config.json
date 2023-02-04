@@ -1,5 +1,6 @@
 {
     "model": "allenai/tk-instruct-11b-def",
+    "huggingface_cache": "tmp/cache",
     "device": "cuda",
     "port": 18100,
     "seed": null,

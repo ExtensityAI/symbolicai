@@ -28,6 +28,21 @@ class Try(Expression):
     
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
         return sym.ftry(self.expr, retries=self.retries, **kwargs)
+    
+    
+class Lambda(Expression):
+    def __init__(self, callable: Callable):
+        super().__init__()
+        def _callable(*args, **kwargs):
+            kw = {
+                'args': args,
+                'kwargs': kwargs,
+            }
+            return callable(kw)
+        self.callable: Callable = _callable
+    
+    def forward(self, *args, **kwargs) -> Symbol:
+        return self.callable(*args, **kwargs)
 
 
 class Choice(Expression):

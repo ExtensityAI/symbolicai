@@ -8,17 +8,23 @@
 ``Symbolic API`` leverages the power of classical and differentiable
 programming in Python.*
 
+Read further `documentation
+here <https://symbolicai.readthedocs.io/>`__.
+
+|PyPI version| |License| |Twitter| |Twitter| |contributions welcome|
+|Discord| |Hits|
+
 Abstract
 --------
 
 Conceptually, SymbolicAI is a framework that uses machine learning - and
 specifically LLMs - at its core, and composes operations based on
-task-specific ``zero`` or ``few-shot`` prompting. We adopt a divide and
-conquer approach to decompose a complex problem into smaller problems.
-Therefore, each operation solves a simple task. By re-combining these
-operations we can solve the complex problem. Furthermore, our design
-principles allow us to transition between differentiable and classical
-programming, and to leverage the power of both worlds.
+task-specific prompting. We adopt a divide and conquer approach to
+decompose a complex problem into smaller problems. Therefore, each
+operation solves a simple task. By re-combining these operations we can
+solve the complex problem. Furthermore, our design principles allow us
+to transition between differentiable and classical programming, and to
+leverage the power of both worlds.
 
 📖 Table of Contents
 -------------------
@@ -32,8 +38,15 @@ programming, and to leverage the power of both worlds.
    -  `🔧 Get Started <#-get-started>`__
 
       -  `➡️ Quick Install <#️-quick-install>`__
+      -  `API Keys <#api-keys>`__
       -  `[Optional] Installs <#optional-installs>`__
-      -  `💯 Use Cases <#-use-cases>`__
+
+   -  `🦖 Apps <#-apps>`__
+
+      -  `Shell Command Tool <#shell-command-tool>`__
+      -  `Chatbot <#chatbot>`__
+      -  `💯 Other Use Cases <#-other-use-cases>`__
+      -  `Community demos <#community-demos>`__
 
    -  `🤷‍♂️ Why SymbolicAI? <#️-why-symbolicai>`__
    -  `Tell me some more fun facts! <#-tell-me-some-more-fun-facts>`__
@@ -66,6 +79,7 @@ programming, and to leverage the power of both worlds.
       -  `🔥Debugging <#debugging>`__
       -  `Example: News Summary <#example-news-summary>`__
 
+   -  `▶️ Play around with our API <#️-play-around-with-our-api>`__
    -  `📈 Interface for Query and Response
       Inspection <#-interface-for-query-and-response-inspection>`__
    -  `🤖 Engines <#-engines>`__
@@ -79,6 +93,7 @@ programming, and to leverage the power of both worlds.
       -  `File Engine <#file-engine>`__
       -  `Indexing Engine <#indexing-engine>`__
       -  `CLIP Engine <#clip-engine>`__
+      -  `Local Neuro-Symbolic Engine <#local-neuro-symbolic-engine>`__
       -  `Custom Engine <#custom-engine>`__
 
    -  `⚡Limitations <#limitations>`__
@@ -89,6 +104,12 @@ programming, and to leverage the power of both worlds.
 
       -  `Comparison to other
          frameworks <#comparison-to-other-frameworks>`__
+      -  `Acknowledgements <#acknowledgements>`__
+      -  `Contribution <#contribution>`__
+      -  `📜 Citation <#-citation>`__
+      -  `📝 License <#-license>`__
+      -  `Like this project? <#like-this-project>`__
+      -  `📫 Contact <#-contact>`__
 
 🔧 Get Started
 -------------
@@ -99,6 +120,17 @@ programming, and to leverage the power of both worlds.
 .. code:: bash
 
    pip install symbolicai
+
+One can run our framework in two ways:
+
+-  using local engines (``experimental``) that are run on your local
+   machine (`see Local Neuro-Symbolic Engine
+   section <#local-neuro-symbolic-engine>`__), or
+-  using engines powered by external APIs, i.e. using OpenAI’s API (`see
+   API Keys <#api-keys>`__).
+
+API Keys
+~~~~~~~~
 
 Before the first run, define exports for the required ``API keys`` to
 enable the respective engines. This will register the keys in the
@@ -248,8 +280,58 @@ as an example:
        "INDEXING_ENGINE_ENVIRONMENT": "us-west1-gcp"
    }
 
-💯 Use Cases
-~~~~~~~~~~~
+🦖 Apps
+------
+
+Over the course of th next weeks, we will expand our experimental demo
+apps and provide a set of useful tools that showcase how to interact
+with our framework. These apps are made available by calling the
+``sym+<shortcut-name-of-app>`` command in your ``terminal`` or
+``PowerShell``.
+
+Shell Command Tool
+~~~~~~~~~~~~~~~~~~
+
+You can start a basic shell command support tool that translates natural
+language commands into shell commands. To start the shell command tool,
+simply run:
+
+.. code:: bash
+
+   symsh "<your-query>"
+
+You can also use the ``--help`` flag to get more information about the
+tool and available arguments.
+
+.. code:: bash
+
+   symsh --help
+
+Chatbot
+~~~~~~~
+
+You can start a basic conversation with ``Symbia``. ``Symbia`` is a
+chatbot that uses ``SymbolicAI`` to detect the content of your request
+and switch between different contextual modes to answer your questions.
+These mode include search engines, speech engines and more. To start the
+chatbot, simply run:
+
+.. code:: bash
+
+   symchat
+
+This will start now a chatbot interface:
+
+.. code:: bash
+
+   Symbia: Hi there! I'm Symbia, your virtual assistant. How may I help you?
+   $> 
+
+You can exit the conversation by either typing ``exit``, ``quit`` or
+pressing ``Ctrl+C``.
+
+💯 Other Use Cases
+~~~~~~~~~~~~~~~~~
 
 We compiled a few examples to show how to use our Symbolic API. You can
 find them in the ``notebooks`` folder.
@@ -268,6 +350,14 @@ You can solve many more problems with our Symbolic API. We are looking
 forward to see what you will build with it. Keep us posted on our shared
 community space on `Discord: AI Is All You Need /
 SymbolicAI <https://discord.gg/QYMNnh9ra8>`__.
+
+Community demos
+~~~~~~~~~~~~~~~
+
+We are listing all your cool demos and tools that you build with our
+framework. If you want to add your project just PM on Twitter at
+[@SymbolicAPI](https://twitter.com/SymbolicAPI) or via
+`Discord <https://discord.gg/QYMNnh9ra8>`__.
 
 🤷‍♂️ Why SymbolicAI?
 --------------------
@@ -675,7 +765,8 @@ return types of the operation outcome to symbols or other derived
 classes thereof. This is done by using the
 ``self._sym_return_type(...)`` method and can give contextualized
 behavior based on the defined return type. See more details in the
-actual ```Symbol`` class <symai/symbol.py>`__.
+actual ```Symbol``
+class <https://github.com/Xpitfire/symbolicai/blob/main/symbolicai/symbol.py>`__.
 
 In the next section, we will show that almost all operations in
 ``symai/core.py`` are derived from the more generic ``few_shot``
@@ -1158,8 +1249,21 @@ Here is the corresponding StackTrace of the model:
 
 The above code creates a webpage with the crawled content from the
 original source. See the preview below, the entire `rendered webpage
-image here <examples/results/news.png>`__ and resulting `code of webpage
-here <examples/results/news.html>`__.
+image
+here <https://raw.githubusercontent.com/Xpitfire/symbolicai/main/examples/results/news.png>`__
+and resulting [code of webpage
+here](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/examples/results/news.html.
+
+▶️ Play around with our API
+---------------------------
+
+Launch and explore the notebook here:
+
+|Binder|
+
+There are many more examples in the `examples folder <examples/>`__ and
+in the `notebooks folder <notebooks/>`__. You can also explore the test
+cases in the `tests folder <tests/>`__.
 
 📈 Interface for Query and Response Inspection
 ---------------------------------------------
@@ -1409,6 +1513,47 @@ cat from above and return the results as an array of probabilities:
            3.71197984e-03, 8.53193272e-03, 1.03346225e-04, 2.08464009e-03,
            1.77942711e-04, 1.94185617e-04]], dtype=float32)
 
+Local Neuro-Symbolic Engine
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+One can use the a locally hosted instance for the Neuro-Symbolic Engine.
+Out of the box we provide a Hugging Face client-server backend and host
+the model ``EleutherAI/gpt-j-6B`` to perform the inference. As the name
+suggests this is a six billion parameter model and requires a GPU with
+~16GB RAM to run properly. The following example shows how to host and
+configure the usage of the local Neuro-Symbolic Engine.
+
+Fist we start the backend server:
+
+.. code:: bash
+
+   # optional: set cache folder for transformers (Linux/MacOS)
+   export TRANSFORMERS_CACHE="<path-to-cache-folder>"
+   # start server backend (default model is EleutherAI/gpt-j-6B)
+   symsvr
+   # initialize server with client call
+   symclient
+
+Then use once the following code to set up the local engine:
+
+.. code:: python
+
+   from symai.backend.engine_nesy_client import NeSyClientEngine
+   # setup local engine
+   engine = NeSyClientEngine()
+   setting = Expression()
+   setting.setup(engines={'neurosymbolic': engine})
+   setting.command(time_clock=True)
+
+Now you can use the local engine to perform symbolic computation:
+
+.. code:: python
+
+   # do some symbolic computation with the local engine
+   sym = Symbol('cats are cute')
+   res = sym.compose()
+   ...
+
 Custom Engine
 ~~~~~~~~~~~~~
 
@@ -1639,12 +1784,12 @@ contrast ourselves to other frameworks:
    necessity to prompt engineer or the ability to prompt hack
    statements. Consequently, this will result to much shorter zero- or
    few-shot examples (at least for small enough tasks). This is where we
-   see the power of a divide an conquer approach, performing basic
+   see the power of a divide a conquer approach, performing basic
    operations and re-combining them to solve the complex tasks.
 -  We see operators / methods as being able to move along a spectrum
-   between zero- or few-shot prompting and fine-tuning, base on
-   task-specific requirements and availability of data. We believe that
-   this is a more general approach, compared to prompting frameworks.
+   between prompting and fine-tuning, based on task-specific
+   requirements and availability of data. We believe that this is a more
+   general approach, compared to prompting frameworks.
 -  We propose a general approach how to handle large context sizes and
    how to transform a data stream problem into a search problem, related
    to the **reasoning as a search problem** in `Search and Reasoning in
@@ -1658,3 +1803,106 @@ LLMs. We hope that our work can be seen as complementary, and future
 outlook on how we would like to use machine learning models as an
 integral part of programming languages and therefore its entire
 computational stack.
+
+Acknowledgements
+~~~~~~~~~~~~~~~~
+
+Also this is a long list. Great thanks to my colleagues and friends at
+the `Institute for Machine Learning at Johannes Kepler University (JKU),
+Linz <https://www.jku.at/institut-fuer-machine-learning/>`__ for their
+great support and feedback; great thanks to `Dynatrace
+Research <https://engineering.dynatrace.com/research/>`__ for supporting
+this project. Thanks also to the `AI Austria RL
+Community <https://aiaustria.com/rl-community>`__. Thanks to all the
+people who contributed to this project. Be it by providing feedback, bug
+reports, code, or just by using the framework. We are very grateful for
+your support.
+
+And finally, thanks to the open source community for making their APIs
+and tools available to the public, including (but not exclusive to)
+`PyTorch <https://pytorch.org/>`__, `Hugging
+Face <https://huggingface.co/>`__, `OpenAI <https://openai.com/>`__,
+`GitHub <https://github.com/>`__, `Microsoft
+Research <https://www.microsoft.com/en-us/research/>`__, and many more.
+
+Special thanks to the contributions from `Kajetan
+Schweighofer <https://www.linkedin.com/in/kajetan-schweighofer-a61113202/?originalSubdomain=at>`__,
+`Markus
+Hofmarcher <https://www.linkedin.com/in/markus-hofmarcher-2722141b8/?originalSubdomain=at>`__,
+`Thomas
+Natschläger <https://www.linkedin.com/in/thomas-natschlaeger/?originalSubdomain=at>`__
+and `Sepp
+Hochreiter <https://scholar.google.at/citations?user=tvUH3WMAAAAJ&hl=en>`__.
+
+Contribution
+~~~~~~~~~~~~
+
+If you want to contribute to this project, please read the
+`CONTRIBUTING.md <CONTRIBUTING.md>`__ file for details on our code of
+conduct, and the process for submitting pull requests to us. Any
+contributions are highly appreciated.
+
+📜 Citation
+~~~~~~~~~~
+
+.. code:: bibtex
+
+   @software{Dinu_SymbolicAI_2022,
+     author = {Dinu, Marius-Constantin},
+     title = {{SymbolicAI: A Neuro-Symbolic Perspective on Large Language Models (LLMs)}},
+     url = {https://github.com/Xpitfire/symbolicai},
+     month = {11},
+     year = {2022}
+   }
+
+📝 License
+~~~~~~~~~
+
+This project is licensed under the BSD-3-Clause License - see the
+`LICENSE <LICENSE>`__ file for details.
+
+Like this project?
+~~~~~~~~~~~~~~~~~~
+
+If you like this project, leave a star ⭐️ and share it with your friends
+and colleagues. And if you want to support this project even further,
+please consider donating to support the continuous development of this
+project. Thank you!
+
+|Donate|
+
+We are also looking for contributors or investors to grow and support
+this project. If you are interested, please contact us.
+
+📫 Contact
+~~~~~~~~~
+
+If you have any questions about this project, please contact us via
+`email <mailto:office@alphacoreai.eu>`__, on our
+`website <https://alphacoreai.eu/symbolic-ai/>`__ or find us on Discord:
+
+|Discord|
+
+If you want to contact me directly, you can reach me directly on
+`LinkedIn <https://www.linkedin.com/in/mariusconstantindinu/>`__, on
+`Twitter <https://twitter.com/DinuMariusC>`__, or at my personal
+`website <https://www.dinu.at/>`__.
+
+.. |PyPI version| image:: https://badge.fury.io/py/symbolicai.svg
+   :target: https://badge.fury.io/py/symbolicai
+.. |License| image:: https://img.shields.io/badge/License-BSD_3--Clause-blue.svg
+   :target: https://opensource.org/licenses/BSD-3-Clause
+.. |Twitter| image:: https://img.shields.io/twitter/url/https/twitter.com/dinumariusc.svg?style=social&label=Follow%20%40DinuMariusC
+   :target: https://twitter.com/DinuMariusC
+.. |Twitter| image:: https://img.shields.io/twitter/url/https/twitter.com/symbolicapi.svg?style=social&label=Follow%20%40SymbolicAI
+   :target: https://twitter.com/SymbolicAPI
+.. |contributions welcome| image:: https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat
+   :target: https://github.com/Xpitfire/symbolicai/issues
+.. |Discord| image:: https://img.shields.io/discord/768087161878085643?label=Discord&logo=Discord&logoColor=white
+   :target: https://discord.gg/QYMNnh9ra8
+.. |Hits| image:: https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FXpitfire%2Fsymbolicai&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false
+   :target: https://hits.seeyoufarm.com
+.. |Binder| image:: https://mybinder.org/badge_logo.svg
+   :target: https://mybinder.org/v2/gh/Xpitfire/symbolicai/HEAD
+.. |Donate| image:: https://img.shields.io/badge/Donate-PayPal-green.svg
+   :target: https://www.paypal.com/donate/?hosted_button_id=WCWP5D2QWZXFQ

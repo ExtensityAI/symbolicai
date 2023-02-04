@@ -1,5 +1,6 @@
 {
     "model": "EleutherAI/gpt-j-6B",
+    "huggingface_cache": "tmp/cache",
     "device": "cuda",
     "port": 18100,
     "seed": null,
