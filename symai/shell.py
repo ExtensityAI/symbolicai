@@ -69,6 +69,10 @@ def process_query(args) -> None:
     shell = Shell(query)
     msg = shell()
     
+    if args.edit:
+        msg = msg.modify(args.edit)
+    if args.convert:
+        msg = msg.convert(args.convert)
     if args.add:
         msg = msg << args.add
     if args.delete:
@@ -90,6 +94,10 @@ def run() -> None:
     parser.add_argument('query', type=str, help='The prompt for the shell query.')
     parser.add_argument('--add', dest='add', default="", required=False, type=str,
                         help='integrate the added text to the query.')
+    parser.add_argument('--convert', dest='convert', default="", required=False, type=str,
+                        help='convert a command to another shell. (e.g. --convert=windows or --convert=linux)')
+    parser.add_argument('--edit', dest='edit', default="", required=False, type=str,
+                        help='edit the added text to the query.')
     parser.add_argument('--del', dest='delete', default="", required=False, type=str,
                         help='remove the added text to the query.')
     parser.add_argument('--more', dest='more', default=False, required=False, action=argparse.BooleanOptionalAction,

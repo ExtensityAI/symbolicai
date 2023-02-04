@@ -103,10 +103,11 @@ class SymbiaChat(ChatBot):
             # query user
             usr = self.input(message)
             
+            # TODO: needs model fine-tuning to improve the classification
             # detect context
             ctxt = self.context_choice(usr)
             
-            if 'option 3' in ctxt: # exit
+            if 'exit' in str(usr) or 'quit' in str(usr): # exit
                 self.narrate('Symbia writes goodbye message.', end=True)
                 break # end chat
             
