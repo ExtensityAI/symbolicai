@@ -19,7 +19,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "natsort", "numpy", "tqdm", "python-box", "wolframalpha", "rpyc",
+    "natsort", "numpy", "tqdm", "python-box", "wolframalpha", "rpyc", "pandas",
     "scikit-learn", "torch", "torchvision", "pyyaml", "transformers", 
     "openai", "google-search-results", "PyPDF2", "ipython", "accelerate", "sentencepiece",
     "beautifulsoup4", "selenium", "webdriver-manager", "whisper", "pinecone-client"

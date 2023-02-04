@@ -27,6 +27,7 @@ dependencies:
   - accelerate
   - sentencepiece
   - webdriver-manager
+  - pandas
   - pip
 
   - pip:

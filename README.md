@@ -226,6 +226,25 @@ You can also use the `--help` flag to get more information about the tool and av
 symsh --help
 ```
 
+Here is an example of how to use the tool:
+
+```bash
+$> symsh "PowerShell edit registiry entry"
+
+# :Output:
+# Set-ItemProperty -Path <path> -Name <name> -Value <value>
+
+$> symsh "Set-ItemProperty -Path <path> -Name <name> -Value <value>" --add "path='/Users/myuser' name=Demo value=SymbolicAI"
+
+# :Output:
+# Set-ItemProperty -Path '/Users/myuser' -Name Demo -Value SymbolicAI
+
+$> symsh "Set-ItemProperty -Path '/Users/myuser' -Name Demo -Value SymbolicAI" --del "string quotes"
+
+# :Output:
+# Set-ItemProperty -Path /Users/myuser -Name Demo -Value SymbolicAI
+```
+
 ### Chatbot
 
 You can start a basic conversation with `Symbia`. `Symbia` is a chatbot that uses `SymbolicAI` to detect the content of your request and switch between different contextual modes to answer your questions. These mode include search engines, speech engines and more. To start the chatbot, simply run:
