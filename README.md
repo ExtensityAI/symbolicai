@@ -1130,6 +1130,7 @@ This project is inspired by the following works, but not limited to them:
 * [Measuring and Narrowing the Compositionality Gap in Language Models](https://ofir.io/self-ask.pdf)
 * [Large Language Models are Zero-Shot Reasoners](https://arxiv.org/abs/2205.11916)
 * [Pre-train, Prompt, and Predict: A Systematic Survey of Prompting Methods in Natural Language Processing](https://arxiv.org/abs/2107.13586)
+* [ReAct: Synergizing Reasoning and Acting in Language Models](https://arxiv.org/abs/2210.03629)
 * [Understanding Stereotypes in Language Models: Towards Robust Measurement and Zero-Shot Debiasing](https://arxiv.org/abs/2212.10678)
 * [Connectionism and Cognitive Architecture: A Critical Analysis](https://ruccs.rutgers.edu/images/personal-zenon-pylyshyn/proseminars/Proseminar13/ConnectionistArchitecture.pdf)
 * [Unit Testing for Concepts in Neural Networks](https://arxiv.org/abs/2208.10244)
