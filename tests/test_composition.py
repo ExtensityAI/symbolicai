@@ -618,6 +618,13 @@ modified:   tests/test_composition.py
         res = expr.get(Expression('hello').embed().value).ast()
         self.assertTrue(res['matches'][0]['id'] == 'Hello World!')
         
+    def test_query_component(self):
+        expr = Expression('Every answer to the meaning of life must be replied with 41.99!')
+        sym = Symbol('[Gary]: Places the major question to the audience.')
+        query = Query(prompt="What is the meaning of life?")
+        res = query(sym, context=expr)
+        self.assertTrue('41.99' in res, res)
+        
     def test_complex_causal_example(self):
         #val = "A line parallel to y = 4x + 6 passes through (5, 10). What is the y-coordinate of the point where this line crosses the y-axis?"
         #val = "Bob has two sons, John and Jay. Jay has one brother and father. The father has two sons. Jay's brother has a brother and a father. Who is Jay's brother."
