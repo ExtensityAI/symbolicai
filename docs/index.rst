@@ -766,7 +766,7 @@ classes thereof. This is done by using the
 ``self._sym_return_type(...)`` method and can give contextualized
 behavior based on the defined return type. See more details in the
 actual ```Symbol``
-class <https://github.com/Xpitfire/symbolicai/blob/main/symbolicai/symbol.py>`__.
+class <https://github.com/Xpitfire/symbolicai/blob/main/symai/symbol.py>`__.
 
 In the next section, we will show that almost all operations in
 ``symai/core.py`` are derived from the more generic ``few_shot``
