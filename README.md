@@ -1014,7 +1014,6 @@ from symai.backend.engine_nesy_client import NeSyClientEngine
 engine = NeSyClientEngine()
 setting = Expression()
 setting.setup(engines={'neurosymbolic': engine})
-setting.command(time_clock=True)
 ```
 
 Now you can use the local engine to perform symbolic computation:
