@@ -154,13 +154,12 @@ class Style(Expression):
     
     
 class Query(Expression):
-    def __init__(self, description: str, libraries: List[str] = []):
+    def __init__(self, prompt: str):
         super().__init__()
-        self.description: str = description
-        self.libraries: List[str] = libraries
+        self.prompt: str = prompt
         
-    def forward(self, sym: Symbol, *args, **kwargs) -> Symbol:
-        return sym.style(description=self.description, libraries=self.libraries, **kwargs)
+    def forward(self, sym: Symbol, context: Symbol = None, *args, **kwargs) -> Symbol:
+        return sym.query(prompt=self.prompt, context=context, **kwargs)
 
     
 class Outline(Expression):
