@@ -82,9 +82,9 @@ def _start_symai():
     with open(_ai_config_path_, 'r') as f:
         _ai_config_ = json.load(f)
     
-    if 'custom' not in _ai_config_['NEUROSYMBOLIC_ENGINE_MODEL'] and \
-       _ai_config_['NEUROSYMBOLIC_ENGINE_API_KEY'] is None or len(_ai_config_['NEUROSYMBOLIC_ENGINE_API_KEY']) == 0:
-        logging.error('The mandatory neuro-symbolic engine is not initialized. Please get a key from https://beta.openai.com/account/api-keys and set either a general environment variable OPENAI_API_KEY or a module specific environment variable NEUROSYMBOLIC_ENGINE_API_KEY.')
+    if 'custom' not in _ai_config_['NEUROSYMBOLIC_ENGINE_MODEL'].lower() and \
+       (_ai_config_['NEUROSYMBOLIC_ENGINE_API_KEY'] is None or len(_ai_config_['NEUROSYMBOLIC_ENGINE_API_KEY']) == 0):
+        logging.warn('The mandatory neuro-symbolic engine is not initialized. Please get a key from https://beta.openai.com/account/api-keys and set either a general environment variable OPENAI_API_KEY or a module specific environment variable NEUROSYMBOLIC_ENGINE_API_KEY.')
 
     import symai.backend.settings as settings
     settings.SYMAI_CONFIG = _ai_config_
