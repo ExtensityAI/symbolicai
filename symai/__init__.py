@@ -3,7 +3,7 @@ import json
 import logging
 
 
-SYMAI_VERSION = "0.2.10"
+SYMAI_VERSION = "0.2.11"
 
 
 def _start_symai():
@@ -102,3 +102,5 @@ from .prompts import Prompt
 from .backend.base import Engine
 from .functional import (_process_query, ConstraintViolationException)
 from .chat import ChatBot
+from .shell import Shell
+from .solver import Solver
