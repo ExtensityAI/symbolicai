@@ -23,7 +23,7 @@ def few_shot(prompt: str,
     
     Args:
         prompt (str): The prompt describing the task. Defaults to 'Summarize the content of the following text:\n'.
-        examples (List[str]): A list of examples to be used for the task in specified format.
+        examples (Prompt): A Prompt object containing a list of examples to be used for the task in specified format.
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         default (object, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         limit (int, optional): The maximum number of results to be returned, if more are obtained.
