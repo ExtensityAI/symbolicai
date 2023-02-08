@@ -1119,7 +1119,7 @@ This project is inspired by the following works, but not limited to them:
 * [Tracr: Compiled Transformers as a Laboratory for Interpretability](https://arxiv.org/abs/2301.05062)
 * [How can computers get common sense?](https://www.science.org/doi/10.1126/science.217.4566.1237)
 * [Artificial Intelligence: A Modern Approach](http://aima.cs.berkeley.edu/)
-* [Sympy](https://github.com/sympy/sympy)
+* [SymPy: symbolic computing in Python](https://github.com/sympy/sympy)
 * [Neuro-symbolic programming](https://arxiv.org/abs/2210.05050)
 * [Fuzzy Sets](https://web.archive.org/web/20150813153834/http://www.cs.berkeley.edu/~zadeh/papers/Fuzzy%20Sets-Information%20and%20Control-1965.pdf)
 * [An early approach toward graded identity and graded membership in set theory](https://www.sciencedirect.com/science/article/abs/pii/S0165011409005326?via%3Dihub)
