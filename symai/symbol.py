@@ -605,6 +605,18 @@ class Symbol(ABC):
                     res = err.analyze(query="What is the issue in this expression?", exception=e)
                     ctxt = res @ prompt
                     sym = sym.correct(context=ctxt, exception=e)
+                    
+    def expand(self, *args, **kwargs) -> "Symbol":
+        @ai.expand(max_tokens=2048, **kwargs)
+        def _func(_, *args):
+            pass
+        _tmp_llm_func = self._sym_return_type(_func(self, *args))
+        func_name = str(_tmp_llm_func.extract('function name'))
+        def _llm_func(*args, **kwargs):
+            res = _tmp_llm_func.fexecute(*args, **kwargs)
+            return res['locals'][func_name]()
+        setattr(self, func_name, _llm_func)
+        return func_name
     
     def draw(self, operation: str = 'create', **kwargs) -> "Symbol":
         @ai.draw(operation=operation, **kwargs)

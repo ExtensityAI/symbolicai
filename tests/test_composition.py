@@ -625,6 +625,12 @@ modified:   tests/test_composition.py
         res = query(sym, context=expr)
         self.assertTrue('41.99' in res, res)
         
+    def test_expand(self):
+        expr = Expression('A print statement that always prints "what up dawg" and returns "nice"!')
+        func_ = expr.expand()
+        res = getattr(expr, func_)()
+        self.assertTrue('nice' == res)
+        
     def test_complex_causal_example(self):
         #val = "A line parallel to y = 4x + 6 passes through (5, 10). What is the y-coordinate of the point where this line crosses the y-axis?"
         #val = "Bob has two sons, John and Jay. Jay has one brother and father. The father has two sons. Jay's brother has a brother and a father. Who is Jay's brother."

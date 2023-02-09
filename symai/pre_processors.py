@@ -288,6 +288,13 @@ class SufficientInformationPreProcessor(PreProcessor):
         val = prep_as_str(wrp_self)
         query = prep_as_str(wrp_params['query'])
         return f'query {query} content {val} =>'
+    
+    
+class ExpandFunctionPreProcessor(PreProcessor):
+    def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
+        super().override_reserved_signature_keys(wrp_params, *args, **kwds)
+        val = prep_as_str(wrp_self)
+        return f'{val} =>\ndef'
 
 
 class FormatPromptWithArgs0PreProcessor(PreProcessor):

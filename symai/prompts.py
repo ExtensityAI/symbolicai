@@ -3,6 +3,8 @@ from typing import Any, List, Callable
 
 
 class Prompt(ABC):
+    stop_token = 'EOF'
+    
     def __init__(self, value):
         super().__init__()
         if isinstance(value, str):
@@ -24,7 +26,7 @@ class Prompt(ABC):
         else:
             raise TypeError(f"Prompt value must be of type str, List[str], Prompt, or List[Prompt], not {type(value)}")
         self.dynamic_value = []
-        
+
     def __call__(self, *args: Any, **kwds: Any) -> List["Prompt"]:
         return self.value
     
@@ -48,7 +50,7 @@ class Prompt(ABC):
 
 
 class FuzzyEquals(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
             "1 == 'ONE' =>True",
             "6.0 == 6 =>True",
@@ -90,7 +92,7 @@ class FuzzyEquals(Prompt):
         
         
 class SufficientInformation(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
             "query 'What is the capital of Austria?' content 'Vienna is the capital, largest city, and one of nine states of Austria.' =>True",
             "query 'Where am I? content '' =>False",
@@ -102,7 +104,7 @@ class SufficientInformation(Prompt):
         
         
 class Modify(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
             "text 'The quick brown fox jumps over the lazy dog.' modify 'fox to hours' =>The quick brown hours jumps over the lazy dog.",
             "text 'My cats name is Pucki' modify 'all caps' =>MY CATS NAME IS PUCKI",
@@ -115,7 +117,7 @@ class Modify(Prompt):
         
         
 class Filter(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
             "text '['1', '7', '10', '-1', '177']' remove 'values larger or equal to 10' =>['1', '7', '-1']",
             "text '['1', '7', '10', '-1', '177']' include 'values larger or equal to 10' =>['10', '177']",
@@ -138,7 +140,7 @@ class Filter(Prompt):
         
         
 class SemanticMapping(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
             """topics: ['animals', 'logic', 'mathematics', 'psychology', 'self-driving'] in
             text: 'Common connectives include negation, disjunction, conjunction, and implication. In standard systems of classical logic, these connectives are interpreted as truth functions, though they receive a variety of alternative interpretations in nonclassical logics.' =>logic | mathematics
@@ -149,7 +151,7 @@ class SemanticMapping(Prompt):
         
         
 class Format(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
             "text 1 format 'number to text' =>one",
             "text 'apple' format 'company' =>Apple Inc.",
@@ -166,7 +168,7 @@ class Format(Prompt):
         
         
 class Transcription(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
             "text 'I once saw 1 cat and 2 dogs jumping around' modify only 'numbers to text' =>I once saw one cat two dogs jumping around",
             "text 'fetch logs\n| fields timestamp, severity\n| fieldsAdd severity = lower(loglevel)' modify only 'to Japanese language' =>fetch ログ\n| fields タイムスタンプ、重大度\n| fieldsAdd 重大度 = lower(ログレベル)",
@@ -177,7 +179,7 @@ class Transcription(Prompt):
         
         
 class ExceptionMapping(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
             """context 'Try to assure that variable "a" is not zero.' exception 'Traceback (most recent call last):\n  File "<stdin>", line 1, in <module>\nZeroDivisionError: division by zero' code 'def function():\n  return (1 + 1) / 0' =>Do not divide by zero or add an epsilon value. | def function(eps=1e-8):\n  return (1 + 1) / eps""",
             """context 'Make sure to initialize 'spam' before computation' exception 'Traceback (most recent call last):\n  File "<stdin>", line 1, in <module>\nNameError: name 'spam' is not defined' code '4 + spam*3' =>Check if the variable is defined before using it. | spam = 1\n4 + spam*3""",
@@ -186,7 +188,7 @@ class ExceptionMapping(Prompt):
         
         
 class ExecutionCorrection(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
             """context "ValueError: invalid literal for int() with base 10: '4,'" "Verify if the literal is of type int | int(4)" code "a = int('4,')" =>int(4)""",
             """context "def function():\n  return (1 + 1) / a' exception 'Traceback (most recent call last):\n  File "<stdin>", line 1, in <module>\nZeroDivisionError: division by zero" "Do not divide by zero or add an epsilon value. | def function(eps=1e-8):\n  return (1 + 1) / (a + eps)" code "def function():\n  return (1 + 1) / 0" =>def function(eps=1e-8):\n  return (1 + 1) / (a + eps)""",
@@ -194,7 +196,7 @@ class ExecutionCorrection(Prompt):
         
         
 class CompareValues(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
             "4 > 88 =>False",
             "-inf < 0 =>True",
@@ -246,7 +248,7 @@ class CompareValues(Prompt):
         
         
 class RankList(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
             "order: 'desc' measure: 'ASCII occurrence' list: ['b', 'a', 'z', 3, '_'] =>['_', 3, 'a', 'b', 'z']",
             "order: 'desc' measure: 'Value' list: ['Action: l Value: -inf', 'Action: r Value: 0.76', 'Action: u Value: 0.76', 'Action: d Value: 0.00'] =>['Action: r Value: 0.76', 'Action: u Value: 0.76', 'Action: d Value: 0.00', 'Action: l Value: -inf']",
@@ -265,7 +267,7 @@ class RankList(Prompt):
 
 
 class ContainsValue(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
             "'the letter a' in 'we have some random text about' =>True",
             "453 in '+43 660 / 453 4438 88' =>True",
@@ -292,7 +294,7 @@ class ContainsValue(Prompt):
         
         
 class IsInstanceOf(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
             "'we have some random text about' isinstanceof 'English text' =>True",
             "'+43 660 / 453 4438 88' isinstanceof 'telephone number' =>True",
@@ -331,7 +333,7 @@ class FewShotPattern(Prompt):
         
         
 class ExtractPattern(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
             "from 'My name is Ashly Johnson. Nice to meet you!' extract 'Full Name' =>Ashly Johnson",
             "from '['Action: a Value: 0.9', 'Action: b Value 0.9', 'Action: c Value: 0.4', 'Action: d Value: 0.0']' extract 'list of letters where Action: * Value: 0.9' =>a | b",
@@ -353,7 +355,7 @@ class ExtractPattern(Prompt):
         
         
 class SimpleSymbolicExpression(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
             "expr :1 + 2 =: =>3",
             "expr :1 + 2 * 3 =: =>7",
@@ -390,7 +392,7 @@ class SimpleSymbolicExpression(Prompt):
 
 
 class LogicExpression(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
             "expr :True: and :True: =>True",
             "expr :False: and :True: =>False",
@@ -429,7 +431,7 @@ class LogicExpression(Prompt):
         
         
 class InvertExpression(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
             "I like to eat sushi, therefore I am Japanese. =>I am Japanese, therefore I like to eat sushi.",
             "I have a dog and a cat in my house. =>A cat and a dog have me in their house.",
@@ -449,7 +451,7 @@ class InvertExpression(Prompt):
 
 
 class NegateStatement(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
             "1 =>-1",
             "10 =>-10",
@@ -465,7 +467,7 @@ class NegateStatement(Prompt):
 
         
 class ReplaceText(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
             "text 'a + b' replace 'b' with '' =>a",
             "text 'a + b' replace 'c' with '' =>a + b",
@@ -486,7 +488,7 @@ class ReplaceText(Prompt):
         
         
 class IncludeText(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
             "text 'The green fox jumps of the brown chair.' include 'in the living room' =>In the living room the red fox jumps of the brown chair.",
             "text 'Anyone up for Argentina vs Croatia tonight?.' include 'place: Linz' =>Anyone up for Argentina vs Croatia in Linz tonight?",
@@ -501,7 +503,7 @@ class IncludeText(Prompt):
         
         
 class CombineText(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
             "1 + 2 =>3",
             "'x' + 1 =>x + 1",
@@ -531,7 +533,7 @@ class CombineText(Prompt):
         
         
 class CleanText(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
             "Text: 'The    red \t\t\t\t fox \u202a\u202a\u202a\u202a\u202a jumps;;,,,,&amp;&amp;&amp;&amp;&&& of the brown\u202b\u202b\u202b\u202b chair.' =>The red fox jumps of the brown chair.",
              "Text: 'I do \t\n\t\nnot like to play football\t\n\t\n\t\n\t\n\t\n\t\n in the rain. \u202a\u202c\u202a\u202bBut why? I don't understand.' =>'I do not like to play football in the rain. But why? I don't understand.'",
@@ -539,7 +541,7 @@ class CleanText(Prompt):
 
 
 class ListObjects(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
             "[1, 2, 3, 4, 5, 12, 48, 89, 99, 1, 4, 1] list '1' =>[1, 1, 1]",
             "[1, 2, 3, 4, 5, 12, 48, 89, 99, 1, 4, 1] list 'item' =>[1, 2, 3, 4, 5, 12, 48, 89, 99, 1, 4, 1]",
@@ -556,8 +558,47 @@ class ListObjects(Prompt):
         ])
         
         
+class ExpandFunction(Prompt):
+    def __init__(self):
+        super().__init__([
+            """$> Ping if google is still available =>
+def _llm_ping_():
+    "Ping if google is still available."
+    import os
+    response = os.system("ping -c 1 google.com")
+    return response == 0 """ + Prompt.stop_token,
+    
+            """$> Create a random number between 1 and 100 =>
+def _llm_random_():
+    "Create a random number between 1 and 100."
+    import random
+    return random.randint(1, 100) """ + Prompt.stop_token,
+    
+            """$> Write any sentence in capital letters =>
+def _llm_upper_(input_):
+    "Write any sentence in capital letters."
+    return input_.upper() """ + Prompt.stop_token,
+    
+            """$> Open a file from the file system =>
+def _llm_open_(file_name):
+    "Open a file form the file system."
+    return open(file_name, "r") """ + Prompt.stop_token,
+    
+            """$> Call OpenAI GPT-3 to perform an action given a user input =>
+def _llm_action_(input_):
+    "Call OpenAI GPT-3 to perform an action given a user input."
+    import openai
+    openai.Completion.create(prompt=input_, model="text-davinci-003") """ + Prompt.stop_token,
+    
+            """$> Create a prompt to translate a user query to an answer in well-formatted structure =>
+def _llm_action_(query_, answer_):
+    "Create a prompt to translate a user query to an answer in well-formatted structure."
+    return f"Query: {query_} => {answer_}" """ + Prompt.stop_token,
+        ])
+        
+        
 class ForEach(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
             "[1, 2, 3, 4, 5, 12, 48, 89, 99, 1, 4, 1] foreach '1' apply '+1' =>[2, 3, 4, 5, 6, 13, 49, 90, 100, 2, 5, 2]",
             "'I have four cats at home. Kitty, Mitsi, Pauli and Corni.' foreach 'cat' apply 'upper' =>I have four CATS at home. KITTY, MITSI, PAULI and CORNI.",
@@ -568,13 +609,13 @@ class ForEach(Prompt):
             "'Ananas' foreach 'letter' apply 'list' =>['A', 'n', 'a', 'n', 'a', 's']",
             "'Hello World, Hola Mundo, Buenos Dias, Bonjour' foreach 'greeting' apply 'translate to English' =>Hello World, Hello World, Good Morning, Good Day",
             "['house', 'boat', 'mobile phone', 'iPhone', 'computer', 'soap', 'board game'] foreach 'electronic device' apply 'add price $100' =>['house', 'boat', 'mobile phone $100', 'iPhone $100', 'computer $100', 'soap', 'board game']",
-            "'1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10' foreach 'even number' apply '-1' =>0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9",
+            "'1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10' foreach 'even number' apply '-1' =>1 | 1 | 3 | 3 | 5 | 5 | 7 | 7 | 9 | 9",
             """'<script type="module" src="new_tab_page.js"></script>\n    <link rel="stylesheet" href="chrome://resources/css/text_defaults_md.css">\n    <link rel="stylesheet" href="chrome://theme/colors.css?sets=ui,chrome">\n    <link rel="stylesheet" href="shared_vars.css">' foreach 'chrome: url' apply 'replace chrome:// with https://google.' =><script type="module" src="new_tab_page.js"></script>\n    <link rel="stylesheet" href="https://google.resources/css/text_defaults_md.css">\n    <link rel="stylesheet" href="https://google.theme/colors.css?sets=ui,chrome">\n    <link rel="stylesheet" href="shared_vars.css">""",
         ])
         
         
 class MapContent(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
             "[1, 2, 3, 4, 5, 12, 48, 89, 99, 1, 4, 1] map 'number parity' =>{'even numbers': [2, 4, 12, 48, 4], 'odd numbers': [1, 3, 5, 89, 99, 1]}",
             "'Kitty, Mitsi, Pauli and Corni. We also have two dogs: Pluto and Bello' map 'animal names' =>{'cats': ['Kitty', 'Mitsi', 'Pauli', 'Corni'], 'dogs': ['Pluto', 'Bello'], 'description': ['I have four cats at home.', 'We also have two dogs:']}"
@@ -586,7 +627,7 @@ class MapContent(Prompt):
         
         
 class Index(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
             "[1, 2, 3, 4, 5, 12, 48, 89, 99, 1, 4, 1] index 1 =>2",
             "[1, 2, 3, 4, 5, 12, 48, 89, 99, 1, 4, 1] index 'first item' =>1",
@@ -609,7 +650,7 @@ class Index(Prompt):
         
         
 class SetIndex(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
             "[1, 2, 3, 4, 5, 12, 48, 89, 99, 1, 4, 1] index 1 set '7' =>[1, 7, 3, 4, 5, 12, 48, 89, 99, 1, 4, 1]",
             "[1, 2, 3, 4, 5, 12, 48, 89, 99, 1, 4, 1] index 'first item' set 8 =>[8, 2, 3, 4, 5, 12, 48, 89, 99, 1, 4, 1]",
@@ -631,7 +672,7 @@ class SetIndex(Prompt):
         
         
 class RemoveIndex(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
             "[1, 2, 3, 4, 5, 12, 48, 89, 99, 1, 4, 1] remove 1 =>[1, 3, 4, 5, 12, 48, 89, 99, 1, 4, 1]",
             "[1, 2, 3, 4, 5, 12, 48, 89, 99, 1, 4, 1] remove 'first item' =>[2, 3, 4, 5, 12, 48, 89, 99, 1, 4, 1]",
@@ -651,7 +692,7 @@ class RemoveIndex(Prompt):
 
 
 class SimulateCode(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
 """code '# Import the SymPy library
 from sympy import *
@@ -676,7 +717,7 @@ with open(file_name, 'r') as file:
 
 
 class GenerateCode(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
 """description 'Generate an efficient Python function to compute the Fibonacci sequence of numbers.' =>def fibonacci(n):
   # Initialize a list with the first two numbers in the sequence
@@ -717,7 +758,7 @@ void fft(complex<double>* input, complex<double>* output) {
 
 
 class TextToOutline(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
 """text 'We introduce NPM, the first NonParametric Masked Language Model. 
 NPM consists of an encoder and a reference corpus, and models a nonparametric distribution over a reference corpus (Figure 1). 
@@ -729,7 +770,7 @@ use the encoder to locate the nearest phrase from the corpus and fill in the [MA
         
         
 class UniqueKey(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
 """text 'We introduce NPM, the first NonParametric Masked Language Model. NPM consists of an encoder and a reference corpus. =>NonParametric Masked Language Model (NPM)""",
 """text 'On Monday, there will be no Phd seminar.' =>Phd seminar""",
@@ -738,7 +779,7 @@ class UniqueKey(Prompt):
 
 
 class GenerateText(Prompt):
-    def __init__(self) -> Prompt:
+    def __init__(self):
         super().__init__([
 """outline '- first NonParametric Masked Language Model (NPM)\n - consists of encoder and reference corpus\n - key idea: map all phrases in corpus into dense vector space using encoder when given query with [MASK] at inference\n - encoder locates nearest phrase from corpus and fill in [MASK]' =>NPM is the first NonParametric Masked Language Model. 
 NPM consists of an encoder and a reference corpus, and models a nonparametric distribution over a reference corpus (Figure 1). 

@@ -32,7 +32,7 @@ class ChatBot(Expression):
             'option 1 = [search, web, facts, location, weather, lookup, query, birthday, birth place]',
             'option 2 = [fetch, get, crawl, scrape, web]',
             'option 3 = [converse, talk, ask, answer, reply]',
-            'option 4 = [audio, speech, listen',
+            'option 4 = [audio, speech, listen]',
             'option 5 = [draw, create meme, generate image]',
             #'option 6 = [scan, read image, ocr, file]',
             #'option 7 = [execute, run, code]',

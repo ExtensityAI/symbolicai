@@ -591,7 +591,7 @@ def correct(context: str,
 def translate(language: str = 'English',
               default: str = "Sorry, I do not understand the given language.",
               prompt: str = "Translate the following text into {}:\n",
-              examples: Prompt = [],
+              examples: Optional[Prompt] = None,
               constraints: List[Callable] = [],
               pre_processor: Optional[List[PreProcessor]] = [LanguagePreProcessor()],
               post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
@@ -749,7 +749,7 @@ def template(template: str,
              prompt: str = 'Insert the data into the template in the best suitable format (header, tables, paragraphs, buttons, etc.):\n',
              placeholder: str = '{{placeholder}}',
              default: Optional[str] = None,
-             examples: Prompt = [],
+             examples: Optional[Prompt] = None,
              constraints: List[Callable] = [],
              pre_processor: Optional[List[PreProcessor]] = [DataTemplatePreProcessor(), TemplatePreProcessor()],
              post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
@@ -878,7 +878,7 @@ def isinstanceof(default: bool = False,
 def case(enum: List[str],
          default: str,
          prompt: str = "Classify the text according to one of the following categories: ",
-         examples: Prompt = [],
+         examples: Optional[Prompt] = None,
          stop: List[str] = ['\n'],
          pre_processor: Optional[List[PreProcessor]] = [EnumPreProcessor(), TextMessagePreProcessor(), PredictionMessagePreProcessor()],
          post_processor: Optional[List[PostProcessor]] = [StripPostProcessor(), CaseInsensitivePostProcessor()],
@@ -1221,7 +1221,7 @@ def clean(prompt: str = "Clean up the text from special characters or escape seq
     
 def compose(prompt: str = "Create a coherent text based on an outline:\n",
             default: Optional[str] = None,
-            examples: Prompt = [],
+            examples: Optional[Prompt] = None,
             constraints: List[Callable] = [],
             pre_processor: Optional[List[PreProcessor]] = [GenerateTextPreProcessor()],
             post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
@@ -1353,7 +1353,7 @@ def listing(condition: str,
 
 def query(context: str,
           prompt: Optional[str] = None,
-          examples: List[Prompt] = [],
+          examples: Optional[Prompt] = None,
           constraints: List[Callable] = [],
           default: Optional[object] = None, 
           pre_processor: Optional[List[PreProcessor]] = [QueryPreProcessor()],
@@ -1364,7 +1364,7 @@ def query(context: str,
     Args:
         context (str): The context for the query.
         prompt (str, optional): The prompt describing the task. Defaults to None.
-        examples (List[Prompt], optional): A list of examples to provide to the model. Defaults to [].
+        examples (Prompt, optional): A list of examples to provide to the model. Defaults to [].
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         default (object, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [QueryPreProcessor()].
@@ -1379,6 +1379,37 @@ def query(context: str,
                     constraints=constraints,
                     default=default,
                     limit=1,
+                    pre_processor=pre_processor,
+                    post_processor=post_processor,
+                    wrp_kwargs=wrp_kwargs)
+    
+    
+def expand(prompt: Optional[str] = 'Write a self-contained function (with all imports) to solve a specific user problem task. Label the function with a name that describes the task.',
+           examples: Optional[Prompt] = ExpandFunction(),
+           constraints: List[Callable] = [],
+           default: Optional[object] = None,
+           pre_processor: Optional[List[PreProcessor]] = ExpandFunctionPreProcessor(),
+           post_processor: Optional[List[PostProcessor]] = [StripPostProcessor(), ExpandFunctionPostProcessor()],
+           **wrp_kwargs):
+    """Performs a expand command given a context to generate new prompts.
+
+    Args:
+        prompt (str, optional): The prompt describing the task. Defaults to 'Write a prompt to condition a large language model to perform an action given a user task'.
+        examples (Prompt, optional): A list of examples to provide to the model. Defaults to ExpandFunction().
+        constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
+        default (object, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
+        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [QueryPreProcessor()].
+        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+
+    Returns:
+        str: The answer to the query.
+    """
+    return few_shot(prompt=prompt,
+                    examples=examples,
+                    constraints=constraints,
+                    default=default,
+                    limit=1,
+                    stop=[Prompt.stop_token],
                     pre_processor=pre_processor,
                     post_processor=post_processor,
                     wrp_kwargs=wrp_kwargs)

@@ -109,6 +109,11 @@ class ConsolePostProcessor(PostProcessor):
 class TakeLastPostProcessor(PostProcessor):
     def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
         return response[-1]
+    
+
+class ExpandFunctionPostProcessor(PostProcessor):
+    def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
+        return 'def ' + response
 
 
 class CaseInsensitivePostProcessor(PostProcessor):
