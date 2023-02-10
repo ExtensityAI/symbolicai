@@ -90,18 +90,27 @@ class ChatBot(Expression):
         )
         def _func(_, message) -> str:
             pass
-        return self._sym_return_type(_func(self, message))   
+        return self._sym_return_type(_func(self, message))
+    
+    @property
+    def _sym_return_type(self):
+        return ChatBot
     
     def forward(self, **kwargs):
         pass 
 
 
 class SymbiaChat(ChatBot):
+    @property
+    def _sym_return_type(self):
+        return SymbiaChat
+    
     def forward(self) -> str:
         message = self.narrate('Symbia introduces herself, writes a greeting message and asks how to help.')        
         while True:
             # query user
             usr = self.input(message)
+            self.history.append(str(usr))
             
             # TODO: needs model fine-tuning to improve the classification
             # detect context
