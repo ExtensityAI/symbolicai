@@ -8,8 +8,8 @@ class ChatBot(Expression):
     _symai_chat: str = """This is a conversation between a chatbot ({}:) and a human (User:). It also includes narration Text (Narrator:) describing the next dialog.
 """
     
-    def __init__(self, name: str = 'Symbia', output: Optional[Output] = None):
-        super().__init__()
+    def __init__(self, value = None, name: str = 'Symbia', output: Optional[Output] = None):
+        super().__init__(value)
         that = self
         self.name = name
         self.history: List[Symbol] = []
