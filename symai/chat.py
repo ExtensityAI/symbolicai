@@ -29,14 +29,14 @@ class ChatBot(Expression):
         self._post_processor = custom_post_processor
         
         self.capabilities = [
-            'option 1 = [search, web, facts, location, weather, lookup, query, birthday, birth place]',
-            'option 2 = [fetch, get, crawl, scrape, web]',
-            'option 3 = [converse, talk, ask, answer, reply]',
-            'option 4 = [audio, speech, listen]',
+            'option 1 = [search, web, facts, location, weather, lookup, query, birthday, birth place, knowledge-based questions: what - where - who - why - how - which - whose]',
+            'option 2 = [fetch, get, crawl, scrape, http, https, url]',
+            'option 3 = [converse, small talk, ask about feeling, reply to a specific topic, chit chat, jokes, how are you, what colors do you like]',
+            'option 4 = [wav, mp3, audio, speech, listen, transcribe, convert, convert audio to text]',
             'option 5 = [draw, create meme, generate image]',
-            #'option 6 = [scan, read image, ocr, file]',
-            #'option 7 = [execute, run, code]',
-            #'option 8 = [open file, PDF, text file]',
+            'option 6 = [scan image, read text from image, ocr, optical character recognition]',
+            'option 7 = [mathematical problems, equations, formula, compute, solve, integrate, differentiate]',
+            'option 8 = [open file, PDF, text file]',
             'option 9 = [non of the other, unknown, invalid, not understood]'
         ]
 
@@ -49,11 +49,14 @@ class ChatBot(Expression):
             'option 3 = [exit, quit, bye, goodbye]',
             'option 4 = [help, list of commands, list of capabilities]',
             'option 5 = [follow up question, continuation, more information]',
-            'option 6 = [non of the other, unknown, invalid, not understood]'
+            'option 6 = [mathematical equation, mathematical problem, mathematical question]',
+            'option 9 = [non of the other, unknown, invalid, not understood]'
         ]
 
         self.context_choice = ai.Choice(cases=self.detect_context, # use static context instead
                                         default=self.detect_context[-1])
+        
+        self.command(engines=['symbolic'], expression_engine='wolframalpha')
 
     def repeat(self, query, **kwargs):
         return self.narrate('Symbia does not understand and asks to repeat and give more context.', prompt=query)
@@ -133,35 +136,55 @@ class SymbiaChat(ChatBot):
                 
                 try:
                     
-                    if 'option 1' in option:
+                    if 'option 1' in option: # search request
                         q = usr.extract('user query request')
                         rsp = self.search(q)
                         message = self.narrate('Symbia replies to the user based on the online search results.', 
                                                 context=rsp)                    
-                    elif 'option 2' in option:
+                    elif 'option 2' in option: # fetch a website
                         q = usr.extract('URL from text')
                         q = q.convert('proper URL, example: https://www.google.com')
                         site = self.fetch(q)
                         site.save('tmp.html')
                         message = self.narrate('Symbia explains that the website is downloaded to the `tmp.html` file.') 
                     
-                    elif 'option 3' in option:
+                    elif 'option 3' in option: # chatbot conversation
                         message = self.narrate('Symbia replies to the last user question.')
                         
-                    elif 'option 4' in option:
+                    elif 'option 4' in option: # speech to text
                         q = usr.extract('extract file path')
                         rsp = self.speech(q)
                         message = self.narrate('Symbia replies to the user and transcribes the content of the audio file.', 
                                                 context=rsp)
                         
-                    elif 'option 5' in option:
+                    elif 'option 5' in option: # draw an image with DALL-E
                         q = usr.extract('text for image creation')
                         rsp = q.draw()
                         message = self.narrate('Symbia replies to the user and provides the image URL.', 
                                                 context=rsp)
                         
-                    else:
+                    elif 'option 6' in option: # perform ocr on an image
+                        url = usr.extract('extract url')
+                        rsp = ai.Expression().ocr(url)
+                        message = self.narrate('Symbia replies to the user and provides OCR text from the image.', 
+                                                context=rsp)
                         
+                    elif 'option 7' in option: # solve a math problem
+                        rsp = usr.expression()
+                        message = self.narrate('Symbia replies to the user and provides the solution of the math problem.', 
+                                                context=rsp)
+                        
+                    elif 'option 8' in option: # scan a text-based document
+                        file = usr.extract('extract file path')
+                        q = usr.extract('user question')
+                        rsp = file.fstream(
+                            ai.IncludeFilter('include only facts related to the user question: ' @ q),
+                            ai.Outline()
+                        )
+                        message = self.narrate('Symbia replies to the user and outlines and relies to the user query.', 
+                                                context=rsp)
+                        
+                    else: # failed or not implemented                        
                         message = self.narrate('Symbia apologizes and states that the capability is not available yet.')
                         
                 except Exception as e:
