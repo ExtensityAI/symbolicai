@@ -453,18 +453,32 @@ modified:   tests/test_composition.py
         res.save(path, replace=False)
         
     def test_cluster_component(self):
-        expr = Open()
+        file_open = Open()
         stream = Stream(Sequence(
             Clean(),
             Translate(),
             Outline(),
         ))
-        sym = Symbol(list(stream(expr('examples/paper.pdf', n_pages=1))))
+        sym = Symbol(list(stream(file_open('examples/paper.pdf', n_pages=1))))
         cluster = Cluster()
         res = cluster(sym)
         mapper = Map()
         res = mapper(res)
         self.assertIsNotNone(res)
+        
+    def test_file_read_and_query(self):
+        file_open = Open()
+        stream = Stream(Sequence(
+            IncludeFilter('include information related to version number'),
+            Query('What version number is in the file?'),
+        ))
+        res = Symbol(list(stream(file_open('examples/file.json'))))
+        self.assertIsNotNone('0.2.0' in res)
+        
+    def test_file_read_and_query_component(self):
+        fq = FileQuery('examples/file.json', 'include information related to version number')
+        res = fq('What version number is in the file?')
+        self.assertIsNotNone('0.2.0' in res)
         
     def test_paper_component(self):
         paper = Paper(path='examples/paper.pdf')

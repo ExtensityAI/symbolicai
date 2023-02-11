@@ -1,0 +1,18 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Test Decorators",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/tests/test_decorators.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}",
+                "OPENAI_API_KEY": "",
+                "CUDA_VISIBLE_DEVICES": "1"
+            }
+        }
+    ]
+}
