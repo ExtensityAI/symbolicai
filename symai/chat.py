@@ -35,8 +35,7 @@ class ChatBot(Expression):
             'option 4 = [wav, mp3, audio, speech, listen, transcribe, convert, convert audio to text]',
             'option 5 = [draw, create meme, generate image]',
             'option 6 = [scan image, read text from image, ocr, optical character recognition]',
-            'option 7 = [mathematical problems, equations, formula, compute, solve, integrate, differentiate]',
-            'option 8 = [open file, PDF, text file]',
+            'option 7 = [open file, PDF, text file]',
             'option 9 = [non of the other, unknown, invalid, not understood]'
         ]
 
@@ -129,8 +128,13 @@ class SymbiaChat(ChatBot):
                       
             elif 'option 1' in ctxt: # chit chat
                 message = self.narrate('Symbia replies to the user question in a casual way.')
+                
+            elif 'option 6' in ctxt: # solve a math problem
+                rsp = usr.expression()
+                message = self.narrate('Symbia replies to the user and provides the solution of the math problem.', 
+                                        context=rsp)
         
-            elif 'option 2' in ctxt: 
+            elif 'option 2' in ctxt or 'option 5' in ctxt: 
                 # detect command
                 option = self.capabilities_choice(usr)
                 
@@ -169,12 +173,7 @@ class SymbiaChat(ChatBot):
                         message = self.narrate('Symbia replies to the user and provides OCR text from the image.', 
                                                 context=rsp)
                         
-                    elif 'option 7' in option: # solve a math problem
-                        rsp = usr.expression()
-                        message = self.narrate('Symbia replies to the user and provides the solution of the math problem.', 
-                                                context=rsp)
-                        
-                    elif 'option 8' in option: # scan a text-based document
+                    elif 'option 7' in option: # scan a text-based document
                         file = usr.extract('extract file path')
                         q = usr.extract('user question')
                         rsp = file.fstream(

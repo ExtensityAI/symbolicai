@@ -238,3 +238,18 @@ class ExcludeFilter(Expression):
 class Open(Expression):
     def forward(self, path: str, **kwargs) -> Symbol:
         return self.open(path, **kwargs)
+
+
+class FileQuery(Expression):
+    def __init__(self, path: str, filter: str):
+        super().__init__()
+        self.path = path
+        file_open = Open()
+        self.query_stream = Stream(Sequence(
+            IncludeFilter(filter),
+        ))
+        self.file = file_open('examples/file.json')
+        
+    def forward(self, sym: Symbol, **kwargs) -> Symbol:
+        res = Symbol(list(self.query_stream(self.file)))
+        return res.query(prompt=sym, context=res, **kwargs)
