@@ -69,7 +69,7 @@ class HtmlStyleTemplate(ai.Expression):
                                                   'https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js',
                                                   'https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js'])
         
-    def forward(self, sym: ai.Symbol) -> ai.Symbol:
+    def forward(self, sym: ai.Symbol, **kwargs) -> ai.Symbol:
         """The `render` method takes a `Symbol` as an argument and returns a `Symbol` containing the rendered news. 
         It first sets the `html_template_seq` property of the `html_stream` to the result of applying the `header_style` to the `html_template`. 
         It then iterates through the `data_stream` and collects the strings resulting from each expression. 
@@ -78,11 +78,12 @@ class HtmlStyleTemplate(ai.Expression):
         """
         if type(sym) != ai.Symbol:
             sym = ai.Symbol(sym)
-        html_data = list(self.html_stream(sym))
+        html_data = list(self.html_stream(sym, **kwargs))
         style_data = [str(self.style_template(html, 
                                               template=HTML_TEMPLATE_STYLE, 
                                               placeholder='{{placeholder}}',
-                                              max_tokens=2000)) for html in html_data]
+                                              max_tokens=2000,
+                                              **kwargs)) for html in html_data]
         res = '\n'.join(style_data)
         res = ai.Symbol(res)
         return res
