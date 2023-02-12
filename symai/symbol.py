@@ -543,8 +543,8 @@ class Symbol(ABC):
             pass
         return self._sym_return_type(_func(self))
     
-    def style(self, description: str, libraries = [], **kwargs) -> "Symbol":
-        @ai.style(description=description, libraries=libraries, **kwargs)
+    def style(self, description: str, libraries = [], template: str = None, placeholder: str = None, **kwargs) -> "Symbol":
+        @ai.style(description=description, libraries=libraries, template=template, placeholder=placeholder, **kwargs)
         def _func(_):
             pass
         return self._sym_return_type(_func(self))
