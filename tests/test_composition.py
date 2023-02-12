@@ -7,6 +7,7 @@ import unittest
 import numpy as np
 
 from symai import *
+from symai.extended import *
 from symai.chat import SymbiaChat
 from examples.paper import Paper
 from examples.news import News
@@ -483,7 +484,7 @@ modified:   tests/test_composition.py
     def test_style_render_html(self):
         url = 'https://images6.alphacoders.com/337/337780.jpg'
         style_expr = HtmlStyleTemplate()
-        meta = style_expr(f'USER_CONTEXT: {str(url)}')
+        meta = style_expr(f'USER_CONTEXT: {str(url)}', attach='max-width: 400px;')
         self.assertTrue('https://images6' in meta, meta)
         
     def test_paper_component(self):
