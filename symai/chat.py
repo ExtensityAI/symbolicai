@@ -44,7 +44,7 @@ class ChatBot(Expression):
         
         self.detect_context = [
             'option 1 = [open question, jokes, how are you, chit chat]',
-            'option 2 = [specific task or command, query about facts, weather forecast, time, date, location, birth location, birth date, draw, speech, audio]',
+            'option 2 = [specific task or command, query about facts, weather forecast, time, date, location, birth location, birth date, draw, speech, audio, ocr, open file, text to image, image to text, speech recognition, transcribe]',
             'option 3 = [exit, quit, bye, goodbye]',
             'option 4 = [help, list of commands, list of capabilities]',
             'option 5 = [follow up question, continuation, more information]',
