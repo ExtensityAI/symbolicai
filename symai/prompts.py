@@ -287,6 +287,8 @@ class ContainsValue(Prompt):
             "'option 2' in 'option 2 = [specific task or command]' =>True",
             "'option 3' in 'option 3 = [exit, quit, bye, goodbye]' =>True",
             "'option 4' in 'option 3 = [exit, quit, bye, goodbye]' =>False",
+            "'option 6' in 'option 6 = [ocr, image recognition]' =>True",
+            "'option 7' in 'option 6 = [speech to text]' =>False",
             "'political content' in 'Austrian Chancellor has called for more border barriers at the EU external borders, citing the success of the fences at the Greek-Turkish border.' =>True",
             "'apple' in ['orange', 'banana', 'apple'] =>True",
             "'Function' in 'Input: Function call: (_, *args)\nObject: type(<class 'str'>) | value(Hello World)' =>True",
