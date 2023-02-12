@@ -29,8 +29,8 @@ class ChatBot(Expression):
         self._post_processor = custom_post_processor
         
         self.capabilities = [
-            'option 1 = [search, web, facts, location, weather, lookup, query, birthday, birth place, knowledge-based questions: what - where - who - why - how - which - whose]',
-            'option 2 = [fetch, get, crawl, scrape, http, https, url]',
+            'option 1 = [search, google, bing, yahoo, web, facts, location, weather, lookup, query, birthday, birth place, knowledge-based questions: what - where - who - why - how - which - whose]',
+            'option 2 = [fetch, crawl, scrape, download http https, url dump]',
             'option 3 = [converse, small talk, ask about feeling, reply to a specific topic, chit chat, jokes, how are you, what colors do you like]',
             'option 4 = [wav, mp3, audio, speech, listen, transcribe, convert, convert audio to text]',
             'option 5 = [draw, create meme, generate image]',
