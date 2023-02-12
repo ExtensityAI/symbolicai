@@ -4,6 +4,7 @@ import logging
 
 
 SYMAI_VERSION = "0.2.12"
+__version__ = SYMAI_VERSION
 
 
 def _start_symai():
