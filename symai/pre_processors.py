@@ -419,12 +419,19 @@ class StylePreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         description = wrp_params['description']
-        text = f'Use the following format: {description}\n'
+        text = f'[FORMAT]: {description}\n'
         libs = ', '.join(wrp_params['libraries'])
-        libraries = f"Use the following libraries: {libs}\n"
-        content = f'Content:\n{str(wrp_self)}\n'
+        libraries = f"[LIBRARIES]: {libs}\n"
+        content = f'[DATA]:\n{str(wrp_self)}\n\n'
+        if 'template' not in wrp_params:
+            placeholder = wrp_params['placeholder']
+            template = wrp_params['template']
+            parts = str(template).split(placeholder)
+            assert len(parts) == 2, f"Your template must contain exactly one placeholder '{placeholder}'"
+            wrp_params['template_suffix'] = parts[1]
+            return f'f"{text}{libraries}{content}"----------\n[TEMPLATE]:\n{parts[0]}'
         return f"{text}{libraries}{content}"
-    
+
     
 class UnwrapListSymbolsPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:

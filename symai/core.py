@@ -485,9 +485,9 @@ def transcribe(modify: str,
 def style(description: str,
           libraries: List[str] = [],
           default: Optional[str] = None,
-          prompt: str = "Style the following content based on best practices and the following description. Do not change content of the data! \n",
+          prompt: str = "Style the [DATA] based on best practices and the descriptions in [...] brackets. Do not remove content from the data! Do not add libraries or other descriptions. \n",
           constraints: List[Callable] = [],
-          pre_processor: Optional[List[PreProcessor]] = [StylePreProcessor()],
+          pre_processor: Optional[List[PreProcessor]] = [StylePreProcessor(), TemplatePreProcessor()],
           post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
           **wrp_kwargs):
     """Styles a given text based on best practices and a given description.
@@ -498,7 +498,7 @@ def style(description: str,
         default (str, optional): The default style to be applied if the task cannot be solved. Defaults to None.
         prompt (str, optional): The prompt describing the task. Defaults to 'Style the following content based on best practices and the following description. Do not change content of the data! 
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [StylePreProcessor()].
+        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [StylePreProcessor(), TemplatePreProcessor()].
         post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:

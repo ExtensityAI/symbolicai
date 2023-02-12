@@ -98,6 +98,7 @@ from .pre_processors import *
 from .post_processors import *
 from .symbol import *
 from .components import *
+from .extended import *
 from .prompts import Prompt
 from .backend.base import Engine
 from .functional import (_process_query, ConstraintViolationException)

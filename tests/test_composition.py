@@ -480,6 +480,12 @@ modified:   tests/test_composition.py
         res = fq('What version number is in the file?')
         self.assertIsNotNone('0.2.0' in res)
         
+    def test_style_render_html(self):
+        url = 'https://images6.alphacoders.com/337/337780.jpg'
+        style_expr = HtmlStyleTemplate()
+        meta = style_expr(f'USER_CONTEXT: {str(url)}')
+        self.assertTrue('https://images6' in meta, meta)
+        
     def test_paper_component(self):
         paper = Paper(path='examples/paper.pdf')
         expr = Log(Trace(paper))
