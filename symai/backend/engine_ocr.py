@@ -35,7 +35,7 @@ class OCREngine(Engine):
 
         status_code = response.status_code
         if status_code != 200:
-            raise Exception(f"Whisper request failed with status code {status_code}")
+            raise Exception(f"OCR request failed with status code {status_code}")
         rsp = response.text
         output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
         if output_handler:
