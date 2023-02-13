@@ -1219,7 +1219,7 @@ def clean(prompt: str = "Clean up the text from special characters or escape seq
                     wrp_kwargs=wrp_kwargs)
     
     
-def compose(prompt: str = "Create a coherent text based on an outline:\n",
+def compose(prompt: str = "Create a coherent text based on the facts listed in the outline:\n",
             default: Optional[str] = None,
             examples: Optional[Prompt] = None,
             constraints: List[Callable] = [],
