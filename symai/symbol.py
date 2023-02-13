@@ -274,17 +274,23 @@ class Symbol(ABC):
             pass
         return self._sym_return_type(_func(self))
     
-    def __lshift__(self, other) -> "Symbol":
+    def __lshift__(self, information) -> "Symbol":
         @ai.include()
-        def _func(_, text: str, information: str):
+        def _func(_, information: str):
             pass
-        return self._sym_return_type(_func(self, other))
+        return self._sym_return_type(_func(self, information))
     
-    def __rshift__(self, other) -> "Symbol":
+    def __rshift__(self, information) -> "Symbol":
         @ai.include()
-        def _func(_, text: str, information: str):
+        def _func(_, information: str):
             pass
-        return self._sym_return_type(_func(self, other))
+        return self._sym_return_type(_func(self, information))
+    
+    def __rrshift__(self, information) -> "Symbol":
+        @ai.include()
+        def _func(_, information: str):
+            pass
+        return self._sym_return_type(_func(self, information))
     
     def __add__(self, other) -> "Symbol":
         @ai.combine()
@@ -416,7 +422,7 @@ class Symbol(ABC):
     
     def include(self, information: str, **kwargs) -> "Symbol":
         @ai.include(**kwargs)
-        def _func(_, text: str, information: str):
+        def _func(_, information: str):
             pass
         return self._sym_return_type(_func(self, information))
     

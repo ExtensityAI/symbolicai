@@ -148,6 +148,16 @@ In the _init_ function, the custom model takes in a configuration object (config
         res = sym.include('and bananas')
         self.assertTrue('I love to eat apples and bananas' in res, res)
         
+    def test_insert_lshift(self):
+        sym = Symbol('I love to eat apples')
+        res = sym << 'and bananas'
+        self.assertTrue('I love to eat apples and bananas' in res, res)
+        
+    def test_insert_rshift(self):
+        sym = Symbol('I love to eat apples')
+        res = 'and bananas' >> sym
+        self.assertTrue('I love to eat apples and bananas' in res, res)
+        
     def test_html_template(self):
         sym = Template()
         sym(Symbol('Create a table with two columns (title, price).', 'data points: Apple, 1.99; Banana, 2.99; Orange, 3.99'))
