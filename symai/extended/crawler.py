@@ -10,7 +10,7 @@ class Crawler(Expression):
             *filters
         ))
         
-    def forward(self, url: str, **kwargs) -> Symbol:
-        res = self.fetch(url=url)
+    def forward(self, url: str, pattern='www', **kwargs) -> Symbol:
+        res = self.fetch(url=url, pattern=pattern, **kwargs)
         vals = list(self.data_stream(res, **kwargs))
         return Symbol(vals)
