@@ -315,7 +315,7 @@ def modify(changes: str,
 def filtering(criteria: str,
               include: bool = False,
               default: Optional[str] = None,
-              prompt: str = "Filter the information from the text based on the filter criteria:\n",
+              prompt: str = "Filter the information from the text based on the filter criteria. Leave sentences unchanged if they are unrelated to the filter criteria:\n",
               examples: Prompt = Filter(),
               constraints: List[Callable] = [],
               pre_processor: Optional[List[PreProcessor]] = [FilterPreProcessor()],
@@ -1187,7 +1187,7 @@ def unique(prompt: str = "Create a short unique key that captures the essential 
                     wrp_kwargs=wrp_kwargs)
     
     
-def clean(prompt: str = "Clean up the text from special characters or escape sequences:\n",
+def clean(prompt: str = "Clean up the text from special characters or escape sequences. DO NOT change any words or sentences! Keep original semantics:\n",
           default: List[str] = None,
           limit: int = None,
           examples: Prompt = CleanText(),
