@@ -42,7 +42,7 @@ class Graph(Expression):
         def _func(_, text) -> str:
             pass
         
-        res = 'source,target,count\n'
+        res = 'source,target,value\n'
         sym_list = self.lambda_(sym)
         for s in sym_list:
             r = _func(self, s)
