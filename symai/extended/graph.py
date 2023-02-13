@@ -47,12 +47,17 @@ class Graph(Expression):
         for s in sym_list:
             if len(str(s)) > 0:
                 r = _func(self, s)
-                line = str(r)
-                line.split('\n')
-                for l in line:
-                    if l != '':
+                rec = str(r)
+                lines = rec.split('\n')
+                for l in lines:
+                    l = l.strip()
+                    if len(l) > 0:
                         csv = l.split(',')
-                        if len(csv) == 3 and type(csv[-1]) == int:
-                            res += l + '\n'
+                        try:
+                            if len(csv) == 3:
+                                test_ = int(csv[-1])
+                                res += l + '\n'
+                        except:
+                            pass
 
         return res
