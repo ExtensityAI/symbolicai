@@ -453,6 +453,16 @@ modified:   tests/test_composition.py
         path = os.path.abspath('results/news.html')
         res.save(path, replace=False)
         
+    def test_summarizer_component(self):
+        # crawler = Crawler(ExcludeFilter('sentences about subscriptions, licensing, newsletter, trademarks, terms of use, privacy policy'))
+        # data = crawler(url="https://en.wikipedia.org/wiki/Language_technology")
+        data = Symbol("""Language technology, often called human language technology (HLT), studies methods of how computer programs or electronic devices can analyze, produce, modify or respond to human texts and speech.[1] Working with language technology often requires broad knowledge not only about linguistics but also about computer science. """)
+        summarizer = Log(Trace(Summarizer()))
+        res = summarizer(data)
+        os.makedirs('results', exist_ok=True)
+        path = os.path.abspath('results/summary.html')
+        res.save(path, replace=False)
+        
     def test_graph_component(self):
         crawler = Crawler(ExcludeFilter('sentences about subscriptions, licensing, newsletter, trademarks, terms of use, privacy policy'))
         data = crawler(url="https://en.wikipedia.org/wiki/Language_technology")
