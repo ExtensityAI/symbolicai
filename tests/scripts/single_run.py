@@ -3,6 +3,7 @@ import pandas as pd
 from pathlib import Path
 
 import symai as ai
+from symai.extended import Solver
 from symai import Symbol, Expression
 from symai.backend.engine_nesy_client import NeSyClientEngine
 
@@ -24,7 +25,7 @@ def run_single_test():
         {"test": 'A line parallel to y = 4x + 6 passes through (5, 10). What is the y-coordinate of the point where this line crosses the y-axis?', "expected": "-10"},
     ]
     
-    solver = ai.Solver()
+    solver = Solver()
     for test in tests:
         res = solver(test["test"])
         print(res)

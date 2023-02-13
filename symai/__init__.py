@@ -104,4 +104,3 @@ from .backend.base import Engine
 from .functional import (_process_query, ConstraintViolationException)
 from .chat import ChatBot
 from .shell import Shell
-from .solver import Solver
