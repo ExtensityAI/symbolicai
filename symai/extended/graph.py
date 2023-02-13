@@ -45,13 +45,14 @@ class Graph(Expression):
         res = 'source,target,value\n'
         sym_list = self.lambda_(sym)
         for s in sym_list:
-            r = _func(self, s)
-            line = str(r)
-            line.split('\n')
-            for l in line:
-                if l != '':
-                    csv = l.split(',')
-                    if len(csv) == 3 and type(csv[-1]) == int:
-                        res += l + '\n'
+            if len(str(s)) > 0:
+                r = _func(self, s)
+                line = str(r)
+                line.split('\n')
+                for l in line:
+                    if l != '':
+                        csv = l.split(',')
+                        if len(csv) == 3 and type(csv[-1]) == int:
+                            res += l + '\n'
 
         return res
