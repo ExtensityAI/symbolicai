@@ -248,7 +248,7 @@ class FileQuery(Expression):
         self.query_stream = Stream(Sequence(
             IncludeFilter(filter),
         ))
-        self.file = file_open('examples/file.json')
+        self.file = file_open(path)
         
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
         res = Symbol(list(self.query_stream(self.file)))
