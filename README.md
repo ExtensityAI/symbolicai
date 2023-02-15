@@ -641,7 +641,7 @@ We will now explain each prompt concept in more details:
   else:
       pass # all good
   ```
-  Regardless of how we set the context, our contextualized prompt defines the desired behavior of the Expression operations. For example, if we want to operate in the context of a domain-specific language, without having to override each base class method. See more details in [this notebook](notebooks/demo.ipynb).
+  Regardless of how we set the context, our contextualized prompt defines the desired behavior of the Expression operations. For example, if we want to operate in the context of a domain-specific language, without having to override each base class method. See more details in [this notebook](notebooks/Queries.ipynb).
 
 - The `Operation` prompts define the behavior of an atomic operation and is therefore mandatory to express the nature of such an operation. For example, the `+`-operation is used to add two Symbols together and therefore the `+`-operation prompt explains its behavior. `Examples` defines another optional structure that provides the neural computation engine with a set of demonstrations that are used to properly condition the engine. For example, the `+`-operation prompt can be conditioned on how to add numbers by providing a set of demonstrations, such as `1 + 1 = 2`, `2 + 2 = 4`, etc.
 
