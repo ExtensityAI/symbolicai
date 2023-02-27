@@ -195,13 +195,13 @@ class Solver(ai.Expression):
             formula = self.rewrite_formula(sym, **kwargs)
             print(formula)   
         elif 'Implication and logical expressions' == problem:
-            pass
+            raise NotImplementedError('This feature is not yet implemented.')
         elif 'Probability and statistics' == problem:
-            pass
+            raise NotImplementedError('This feature is not yet implemented.')
         elif 'Linear algebra' == problem:
-            pass
+            raise NotImplementedError('This feature is not yet implemented.')
         elif 'Linguistic problem with relations' == problem:
-            pass
+            raise NotImplementedError('This feature is not yet implemented.')
         else:
             return "Sorry, something went wrong. Please check if your backend is available and try again or report an issue to the devs. :("
     
