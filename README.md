@@ -8,7 +8,9 @@
 Read further [**documentation here**](https://symbolicai.readthedocs.io/).
 
 [![PyPI version](https://badge.fury.io/py/symbolicai.svg)](https://badge.fury.io/py/symbolicai) [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause) [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/dinumariusc.svg?style=social&label=Follow%20%40DinuMariusC)](https://twitter.com/DinuMariusC) [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/symbolicapi.svg?style=social&label=Follow%20%40SymbolicAI)](https://twitter.com/SymbolicAPI) [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/Xpitfire/symbolicai/issues)
-[![Discord](https://img.shields.io/discord/768087161878085643?label=Discord&logo=Discord&logoColor=white)](https://discord.gg/QYMNnh9ra8) [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FXpitfire%2Fsymbolicai&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)](https://hits.seeyoufarm.com)
+[![Discord](https://img.shields.io/discord/768087161878085643?label=Discord&logo=Discord&logoColor=white)](https://discord.gg/QYMNnh9ra8) [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FXpitfire%2Fsymbolicai&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)](https://hits.seeyoufarm.com) [![GitHub forks](https://img.shields.io/github/forks/Xpitfire/symbolicai.svg?style=social&label=Fork&maxAge=2592000)](https://GitHub.com/Xpitfire/symbolicai) [![GitHub stars](https://img.shields.io/github/stars/Xpitfire/symbolicai.svg?style=social&label=Star&maxAge=2592000)](https://GitHub.com/Xpitfire/symbolicai/stargazers/)
+
+
 
 <img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/preview.gif">
 
@@ -1119,6 +1121,7 @@ This project is inspired by the following works, but not limited to them:
 * [Tracr: Compiled Transformers as a Laboratory for Interpretability](https://arxiv.org/abs/2301.05062)
 * [How can computers get common sense?](https://www.science.org/doi/10.1126/science.217.4566.1237)
 * [Artificial Intelligence: A Modern Approach](http://aima.cs.berkeley.edu/)
+* [SymPy: symbolic computing in Python](https://github.com/sympy/sympy)
 * [Neuro-symbolic programming](https://arxiv.org/abs/2210.05050)
 * [Fuzzy Sets](https://web.archive.org/web/20150813153834/http://www.cs.berkeley.edu/~zadeh/papers/Fuzzy%20Sets-Information%20and%20Control-1965.pdf)
 * [An early approach toward graded identity and graded membership in set theory](https://www.sciencedirect.com/science/article/abs/pii/S0165011409005326?via%3Dihub)
