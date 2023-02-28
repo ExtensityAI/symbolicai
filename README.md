@@ -436,7 +436,7 @@ To give an rough idea of how we would approach this with our framework is by, fi
 val = "<one of the examples above>"
 
 # First define a class that inherits from the Expression class
-class ComplexExpression(Expression): # more to the Expression class in later sections
+class ComplexExpression(ai.Expression): # more to the Expression class in later sections
     # write a method that returns the causal evaluation
     def causal_expression(self):
         pass # see below for implementation
@@ -475,7 +475,7 @@ def causal_expression(self):
         sentences = self / '.' # first split into sentences
         graph = {} # define graph
         for s in sentences:
-            sym = Symbol(s)
+            sym = ai.Symbol(s)
             relations = sym.extract('connected entities (e.g. A has three B => A | A: three B)') / '|' # and split by pipe
             for r in relations:
                 ... # add relations and populate graph => alternatively, read also about CycleGT
