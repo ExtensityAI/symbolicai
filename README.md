@@ -414,7 +414,7 @@ True
 Our framework was built with the intention to enable reasoning capabilities on top of statistical inference of LLMs. Therefore, we can also perform deductive reasoning operations with our Symbol objects. For example, we can define a set of operations with rules that define the causal relationship between two symbols. The following example shows how the `&` is used to compute the logical implication of two symbols. 
 
 ```python
-res = Symbol('The horn only sounds on Sundays.') & Symbol('I hear the horn.')
+res = ai.Symbol('The horn only sounds on Sundays.') & ai.Symbol('I hear the horn.')
 ```
 ```bash
 :[Output]:
