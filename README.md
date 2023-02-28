@@ -375,7 +375,7 @@ Similar to word2vec we intend to perform contextualized operations on different 
 The following examples show how to evaluate such an expression via a string representation:
 
 ```python
-Symbol('King - Man + Women').expression()
+ai.Symbol('King - Man + Women').expression()
 ```
 ```bash
 :[Output]:
