@@ -1,26 +1,27 @@
 import functools
+import symai as ai
 from typing import Dict, List, Callable, Optional
 from .prompts import *
 from .pre_processors import *
 from .post_processors import *
 from .functional import few_shot_func, symbolic_func, search_func, crawler_func, userinput_func, execute_func, open_func, output_func, \
-    command_func, embed_func, vision_func, ocr_func, speech_func, imagerendering_func, setup_func, index_func
+    command_func, embed_func, vision_func, ocr_func, speech_func, imagerendering_func, setup_func, index_func, cache_registry_func
 
 
 _symbolic_expression_engine = None
 
 
 def few_shot(prompt: str,
-             examples: Prompt, 
+             examples: Prompt,
              constraints: List[Callable] = [],
-             default: Optional[object] = None, 
+             default: Optional[object] = None,
              limit: int = 1,
              pre_processor: Optional[List[PreProcessor]] = None,
              post_processor: Optional[List[PostProcessor]] = None,
              **wrp_kwargs):
     """"General decorator for the neural processing engine.
     This method is used to decorate functions which can build any expression in a examples-based way.
-    
+
     Args:
         prompt (str): The prompt describing the task. Defaults to 'Summarize the content of the following text:\n'.
         examples (Prompt): A Prompt object containing a list of examples to be used for the task in specified format.
@@ -31,21 +32,21 @@ def few_shot(prompt: str,
         pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model to match the format of the examples. Defaults to None.
         post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
         **wrp_kwargs: Additional arguments as key-value pairs passed to the decorated function, which can later accessed in pre_processors and post_processors via the wrp_params['key'] dictionary.
-        
+
     Returns:
         object: The prediction of the model based on the return type of the decorated function. Defaults to object, if not specified or to str if cast was not possible.
     """
     def decorator(func):
         @functools.wraps(func)
         def wrapper(wrp_self, *args, **kwargs):
-            return few_shot_func(wrp_self, 
-                                 func=func, 
-                                 prompt=prompt, 
-                                 examples=examples, 
-                                 constraints=constraints, 
-                                 default=default, 
+            return few_shot_func(wrp_self,
+                                 func=func,
+                                 prompt=prompt,
+                                 examples=examples,
+                                 constraints=constraints,
+                                 default=default,
                                  limit=limit,
-                                 pre_processor=pre_processor, 
+                                 pre_processor=pre_processor,
                                  post_processor=post_processor,
                                  wrp_kwargs=wrp_kwargs,
                                  args=args, kwargs=kwargs)
@@ -53,16 +54,16 @@ def few_shot(prompt: str,
     return decorator
 
 
-def zero_shot(prompt: str, 
-              constraints: List[Callable] = [], 
-              default: Optional[object] = None, 
+def zero_shot(prompt: str,
+              constraints: List[Callable] = [],
+              default: Optional[object] = None,
               limit: int = 1,
               pre_processor: Optional[List[PreProcessor]] = None,
               post_processor: Optional[List[PostProcessor]] = None,
               **wrp_kwargs):
     """"General decorator for the neural processing engine.
     This method is used to decorate functions which can build any expression without examples.
-    
+
     Args:
         prompt (str): The prompt describing the task. Defaults to 'Summarize the content of the following text:\n'.
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
@@ -72,7 +73,7 @@ def zero_shot(prompt: str,
         pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
         post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
         **wrp_kwargs: Additional arguments as key-value pairs passed to the decorated function, which can later accessed in pre_processors and post_processors via the wrp_params['key'] dictionary.
-        
+
     Returns:
         object: The prediction of the model based on the return type of the decorated function. Defaults to object, if not specified or to str if cast was not possible.
     """
@@ -84,12 +85,12 @@ def zero_shot(prompt: str,
                     pre_processor=pre_processor,
                     post_processor=post_processor,
                     wrp_kwargs=wrp_kwargs)
-    
-    
-def summarize(prompt: str = 'Summarize the content of the following text:\n', 
+
+
+def summarize(prompt: str = 'Summarize the content of the following text:\n',
               context: Optional[str] = None,
-              constraints: List[Callable] = [], 
-              default: Optional[object] = None, 
+              constraints: List[Callable] = [],
+              default: Optional[object] = None,
               pre_processor: Optional[List[PreProcessor]] = [SummaryPreProcessing()],
               post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
               **wrp_kwargs):
@@ -215,8 +216,8 @@ def delitem(default: Optional[str] = None,
                     pre_processor=pre_processor,
                     post_processor=post_processor,
                     **wrp_kwargs)
-    
-    
+
+
 def setitem(default: Optional[str] = None,
             prompt: str = "Set item at index position\n",
             examples: Prompt = SetIndex(),
@@ -246,8 +247,8 @@ def setitem(default: Optional[str] = None,
                     pre_processor=pre_processor,
                     post_processor=post_processor,
                     **wrp_kwargs)
-    
-    
+
+
 def getitem(default: Optional[str] = None,
             prompt: str = "Get item at index position\n",
             examples: Prompt = Index(),
@@ -277,8 +278,8 @@ def getitem(default: Optional[str] = None,
                     pre_processor=pre_processor,
                     post_processor=post_processor,
                     **wrp_kwargs)
-    
-    
+
+
 def modify(changes: str,
            default: Optional[str] = None,
            prompt: str = "Modify the text to match the criteria:\n",
@@ -310,8 +311,8 @@ def modify(changes: str,
                     pre_processor=pre_processor,
                     post_processor=post_processor,
                     **wrp_kwargs)
-    
-    
+
+
 def filtering(criteria: str,
               include: bool = False,
               default: Optional[str] = None,
@@ -379,8 +380,8 @@ def notify(subscriber: Dict[str, Callable],
                     pre_processor=pre_processor,
                     post_processor=post_processor,
                     **wrp_kwargs)
-    
-    
+
+
 def compare(default: bool = False,
             operator: str = '>',
             prompt: str = "Compare number 'A' to 'B':\n",
@@ -447,8 +448,8 @@ def convert(format: str,
                     pre_processor=pre_processor,
                     post_processor=post_processor,
                     **wrp_kwargs)
-    
-    
+
+
 def transcribe(modify: str,
                default: Optional[str] = None,
                prompt: str = "Transcribe the following text by only modifying the text by the provided instruction.\n",
@@ -480,8 +481,8 @@ def transcribe(modify: str,
                     pre_processor=pre_processor,
                     post_processor=post_processor,
                     **wrp_kwargs)
-    
-    
+
+
 def style(description: str,
           libraries: List[str] = [],
           default: Optional[str] = None,
@@ -496,7 +497,7 @@ def style(description: str,
         description (str): The description of the style to be applied.
         libraries (List[str], optional): A list of libraries to be used. Defaults to [].
         default (str, optional): The default style to be applied if the task cannot be solved. Defaults to None.
-        prompt (str, optional): The prompt describing the task. Defaults to 'Style the following content based on best practices and the following description. Do not change content of the data! 
+        prompt (str, optional): The prompt describing the task. Defaults to 'Style the following content based on best practices and the following description. Do not change content of the data!
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [StylePreProcessor(), TemplatePreProcessor()].
         post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -514,8 +515,8 @@ def style(description: str,
                     pre_processor=pre_processor,
                     post_processor=post_processor,
                     **wrp_kwargs)
-    
-    
+
+
 def analyze(query: str,
             exception: Exception,
             default: Optional[str] = None,
@@ -550,8 +551,8 @@ def analyze(query: str,
                     pre_processor=pre_processor,
                     post_processor=post_processor,
                     **wrp_kwargs)
-    
-    
+
+
 def correct(context: str,
             exception: Exception,
             default: Optional[str] = None,
@@ -587,7 +588,7 @@ def correct(context: str,
                     post_processor=post_processor,
                     **wrp_kwargs)
 
-    
+
 def translate(language: str = 'English',
               default: str = "Sorry, I do not understand the given language.",
               prompt: str = "Translate the following text into {}:\n",
@@ -619,8 +620,8 @@ def translate(language: str = 'English',
                     pre_processor=pre_processor,
                     post_processor=post_processor,
                     **wrp_kwargs)
-    
-    
+
+
 def rank(default: Optional[object] = None,
          order: str = 'desc',
          prompt: str = "Order the list of objects based on their quality measure and oder literal:\n",
@@ -653,8 +654,8 @@ def rank(default: Optional[object] = None,
                     pre_processor=pre_processor,
                     post_processor=post_processor,
                     **wrp_kwargs)
-    
-    
+
+
 def replace(prompt: str = "Replace text parts by string pattern.\n",
             default: Optional[str] = None,
             examples: Prompt = ReplaceText(),
@@ -675,7 +676,7 @@ def replace(prompt: str = "Replace text parts by string pattern.\n",
     Returns:
         str: The replaced text.
     """
-    return few_shot(prompt=prompt, 
+    return few_shot(prompt=prompt,
                     examples=examples,
                     constraints=constraints,
                     default=default,
@@ -683,8 +684,8 @@ def replace(prompt: str = "Replace text parts by string pattern.\n",
                     pre_processor=pre_processor,
                     post_processor=post_processor,
                     **wrp_kwargs)
-    
-    
+
+
 def include(prompt: str = "Include information based on description.\n",
             default: Optional[str] = None,
             examples: Prompt = IncludeText(),
@@ -713,8 +714,8 @@ def include(prompt: str = "Include information based on description.\n",
                     pre_processor=pre_processor,
                     post_processor=post_processor,
                     **wrp_kwargs)
-    
-    
+
+
 def combine(prompt: str = "Add the two data types in a logical way:\n",
             default: Optional[str] = None,
             examples: Prompt = CombineText(),
@@ -743,8 +744,8 @@ def combine(prompt: str = "Add the two data types in a logical way:\n",
                     pre_processor=pre_processor,
                     post_processor=post_processor,
                     **wrp_kwargs)
-    
-    
+
+
 def template(template: str,
              prompt: str = 'Insert the data into the template in the best suitable format (header, tables, paragraphs, buttons, etc.):\n',
              placeholder: str = '{{placeholder}}',
@@ -779,8 +780,8 @@ def template(template: str,
                     pre_processor=pre_processor,
                     post_processor=post_processor,
                     **wrp_kwargs)
-    
-    
+
+
 def negate(prompt: str = "Negate the following statement:\n",
            default: Optional[str] = None,
            examples: Prompt = NegateStatement(),
@@ -801,7 +802,7 @@ def negate(prompt: str = "Negate the following statement:\n",
     Returns:
         str: The negated statement.
     """
-    return few_shot(prompt=prompt, 
+    return few_shot(prompt=prompt,
                     examples=examples,
                     constraints=constraints,
                     default=default,
@@ -831,7 +832,7 @@ def contains(default: bool = False,
     Returns:
         bool: Whether the given string is contained in the provided string.
     """
-    return few_shot(prompt=prompt, 
+    return few_shot(prompt=prompt,
                     examples=examples,
                     constraints=constraints,
                     default=default,
@@ -841,8 +842,8 @@ def contains(default: bool = False,
                     pre_processor=pre_processor,
                     post_processor=post_processor,
                     **wrp_kwargs)
-    
-    
+
+
 def isinstanceof(default: bool = False,
                  prompt: str = "Detect if 'A' isinstanceof 'B':\n",
                  examples: Prompt = IsInstanceOf(),
@@ -863,7 +864,7 @@ def isinstanceof(default: bool = False,
     Returns:
         bool: Whether or not the object is an instance of the other.
     """
-    return few_shot(prompt=prompt, 
+    return few_shot(prompt=prompt,
                     examples=examples,
                     constraints=constraints,
                     default=default,
@@ -888,7 +889,7 @@ def case(enum: List[str],
     Args:
         enum (List[str]): A list of strings representing the categories to be classified.
         default (str): The default category to be returned if the task cannot be solved.
-        examples (Prompt, optional): A list of examples used to train the model. 
+        examples (Prompt, optional): A list of examples used to train the model.
         stop (List[str], optional): A list of strings that will stop the prompt. Defaults to ['\n'].
         prompt (str, optional): The prompt describing the task. Defaults to "Classify the text according to one of the following categories: ".
         pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [EnumPreProcessor(), TextMessagePreProcessor(), PredictionMessagePreProcessor()].
@@ -928,7 +929,7 @@ def extract(prompt: str = "Extract a pattern from text:\n",
     Returns:
         str: The extracted pattern.
     """
-    return few_shot(prompt=prompt, 
+    return few_shot(prompt=prompt,
                     examples=examples,
                     constraints=constraints,
                     default=default,
@@ -967,8 +968,8 @@ def expression(prompt: str = "Evaluate the symbolic expressions:\n",
         def decorator(func):
             @functools.wraps(func)
             def wrapper(wrp_self, *args, **kwargs):
-                return symbolic_func(wrp_self, 
-                                     func=func, 
+                return symbolic_func(wrp_self,
+                                     func=func,
                                      prompt=prompt,
                                      default=default,
                                      limit=1,
@@ -980,7 +981,7 @@ def expression(prompt: str = "Evaluate the symbolic expressions:\n",
             return wrapper
         return decorator
     # otherwise, use the default symbolic expression engine
-    return few_shot(prompt=prompt, 
+    return few_shot(prompt=prompt,
                     examples=examples,
                     constraints=constraints,
                     default=default,
@@ -989,8 +990,8 @@ def expression(prompt: str = "Evaluate the symbolic expressions:\n",
                     pre_processor=pre_processor,
                     post_processor=post_processor,
                     **wrp_kwargs)
-    
-    
+
+
 def logic(prompt: str = "Evaluate the logic expressions:\n",
           operator: str = 'and',
           default: Optional[str] = None,
@@ -1013,7 +1014,7 @@ def logic(prompt: str = "Evaluate the logic expressions:\n",
     Returns:
         str: The evaluated expression.
     """
-    return few_shot(prompt=prompt, 
+    return few_shot(prompt=prompt,
                     examples=examples,
                     operator=operator,
                     constraints=constraints,
@@ -1023,7 +1024,7 @@ def logic(prompt: str = "Evaluate the logic expressions:\n",
                     pre_processor=pre_processor,
                     post_processor=post_processor,
                     **wrp_kwargs)
-    
+
 
 def invert(prompt: str = "Invert the logic of the content:\n",
            default: Optional[str] = None,
@@ -1045,7 +1046,7 @@ def invert(prompt: str = "Invert the logic of the content:\n",
     Returns:
         str: The logic of the statement inverted.
     """
-    return few_shot(prompt=prompt, 
+    return few_shot(prompt=prompt,
                     examples=examples,
                     constraints=constraints,
                     default=default,
@@ -1078,7 +1079,7 @@ def simulate(prompt: str = "Simulate the following code:\n",
     Returns:
         str: The result of the code simulation.
     """
-    return few_shot(prompt=prompt, 
+    return few_shot(prompt=prompt,
                     examples=examples,
                     constraints=constraints,
                     default=default,
@@ -1110,7 +1111,7 @@ def code(prompt: str = "Generate code that solves the following problems:\n",
     Returns:
         str: The generated code that solves the given problem.
     """
-    return few_shot(prompt=prompt, 
+    return few_shot(prompt=prompt,
                     examples=examples,
                     constraints=constraints,
                     default=default,
@@ -1118,8 +1119,8 @@ def code(prompt: str = "Generate code that solves the following problems:\n",
                     pre_processor=pre_processor,
                     post_processor=post_processor,
                     **wrp_kwargs)
-    
-    
+
+
 def outline(prompt: str = "Outline only the essential content as a short list of bullets. Each bullet is in a new line:\n",
             default: List[str] = None,
             limit: int = None,
@@ -1142,7 +1143,7 @@ def outline(prompt: str = "Outline only the essential content as a short list of
     Returns:
         List[str]: The short list of bullets outlining the essential content.
     """
-    return few_shot(prompt=prompt, 
+    return few_shot(prompt=prompt,
                     examples=examples,
                     constraints=constraints,
                     default=default,
@@ -1150,8 +1151,8 @@ def outline(prompt: str = "Outline only the essential content as a short list of
                     pre_processor=pre_processor,
                     post_processor=post_processor,
                     wrp_kwargs=wrp_kwargs)
-    
-    
+
+
 def unique(prompt: str = "Create a short unique key that captures the essential topic from the following statements and does not collide with the list of keys:\n",
            keys: List[str] = None,
            default: List[str] = None,
@@ -1176,7 +1177,7 @@ def unique(prompt: str = "Create a short unique key that captures the essential 
     Returns:
         List[str]: The list of unique keys.
     """
-    return few_shot(prompt=prompt, 
+    return few_shot(prompt=prompt,
                     keys=keys,
                     examples=examples,
                     constraints=constraints,
@@ -1185,8 +1186,8 @@ def unique(prompt: str = "Create a short unique key that captures the essential 
                     pre_processor=pre_processor,
                     post_processor=post_processor,
                     wrp_kwargs=wrp_kwargs)
-    
-    
+
+
 def clean(prompt: str = "Clean up the text from special characters or escape sequences. DO NOT change any words or sentences! Keep original semantics:\n",
           default: List[str] = None,
           limit: int = None,
@@ -1209,7 +1210,7 @@ def clean(prompt: str = "Clean up the text from special characters or escape seq
     Returns:
         List[str]: The cleaned up text.
     """
-    return few_shot(prompt=prompt, 
+    return few_shot(prompt=prompt,
                     examples=examples,
                     constraints=constraints,
                     default=default,
@@ -1217,8 +1218,8 @@ def clean(prompt: str = "Clean up the text from special characters or escape seq
                     pre_processor=pre_processor,
                     post_processor=post_processor,
                     wrp_kwargs=wrp_kwargs)
-    
-    
+
+
 def compose(prompt: str = "Create a coherent text based on the facts listed in the outline:\n",
             default: Optional[str] = None,
             examples: Optional[Prompt] = None,
@@ -1239,7 +1240,7 @@ def compose(prompt: str = "Create a coherent text based on the facts listed in t
     Returns:
         str: The composed text.
     """
-    return few_shot(prompt=prompt, 
+    return few_shot(prompt=prompt,
                     examples=examples,
                     constraints=constraints,
                     default=default,
@@ -1247,8 +1248,8 @@ def compose(prompt: str = "Create a coherent text based on the facts listed in t
                     pre_processor=pre_processor,
                     post_processor=post_processor,
                     wrp_kwargs=wrp_kwargs)
-    
-    
+
+
 def foreach(condition: str,
             apply: str,
             prompt: str = "Iterate over each element and apply operation based on condition:\n",
@@ -1283,9 +1284,9 @@ def foreach(condition: str,
                     pre_processor=pre_processor,
                     post_processor=post_processor,
                     wrp_kwargs=wrp_kwargs)
-    
-    
-def dictionary(context: str, 
+
+
+def dictionary(context: str,
                prompt: str = "Map related content together under a common abstract topic. Do not remove content:\n",
                default: Optional[str] = None,
                examples: Prompt = MapContent(),
@@ -1316,8 +1317,8 @@ def dictionary(context: str,
                     pre_processor=pre_processor,
                     post_processor=post_processor,
                     wrp_kwargs=wrp_kwargs)
-    
-    
+
+
 def listing(condition: str,
             prompt: str = "List each element contained in the text or list based on condition:\n",
             default: Optional[str] = None,
@@ -1355,7 +1356,7 @@ def query(context: str,
           prompt: Optional[str] = None,
           examples: Optional[Prompt] = None,
           constraints: List[Callable] = [],
-          default: Optional[object] = None, 
+          default: Optional[object] = None,
           pre_processor: Optional[List[PreProcessor]] = [QueryPreProcessor()],
           post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
           **wrp_kwargs):
@@ -1382,8 +1383,8 @@ def query(context: str,
                     pre_processor=pre_processor,
                     post_processor=post_processor,
                     wrp_kwargs=wrp_kwargs)
-    
-    
+
+
 def expand(prompt: Optional[str] = 'Write a self-contained function (with all imports) to solve a specific user problem task. Label the function with a name that describes the task.',
            examples: Optional[Prompt] = ExpandFunction(),
            constraints: List[Callable] = [],
@@ -1417,7 +1418,7 @@ def expand(prompt: Optional[str] = 'Write a self-contained function (with all im
 
 def search(query: str,
            constraints: List[Callable] = [],
-           default: Optional[object] = None, 
+           default: Optional[object] = None,
            limit: int = 1,
            pre_processor: Optional[List[PreProcessor]] = None,
            post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
@@ -1428,7 +1429,7 @@ def search(query: str,
     Args:
         query (str): The query to be searched for.
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        default (object, optional): The default value to be returned if the task cannot be solved. Defaults to None. 
+        default (object, optional): The default value to be returned if the task cannot be solved. Defaults to None.
         limit (int, optional): The maximum number of results to be returned. Defaults to 1.
         pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
         post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -1444,10 +1445,10 @@ def search(query: str,
             return search_func(wrp_self,
                                func=func,
                                query=query,
-                               constraints=constraints, 
-                               default=default, 
-                               limit=limit, 
-                               pre_processor=pre_processor, 
+                               constraints=constraints,
+                               default=default,
+                               limit=limit,
+                               pre_processor=pre_processor,
                                post_processor=post_processor,
                                wrp_args=wrp_args,
                                wrp_kwargs=wrp_kwargs,
@@ -1458,7 +1459,7 @@ def search(query: str,
 
 def opening(path: str,
             constraints: List[Callable] = [],
-            default: Optional[object] = None, 
+            default: Optional[object] = None,
             limit: int = None,
             pre_processor: Optional[List[PreProcessor]] = None,
             post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
@@ -1485,10 +1486,10 @@ def opening(path: str,
             return open_func(wrp_self,
                              func=func,
                              path=path,
-                             constraints=constraints, 
-                             default=default, 
-                             limit=limit, 
-                             pre_processor=pre_processor, 
+                             constraints=constraints,
+                             default=default,
+                             limit=limit,
+                             pre_processor=pre_processor,
                              post_processor=post_processor,
                              wrp_args=wrp_args,
                              wrp_kwargs=wrp_kwargs,
@@ -1520,7 +1521,7 @@ def embed(entries: List[str],
             return embed_func(wrp_self,
                               entries=entries,
                               func=func,
-                              pre_processor=pre_processor, 
+                              pre_processor=pre_processor,
                               post_processor=post_processor,
                               wrp_args=wrp_args,
                               wrp_kwargs=wrp_kwargs,
@@ -1548,7 +1549,7 @@ def cluster(entries: List[str],
                  pre_processor=pre_processor,
                  post_processor=post_processor,
                  wrp_kwargs=wrp_kwargs)
-    
+
 
 def draw(operation: str = 'create',
          prompt: str = '',
@@ -1576,15 +1577,15 @@ def draw(operation: str = 'create',
                                        operation=operation,
                                        prompt=prompt,
                                        func=func,
-                                       pre_processor=pre_processor, 
+                                       pre_processor=pre_processor,
                                        post_processor=post_processor,
                                        wrp_args=wrp_args,
                                        wrp_kwargs=wrp_kwargs,
                                        args=args, kwargs=kwargs)
         return wrapper
     return decorator
-    
-    
+
+
 def vision(image: Optional[str] = None,
            text: List[str] = None,
            pre_processor: Optional[List[PreProcessor]] = None,
@@ -1611,7 +1612,7 @@ def vision(image: Optional[str] = None,
                                image=image,
                                prompt=text,
                                func=func,
-                               pre_processor=pre_processor, 
+                               pre_processor=pre_processor,
                                post_processor=post_processor,
                                wrp_args=wrp_args,
                                wrp_kwargs=wrp_kwargs,
@@ -1643,7 +1644,7 @@ def ocr(image: str,
             return ocr_func(wrp_self,
                             image=image,
                             func=func,
-                            pre_processor=pre_processor, 
+                            pre_processor=pre_processor,
                             post_processor=post_processor,
                             wrp_args=wrp_args,
                             wrp_kwargs=wrp_kwargs,
@@ -1675,7 +1676,7 @@ def speech(prompt: str = 'decode',
             return speech_func(wrp_self,
                                prompt=prompt,
                                func=func,
-                               pre_processor=pre_processor, 
+                               pre_processor=pre_processor,
                                post_processor=post_processor,
                                wrp_args=wrp_args,
                                wrp_kwargs=wrp_kwargs,
@@ -1685,7 +1686,7 @@ def speech(prompt: str = 'decode',
 
 
 def output(constraints: List[Callable] = [],
-           default: Optional[object] = None, 
+           default: Optional[object] = None,
            limit: int = None,
            pre_processor: Optional[List[PreProcessor]] = [ConsolePreProcessor()],
            post_processor: Optional[List[PostProcessor]] = [ConsolePostProcessor()],
@@ -1710,10 +1711,10 @@ def output(constraints: List[Callable] = [],
         def wrapper(wrp_self, *args, **kwargs):
             return output_func(wrp_self,
                                func=func,
-                               constraints=constraints, 
-                               default=default, 
-                               limit=limit, 
-                               pre_processor=pre_processor, 
+                               constraints=constraints,
+                               default=default,
+                               limit=limit,
+                               pre_processor=pre_processor,
                                post_processor=post_processor,
                                wrp_args=wrp_args,
                                wrp_kwargs=wrp_kwargs,
@@ -1725,7 +1726,7 @@ def output(constraints: List[Callable] = [],
 def fetch(url: str,
           pattern: str = '',
           constraints: List[Callable] = [],
-          default: Optional[object] = None, 
+          default: Optional[object] = None,
           limit: int = 1,
           pre_processor: Optional[List[PreProcessor]] = [CrawlPatternPreProcessor()],
           post_processor: Optional[List[PostProcessor]] = [HtmlGetTextPostProcessor()],
@@ -1750,14 +1751,14 @@ def fetch(url: str,
     def decorator(func):
         @functools.wraps(func)
         def wrapper(wrp_self, *args, **kwargs):
-            return crawler_func(wrp_self, 
+            return crawler_func(wrp_self,
                                 func=func,
                                 url=url,
                                 pattern=pattern,
-                                constraints=constraints, 
-                                default=default, 
-                                limit=limit, 
-                                pre_processor=pre_processor, 
+                                constraints=constraints,
+                                default=default,
+                                limit=limit,
+                                pre_processor=pre_processor,
                                 post_processor=post_processor,
                                 wrp_args=wrp_args,
                                 wrp_kwargs=wrp_kwargs,
@@ -1767,7 +1768,7 @@ def fetch(url: str,
 
 
 def userinput(constraints: List[Callable] = [],
-              default: Optional[object] = None, 
+              default: Optional[object] = None,
               pre_processor: Optional[List[PreProcessor]] = [ConsoleInputPreProcessor()],
               post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
               *wrp_args,
@@ -1789,11 +1790,11 @@ def userinput(constraints: List[Callable] = [],
     def decorator(func):
         @functools.wraps(func)
         def wrapper(wrp_self, *args, **kwargs):
-            return userinput_func(wrp_self, 
+            return userinput_func(wrp_self,
                                   func=func,
-                                  constraints=constraints, 
-                                  default=default, 
-                                  pre_processor=pre_processor, 
+                                  constraints=constraints,
+                                  default=default,
+                                  pre_processor=pre_processor,
                                   post_processor=post_processor,
                                   wrp_args=wrp_args,
                                   wrp_kwargs=wrp_kwargs,
@@ -1824,12 +1825,12 @@ def execute(default: Optional[str] = None,
     def decorator(func):
         @functools.wraps(func)
         def wrapper(wrp_self, *args, **kwargs):
-            return execute_func(wrp_self, 
+            return execute_func(wrp_self,
                                 func=func,
                                 code=str(wrp_self),
-                                constraints=constraints, 
-                                default=default, 
-                                pre_processor=pre_processor, 
+                                constraints=constraints,
+                                default=default,
+                                pre_processor=pre_processor,
                                 post_processor=post_processor,
                                 wrp_args=wrp_args,
                                 wrp_kwargs=wrp_kwargs,
@@ -1865,13 +1866,13 @@ def index(prompt: str,
     def decorator(func):
         @functools.wraps(func)
         def wrapper(wrp_self, *args, **kwargs):
-            return index_func(wrp_self, 
+            return index_func(wrp_self,
                               func=func,
                               prompt=prompt,
                               operation=operation,
-                              constraints=constraints, 
-                              default=default, 
-                              pre_processor=pre_processor, 
+                              constraints=constraints,
+                              default=default,
+                              pre_processor=pre_processor,
                               post_processor=post_processor,
                               wrp_args=wrp_args,
                               wrp_kwargs=wrp_kwargs,
@@ -1880,10 +1881,10 @@ def index(prompt: str,
     return decorator
 
 
-def command(engines: List[str] = ['all'], 
+def command(engines: List[str] = ['all'],
             **wrp_kwargs):
     """Decorates a function to forward commands to the engine backends.
-    
+
     Args:
         engines (List[str], optional): A list of engines to forward the command to. Defaults to ['all'].
         wrp_kwargs (dict): A dictionary of keyword arguments to the command function.
@@ -1906,10 +1907,10 @@ def command(engines: List[str] = ['all'],
     return decorator
 
 
-def setup(engines: Dict[str, Any], 
+def setup(engines: Dict[str, Any],
           **wrp_kwargs):
     """Decorates a function to initialize custom engines as backends.
-    
+
     Args:
         engines (Dict[str], optional): A dictionary of engines to initialize a custom setup.
         wrp_kwargs (dict): A dictionary of keyword arguments to the command function.
@@ -1925,5 +1926,22 @@ def setup(engines: Dict[str, Any],
                               engines=engines,
                               wrp_kwargs=wrp_kwargs,
                               kwargs=kwargs)
+        return wrapper
+    return decorator
+
+
+def cache(cache_path: str = ai.__root_dir__ + '/.cache'):
+     #TODO: the way it's handled right now, you can run a script from symai and might end up with two .cache dirs; enforce only symai.config.json
+    '''
+    Cache the result of a *any* function call. This is very useful in cost optimization (e.g. computing embeddings).
+    '''
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(wrp_self):
+            return cache_registry_func(
+                    cache_path,
+                    func,
+                    wrp_self
+                )
         return wrapper
     return decorator
