@@ -28,7 +28,35 @@ class ChatBot(Expression):
             return rsp
         self._post_processor = custom_post_processor
         
-        self.capabilities = [
+        self.init_options()
+        
+        self.command(engines=['symbolic'], expression_engine='wolframalpha')
+
+    def repeat(self, query, **kwargs):
+        return self.narrate('Symbia does not understand and asks to repeat and give more context.', prompt=query)
+    
+    def init_options(self):
+        self.options_detection = ai.Choice(cases=self.options, # use static context instead
+                                           default=self.options[-1])
+        
+        self.extended_options_detection = ai.Choice(cases=self.extended_options, # use static context instead
+                                                    default=self.extended_options[-1])
+    
+    @property
+    def options(self):
+        return [
+            'option 1 = [open question, jokes, how are you, chit chat]',
+            'option 2 = [specific task or command, query about facts, weather forecast, time, date, location, birth location, birth date, draw, speech, audio, ocr, open file, text to image, image to text, speech recognition, transcribe]',
+            'option 3 = [exit, quit, bye, goodbye]',
+            'option 4 = [help, list of commands, list of capabilities]',
+            'option 5 = [follow up question, continuation, more information]',
+            'option 6 = [mathematical equation, mathematical problem, mathematical question]',
+            'option 9 = [non of the other, unknown, invalid, not understood]'
+        ]
+        
+    @property
+    def extended_options(self):
+        return [
             'option 1 = [search, google, bing, yahoo, web, facts, location, weather, lookup, query, birthday, birth place, knowledge-based questions: what - where - who - why - how - which - whose]',
             'option 2 = [fetch, crawl, scrape, download http https, url dump]',
             'option 3 = [converse, small talk, ask about feeling, reply to a specific topic, chit chat, jokes, how are you, what colors do you like]',
@@ -38,27 +66,6 @@ class ChatBot(Expression):
             'option 7 = [open file, PDF, text file]',
             'option 9 = [non of the other, unknown, invalid, not understood]'
         ]
-
-        self.capabilities_choice = ai.Choice(cases=self.capabilities, # use static context instead
-                                             default=self.capabilities[-1])
-        
-        self.detect_context = [
-            'option 1 = [open question, jokes, how are you, chit chat]',
-            'option 2 = [specific task or command, query about facts, weather forecast, time, date, location, birth location, birth date, draw, speech, audio, ocr, open file, text to image, image to text, speech recognition, transcribe]',
-            'option 3 = [exit, quit, bye, goodbye]',
-            'option 4 = [help, list of commands, list of capabilities]',
-            'option 5 = [follow up question, continuation, more information]',
-            'option 6 = [mathematical equation, mathematical problem, mathematical question]',
-            'option 9 = [non of the other, unknown, invalid, not understood]'
-        ]
-
-        self.context_choice = ai.Choice(cases=self.detect_context, # use static context instead
-                                        default=self.detect_context[-1])
-        
-        self.command(engines=['symbolic'], expression_engine='wolframalpha')
-
-    def repeat(self, query, **kwargs):
-        return self.narrate('Symbia does not understand and asks to repeat and give more context.', prompt=query)
     
     @property
     def static_context(self) -> str:
@@ -116,7 +123,7 @@ class SymbiaChat(ChatBot):
             
             # TODO: needs model fine-tuning to improve the classification
             # detect context
-            ctxt = self.context_choice(usr)
+            ctxt = self.options_detection(usr)
             
             if 'exit' in str(usr) or 'quit' in str(usr): # exit
                 self.narrate('Symbia writes goodbye message.', end=True)
@@ -124,7 +131,7 @@ class SymbiaChat(ChatBot):
             
             elif 'option 4' in ctxt: # help
                 message = self.narrate('Symbia writes for each capability one sentence.', 
-                                       context=self.capabilities)
+                                       context=self.options)
                       
             elif 'option 1' in ctxt: # chit chat
                 message = self.narrate('Symbia replies to the user question in a casual way.')
@@ -136,7 +143,7 @@ class SymbiaChat(ChatBot):
         
             elif 'option 2' in ctxt or 'option 5' in ctxt: 
                 # detect command
-                option = self.capabilities_choice(usr)
+                option = self.extended_options_detection(usr)
                 
                 try:
                     

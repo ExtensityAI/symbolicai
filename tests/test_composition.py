@@ -5,6 +5,7 @@ import os
 
 import unittest
 import numpy as np
+from examples.sql import SQL
 
 from symai import *
 from symai.extended import *
@@ -686,6 +687,25 @@ modified:   tests/test_composition.py
         expr = Expression().open('examples/einsteins_puzzle.txt')
         color = expr.extract('all colors as a list')
         self.assertIsNotNone(color)
+        
+    def test_is_sql_isinstanceof(self):
+        expr = Expression('SELECT * FROM table WHERE column = 1')
+        is_sql = expr.isinstanceof("SQL query")
+        self.assertTrue(is_sql)
+        is_sql = expr.isinstanceof("SPL (splunk) query")
+        self.assertFalse(is_sql)
+        
+        
+    def test_is_sql_query(self):
+        expr = Expression('SELECT * FROM table WHERE column = 1')
+        is_sql = expr.query("is this a SQL query? [yes|no]",
+                            constraint=lambda x: x.lower() in ["yes", "no"],
+                            default="no")
+        self.assertTrue(is_sql == 'yes')
+        is_sql = expr.query("is this a SPL (splunk) query? [yes|no]",
+                            constraint=lambda x: x.lower() in ["yes", "no"],
+                            default="no")
+        self.assertTrue(is_sql == 'no')
         
         
     def test_complex_causal_example(self):
