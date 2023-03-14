@@ -1,7 +1,12 @@
-import inspect
 import ast
+import inspect
+import os
+import pickle
 import traceback
-from typing import Dict, List, Callable, Optional
+
+from pathlib import Path
+from typing import Callable, Dict, List, Optional
+
 from .prompts import Prompt
 from .pre_processors import *
 from .post_processors import *
@@ -35,7 +40,7 @@ def _execute_query(engine, post_processor, wrp_self, wrp_params, return_constrai
     if post_processor:
         for pp in post_processor:
             rsp = pp(wrp_self, wrp_params, rsp, *args, **kwargs)
-    
+
     # check if return type cast
     if return_constraint == type(rsp):
         pass
@@ -54,42 +59,42 @@ def _execute_query(engine, post_processor, wrp_self, wrp_params, return_constrai
         # do not cast with bool -> always returns true
         rsp = str(rsp).lower() in ['true', '1', 't', 'y', 'yes', 'yeah', 'yup', 'certainly', 'uh-huh', 'ok']
     elif return_constraint == inspect._empty:
-        pass        
+        pass
     else:
         rsp = return_constraint(rsp)
-    
+
     # check if satisfies constraints
     for constraint in wrp_params['constraints']:
         if not constraint(rsp):
             raise ConstraintViolationException("Constraint not satisfied:", res, constraint)
-    
+
     return rsp
 
 
-def _process_query(engine, 
-                   wrp_self, 
-                   func: Callable, 
+def _process_query(engine,
+                   wrp_self,
+                   func: Callable,
                    prompt: str,
-                   examples: Prompt, 
+                   examples: Prompt,
                    constraints: List[Callable] = [],
-                   default: Optional[object] = None, 
+                   default: Optional[object] = None,
                    limit: int = 1,
                    trials: int = 1,
                    pre_processor: Optional[List[PreProcessor]] = None,
                    post_processor: Optional[List[PostProcessor]] = None,
                    wrp_args = [], wrp_kwargs = {},
                    args = [], kwargs = {}):
-    
+
     if pre_processor and not isinstance(pre_processor, list):
         pre_processor = [pre_processor]
     if post_processor and not isinstance(post_processor, list):
         post_processor = [post_processor]
-    
+
     # check signature for return type
     sig = inspect.signature(func)
     return_constraint = sig._return_annotation
     assert 'typing' not in str(return_constraint), "Return type must be of base type not generic Typing object, e.g. int, str, list, etc."
-    
+
     # prepare wrapper parameters
     wrp_params = {
         'wrp_self': wrp_self,
@@ -106,7 +111,7 @@ def _process_query(engine,
     if 'wrp_kwargs' in wrp_params:
         for k, v in wrp_params['wrp_kwargs'].items():
             wrp_params[k] = v
-    
+
     # pre-process text
     suffix = ''
     if pre_processor:
@@ -121,7 +126,7 @@ def _process_query(engine,
             suffix += ' '.join([f'{k}: {v}' for k, v in kwargs.items()])
             suffix += '\n'
     wrp_params['processed_input'] = suffix
-    
+
     # try run the function
     try_cnt = 0
     while try_cnt < trials:
@@ -178,12 +183,12 @@ def check_or_init_neurosymbolic_func(engine = None):
         neurosymbolic_engine = GPT3Engine()
 
 
-def few_shot_func(wrp_self, 
-                  func: Callable, 
+def few_shot_func(wrp_self,
+                  func: Callable,
                   prompt: str,
-                  examples: Prompt, 
+                  examples: Prompt,
                   constraints: List[Callable] = [],
-                  default: Optional[object] = None, 
+                  default: Optional[object] = None,
                   limit: int = 1,
                   trials: int = 1,
                   pre_processor: Optional[List[PreProcessor]] = None,
@@ -206,8 +211,8 @@ def few_shot_func(wrp_self,
                           wrp_kwargs=wrp_kwargs,
                           args=args,
                           kwargs=kwargs)
-    
-    
+
+
 def check_or_init_symbolic_func(engine = None):
     global symbolic_engine
     if engine is not None:
@@ -217,12 +222,12 @@ def check_or_init_symbolic_func(engine = None):
         symbolic_engine = WolframAlphaEngine()
 
 
-def symbolic_func(wrp_self, 
-                  func: Callable, 
+def symbolic_func(wrp_self,
+                  func: Callable,
                   prompt: str,
-                  examples: Prompt, 
+                  examples: Prompt,
                   constraints: List[Callable] = [],
-                  default: Optional[object] = None, 
+                  default: Optional[object] = None,
                   limit: int = 1,
                   trials: int = 1,
                   pre_processor: Optional[List[PreProcessor]] = None,
@@ -254,13 +259,13 @@ def check_or_init_search_func(engine = None):
     elif search_engine is None:
         from .backend.engine_google import GoogleEngine
         search_engine = GoogleEngine()
-        
 
-def search_func(wrp_self, 
+
+def search_func(wrp_self,
                 func: Callable,
                 query: str,
                 constraints: List[Callable] = [],
-                default: Optional[object] = None, 
+                default: Optional[object] = None,
                 limit: int = 1,
                 trials: int = 1,
                 pre_processor: Optional[List[PreProcessor]] = None,
@@ -294,12 +299,12 @@ def check_or_init_open_func(engine = None):
         from .backend.engine_file import FileEngine
         file_engine = FileEngine()
 
-    
-def open_func(wrp_self, 
+
+def open_func(wrp_self,
               func: Callable,
               path: str,
               constraints: List[Callable] = [],
-              default: Optional[object] = None, 
+              default: Optional[object] = None,
               limit: Optional[int] = None,
               trials: int = 1,
               pre_processor: Optional[List[PreProcessor]] = None,
@@ -333,11 +338,11 @@ def check_or_init_output_func(engine = None):
         from .backend.engine_output import OutputEngine
         output_engine = OutputEngine()
 
-    
-def output_func(wrp_self, 
+
+def output_func(wrp_self,
                 func: Callable,
                 constraints: List[Callable] = [],
-                default: Optional[object] = None, 
+                default: Optional[object] = None,
                 limit: Optional[int] = None,
                 trials: int = 1,
                 pre_processor: List[PreProcessor] = [ConsolePreProcessor()],
@@ -371,12 +376,12 @@ def check_or_init_crawler_func(engine = None):
         crawler_engine = CrawlerEngine()
 
 
-def crawler_func(wrp_self, 
+def crawler_func(wrp_self,
                  func: Callable,
                  url: str,
                  pattern: str,
                  constraints: List[Callable] = [],
-                 default: Optional[object] = None, 
+                 default: Optional[object] = None,
                  limit: int = 1,
                  trials: int = 1,
                  pre_processor: Optional[List[PreProcessor]] = None,
@@ -412,11 +417,11 @@ def check_or_init_userinput_func(engine = None):
         userinput_engine = UserInputEngine()
 
 
-def userinput_func(wrp_self, 
+def userinput_func(wrp_self,
                    func: Callable,
                    prompt: Optional[str] = None,
                    constraints: List[Callable] = [],
-                   default: Optional[object] = None, 
+                   default: Optional[object] = None,
                    trials: int = 1,
                    pre_processor: Optional[List[PreProcessor]] = None,
                    post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
@@ -453,7 +458,7 @@ def execute_func(wrp_self,
                  code: str,
                  func: Callable,
                  constraints: List[Callable] = [],
-                 default: Optional[object] = None, 
+                 default: Optional[object] = None,
                  trials: int = 1,
                  pre_processor: List[PreProcessor] = [],
                  post_processor: Optional[List[PostProcessor]] = [],
@@ -521,7 +526,7 @@ def check_or_init_imagerendering_func(engine = None):
         from .backend.engine_imagerendering import ImageRenderingEngine
         imagerendering_engine = ImageRenderingEngine()
 
-    
+
 def imagerendering_func(wrp_self,
                         func: Callable,
                         operation: str = 'create',
@@ -559,7 +564,7 @@ def check_or_init_ocr_func(engine = None):
         ocr_engine = OCREngine()
 
 
-def ocr_func(wrp_self, 
+def ocr_func(wrp_self,
              image: str,
              func: Callable,
              trials: int = 1,
@@ -595,7 +600,7 @@ def check_or_init_vision_func(engine = None):
         vision_engine = CLIPEngine()
 
 
-def vision_func(wrp_self, 
+def vision_func(wrp_self,
                 func: Callable,
                 image: Optional[str] = None,
                 prompt: Optional[str] = None,
@@ -670,8 +675,8 @@ def check_or_init_speech_func(engine = None):
         from .backend.engine_speech import WhisperEngine
         speech_engine = WhisperEngine()
 
-    
-def speech_func(wrp_self, 
+
+def speech_func(wrp_self,
                 func: Callable,
                 trials: int = 1,
                 prompt='decode',
@@ -709,7 +714,7 @@ def command_func(wrp_self,
         **kwargs,
         **wrp_kwargs
     }
-    
+
     if 'all' in engines or 'neurosymbolic' in engines:
         check_or_init_neurosymbolic_func()
         neurosymbolic_engine.command(wrp_params)
@@ -742,7 +747,7 @@ def command_func(wrp_self,
         execute_engine.command(wrp_params)
     if 'all' in engines or 'index' in engines:
         check_or_init_index_func()
-        execute_engine.command(wrp_params)        
+        execute_engine.command(wrp_params)
     if 'all' in engines or 'open' in engines:
         check_or_init_open_func()
         file_engine.command(wrp_params)
@@ -787,3 +792,25 @@ def setup_func(wrp_self,
         check_or_init_output_func(engine=engines['output'])
     if 'imagerendering' in engines:
         check_or_init_imagerendering_func(engine=engines['imagerendering'])
+
+
+def cache_registry_func(
+        cache_path: str,
+        func: Callable,
+        *args, **kwargs
+    ):
+
+    if not os.path.exists(cache_path): os.mkdir(cache_path)
+
+    if os.path.exists(Path(cache_path) / func.__qualname__):
+        with open(Path(cache_path) / func.__qualname__, 'rb') as f:
+            call = pickle.load(f)
+
+        return call
+
+    call = func(*args, **kwargs)
+    with open(Path(cache_path) / func.__qualname__, 'wb') as f:
+        pickle.dump(call , f)
+
+    return call
+

@@ -5,16 +5,17 @@ import logging
 
 SYMAI_VERSION = "0.2.13"
 __version__ = SYMAI_VERSION
+__root_dir__ = os.getcwd()
 
 
 def _start_symai():
     global _ai_config_
     # check if symai is already initialized
-    _ai_config_path_ = os.path.join(os.getcwd(), 'symai.config.json')
+    _ai_config_path_ = os.path.join(__root_dir__, 'symai.config.json')
     if not os.path.exists(_ai_config_path_):
         _parent_dir_ = os.path.dirname(__file__)
         _ai_config_path_ = os.path.join(_parent_dir_, 'symai.config.json')
-    
+
     # read the symai.config.json file
     with open(_ai_config_path_, 'r') as f:
         _ai_config_ = json.load(f)
@@ -22,7 +23,7 @@ def _start_symai():
 
     # check which modules are already installed
     _openai_api_key_ = os.environ.get('OPENAI_API_KEY', None)
-    
+
     _neurosymbolic_engine_api_key_ = os.environ.get('NEUROSYMBOLIC_ENGINE_API_KEY', None)
     _neurosymbolic_engine_model_ = os.environ.get('NEUROSYMBOLIC_ENGINE_MODEL', None)
 
@@ -41,9 +42,9 @@ def _start_symai():
     _ocr_engine_api_key_ = os.environ.get('OCR_ENGINE_API_KEY', None)
 
     _speech_engine_model_ = os.environ.get('SPEECH_ENGINE_MODEL', None)
-    
+
     _selenium_chrome_driver_version_ = os.environ.get('SELENIUM_CHROME_DRIVER_VERSION', None)
-    
+
     _indexing_engine_api_key_ = os.environ.get('INDEXING_ENGINE_API_KEY', None)
     _indexing_engine_environment_ = os.environ.get('INDEXING_ENGINE_ENVIRONMENT', None)
 
@@ -52,7 +53,7 @@ def _start_symai():
     if _symbolic_engine_api_key_: _ai_config_['SYMBOLIC_ENGINE_API_KEY'] = _symbolic_engine_api_key_
     if _embedding_engine_api_key_: _ai_config_['EMBEDDING_ENGINE_API_KEY'] = _embedding_engine_api_key_
     if _imagerendering_engine_api_key_: _ai_config_['IMAGERENDERING_ENGINE_API_KEY'] = _imagerendering_engine_api_key_
-    
+
     # if user did not set the individual api keys, use the OPENAI_API_KEY environment variable
     if _openai_api_key_ and not _neurosymbolic_engine_api_key_: _ai_config_['NEUROSYMBOLIC_ENGINE_API_KEY'] = _openai_api_key_
     if _openai_api_key_ and not _embedding_engine_api_key_: _ai_config_['EMBEDDING_ENGINE_API_KEY'] = _openai_api_key_
@@ -78,11 +79,11 @@ def _start_symai():
         # update the symai.config.json file
         with open(_ai_config_path_, 'w') as f:
             json.dump(_ai_config_, f, indent=4)
-    
+
     # check if the mandatory keys are set
     with open(_ai_config_path_, 'r') as f:
         _ai_config_ = json.load(f)
-    
+
     if 'custom' not in _ai_config_['NEUROSYMBOLIC_ENGINE_MODEL'].lower() and \
        (_ai_config_['NEUROSYMBOLIC_ENGINE_API_KEY'] is None or len(_ai_config_['NEUROSYMBOLIC_ENGINE_API_KEY']) == 0):
         logging.warn('The mandatory neuro-symbolic engine is not initialized. Please get a key from https://beta.openai.com/account/api-keys and set either a general environment variable OPENAI_API_KEY or a module specific environment variable NEUROSYMBOLIC_ENGINE_API_KEY.')
