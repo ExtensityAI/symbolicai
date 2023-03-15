@@ -48,6 +48,14 @@ class Symbol(ABC):
             self.value = None
             
         self._static_context: str = ''
+        
+        # TODO: make a global cache registry object as a static property and add a reference to symbol
+        # at startup ai.__cache__: List[str] = [] 
+        # use this to create in-memory local cache registry objects
+        # use the global cache registry in the  ai.core module decorator
+        # the decorator will have a in_memory flag that will determine whether to use the global cache registry or not
+        # on first run of a ai.cache(in_memory=True) decorated function, the global cache registry will update the local cache registry
+        # do some cool optimization: set 
 
     @property
     def _sym_return_type(self):
@@ -93,6 +101,12 @@ class Symbol(ABC):
     
     def __hash__(self) -> int:
         return str(self.value).__hash__()
+    
+    def __getstate__(self):
+        return vars(self)
+
+    def __setstate__(self, state):
+        vars(self).update(state)
     
     def __getattr__(self, key):
         if not self.__dict__.__contains__(key):

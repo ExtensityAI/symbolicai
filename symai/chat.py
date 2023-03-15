@@ -114,7 +114,7 @@ class SymbiaChat(ChatBot):
     def _sym_return_type(self):
         return SymbiaChat
     
-    def forward(self) -> str:
+    def forward(self):
         message = self.narrate('Symbia introduces herself, writes a greeting message and asks how to help.')        
         while True:
             # query user

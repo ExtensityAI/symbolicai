@@ -101,14 +101,15 @@ class Stream(Expression):
 
 
 class Trace(Expression):
-    def __init__(self, expr: Expression):
+    def __init__(self, expr: Expression, engines=['all']):
         super().__init__()
         self.expr: Expression = expr
+        self.engines: List[str] = engines
     
     def forward(self, *args, **kwargs) -> Symbol:
-        self.command(verbose=True)
+        self.command(verbose=True, engines=self.engines)
         res = self.expr(*args, **kwargs)
-        self.command(verbose=False)
+        self.command(verbose=False, engines=self.engines)
         return res
     
     
@@ -123,13 +124,15 @@ class Analyze(Expression):
     
     
 class Log(Expression):
-    def __init__(self, expr: Expression):
+    def __init__(self, expr: Expression, engines=['all']):
         super().__init__()
         self.expr: Expression = expr
+        self.engines: List[str] = engines
     
     def forward(self, *args, **kwargs) -> Symbol:
-        self.command(logging=True)
+        self.command(logging=True, engines=self.engines)
         res = self.expr(*args, **kwargs)
+        self.command(logging=False, engines=self.engines)
         return res
 
 
