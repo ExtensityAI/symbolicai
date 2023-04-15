@@ -1139,7 +1139,7 @@ This project is inspired by the following works, but not limited to them:
 * [Connectionism and Cognitive Architecture: A Critical Analysis](https://ruccs.rutgers.edu/images/personal-zenon-pylyshyn/proseminars/Proseminar13/ConnectionistArchitecture.pdf)
 * [Unit Testing for Concepts in Neural Networks](https://arxiv.org/abs/2208.10244)
 * [Teaching Algorithmic Reasoning via In-context Learning](https://arxiv.org/abs/2211.09066)
-* [PromptChainer: Chaining Large Language Model Prompts through Visual Programming)(https://arxiv.org/abs/2203.06566)
+* [PromptChainer: Chaining Large Language Model Prompts through Visual Programming](https://arxiv.org/abs/2203.06566)
 * [Prompting Is Programming: A Query Language For Large Language Models](https://arxiv.org/abs/2212.06094)
 * [Self-Instruct: Aligning Language Model with Self Generated Instructions](https://arxiv.org/abs/2212.10560)
 * [REALM: Retrieval-Augmented Language Model Pre-Training](https://arxiv.org/abs/2002.08909)
