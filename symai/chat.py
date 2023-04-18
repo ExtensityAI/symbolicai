@@ -13,6 +13,8 @@ class ChatBot(Expression):
         that = self
         self.name = name
         self.history: List[Symbol] = []
+        cfg = Expression()
+        cfg.command(engines=['symbolic'], expression_engine='wolframalpha')
         class CustomInputPreProcessor(ai.ConsoleInputPreProcessor):
             def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
                 super().override_reserved_signature_keys(wrp_params, *args, **kwds)
@@ -137,7 +139,8 @@ class SymbiaChat(ChatBot):
                 message = self.narrate('Symbia replies to the user question in a casual way.')
                 
             elif 'option 6' in ctxt: # solve a math problem
-                rsp = usr.expression()
+                q = usr.extract("mathematical formula for WolframAlpha")
+                rsp = usr.expression(q)
                 message = self.narrate('Symbia replies to the user and provides the solution of the math problem.', 
                                         context=rsp)
         
