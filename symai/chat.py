@@ -190,16 +190,19 @@ class SymbiaChat(ChatBot):
                         message = self.narrate('Symbia replies to the user and outlines and relies to the user query.', 
                                                 context=rsp)
                         
-                    else: # failed or not implemented                        
-                        message = self.narrate('Symbia apologizes and states that the capability is not available yet.')
+                    else: # failed or not implemented    
+                        q = usr.extract('user query request')
+                        rsp = self.search(q)                    
+                        message = self.narrate('Symbia apologizes, tries to interpret the response and states that the capability is not available yet.', context=rsp)
                         
                 except Exception as e:
-                    
                     message = self.narrate('Symbia apologizes and explains the user what went wrong.',
                                             context=str(e))
 
             else: # repeat
-                message = self.narrate('Symbia apologizes and asks the user to restate the question and add more context.')
+                q = usr.extract('user query request')
+                rsp = self.search(q)
+                message = self.narrate('Symbia apologizes, tries to interpret the response and asks the user to restate the question and add more context.', context=rsp)
 
 
 def run() -> None:
