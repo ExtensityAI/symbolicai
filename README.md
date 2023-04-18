@@ -933,9 +933,9 @@ res = expr.draw()
 https://oaidalleapiprodscus.blob.core.windows.net/private/org-l6FsXDfth6Uct ...
 ```
 
-Don't worry, we would never hide an image of a cat with a hat from you. Here is the image preview and [link](https://camo.githubusercontent.com/4f607176e782700befd732212c198b12c3923bf9c25f548aa444c92f6bcb97d9/68747470733a2f2f6f616964616c6c6561706970726f64736375732e626c6f622e636f72652e77696e646f77732e6e65742f707269766174652f6f72672d6c36467358446674683655637479777441504e746248364b2f757365722d76726c58594933793375484c6557374f6b594a64374b32632f696d672d7530523372394b515130736f716e7830774c7361335368532e706e673f73743d323032332d30312d3133543139253341313625334130305a2673653d323032332d30312d3133543231253341313625334130305a2673703d722673763d323032312d30382d30362673723d6226727363643d696e6c696e6526727363743d696d6167652f706e6726736b6f69643d36616161646564652d346662332d343639382d613866362d36383464373738366230363726736b7469643d61343863636135362d653664612d343834652d613831342d39633834393635326263623326736b743d323032332d30312d3133543138253341313925334133365a26736b653d323032332d30312d3134543138253341313925334133365a26736b733d6226736b763d323032312d30382d3036267369673d466c3133556f51694c646a6e42716e59473674746e6e455666716247546975596b2f7067706170385625324259253344):
+Don't worry, we would never hide an image of a cat with a hat from you. Here is the image preview and [link](assets/images/cat.jpg):
 
-<img src="https://camo.githubusercontent.com/4f607176e782700befd732212c198b12c3923bf9c25f548aa444c92f6bcb97d9/68747470733a2f2f6f616964616c6c6561706970726f64736375732e626c6f622e636f72652e77696e646f77732e6e65742f707269766174652f6f72672d6c36467358446674683655637479777441504e746248364b2f757365722d76726c58594933793375484c6557374f6b594a64374b32632f696d672d7530523372394b515130736f716e7830774c7361335368532e706e673f73743d323032332d30312d3133543139253341313625334130305a2673653d323032332d30312d3133543231253341313625334130305a2673703d722673763d323032312d30382d30362673723d6226727363643d696e6c696e6526727363743d696d6167652f706e6726736b6f69643d36616161646564652d346662332d343639382d613866362d36383464373738366230363726736b7469643d61343863636135362d653664612d343834652d613831342d39633834393635326263623326736b743d323032332d30312d3133543138253341313925334133365a26736b653d323032332d30312d3134543138253341313925334133365a26736b733d6226736b763d323032312d30382d3036267369673d466c3133556f51694c646a6e42716e59473674746e6e455666716247546975596b2f7067706170385625324259253344" width="200px">
+<img src="assets/images/cat.jpg" width="200px">
 
 
 ### File Engine
@@ -1118,6 +1118,7 @@ This project is inspired by the following works, but not limited to them:
 * [Newell and Simon's Logic Theorist: Historical Background and Impact on Cognitive Modeling](https://www.researchgate.net/publication/276216226_Newell_and_Simon's_Logic_Theorist_Historical_Background_and_Impact_on_Cognitive_Modeling)
 * [Search and Reasoning in Problem Solving](https://www.sciencedirect.com/science/article/abs/pii/S0004370283800034)
 * [The Algebraic Theory of Context-Free Languages](http://www-igm.univ-mlv.fr/~berstel/Mps/Travaux/A/1963-7ChomskyAlgebraic.pdf)
+* [Neural Networks and the Chomsky Hierarchy](https://arxiv.org/abs/2207.02098)
 * [Tracr: Compiled Transformers as a Laboratory for Interpretability](https://arxiv.org/abs/2301.05062)
 * [How can computers get common sense?](https://www.science.org/doi/10.1126/science.217.4566.1237)
 * [Artificial Intelligence: A Modern Approach](http://aima.cs.berkeley.edu/)
@@ -1138,6 +1139,9 @@ This project is inspired by the following works, but not limited to them:
 * [Connectionism and Cognitive Architecture: A Critical Analysis](https://ruccs.rutgers.edu/images/personal-zenon-pylyshyn/proseminars/Proseminar13/ConnectionistArchitecture.pdf)
 * [Unit Testing for Concepts in Neural Networks](https://arxiv.org/abs/2208.10244)
 * [Teaching Algorithmic Reasoning via In-context Learning](https://arxiv.org/abs/2211.09066)
+* [PromptChainer: Chaining Large Language Model Prompts through Visual Programming](https://arxiv.org/abs/2203.06566)
+* [Prompting Is Programming: A Query Language For Large Language Models](https://arxiv.org/abs/2212.06094)
+* [Self-Instruct: Aligning Language Model with Self Generated Instructions](https://arxiv.org/abs/2212.10560)
 * [REALM: Retrieval-Augmented Language Model Pre-Training](https://arxiv.org/abs/2002.08909)
 * [Wolfram|Alpha as the Way to Bring Computational Knowledge Superpowers to ChatGPT](https://writings.stephenwolfram.com/2023/01/wolframalpha-as-the-way-to-bring-computational-knowledge-superpowers-to-chatgpt/)
 * [Build a GitHub support bot with GPT3, LangChain, and Python](https://dagster.io/blog/chatgpt-langchain)
