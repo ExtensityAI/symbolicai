@@ -6,7 +6,6 @@ from typing import Dict, Iterator, List, Any, Optional
 import numpy as np
 import symai as ai
 import pandas as pd
-from transformers import GPT2Tokenizer
 
 
 tokenizer = None # lazy load tokenizer
@@ -181,12 +180,14 @@ class Symbol(ABC):
     def size(self) -> int:
         global tokenizer
         if tokenizer is None:
+            from transformers import GPT2Tokenizer
             tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
         return len(tokenizer(str(self.value)).input_ids)
     
     def tokens(self) -> int:
         global tokenizer
         if tokenizer is None:
+            from transformers import GPT2Tokenizer
             tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
         return tokenizer(str(self.value)).input_ids
     
