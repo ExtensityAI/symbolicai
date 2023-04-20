@@ -1930,8 +1930,11 @@ def setup(engines: Dict[str, Any],
     return decorator
 
 
-def cache(cache_path: str = ai.__root_dir__ + '/.cache'):
-     #TODO: the way it's handled right now, you can run a script from symai and might end up with two .cache dirs; enforce only symai.config.json
+def cache(
+    in_memory: bool,
+    cache_path: str = ai.__root_dir__ + '/.cache'
+):
+    #TODO: the way it's handled right now, you can run a script from symai and might end up with two .cache dirs; enforce only symai.config.json
     '''
     Cache the result of a *any* function call. This is very useful in cost optimization (e.g. computing embeddings).
     '''
@@ -1939,6 +1942,7 @@ def cache(cache_path: str = ai.__root_dir__ + '/.cache'):
         @functools.wraps(func)
         def wrapper(wrp_self):
             return cache_registry_func(
+                    in_memory,
                     cache_path,
                     func,
                     wrp_self

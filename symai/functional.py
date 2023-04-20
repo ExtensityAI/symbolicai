@@ -803,6 +803,7 @@ def setup_func(wrp_self,
 
 
 def cache_registry_func(
+        in_memory: bool,
         cache_path: str,
         func: Callable,
         *args, **kwargs
@@ -810,7 +811,7 @@ def cache_registry_func(
 
     if not os.path.exists(cache_path): os.mkdir(cache_path)
 
-    if os.path.exists(Path(cache_path) / func.__qualname__):
+    if in_memory and os.path.exists(Path(cache_path) / func.__qualname__):
         with open(Path(cache_path) / func.__qualname__, 'rb') as f:
             call = pickle.load(f)
 
