@@ -576,11 +576,11 @@ class Symbol(ABC):
             pass
         return self._sym_return_type(_func(self))
 
-    def cos_sim(self, other: Any) -> float:
+    def similarity(self, other: Any, metric='cosine') -> float:
         if not isinstance(self.value, np.ndarray): v = np.array(self.value).squeeze()[:, None]
-        if not isinstance(other, np.ndarray): o = np.array(other).squeeze()[:, None]
+        if not isinstance(other, np.ndarray): other = np.array(other).squeeze()[:, None]
 
-        return (v.T@o / (v.T@v)**.5 * (o.T@o)**.5).item()
+        return (v.T@other / (v.T@v)**.5 * (other.T@other)**.5).item()
 
     # TODO: improve how to set max_tokens
     def stream(self, expr: "Expression", 
