@@ -78,7 +78,7 @@ class GraphCoherenceChat(ai.ChatBot):
         assert isinstance(usr, ai.Symbol)
         usr_embed = usr.embed()
         embeddings = self.embed_opt()
-        similarities = [usr_embed.cos_sim(emb) for emb in embeddings]
+        similarities = [usr_embed.similarity(emb) for emb in embeddings]
         similarities = sorted(zip(self.options, similarities), key=lambda x: x[1], reverse=True)
 
         return similarities[0][0]
