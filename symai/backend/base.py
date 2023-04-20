@@ -13,7 +13,7 @@ class Engine(ABC):
         self.time_clock = False
         # create formatter
         os.makedirs('outputs', exist_ok=True)
-        logging.basicConfig(filename="outputs/engine.log", filemode="w", format='%(asctime)s %(name)s %(levelname)s %(message)s')
+        logging.basicConfig(filename="outputs/engine.log", filemode="a", format='%(asctime)s %(name)s %(levelname)s %(message)s')
         self.logger = logging.getLogger()
         self.logger.setLevel(logging.DEBUG)
         # logging to console
@@ -45,6 +45,9 @@ class Engine(ABC):
         if self.logging:
             self.logger.debug(log)
         return res
+    
+    def preview(self, wrp_params):
+        return wrp_params['prompts'][0]
     
     def forward(self, *args: Any, **kwds: Any) -> List[str]:
         raise NotADirectoryError()

@@ -586,7 +586,7 @@ class Symbol(ABC):
     
     # TODO: improve how to set max_tokens
     def stream(self, expr: "Expression", 
-               max_tokens: int = 3000, 
+               max_tokens: int = 4000, 
                char_token_ratio: float = 0.6,
                **kwargs) -> "Symbol":
         max_chars = int(max_tokens * char_token_ratio)
@@ -595,11 +595,25 @@ class Symbol(ABC):
             # iterate over string in chunks of max_chars
             r = Symbol(str(self)[chunks * max_chars: (chunks + 1) * max_chars])
             size = max_tokens - r.size()
-            r = expr(r, max_tokens=size, **kwargs)
+            
+            # simulate the expression
+            r = expr(r, max_tokens=size, preview=True, **kwargs)
+            # if the expression is too big, split it
+            if r.size() > max_tokens:
+                # split
+                r1_split = r.value[:len(r)//2]
+                r = expr(r1_split, max_tokens=size, **kwargs)
+                yield r
+                r2_split = r.value[len(r)//2:]
+                r = expr(r2_split, max_tokens=size, **kwargs)
+            else:
+                # run the expression
+                r = expr(r, max_tokens=size, **kwargs)
+            
             yield r
             
     def fstream(self, expr: "Expression", 
-                max_tokens: int = 3000, 
+                max_tokens: int = 4000, 
                 char_token_ratio: float = 0.6,
                 **kwargs) -> "Symbol":
         return self._sym_return_type(list(self.stream(expr, max_tokens, char_token_ratio, **kwargs)))

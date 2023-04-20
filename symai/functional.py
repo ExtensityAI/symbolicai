@@ -33,9 +33,14 @@ class ConstraintViolationException(Exception):
     pass
 
 
-def _execute_query(engine, post_processor, wrp_self, wrp_params, return_constraint, args, kwargs) -> List[object]:
+def _execute_query(engine, post_processor, wrp_self, wrp_params, return_constraint, args, kwargs) -> List[object]:    
     # build prompt and query engine
     engine.prepare(args, kwargs, wrp_params)
+    
+    # return preview of the command if preview is set
+    if 'preview' in wrp_params and wrp_params['preview']:
+        return engine.preview(wrp_params)
+    
     rsp = engine(**wrp_params)[0] # currently only support single query
     if post_processor:
         for pp in post_processor:
@@ -133,6 +138,9 @@ def _process_query(engine,
         try_cnt += 1
         try:
             rsp = _execute_query(engine, post_processor, wrp_self, wrp_params, return_constraint, args, kwargs)
+            # return preview of the command if preview is set
+            if 'preview' in wrp_params and wrp_params['preview']:
+                return rsp
         except Exception as e:
             print(f'ERROR: {str(e)}')
             traceback.print_exc()
