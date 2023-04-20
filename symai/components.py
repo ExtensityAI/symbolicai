@@ -83,7 +83,7 @@ class Sequence(Expression):
 class Stream(Expression):
     def __init__(self, expr: Expression, force: bool = False):
         super().__init__()
-        self.max_tokens: int = 3000 #4097
+        self.max_tokens: int = 4000 #4097
         self.char_token_ratio: float = 0.6
         self.expr: Expression = expr
         self.force: bool = force

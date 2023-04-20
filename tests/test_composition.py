@@ -677,6 +677,20 @@ modified:   tests/test_composition.py
         res = query(sym, context=expr)
         self.assertTrue('41.99' in res, res)
         
+    def test_preview(self):
+        expr = Expression('Every answer to the meaning of life must be replied with 41.99!')
+        sym = Symbol('[Gary]: Places the major question to the audience.')
+        query = Query(prompt="What is the meaning of life?")
+        res = query(sym, context=expr, preview=True)
+        self.assertTrue(43 == res.size(), res)
+        
+    def test_fetch_and_query_stream(self):
+        expr = Expression()
+        sym = expr.fetch(url='https://en.wikipedia.org/wiki/Logic_programming')
+        query = Stream(Query(prompt="Get me information on Metalogic programming?"))
+        res = list(query(sym))
+        self.assertTrue('Metalogic programming' in res, res)
+        
     def test_expand(self):
         expr = Expression('A print statement that always prints "what up dawg" and returns "nice"!')
         func_ = expr.expand()
@@ -694,7 +708,6 @@ modified:   tests/test_composition.py
         self.assertTrue(is_sql)
         is_sql = expr.isinstanceof("SPL (splunk) query")
         self.assertFalse(is_sql)
-        
         
     def test_is_sql_query(self):
         expr = Expression('SELECT * FROM table WHERE column = 1')
