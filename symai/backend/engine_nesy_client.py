@@ -104,10 +104,10 @@ class NeSyClientEngine(Engine):
         # add dynamic context
         if len(dyn_ctxt) > 0:
             message += f"\n\n----------------\n\nDynamic Context:\n{dyn_ctxt}"
-        # add method attachments
-        attachment = wrp_params['attach'] if 'attach' in wrp_params else None
-        if attachment is not None:
-            message += f"\n\n----------------\n\nAdditional Context: {attachment}"
+        # add method payload
+        payload = wrp_params['payload'] if 'payload' in wrp_params else None
+        if payload is not None:
+            message += f"\n\n----------------\n\nAdditional Context: {payload}"
             
         # add user request
         suffix: str = wrp_params['processed_input']

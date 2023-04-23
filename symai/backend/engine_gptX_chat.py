@@ -6,7 +6,7 @@ import openai
 import logging
 
 
-class GPT3Engine(Engine):
+class GPTXChatEngine(Engine):
     def __init__(self, max_retry: int = 3, api_cooldown_delay: int = 3):
         super().__init__()
         config = SYMAI_CONFIG
@@ -25,7 +25,7 @@ class GPT3Engine(Engine):
             self.model = wrp_params['NEUROSYMBOLIC_ENGINE_MODEL']
 
     def forward(self, prompts: List[str], *args, **kwargs) -> List[str]:
-        prompts_ = prompts if isinstance(prompts, list) else [prompts]
+        prompts_ = prompts
         input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
         if input_handler:
             input_handler((prompts_,))
@@ -36,7 +36,7 @@ class GPT3Engine(Engine):
         
         max_retry = kwargs['max_retry'] if 'max_retry' in kwargs else self.max_retry
         while not success and retry < max_retry:
-            # send prompt to GPT-3
+            # send prompt to GPT-X Chat-based
             stop = kwargs['stop'] if 'stop' in kwargs else None
             model = kwargs['model'] if 'model' in kwargs else self.model
             suffix = kwargs['template_suffix'] if 'template_suffix' in kwargs else None
@@ -47,25 +47,25 @@ class GPT3Engine(Engine):
             top_p = kwargs['top_p'] if 'top_p' in kwargs else 1
             
             try:
-                res = openai.Completion.create(model=model,
-                                               prompt=prompts_,
-                                               suffix=suffix,
-                                               max_tokens=max_tokens,
-                                               temperature=temperature,
-                                               frequency_penalty=frequency_penalty,
-                                               presence_penalty=presence_penalty,
-                                               top_p=top_p,
-                                               stop=stop,
-                                               n=1)
+                res = openai.ChatCompletion.create(model=model,
+                                                    messages=prompts_,
+                                                    #suffix=suffix, #TODO fix suffix and template
+                                                    max_tokens=max_tokens,
+                                                    temperature=temperature,
+                                                    frequency_penalty=frequency_penalty,
+                                                    presence_penalty=presence_penalty,
+                                                    top_p=top_p,
+                                                    stop=stop,
+                                                    n=1)
                 output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
                 if output_handler:
                     output_handler(res)
                 success = True
             except Exception as e:                  
                 errors.append(e)
-                self.logger.warn(f"GPT-3 service is unavailable or caused an error. Retry triggered: {e}")
+                self.logger.warn(f"GPT-X Chat-based service is unavailable or caused an error. Retry triggered: {e}")
                 sleep(self.api_cooldown_delay) # API cooldown
-                # remedy for GPT-3 API limitation
+                # remedy for GPT-X Chat-based API limitation
                 from symai.symbol import Symbol
                 sym = Symbol(e)
                 try:
@@ -80,7 +80,7 @@ class GPT3Engine(Engine):
             retry += 1
         
         if not success:
-            msg = f"Failed to query GPT-3 after {max_retry} retries. Errors: {errors}"
+            msg = f"Failed to query GPT-X Chat-based after {max_retry} retries. Errors: {errors}"
             # interpret error
             from symai.symbol import Symbol
             from symai.components import Analyze
@@ -90,37 +90,49 @@ class GPT3Engine(Engine):
             msg_reply = f"{msg}\n Analysis: {sym}"
             raise Exception(msg_reply)
         
-        rsp = [r['text'] for r in res['choices']]      
+        rsp = [r['message']['content'] for r in res['choices']]      
         return rsp if isinstance(prompts, list) else rsp[0]
     
     def prepare(self, args, kwargs, wrp_params):
-        prompt: str = ''
+        _non_verbose_output = """You do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc.
+        Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc.
+        --------------
+        
+        """
+        user: str = ""
+        system: str = _non_verbose_output
+        
+        # system relevant instruction
         # add static context
         ref = wrp_params['wrp_self']
         static_ctxt, dyn_ctxt = ref.global_context
         if len(static_ctxt) > 0:
-            prompt += f"General Context:\n{static_ctxt}\n\n----------------\n\n"
+            system += f"General Context:\n{static_ctxt}\n\n----------------\n\n"
         if wrp_params['prompt'] is not None:
-            prompt += str(wrp_params['prompt'])
+            system += str(wrp_params['prompt'])
         # build operation
-        message = f'{prompt}\n' if prompt and len(prompt) > 0 else ''
+        operation = f'{system}\n' if system and len(system) > 0 else ''
         # add examples
         examples: List[str] = wrp_params['examples']
         if examples:
-            message += f"Examples:\n"
-            message += f"{str(examples)}\n"
+            operation += f"Examples:\n"
+            operation += f"{str(examples)}\n"
         # add dynamic context
         if len(dyn_ctxt) > 0:
-            message += f"\n\n----------------\n\nDynamic Context:\n{dyn_ctxt}"
+            operation += f"\n\n----------------\n\nDynamic Context:\n{dyn_ctxt}"
         # add method payload
         payload = wrp_params['payload'] if 'payload' in wrp_params else None
         if payload is not None:
-            message += f"\n\n----------------\n\nAdditional Context: {payload}"
+            operation += f"\n\n----------------\n\nAdditional Context: {payload}"
             
         # add user request
         suffix: str = wrp_params['processed_input']
         if '=>' in suffix:
-            message += f"Last Task:\n"
-            message += f"----------------\n\n"
-        message += f"{suffix}"
-        wrp_params['prompts'] = [message]
+            user += f"Last Task:\n"
+            user += f"----------------\n\n"
+        user += f"{suffix}"
+        
+        wrp_params['prompts'] = [
+            { "role": "system", "content": operation },
+            { "role": "user", "content": user },
+        ]

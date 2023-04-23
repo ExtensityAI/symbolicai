@@ -7,12 +7,14 @@ import traceback
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
+from .backend.settings import SYMAI_CONFIG
 from .prompts import Prompt
 from .pre_processors import *
 from .post_processors import *
 
 
 # all engines are initialized after first usage
+config = SYMAI_CONFIG
 neurosymbolic_engine = None
 symbolic_engine = None
 ocr_engine = None
@@ -187,8 +189,14 @@ def check_or_init_neurosymbolic_func(engine = None):
     if engine is not None:
         neurosymbolic_engine = engine
     elif neurosymbolic_engine is None:
-        from .backend.engine_gpt3 import GPT3Engine
-        neurosymbolic_engine = GPT3Engine()
+        #TODO 
+        if config['NEUROSYMBOLIC_ENGINE_MODEL'] == 'text-davinci-003':
+            from .backend.engine_gpt3 import GPT3Engine
+            neurosymbolic_engine = GPT3Engine()
+        elif config['NEUROSYMBOLIC_ENGINE_MODEL'] == 'gpt-3.5-turbo' or\
+                config['NEUROSYMBOLIC_ENGINE_MODEL'] == 'gpt-4':
+            from .backend.engine_gptX_chat import GPTXChatEngine
+            neurosymbolic_engine = GPTXChatEngine()
 
 
 def few_shot_func(wrp_self,
