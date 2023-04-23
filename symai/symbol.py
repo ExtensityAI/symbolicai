@@ -367,7 +367,7 @@ class Symbol(ABC):
 
     def expression(self, expr: Optional[str] = None, expression_engine: str = None, **kwargs) -> "Symbol":
         if expr is None:
-            expr = 'self'
+            expr = self.value
         @ai.expression(expression_engine=expression_engine, **kwargs)
         def _func(_, expr: str):
             pass

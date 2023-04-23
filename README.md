@@ -630,15 +630,15 @@ Conceptually we consider three main prompt designs: `Context-based Prompts`, `Op
 
 We will now explain each prompt concept in more details:
 
-- The `Context-based Prompts (Static, Dynamic and Attachment)` are considered optional and can be defined in a static manner, either by sub-classing the Expression class and overriding the `static_context` property, or at runtime by updating the `dynamic_context` property or passing an `attach` kwargs to a method. Here is an example how to use the `attach` kwargs via the method signature:
+- The `Context-based Prompts (Static, Dynamic and Payload)` are considered optional and can be defined in a static manner, either by sub-classing the Expression class and overriding the `static_context` property, or at runtime by updating the `dynamic_context` property or passing an `payload` kwargs to a method. Here is an example how to use the `payload` kwargs via the method signature:
   ```python
   # creating a query to ask if an issue was resolve or not
   sym = Symbol("<some-community-conversation>")
   q = sym.query("Was the issue resolved?")
   # write manual condition to check if the issue was resolved
   if 'not resolved' in q:
-      # do a new query but attach the previous query answer to the new query
-      sym.query("What was the resolution?", attach=q)
+      # do a new query but payload the previous query answer to the new query
+      sym.query("What was the resolution?", payload=q)
       ...
   else:
       pass # all good

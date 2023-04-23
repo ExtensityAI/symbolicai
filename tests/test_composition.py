@@ -49,17 +49,17 @@ class TestComposition(unittest.TestCase):
         
     def test_compare(self):
         res = Symbol(10) > Symbol(5)
-        self.assertTrue(res)
+        self.assertTrue(res, res)
         res = Symbol(5) >= Symbol('5')
-        self.assertTrue(res)
+        self.assertTrue(res, res)
         res = Symbol(1) < Symbol('five')
-        self.assertTrue(res)
+        self.assertTrue(res, res)
         res = Symbol(1) <= Symbol('one')
-        self.assertTrue(res)
+        self.assertTrue(res, res)
         res = Symbol(2) < Symbol(1)
-        self.assertTrue(not res)
+        self.assertTrue(not res, res)
         res = Symbol('What sentence is larger?') <= Symbol('this one')
-        self.assertTrue(not res)
+        self.assertTrue(not res, res)
         
     def test_iterator(self):
         res = Symbol('Hello World')
@@ -515,7 +515,7 @@ modified:   tests/test_composition.py
     def test_style_render_html(self):
         url = 'https://images6.alphacoders.com/337/337780.jpg'
         style_expr = HtmlStyleTemplate()
-        meta = style_expr(f'USER_CONTEXT: {str(url)}', attach='max-width: 400px;')
+        meta = style_expr(f'USER_CONTEXT: {str(url)}', payload='max-width: 400px;')
         self.assertTrue('https://images6' in meta, meta)
         
     def test_paper_component(self):

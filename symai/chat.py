@@ -140,7 +140,7 @@ class SymbiaChat(ChatBot):
                 
             elif 'option 6' in ctxt: # solve a math problem
                 q = usr.extract("mathematical formula for WolframAlpha")
-                rsp = usr.expression(q)
+                rsp = q.expression()
                 message = self.narrate('Symbia replies to the user and provides the solution of the math problem.', 
                                         context=rsp)
         
