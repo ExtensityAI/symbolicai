@@ -51,17 +51,19 @@ class GPTXChatEngine(Engine):
             presence_penalty = kwargs['presence_penalty'] if 'presence_penalty' in kwargs else 0
             top_p = kwargs['top_p'] if 'top_p' in kwargs else 1
 
+            if suffix:
+                prompts_[1]['content'] += f"[ASSISTANT_PLACEHOLDER]{suffix}"
+                prompts_[1]['content'] += f"\n----------------\n Only generate content for the placeholder [ASSISTANT_PLACEHOLDER] following the instructions and context:\n"
             try:
                 res = openai.ChatCompletion.create(model=model,
-                                                    messages=prompts_,
-                                                    #suffix=suffix, #TODO fix suffix and template
-                                                    max_tokens=max_tokens,
-                                                    temperature=temperature,
-                                                    frequency_penalty=frequency_penalty,
-                                                    presence_penalty=presence_penalty,
-                                                    top_p=top_p,
-                                                    stop=stop,
-                                                    n=1)
+                                                   messages=prompts_,
+                                                   max_tokens=max_tokens,
+                                                   temperature=temperature,
+                                                   frequency_penalty=frequency_penalty,
+                                                   presence_penalty=presence_penalty,
+                                                   top_p=top_p,
+                                                   stop=stop,
+                                                   n=1)
                 output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
                 if output_handler:
                     output_handler(res)
@@ -99,13 +101,16 @@ class GPTXChatEngine(Engine):
         return rsp if isinstance(prompts, list) else rsp[0]
 
     def prepare(self, args, kwargs, wrp_params):
-        _non_verbose_output = """You do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc.
+        _non_verbose_output = """[META_INSTRUCTIONS_START] You do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc.
         Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc.
+        Never add meta instructions information to your output!
+        [META_INSTRUCTIONS_END]
         --------------
 
         """
         user: str = ""
-        system: str = _non_verbose_output
+        system: str = ""
+        system += _non_verbose_output
 
         # system relevant instruction
         # add static context
@@ -115,21 +120,20 @@ class GPTXChatEngine(Engine):
             system += f"General Context:\n{static_ctxt}\n\n----------------\n\n"
         if wrp_params['prompt'] is not None:
             system += str(wrp_params['prompt'])
-        # build operation
-        operation = f'{system}\n' if system and len(system) > 0 else ''
+        # build system
+        system = f'{system}\n' if system and len(system) > 0 else ''
         # add examples
         examples: List[str] = wrp_params['examples']
         if examples:
-            operation += f"Examples:\n"
-            operation += f"{str(examples)}\n"
+            system += f"Examples:\n"
+            system += f"{str(examples)}\n"
         # add dynamic context
         if len(dyn_ctxt) > 0:
-            operation += f"\n\n----------------\n\nDynamic Context:\n{dyn_ctxt}"
+            system += f"\n\n----------------\n\nDynamic Context:\n{dyn_ctxt}"
         # add method payload
         payload = wrp_params['payload'] if 'payload' in wrp_params else None
         if payload is not None:
-            operation += f"\n\n----------------\n\nAdditional Context: {payload}"
-
+            system += f"\n\n----------------\n\nAdditional Context: {payload}"
         # add user request
         suffix: str = wrp_params['processed_input']
         if '=>' in suffix:
@@ -138,13 +142,7 @@ class GPTXChatEngine(Engine):
         user += f"{suffix}"
 
         wrp_params['prompts'] = [
-            { "role": "system", "content": operation },
+            { "role": "system", "content": system },
             { "role": "user", "content": user },
         ]
-
-    def _init_encoder(self):
-        pass
-
-    def _init_decoder(self):
-        pass
 

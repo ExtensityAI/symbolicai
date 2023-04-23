@@ -590,9 +590,9 @@ class Symbol(ABC):
             size = max_tokens - r.size()
 
             # simulate the expression
-            r = expr(r, max_tokens=size, preview=True, **kwargs)
+            prev = expr(r, max_tokens=size, preview=True, **kwargs)
             # if the expression is too big, split it
-            if r.size() > max_tokens:
+            if prev.size() > max_tokens:
                 # split
                 r1_split = r.value[:len(r)//2]
                 r = expr(r1_split, max_tokens=size, **kwargs)
@@ -773,3 +773,5 @@ class Expression(Symbol):
             pass
         return self._sym_return_type(_func(self))
 
+x = Symbol('dffdbnfdkbnfgjbnfgjbg')
+breakpoint()

@@ -47,7 +47,7 @@ class Engine(ABC):
         return res
     
     def preview(self, wrp_params):
-        return wrp_params['prompts'][0]
+        return str(wrp_params['prompts'])
     
     def forward(self, *args: Any, **kwds: Any) -> List[str]:
         raise NotADirectoryError()
