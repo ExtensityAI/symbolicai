@@ -581,8 +581,6 @@ class Symbol(ABC):
 
     def stream(self, expr: "Expression",
                max_tokens: int = 4000,
-    def stream(self, expr: "Expression",
-               max_tokens: int = 4000,
                char_token_ratio: float = 0.6,
                **kwargs) -> "Symbol":
         max_chars = int(max_tokens * char_token_ratio)

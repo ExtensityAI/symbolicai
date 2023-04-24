@@ -549,8 +549,8 @@ modified:   tests/test_composition.py
                         Use dark theme and best practices for colors, text font, etc.
                         Use Bootstrap for styling.""",
                       libraries=['https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css'
-                         'https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js',
-                         'https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js'])
+                                 'https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js',
+                                 'https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js'])
             )
         )
         res = '\n'.join([str(s) for s in stream(sym, template=tmp)])

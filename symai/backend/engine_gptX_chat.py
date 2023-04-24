@@ -135,9 +135,6 @@ class GPTXChatEngine(Engine):
         if payload is not None:
             system += f"\n\n----------------\n\nAdditional Context: {payload}"
         # add user request
-        suffix: str = wrp_params['processed_input']
-        if '=>' in suffix:
-            user += f"Last Task:\n"
             user += f"----------------\n\n"
         user += f"{suffix}"
 
