@@ -454,7 +454,7 @@ modified:   tests/test_composition.py
         self.assertIsNotNone('http' in res)
         
     def test_news_component(self):
-        news = News(url='https://www.cnbc.com/',
+        news = News(url='https://www.cnbc.com/cybersecurity/',
                     pattern='cnbc',
                     filters=ExcludeFilter('sentences about subscriptions, licensing, newsletter'),
                     render=True)
@@ -529,14 +529,7 @@ modified:   tests/test_composition.py
     def test_ui(self):
         sym = Symbol("""['The Taliban has issued a ban on female education in Afghanistan, preventing female students from attending private and public universities. This was confirmed in a government statement released today. All female students are barred from attending universities, both private and public, in the country. This move will severely impact the education system in Afghanistan and could have long-term implications for female education in the country.', 'Madschid Tawakoli, who was arrested shortly before the death of Kurdish woman Mahsa Amini, which triggered protests across Iran, has been released from the notorious Ewin Prison after three months. His brother Mohsen released a picture on Twitter of Tawakoli holding flowers in front of the prison. According to UN figures, at least 14,000 people have been arrested so far in connection to the protests. In 2013, Tawakoli was awarded the Student Peace Prize by Norwegian students for his activism.', 'After a two-month hunger strike, Mohsen Tawakoli, the brother of a prominent political prisoner, has been released from prison. The event has sparked criticism of the Iranian government from the international community.\n\nIn the UK, the Royal College of Nursing has declared a strike for higher wages, the first time in its 100-year history. The strike follows protests by NHS staff over working conditions and pay, with rescue services in England declaring a state of emergency. The staff are protesting against a “vicious circle” of longer waits for doctors and inadequate resources.', "EU's foreign policy chief Josep Borrell has called for an end to the suppression of demonstrations in Iran and for both sides to keep communication channels open in order to restore the nuclear deal. Relations between Iran and the EU have deteriorated in recent months, with renowned Iranian filmmaker Asghar Farhadi calling for the release of jailed Iranian actress Taraneh Alidoosti, who was arrested in January and released shortly thereafter. Russia's military support for Iran was also discussed.", 'In a bloody end to a hostage situation in a Pakistani prison for terrorists, special forces killed 33 hostage-takers, 2 commando soldiers, and several inmates. The attackers had wanted to free the prisoners and force an unimpeded exit to Taliban-controlled Afghanistan. \n\nIn a separate incident, an explosion shook the Urengoi-Pomary-Uschgorod-Pipeline in Russia, resulting in at least three deaths. Work on the pipeline had been done prior to the fire and its circumstances are being investigated. The pipeline supplies gas to Austria, and its supply is currently off.', 'The Russian military has resumed the deployment of troop units to the Belarus-Ukraine border. Tanks, armoured vehicles and transporters, along with various military equipment, have been brought to the vicinity. Gasprom PJSC has stated that gas supplies to consumers have been resumed via parallel gas pipelines. The Ukrainian gas network operator has stated that gas flows are normal and there are no pressure changes. The Austrian Energy Ministry has also stated that deliveries to Austria at the Baumgarten transfer point remain unchanged, with nominations of gas deliveries for the next few days in the usual range.']""")
         
-        expr = Style(description="""Design a web app with HTML, CSS and inline JavaScript. 
-                        Use dark theme and best practices for colors, text font, etc. 
-                        Use Bootstrap for styling.
-                        Do NOT remove the {{placeholder}} tag and do NOT add new tags into the body!""", 
-                      libraries=['https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css'
-                         'https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js',
-                         'https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js'])
-        tmp = expr(Symbol("""<!doctype html>
+        tmp = Symbol("""<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8">
@@ -548,17 +541,19 @@ modified:   tests/test_composition.py
   <h1>News Headlines</h1>
   {{placeholder}}
   </body>
-</html>"""), max_tokens=2000)        
+</html>""")
         stream = Stream(
             Sequence(
-                Template(template=tmp),
-                Style(description="""Style the elements according to the bootstrap library.
-                                  Replace the list items with a summary title and the item text. 
-                                  Add highlighting animations. 
-                                  Use best practices for colors, text font, etc.""")
+                #Template(template=tmp),
+                Style(description="""Design a web app with HTML, CSS and inline JavaScript. 
+                        Use dark theme and best practices for colors, text font, etc. 
+                        Use Bootstrap for styling.""", 
+                      libraries=['https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css'
+                         'https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js',
+                         'https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js'])
             )
         )
-        res = '\n'.join([str(s) for s in stream(sym)])
+        res = '\n'.join([str(s) for s in stream(sym, template=tmp)])
         res = Symbol(str(tmp).replace('{{placeholder}}', res))
         os.makedirs('results', exist_ok=True)
         path = os.path.abspath('results/news.html')
