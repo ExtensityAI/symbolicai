@@ -144,7 +144,7 @@ class TemplatePreProcessor(PreProcessor):
         placeholder = wrp_params['placeholder']
         template = wrp_params['template']
         parts = str(template).split(placeholder)
-        assert len(parts) == 2, f"Your template must contain exactly one placeholder '{placeholder}'"
+        assert len(parts) == 2, f"Your template must contain exactly one placeholder '{placeholder}' split:" + str(len(parts))
         wrp_params['template_suffix'] = parts[1]
         return f'----------\n[Template]:\n{parts[0]}'
     
@@ -423,11 +423,11 @@ class StylePreProcessor(PreProcessor):
         libs = ', '.join(wrp_params['libraries'])
         libraries = f"[LIBRARIES]: {libs}\n"
         content = f'[DATA]:\n{str(wrp_self)}\n\n'
-        if 'template' not in wrp_params:
+        if 'template' in wrp_params:
             placeholder = wrp_params['placeholder']
             template = wrp_params['template']
             parts = str(template).split(placeholder)
-            assert len(parts) == 2, f"Your template must contain exactly one placeholder '{placeholder}'"
+            assert len(parts) == 2, f"Your template must contain exactly one placeholder '{placeholder}'  split:" + str(len(parts))
             wrp_params['template_suffix'] = parts[1]
             return f'f"{text}{libraries}{content}"----------\n[TEMPLATE]:\n{parts[0]}'
         return f"{text}{libraries}{content}"
