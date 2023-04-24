@@ -545,13 +545,15 @@ class Symbol(ABC):
             pass
         return self._sym_return_type(_func(self))
 
-    def template(self, template: str, placeholder='{{placeholder}}', **kwargs) -> "Symbol":
+    def template(self, template: str, placeholder = '{{placeholder}}', **kwargs) -> "Symbol":
         @ai.template(template=template, placeholder=placeholder, **kwargs)
         def _func(_):
             pass
         return self._sym_return_type(_func(self))
 
-    def style(self, description: str, libraries = [], template: str = None, placeholder: str = None, **kwargs) -> "Symbol":
+    def style(self, description: str, libraries = [], template: str = None, placeholder: str = '{{placeholder}}', **kwargs) -> "Symbol":
+        if template is None:
+            template = self.value
         @ai.style(description=description, libraries=libraries, template=template, placeholder=placeholder, **kwargs)
         def _func(_):
             pass
@@ -571,13 +573,14 @@ class Symbol(ABC):
             pass
         return self._sym_return_type(_func(self))
 
-    def similarity(self, other: Any, metric='cosine') -> float:
+    def similarity(self, other: Any, metric = 'cosine') -> float:
         if not isinstance(self.value, np.ndarray): v = np.array(self.value).squeeze()[:, None]
         if not isinstance(other, np.ndarray): other = np.array(other).squeeze()[:, None]
 
         return (v.T@other / (v.T@v)**.5 * (other.T@other)**.5).item()
 
-    # TODO: improve how to set max_tokens
+    def stream(self, expr: "Expression",
+               max_tokens: int = 4000,
     def stream(self, expr: "Expression",
                max_tokens: int = 4000,
                char_token_ratio: float = 0.6,
@@ -773,5 +776,3 @@ class Expression(Symbol):
             pass
         return self._sym_return_type(_func(self))
 
-x = Symbol('dffdbnfdkbnfgjbnfgjbg')
-breakpoint()
