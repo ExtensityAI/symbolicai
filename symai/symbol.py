@@ -8,9 +8,6 @@ import symai as ai
 import pandas as pd
 
 
-tokenizer = None # lazy load tokenizer
-
-
 class SymbolEncoder(JSONEncoder):
         def default(self, o):
             return o.__dict__
@@ -169,19 +166,17 @@ class Symbol(ABC):
     def length(self) -> int:
         return len(str(self.value))
 
+    @property
     def size(self) -> int:
-        global tokenizer
-        if tokenizer is None:
-            from transformers import GPT2Tokenizer
-            tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
-        return len(tokenizer(str(self.value)).input_ids)
+        return len(self.tokens)
 
+    @property
     def tokens(self) -> int:
-        global tokenizer
-        if tokenizer is None:
-            from transformers import GPT2Tokenizer
-            tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
-        return tokenizer(str(self.value)).input_ids
+        return self.tokenizer().encode(str(self))
+
+    @ai.bind(engine='neurosymbolic', property='tokenizer')
+    def tokenizer(self) -> object:
+        pass
 
     def type(self):
         return type(self.value)
@@ -584,8 +579,8 @@ class Symbol(ABC):
 
         return (v.T@other / (v.T@v)**.5 * (other.T@other)**.5).item()
 
-    def stream(self, expr: "Expression", 
-               max_tokens: int = 4000, 
+    def stream(self, expr: "Expression",
+               max_tokens: int = 4000,
                char_token_ratio: float = 0.6,
                **kwargs) -> "Symbol":
         max_chars = int(max_tokens * char_token_ratio)
@@ -594,7 +589,7 @@ class Symbol(ABC):
             # iterate over string in chunks of max_chars
             r = Symbol(str(self)[chunks * max_chars: (chunks + 1) * max_chars])
             size = max_tokens - r.size()
-            
+
             # simulate the expression
             prev = expr(r, max_tokens=size, preview=True, **kwargs)
             # if the expression is too big, split it
@@ -608,11 +603,11 @@ class Symbol(ABC):
             else:
                 # run the expression
                 r = expr(r, max_tokens=size, **kwargs)
-            
+
             yield r
-            
-    def fstream(self, expr: "Expression", 
-                max_tokens: int = 4000, 
+
+    def fstream(self, expr: "Expression",
+                max_tokens: int = 4000,
                 char_token_ratio: float = 0.6,
                 **kwargs) -> "Symbol":
         return self._sym_return_type(list(self.stream(expr, max_tokens, char_token_ratio, **kwargs)))

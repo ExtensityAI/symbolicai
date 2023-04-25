@@ -5,7 +5,8 @@ from .prompts import *
 from .pre_processors import *
 from .post_processors import *
 from .functional import few_shot_func, symbolic_func, search_func, crawler_func, userinput_func, execute_func, open_func, output_func, \
-    command_func, embed_func, vision_func, ocr_func, speech_func, imagerendering_func, setup_func, index_func, cache_registry_func
+    command_func, embed_func, vision_func, ocr_func, speech_func, imagerendering_func, setup_func, index_func, cache_registry_func, \
+    bind_registry_func
 
 
 _symbolic_expression_engine = None
@@ -1934,7 +1935,6 @@ def cache(
     in_memory: bool,
     cache_path: str = ai.__root_dir__ + '/.cache'
 ):
-    #TODO: the way it's handled right now, you can run a script from symai and might end up with two .cache dirs; enforce only symai.config.json
     '''
     Cache the result of a *any* function call. This is very useful in cost optimization (e.g. computing embeddings).
     '''
@@ -1946,6 +1946,21 @@ def cache(
                     cache_path,
                     func,
                     wrp_self
+                )
+        return wrapper
+    return decorator
+
+
+def bind(engine: str, property: str):
+    '''
+    Bind to an engine and retrieve one of its properties.
+    '''
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(_):
+            return bind_registry_func(
+                    engine=engine,
+                    property=property
                 )
         return wrapper
     return decorator
