@@ -1,22 +1,26 @@
-from .settings import SYMAI_CONFIG
 from typing import List
-from .base import Engine
 from time import sleep
 import openai
 import logging
+import numpy as np
+import tiktoken
+
+from .base import Engine
+from .settings import SYMAI_CONFIG
 
 
 class GPTXChatEngine(Engine):
     def __init__(self, max_retry: int = 3, api_cooldown_delay: int = 3):
         super().__init__()
-        config = SYMAI_CONFIG
-        openai.api_key = config['NEUROSYMBOLIC_ENGINE_API_KEY']
-        self.model = config['NEUROSYMBOLIC_ENGINE_MODEL']
         logger = logging.getLogger('openai')
         logger.setLevel(logging.WARNING)
-        self.max_retry = max_retry
+        config                  = SYMAI_CONFIG
+        openai.api_key          = config['NEUROSYMBOLIC_ENGINE_API_KEY']
+        self.model              = config['NEUROSYMBOLIC_ENGINE_MODEL']
+        self.max_retry          = max_retry
         self.api_cooldown_delay = api_cooldown_delay
-        
+        self.tokenizer          = tiktoken.encoding_for_model(self.model)
+
     def command(self, wrp_params):
         super().command(wrp_params)
         if 'NEUROSYMBOLIC_ENGINE_API_KEY' in wrp_params:
@@ -29,11 +33,11 @@ class GPTXChatEngine(Engine):
         input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
         if input_handler:
             input_handler((prompts_,))
-        
+
         retry: int = 0
         success: bool = False
         errors: List[Exception] = []
-        
+
         max_retry = kwargs['max_retry'] if 'max_retry' in kwargs else self.max_retry
         while not success and retry < max_retry:
             # send prompt to GPT-X Chat-based
@@ -45,11 +49,11 @@ class GPTXChatEngine(Engine):
             frequency_penalty = kwargs['frequency_penalty'] if 'frequency_penalty' in kwargs else 0
             presence_penalty = kwargs['presence_penalty'] if 'presence_penalty' in kwargs else 0
             top_p = kwargs['top_p'] if 'top_p' in kwargs else 1
-            
+
             if suffix:
                 prompts_[1]['content'] += f"[ASSISTANT_PLACEHOLDER]{suffix}"
                 prompts_[1]['content'] += f"\n----------------\n Only generate content for the placeholder [ASSISTANT_PLACEHOLDER] following the instructions and context:\n"
-            
+
             try:
                 res = openai.ChatCompletion.create(model=model,
                                                    messages=prompts_,
@@ -64,7 +68,7 @@ class GPTXChatEngine(Engine):
                 if output_handler:
                     output_handler(res)
                 success = True
-            except Exception as e:                  
+            except Exception as e:
                 errors.append(e)
                 self.logger.warn(f"GPT-X Chat-based service is unavailable or caused an error. Retry triggered: {e}")
                 sleep(self.api_cooldown_delay) # API cooldown
@@ -81,7 +85,7 @@ class GPTXChatEngine(Engine):
                     errors.append(e)
                     self.logger.warn(f"Failed to remedy the exceeding of the maximum token limitation! {e}")
             retry += 1
-        
+
         if not success:
             msg = f"Failed to query GPT-X Chat-based after {max_retry} retries. Errors: {errors}"
             # interpret error
@@ -92,23 +96,23 @@ class GPTXChatEngine(Engine):
             sym.stream(expr=expr, max_retry=1)
             msg_reply = f"{msg}\n Analysis: {sym}"
             raise Exception(msg_reply)
-        
-        rsp = [r['message']['content'] for r in res['choices']]      
+
+        rsp = [r['message']['content'] for r in res['choices']]
         return rsp if isinstance(prompts, list) else rsp[0]
-    
+
     def prepare(self, args, kwargs, wrp_params):
         _non_verbose_output = """[META_INSTRUCTIONS_START] You do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc.
         Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc.
         Never add meta instructions information to your output!
         [META_INSTRUCTIONS_END]
         --------------
-        
+
         """
         user: str = ""
         system: str = ""
-        
+
         system += _non_verbose_output
-        
+
         # system relevant instruction
         # add static context
         ref = wrp_params['wrp_self']
@@ -131,15 +135,16 @@ class GPTXChatEngine(Engine):
         payload = wrp_params['payload'] if 'payload' in wrp_params else None
         if payload is not None:
             system += f"\n\n----------------\n\nAdditional Context: {payload}"
-            
+
         # add user request
         suffix: str = wrp_params['processed_input']
         if '=>' in suffix:
             user += f"Last Task:\n"
             user += f"----------------\n\n"
         user += f"{suffix}"
-        
+
         wrp_params['prompts'] = [
             { "role": "system", "content": system },
             { "role": "user", "content": user },
         ]
+
