@@ -442,7 +442,7 @@ class Symbol(ABC):
 
     def extract(self, pattern: str, **kwargs) -> "Symbol":
         @ai.extract(**kwargs)
-        def _func(_, pattern: str, text: str) -> str:
+        def _func(_, pattern: str) -> str:
             pass
         return self._sym_return_type(_func(self, pattern))
 
