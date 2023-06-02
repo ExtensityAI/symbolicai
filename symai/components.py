@@ -1,5 +1,6 @@
 from typing import Callable, Iterator, List, Optional
 from .symbol import Symbol, Expression
+import symai as ai
 
 
 class Any(Expression):
@@ -53,6 +54,24 @@ class Choice(Expression):
     
     def forward(self, sym: Symbol, *args, **kwargs) -> Symbol:
         return sym.choice(cases=self.cases, default=self.default, *args, **kwargs)
+    
+
+class Classify(Expression):
+    def __init__(self, options: List[str]):
+        super().__init__()
+        self.options: List[str] = options
+
+    @ai.cache(in_memory=False)
+    def embed_options(self):
+        opts = map(Symbol, self.options)
+        embeddings = [opt.embed() for opt in opts]
+        return embeddings
+    
+    def forward(self, message: Symbol, *args, **kwargs) -> Symbol:
+        usr_embed = message.embed()
+        similarities = [usr_embed.similarity(emb) for emb in self.embed_options()]
+        similarities = sorted(zip(self.options, similarities), key=lambda x: x[1], reverse=True)
+        return self._sym_return_type(similarities[0][0])
 
 
 class Output(Expression):
