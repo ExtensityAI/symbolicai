@@ -1,6 +1,8 @@
 from typing import Callable, Iterator, List, Optional
 from .symbol import Symbol, Expression
 import symai as ai
+from random import sample
+from string import ascii_uppercase, ascii_lowercase
 
 
 class Any(Expression):
@@ -275,3 +277,42 @@ class FileQuery(Expression):
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
         res = Symbol(list(self.query_stream(self.file)))
         return res.query(prompt=sym, context=res, **kwargs)
+
+
+class Type(Expression):
+    def __init__(self, prompt: str, static_context: str = "",
+                 examples: Optional[ai.Prompt] = [],
+                 pre_processor: Optional[List[ai.PreProcessor]] = None,
+                 post_processor: Optional[List[ai.PostProcessor]] = None,
+                 default: Optional[object] = None, *args, **kwargs):
+        super().__init__()
+
+        chars = ascii_lowercase + ascii_uppercase
+        self.name = 'type_' + ''.join(sample(chars, 15))
+        self.args = args
+        self.kwargs = kwargs
+        self.prompt = prompt
+        self._static_context = static_context
+        self.examples = examples
+        self.pre_processor = pre_processor
+        self.post_processor = post_processor
+        self.default = default
+        
+    def forward(self, *args, **kwargs) -> Symbol:
+        @ai.few_shot(prompt=self.prompt, 
+                     examples=self.examples, 
+                     pre_processor=self.pre_processor, 
+                     post_processor=self.post_processor, 
+                     default=self.default, 
+                     *self.args, **self.kwargs)
+        def _func(_):
+            pass
+        _type = type(self.name, (Expression, ), {
+            # constructor
+            "forward": _func,
+            "_sym_return_type": self.name,
+        })
+        obj = _type()
+        obj._sym_return_type = _type
+        return obj(*args, **kwargs)
+
