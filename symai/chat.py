@@ -2,17 +2,23 @@ from typing import List, Any, Optional, Dict, Callable
 from .symbol import Symbol, Expression
 from .components import Output
 from symai import ai
+import symai.backend.settings as settings
 
 
 class ChatBot(Expression):
     _symai_chat: str = """This is a conversation between a chatbot ({}:) and a human (User:). It also includes narration Text (Narrator:) describing the next dialog.
+    The chatbot primarily follows the narrative instructions, and then uses the user input to condition on for the generated response.
 """
     
-    def __init__(self, value = None, name: str = 'Symbia', output: Optional[Output] = None):
+    def __init__(self, value = None, name: str = 'Symbia', output: Optional[Output] = None, verbose: bool = False):
         super().__init__(value)
         that = self
+        self.verbose: bool = verbose
         self.name = name
-        self.history: List[Symbol] = []
+        self.last_user_input: str = ''
+        self.memory: ai.Memory = ai.SlidingWindowListMemory()
+        use_external_memory: bool = settings.SYMAI_CONFIG['INDEXING_ENGINE_API_KEY'] is not None
+        self.long_term_memory: ai.Memory = ai.VectorDatabaseMemory(enabled=use_external_memory)
         cfg = Expression()
         cfg.command(engines=['symbolic'], expression_engine='wolframalpha')
         class CustomInputPreProcessor(ai.ConsoleInputPreProcessor):
@@ -22,35 +28,32 @@ class ChatBot(Expression):
                     input_ = f'\n{str(args[0])}\n$> '
                 else:
                     input_ = f'\n{name}: {str(args[0])}\n$> '
-                that.history.append(input_)
+                that.memory.store(input_)
+                that.long_term_memory.store(str(args[0]))
                 return input_
         self._pre_processor = CustomInputPreProcessor
         def custom_post_processor(wrp_self, wrp_params, rsp, *args, **kwargs):
-            that.history.append(f'User: {str(rsp)}')
+            that.memory.store(f'User: {str(rsp)}')
             return rsp
         self._post_processor = custom_post_processor
         
         self.init_options()
-        
         self.command(engines=['symbolic'], expression_engine='wolframalpha')
 
     def repeat(self, query, **kwargs):
         return self.narrate('Symbia does not understand and asks to repeat and give more context.', prompt=query)
     
     def init_options(self):
-        self.options_detection = ai.Choice(cases=self.options, # use static context instead
-                                           default=self.options[-1])
-        
-        self.extended_options_detection = ai.Choice(cases=self.extended_options, # use static context instead
-                                                    default=self.extended_options[-1])
+        self.options_detection = ai.Classify(options=self.options)
+        self.extended_options_detection = ai.Classify(options=self.extended_options)
     
     @property
     def options(self):
         return [
-            'option 1 = [open question, jokes, how are you, chit chat]',
-            'option 2 = [specific task or command, query about facts, weather forecast, time, date, location, birth location, birth date, draw, speech, audio, ocr, open file, text to image, image to text, speech recognition, transcribe]',
+            'option 1 = [jokes, how are you, chit chat]',
+            'option 2 = [specific task or command, query about facts, general help, open question, weather forecast, time, date, location, birth location, birth date, draw, speech, audio, ocr, open file, text to image, image to text, speech recognition, transcribe]',
             'option 3 = [exit, quit, bye, goodbye]',
-            'option 4 = [help, list of commands, list of capabilities]',
+            'option 4 = [{} chatbot features help, list of commands, list of capabilities]'.format(self.name),
             'option 5 = [follow up question, continuation, more information]',
             'option 6 = [mathematical equation, mathematical problem, mathematical question]',
             'option 9 = [non of the other, unknown, invalid, not understood]'
@@ -73,20 +76,27 @@ class ChatBot(Expression):
     def static_context(self) -> str:
         return ChatBot._symai_chat.format(self.name)
     
-    def narrate(self, message: str, context: str = None, end: bool = False, verbose=False, **kwargs) -> "Symbol":
+    def narrate(self, message: str, context: str = None, end: bool = False, **kwargs) -> "Symbol":
         narration = f'Narrator: {message}'
-        self.history.append(narration)
+        self.memory.store(narration)
         ctxt = context if context is not None else ''
-        value = f"Additional context and facts: {ctxt}\n---------\n" if ctxt is not None else ''
-        value += '\n'.join(self.history[-10:])
+        value = f"{self.static_context}\n---------\nAdditional context and facts: {ctxt}\n---------\n" if ctxt is not None else ''
+        value += '\nShort-term memory recall:\n'
+        value += '\n'.join(self.memory.recall()) # TODO: use vector search DB
+        value += '\nLong-term memory recall (consider only if relevant to the user query):\n'
+        query = f'{self.last_user_input}\n{message}'
+        recall = self.long_term_memory.recall(query)
+        value += '\n'.join(recall)
+        if self.verbose: print('[DEBUG] long-term memory recall: ', recall)
         value += f'\n{self.name}:'
-        if verbose: print('[DEBUG] narrate: ', narration)
-        if verbose: print('[DEBUG] context: ', ctxt)
+        if self.verbose: print('[DEBUG] narration: ', narration)
+        if self.verbose: print('[DEBUG] function context: ', ctxt)
         @ai.zero_shot(prompt=value, 
                       stop=['User:'], **kwargs)
         def _func(_) -> str:
             pass
         rsp = f"{self.name}: {_func(self)}"
+        if self.verbose: print('[DEBUG] model reply: ', rsp)
         sym = self._sym_return_type(rsp)
         if end: print(sym)
         return sym
@@ -121,13 +131,18 @@ class SymbiaChat(ChatBot):
         while True:
             # query user
             usr = self.input(message)
-            self.history.append(str(usr))
+            self.last_user_input = usr
+            if self.verbose: print('[DEBUG] user query: ', usr)
             
-            # TODO: needs model fine-tuning to improve the classification
             # detect context
-            ctxt = self.options_detection(usr)
+            if len(str(usr)) > 0:
+                ctxt = str(self.options_detection(usr))
+            else:
+                ctxt = self.options[-1] # unknown default option
+
+            if self.verbose: print('[DEBUG] options detected: ', ctxt)
             
-            if 'exit' in str(usr) or 'quit' in str(usr): # exit
+            if 'exit' in ctxt or 'quit' in ctxt: # exit
                 self.narrate('Symbia writes goodbye message.', end=True)
                 break # end chat
             
@@ -139,14 +154,15 @@ class SymbiaChat(ChatBot):
                 message = self.narrate('Symbia replies to the user question in a casual way.')
                 
             elif 'option 6' in ctxt: # solve a math problem
-                q = usr.extract("mathematical formula for WolframAlpha")
+                q = usr.extract("mathematical formula that WolframAlpha can solve")
                 rsp = q.expression()
                 message = self.narrate('Symbia replies to the user and provides the solution of the math problem.', 
                                         context=rsp)
         
             elif 'option 2' in ctxt or 'option 5' in ctxt: 
                 # detect command
-                option = self.extended_options_detection(usr)
+                option = str(self.extended_options_detection(usr))
+                if self.verbose: print('[DEBUG] extended options detected: ', option)
                 
                 try:
                     

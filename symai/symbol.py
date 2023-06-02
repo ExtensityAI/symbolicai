@@ -98,7 +98,11 @@ class Symbol(ABC):
 
     def __getattr__(self, key):
         if not self.__dict__.__contains__(key):
-            return getattr(self.value, key)
+            try:
+                att = getattr(self.value, key)
+            except AttributeError as e:
+                raise AttributeError(f"Cascading call failed, since object has no attribute '{key}'. Original error message: {e}")
+            return att
         return self.__dict__[key]
 
     def __contains__(self, other) -> bool:

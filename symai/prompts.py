@@ -350,6 +350,7 @@ class ExtractPattern(Prompt):
             "from '081109 204525 512 INFO dfs.DataNode$PacketResponder: PacketResponder 2 for block blk_572492839287299681 terminating' extract 'Regex blk_[{0-9}]*' =>blk_572492839287299681",
             "from '081109 203807 222 INFO dfs.DataNode$PacketResponder: PacketResponder 0 for block blk_-6952295868487656571 terminating' extract 'Regex blk_[{0-9}]' =>081109 | 203807 | 222 | 0 | 6952295868487656571",
             "from 'Follow us on Facebook.' extract 'Company Name' =>Facebook",
+            "from 'Joe Biden was born November 20, 1942. Divide the year of the birth date by 26.' extract 'mathematical formula' =>1942 / 26",
             "from 'Help us by providing feedback at our service desk.' extract 'Email' =>None",
             "from 'Call us if you need anything.' extract 'Phone Number' =>None",
             """from 'Exception: Failed to query GPT-3 after 3 retries. Errors: [InvalidRequestError(message="This model's maximum context length is 4097 tokens, however you requested 5684 tokens (3101 in your prompt; ...' extract 'requested tokens' =>5684""",

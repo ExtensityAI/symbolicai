@@ -1,7 +1,19 @@
 from .settings import SYMAI_CONFIG
 from typing import List
 from .base import Engine
+import warnings
+import itertools
+warnings.filterwarnings('ignore', module='pinecone')
 import pinecone
+
+
+def chunks(iterable, batch_size=100):
+    """A helper function to break an iterable into chunks of size batch_size."""
+    it = iter(iterable)
+    chunk = tuple(itertools.islice(it, batch_size))
+    while chunk:
+        yield chunk
+        chunk = tuple(itertools.islice(it, batch_size))
 
 
 class IndexEngine(Engine):
@@ -55,7 +67,9 @@ class IndexEngine(Engine):
                                    include_values=index_inc_values)
             
         elif operation == 'add':
-            rsp = self.index.upsert(vectors=query)
+            for ids_vectors_chunk in chunks(query, batch_size=100):
+                rsp = self.index.upsert(vectors=ids_vectors_chunk)  # Assuming `index` defined elsewhere
+            #rsp = self.index.upsert(vectors=query) # TODO: check if this works
             
         elif operation == 'config':            
             index_name = kwargs['index_name'] if 'index_name' in kwargs else self.index_name

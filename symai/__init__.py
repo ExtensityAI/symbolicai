@@ -3,7 +3,7 @@ import json
 import logging
 
 
-SYMAI_VERSION = "0.2.18"
+SYMAI_VERSION = "0.2.19"
 __version__ = SYMAI_VERSION
 __root_dir__ = os.getcwd()
 
@@ -105,3 +105,4 @@ from .backend.base import Engine
 from .functional import (_process_query, ConstraintViolationException)
 from .chat import ChatBot
 from .shell import Shell
+from .memory import *
