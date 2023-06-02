@@ -715,6 +715,10 @@ modified:   tests/test_composition.py
                             default="no")
         self.assertTrue(is_sql == 'no')
 
+    def test_new_type(self):
+        llm_fn = ai.Type('This function transform natural language text to python code.')
+        res = llm_fn('marius is equal to five plus leo')
+        self.assertTrue('hello' in res)
 
     def test_complex_causal_example(self):
         #val = "A line parallel to y = 4x + 6 passes through (5, 10). What is the y-coordinate of the point where this line crosses the y-axis?"
