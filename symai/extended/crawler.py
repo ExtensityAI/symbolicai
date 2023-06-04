@@ -11,6 +11,6 @@ class Crawler(Expression):
         ))
         
     def forward(self, url: str, pattern='www', **kwargs) -> Symbol:
-        res = self.fetch(url=url, pattern=pattern, **kwargs)
+        res = Expression.fetch(url=url, pattern=pattern, **kwargs)
         vals = list(self.data_stream(res, **kwargs))
         return Symbol(vals)

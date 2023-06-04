@@ -89,9 +89,9 @@ class ImageRenderingEngine(Engine):
         if not success:
             msg = f"Failed to query DALL-E after {max_retry} retries. Errors: {errors}"
             # interpret error
-            from symai.symbol import Symbol
+            from symai.symbol import Expression
             from symai.components import Analyze
-            sym = Symbol(errors)
+            sym = Expression(errors)
             expr = Analyze(exception=errors[-1], query="Explain the issue in this error message")
             sym.stream(expr=expr, max_retry=1)
             msg_reply = f"{msg}\n Analysis: {sym}"

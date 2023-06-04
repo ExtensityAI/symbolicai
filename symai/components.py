@@ -65,7 +65,7 @@ class Classify(Expression):
 
     @ai.cache(in_memory=False)
     def embed_options(self):
-        opts = map(Symbol, self.options)
+        opts = map(Expression, self.options)
         embeddings = [opt.embed() for opt in opts]
         return embeddings
     
@@ -86,7 +86,7 @@ class Output(Expression):
     def forward(self, *args, **kwargs) -> Symbol:
         kwargs['verbose'] = self.verbose
         kwargs['handler'] = self.handler
-        return self.output(expr=self.expr, *args, **kwargs)
+        return Expression.output(expr=self.expr, *args, **kwargs)
 
 
 class Sequence(Expression):
@@ -109,7 +109,7 @@ class Stream(Expression):
         self.expr: Expression = expr
         self.force: bool = force
     
-    def forward(self, sym: Symbol, **kwargs) -> Iterator[Symbol]:
+    def forward(self, sym: Expression, **kwargs) -> Iterator[Symbol]:
         if self.force:
             return sym.fstream(expr=self.expr, 
                                max_tokens=self.max_tokens, 
@@ -128,9 +128,9 @@ class Trace(Expression):
         self.engines: List[str] = engines
     
     def forward(self, *args, **kwargs) -> Symbol:
-        self.command(verbose=True, engines=self.engines)
+        Expression.command(verbose=True, engines=self.engines)
         res = self.expr(*args, **kwargs)
-        self.command(verbose=False, engines=self.engines)
+        Expression.command(verbose=False, engines=self.engines)
         return res
     
     
@@ -151,9 +151,9 @@ class Log(Expression):
         self.engines: List[str] = engines
     
     def forward(self, *args, **kwargs) -> Symbol:
-        self.command(logging=True, engines=self.engines)
+        Expression.command(logging=True, engines=self.engines)
         res = self.expr(*args, **kwargs)
-        self.command(logging=False, engines=self.engines)
+        Expression.command(logging=False, engines=self.engines)
         return res
 
 
@@ -261,7 +261,7 @@ class ExcludeFilter(Expression):
 
 class Open(Expression):
     def forward(self, path: str, **kwargs) -> Symbol:
-        return self.open(path, **kwargs)
+        return Expression.open(path, **kwargs)
 
 
 class FileQuery(Expression):
@@ -279,7 +279,7 @@ class FileQuery(Expression):
         return res.query(prompt=sym, context=res, **kwargs)
 
 
-class Type(Expression):
+class Function(Expression):
     def __init__(self, prompt: str, static_context: str = "",
                  examples: Optional[ai.Prompt] = [],
                  pre_processor: Optional[List[ai.PreProcessor]] = None,

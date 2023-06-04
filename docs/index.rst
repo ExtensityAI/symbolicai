@@ -635,7 +635,7 @@ for the respective engine. Let’s see an example:
    # instantiate an object of the class
    expr = ComplexExpression(val)
    # set WolframAlpha as the main expression engine to use
-   expr.command(engines=['symbolic'], expression_engine='wolframalpha')
+   Expression.command(engines=['symbolic'], expression_engine='wolframalpha')
    # evaluate the expression
    res = expr.causal_expression()
 
@@ -1334,7 +1334,7 @@ variable ``x``:
 .. code:: python
 
    expr = Expression()
-   expr.command(engines=['symbolic'], expression_engine='wolframalpha')
+   Expression.command(engines=['symbolic'], expression_engine='wolframalpha')
    res = expr.expression('x^2 + 2x + 1')
 
 .. code:: bash
@@ -1351,8 +1351,7 @@ and return the text:
 
 .. code:: python
 
-   expr = Expression()
-   res = expr.speech('examples/audio.mp3')
+   res = Expression.speech('examples/audio.mp3')
 
 .. code:: bash
 
@@ -1368,8 +1367,7 @@ an image and return the text:
 
 .. code:: python
 
-   expr = Expression()
-   res = expr.ocr('https://media-cdn.tripadvisor.com/media/photo-p/0f/da/22/3a/rechnung.jpg')
+   res = Expression.ocr('https://media-cdn.tripadvisor.com/media/photo-p/0f/da/22/3a/rechnung.jpg')
 
 The OCR engine returns a dictionary with a key ``all_text`` where the
 full text is stored. See more details in their documentation
@@ -1389,8 +1387,7 @@ a query and return the results:
 
 .. code:: python
 
-   expr = Expression()
-   res = expr.search('Birthday of Barack Obama')
+   res = Expression.search('Birthday of Barack Obama')
 
 .. code:: bash
 
@@ -1405,9 +1402,8 @@ following example shows how to crawl a website and return the results:
 
 .. code:: python
 
-   expr = Expression()
-   res = expr.fetch(url="https://www.google.com/", 
-                    pattern="google")
+   res = Expression.fetch(url="https://www.google.com/", 
+                          pattern="google")
 
 The ``pattern`` property can be used to detect if the document as been
 loaded correctly. If the pattern is not found, the crawler will timeout
@@ -1427,8 +1423,7 @@ image:
 
 .. code:: python
 
-   expr = Expression('a cat with a hat')
-   res = expr.draw()
+   res = Expression.draw('a cat with a hat')
 
 .. code:: bash
 
@@ -1450,8 +1445,7 @@ file and return the text:
 
 .. code:: python
 
-   expr = Expression()
-   res = expr.open('./LICENSE')
+   res = Expression.open('./LICENSE')
 
 .. code:: bash
 
@@ -1466,11 +1460,10 @@ shows how to store text as an index and then retrieve the most related
 match of it:
 
 .. code:: python
-
-   expr = Expression()
-   expr.add(Expression('Hello World!').zip())
-   expr.add(Expression('I like cookies!').zip())
-   res = expr.get(Expression('hello').embed().value).ast()
+   
+   Expression.store(Expression('Hello World!').zip())
+   Expression.store(Expression('I like cookies!').zip())
+   res = Expression.recall(Expression('hello').embed().value).ast()
    res['matches'][0]['id']
 
 .. code:: bash
@@ -1502,8 +1495,7 @@ cat from above and return the results as an array of probabilities:
 
 .. code:: python
 
-   expr = Expression()
-   res = expr.vision('https://oaidalleapiprodscus.blob.core.windows.net/private/org-l6FsXDfth6...', 
+   res = Expression.vision('https://oaidalleapiprodscus.blob.core.windows.net/private/org-l6FsXDfth6...', 
                      ['cat', 'dog', 'bird', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe'])
 
 .. code:: bash
@@ -1541,9 +1533,8 @@ Then use once the following code to set up the local engine:
    from symai.backend.engine_nesy_client import NeSyClientEngine
    # setup local engine
    engine = NeSyClientEngine()
-   setting = Expression()
-   setting.setup(engines={'neurosymbolic': engine})
-   setting.command(time_clock=True)
+   Expression.setup(engines={'neurosymbolic': engine})
+   Expression.command(time_clock=True)
 
 Now you can use the local engine to perform symbolic computation:
 
@@ -1581,8 +1572,7 @@ for illustration purposes:
        def prepare(self, args, kwargs, wrp_params):
            wrp_params['prompts'] = ['Go wild and generate something!']
    custom_engine = DummyEngine()
-   sym = Symbol()
-   sym.setup(engines={'neurosymbolic': custom_engine})
+   Expression.setup(engines={'neurosymbolic': custom_engine})
    res = sym.compose()
 
 To configure an engine, we can use the ``command`` method. In this
@@ -1593,7 +1583,7 @@ useful for debugging purposes:
 .. code:: python
 
    sym = Symbol('Hello World!')
-   sym.command(engines=['neurosymbolic'], verbose=True)
+   Expression.command(engines=['neurosymbolic'], verbose=True)
    res = sym.translate('German')
 
 .. code:: bash

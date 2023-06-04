@@ -23,8 +23,7 @@ from symai.backend.engine_nesy_client import NeSyClientEngine
 def setup_engine():
     print("Initializing engine...")
     engine = NeSyClientEngine()
-    setting = Expression()
-    setting.setup(engines={'neurosymbolic': engine})
+    Expression.setup(engines={'neurosymbolic': engine})
     return engine
 
 

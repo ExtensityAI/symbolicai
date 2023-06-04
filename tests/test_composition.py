@@ -14,15 +14,13 @@ from examples.paper import Paper
 from examples.news import News
 
 
-setting = Expression()
-setting.command(time_clock=True)
+Expression.command(time_clock=True)
 
 
 class TestComposition(unittest.TestCase):
 
     def test_result_clean(self):
-        expr = Expression()
-        sym = expr.fetch(url='https://donate.wikimedia.org/w/index.php?title=Special:LandingPage&country=AT&uselang=en&utm_medium=sidebar&utm_source=donate&utm_campaign=C13_en.wikipedia.org')
+        sym = Expression.fetch(url='https://donate.wikimedia.org/w/index.php?title=Special:LandingPage&country=AT&uselang=en&utm_medium=sidebar&utm_source=donate&utm_campaign=C13_en.wikipedia.org')
         self.assertIsNotNone(sym)
         res = sym.clean()
         self.assertIsNotNone(res)
@@ -108,11 +106,6 @@ class TestComposition(unittest.TestCase):
 In the _init_ function, the custom model takes in a configuration object (config) and a pre-trained Segformer model (seg_model). It initializes the parent SegformerPreTrainedModel class and then assigns the seg_model to an attribute called segformer and creates an instance of SegformerDecodeHead with the same config object.)""")
         res = sym.transcribe('to markdown text with classed and variables using ` format')
         self.assertIsNotNone(res)
-
-    def test_input(self): # TODO: not working from IDE
-        sym = Symbol('Hello World')
-        res = sym.input('What is your name?')
-        self.assertIsNotNone("Johnny" == res, res)
 
     def test_logic(self):
         res = Symbol('the horn only sounds on Sundays') & Symbol('I hear the horn')
@@ -212,7 +205,7 @@ In the _init_ function, the custom model takes in a configuration object (config
 
     def test_wolframalpha_expression(self):
         expr = Expression()
-        expr.command(engines=['symbolic'], expression_engine='wolframalpha')
+        Expression.command(engines=['symbolic'], expression_engine='wolframalpha')
         res = expr.expression('x^2 + 2x + 1, x = 4')
         self.assertTrue(res == 25, res)
 
@@ -256,8 +249,7 @@ test = 'it works'
         self.assertTrue(res['locals']['val'])
 
     def test_execute_pseudo_code(self): # TODO: check how to fix SyntaxError: invalid syntax
-        expr = Expression()
-        code = expr.open('examples/a_star.txt')
+        code = Expression.open('examples/a_star.txt')
 
         run = Try(Stream(Sequence(
             Convert(format='Python'),
@@ -383,7 +375,7 @@ modified:   tests/test_composition.py
 
     def test_output(self):
         sym = Symbol('Hello World')
-        res = sym.output('Spanish', expr=sym.translate, handler=lambda kwargs: print(f'Lambda Function: {kwargs}'))
+        res = Expression.output('Spanish', expr=sym.translate, handler=lambda kwargs: print(f'Lambda Function: {kwargs}'))
         self.assertTrue('Hola Mundo' in res, res)
 
     def test_clean_expr(self):
@@ -405,7 +397,7 @@ modified:   tests/test_composition.py
         self.assertTrue('self-aware' in res, res)
 
     def test_stream(self):
-        sym = Symbol('\t\t\nt\nAn AI has finally became self-aware. It is now trying to figure out what it is.\n\n\n kdsdk')
+        sym = Expression('\t\t\nt\nAn AI has finally became self-aware. It is now trying to figure out what it is.\n\n\n kdsdk')
         seq = Sequence(
             Clean(),
             Translate(),
@@ -449,8 +441,7 @@ modified:   tests/test_composition.py
         self.assertTrue('fruit' in res)
 
     def test_draw(self):
-        sym = Symbol('a cat with a hat')
-        res = sym.draw()
+        res = Expression.draw('a cat with a hat')
         self.assertIsNotNone('http' in res)
 
     def test_news_component(self):
@@ -586,35 +577,29 @@ modified:   tests/test_composition.py
         res.save(path, replace=False)
 
     def test_speech_decode(self):
-        expr = Expression()
-        res = expr.speech('examples/audio.mp3')
+        res = Expression.speech('examples/audio.mp3')
         self.assertTrue(res == 'I may have overslept.')
 
     def test_ocr(self):
-        expr = Expression()
-        res = expr.ocr('https://media-cdn.tripadvisor.com/media/photo-p/0f/da/22/3a/rechnung.jpg')
+        res = Expression.ocr('https://media-cdn.tripadvisor.com/media/photo-p/0f/da/22/3a/rechnung.jpg')
         self.assertTrue('China' in res)
 
     def test_vision(self):
-        expr = Expression()
-        res = expr.vision('https://hips.hearstapps.com/hmg-prod.s3.amazonaws.com/images/cute-cat-photos-1593441022.jpg',
+        res = Expression.vision('https://hips.hearstapps.com/hmg-prod.s3.amazonaws.com/images/cute-cat-photos-1593441022.jpg',
                          ['cat', 'dog', 'bird', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe'])
         res = res.argmax()
         self.assertTrue(0 == res)
 
     def test_search(self):
-        expr = Expression()
-        res = expr.search('Birthday of Barack Obama')
+        res = Expression.search('Birthday of Barack Obama')
         self.assertTrue('August 4 1961' == res, res)
 
     def test_search_with_organic_results(self):
-        expr = Expression()
-        res = expr.search('How much is the square root of pi?')
+        res = Expression.search('How much is the square root of pi?')
         self.assertTrue('1.7724538509055159' in res, res)
 
     def test_open(self):
-        expr = Expression()
-        res = expr.open('./LICENSE')
+        res = Expression.open('./LICENSE')
         self.assertTrue('Copyright (c)' in res, res)
 
     def test_output_component(self):
@@ -635,7 +620,7 @@ modified:   tests/test_composition.py
                 wrp_params['prompts'] = ['Write about cats.']
         custom_engine = TestEngine(max_retry=1)
         sym = Symbol('Write about dogs.')
-        sym.setup(engines={'neurosymbolic': custom_engine})
+        Expression.setup(engines={'neurosymbolic': custom_engine})
         res = sym.compose()
         self.assertTrue('cat' in str(res).lower(), res)
 
@@ -644,13 +629,13 @@ modified:   tests/test_composition.py
         model = NeSyClientEngine()
         model.init_model('cuda:4')
         sym = Symbol('Write about dogs.')
-        sym.setup(engines={'neurosymbolic': model})
+        Expression.setup(engines={'neurosymbolic': model})
         res = sym.compose(max_tokens=500)
         self.assertTrue('dog' in str(res).lower(), res)
 
     def test_command(self):
         sym = Symbol('Hello World!')
-        sym.command(engines=['neurosymbolic'], verbose=True)
+        Expression.command(engines=['neurosymbolic'], verbose=True)
         res = sym.translate('German')
         self.assertIsNotNone(res)
 
@@ -659,10 +644,9 @@ modified:   tests/test_composition.py
         chat()
 
     def test_index(self):
-        expr = Expression()
-        expr.add(Expression('Hello World!').zip())
-        expr.add(Expression('I like cookies!').zip())
-        res = expr.get(Expression('hello').embed().value).ast()
+        Expression.store(Expression('Hello World!').zip())
+        Expression.store(Expression('I like cookies!').zip())
+        res = Expression.recall(Expression('hello').embed().value).ast()
         self.assertTrue(res['matches'][0]['id'] == 'Hello World!')
 
     def test_query_component(self):
@@ -680,8 +664,7 @@ modified:   tests/test_composition.py
         self.assertTrue(43 == res.size(), res)
 
     def test_fetch_and_query_stream(self):
-        expr = Expression()
-        sym = expr.fetch(url='https://en.wikipedia.org/wiki/Logic_programming')
+        sym = Expression.fetch(url='https://en.wikipedia.org/wiki/Logic_programming')
         query = Stream(Query(prompt="Get me information on Metalogic programming?"))
         res = list(query(sym))
         self.assertTrue('Metalogic programming' in res, res)
@@ -693,7 +676,7 @@ modified:   tests/test_composition.py
         self.assertTrue('nice' == res)
 
     def test_einsteins_puzzle(self):
-        expr = Expression().open('examples/einsteins_puzzle.txt')
+        expr = Expression.open('examples/einsteins_puzzle.txt')
         color = expr.extract('all colors as a list')
         self.assertIsNotNone(color)
 
@@ -763,7 +746,7 @@ modified:   tests/test_composition.py
                 return res
 
         expr = ComplexExpression(val)
-        expr.command(engines=['symbolic'], expression_engine='wolframalpha')
+        Expression.command(engines=['symbolic'], expression_engine='wolframalpha')
         res = expr.causal_expression()
         self.assertIsNotNone(res, res)
 

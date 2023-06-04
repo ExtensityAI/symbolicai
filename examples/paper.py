@@ -51,7 +51,7 @@ class Paper(Expression):
         )
         
     def forward(self, **kwargs) -> Symbol:
-        res = self.open(self.path, **kwargs)
+        res = Expression.open(self.path, **kwargs)
         data = ''
         template = self.header_style(self.html_template, max_tokens=2000)
         paragraphs = []

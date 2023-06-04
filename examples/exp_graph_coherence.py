@@ -66,12 +66,12 @@ class GraphCoherenceChat(ai.ChatBot):
 
     @ai.cache(in_memory=False)
     def embed_opt(self):
-        opts = map(ai.Symbol, self.options)
+        opts = map(ai.Expression, self.options)
         embeddings = [opt.embed() for opt in opts]
 
         return embeddings
 
-    def classify(self, usr: ai.Symbol):
+    def classify(self, usr: ai.Symbol): #TODO: classify
         '''
         Classify user input into one of the options.
         '''
@@ -117,7 +117,7 @@ class GraphCoherenceChat(ai.ChatBot):
 
                 if 'option 1' in option: # search request
                     q = usr.extract('user query request')
-                    rsp = self.search(q)
+                    rsp = ai.Expression.search(q)
                     message = self.narrate('Symbia replies to the user based on the online search results.',
                                             context=rsp)
 

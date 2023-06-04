@@ -444,7 +444,7 @@ class ComplexExpression(ai.Expression): # more to the Expression class in later 
 # instantiate an object of the class
 expr = ComplexExpression(val)
 # set WolframAlpha as the main expression engine to use
-expr.command(engines=['symbolic'], expression_engine='wolframalpha')
+ai.Expression.command(engines=['symbolic'], expression_engine='wolframalpha')
 # evaluate the expression
 res = expr.causal_expression()
 ```
@@ -848,8 +848,7 @@ Furthermore, as we interpret all objects as symbols only with a different encodi
 Although in our work, we mainly focus on how LLMs can evaluate symbolic expressions, many formal statements were already well implemented in existing symbolic engines, like WolframAlpha. Therefore, given an API KEY from WolframAlpha, we can use their engine by setting the `expression_engine` attribute. This avoids error prune evaluations from neuro-symbolic engines for mathematical operations. The following example shows how to use WolframAlpha to compute the result of the variable `x`:
 
 ```python
-expr = Expression()
-expr.command(engines=['symbolic'], expression_engine='wolframalpha')
+Expression.command(engines=['symbolic'], expression_engine='wolframalpha')
 res = expr.expression('x^2 + 2x + 1')
 ```
 
@@ -863,8 +862,7 @@ x = -1
 To interpret audio files we can perform speech transcription by using `whisper`. The following example shows how to transcribe an audio file and return the text:
 
 ```python
-expr = Expression()
-res = expr.speech('examples/audio.mp3')
+res = Expression.speech('examples/audio.mp3')
 ```
 
 ```bash
@@ -877,8 +875,7 @@ I may have overslept.
 To "read" text from images we can perform optical character recognition (OCR) with `APILayer`. The following example shows how to transcribe an image and return the text:
 
 ```python
-expr = Expression()
-res = expr.ocr('https://media-cdn.tripadvisor.com/media/photo-p/0f/da/22/3a/rechnung.jpg')
+res = Expression.ocr('https://media-cdn.tripadvisor.com/media/photo-p/0f/da/22/3a/rechnung.jpg')
 ```
 
 The OCR engine returns a dictionary with a key `all_text` where the full text is stored. See more details in their documentation [here](https://apilayer.com/marketplace/image_to_text-api).
@@ -894,8 +891,7 @@ China Restaurant\nMaixim,s\nSegeberger Chaussee 273\n22851 Norderstedt\nTelefon 
 To obtain fact-based content we perform search queries via `SerpApi` with a `Google` backend. The following example shows how to search for a query and return the results:
 
 ```python
-expr = Expression()
-res = expr.search('Birthday of Barack Obama')
+res = Expression.search('Birthday of Barack Obama')
 ```
 
 ```bash
@@ -908,9 +904,8 @@ August 4, 1961
 To access any data source from the web, we can use `Selenium`. The following example shows how to crawl a website and return the results:
 
 ```python
-expr = Expression()
-res = expr.fetch(url="https://www.google.com/", 
-                 pattern="google")
+res = Expression.fetch(url="https://www.google.com/", 
+                       pattern="google")
 ```
 The `pattern` property can be used to detect if the document as been loaded correctly. If the pattern is not found, the crawler will timeout and return an empty result.
 
@@ -924,8 +919,7 @@ GoogleKlicke hier, wenn du nach einigen Sekunden nicht automatisch weitergeleite
 To render nice images from text description we use `DALL·E 2`. The following example shows how to draw a text description and return the image:
 
 ```python
-expr = Expression('a cat with a hat')
-res = expr.draw()
+res = Expression.draw('a cat with a hat')
 ```
 
 ```bash
@@ -943,8 +937,7 @@ Don't worry, we would never hide an image of a cat with a hat from you. Here is 
 To perform file operations we use the file system of the OS. At the moment, we support only PDF files and plain text files. This is a very early stage and we are working on more sophisticated file system access and also remote storage. The following example shows how to read a PDF file and return the text:
 
 ```python
-expr = Expression()
-res = expr.open('./LICENSE')
+res = Expression.open('./LICENSE')
 ```
 
 ```bash
@@ -956,10 +949,9 @@ BSD 3-Clause License\n\nCopyright (c) 2023 ...
 We use `Pinecone` to index and search for text. The following example shows how to store text as an index and then retrieve the most related match of it:
 
 ```python
-expr = Expression()
-expr.add(Expression('Hello World!').zip())
-expr.add(Expression('I like cookies!').zip())
-res = expr.get(Expression('hello').embed().value).ast()
+Expression.store(Expression('Hello World!').zip())
+Expression.store(Expression('I like cookies!').zip())
+res = Expression.recall(Expression('hello').embed().value).ast()
 res['matches'][0]['id']
 ```
 
@@ -981,8 +973,7 @@ To perform text-based image few-shot classification we use `CLIP`. This implemen
 The following example shows how to classify the image of our generated cat from above and return the results as an array of probabilities:
 
 ```python
-expr = Expression()
-res = expr.vision('https://oaidalleapiprodscus.blob.core.windows.net/private/org-l6FsXDfth6...', 
+res = Expression.vision('https://oaidalleapiprodscus.blob.core.windows.net/private/org-l6FsXDfth6...', 
                   ['cat', 'dog', 'bird', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe'])
 ```
 
@@ -1014,8 +1005,7 @@ Then use once the following code to set up the local engine:
 from symai.backend.engine_nesy_client import NeSyClientEngine
 # setup local engine
 engine = NeSyClientEngine()
-setting = Expression()
-setting.setup(engines={'neurosymbolic': engine})
+Expression.setup(engines={'neurosymbolic': engine})
 ```
 
 Now you can use the local engine to perform symbolic computation:
@@ -1040,8 +1030,7 @@ class DummyEngine(GPT3Engine):
     def prepare(self, args, kwargs, wrp_params):
         wrp_params['prompts'] = ['Go wild and generate something!']
 custom_engine = DummyEngine()
-sym = Symbol()
-sym.setup(engines={'neurosymbolic': custom_engine})
+Expression.setup(engines={'neurosymbolic': custom_engine})
 res = sym.compose()
 ```
 
@@ -1049,7 +1038,7 @@ To configure an engine, we can use the `command` method. In this example, we wil
 
 ```python
 sym = Symbol('Hello World!')
-sym.command(engines=['neurosymbolic'], verbose=True)
+Expression.command(engines=['neurosymbolic'], verbose=True)
 res = sym.translate('German')
 ```
 

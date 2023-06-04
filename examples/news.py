@@ -81,7 +81,7 @@ class News(Expression):
         These `Symbol` objects are then combined into a single `Symbol` object which is then mapped. 
         If `render` is `False`, the mapped `Symbol` is returned. Otherwise, the `render` method is called with the `Symbol` and the resulting `Symbol` is returned.
         """
-        res = self.fetch(url=self.url, pattern=self.pattern)
+        res = Expression.fetch(url=self.url, pattern=self.pattern)
         vals = []
         for news in self.data_stream(res, **kwargs):
             vals.append(str(news))

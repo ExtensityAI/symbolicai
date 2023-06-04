@@ -55,12 +55,15 @@ class VectorDatabaseMemory(Memory):
         if not self.enabled:
             return
         sym = self._check_and_cast_expr(sym)
-        self.add(sym.zip())
+        values = []
+        for i, v in sym.zip():
+            values.append((i, v[0]))
+        ai.Expression.store(values)
     
     def recall(self, sym, *args, **kwargs):
         if not self.enabled:
             return []
         sym = self._check_and_cast_expr(sym)
-        res = self.get(sym.embed().value).ast()
+        res = ai.Expression.recall(sym.embed().value).ast()
         res = [v['id'] for v in res['matches'][:self.top_k]]
         return res

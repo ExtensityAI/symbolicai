@@ -352,12 +352,6 @@ class Symbol(ABC):
     def __truediv__(self, other) -> "Symbol":
         return self._sym_return_type(str(self).split(str(other)))
 
-    def index(self, item: str, **kwargs) -> "Symbol":
-        @ai.getitem(**kwargs)
-        def _func(_, item: str) -> int:
-            pass
-        return self._sym_return_type(_func(self, item))
-
     def equals(self, other: str, context: str = 'contextually', **kwargs) -> "Symbol":
         @ai.equals(context=context, **kwargs)
         def _func(_, other: str) -> bool:
@@ -492,17 +486,6 @@ class Symbol(ABC):
             pass
         return self._sym_return_type(_func(self))
 
-    def execute(self, **kwargs) -> "Symbol":
-        @ai.execute(**kwargs)
-        def _func(_):
-            pass
-        return _func(self)
-
-    def fexecute(self, **kwargs) -> "Symbol":
-        def _func(sym: Symbol, **kargs):
-            return sym.execute(**kargs)
-        return self.ftry(_func, **kwargs)
-
     def simulate(self, **kwargs) -> "Symbol":
         @ai.simulate(**kwargs)
         def _func(_):
@@ -563,6 +546,26 @@ class Symbol(ABC):
             pass
         return self._sym_return_type(_func(self))
 
+    def similarity(self, other: Any, metric = 'cosine') -> float:
+        v = self
+        if not isinstance(self.value, np.ndarray): v = np.array(self.value)
+        if not isinstance(other, np.ndarray): other = np.array(other.value)
+        v = v.squeeze()[:, None]
+        other = other.squeeze()[:, None]
+        return (v.T@other / (v.T@v)**.5 * (other.T@other)**.5).item()
+
+    def expand(self, *args, **kwargs) -> "Symbol":
+        @ai.expand(max_tokens=2048, **kwargs)
+        def _func(_, *args):
+            pass
+        _tmp_llm_func = self._sym_return_type(_func(self, *args))
+        func_name = str(_tmp_llm_func.extract('function name'))
+        def _llm_func(*args, **kwargs):
+            res = _tmp_llm_func.fexecute(*args, **kwargs)
+            return res['locals'][func_name]()
+        setattr(self, func_name, _llm_func)
+        return func_name
+    
     def cluster(self, **kwargs) -> "Symbol":
         @ai.cluster(entries=self.value, **kwargs)
         def _func(_):
@@ -576,17 +579,52 @@ class Symbol(ABC):
         def _func(_) -> list:
             pass
         return self._sym_return_type(_func(self))
+    
+    def zip(self, ids: Optional[List[str]] = None, embeds: Optional[List[list]] = None, **kwargs):
+        if ids is None:
+            ids = [str(hash(self.value))]
+            embeds = [self.embed(**kwargs).value]
+        df = pd.DataFrame(
+        data={
+            "id": ids,
+            "vector": embeds
+        })
+        return zip(df.id, df.vector)
 
-    def similarity(self, other: Any, metric = 'cosine') -> float:
-        if not isinstance(self.value, np.ndarray): v = np.array(self.value).squeeze()[:, None]
-        if not isinstance(other, np.ndarray): other = np.array(other).squeeze()[:, None]
+    def save(self, path: str, replace: bool = False) -> "Symbol":
+        file_path = path
+        if not replace:
+            cnt = 0
+            while os.path.exists(file_path):
+                filename, file_extension = os.path.splitext(path)
+                file_path = f'{filename}_{cnt}{file_extension}'
+                cnt += 1
+        with open(file_path, 'w') as f:
+            f.write(str(self))
+        return self
 
-        return (v.T@other / (v.T@v)**.5 * (other.T@other)**.5).item()
+
+class Expression(Symbol):
+    def __init__(self, value = None):
+        super().__init__(value)
+
+    @property
+    def _sym_return_type(self):
+        return Expression
+
+    def __call__(self, *args, **kwargs) -> "Expression":
+        if len(args) > 0:
+            args = [Expression(arg) for arg in args]
+        self.value = self.forward(*args, **kwargs)
+        return self._sym_return_type(self.value)
+
+    def forward(self, *args, **kwargs) -> "Expression":
+        raise NotImplementedError()
 
     def stream(self, expr: "Expression",
                max_tokens: int = 4000,
                char_token_ratio: float = 0.6,
-               **kwargs) -> "Symbol":
+               **kwargs) -> "Expression":
         max_chars = int(max_tokens * char_token_ratio)
         steps = (len(self)// max_chars) + 1
         for chunks in range(steps):
@@ -613,10 +651,21 @@ class Symbol(ABC):
     def fstream(self, expr: "Expression",
                 max_tokens: int = 4000,
                 char_token_ratio: float = 0.6,
-                **kwargs) -> "Symbol":
+                **kwargs) -> "Expression":
         return self._sym_return_type(list(self.stream(expr, max_tokens, char_token_ratio, **kwargs)))
 
-    def ftry(self, expr: "Expression", retries: int = 1, **kwargs) -> "Symbol":
+    def execute(self, **kwargs) -> "Expression":
+        @ai.execute(**kwargs)
+        def _func(_):
+            pass
+        return _func(self)
+
+    def fexecute(self, **kwargs) -> "Expression":
+        def _func(sym: Symbol, **kargs):
+            return sym.execute(**kargs)
+        return self.ftry(_func, **kwargs)
+
+    def ftry(self, expr: "Expression", retries: int = 1, **kwargs) -> "Expression":
         prompt: str = ''
         def input_handler(input_):
             prompt = input_ # TODO: fix this
@@ -634,147 +683,107 @@ class Symbol(ABC):
                 if retry_cnt > retries:
                     raise e
                 else:
-                    err =  Symbol(prompt) @ sym
+                    err =  Expression(prompt) @ sym
                     res = err.analyze(query="What is the issue in this expression?", exception=e)
                     ctxt = res @ prompt
                     sym = sym.correct(context=ctxt, exception=e)
 
-    def expand(self, *args, **kwargs) -> "Symbol":
-        @ai.expand(max_tokens=2048, **kwargs)
-        def _func(_, *args):
-            pass
-        _tmp_llm_func = self._sym_return_type(_func(self, *args))
-        func_name = str(_tmp_llm_func.extract('function name'))
-        def _llm_func(*args, **kwargs):
-            res = _tmp_llm_func.fexecute(*args, **kwargs)
-            return res['locals'][func_name]()
-        setattr(self, func_name, _llm_func)
-        return func_name
-
-    def draw(self, operation: str = 'create', **kwargs) -> "Symbol":
+    @staticmethod
+    def draw(prompt: str, operation: str = 'create', **kwargs) -> "Expression":
         @ai.draw(operation=operation, **kwargs)
         def _func(_):
             pass
-        return self._sym_return_type(_func(self))
+        return Expression(_func(Expression(prompt)))
 
-    def save(self, path: str, replace: bool = False) -> "Symbol":
-        file_path = path
-        if not replace:
-            cnt = 0
-            while os.path.exists(file_path):
-                filename, file_extension = os.path.splitext(path)
-                file_path = f'{filename}_{cnt}{file_extension}'
-                cnt += 1
-        with open(file_path, 'w') as f:
-            f.write(str(self))
-        return self
-
-    def output(self, *args, **kwargs) -> "Symbol":
-        @ai.output(**kwargs)
-        def _func(_, *args):
-            pass
-        return self._sym_return_type(_func(self, *args))
-
-    def command(self, engines: List[str] = ['all'], **kwargs) -> "Symbol":
-        @ai.command(engines=engines, **kwargs)
-        def _func(_):
-            pass
-        _func(self)
-        return self
-
-    def setup(self, engines: Dict[str, Any], **kwargs) -> "Symbol":
-        @ai.setup(engines=engines, **kwargs)
-        def _func(_):
-            pass
-        _func(self)
-        return self
-
-
-class Expression(Symbol):
-    def __init__(self, value = None):
-        super().__init__(value)
-
-    @property
-    def _sym_return_type(self):
-        return Expression
-
-    def __call__(self, *args, **kwargs) -> Symbol:
-        self.value = self.forward(*args, **kwargs)
-        return self.value
-
-    def forward(self, *args, **kwargs) -> Symbol:
-        raise NotImplementedError()
-
-    def input(self, message: str = "Please add more information", **kwargs) -> "Symbol":
-        @ai.userinput(**kwargs)
-        def _func(_, message) -> str:
-            pass
-        return self._sym_return_type(_func(self, message))
-
-    def fetch(self, url: str, pattern: str = '', **kwargs) -> "Symbol":
+    @staticmethod
+    def fetch(url: str, pattern: str = '', **kwargs) -> "Expression":
         @ai.fetch(url=url, pattern=pattern, **kwargs)
         def _func(_) -> str:
             pass
-        return self._sym_return_type(_func(self))
+        return Expression(_func(Expression()))
 
-    def ocr(self, image_url: str, **kwargs) -> "Symbol":
+    @staticmethod
+    def ocr(image_url: str, **kwargs) -> "Expression":
         if not image_url.startswith('http'):
             image_url = f'file://{image_url}'
         @ai.ocr(image=image_url, **kwargs)
         def _func(_) -> dict:
             pass
-        return self._sym_return_type(_func(self))
+        return Expression(_func(Expression()))
 
-    def vision(self, image: Optional[str] = None, text: Optional[List[str]] = None, **kwargs) -> "Symbol":
+    @staticmethod
+    def vision(image: Optional[str] = None, text: Optional[List[str]] = None, **kwargs) -> "Expression":
         @ai.vision(image=image, prompt=text, **kwargs)
         def _func(_) -> np.ndarray:
             pass
-        return self._sym_return_type(_func(self))
+        return Expression(_func(Expression()))
 
-    def speech(self, audio_path: str, operation: str = 'decode', **kwargs) -> "Symbol":
+    @staticmethod
+    def speech(audio_path: str, operation: str = 'decode', **kwargs) -> "Expression":
         @ai.speech(audio=audio_path, prompt=operation, **kwargs)
         def _func(_) -> str:
             pass
-        return self._sym_return_type(_func(self))
+        return Expression(_func(Expression()))
 
-    def search(self, query: str, **kwargs) -> "Symbol":
+    @staticmethod
+    def search(query: str, **kwargs) -> "Expression":
         @ai.search(query=query, **kwargs)
         def _func(_) -> str:
             pass
-        return self._sym_return_type(_func(self))
+        return Expression(_func(Expression()))
 
-    def open(self, path: str, **kwargs) -> "Symbol":
+    @staticmethod
+    def input(message: str = "Please add more information", **kwargs) -> "Expression":
+        @ai.userinput(**kwargs)
+        def _func(_, message) -> str:
+            pass
+        return Expression(_func(Expression(), message))
+
+    @staticmethod
+    def open(path: str, **kwargs) -> "Expression":
         @ai.opening(path=path, **kwargs)
         def _func(_) -> str:
             pass
-        return self._sym_return_type(_func(self))
+        return Expression(_func(Expression()))
 
-    def zip(self, ids: Optional[List[str]] = None, embeds: Optional[List[list]] = None, **kwargs):
-        if ids is None:
-            ids = [self.value]
-            embeds = [self.embed(**kwargs).value]
-        df = pd.DataFrame(
-        data={
-            "id": ids,
-            "vector": embeds
-        })
-        return zip(df.id, df.vector)
-
-    def index(self, path: str, **kwargs) -> "Symbol":
+    @staticmethod
+    def index(path: str, **kwargs) -> "Expression":
         @ai.index(prompt=path, operation='config', **kwargs)
         def _func(_) -> str:
             pass
-        return self._sym_return_type(_func(self))
+        return Expression(_func(Expression()))
 
-    def add(self, query: str, **kwargs) -> "Symbol":
+    @staticmethod
+    def store(query: str, **kwargs) -> "Expression":
         @ai.index(prompt=query, operation='add', **kwargs)
         def _func(_) -> str:
             pass
-        return self._sym_return_type(_func(self))
+        return Expression(_func(Expression()))
 
-    def get(self, query: str, **kwargs) -> "Symbol":
+    @staticmethod
+    def recall(query: str, **kwargs) -> "Expression":
         @ai.index(prompt=query, operation='search', **kwargs)
         def _func(_) -> str:
             pass
-        return self._sym_return_type(_func(self))
+        return Expression(_func(Expression()))
 
+    @staticmethod
+    def output(*args, **kwargs) -> "Expression":
+        @ai.output(**kwargs)
+        def _func(_, *args):
+            pass
+        return Expression(_func(Expression(), *args))
+
+    @staticmethod
+    def command(engines: List[str] = ['all'], **kwargs) -> None:
+        @ai.command(engines=engines, **kwargs)
+        def _func(_):
+            pass
+        _func(Expression())
+
+    @staticmethod
+    def setup(engines: Dict[str, Any], **kwargs) -> None:
+        @ai.setup(engines=engines, **kwargs)
+        def _func(_):
+            pass
+        _func(Expression())
