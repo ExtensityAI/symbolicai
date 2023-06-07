@@ -2,10 +2,12 @@ import ast
 import os
 from abc import ABC
 from json import JSONEncoder
-from typing import Dict, Iterator, List, Any, Optional
+from typing import Any, Dict, Iterator, List, Optional
+
 import numpy as np
-import symai as ai
 import pandas as pd
+
+import symai as ai
 
 
 class SymbolEncoder(JSONEncoder):
