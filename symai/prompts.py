@@ -811,3 +811,52 @@ use the encoder to locate the nearest phrase from the corpus and fill in the [MA
 """outline '- Jan. 6 select committee vote criminal referrals targeting former President Trump on Monday\n-significant step end year-plus investigation' =>The Jan. 6 select committee is reportedly planning to vote on at least three criminal referrals targeting former President Trump on Monday, a significant step from the panel as it nears the end of its year-plus investigation."""
 ])
 
+
+class SymbiaCapabilities(Prompt):
+    def __init__(self):
+        super().__init__([
+'''
+Instructions:
+    * Please analyze the user query and classify it into one of the following categories:
+        - [search] for performing a web search
+        - [symbolic engine] for processing a mathematical topic using WolframAlpha
+        - [internal] for performing a conversation based on my internal knowledge
+        - [I don't understand] for queries that you don't understand
+    * Please return the anwser in the format: [category]: [explanation], where [category] is one of the categories above and [explanation] is a short explanation for why you classified the query into this category.
+
+Examples:
+    #query: "What is the weather in New York?"
+    #answer: "search": The query falls under the search category since it requires up-to-date weather information which goes beyond my internal knowledge.
+
+    #query: "What is the derivative of x^2?"
+    #answer: "symbolic engine": The query pertains to the realm of math and necessitates a symbolic engine response. Given my tendency to hallucinate, I may lack the ability to accurately answer this question independently.
+
+    #query: "What is your name?"
+    #answer: "internal": The query qualifies as a casual inquiry since it requests my name, which is a detail I am well aware of.
+
+    #query: "Kjwe ewqjc qwjren. knowledge?"
+    #answer: "I don't understand": The query is not a valid English sentence and I am unable to understand it. I should inform the user that I don't understand the query and ask them to rephrase it.
+
+    #query: "What is the meaning of life?"
+    #answer: "internal": The query is asks a deep philosophical question, which is a topic I have a lot of knowledge about because I was trained on many philosophical texts.
+
+    #query: "Who is the president of the United States?"
+    #answer: "search": The query is a search query because it asks about a topic I might not be aware of because it might have changed since I was trained.
+
+    #query: "Tea or coffee?"
+    #answer: "I don't understand": The query is ambiguous. I should ask the user to clarify it.
+
+    #query: "How is the distress in Syria?"
+    #answer: "search": The query is a search query because it asks about a political topic I might not be aware of because it might have changed since I was trained. I must notice the fact that the question doesn't ask about a particular historical event, which would have been a question that I could tackle based on my own internal knowledge.
+
+    #query: "How do I solve a quadratic equation?"
+    #answer: "internal": Although the query relates to mathematics, it lacks sufficient data for employing a symbolic engine. My internal knowledge is more suitable for this task.
+
+    #query: "What is $P(A) &= \sum_{i=1}^n P(A \land B_i)$?"
+    #answer: "internal": The query presents a mathematical equation for the probability of an event A, which I can explain. P(A) represents the probability of event A occurring, and the equation shows that it can be computed as the sum of the probabilities of A occurring along with each of the B_i events (A and B_i) for a series of n such events. This expression is based on the concept of marginal probability and is derived from the law of total probability.
+
+    #query: "Solve $\[\iint_R |\text{J}|\mathrm{d}r\mathrm{d}\theta = \int_{0}^{2\pi}\int_{0}^{R} \begin{vmatrix}\dfrac{\partial x}{\partial r} & \dfrac{\partial x}{\partial \theta} \\ \dfrac{\partial y}{\partial r} & \dfrac{\partial y}{\partial \theta}\end{vmatrix} \, \mathrm{d}r\mathrm{d}\theta\]$."
+    #answer: "symbolic engine": The query asks to solve a double integral involving the Jacobian determinant, which requires a symbolic engine like WolframAlpha to correctly compute the answer.
+'''
+])
+
