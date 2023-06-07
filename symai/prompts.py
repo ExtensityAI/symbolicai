@@ -324,8 +324,27 @@ class IsInstanceOf(Prompt):
         ])
 
 
+class FixCode(Prompt):
+    def __init__(self):
+        super().__init__([
+            """Correct the following code according to the context description.
+The description of the error is analyzed and the entire code is re-written to fix the error, not only the line where the error occurred.
+This ensures that the code is always fixed, validated and can be executed again without errors.
+Write only code in the languge provided. Do not use ``` or any other characters to mark the beginning or end of a code block.
+All comments or descriptions that are not valid code must be uncommented with the language specific comment character.
+The outcome must be valid code that can be compiled or executed without errors.
+
+--------------------------- CODE TEMPLATE DESCRIPTION
+```code
+<YOUR_CORRECTED_CODE_HERE>
+```
+<YOUR_CORRECTED_CODE_HERE> is replaced with the code you write.
+---------------------------
+"""])
+
+
 class FewShotPattern(Prompt):
-    def __init__(self, value):
+    def __init__(self):
         super().__init__([
             """description: 'Verify if information A is in contained in B' examples ["'[1, 2, 3] isinstanceof 'array' >>>True'", "'[1, 2, 3] isinstanceof 'string' >>>False"] =>Verify if information A is in contained in B:\nExamples:\n[1, 2, 3] isinstanceof 'array' >>>True\n'[1, 2, 3] isinstanceof 'string' >>>False\nYour Prediction:{} isinstanceof {} >>>""",
             """description: 'Compare A to B' examples ["4 > 88 >>>False", "-inf < 0 >>>True", "inf > 0 >>>True", "1 >= 0 >>>True", "6.0 < 6 >>>False"] =>Compare A to B\n\Examples:\n4 > 88 >>>False\n-inf < 0 >>>True\ninf > 0 >>>True\n1 >= 0 >>>True\n6.0 < 6 >>>False\nYour Prediction:{} {} {} >>>""",

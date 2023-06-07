@@ -662,21 +662,10 @@ class Expression(Symbol):
                 **kwargs) -> "Expression":
         return self._sym_return_type(list(self.stream(expr, max_tokens, char_token_ratio, **kwargs)))
 
-    def execute(self, **kwargs) -> "Expression":
-        @ai.execute(**kwargs)
-        def _func(_):
-            pass
-        return _func(self)
-
-    def fexecute(self, **kwargs) -> "Expression":
-        def _func(sym: Symbol, **kargs):
-            return sym.execute(**kargs)
-        return self.ftry(_func, **kwargs)
-
-    def ftry(self, expr: "Expression", retries: int = 1, **kwargs) -> "Expression":
-        prompt: str = ''
+    def ftry(self, expr: "Expression", retries: int = 1, **kwargs) -> "Symbol":
+        prompt = {}
         def input_handler(input_):
-            prompt = input_ # TODO: fix this
+            prompt['message'] = input_ # TODO: fix this
         kwargs['input_handler'] = input_handler
         retry_cnt: int = 0
         sym = self
@@ -691,10 +680,9 @@ class Expression(Symbol):
                 if retry_cnt > retries:
                     raise e
                 else:
-                    err =  Expression(prompt) @ sym
-                    res = err.analyze(query="What is the issue in this expression?", exception=e)
-                    ctxt = res @ prompt
-                    sym = sym.correct(context=ctxt, exception=e)
+                    err =  Symbol(prompt['message']) @ sym
+                    res = err.analyze(query="What is the issue in this expression?", exception=e, max_tokens=2000)
+                    sym = sym.correct(context=prompt['message'], exception=e, payload=res, max_tokens=2000)
 
     @staticmethod
     def draw(prompt: str, operation: str = 'create', **kwargs) -> "Expression":
