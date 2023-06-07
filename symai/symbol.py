@@ -579,11 +579,21 @@ class Symbol(ABC):
             pass
         return self._sym_return_type(_func(self))
 
-    def similarity(self, other: Any, metric = 'cosine') -> float:
-        if not isinstance(self.value, np.ndarray): v = np.array(self.value).squeeze()[:, None]
-        if not isinstance(other, np.ndarray): other = np.array(other).squeeze()[:, None]
+    def similarity(self, other: 'Symbol', metric: str = 'cosine') -> float:
+        def _ensure_format(x):
+            if not isinstance(x, np.ndarray):
+                if not isinstance(x, Symbol):
+                    raise TypeError(f"Cannot compute similarity with type {type(x)}")
+                x = np.array(x.value)
+            return x.squeeze()[:, None]
 
-        return (v.T@other / (v.T@v)**.5 * (other.T@other)**.5).item()
+        v = _ensure_format(self)
+        o = _ensure_format(other)
+
+        if metric == 'cosine':
+            return (v.T@o / (v.T@v)**.5 * (o.T@o)**.5).item()
+        else:
+            raise NotImplementedError(f"Similarity metric {metric} not implemented. Available metrics: 'cosine'")
 
     def stream(self, expr: "Expression",
                max_tokens: int = 4000,

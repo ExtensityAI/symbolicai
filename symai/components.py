@@ -301,3 +301,40 @@ class Function(Expression):
         obj._sym_return_type = _type
         return obj(*args, **kwargs)
 
+
+class SimilarityClassification(Expression):
+    def __init__(self, classes: List[str], metric: str = 'cosine'):
+        super().__init__()
+        self.classes = classes
+        self.metric  = metric
+
+    def embed_classes(self):
+        opts = map(Symbol, self.classes)
+        embeddings = [opt.embed() for opt in opts]
+
+        return embeddings
+
+    def forward(self, x: Symbol) -> Symbol:
+        usr_embed = x.embed()
+        similarities = [usr_embed.similarity(emb, metric=self.metric) for emb in self.embed_classes()]
+        similarities = sorted(zip(self.classes, similarities), key=lambda x: x[1], reverse=True)
+
+        return Symbol(similarities[0][0])
+
+
+class InContextClassification(Expression):
+    def __init__(self, blueprint: Prompt):
+        super().__init__()
+        self.blueprint = blueprint
+
+    def forward(self, x: Symbol, **kwargs) -> Symbol:
+        @ai.few_shot(
+            prompt=x,
+            examples=self.blueprint,
+            **kwargs
+        )
+        def _func(_):
+            pass
+
+        return Symbol(_func(self))
+
