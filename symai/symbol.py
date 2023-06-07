@@ -617,9 +617,9 @@ class Symbol(ABC):
         return self._sym_return_type(list(self.stream(expr, max_tokens, char_token_ratio, **kwargs)))
 
     def ftry(self, expr: "Expression", retries: int = 1, **kwargs) -> "Symbol":
-        prompt: str = ''
+        prompt = {}
         def input_handler(input_):
-            prompt = input_ # TODO: fix this
+            prompt['message'] = input_ # TODO: fix this
         kwargs['input_handler'] = input_handler
         retry_cnt: int = 0
         sym = self
@@ -634,9 +634,9 @@ class Symbol(ABC):
                 if retry_cnt > retries:
                     raise e
                 else:
-                    err =  Symbol(prompt) @ sym
+                    err =  Symbol(prompt['message']) @ sym
                     res = err.analyze(query="What is the issue in this expression?", exception=e, max_tokens=2000)
-                    sym = sym.correct(context=prompt, exception=e, payload=res, max_tokens=2000)
+                    sym = sym.correct(context=prompt['message'], exception=e, payload=res, max_tokens=2000)
 
     def expand(self, *args, **kwargs) -> "Symbol":
         @ai.expand(max_tokens=2048, **kwargs)
