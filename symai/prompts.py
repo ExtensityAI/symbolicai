@@ -4,7 +4,7 @@ from typing import Any, List, Callable
 
 class Prompt(ABC):
     stop_token = 'EOF'
-    
+
     def __init__(self, value):
         super().__init__()
         if isinstance(value, str):
@@ -29,7 +29,7 @@ class Prompt(ABC):
 
     def __call__(self, *args: Any, **kwds: Any) -> List["Prompt"]:
         return self.value
-    
+
     def __str__(self) -> str:
         val_ = '\n'.join([str(p) for p in self.value])
         for p in self.dynamic_value:
@@ -38,13 +38,13 @@ class Prompt(ABC):
 
     def __repr__(self) -> str:
         return self.__str__()
-    
+
     def append(self, value: str) -> None:
         self.dynamic_value.append(value)
-        
+
     def remove(self, value: str) -> None:
         self.dynamic_value.remove(value)
-        
+
     def clear(self) -> None:
         self.dynamic_value.clear()
 
@@ -89,8 +89,8 @@ class FuzzyEquals(Prompt):
             "'We have teh most effective system in the city.' == 'We have the most effective system in the city.' =>True",
             "【Ｓｅｍａｎｔｉｃ░ｐｒｏｇｒａｍｍｉｎｇ】 == 'semantic programming' =>True",
         ])
-        
-        
+
+
 class SufficientInformation(Prompt):
     def __init__(self):
         super().__init__([
@@ -101,8 +101,8 @@ class SufficientInformation(Prompt):
             "query 'When is the next full moon?' content 'Today is the 29th of February 2020. The next full moon will be on the 9th of April 2020.' =>True",
             "query 'Who is the current president of the United States?' content 'The 2020 United States presidential election was the 59th quadrennial presidential election, held on Tuesday, November 3, 2020.' =>False",
         ])
-        
-        
+
+
 class Modify(Prompt):
     def __init__(self):
         super().__init__([
@@ -114,8 +114,8 @@ class Modify(Prompt):
             "text 'Microsoft release a new chat bot API to enable human to machine translation.' modify 'language to German' =>Microsoft veröffentlicht eine neue Chat-Bot-API, um die Übersetzung von Mensch zu Maschine zu ermöglichen.",
             """text '{\n    "name": "Manual Game",\n    "type": "python",\n    "request": "launch",\n    "program": "${workspaceFolder}/envs/textgrid.py",\n    "cwd": "${workspaceFolder}",\n    "args": [\n        "--debug"\n    ],\n    "env": {\n        "PYTHONPATH": "."\n    }\n}' modify 'json to yaml' =>name: Manual Game\ntype: python\nrequest: launch\nprogram: ${workspaceFolder}/envs/textgrid.py\ncwd: ${workspaceFolder}\nargs:\n  - '--debug'\nenv:\n  PYTHONPATH: .""",
             ])
-        
-        
+
+
 class Filter(Prompt):
     def __init__(self):
         super().__init__([
@@ -136,9 +136,9 @@ class Filter(Prompt):
             "text 'Hi, mate! How are you?' include 'only questions' =>How are you?",
             "text 'fetch logs | fields timestamp, severity, logfile, message, container | fieldsAdd severity = lower(loglevel)' remove 'fieldsAdd' =>fetch logs | fields timestamp, severity, logfile, message, container",
             ])
-        
-        
-        
+
+
+
 class SemanticMapping(Prompt):
     def __init__(self):
         super().__init__([
@@ -148,8 +148,8 @@ class SemanticMapping(Prompt):
             Los Angeles has a diverse economy, and hosts businesses in a broad range of professional and cultural fields. It also has the busiest container port in the Americas. In 2018, the Los Angeles metropolitan area had a gross metropolitan product of over $1.0 trillion, making it the city with the third-largest GDP in the world, after New York City and Tokyo. =>cities | culture | USA | economy
             """
         ])
-        
-        
+
+
 class Format(Prompt):
     def __init__(self):
         super().__init__([
@@ -165,8 +165,8 @@ class Format(Prompt):
             "text '77' format 'hexadecimal' =>0x4D",
             """text '{\n    "name": "Manual Game",\n    "type": "python",\n    "request": "launch",\n    "program": "${workspaceFolder}/envs/textgrid.py",\n    "cwd": "${workspaceFolder}",\n    "args": [\n        "--debug"\n    ],\n    "env": {\n        "PYTHONPATH": "."\n    }\n}' format 'yaml' =>name: Manual Game\ntype: python\nrequest: launch\nprogram: ${workspaceFolder}/envs/textgrid.py\ncwd: ${workspaceFolder}\nargs:\n  - '--debug'\nenv:\n  PYTHONPATH: .""",
         ])
-        
-        
+
+
 class Transcription(Prompt):
     def __init__(self):
         super().__init__([
@@ -176,8 +176,8 @@ class Transcription(Prompt):
             "text '23' modify only 'binary' =>10111",
             "text 'In the _init_ function, the custom model takes in a configuration object (config) and a pre-trained Segformer model (seg_model)' modify only 'markdown formatting using ` for variables and classes' =>In the `__init__` function, the custom model takes in a configuration object (`config`) and a pre-trained `Segformer` model (`seg_model`)",
         ])
-        
-        
+
+
 class ExceptionMapping(Prompt):
     def __init__(self):
         super().__init__([
@@ -185,16 +185,16 @@ class ExceptionMapping(Prompt):
             """context 'Make sure to initialize 'spam' before computation' exception 'Traceback (most recent call last):\n  File "<stdin>", line 1, in <module>\nNameError: name 'spam' is not defined' code '4 + spam*3' =>Check if the variable is defined before using it. | spam = 1\n4 + spam*3""",
             """context 'You are passing string literals to device. They should be int.' exception 'executing finally clause\nTraceback (most recent call last):\n  File "<stdin>", line 1, in <module>\n  File "<stdin>", line 3, in divide\nTypeError: unsupported operand type(s) for /: 'str' and 'str'' code 'device("2", "1")' =>Check if the arguments are of the correct type. If not cast them properly. | device(2, 1)""",
         ])
-        
-        
+
+
 class ExecutionCorrection(Prompt):
     def __init__(self):
         super().__init__([
             """context "ValueError: invalid literal for int() with base 10: '4,'" "Verify if the literal is of type int | int(4)" code "a = int('4,')" =>int(4)""",
             """context "def function():\n  return (1 + 1) / a' exception 'Traceback (most recent call last):\n  File "<stdin>", line 1, in <module>\nZeroDivisionError: division by zero" "Do not divide by zero or add an epsilon value. | def function(eps=1e-8):\n  return (1 + 1) / (a + eps)" code "def function():\n  return (1 + 1) / 0" =>def function(eps=1e-8):\n  return (1 + 1) / (a + eps)""",
         ])
-        
-        
+
+
 class CompareValues(Prompt):
     def __init__(self):
         super().__init__([
@@ -240,13 +240,13 @@ class CompareValues(Prompt):
             "'hello' >= 'hello' =>True",
             "'hello' > 'hello' =>False",
             "123 + 456 =>579",
-            "'123' + '456' =>123 456", 
-            "'We are at the beginning of the ...' > 'We are' =>True", 
+            "'123' + '456' =>123 456",
+            "'We are at the beginning of the ...' > 'We are' =>True",
             "[1, 2, 3] >= [1, 2, 2] =>True",
             "[1, 2, 3, 8, 9] < [1, 2, 2] =>False",
         ])
-        
-        
+
+
 class RankList(Prompt):
     def __init__(self):
         super().__init__([
@@ -280,7 +280,7 @@ class ContainsValue(Prompt):
             "'spanish text' in 'This week in breaking news! An American ... ' =>False",
             "'in english' in 'Reg ATS: SEC 'bowing to public pressure' in reopening' =>True",
             "'The number Pi' in 3.14159265359... =>True",
-            "1 in [1, 2, 3] =>True", 
+            "1 in [1, 2, 3] =>True",
             "1 in [2, 3, 4] =>False",
             "'ten' in [1, 2, 3] =>False",
             "'option 1' in 'option 2 = [specific task or command]' =>False",
@@ -293,8 +293,8 @@ class ContainsValue(Prompt):
             "'apple' in ['orange', 'banana', 'apple'] =>True",
             "'Function' in 'Input: Function call: (_, *args)\nObject: type(<class 'str'>) | value(Hello World)' =>True",
         ])
-        
-        
+
+
 class IsInstanceOf(Prompt):
     def __init__(self):
         super().__init__([
@@ -310,7 +310,7 @@ class IsInstanceOf(Prompt):
             "'No, the issue has not yet been resolved.' isinstanceof 'yes or resolved' =>False",
             "'We are all good!' isinstanceof 'yes' =>True",
             "'This week in breaking news! An American ... ' isinstanceof 'spanish text' =>False",
-            "[1, 2, 3] isinstanceof 'array' =>True", 
+            "[1, 2, 3] isinstanceof 'array' =>True",
             "'Josef' isinstanceof 'German name' =>True",
             "'No, this is not ...' isinstanceof 'confirming answer' =>False",
             "'Josef' isinstanceof 'Japanese name' =>False",
@@ -322,8 +322,8 @@ class IsInstanceOf(Prompt):
             "['orange', 'banana', 'apple'] isinstanceof 'apple' =>False",
             "'Input: Function call: (_, *args)\nObject: type(<class 'str'>) | value(Hello World)' isinstanceof 'log message' =>True",
         ])
-        
-        
+
+
 class FewShotPattern(Prompt):
     def __init__(self, value):
         super().__init__([
@@ -332,8 +332,8 @@ class FewShotPattern(Prompt):
             """description: 'What is the capital of Austria?' examples [] =>What is the capital of Austria?\nYour Prediction: >>>""",
             """description: 'Sort the array based on the criteria:' examples ["[1, 9, 4, 2] >>>[1, 2, 4, 9]", "['a', 'd', 'c', 'b'] >>>['a', 'b', 'c', 'd']"] =>Sort the array based on the criteria:\nExamples:\n[1, 9, 4, 2] >>>[1, 2, 4, 9]\n['a', 'd', 'c', 'b'] >>>['a', 'b', 'c', 'd']\nYour Prediction:{} >>>""",
         ])
-        
-        
+
+
 class ExtractPattern(Prompt):
     def __init__(self):
         super().__init__([
@@ -355,8 +355,8 @@ class ExtractPattern(Prompt):
             "from 'Call us if you need anything.' extract 'Phone Number' =>None",
             """from 'Exception: Failed to query GPT-3 after 3 retries. Errors: [InvalidRequestError(message="This model's maximum context length is 4097 tokens, however you requested 5684 tokens (3101 in your prompt; ...' extract 'requested tokens' =>5684""",
         ])
-        
-        
+
+
 class SimpleSymbolicExpression(Prompt):
     def __init__(self):
         super().__init__([
@@ -431,8 +431,8 @@ class LogicExpression(Prompt):
             "expr :'He likes pie.': xor :'He likes cookies.': =>'He does not like pie nor cookies.'",
             "expr :'She hears a sound.': xor :'She does not hear a sound.': =>'She hears a sound.'",
         ])
-        
-        
+
+
 class InvertExpression(Prompt):
     def __init__(self):
         super().__init__([
@@ -468,7 +468,7 @@ class NegateStatement(Prompt):
             "'We do not have any apples.' =>'We have apples.'",
         ])
 
-        
+
 class ReplaceText(Prompt):
     def __init__(self):
         super().__init__([
@@ -488,8 +488,8 @@ class ReplaceText(Prompt):
             "text 'I like 13 Samurai, Pokemon and Digimon' replace 'Pokemon' with '' =>I like 13 Samurai and Digimon",
             "text 'This product is fucking stupid. The battery is weak. Also, the delivery guy is a moran, and probably scratched the cover.' replace 'hate speech comments' with '' =>The battery of the product is weak. Also, the delivery guy probably scratched the cover.",
         ])
-        
-        
+
+
 class IncludeText(Prompt):
     def __init__(self):
         super().__init__([
@@ -503,8 +503,8 @@ class IncludeText(Prompt):
             "text '[1, 2, 3, 4]' include 'prepend 5' =>[5, 1, 2, 3, 4]",
             "text 'fetch logs | fieldsAdd severity = lower(loglevel)' include '| fields `severity` next to fetch |' =>fetch logs | fields severity | fieldsAdd severity = lower(loglevel)",
         ])
-        
-        
+
+
 class CombineText(Prompt):
     def __init__(self):
         super().__init__([
@@ -533,8 +533,8 @@ class CombineText(Prompt):
             "'house | car | boat' + 'plane | train | ship' =>house | car | boat | plane | train | ship",
             "'The green fox jumps of the brown chair.' + 'The red fox jumps of the brown chair.' =>A green and a red fox jump of the brown chair.",
         ])
-        
-        
+
+
 class CleanText(Prompt):
     def __init__(self):
         super().__init__([
@@ -559,8 +559,8 @@ class ListObjects(Prompt):
             "'1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10' list 'even numbers' =>[2, 4, 6, 8, 10]",
             """'<script type="module" src="new_tab_page.js"></script>\n    <link rel="stylesheet" href="chrome://resources/css/text_defaults_md.css">\n    <link rel="stylesheet" href="chrome://theme/colors.css?sets=ui,chrome">\n    <link rel="stylesheet" href="shared_vars.css">' list 'chrome: url' =>['chrome://resources/css/text_defaults_md.css', 'chrome://theme/colors.css?sets=ui,chrome']""",
         ])
-        
-        
+
+
 class ExpandFunction(Prompt):
     def __init__(self):
         super().__init__([
@@ -570,36 +570,36 @@ def _llm_ping_():
     import os
     response = os.system("ping -c 1 google.com")
     return response == 0 """ + Prompt.stop_token,
-    
+
             """$> Create a random number between 1 and 100 =>
 def _llm_random_():
     "Create a random number between 1 and 100."
     import random
     return random.randint(1, 100) """ + Prompt.stop_token,
-    
+
             """$> Write any sentence in capital letters =>
 def _llm_upper_(input_):
     "Write any sentence in capital letters."
     return input_.upper() """ + Prompt.stop_token,
-    
+
             """$> Open a file from the file system =>
 def _llm_open_(file_name):
     "Open a file form the file system."
     return open(file_name, "r") """ + Prompt.stop_token,
-    
+
             """$> Call OpenAI GPT-3 to perform an action given a user input =>
 def _llm_action_(input_):
     "Call OpenAI GPT-3 to perform an action given a user input."
     import openai
     openai.Completion.create(prompt=input_, model="text-davinci-003") """ + Prompt.stop_token,
-    
+
             """$> Create a prompt to translate a user query to an answer in well-formatted structure =>
 def _llm_action_(query_, answer_):
     "Create a prompt to translate a user query to an answer in well-formatted structure."
     return f"Query: {query_} => {answer_}" """ + Prompt.stop_token,
         ])
-        
-        
+
+
 class ForEach(Prompt):
     def __init__(self):
         super().__init__([
@@ -615,8 +615,8 @@ class ForEach(Prompt):
             "'1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10' foreach 'even number' apply '-1' =>1 | 1 | 3 | 3 | 5 | 5 | 7 | 7 | 9 | 9",
             """'<script type="module" src="new_tab_page.js"></script>\n    <link rel="stylesheet" href="chrome://resources/css/text_defaults_md.css">\n    <link rel="stylesheet" href="chrome://theme/colors.css?sets=ui,chrome">\n    <link rel="stylesheet" href="shared_vars.css">' foreach 'chrome: url' apply 'replace chrome:// with https://google.' =><script type="module" src="new_tab_page.js"></script>\n    <link rel="stylesheet" href="https://google.resources/css/text_defaults_md.css">\n    <link rel="stylesheet" href="https://google.theme/colors.css?sets=ui,chrome">\n    <link rel="stylesheet" href="shared_vars.css">""",
         ])
-        
-        
+
+
 class MapContent(Prompt):
     def __init__(self):
         super().__init__([
@@ -627,8 +627,8 @@ class MapContent(Prompt):
             "['New York', 'Madrid', 'Tokyo'] map 'cities to continents' =>{'New York': 'North America', 'Madrid': 'Europe', 'Tokyo': 'Asia'}",
             "['cars where first invented in the 1800s', 'ducks are birds', 'dinosaurs are related to birds', 'Gulls, or colloquially seagulls, are seabirds of the family Laridae', 'General Motors is the largest car manufacturer in the world'] map 'sentences to common topics' =>{'birds': ['ducks are birds', 'dinosaurs are related to birds', 'Gulls, or colloquially seagulls, are seabirds of the family Laridae'], 'cars': ['cars where first invented in the 1800s', 'General Motors is the largest car manufacturer in the world']}",
         ])
-        
-        
+
+
 class Index(Prompt):
     def __init__(self):
         super().__init__([
@@ -650,8 +650,8 @@ class Index(Prompt):
             "1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 index '2:5' =>[3, 4, 5]",
             """'<script type="module" src="new_tab_page.js"></script>\n    <link rel="stylesheet" href="chrome://resources/css/text_defaults_md.css">\n    <link rel="stylesheet" href="chrome://theme/colors.css?sets=ui,chrome">\n    <link rel="stylesheet" href="shared_vars.css">' index 'href urls' =>['chrome://resources/css/text_defaults_md.css', 'chrome://theme/colors.css?sets=ui,chrome']""",
         ])
-        
-        
+
+
 class SetIndex(Prompt):
     def __init__(self):
         super().__init__([
@@ -672,8 +672,8 @@ class SetIndex(Prompt):
             "1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 index '2:5' set '0' =>[1, 0, 0, 0, 5, 6, 7, 8, 9, 10]",
             """'<script type="module" src="new_tab_page.js"></script>\n    <link rel="stylesheet" href="chrome://resources/css/text_defaults_md.css">\n    <link rel="stylesheet" href="chrome://theme/colors.css?sets=ui,chrome">\n    <link rel="stylesheet" href="shared_vars.css">' index 'href urls' set 'http://www.google.com' =>'<script type="module" src="new_tab_page.js"></script>\n    <link rel="stylesheet" href="http://www.google.com">\n    <link rel="stylesheet" href="http://www.google.com">\n    <link rel="stylesheet" href="shared_vars.css">'""",
         ])
-        
-        
+
+
 class RemoveIndex(Prompt):
     def __init__(self):
         super().__init__([
@@ -686,7 +686,7 @@ class RemoveIndex(Prompt):
             "'Yesterday I went to the supermarket. I bought a lot of food. Here is my shopping list: papaya, apples, bananas, oranges, ham, fish, mangoes, grapes, passion fruit, kiwi, strawberries, eggs, cucumber, and many more.' remove 'fruits' =>Yesterday I went to the supermarket. I bought a lot of food. Here is my shopping list: ham, fish, and many more.",
             "'Ananas' remove 'upper case' =>nanas",
             "'Ananas' remove 0 =>nanas",
-            "'Hello World, Hola Mundo, Buenos Dias, Bonjour' remove 'Spanish' =>Hello World, Bonjour", 
+            "'Hello World, Hola Mundo, Buenos Dias, Bonjour' remove 'Spanish' =>Hello World, Bonjour",
             "'Hello World, Hola Mundo, Buenos Dias, Bonjour' remove 'second greeting' =>Hello World, Buenos Dias, Bonjour",
             "['house', 'boat', 'mobile phone', 'iPhone', 'computer', 'soap', 'board game'] remove 'electronic devices' =>['house', 'boat', 'soap', 'board game']",
             "1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 remove '2:5' =>[1, 2, 6, 7, 8, 9, 10]",
@@ -763,15 +763,15 @@ void fft(complex<double>* input, complex<double>* output) {
 class TextToOutline(Prompt):
     def __init__(self):
         super().__init__([
-"""text 'We introduce NPM, the first NonParametric Masked Language Model. 
-NPM consists of an encoder and a reference corpus, and models a nonparametric distribution over a reference corpus (Figure 1). 
-The key idea is to map all the phrases in the corpus into a dense vector space using the encoder and, when given a query with a [MASK] at inference, 
+"""text 'We introduce NPM, the first NonParametric Masked Language Model.
+NPM consists of an encoder and a reference corpus, and models a nonparametric distribution over a reference corpus (Figure 1).
+The key idea is to map all the phrases in the corpus into a dense vector space using the encoder and, when given a query with a [MASK] at inference,
 use the encoder to locate the nearest phrase from the corpus and fill in the [MASK].' =>- first NonParametric Masked Language Model (NPM)\n - consists of encoder and reference corpus\n - key idea: map all phrases in corpus into dense vector space using encoder when given query with [MASK] at inference\n - encoder locates nearest phrase from corpus and fill in [MASK]""",
 """text 'On Monday, there will be no Phd seminar.' =>- Monday no Phd seminar""",
 """text 'The Jan. 6 select committee is reportedly planning to vote on at least three criminal referrals targeting former President Trump on Monday, a significant step from the panel as it nears the end of its year-plus investigation.' =>- Jan. 6 select committee vote criminal referrals targeting former President Trump on Monday\n-significant step end year-plus investigation""",
 ])
-        
-        
+
+
 class UniqueKey(Prompt):
     def __init__(self):
         super().__init__([
@@ -784,10 +784,54 @@ class UniqueKey(Prompt):
 class GenerateText(Prompt):
     def __init__(self):
         super().__init__([
-"""outline '- first NonParametric Masked Language Model (NPM)\n - consists of encoder and reference corpus\n - key idea: map all phrases in corpus into dense vector space using encoder when given query with [MASK] at inference\n - encoder locates nearest phrase from corpus and fill in [MASK]' =>NPM is the first NonParametric Masked Language Model. 
-NPM consists of an encoder and a reference corpus, and models a nonparametric distribution over a reference corpus (Figure 1). 
-The key idea is to map all the phrases in the corpus into a dense vector space using the encoder and, when given a query with a [MASK] at inference, 
+"""outline '- first NonParametric Masked Language Model (NPM)\n - consists of encoder and reference corpus\n - key idea: map all phrases in corpus into dense vector space using encoder when given query with [MASK] at inference\n - encoder locates nearest phrase from corpus and fill in [MASK]' =>NPM is the first NonParametric Masked Language Model.
+NPM consists of an encoder and a reference corpus, and models a nonparametric distribution over a reference corpus (Figure 1).
+The key idea is to map all the phrases in the corpus into a dense vector space using the encoder and, when given a query with a [MASK] at inference,
 use the encoder to locate the nearest phrase from the corpus and fill in the [MASK].""",
 """outline '- Monday no Phd seminar' =>On Monday, there will be no Phd seminar.""",
 """outline '- Jan. 6 select committee vote criminal referrals targeting former President Trump on Monday\n-significant step end year-plus investigation' =>The Jan. 6 select committee is reportedly planning to vote on at least three criminal referrals targeting former President Trump on Monday, a significant step from the panel as it nears the end of its year-plus investigation."""
 ])
+
+
+class SymbiaCapabilities(Prompt):
+    def __init__(self):
+        super().__init__([
+'''
+Instructions:
+    * Please analyze the user query and classify it into one of the following categories:
+        - [search] for performing a web search
+        - [symbolic engine] for processing a mathematical topic using WolframAlpha
+        - [internal] for performing a conversation based on my internal knowledge
+        - [I don't understand] for queries that you don't understand
+    * Please return the anwser in the format: [category]: [explanation], where [category] is one of the categories above and [explanation] is a short explanation for why you classified the query into this category.
+
+Examples:
+    #query: "What is the weather in New York?"
+    #answer: "search": The query falls under the search category since it requires up-to-date weather information which goes beyond my internal knowledge.
+
+    #query: "What is the derivative of x^2?"
+    #answer: "symbolic engine": The query pertains to the realm of math and necessitates a symbolic engine response. Given my tendency to hallucinate, I may lack the ability to accurately answer this question independently.
+
+    #query: "What is your name?"
+    #answer: "internal": The query qualifies as a casual inquiry since it requests my name, which is a detail I am well aware of.
+
+    #query: "Kjwe ewqjc qwjren. knowledge?"
+    #answer: "I don't understand": The query is not a valid English sentence and I am unable to understand it. I should inform the user that I don't understand the query and ask them to rephrase it.
+
+    #query: "What is the meaning of life?"
+    #answer: "internal": The query is asks a deep philosophical question, which is a topic I have a lot of knowledge about because I was trained on many philosophical texts.
+
+    #query: "Who is the president of the United States?"
+    #answer: "search": The query is a search query because it asks about a topic I might not be aware of because it might have changed since I was trained.
+
+    #query: "Tea or coffee?"
+    #answer: "I don't understand": The query is ambiguous. I should ask the user to clarify it.
+
+    #query: "How is the distress in Syria?"
+    #answer: "search": The query is a search query because it asks about a political topic I might not be aware of because it might have changed since I was trained. I must notice the fact that the question doesn't ask about a particular historical event, which would have been a question that I could tackle based on my own internal knowledge.
+
+    #query: "How do I solve a quadratic equation?"
+    #answer: "internal": Although the query relates to mathematics, it lacks sufficient data for employing a symbolic engine. My internal knowledge is more suitable for this task.
+'''
+])
+
