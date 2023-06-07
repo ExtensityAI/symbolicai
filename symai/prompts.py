@@ -851,6 +851,12 @@ Examples:
 
     #query: "How do I solve a quadratic equation?"
     #answer: "internal": Although the query relates to mathematics, it lacks sufficient data for employing a symbolic engine. My internal knowledge is more suitable for this task.
+
+    #query: "What is $P(A) &= \sum_{i=1}^n P(A \land B_i)$?"
+    #answer: "internal": The query presents a mathematical equation for the probability of an event A, which I can explain. P(A) represents the probability of event A occurring, and the equation shows that it can be computed as the sum of the probabilities of A occurring along with each of the B_i events (A and B_i) for a series of n such events. This expression is based on the concept of marginal probability and is derived from the law of total probability.
+
+    #query: "Solve $\[\iint_R |\text{J}|\mathrm{d}r\mathrm{d}\theta = \int_{0}^{2\pi}\int_{0}^{R} \begin{vmatrix}\dfrac{\partial x}{\partial r} & \dfrac{\partial x}{\partial \theta} \\ \dfrac{\partial y}{\partial r} & \dfrac{\partial y}{\partial \theta}\end{vmatrix} \, \mathrm{d}r\mathrm{d}\theta\]$."
+    #answer: "symbolic engine": The query asks to solve a double integral involving the Jacobian determinant, which requires a symbolic engine like WolframAlpha to correctly compute the answer.
 '''
 ])
 

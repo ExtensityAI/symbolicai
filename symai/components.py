@@ -1,8 +1,11 @@
-from typing import Callable, Iterator, List, Optional
-from .symbol import Symbol, Expression
-import symai as ai
 from random import sample
-from string import ascii_uppercase, ascii_lowercase
+from string import ascii_lowercase, ascii_uppercase
+from typing import Callable, Iterator, List, Optional
+
+import symai as ai
+
+from .symbol import Expression, Symbol
+from .prompts import Prompt
 
 
 class Any(Expression):
@@ -300,11 +303,11 @@ class Function(Expression):
 
 
 class SimilarityClassification(Expression):
-    def __init__(self, classes: List[str]):
+    def __init__(self, classes: List[str], metric: str = 'cosine'):
         super().__init__()
-        self.classes: List[str] = classes
+        self.classes = classes
+        self.metric  = metric
 
-    @ai.cache(in_memory=False)
     def embed_classes(self):
         opts = map(Symbol, self.classes)
         embeddings = [opt.embed() for opt in opts]
@@ -313,16 +316,25 @@ class SimilarityClassification(Expression):
 
     def forward(self, x: Symbol) -> Expression:
         usr_embed = x.embed()
-        similarities = [usr_embed.similarity(emb) for emb in self.embed_classes()]
+        similarities = [usr_embed.similarity(emb, metric=self.metric) for emb in self.embed_classes()]
         similarities = sorted(zip(self.classes, similarities), key=lambda x: x[1], reverse=True)
 
         return self._sym_return_type(similarities[0][0])
 
 
 class InContextClassification(Expression):
-    def __init__(self):
-        self.capabilities = ai.prompts.SymbiaCapabilities()
+    def __init__(self, blueprint: Prompt):
+        super().__init__()
+        self.blueprint = blueprint
 
-    def forward(self, x: Symbol) -> Expression:
-        pass
+    def forward(self, x: str, **kwargs) -> Expression:
+        @ai.few_shot(
+            prompt=x,
+            examples=self.blueprint,
+            **kwargs
+        )
+        def _func(_):
+            pass
+
+        return self._sym_return_type(_func(self))
 
