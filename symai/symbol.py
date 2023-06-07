@@ -635,9 +635,8 @@ class Symbol(ABC):
                     raise e
                 else:
                     err =  Symbol(prompt) @ sym
-                    res = err.analyze(query="What is the issue in this expression?", exception=e)
-                    ctxt = res @ prompt
-                    sym = sym.correct(context=ctxt, exception=e)
+                    res = err.analyze(query="What is the issue in this expression?", exception=e, max_tokens=2000)
+                    sym = sym.correct(context=prompt, exception=e, payload=res, max_tokens=2000)
 
     def expand(self, *args, **kwargs) -> "Symbol":
         @ai.expand(max_tokens=2048, **kwargs)

@@ -22,7 +22,16 @@ class StripPostProcessor(PostProcessor):
             tmp = tmp[1:-1]
             tmp = tmp.strip()
         return tmp
-    
+
+
+class FixCodePostProcessor(PostProcessor):
+    def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
+        if '```' in str(response):
+            response = response.replace('```', '#')
+            responses = response.split('#code')
+            response = response[1] if len(responses) > 1 else responses[0]
+        return response
+
 
 class ClusterPostProcessor(PostProcessor):
     def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:

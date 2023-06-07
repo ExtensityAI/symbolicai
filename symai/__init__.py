@@ -3,7 +3,7 @@ import json
 import logging
 
 
-SYMAI_VERSION = "0.2.19"
+SYMAI_VERSION = "0.2.20"
 __version__ = SYMAI_VERSION
 __root_dir__ = os.getcwd()
 

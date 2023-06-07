@@ -1,4 +1,5 @@
 import os
+from symai.symbol import Symbol
 # for debugging
 # attention this constantly overwrites the keys config file
 #os.environ['OPENAI_API_KEY'] = ''
@@ -70,6 +71,74 @@ class TestDecorator(unittest.TestCase):
         res = demo.notify_subscriber('You can contact us via email at office@alphacore.eu', 
                                      subscriber={'europe': lambda x: Exception('Not allowed')})
         self.assertTrue('email' in res)
+        
+    def test_try(self):
+        sym = Symbol("""# generate method
+def generate_mesh():
+    # imports
+    import bpy
+    import bmesh
+    import os
+    
+    # clean scene
+    bpy.ops.object.select_all(action='SELECT')
+    # Delete selected objects
+    bpy.ops.object.delete()
+    
+    # create bmesh
+    bm = bmesh.new()
+    
+    # custom code
+    import bpy
+    from mathutils import Matrix
+    
+    # create box house with height 8, width 10, depth 10;
+    house = bpy.ops.mesh.primitive_cube_add(size=1, enter_editmode=False, location=(0, 0, 0))
+    bpy.ops.transform.resize(value=(10, 10, 8))
+    
+    # create roof for house with height 4, width 12, depth 12, pitch 30;
+    roof = bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=6, radius2=0, depth=4, enter_editmode=False, location=(0, 0, 8))
+    bpy.ops.transform.rotate(value=0.523599, orient_axis='X')
+    
+    # create box door with height 6, width 3, depth 1.5;
+    door = bpy.ops.mesh.primitive_cube_add(size=1, enter_editmode=False, location=(0, 0, 0))
+    bpy.ops.transform.resize(value=(3, 1.5, 6))
+    
+    # place door on house with bottom at 0, left at 2, front at 0;
+    door_location = Matrix.Translation((2, 5, 0)) @ Matrix.Rotation(1.5708, 4, 'Y')
+    door.location = door_location @ house.location
+    
+    # create box window with height 4, width 4, depth 1.5;
+    window = bpy.ops.mesh.primitive_cube_add(size=1, enter_editmode=False, location=(0, 0, 0))
+    bpy.ops.transform.resize(value=(4, 1.5, 4))
+    
+    # place window on house with bottom at 2, left at 2, front at 5;
+    window_location = Matrix.Translation((2, 2.75, 5)) @ Matrix.Rotation(1.5708, 4, 'Y')
+    window.location = window_location @ house.location
+    
+    # create cylinder chimney with radius 0.5, height 2;
+    chimney = bpy.ops.mesh.primitive_cylinder_add(radius=0.5, depth=2, enter_editmode=False, location=(0, 0, 0))
+    
+    # place chimney on house with top at 8, left at 5, front at 5;
+    chimney_location = Matrix.Translation((5, 5, 8))
+    chimney.location = chimney_location @ house.location
+    
+    # Check for collisions
+    if house.collision.dop_objects_colliding:
+        print("Objects are colliding!")
+    
+    # export meshes
+    os.makedirs("results", exist_ok=True)
+    bpy.ops.object.select_all(action='SELECT')
+    bpy.ops.export_scene.obj(filepath="results/tmp.obj", use_selection=True)
+    
+    # return bmesh
+    return bm
+
+res = generate_mesh()
+""")
+        res = sym.fexecute()
+        self.assertTrue(res['locals']['res'] is not None, res)
 
 
 if __name__ == '__main__':
