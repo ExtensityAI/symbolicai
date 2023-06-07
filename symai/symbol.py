@@ -664,9 +664,9 @@ class Expression(Symbol):
 
     def ftry(self, expr: "Expression", retries: int = 1, **kwargs) -> "Symbol":
         prompt = {}
-        def input_handler(input_):
-            prompt['message'] = input_ # TODO: fix this
-        kwargs['input_handler'] = input_handler
+        def output_handler(input_):
+            prompt['message'] = input_
+        kwargs['output_handler'] = output_handler
         retry_cnt: int = 0
         sym = self
         while True:
@@ -680,8 +680,8 @@ class Expression(Symbol):
                 if retry_cnt > retries:
                     raise e
                 else:
-                    err =  Symbol(prompt['message']) @ sym
-                    res = err.analyze(query="What is the issue in this expression?", exception=e, max_tokens=2000)
+                    err =  Symbol(prompt['message'])
+                    res = err.analyze(query="What is the issue in this expression?", payload=sym, exception=e, max_tokens=2000)
                     sym = sym.correct(context=prompt['message'], exception=e, payload=res, max_tokens=2000)
 
     @staticmethod
