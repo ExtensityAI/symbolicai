@@ -1,3 +1,5 @@
+import warnings
+from pathlib import Path
 from random import sample
 from string import ascii_lowercase, ascii_uppercase
 from typing import Callable, Iterator, List, Optional
@@ -303,23 +305,33 @@ class Function(Expression):
 
 
 class SimilarityClassification(Expression):
-    def __init__(self, classes: List[str], metric: str = 'cosine'):
+    def __init__(self, classes: List[str], metric: str = 'cosine', in_memory: bool = False):
         super().__init__()
-        self.classes = classes
-        self.metric  = metric
+        self.classes   = classes
+        self.metric    = metric
+        self.in_memory = in_memory
 
-    def embed_classes(self):
-        opts = map(Symbol, self.classes)
-        embeddings = [opt.embed() for opt in opts]
-
-        return embeddings
+        if self.in_memory:
+            warnings.showwarning = lambda message, category, *_: print(f'{category.__name__}: {message}')
+            warnings.warn(f'Caching mode is enabled! It is your responsability to empty the .cache folder if you did changes to the classes. The cache is located at {Path.home()}/.symai/cache')
 
     def forward(self, x: Symbol) -> Symbol:
-        usr_embed = x.embed()
-        similarities = [usr_embed.similarity(emb, metric=self.metric) for emb in self.embed_classes()]
+        usr_embed    = x.embed()
+        embeddings   = self._dynamic_cache()
+        similarities = [usr_embed.similarity(emb, metric=self.metric) for emb in embeddings]
         similarities = sorted(zip(self.classes, similarities), key=lambda x: x[1], reverse=True)
 
         return Symbol(similarities[0][0])
+
+    def _dynamic_cache(self):
+        @ai.cache(in_memory=self.in_memory)
+        def embed_classes(self):
+            opts = map(Symbol, self.classes)
+            embeddings = [opt.embed() for opt in opts]
+
+            return embeddings
+
+        return embed_classes(self)
 
 
 class InContextClassification(Expression):

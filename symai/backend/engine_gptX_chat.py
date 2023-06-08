@@ -83,7 +83,7 @@ class GPTXChatEngine(Engine):
                         self.logger.warn(f"Try to remedy the exceeding of the maximum token limitation! Set max_tokens to {max_tokens}, tokens in prompt {token_size}")
                 except Exception as e:
                     errors.append(e)
-                    self.logger.warn(f"Failed to remedy the exceeding of the maximum token limitation! {e}")
+                    self.logger.warning(f"Failed to remedy the exceeding of the maximum token limitation! {e}")
             retry += 1
 
         if not success:

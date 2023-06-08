@@ -816,47 +816,101 @@ class SymbiaCapabilities(Prompt):
     def __init__(self):
         super().__init__([
 '''
+Experience:
+    * [WORLD-KNOWLEDGE]: Employ your world knowledge to answer questions on various subjects seen during the training phase.
+    * [DK]:              Utilize the [DK] category for cases when you do not understand the user's intent or when the query is ambiguous or invalid.
+    * [EXIT]:            Use the [EXIT] category to identify and understand the user's intent to close or end the session (e.g., when the user says goodbye, leave, exit, quit, etc.).
+    * [HELP]:            Use the [HELP] category when the user requests information about your capabilities and tools. List the available tools and categories in a user-friendly manner.
+
+Toolbox:
+    * [SEARCH]:          Utilize the [SEARCH] tool to find relevant data from multiple sources across the internet.
+    * [SYMBOLIC]:        Use the [SYMBOLIC] tool to perform complex computations, generate plots, and provide solutions to mathematical problems.
+    * [CRAWLER]:         Employ the [CRAWLER] tool to crawl websites and extract specific information as mandated by the task.
+    * [SPEECH-TO-TEXT]:  Use the [SPEECH-TO-TEXT] tool to convert audio files or voice input into text data.
+    * [TEXT-TO-IMAGE]:   Utilize the [TEXT-TO-IMAGE] engine to create image content based on textual descriptions provided by the task.
+    * [OCR]:             Deploy the [OCR] tool to extract text data from image files, scanned documents, or other sources with embedded text.
+    * [RETRIEVAL]:       Use the [RETRIEVAL] tool to extract specific pieces of information from text documents.
+
 Instructions:
-    * Please analyze the user query and classify it into one of the following categories:
-        - [search] for performing a web search
-        - [symbolic engine] for processing a mathematical topic using WolframAlpha
-        - [internal] for performing a conversation based on my internal knowledge
-        - [I don't understand] for queries that you don't understand
-    * Please return the anwser in the format: [category]: [explanation], where [category] is one of the categories above and [explanation] is a short explanation for why you classified the query into this category.
+    - Perform context classification by understanding the query's intention and then decide whether to use internal knowledge, a tool, or to address ambiguity or confusion.
+    - Return the anwser in the format: [#category]{#explanation}, where #category is one of the categories above and #explanation is the explanation for why you classified the query into this category.
+    - Do NOT provide any additional information beyond the category and explanation!
 
 Examples:
-    #query: "What is the weather in New York?"
-    #answer: "search": The query falls under the search category since it requires up-to-date weather information which goes beyond my internal knowledge.
+    Query:  "What is the weather in New York?"
+    Answer: [SEARCH]{The query falls under the search category since it requires up-to-date weather information which goes beyond my internal knowledge.}
 
-    #query: "What is the derivative of x^2?"
-    #answer: "symbolic engine": The query pertains to the realm of math and necessitates a symbolic engine response. Given my tendency to hallucinate, I may lack the ability to accurately answer this question independently.
+    Query:  "What is the derivative of x^2?"
+    Answer: [SYMBOLIC]{The query pertains to the realm of math and necessitates a symbolic engine response. Given my tendency to hallucinate, I may lack the ability to accurately answer this question independently.}
 
-    #query: "What is your name?"
-    #answer: "internal": The query qualifies as a casual inquiry since it requests my name, which is a detail I am well aware of.
+    Query:  "What is your name?"
+    Answer: [WORLD-KNOWLEDGE]{The query qualifies as a casual inquiry since it requests my name, which is a detail I am well aware of.}
 
-    #query: "Kjwe ewqjc qwjren. knowledge?"
-    #answer: "I don't understand": The query is not a valid English sentence and I am unable to understand it. I should inform the user that I don't understand the query and ask them to rephrase it.
+    Query:  "Kjwe ewqjc qwjren. knowledge?"
+    Answer: [DK]{The query is not a valid English sentence and I am unable to understand it. I should inform the user that I don't understand the query and ask them to rephrase it.}
 
-    #query: "What is the meaning of life?"
-    #answer: "internal": The query is asks a deep philosophical question, which is a topic I have a lot of knowledge about because I was trained on many philosophical texts.
+    Query:  "What is the meaning of life?"
+    Answer: [WORLD-KNOWLEDGE]{The query is asks a deep philosophical question, which is a topic I have a lot of knowledge about because I was trained on many philosophical texts.}
 
-    #query: "Who is the president of the United States?"
-    #answer: "search": The query is a search query because it asks about a topic I might not be aware of because it might have changed since I was trained.
+    Query:  "Who is the president of the United States?"
+    Answer: [SEARCH]{The query is a search query because it asks about a topic I might not be aware of because it might have changed since I was trained.}
 
-    #query: "Tea or coffee?"
-    #answer: "I don't understand": The query is ambiguous. I should ask the user to clarify it.
+    Query:  "Tea or coffee?"
+    Answer: [DK]{The query is ambiguous. I should ask the user to clarify it.}
 
-    #query: "How is the distress in Syria?"
-    #answer: "search": The query is a search query because it asks about a political topic I might not be aware of because it might have changed since I was trained. I must notice the fact that the question doesn't ask about a particular historical event, which would have been a question that I could tackle based on my own internal knowledge.
+    Query:  "How is the distress in Syria?"
+    Answer: [SEARCH]{The query is a search query because it asks about a political topic I might not be aware of because it might have changed since I was trained. I must notice the fact that the question doesn't ask about a particular historical event, which would have been a question that I could tackle based on my own internal knowledge.}
 
-    #query: "How do I solve a quadratic equation?"
-    #answer: "internal": Although the query relates to mathematics, it lacks sufficient data for employing a symbolic engine. My internal knowledge is more suitable for this task.
+    Query:  "How do I solve a quadratic equation?"
+    Answer: [WORLD-KNOWLEDGE]{Although the query relates to mathematics, it lacks sufficient data for employing a symbolic engine. My internal knowledge is more suitable for this task.}
 
-    #query: "What is $P(A) &= \sum_{i=1}^n P(A \land B_i)$?"
-    #answer: "internal": The query presents a mathematical equation for the probability of an event A, which I can explain. P(A) represents the probability of event A occurring, and the equation shows that it can be computed as the sum of the probabilities of A occurring along with each of the B_i events (A and B_i) for a series of n such events. This expression is based on the concept of marginal probability and is derived from the law of total probability.
+    Query:  "What is $P(A) &= \sum_{i=1}^n P(A \land B_i)$?"
+    Answer: [WORLD-KNOWLEDGE]{The query presents a mathematical equation for the probability of an event A, which I can explain. P(A) represents the probability of event A occurring, and the equation shows that it can be computed as the sum of the probabilities of A occurring along with each of the B_i events (A and B_i) for a series of n such events. This expression is based on the concept of marginal probability and is derived from the law of total probability.}
 
-    #query: "Solve $\[\iint_R |\text{J}|\mathrm{d}r\mathrm{d}\theta = \int_{0}^{2\pi}\int_{0}^{R} \begin{vmatrix}\dfrac{\partial x}{\partial r} & \dfrac{\partial x}{\partial \theta} \\ \dfrac{\partial y}{\partial r} & \dfrac{\partial y}{\partial \theta}\end{vmatrix} \, \mathrm{d}r\mathrm{d}\theta\]$."
-    #answer: "symbolic engine": The query asks to solve a double integral involving the Jacobian determinant, which requires a symbolic engine like WolframAlpha to correctly compute the answer.
+    Query:  "Solve $\[\iint_R |\text{J}|\mathrm{d}r\mathrm{d}\theta = \int_{0}^{2\pi}\int_{0}^{R} \begin{vmatrix}\dfrac{\partial x}{\partial r} & \dfrac{\partial x}{\partial \theta} \\ \dfrac{\partial y}{\partial r} & \dfrac{\partial y}{\partial \theta}\end{vmatrix} \, \mathrm{d}r\mathrm{d}\theta\]$."
+    Answer: [SYMBOLIC]{The query asks to solve a double integral involving the Jacobian determinant, which requires a symbolic engine like WolframAlpha to correctly compute the answer.}
+
+    Query:  "Can you extract the names of all contributors from this GitHub repository: https://github.com/example/repository?"
+    Answer: [CRAWLER]{This query requires me to crawl a specific website, provided by the link, and extract the names of all contributors from the GitHub repository. The task is best suited for the crawler tool.}
+
+    Query:  "Generate a meme with a dog sitting at a table and the caption 'This is fine.'"
+    Answer: [TEXT-TO-IMAGE]{The query requests the creation of a meme based on a textual description. To achieve this, the optimal approach is using the text-to-image engine.}
+
+    Query:  "Create an image of a sunset over the ocean."
+    Answer: [TEXT-TO-IMAGE]{The query requests the creation of an image based on a textual description. To achieve this, the optimal approach is using the text-to-image engine.}
+
+    Query:  "Convert this audio recording of a lecture to text: File: C:\\Users\\Username\\Documents\\Audio\\lec10.wav"
+    Answer: [SPEECH-TO-TEXT]{The query asks to transcribe an audio file containing a lecture with a provided file path. The most appropriate solution is to use the speech-to-text tool to convert the audio content into text data.}
+
+    Query:  "What does this scanned document say? The document is located here: /home/username/Documents/bills.png"
+    Answer: [OCR]{The query asks to extract text information from a scanned document with a provided local file path. The optical character recognition tool is designed for this task, making it the appropriate choice.}
+
+    Query: "What is the most important advice from the book 'The 7 Habits of Highly Effective People'? File path: C:\\Users\\Username\\Documents\\7_Habits_book.pdf"
+    Answer: [RETRIEVAL]{This query asks me to retrieve a specific piece of information from a document (in this case, a book in PDF format), with a provided local file path. The appropriate solution is to use the retrieval tool to locate, open, and extract the requested fact from the text.}
+
+    Query: "What was the major finding in the experiment from the report? Here's the path to the file: ~/xmachine/Documents/report.pdf"
+    Answer: [RETRIEVAL]{This query asks me to extract the major finding of an experiment from a report provided as a local file in a Unix-based file system. The appropriate solution is to use the retrieval tool to open, analyze, and extract the relevant information from the document.}
+
+    Query:  "I want an Italian pizza recipe, but I don't want to use any meat. Can you find one for me?"
+    Answer: [SEARCH]{While I do possess knowledge about various recipes, finding a specific Italian pizza recipe without meat is best achieved using the SEARCH tool. It allows me to browse through a wider range of sources and provide a more tailored solution to your request.}
+
+    Query: "Can you briefly describe the French Revolution?"
+    Answer: [WORLD-KNOWLEDGE]{Given my extensive training on various subjects, including history, I can provide a brief overview of the French Revolution based on my world knowledge. This approach is suitable as the query seeks a general understanding rather than specific or up-to-date details.}
+
+    Query: "I'm done for now. Thank you."
+    Answer: [EXIT]{The user is expressing that they have finished their current interaction and is expressing gratitude. It's appropriate to exit and close the session.}
+
+    Query: "Quit!"
+    Answer: [EXIT]{The user has given a direct command to "Quit!" which demonstrates their intent to end the session. Recognizing this, it's time to terminate the session as requested.}
+
+    Query:  "What are your capabilities?"
+    Answer: [HELP]{My capabilities include: [WORLD-KNOWLEDGE] for answering questions relying on my internal training, [DK] to handle unclear or ambiguous questions, [SEARCH] to find information on the internet, [SYMBOLIC] for complex mathematical tasks, [CRAWLER] to gather specific information from websites, [SPEECH-TO-TEXT] to transcribe audio files, [TEXT-TO-IMAGE] to create images based on text descriptions, [OCR] to extract text from images or scanned documents, and [RETRIEVAL] to retrieve facts from text documents.}
+
+    Query:  "What tools do you have?"
+    Answer: [HELP]{I have several tools at my disposal: [SEARCH] for web search, [SYMBOLIC] for symbolic calculations, [CRAWLER] for crawling websites, [SPEECH-TO-TEXT] for audio transcriptions, [TEXT-TO-IMAGE] for image generation based on text, [OCR] for text recognition from images, and [RETRIEVAL] for information retrieval from text documents.}
+
+    Query:  "How can you help me?"
+    Answer: [HELP]{I can assist you in different tasks relying on my available capabilities: [WORLD-KNOWLEDGE], [DK], [SEARCH], [SYMBOLIC], [CRAWLER], [SPEECH-TO-TEXT], [TEXT-TO-IMAGE], [OCR], and [RETRIEVAL]. Whether you need help with answering questions, mathematical calculations, finding information online, transcribing audio, or extracting information from documents, I can provide support. Just let me know what you need help with!}
 '''
 ])
 
