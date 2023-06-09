@@ -1,12 +1,17 @@
 import functools
+from pathlib import Path
+from typing import Callable, Dict, List, Optional
+
 import symai as ai
-from typing import Dict, List, Callable, Optional
-from .prompts import *
-from .pre_processors import *
+
+from .functional import (bind_registry_func, cache_registry_func, command_func,
+                         crawler_func, embed_func, execute_func, few_shot_func,
+                         imagerendering_func, index_func, ocr_func, open_func,
+                         output_func, search_func, setup_func, speech_func,
+                         symbolic_func, userinput_func, vision_func)
 from .post_processors import *
-from .functional import few_shot_func, symbolic_func, search_func, crawler_func, userinput_func, execute_func, open_func, output_func, \
-    command_func, embed_func, vision_func, ocr_func, speech_func, imagerendering_func, setup_func, index_func, cache_registry_func, \
-    bind_registry_func
+from .pre_processors import *
+from .prompts import *
 
 
 _symbolic_expression_engine = None
@@ -1933,7 +1938,7 @@ def setup(engines: Dict[str, Any],
 
 def cache(
     in_memory: bool,
-    cache_path: str = ai.__root_dir__ + '/.cache'
+    cache_path: str = Path.home() /'.symai/cache'
 ):
     '''
     Cache the result of a *any* function call. This is very useful in cost optimization (e.g. computing embeddings).

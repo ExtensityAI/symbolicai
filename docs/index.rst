@@ -325,7 +325,7 @@ This will start now a chatbot interface:
 .. code:: bash
 
    Symbia: Hi there! I'm Symbia, your virtual assistant. How may I help you?
-   $> 
+   $>
 
 You can exit the conversation by either typing ``exit``, ``quit`` or
 pressing ``Ctrl+C``.
@@ -481,7 +481,7 @@ start with a translation operation:
 
 .. code:: bash
 
-   :[Output]: 
+   :[Output]:
    <class 'symai.expressions.Symbol'>(value=Willkommen zu unserem Tutorial.)
 
 Ranking objects
@@ -498,7 +498,7 @@ numbers:
 
 .. code:: bash
 
-   :[Output]: 
+   :[Output]:
    <class 'symai.expressions.Symbol'>(value=['7', '6', '5', '4', '3', '2', '1'])
 
 Evaluating Expressions by best effort
@@ -551,7 +551,7 @@ the word ``friend`` (which is added):
 
 .. code:: bash
 
-   :[Output]: 
+   :[Output]:
    <class 'symai.expressions.Symbol'>(value=Hello my friend)
 
 What we also see is that the API performs dynamic casting, when data
@@ -783,7 +783,7 @@ custom operation to generate a random integer between 0 and 10:
    class Demo(ai.Symbol):
        def __init__(self, value = '') -> None:
            super().__init__(value)
-       
+
        @ai.zero_shot(prompt="Generate a random integer between 0 and 10.",
                      constraints=[
                          lambda x: x >= 0,
@@ -824,9 +824,9 @@ function signature of the ``few_shot`` decorator:
 .. code:: python
 
    def few_shot(prompt: str,
-                examples: Prompt, 
+                examples: Prompt,
                 constraints: List[Callable] = [],
-                default: Optional[object] = None, 
+                default: Optional[object] = None,
                 limit: int = 1,
                 pre_processor: Optional[List[PreProcessor]] = None,
                 post_processor: Optional[List[PostProcessor]] = None,
@@ -1289,8 +1289,8 @@ sent to a data pipeline for further processing.
    def handler(res):
        input_ = res['input']
        output = res['output']
-   expr = Output(expr=sym.translate, 
-                 handler=handler, 
+   expr = Output(expr=sym.translate,
+                 handler=handler,
                  verbose=True)
    res = expr('German')
 
@@ -1406,7 +1406,7 @@ following example shows how to crawl a website and return the results:
 .. code:: python
 
    expr = Expression()
-   res = expr.fetch(url="https://www.google.com/", 
+   res = expr.fetch(url="https://www.google.com/",
                     pattern="google")
 
 The ``pattern`` property can be used to detect if the document as been
@@ -1466,17 +1466,16 @@ shows how to store text as an index and then retrieve the most related
 match of it:
 
 .. code:: python
-
-   expr = Expression()
-   expr.add(Expression('Hello World!').zip())
-   expr.add(Expression('I like cookies!').zip())
-   res = expr.get(Expression('hello').embed().value).ast()
-   res['matches'][0]['id']
+    expr = Expression()
+    expr.add(Symbol('Hello World!').zip())
+    expr.add(Symbol('I like cookies!').zip())
+    res = expr.get(Symbol('hello').embed().value).ast()
+    res['matches'][0]['metadata']['text'][0]
 
 .. code:: bash
 
    :Output:
-   Hello World
+   Hello World!
 
 Here the ``zip`` method creates a pair of strings and embedding vectors.
 Afterwards they are added to the index. The line with ``get`` basically
@@ -1503,7 +1502,7 @@ cat from above and return the results as an array of probabilities:
 .. code:: python
 
    expr = Expression()
-   res = expr.vision('https://oaidalleapiprodscus.blob.core.windows.net/private/org-l6FsXDfth6...', 
+   res = expr.vision('https://oaidalleapiprodscus.blob.core.windows.net/private/org-l6FsXDfth6...',
                      ['cat', 'dog', 'bird', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe'])
 
 .. code:: bash

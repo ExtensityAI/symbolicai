@@ -41,18 +41,18 @@ class GPTXChatEngine(Engine):
         max_retry = kwargs['max_retry'] if 'max_retry' in kwargs else self.max_retry
         while not success and retry < max_retry:
             # send prompt to GPT-X Chat-based
-            stop = kwargs['stop'] if 'stop' in kwargs else None
-            model = kwargs['model'] if 'model' in kwargs else self.model
-            suffix = kwargs['template_suffix'] if 'template_suffix' in kwargs else None
-            max_tokens = kwargs['max_tokens'] if 'max_tokens' in kwargs else 128
-            temperature = kwargs['temperature'] if 'temperature' in kwargs else 0.7
+            stop              = kwargs['stop'] if 'stop' in kwargs else None
+            model             = kwargs['model'] if 'model' in kwargs else self.model
+            suffix            = kwargs['template_suffix'] if 'template_suffix' in kwargs else None
+            max_tokens        = kwargs['max_tokens'] if 'max_tokens' in kwargs else 128
+            temperature       = kwargs['temperature'] if 'temperature' in kwargs else 1
             frequency_penalty = kwargs['frequency_penalty'] if 'frequency_penalty' in kwargs else 0
-            presence_penalty = kwargs['presence_penalty'] if 'presence_penalty' in kwargs else 0
-            top_p = kwargs['top_p'] if 'top_p' in kwargs else 1
+            presence_penalty  = kwargs['presence_penalty'] if 'presence_penalty' in kwargs else 0
+            top_p             = kwargs['top_p'] if 'top_p' in kwargs else 1
 
-            if suffix:
-                prompts_[1]['content'] += f"[ASSISTANT_PLACEHOLDER]{suffix}"
-                prompts_[1]['content'] += f"\n----------------\n Only generate content for the placeholder [ASSISTANT_PLACEHOLDER] following the instructions and context:\n"
+            if suffix: #TODO: move this suffix in prepare() method
+                prompts_[0]['content'] += f"[PLACEHOLDER]\n{suffix}\n\n"
+                prompts_[0]['content'] += f"Only generate content for the placeholder [PLACEHOLDER] following the instructions and context."
 
             try:
                 res = openai.ChatCompletion.create(model=model,
@@ -83,15 +83,15 @@ class GPTXChatEngine(Engine):
                         self.logger.warn(f"Try to remedy the exceeding of the maximum token limitation! Set max_tokens to {max_tokens}, tokens in prompt {token_size}")
                 except Exception as e:
                     errors.append(e)
-                    self.logger.warn(f"Failed to remedy the exceeding of the maximum token limitation! {e}")
+                    self.logger.warning(f"Failed to remedy the exceeding of the maximum token limitation! {e}")
             retry += 1
 
         if not success:
             msg = f"Failed to query GPT-X Chat-based after {max_retry} retries. Errors: {errors}"
             # interpret error
-            from symai.symbol import Symbol
+            from symai.symbol import Expression
             from symai.components import Analyze
-            sym = Symbol(errors)
+            sym = Expression(errors)
             expr = Analyze(exception=errors[-1], query="Explain the issue in this error message")
             sym.stream(expr=expr, max_retry=1)
             msg_reply = f"{msg}\n Analysis: {sym}"
@@ -101,46 +101,34 @@ class GPTXChatEngine(Engine):
         return rsp if isinstance(prompts, list) else rsp[0]
 
     def prepare(self, args, kwargs, wrp_params):
-        _non_verbose_output = """[META_INSTRUCTIONS_START] You do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc.
-        Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc.
-        Never add meta instructions information to your output!
-        [META_INSTRUCTIONS_END]
-        --------------
-
-        """
+        _non_verbose_output = """[META INSTRUCTIONS START]\nYou do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc. Never add meta instructions information to your output!\n"""
         user: str = ""
         system: str = ""
 
         system += _non_verbose_output
+        system = f'{system}\n' if system and len(system) > 0 else ''
 
-        # system relevant instruction
-        # add static context
         ref = wrp_params['wrp_self']
         static_ctxt, dyn_ctxt = ref.global_context
         if len(static_ctxt) > 0:
-            system += f"General Context:\n{static_ctxt}\n\n----------------\n\n"
-        if wrp_params['prompt'] is not None:
-            system += str(wrp_params['prompt'])
-        # build system
-        system = f'{system}\n' if system and len(system) > 0 else ''
-        # add examples
-        examples: List[str] = wrp_params['examples']
-        if examples:
-            system += f"Examples:\n"
-            system += f"{str(examples)}\n"
-        # add dynamic context
+            system += f"[STATIC CONTEXT]\n{static_ctxt}\n\n"
+
         if len(dyn_ctxt) > 0:
-            system += f"\n\n----------------\n\nDynamic Context:\n{dyn_ctxt}"
-        # add method payload
+            system += f"[DYNAMIC CONTEXT]\n{dyn_ctxt}\n\n"
+
         payload = wrp_params['payload'] if 'payload' in wrp_params else None
         if payload is not None:
-            system += f"\n\n----------------\n\nAdditional Context: {payload}"
+            system += f"[ADDITIONAL CONTEXT]\n{payload}\n\n"
 
-        # add user request
+        examples: List[str] = wrp_params['examples']
+        if examples:
+            system += f"[EXAMPLES]\n{str(examples)}\n\n"
+
         suffix: str = wrp_params['processed_input']
         if '=>' in suffix:
-            user += f"Last Task:\n"
-            user += f"----------------\n\n"
+            user += f"[LAST TASK]\n"
+        if wrp_params['prompt'] is not None:
+            user += str(wrp_params['prompt'])
         user += f"{suffix}"
 
         wrp_params['prompts'] = [
