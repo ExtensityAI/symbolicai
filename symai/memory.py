@@ -1,47 +1,43 @@
-from typing import List, Optional
+from itertools import chain
+from typing import List
+
 import symai as ai
+from symai import Symbol
 
 
 class Memory(ai.Expression):
     def __init__(self):
         super().__init__()
 
-    def _check_and_cast_expr(self, sym) -> ai.Expression:
-        # check type and cast
-        if isinstance(sym, ai.Expression):
-            return sym
-        return ai.Expression(sym)
-
-    def store(self, sym, *args, **kwargs):
+    def store(self, query: str, *args, **kwargs):
         raise NotImplementedError
 
-    def forget(self, sym, *args, **kwargs):
+    def forget(self, query: str, *args, **kwargs):
         raise NotImplementedError
 
-    def recall(self, sym, *args, **kwargs):
+    def recall(self, query: str, *args, **kwargs):
         raise NotImplementedError
 
-    def forward(self, sym, *args, **kwargs):
-        sym = self._check_and_cast_expr(sym)
-        return self.recall(sym, *args, **kwargs)
+    def forward(self, query: str, *args, **kwargs):
+        return self.recall(query, *args, **kwargs)
 
 
 class SlidingWindowListMemory(Memory):
     def __init__(self, window_size: int = 10, max_size: int = 1000):
         super().__init__()
-        self._memory: List[ai.Symbol] = []
-        self._window_size: int = window_size
-        self._max_size: int = max_size
+        self._memory: List[str] = []
+        self._window_size: int  = window_size
+        self._max_size: int     = max_size
 
-    def store(self, sym, *args, **kwargs):
-        self._memory.append(sym)
+    def store(self, query: str, *args, **kwargs):
+        self._memory.append(query)
         if len(self._memory) > self._max_size:
             self._memory = self._memory[-self._max_size:]
 
-    def forget(self, sym, *args, **kwargs):
-        self._memory.remove(sym)
+    def forget(self, query: Symbol, *args, **kwargs):
+        self._memory.remove(query)
 
-    def recall(self, sym = None, *args, **kwargs):
+    def recall(self, *args, **kwargs):
         return self._memory[-self._window_size:]
 
 
@@ -49,18 +45,18 @@ class VectorDatabaseMemory(Memory):
     def __init__(self, enabled: bool = True, top_k: int = 3):
         super().__init__()
         self.enabled: bool = enabled
-        self.top_k: int = top_k
+        self.top_k: int    = top_k
 
-    def store(self, sym, *args, **kwargs):
-        if not self.enabled:
-            return
-        sym = self._check_and_cast_expr(sym)
-        self.add(sym.zip()) #TODO: this is not done properly; we need some encoder/decoder scheme here; zip kinda useless
+    def store(self, query: str , *args, **kwargs):
+        if not self.enabled: return
 
-    def recall(self, sym, *args, **kwargs):
-        if not self.enabled:
-            return []
-        sym = self._check_and_cast_expr(sym)
-        res = self.get(sym.embed().value).ast()
-        res = [v['id'] for v in res['matches'][:self.top_k]]
+        self.add(Symbol(query).zip())
+
+    def recall(self, query: str, *args, **kwargs):
+        if not self.enabled: return
+
+        res = self.get(Symbol(query).embed().value).ast()
+        *res, = chain.from_iterable([v['metadata']['text'] for v in res['matches'][:self.top_k]])
+
         return res
+
