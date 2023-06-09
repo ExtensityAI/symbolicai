@@ -1,11 +1,13 @@
 import ast
 import os
+import uuid
 from abc import ABC
 from json import JSONEncoder
-from typing import Dict, Iterator, List, Any, Optional
+from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
+
 import symai as ai
-import pandas as pd
 
 
 class SymbolEncoder(JSONEncoder):
@@ -570,18 +572,38 @@ class Symbol(ABC):
         return self._sym_return_type(_func(self))
 
     def embed(self, **kwargs) -> "Symbol":
-        if not isinstance(self.value, list):
-            self.value = [self.value]
+        if not isinstance(self.value, list): self.value = [self.value]
+
         @ai.embed(entries=self.value, **kwargs)
         def _func(_) -> list:
             pass
         return self._sym_return_type(_func(self))
 
-    def similarity(self, other: Any, metric = 'cosine') -> float:
-        if not isinstance(self.value, np.ndarray): v = np.array(self.value).squeeze()[:, None]
-        if not isinstance(other, np.ndarray): other = np.array(other).squeeze()[:, None]
+    def similarity(self, other: 'Symbol', metric: str = 'cosine') -> float:
+        def _ensure_format(x):
+            if not isinstance(x, np.ndarray):
+                if not isinstance(x, Symbol):
+                    raise TypeError(f"Cannot compute similarity with type {type(x)}")
+                x = np.array(x.value)
+            return x.squeeze()[:, None]
 
-        return (v.T@other / (v.T@v)**.5 * (other.T@other)**.5).item()
+        v = _ensure_format(self)
+        o = _ensure_format(other)
+
+        if metric == 'cosine':
+            return (v.T@o / (v.T@v)**.5 * (o.T@o)**.5).item()
+        else:
+            raise NotImplementedError(f"Similarity metric {metric} not implemented. Available metrics: 'cosine'")
+
+    def zip(self, **kwargs) -> List[Tuple[str, List, Dict]]:
+        if not isinstance(self.value, str):
+            raise ValueError(f'Expected id to be a string, got {type(self.value)}')
+
+        embeds = self.embed(**kwargs).value
+        idx    = str(uuid.uuid4())
+        query  = {'text': self.value}
+
+        return list(zip([idx], embeds, [query]))
 
     def stream(self, expr: "Expression",
                max_tokens: int = 4000,
@@ -747,17 +769,6 @@ class Expression(Symbol):
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(self))
-
-    def zip(self, ids: Optional[List[str]] = None, embeds: Optional[List[list]] = None, **kwargs):
-        if ids is None:
-            ids = [self.value]
-            embeds = [self.embed(**kwargs).value]
-        df = pd.DataFrame(
-        data={
-            "id": ids,
-            "vector": embeds
-        })
-        return zip(df.id, df.vector)
 
     def index(self, path: str, **kwargs) -> "Symbol":
         @ai.index(prompt=path, operation='config', **kwargs)

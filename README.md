@@ -96,10 +96,10 @@ One can run our framework in two ways:
 
 ### API Keys
 
-Before the first run, define exports for the required `API keys` to enable the respective engines. This will register the keys in the internally for subsequent runs. By default `SymbolicAI` currently uses OpenAI's neural engines, i.e. GPT-3 Davinci-003, DALL·E 2 and Embedding Ada-002, for the neuro-symbolic computations, image generation and embeddings computation respectively. However, these modules can easily be replaced with open-source alternatives. Examples are 
-- [OPT](https://huggingface.co/docs/transformers/model_doc/opt) or [Bloom](https://huggingface.co/bigscience/bloom) for neuro-symbolic computations, 
-- [Craiyon](https://www.craiyon.com/) for image generation, 
-- and any [BERT variants](https://huggingface.co/models) for semantic embedding computations. 
+Before the first run, define exports for the required `API keys` to enable the respective engines. This will register the keys in the internally for subsequent runs. By default `SymbolicAI` currently uses OpenAI's neural engines, i.e. GPT-3 Davinci-003, DALL·E 2 and Embedding Ada-002, for the neuro-symbolic computations, image generation and embeddings computation respectively. However, these modules can easily be replaced with open-source alternatives. Examples are
+- [OPT](https://huggingface.co/docs/transformers/model_doc/opt) or [Bloom](https://huggingface.co/bigscience/bloom) for neuro-symbolic computations,
+- [Craiyon](https://www.craiyon.com/) for image generation,
+- and any [BERT variants](https://huggingface.co/models) for semantic embedding computations.
 
 To set the OpenAI API Keys use the following command:
 
@@ -123,7 +123,7 @@ import symai as ai
 
 Overall, the following engines are currently supported:
 
-* **Neuro-Symbolic Engine**: [OpenAI's LLMs (GPT-3)](https://beta.openai.com/docs/introduction/overview) 
+* **Neuro-Symbolic Engine**: [OpenAI's LLMs (GPT-3)](https://beta.openai.com/docs/introduction/overview)
 * **Embedding Engine**: [OpenAI's Embedding API](https://beta.openai.com/docs/introduction/overview)
 * **[Optional] Symbolic Engine**: [WolframAlpha](https://www.wolframalpha.com/)
 * **[Optional] Search Engine**: [SerpApi](https://serpapi.com/)
@@ -137,7 +137,7 @@ Overall, the following engines are currently supported:
 
 ### *[Optional]* Installs
 
-SymbolicAI uses multiple engines to process text, speech and images. We also include search engine access to retrieve information from the web. To use all of them, you will need to install also the following dependencies or assign the API keys to the respective engines. 
+SymbolicAI uses multiple engines to process text, speech and images. We also include search engine access to retrieve information from the web. To use all of them, you will need to install also the following dependencies or assign the API keys to the respective engines.
 
 If you want to use the `WolframAlpha Engine`, `Search Engine` or `OCR Engine` you will need to export the following API keys:
 
@@ -264,7 +264,7 @@ This will start now a chatbot interface:
 
 ```bash
 Symbia: Hi there! I'm Symbia, your virtual assistant. How may I help you?
-$> 
+$>
 ```
 
 You can exit the conversation by either typing `exit`, `quit` or pressing `Ctrl+C`.
@@ -294,9 +294,9 @@ This allows to move along the spectrum between the classical programming realm a
 
 <img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img5.png" width="720px">
 
-As briefly mentioned, we adopt a divide and conquer approach to decompose a complex problem into smaller problems. We then use the expressiveness and flexibility of LLMs to evaluate these sub-problems and by re-combining these operations we can solve the complex problem. 
+As briefly mentioned, we adopt a divide and conquer approach to decompose a complex problem into smaller problems. We then use the expressiveness and flexibility of LLMs to evaluate these sub-problems and by re-combining these operations we can solve the complex problem.
 
-In this turn, and with enough data, we can gradually transition between general purpose LLMs with `zero` and `few-shot` learning capabilities, and specialized fine-tuned models to solve specific problems (see above). This means that each operations could be designed to use a model with fine-tuned task-specific behavior. 
+In this turn, and with enough data, we can gradually transition between general purpose LLMs with `zero` and `few-shot` learning capabilities, and specialized fine-tuned models to solve specific problems (see above). This means that each operations could be designed to use a model with fine-tuned task-specific behavior.
 
 ## <img src="https://media.giphy.com/media/mGcNjsfWAjY5AEZNw6/giphy.gif" width="50"> Tell me some more fun facts!
 
@@ -310,11 +310,11 @@ In its essence, SymbolicAI was inspired by the [`neuro-symbolic programming para
 
 **Neuro-symbolic programming** aims to combine the strengths of both neural networks and symbolic reasoning to create AI systems that can perform a wide range of tasks. One way this is done is by using neural networks to extract information from data and then using symbolic reasoning to make inferences and decisions based on that information. Another way is to use symbolic reasoning to guide the generative process of neural networks and make them more interpretable.
 
-**Embedded accelerators for LLMs** will, in our opinion, be ubiquitous in future computation platforms, such as wearables, smartphones, tablets or notebooks. They will contain models similar to GPT-3, ChatGPT, OPT or Bloom. 
+**Embedded accelerators for LLMs** will, in our opinion, be ubiquitous in future computation platforms, such as wearables, smartphones, tablets or notebooks. They will contain models similar to GPT-3, ChatGPT, OPT or Bloom.
 
 <img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img1.png" width="720px">
 
-These LLMs will be able to perform a wide range of computations, such as natural language understanding or decision making. Furthermore, neuro-symbolic computation engines will be able to learn concepts how to tackle unseen tasks and solve complex problems by querying various data sources for solutions and executing logical statements on top. 
+These LLMs will be able to perform a wide range of computations, such as natural language understanding or decision making. Furthermore, neuro-symbolic computation engines will be able to learn concepts how to tackle unseen tasks and solve complex problems by querying various data sources for solutions and executing logical statements on top.
 In this turn, to ensure the generated content is in alignment with our goals, we need to develop ways to instruct, steer and control the generative processes of machine learning models. Therefore, our approach is an attempt to enable active and transparent flow control of these generative processes.
 
 <img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img7.png" width="720px">
@@ -326,12 +326,12 @@ As shown in the figure above, one can think of this generative process as shifti
 We show that as long as we can express our goals in natural language, we can use the power of LLMs for neuro-symbolic computations.
 In this turn, we create operations that manipulate these symbols to generate new symbols from them. Each symbol can be interpreted as a statement. Multiple statements can be combined to form a logical expression.
 
-Therefore, by chaining statements together we can build causal relationships and computations, instead of relying only on inductive approaches. Consequently, the outlook towards an updated computational stack resembles a neuro-symbolic computation engine at its core and, in combination with established frameworks, enables new applications. 
+Therefore, by chaining statements together we can build causal relationships and computations, instead of relying only on inductive approaches. Consequently, the outlook towards an updated computational stack resembles a neuro-symbolic computation engine at its core and, in combination with established frameworks, enables new applications.
 
 
 ## 😶‍🌫️ How does it work?
 
-We now show how we define our `Symbolic API`, which is based on object-oriented and compositional design patterns. The `Symbol` class is the base class for all functional operations, which we refer to as a terminal symbol in the context of symbolic programming (fully resolved expressions). The Symbol class holds helpful operations that can be interpreted as expressions to manipulate its content and evaluate to new Symbols. 
+We now show how we define our `Symbolic API`, which is based on object-oriented and compositional design patterns. The `Symbol` class is the base class for all functional operations, which we refer to as a terminal symbol in the context of symbolic programming (fully resolved expressions). The Symbol class holds helpful operations that can be interpreted as expressions to manipulate its content and evaluate to new Symbols.
 
 ### 📚 Symbolic operations
 
@@ -342,7 +342,7 @@ sym = ai.Symbol("Welcome to our tutorial.")
 sym.translate('German')
 ```
 ```bash
-:[Output]: 
+:[Output]:
 <class 'symai.expressions.Symbol'>(value=Willkommen zu unserem Tutorial.)
 ```
 
@@ -355,22 +355,22 @@ sym = ai.Symbol(numpy.array([1, 2, 3, 4, 5, 6, 7]))
 res = sym.rank(measure='numerical', order='descending')
 ```
 ```bash
-:[Output]: 
+:[Output]:
 <class 'symai.expressions.Symbol'>(value=['7', '6', '5', '4', '3', '2', '1'])
 ```
 
 ### Evaluating Expressions by best effort
 
-As an inspiration, we relate to an approach demonstrated by [word2vec](https://arxiv.org/abs/1301.3781). 
+As an inspiration, we relate to an approach demonstrated by [word2vec](https://arxiv.org/abs/1301.3781).
 
 **Word2Vec** generates dense vector representations of words by training a shallow neural network to predict a word given its neighbors in a text corpus. The resulting vectors are then used in a wide range of natural language processing applications, such as sentiment analysis, text classification, and clustering.
 
 Below we can see an example how one can perform operations on the word embeddings (colored boxes).
-The words are tokenized and mapped to a vector space, where we can perform semantic operations via vector arithmetics. 
+The words are tokenized and mapped to a vector space, where we can perform semantic operations via vector arithmetics.
 
 <img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img3.png" width="450px">
 
-Similar to word2vec we intend to perform contextualized operations on different symbols, however, instead of operating in the vector space, we operate in the natural language domain. This gives us the ability to perform arithmetics on words, sentences, paragraphs, etc. and verify the results in a human readable format. 
+Similar to word2vec we intend to perform contextualized operations on different symbols, however, instead of operating in the vector space, we operate in the natural language domain. This gives us the ability to perform arithmetics on words, sentences, paragraphs, etc. and verify the results in a human readable format.
 
 The following examples show how to evaluate such an expression via a string representation:
 
@@ -390,7 +390,7 @@ We can also subtract sentences from each other, where our operations condition t
 res = ai.Symbol('Hello my enemy') - 'enemy' + 'friend'
 ```
 ```bash
-:[Output]: 
+:[Output]:
 <class 'symai.expressions.Symbol'>(value=Hello my friend)
 ```
 
@@ -398,7 +398,7 @@ What we also see is that the API performs dynamic casting, when data types are c
 
 ### Fuzzy Comparisons
 
-In this example we are fuzzily comparing two number objects, where the Symbol variant is only an approximation of `numpy.pi`. Given the context of the fuzzy equals `==` operation, this comparison still succeeds and returns `True`. 
+In this example we are fuzzily comparing two number objects, where the Symbol variant is only an approximation of `numpy.pi`. Given the context of the fuzzy equals `==` operation, this comparison still succeeds and returns `True`.
 
 ```python
 sym = ai.Symbol('3.1415...')
@@ -411,7 +411,7 @@ True
 
 ### 🧠 Causal Reasoning
 
-Our framework was built with the intention to enable reasoning capabilities on top of statistical inference of LLMs. Therefore, we can also perform deductive reasoning operations with our Symbol objects. For example, we can define a set of operations with rules that define the causal relationship between two symbols. The following example shows how the `&` is used to compute the logical implication of two symbols. 
+Our framework was built with the intention to enable reasoning capabilities on top of statistical inference of LLMs. Therefore, we can also perform deductive reasoning operations with our Symbol objects. For example, we can define a set of operations with rules that define the causal relationship between two symbols. The following example shows how the `&` is used to compute the logical implication of two symbols.
 
 ```python
 res = ai.Symbol('The horn only sounds on Sundays.') & ai.Symbol('I hear the horn.')
@@ -421,7 +421,7 @@ res = ai.Symbol('The horn only sounds on Sundays.') & ai.Symbol('I hear the horn
 <class 'symai.expressions.Symbol'>(value=It is Sunday.)
 ```
 
-The current `&`-operation overloads the `and` logical operator and sends `few-shot` prompts how to evaluate the statement to the neural computation engine. However, we can define more sophisticated logical operators for `and`, `or` and `xor` via formal proof statements and use the neural engines to parse data structures prior to our expression evaluation. Therefore, one can also define custom operations to perform more complex and robust logical operations, including constraints to validate the outcomes and ensure a desired behavior. 
+The current `&`-operation overloads the `and` logical operator and sends `few-shot` prompts how to evaluate the statement to the neural computation engine. However, we can define more sophisticated logical operators for `and`, `or` and `xor` via formal proof statements and use the neural engines to parse data structures prior to our expression evaluation. Therefore, one can also define custom operations to perform more complex and robust logical operations, including constraints to validate the outcomes and ensure a desired behavior.
 
 To provide a more complete picture, we also sketch more comprehensive causal examples below, where one tries to obtain logical answers, based on questions of the kind:
 
@@ -484,7 +484,7 @@ def causal_expression(self):
     return res
 ```
 
-The above example shows how we can use the `causal_expression` expression method to step-wise iterate and extract information which we can then either manually or using external solvers resolve. 
+The above example shows how we can use the `causal_expression` expression method to step-wise iterate and extract information which we can then either manually or using external solvers resolve.
 
 **Attention:** We hint the reader that this is a very rough sketch and that the implementation of the `causal_expression` method would need much more engineering effort. Furthermore, the currently used GPT-3 LLM backend often fails to extract the correct information or resolve the right comparison. However, we strongly believe in the advances of the field and that this will change in the future, specifically with fine-tuned models like ChatGPT with Reinforcement Learning from Human Feedback (RLHF).
 
@@ -495,9 +495,9 @@ In the next section, we will explore operations.
 
 ## 😷 Operations
 
-Operations are at the core of our framework. They are the building blocks of our API and are used to define the behavior of our symbols. We can think of operations as contextualized functions that take in a `Symbol` object, send it to the neuro-symbolic engine for evaluation, and return one or multiple new objects (mainly new symbols; but not necessarily limited to that). Another fundamental property is polymorphism, which means that operations can be applied to different types of data, such as strings, integers, floats, lists, etc. with different behaviors, depending on the object instance. 
+Operations are at the core of our framework. They are the building blocks of our API and are used to define the behavior of our symbols. We can think of operations as contextualized functions that take in a `Symbol` object, send it to the neuro-symbolic engine for evaluation, and return one or multiple new objects (mainly new symbols; but not necessarily limited to that). Another fundamental property is polymorphism, which means that operations can be applied to different types of data, such as strings, integers, floats, lists, etc. with different behaviors, depending on the object instance.
 
-The way we execute operations is by using the `Symbol` object `value` attribute containing the original data type that is then sent as a string representations to the engines to perform the operations. Therefore all values are casted to a string representation. This also means, that for custom objects one needs to define a proper `__str__` method to cast the object to a string representation and ensure preservation of the semantics of that object. 
+The way we execute operations is by using the `Symbol` object `value` attribute containing the original data type that is then sent as a string representations to the engines to perform the operations. Therefore all values are casted to a string representation. This also means, that for custom objects one needs to define a proper `__str__` method to cast the object to a string representation and ensure preservation of the semantics of that object.
 
 Lastly, we need to talk about inheritance. Our API is built on top of the `Symbol` class, which is the base class of all operations. This means that all operations are inherited from the `Symbol` class. This provides a convenient modality to add new custom operations by sub-classing `Symbol`, yet, ensuring to always have a set of base operations at our disposal without bloating the syntax or re-implementing many existing functionalities. This also means that we can define contextualized operations with individual constraints, prompt designs and therefore behaviors by simply sub-classing the `Symbol` class and overriding the corresponding method. However, we recommend sub-classing the `Expression` class as we will see later, it adds additional functionalities.
 
@@ -531,7 +531,7 @@ One can also define customized operations. For example, let us define a custom o
 class Demo(ai.Symbol):
     def __init__(self, value = '') -> None:
         super().__init__(value)
-    
+
     @ai.zero_shot(prompt="Generate a random integer between 0 and 10.",
                   constraints=[
                       lambda x: x >= 0,
@@ -553,9 +553,9 @@ The `@ai.few_shot` decorator is the a generalized version of `@ai.zero_shot` and
 
 ```python
 def few_shot(prompt: str,
-             examples: Prompt, 
+             examples: Prompt,
              constraints: List[Callable] = [],
-             default: Optional[object] = None, 
+             default: Optional[object] = None,
              limit: int = 1,
              pre_processor: Optional[List[PreProcessor]] = None,
              post_processor: Optional[List[PostProcessor]] = None,
@@ -590,7 +590,7 @@ Should the neural computation engine not be able to compute the desired outcome,
 
 ## Prompt Design
 
-The way all the above operations are performed is by using a `Prompt` class. The Prompt class is a container for all the information that is needed to define a specific operation. The Prompt class is also the base class for all other Prompt classes. 
+The way all the above operations are performed is by using a `Prompt` class. The Prompt class is a container for all the information that is needed to define a specific operation. The Prompt class is also the base class for all other Prompt classes.
 
 Here is an example how to define a Prompt to enforce the neural computation engine for comparing two values:
 
@@ -626,7 +626,7 @@ In a more general notion, depending on the context hierarchy of the expression c
 
 The figure shows our hierarchical prompt design as a container of all the information that is provided to the neural computation engine to define a task-specific operation. The `Yellow` and `Green` highlighted boxes indicate mandatory string placements. The dashed boxes are optional placeholders. and the `Red` box indicates the starting point of the model prediction.
 
-Conceptually we consider three main prompt designs: `Context-based Prompts`, `Operational Prompts`, and `Templates`. The prompts can be curated either by inheritance or by composition. For example, the `Static Context` can be defined by inheriting from the `Expression` class and overriding the `static_context` property. An `Operation` and `Template` prompt can be created by providing an `PreProcessor` to modify the input data. 
+Conceptually we consider three main prompt designs: `Context-based Prompts`, `Operational Prompts`, and `Templates`. The prompts can be curated either by inheritance or by composition. For example, the `Static Context` can be defined by inheriting from the `Expression` class and overriding the `static_context` property. An `Operation` and `Template` prompt can be created by providing an `PreProcessor` to modify the input data.
 
 We will now explain each prompt concept in more details:
 
@@ -652,11 +652,11 @@ We will now explain each prompt concept in more details:
 
 ## 😑 Expressions
 
-An `Expression` is a non-terminal symbol, which can be further evaluated. It inherits all the properties from Symbol and overrides the `__call__` method to evaluate its expressions or values. From the `Expression` class, all other expressions are derived. The Expression class also adds additional capabilities i.e. to `fetch` data from URLs, `search` on the internet or `open` files. These operations are specifically separated from `Symbol` since they do not use the `value` attribute of the Symbol class. 
+An `Expression` is a non-terminal symbol, which can be further evaluated. It inherits all the properties from Symbol and overrides the `__call__` method to evaluate its expressions or values. From the `Expression` class, all other expressions are derived. The Expression class also adds additional capabilities i.e. to `fetch` data from URLs, `search` on the internet or `open` files. These operations are specifically separated from `Symbol` since they do not use the `value` attribute of the Symbol class.
 
 SymbolicAI' API closely follows best practices and ideas from `PyTorch`, therefore, one can build complex expressions by combining multiple expressions as a computational graph. Each Expression has its own `forward` method, which has to be overridden. The `forward` method is used to define the behavior of the expression. The `forward` method is called by the `__call__` method, which is inherited from the `Expression` base class. The `__call__` evaluates an expression and returns the result from the implemented `forward` method. This design pattern is used to evaluate the expressions in a lazy manner, which means that the expression is only evaluated when the result is needed. This is a very important feature, since it allows us to chain complex expressions together. We already implemented many useful expressions, which can be imported from the `symai.components` file.
 
-Other important properties that are inherited from the Symbol class are `_sym_return_type` and `static_context`. These two properties define the context in which the current Expression operates, as described in the [Prompt Design](#prompt-design) section. The static_context therefore influences all operations of the current Expression sub-class. The _sym_return_type ensures that after each evaluation of an Expression, we obtain the desired return object type. This is usually implemented to return the current type, but can be set to return a different type. 
+Other important properties that are inherited from the Symbol class are `_sym_return_type` and `static_context`. These two properties define the context in which the current Expression operates, as described in the [Prompt Design](#prompt-design) section. The static_context therefore influences all operations of the current Expression sub-class. The _sym_return_type ensures that after each evaluation of an Expression, we obtain the desired return object type. This is usually implemented to return the current type, but can be set to return a different type.
 
 Expressions can of course have more complex structures and be further sub-classed, such as shown in the example of the `Sequence` expression in the following figure:
 
@@ -682,7 +682,7 @@ Sequence(
 
 ### Stream expressions
 
-As we saw earlier, we can create contextualized prompts to define the behavior of operations on our neural engine. However, this also takes away a lot of the available context size and since e.g. the GPT-3 Davinci context length is limited to 4097 tokens, this might quickly become a problem. Luckily, we can use the `Stream` processing expression. This expression opens up a data stream and performs chunk-based operations on the input stream. 
+As we saw earlier, we can create contextualized prompts to define the behavior of operations on our neural engine. However, this also takes away a lot of the available context size and since e.g. the GPT-3 Davinci context length is limited to 4097 tokens, this might quickly become a problem. Luckily, we can use the `Stream` processing expression. This expression opens up a data stream and performs chunk-based operations on the input stream.
 
 A Stream expression can easily be wrapped around other expressions. For example, the chunks can be processed with a `Sequence` expression, that allows multiple chained operations in sequential manner. Here is an example how to define such a Stream expression:
 
@@ -694,8 +694,8 @@ Stream(Sequence(
     Embed()
 ))
 ```
-The shown example opens a stream, passes a `Sequence` object which cleans, translates, outlines and embeds the input. 
-Internally, the stream operation estimates the available model context size and chunks the long input text into smaller chunks, which are passed to the inner expression. The returned object type is a `generator`. 
+The shown example opens a stream, passes a `Sequence` object which cleans, translates, outlines and embeds the input.
+Internally, the stream operation estimates the available model context size and chunks the long input text into smaller chunks, which are passed to the inner expression. The returned object type is a `generator`.
 
 The issue with this approach is, that the resulting chunks are processed independently. This means there is no shared context or information among chunks. To solve this issue, we can use the `Cluster` expression instead, where the independent chunks are merged based on their similarity. We illustrate this in the following figure:
 
@@ -720,11 +720,11 @@ expr(res)
 In a next step, we could recursively repeat this process on each summary node, therefore, build a hierarchical clustering structure. Since each Node resembles a summarized sub-set of the original information we can use the summary as an index. The resulting tree can then be used to navigate and retrieve the original information, turning the large data stream problem into a search problem.
 
 Alternatively, we could use vector-base similarity search to find similar nodes.
-For searching in a vector space we can use dedicated libraries such as [Annoy](https://github.com/spotify/annoy), [Faiss](https://github.com/facebookresearch/faiss) or [Milvus](https://github.com/milvus-io/milvus). 
+For searching in a vector space we can use dedicated libraries such as [Annoy](https://github.com/spotify/annoy), [Faiss](https://github.com/facebookresearch/faiss) or [Milvus](https://github.com/milvus-io/milvus).
 
 ## ❌ Error Handling
 
-A key idea of the SymbolicAI API is to be able to generate code. This in turn means that errors may occur, which we need to handle in a contextual manner. As a future vision, we even want our API to self extend and therefore need to be able to resolve issues automatically. To do so, we propose the `Try` expression, which has a fallback statements built-in and retries an execution with dedicated error analysis and correction. This expression analyses the input and the error, and conditions itself to resolve the error by manipulating the original code. If the fallback expression succeeds, the result is returned. Otherwise, this process is repeated for the number of `retries` specified. If the maximum number of retries is reached and the problem was not resolved, the error is raised again. 
+A key idea of the SymbolicAI API is to be able to generate code. This in turn means that errors may occur, which we need to handle in a contextual manner. As a future vision, we even want our API to self extend and therefore need to be able to resolve issues automatically. To do so, we propose the `Try` expression, which has a fallback statements built-in and retries an execution with dedicated error analysis and correction. This expression analyses the input and the error, and conditions itself to resolve the error by manipulating the original code. If the fallback expression succeeds, the result is returned. Otherwise, this process is repeated for the number of `retries` specified. If the maximum number of retries is reached and the problem was not resolved, the error is raised again.
 
 Let us assume, we have some executable code that was previously generated. However, by the nature of generative processes syntax errors may occur. By using the `Execute` expression, we can evaluate our generated code, which takes in a symbol and tries to execute it. Naturally, this will fail. However, in the following example the `Try` expression resolves this syntactic error and the receive a computed result.
 
@@ -753,9 +753,9 @@ Perhaps one of the greatest benefits of using neuro-symbolic programming is, tha
 
 Since our premise is to divide and conquer complex problems, we can curate conceptual unit test and target very specific and tracktable sub-problems. The resulting measure, i.e. success rate of the model prediction, can then be used to evaluate their performance, and hint towards undesired flaws or biases.
 
-This allows us to design domain-specific benchmarks and see how well general learners, such as GPT-3, adapt with certain prompts to a set of tasks. 
+This allows us to design domain-specific benchmarks and see how well general learners, such as GPT-3, adapt with certain prompts to a set of tasks.
 
-For example, we can write a fuzzy comparison operation, that can take in digits and strings alike, and perform a semantic comparison. LLMs can then be asked to evaluate these expressions. Often times, these LLMs still fail to understand the semantic equivalence of tokens in digits vs strings and give wrong answers. 
+For example, we can write a fuzzy comparison operation, that can take in digits and strings alike, and perform a semantic comparison. LLMs can then be asked to evaluate these expressions. Often times, these LLMs still fail to understand the semantic equivalence of tokens in digits vs strings and give wrong answers.
 
 The following code snipped shows a unit test to perform semantic comparison of numbers (between digits and strings):
 
@@ -795,7 +795,7 @@ Here is the corresponding StackTrace of the model:
 
 <img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img8.png" width="900px">
 
-The above code creates a webpage with the crawled content from the original source. See the preview below, the entire [rendered webpage image here](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/examples/results/news.png) and resulting [code of webpage here](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/examples/results/news.html. 
+The above code creates a webpage with the crawled content from the original source. See the preview below, the entire [rendered webpage image here](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/examples/results/news.png) and resulting [code of webpage here](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/examples/results/news.html.
 
 
 <img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/examples/results/news_prev.png" width="900px">
@@ -819,8 +819,8 @@ sym = Symbol('Hello World!')
 def handler(res):
     input_ = res['input']
     output = res['output']
-expr = Output(expr=sym.translate, 
-              handler=handler, 
+expr = Output(expr=sym.translate,
+              handler=handler,
               verbose=True)
 res = expr('German')
 ```
@@ -909,7 +909,7 @@ To access any data source from the web, we can use `Selenium`. The following exa
 
 ```python
 expr = Expression()
-res = expr.fetch(url="https://www.google.com/", 
+res = expr.fetch(url="https://www.google.com/",
                  pattern="google")
 ```
 The `pattern` property can be used to detect if the document as been loaded correctly. If the pattern is not found, the crawler will timeout and return an empty result.
@@ -957,15 +957,15 @@ We use `Pinecone` to index and search for text. The following example shows how 
 
 ```python
 expr = Expression()
-expr.add(Expression('Hello World!').zip())
-expr.add(Expression('I like cookies!').zip())
-res = expr.get(Expression('hello').embed().value).ast()
-res['matches'][0]['id']
+expr.add(Symbol('Hello World!').zip())
+expr.add(Symbol('I like cookies!').zip())
+res = expr.get(Symbol('hello').embed().value).ast()
+res['matches'][0]['metadata']['text'][0]
 ```
 
 ```bash
 :Output:
-Hello World
+Hello World!
 ```
 
 Here the `zip` method creates a pair of strings and embedding vectors. Afterwards they are added to the index. The line with `get` basically retrieves the original source based on the vector value of `hello` and uses `ast` to cast the value to a dictionary.
@@ -982,7 +982,7 @@ The following example shows how to classify the image of our generated cat from 
 
 ```python
 expr = Expression()
-res = expr.vision('https://oaidalleapiprodscus.blob.core.windows.net/private/org-l6FsXDfth6...', 
+res = expr.vision('https://oaidalleapiprodscus.blob.core.windows.net/private/org-l6FsXDfth6...',
                   ['cat', 'dog', 'bird', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe'])
 ```
 
@@ -1090,7 +1090,7 @@ Engineering challenges:
 * Currently we did not account for multi-threading and multi-processing.
 
 Research challenges:
-* To reliably use our framework, one needs to further explore how to fine-tune LLMs to specifically solve many of the proposed operations in a more robust and efficient way. 
+* To reliably use our framework, one needs to further explore how to fine-tune LLMs to specifically solve many of the proposed operations in a more robust and efficient way.
 * The experimental integration of CLIP is meant to align image and text embeddings. To enable decision-making of LLMs based on observations and perform symbolic operations on objects in images or videos would be a huge leap forward. This would perfectly integrate with reinforcement learning approaches and enable us to control policies in a systematic way (see also [GATO](https://www.deepmind.com/publications/a-generalist-agent)). Therefore, we need to train large multi-modal variants with image / video data and text data, describing in high details the scenes to obtain neuro-symbolic computation engines that can perform semantic operations similar to `move-towards-tree`, `open-door`, etc.
 * Generalist LLMs are still highly over-parameterized and hardware has not yet caught up to host these models on arbitrary day-to-day machines. This limits the applicability of our approach not only on small data streams, but also gives high latencies and therefore limits the amount of complexity and expressiveness we can achieve with our expressions.
 
@@ -1107,7 +1107,7 @@ We believe that LLMs as neuro-symbolic computation engines enable us a new class
 
 ## Conclusion
 
-We have presented a neuro-symbolic view on LLMs and showed how they can be a central pillar for many multi-modal operations. We gave an technical report on how to utilize our framework and also hinted at the capabilities and prospects of these models to be leveraged by modern software development. 
+We have presented a neuro-symbolic view on LLMs and showed how they can be a central pillar for many multi-modal operations. We gave an technical report on how to utilize our framework and also hinted at the capabilities and prospects of these models to be leveraged by modern software development.
 
 
 
@@ -1163,9 +1163,9 @@ We also want to state, that we highly value and support the further development 
 
 ### Acknowledgements
 
-Also this is a long list. Great thanks to my colleagues and friends at the [Institute for Machine Learning at Johannes Kepler University (JKU), Linz](https://www.jku.at/institut-fuer-machine-learning/) for their great support and feedback; great thanks to [Dynatrace Research](https://engineering.dynatrace.com/research/) for supporting this project. Thanks also to the [AI Austria RL Community](https://aiaustria.com/rl-community). Thanks to all the people who contributed to this project. Be it by providing feedback, bug reports, code, or just by using the framework. We are very grateful for your support. 
+Also this is a long list. Great thanks to my colleagues and friends at the [Institute for Machine Learning at Johannes Kepler University (JKU), Linz](https://www.jku.at/institut-fuer-machine-learning/) for their great support and feedback; great thanks to [Dynatrace Research](https://engineering.dynatrace.com/research/) for supporting this project. Thanks also to the [AI Austria RL Community](https://aiaustria.com/rl-community). Thanks to all the people who contributed to this project. Be it by providing feedback, bug reports, code, or just by using the framework. We are very grateful for your support.
 
-And finally, thanks to the open source community for making their APIs and tools available to the public, including (but not exclusive to) [PyTorch](https://pytorch.org/), [Hugging Face](https://huggingface.co/), [OpenAI](https://openai.com/), [GitHub](https://github.com/), [Microsoft Research](https://www.microsoft.com/en-us/research/), and many more. 
+And finally, thanks to the open source community for making their APIs and tools available to the public, including (but not exclusive to) [PyTorch](https://pytorch.org/), [Hugging Face](https://huggingface.co/), [OpenAI](https://openai.com/), [GitHub](https://github.com/), [Microsoft Research](https://www.microsoft.com/en-us/research/), and many more.
 
 
 Special thanks to the contributions from [Kajetan Schweighofer](https://www.linkedin.com/in/kajetan-schweighofer-a61113202/?originalSubdomain=at), [Markus Hofmarcher](https://www.linkedin.com/in/markus-hofmarcher-2722141b8/?originalSubdomain=at), [Thomas Natschläger](https://www.linkedin.com/in/thomas-natschlaeger/?originalSubdomain=at) and [Sepp Hochreiter](https://scholar.google.at/citations?user=tvUH3WMAAAAJ&hl=en).

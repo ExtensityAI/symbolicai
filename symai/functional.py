@@ -184,19 +184,20 @@ def _process_query(engine,
     return rsp
 
 
-def check_or_init_neurosymbolic_func(engine = None):
+def check_or_init_neurosymbolic_func(engine=None):
     global neurosymbolic_engine
     if engine is not None:
         neurosymbolic_engine = engine
     elif neurosymbolic_engine is None:
-        #TODO
         if config['NEUROSYMBOLIC_ENGINE_MODEL'] == 'text-davinci-003':
             from .backend.engine_gpt3 import GPT3Engine
             neurosymbolic_engine = GPT3Engine()
         elif config['NEUROSYMBOLIC_ENGINE_MODEL'] == 'gpt-3.5-turbo' or\
-                config['NEUROSYMBOLIC_ENGINE_MODEL'] == 'gpt-4':
+             config['NEUROSYMBOLIC_ENGINE_MODEL'] == 'gpt-4':
             from .backend.engine_gptX_chat import GPTXChatEngine
             neurosymbolic_engine = GPTXChatEngine()
+        else:
+            raise Exception(f'Unknown neurosymbolic engine model: {config["NEUROSYMBOLIC_ENGINE_MODEL"]}')
 
 
 def few_shot_func(wrp_self,
@@ -817,7 +818,7 @@ def cache_registry_func(
         *args, **kwargs
     ):
 
-    if not os.path.exists(cache_path): os.mkdir(cache_path)
+    if not os.path.exists(cache_path): os.makedirs(cache_path)
 
     if in_memory and os.path.exists(Path(cache_path) / func.__qualname__):
         with open(Path(cache_path) / func.__qualname__, 'rb') as f:

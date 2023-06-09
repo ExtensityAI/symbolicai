@@ -130,3 +130,7 @@ dmypy.json
 
 results/
 symai.config.json
+.DS_Store
+._.DS_Store
+**/.DS_Store
+**/._.DS_Store
