@@ -235,16 +235,7 @@ outdated:
 
    pip install git+https://github.com/openai/whisper.git
 
--  **WebCrawler Engine**: For ``selenium``, download the corresponding
-   driver version by setting the ``SELENIUM_CHROME_DRIVER_VERSION``
-   environment variable. Currently we use Chrome as the default browser.
-   This means that the Chrome version major number must match the
-   ChromeDriver version. All versions are available
-   `here <https://chromedriver.chromium.org/downloads>`__. For example,
-   if you use chrome version ``109.0.5414.74``, you can set any
-   ``109.x.x.x`` version for the ``chromedriver``. In this case the
-   ``109.0.5414.74`` is available on the selenium page, therefore the
-   environment variable is set to it:
+-  **WebCrawler Engine**: For `selenium`, we automatically install the driver with `chromedriver-autoinstaller`. Currently we only support Chrome as the default browser.
 
 .. code:: bash
 
