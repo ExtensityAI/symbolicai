@@ -24,12 +24,12 @@ class ChatBot(Expression):
         self._postprocessor = ChatBot._init_custom_input_postprocessor(that=self)
 
         self.classify = ai.InContextClassification(ai.prompts.SymbiaCapabilities())
-        self.command(engines=['symbolic'], expression_engine='wolframalpha')
+        Expression.command(engines=['symbolic'], expression_engine='wolframalpha')
 
     def repeat(self, query, **kwargs):
         return self.narrate('Symbia does not understand and asks to repeat and give more context.', prompt=query)
 
-    def narrate(self, message: str, context: str = None, end: bool = False, **kwargs) -> "Symbol":
+    def narrate(self, message: str, context: str = None, end: bool = False, do_recall: bool = True, **kwargs) -> "Symbol":
         narration = f'Narrator: {message}'
         self.memory.store(narration)
 
@@ -39,7 +39,7 @@ class ChatBot(Expression):
         value  += '\n'.join(self.memory.recall()) # TODO: use vector search DB
         value  += '\n\nLONG-TERM MEMORY RECALL (Consider only if relevant to the user query!)\n\n'
         query   = f'{self.last_user_input}\n{message}\n\n'
-        recall  = self.long_term_memory.recall(query)
+        recall = self.long_term_memory.recall(query) if do_recall else []
         value  += '\n'.join(recall)
         value  += f'\n{self.name}:'
 
@@ -51,9 +51,14 @@ class ChatBot(Expression):
                       stop=['User:'], **kwargs)
         def _func(_) -> str:
             pass
-        rsp = f"{self.name}: {_func(self)}"
+        model_rsp = _func(self)
 
-        if self.verbose: print('[DEBUG] model reply: ', rsp)
+        rsp = f"{self.name}: {model_rsp}"
+        if self.verbose: print('[DEBUG] model reply: ', model_rsp)
+        memory = f"{self.last_user_input} >> {model_rsp}" if do_recall else ""
+        if len(memory) > 0: self.long_term_memory.store(memory)
+        if self.verbose: print('[DEBUG] store new memory reply: ', memory)
+
         sym = Symbol(rsp)
 
         if end: print(sym)
@@ -108,7 +113,7 @@ class ChatBot(Expression):
 
 class SymbiaChat(ChatBot):
     def forward(self):
-        message = self.narrate(f'{self.name} introduces herself, writes a greeting message and asks how to help.')
+        message = self.narrate(f'{self.name} introduces herself, writes a greeting message and asks how to help.', do_recall=False)
 
         while True:
             usr = self.input(message)
@@ -123,12 +128,12 @@ class SymbiaChat(ChatBot):
             if self.verbose: print('[DEBUG] context: ', ctxt)
 
             if '[EXIT]' in ctxt:
-                self.narrate(f'{self.name} writes goodbye message.', end=True)
+                self.narrate(f'{self.name} writes goodbye message.', end=True, do_recall=False)
                 break
 
             elif '[HELP]' in ctxt:
                 thought = self._extract_thought(ctxt)
-                message = self.narrate(f'{self.name} ', context=thought)
+                message = self.narrate(f'{self.name} ', context=thought, do_recall=False)
 
             elif '[DK]' in ctxt:
                 thought = self._extract_thought(ctxt)
@@ -179,8 +184,10 @@ class SymbiaChat(ChatBot):
                         file = usr.extract('extract file path')
                         q = usr.extract('user question')
                         rsp = file.fstream(
-                            ai.IncludeFilter('include only facts related to the user question: ' @ q),
-                            ai.Outline()
+                            ai.Sequence(
+                                ai.IncludeFilter('include only facts related to the user question: ' @ q),
+                                ai.Outline()
+                            )
                         )
                         thought = self._extract_thought(ctxt)
                         message = self.narrate('Symbia replies to the user and outlines and relies to the user query.', context=rsp)
@@ -189,7 +196,7 @@ class SymbiaChat(ChatBot):
                         q = usr.extract('user query request')
                         rsp = self.search(q)
                         thought = self._extract_thought(ctxt)
-                        message = self.narrate('Symbia apologizes, tries to interpret the response and states that the capability is not available yet.', context=thought)
+                        message = self.narrate('Symbia tries to interpret the response, and if unclear asks the user to restate the statement or add more context.', context=thought)
 
                 except Exception as e:
                     thought = self._extract_thought(ctxt)
