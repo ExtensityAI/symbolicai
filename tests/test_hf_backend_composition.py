@@ -14,9 +14,8 @@ from examples.news import News
 # test with huggingface backend
 from symai.backend.engine_nesy_client import NeSyClientEngine
 engine = NeSyClientEngine()
-setting = Expression()
-setting.setup(engines={'neurosymbolic': engine})
-setting.command(time_clock=True)
+Expression.setup(engines={'neurosymbolic': engine})
+Expression.command(time_clock=True)
 
 
 class TestComposition(unittest.TestCase):
@@ -203,7 +202,7 @@ In the _init_ function, the custom model takes in a configuration object (config
 
     def test_wolframalpha_expression(self):
         expr = Expression()
-        expr.command(engines=['symbolic'], expression_engine='wolframalpha')
+        Expression.command(engines=['symbolic'], expression_engine='wolframalpha')
         res = expr.expression('x^2 + 2x + 1, x = 4')
         self.assertTrue(res == 25, res)
 
@@ -586,7 +585,7 @@ modified:   tests/test_composition.py
 
     def test_command(self):
         sym = Symbol('Hello World!')
-        sym.command(engines=['neurosymbolic'], verbose=True)
+        Expression.command(engines=['neurosymbolic'], verbose=True)
         res = sym.translate('German')
         self.assertIsNotNone(res)
 
@@ -644,7 +643,7 @@ modified:   tests/test_composition.py
                 return res
 
         expr = ComplexExpression(val)
-        expr.command(engines=['symbolic'], expression_engine='wolframalpha')
+        Expression.command(engines=['symbolic'], expression_engine='wolframalpha')
         res = expr.causal_expression()
         self.assertIsNotNone(res, res)
 

@@ -268,19 +268,19 @@ class FileQuery(Expression):
 
 class Function(Expression):
     def __init__(self, prompt: str, static_context: str = "",
-                 examples: Optional[ai.Prompt] = [],
+                 examples: Optional[str] = [],
                  pre_processor: Optional[List[ai.PreProcessor]] = None,
                  post_processor: Optional[List[ai.PostProcessor]] = None,
                  default: Optional[object] = None, *args, **kwargs):
         super().__init__()
 
         chars = ascii_lowercase + ascii_uppercase
-        self.name = 'type_' + ''.join(sample(chars, 15))
+        self.name = 'func_' + ''.join(sample(chars, 15))
         self.args = args
         self.kwargs = kwargs
         self.prompt = prompt
         self._static_context = static_context
-        self.examples = examples
+        self.examples = ai.Prompt(examples)
         self.pre_processor = pre_processor
         self.post_processor = post_processor
         self.default = default

@@ -14,8 +14,7 @@ from examples.paper import Paper
 from examples.news import News
 
 
-setting = Expression()
-setting.command(time_clock=True)
+Expression.command(time_clock=True)
 
 
 class TestComposition(unittest.TestCase):
@@ -212,7 +211,7 @@ In the _init_ function, the custom model takes in a configuration object (config
 
     def test_wolframalpha_expression(self):
         expr = Expression()
-        expr.command(engines=['symbolic'], expression_engine='wolframalpha')
+        Expression.command(engines=['symbolic'], expression_engine='wolframalpha')
         res = expr.expression('x^2 + 2x + 1, x = 4')
         self.assertTrue(res == 25, res)
 
@@ -635,7 +634,7 @@ modified:   tests/test_composition.py
                 wrp_params['prompts'] = ['Write about cats.']
         custom_engine = TestEngine(max_retry=1)
         sym = Symbol('Write about dogs.')
-        sym.setup(engines={'neurosymbolic': custom_engine})
+        Expression.setup(engines={'neurosymbolic': custom_engine})
         res = sym.compose()
         self.assertTrue('cat' in str(res).lower(), res)
 
@@ -644,13 +643,13 @@ modified:   tests/test_composition.py
         model = NeSyClientEngine()
         model.init_model('cuda:4')
         sym = Symbol('Write about dogs.')
-        sym.setup(engines={'neurosymbolic': model})
+        Expression.setup(engines={'neurosymbolic': model})
         res = sym.compose(max_tokens=500)
         self.assertTrue('dog' in str(res).lower(), res)
 
     def test_command(self):
         sym = Symbol('Hello World!')
-        sym.command(engines=['neurosymbolic'], verbose=True)
+        Expression.command(engines=['neurosymbolic'], verbose=True)
         res = sym.translate('German')
         self.assertIsNotNone(res)
 
@@ -715,8 +714,8 @@ modified:   tests/test_composition.py
                             default="no")
         self.assertTrue(is_sql == 'no')
 
-    def test_new_type(self):
-        llm_fn = ai.Type('This function transform natural language text to python code.')
+    def test_new_function(self):
+        llm_fn = ai.Function('This function transform natural language text to python code.')
         res = llm_fn('marius is equal to five plus leo')
         self.assertTrue('hello' in res)
 
@@ -763,7 +762,7 @@ modified:   tests/test_composition.py
                 return res
 
         expr = ComplexExpression(val)
-        expr.command(engines=['symbolic'], expression_engine='wolframalpha')
+        Expression.command(engines=['symbolic'], expression_engine='wolframalpha')
         res = expr.causal_expression()
         self.assertIsNotNone(res, res)
 
