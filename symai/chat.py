@@ -11,7 +11,7 @@ from symai.symbol import Expression, Symbol
 class ChatBot(Expression):
     _symai_chat: str = """This is a conversation between a chatbot ({}:) and a human (User:). It also includes narration Text (Narrator:) describing the next dialog. The chatbot primarily follows the narrative instructions, and then uses the user input to condition on for the generated response.\n"""
 
-    def __init__(self, value = None, name: str = 'Symbia', output: Optional[Output] = None, verbose: bool = False):
+    def __init__(self, value = None, name: str = 'Symbia', output: Optional[Output] = None, verbose: bool = True):
         super().__init__(value)
         self.verbose: bool        = verbose
         self.name                 = name
@@ -39,7 +39,7 @@ class ChatBot(Expression):
         value  += '\n'.join(self.memory.recall()) # TODO: use vector search DB
         value  += '\n\nLONG-TERM MEMORY RECALL (Consider only if relevant to the user query!)\n\n'
         query   = f'{self.last_user_input}\n{message}\n\n'
-        recall = self.long_term_memory.recall(query) if do_recall else []
+        recall  = self.long_term_memory.recall(query) if do_recall else []
         value  += '\n'.join(recall)
         value  += f'\n{self.name}:'
 
@@ -55,7 +55,9 @@ class ChatBot(Expression):
 
         rsp = f"{self.name}: {model_rsp}"
         if self.verbose: print('[DEBUG] model reply: ', model_rsp)
-        memory = f"{self.last_user_input} >> {model_rsp}" if do_recall else ""
+        memory = f"{self.last_user_input}" if do_recall else ""
+        if len(memory) > 0: self.long_term_memory.store(memory)
+        memory = f"{model_rsp}" if do_recall else ""
         if len(memory) > 0: self.long_term_memory.store(memory)
         if self.verbose: print('[DEBUG] store new memory reply: ', memory)
 
@@ -137,7 +139,7 @@ class SymbiaChat(ChatBot):
 
             elif '[DK]' in ctxt:
                 thought = self._extract_thought(ctxt)
-                message = self.narrate(f'{self.name} restates verbatim the message.', context=thought)
+                message = self.narrate(f'{self.name} restates verbatim the message.', context=thought, do_recall=False)
 
             else:
                 try:
@@ -200,7 +202,7 @@ class SymbiaChat(ChatBot):
 
                 except Exception as e:
                     thought = self._extract_thought(ctxt)
-                    message = self.narrate('Symbia apologizes and explains the user what went wrong.', context=str(e))
+                    message = self.narrate('Symbia apologizes and explains the user what went wrong.', context=str(e), do_recall=False)
 
     def _extract_thought(self, msg: str) -> str:
         return re.findall(r'\{([^}]+)\}', msg).pop()
