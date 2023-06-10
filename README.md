@@ -177,16 +177,7 @@ choco install ffmpeg
 pip install git+https://github.com/openai/whisper.git
 ```
 
-* **WebCrawler Engine**: For `selenium`, download the corresponding driver version by setting the `SELENIUM_CHROME_DRIVER_VERSION` environment variable. Currently we use Chrome as the default browser. This means that the Chrome version major number must match the ChromeDriver version. All versions are available [here](https://chromedriver.chromium.org/downloads). For example, if you use chrome version `109.0.5414.74`, you can set any `109.x.x.x` version for the `chromedriver`. In this case the `109.0.5414.74` is available on the selenium page, therefore the environment variable is set to it:
-
-```bash
-# Linux / MacOS
-export SELENIUM_CHROME_DRIVER_VERSION="109.0.5414.74"
-
-# Windows (PowerShell)
-$Env:SELENIUM_CHROME_DRIVER_VERSION="109.0.5414.74"
-```
-
+* **WebCrawler Engine**: For `selenium`, we automatically install the driver with `chromedriver-autoinstaller`. Currently we only support Chrome as the default browser.
 ----
 
 Alternatively, you can specify in your project path a `symai.config.json` file with all the engine properties. This will replace the environment variables. See the following configuration file as an example:
@@ -204,7 +195,6 @@ Alternatively, you can specify in your project path a `symai.config.json` file w
     "SEARCH_ENGINE_MODEL": "google",
     "OCR_ENGINE_API_KEY": "<APILAYER_API_KEY>",
     "SPEECH_ENGINE_MODEL": "base",
-    "SELENIUM_CHROME_DRIVER_VERSION": "110.0.5481.30",
     "INDEXING_ENGINE_API_KEY": "<PINECONE_API_KEY>",
     "INDEXING_ENGINE_ENVIRONMENT": "us-west1-gcp"
 }

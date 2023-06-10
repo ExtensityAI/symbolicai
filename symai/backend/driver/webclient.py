@@ -1,23 +1,29 @@
 import os
+
 os.environ['WDM_LOG'] = '0' # disable webdriver-manager logging
-import sys
+
+import logging
+import random
 import re
+import sys
 import time
 import urllib.request
-import random
-import logging
-import symai.backend.settings as settings
 from random import choice
-from selenium.webdriver.remote.remote_connection import LOGGER
-LOGGER.setLevel(logging.ERROR)
+
+import chromedriver_autoinstaller
 from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.by import By
-from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
-from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
+from selenium.webdriver.remote.remote_connection import LOGGER
 from webdriver_manager.chrome import ChromeDriverManager
+
+import symai.backend.settings as settings
+
+LOGGER.setLevel(logging.ERROR)
 
 
 class Proxy(object):
@@ -75,7 +81,16 @@ def connect_chrome(debug, proxy=None):
     options.add_argument('--incognito')
     options.add_argument("--headless")
     options.add_argument("--log-level=3")
-    driver = webdriver.Chrome(ChromeDriverManager(version=settings.SYMAI_CONFIG['SELENIUM_CHROME_DRIVER_VERSION']).install(), chrome_options=options)
+    from pathlib import Path
+
+    #*-------------------------------------------------------------------------*#
+    #@TODO: lines below will be removed when dealing with the config setup
+    driver_path = Path.home() / '.symai' / 'chromedriver'
+    if not os.path.exists(driver_path):
+        os.makedirs(driver_path)
+    #*-------------------------------------------------------------------------*#
+    chromedriver_autoinstaller.install()
+    driver = webdriver.Chrome(chrome_options=options)
     if debug: print("Chrome Headless Browser Invoked")
     return driver
 
@@ -129,7 +144,7 @@ def download_images(driver, args):
 def run_selenium_test(debug=False):
     proxy = Proxy(host="localhost", port=9050)
     driver_handler = connect_browsers(debug, proxy)
-    
+
     max_cnt = 5
     cnt = 0
     now = time.time()
@@ -144,24 +159,24 @@ def run_selenium_test(debug=False):
 
     # input String
     lst = text.split(' ')
-    
+
     while cnt < max_cnt:
         start_pos = random.randint(0, len(lst)-1)
         len_ = random.randint(1, 6)
         seq = lst[start_pos:start_pos+len_]
         pattern = " ".join(seq)
-        result = contains_text(check_pattern="Images", 
+        result = contains_text(check_pattern="Images",
                                search_pattern=pattern,
-                               link=f"https://www.google.com/search?tbm=isch&as_q={pattern}&tbs=isz:lt,islt:4mp,sur:fmc", 
-                               driver_handler=driver_handler, 
+                               link=f"https://www.google.com/search?tbm=isch&as_q={pattern}&tbs=isz:lt,islt:4mp,sur:fmc",
+                               driver_handler=driver_handler,
                                debug=True,
-                               script=download_images, 
+                               script=download_images,
                                args=[pattern])
         timestamp = time.time() - now
         now = time.time()
         print(f"{result} - time: {timestamp}")
         cnt += 1
-    
+
 
 if __name__ == "__main__":
     run_selenium_test(debug=True)
