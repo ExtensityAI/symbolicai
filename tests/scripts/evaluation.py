@@ -1,7 +1,7 @@
 """
-Evaluation script for the NeuroSymbolic AI project containing a number of different test cases. 
+Evaluation script for the NeuroSymbolic AI project containing a number of different test cases.
 
-Before using a local engine, make sure to run: 
+Before using a local engine, make sure to run:
 ```
     export TRANSFORMERS_CACHE="/system/user/publicwork/schmied/symai/huggingface"
     symsvr
@@ -23,8 +23,7 @@ from symai.backend.engine_nesy_client import NeSyClientEngine
 def setup_engine():
     print("Initializing engine...")
     engine = NeSyClientEngine()
-    setting = Expression()
-    setting.setup(engines={'neurosymbolic': engine})
+    Expression.setup(engines={'neurosymbolic': engine})
     return engine
 
 
@@ -45,10 +44,10 @@ class Evaluation:
 
     def evaluate(self, save_dir=None):
         # evalutate tests
-        df_logic = self.evaluate_logic_tests() 
+        df_logic = self.evaluate_logic_tests()
         df_expression = self.evaluate_expression_tests()
         df_mathematics = self.evaluate_mathematics_tests()
-        
+
         # combine results
         df_results = pd.concat([df_logic, df_expression, df_mathematics])
         df_success = df_results.copy()
@@ -102,7 +101,7 @@ class Evaluation:
             })
 
         return pd.DataFrame(eval_dict)
-    
+
     def evaluate_expression_tests_chained(self):
         pass
 
@@ -121,16 +120,16 @@ class Evaluation:
 
     def evaluate_mathematics_tests_chained(self):
         pass
-    
 
-if __name__ == "__main__": 
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--save_dir", type=str, default="./evaluation/results")
     args = parser.parse_args()
 
     # setup engine
     engine = setup_engine()
-    
+
     # run evaluation
     print("Running evaluation...")
     evaluation = Evaluation()
