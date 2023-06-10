@@ -626,7 +626,7 @@ for the respective engine. Let’s see an example:
    # instantiate an object of the class
    expr = ComplexExpression(val)
    # set WolframAlpha as the main expression engine to use
-   expr.command(engines=['symbolic'], expression_engine='wolframalpha')
+   Expression.command(engines=['symbolic'], expression_engine='wolframalpha')
    # evaluate the expression
    res = expr.causal_expression()
 
@@ -1324,8 +1324,7 @@ variable ``x``:
 
 .. code:: python
 
-   expr = Expression()
-   expr.command(engines=['symbolic'], expression_engine='wolframalpha')
+   Expression.command(engines=['symbolic'], expression_engine='wolframalpha')
    res = expr.expression('x^2 + 2x + 1')
 
 .. code:: bash
@@ -1531,9 +1530,8 @@ Then use once the following code to set up the local engine:
    from symai.backend.engine_nesy_client import NeSyClientEngine
    # setup local engine
    engine = NeSyClientEngine()
-   setting = Expression()
-   setting.setup(engines={'neurosymbolic': engine})
-   setting.command(time_clock=True)
+   Expression.setup(engines={'neurosymbolic': engine})
+   Expression.command(time_clock=True)
 
 Now you can use the local engine to perform symbolic computation:
 
@@ -1572,7 +1570,7 @@ for illustration purposes:
            wrp_params['prompts'] = ['Go wild and generate something!']
    custom_engine = DummyEngine()
    sym = Symbol()
-   sym.setup(engines={'neurosymbolic': custom_engine})
+   Expression.setup(engines={'neurosymbolic': custom_engine})
    res = sym.compose()
 
 To configure an engine, we can use the ``command`` method. In this
@@ -1583,7 +1581,7 @@ useful for debugging purposes:
 .. code:: python
 
    sym = Symbol('Hello World!')
-   sym.command(engines=['neurosymbolic'], verbose=True)
+   Expression.command(engines=['neurosymbolic'], verbose=True)
    res = sym.translate('German')
 
 .. code:: bash

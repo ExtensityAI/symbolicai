@@ -696,20 +696,6 @@ class Symbol(ABC):
             pass
         return self._sym_return_type(_func(self, *args))
 
-    def command(self, engines: List[str] = ['all'], **kwargs) -> "Symbol":
-        @ai.command(engines=engines, **kwargs)
-        def _func(_):
-            pass
-        _func(self)
-        return self
-
-    def setup(self, engines: Dict[str, Any], **kwargs) -> "Symbol":
-        @ai.setup(engines=engines, **kwargs)
-        def _func(_):
-            pass
-        _func(self)
-        return self
-
 
 class Expression(Symbol):
     def __init__(self, value = None):
@@ -788,3 +774,16 @@ class Expression(Symbol):
             pass
         return self._sym_return_type(_func(self))
 
+    @staticmethod
+    def command(engines: List[str] = ['all'], **kwargs) -> "Symbol":
+        @ai.command(engines=engines, **kwargs)
+        def _func(_):
+            pass
+        return Expression(_func(Expression()))
+
+    @staticmethod
+    def setup(engines: Dict[str, Any], **kwargs) -> "Symbol":
+        @ai.setup(engines=engines, **kwargs)
+        def _func(_):
+            pass
+        return Expression(_func(Expression()))
