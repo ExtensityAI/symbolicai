@@ -1,13 +1,14 @@
-import symai as ai
+from ...symbol import Symbol, Expression
+from ... import core
 
 
-class file(ai.Expression):
+class file(Expression):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def __call__(self, path: ai.Symbol, **kwargs) -> "file":
+    def __call__(self, path: Symbol, **kwargs) -> "file":
         path = self._to_symbol(path)
-        @ai.opening(path=path.value, **kwargs)
+        @core.opening(path=path.value, **kwargs)
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(self))

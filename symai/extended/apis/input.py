@@ -1,12 +1,13 @@
-import symai as ai
+from ...symbol import Expression
+from ... import core
 
 
-class input(ai.Expression):
+class input(Expression):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     def __call__(self, message: str = "Please add more information", **kwargs) -> "input":
-        @ai.userinput(**kwargs)
+        @core.userinput(**kwargs)
         def _func(_, message) -> str:
             pass
         return self._sym_return_type(_func(self, message))
