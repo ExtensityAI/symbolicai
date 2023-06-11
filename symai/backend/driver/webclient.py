@@ -90,7 +90,7 @@ def connect_chrome(debug, proxy=None):
         os.makedirs(driver_path)
     #*-------------------------------------------------------------------------*#
     chromedriver_autoinstaller.install()
-    driver = webdriver.Chrome(chrome_options=options)
+    driver = webdriver.Chrome(options=options)
     if debug: print("Chrome Headless Browser Invoked")
     return driver
 
