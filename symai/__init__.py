@@ -4,6 +4,11 @@ import os
 from pathlib import Path
 
 
+# do not remove - hides the libraries' debug messages
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+logging.getLogger("requests").setLevel(logging.WARNING)
+
+
 SYMAI_VERSION = "0.2.22"
 __version__   = SYMAI_VERSION
 __root_dir__  = Path.home() / '.symai'
