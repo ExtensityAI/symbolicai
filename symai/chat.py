@@ -15,7 +15,7 @@ from .symbol import Expression, Symbol
 class ChatBot(Expression):
     _symai_chat: str = """This is a conversation between a chatbot ({}:) and a human (User:). It also includes narration Text (Narrator:) describing the next dialog. The chatbot primarily follows the narrative instructions, and then uses the user input to condition on for the generated response.\n"""
 
-    def __init__(self, value = None, name: str = 'Symbia', output: Optional[Output] = None, verbose: bool = True):
+    def __init__(self, value = None, name: str = 'Symbia', output: Optional[Output] = None, verbose: bool = False):
         super().__init__(value)
         self.verbose: bool        = verbose
         self.name                 = name
@@ -51,8 +51,7 @@ class ChatBot(Expression):
         if self.verbose: print('[DEBUG] narration: ', narration)
         if self.verbose: print('[DEBUG] function context: ', ctxt)
 
-        @zero_shot(prompt=value,
-                      stop=['User:'], **kwargs)
+        @zero_shot(prompt=value, stop=['User:'], **kwargs)
         def _func(_) -> str:
             pass
         model_rsp = _func(self)
@@ -143,7 +142,9 @@ class SymbiaChat(ChatBot):
 
             elif '[DK]' in ctxt:
                 thought = self._extract_thought(ctxt)
-                message = self.narrate(f'{self.name} restates verbatim the message.', context=thought, do_recall=False)
+                q = usr.extract('user query request')
+                rsp = self.search(q)
+                message = self.narrate(f'{self.name} is not sure about the message and references to search results.', context=thought, payload=rsp)
 
             else:
                 try:
