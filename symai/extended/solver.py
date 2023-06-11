@@ -1,7 +1,10 @@
-from symai.post_processors import StripPostProcessor
-from symai.pre_processors import PreProcessor
-from symai import ai
 import argparse
+
+from ..core import *
+from ..post_processors import StripPostProcessor
+from ..pre_processors import PreProcessor
+from ..prompts import Prompt
+from ..symbol import Expression, Symbol
 
 
 #############################################################################################
@@ -26,7 +29,7 @@ The // is the predicted category, ending with EOF.
 - Linear algebra
 - Linguistic problem with relations
 - Unknown category
-    
+
 [Examples]
 Here is a list of examples categorizing the problem statements:
 $> Evaluate the logical implication: (True and False) or (True and True)
@@ -51,22 +54,22 @@ class ProblemClassifierPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args, **kwds):
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         return '$> {}\n//'.format(str(wrp_self))
-    
+
 
 class OptionsPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args, **kwds):
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         return '$> :{}: == :{}: =>'.format(str(wrp_self), str(args[0]))
-    
-    
-class ProblemClassifier(ai.Expression):
+
+
+class ProblemClassifier(Expression):
     @property
     def static_context(self):
         return PROBLEM_CATEGORY_CONTEXT
-    
+
     def __eq__(self, other, **kwargs) -> bool:
-        @ai.few_shot(prompt="Verify equality of the following categories. Ignore typos, upper / lower case or singular / plural differences:\n", 
-                     examples=ai.Prompt([
+        @few_shot(prompt="Verify equality of the following categories. Ignore typos, upper / lower case or singular / plural differences:\n",
+                     examples=Prompt([
                          '$> :Arithmetic formula: == :Arithmetics formula: =>True EOF',
                          '$> :arithmetic formula: == :Arithmetic formula: =>True EOF',
                          '$> :arithmetic formula: == :arithmeticformula: =>True EOF',
@@ -84,9 +87,9 @@ class ProblemClassifier(ai.Expression):
         def _func(_, other) -> bool:
             pass
         return _func(self, other)
-    
+
     def forward(self, **kwargs) -> str:
-        @ai.few_shot(prompt="Classify the user query to the mathematical classes:\n", 
+        @few_shot(prompt="Classify the user query to the mathematical classes:\n",
                      examples=[],
                      pre_processor=[ProblemClassifierPreProcessor()],
                      post_processor=[StripPostProcessor()],
@@ -94,7 +97,7 @@ class ProblemClassifier(ai.Expression):
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(self))
-    
+
     @property
     def _sym_return_type(self):
         return ProblemClassifier
@@ -106,18 +109,18 @@ class FormulaCheckerPreProcessor(PreProcessor):
         return '$> {} =>'.format(str(wrp_self))
 
 
-class FormulaChecker(ai.Expression):
+class FormulaChecker(Expression):
     def forward(self, **kwargs) -> bool:
-        @ai.few_shot(prompt="Is the following statement in an explicit formula form without natural language text?:\n", 
-                     examples=ai.Prompt([
+        @few_shot(prompt="Is the following statement in an explicit formula form without natural language text?:\n",
+                     examples=Prompt([
                          '$> 2 + 2 * 2 =>True EOF',
                          '$> x + 2 = 3 =>True EOF',
                          '$> Set of all natural numbers =>False EOF',
                          '$> Probability of drawing a red ball =>False EOF',
                          '$> (a + b) * (a - b) =>True EOF',
                          '$> Add the square root of nine to the square root of x =>False EOF',
-                         '$> Five plus two equals seven =>False EOF', 
-                         '$> 5 + 2 = 7 =>True EOF', 
+                         '$> Five plus two equals seven =>False EOF',
+                         '$> 5 + 2 = 7 =>True EOF',
                          '$> x is seven =>False EOF',
                          '$> x = 7 =>True EOF',
                          '$> Anna has two apples. She gives one to her brother. How many apples does Anna have now? =>False EOF',
@@ -133,24 +136,24 @@ class FormulaChecker(ai.Expression):
             pass
         return _func(self)
 
-    
+
 #############################################################################################
 #
 # Code for rewriting user queries
 #
 #############################################################################################
-   
-    
+
+
 class FormulaWriterPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args, **kwds):
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         return '$> {} =>'.format(str(wrp_self))
 
 
-class FormulaWriter(ai.Expression):
+class FormulaWriter(Expression):
     def forward(self, **kwargs) -> str:
-        @ai.few_shot(prompt="Rewrite the following natural language statement in a mathematical formula or higher-order logic statement to be solved by Mathematica:\n", 
-                     examples=ai.Prompt([
+        @few_shot(prompt="Rewrite the following natural language statement in a mathematical formula or higher-order logic statement to be solved by Mathematica:\n",
+                     examples=Prompt([
                          '$> Add 5 plus 3 =>5 + 3 EOF',
                          '$> Seventy plus twenty =>70 + 20 EOF',
                          '$> Divide 5 by three =>5 / 3 EOF',
@@ -175,7 +178,7 @@ class FormulaWriter(ai.Expression):
 #############################################################################################
 
 
-class Solver(ai.Expression):
+class Solver(Expression):
     def rewrite_formula(self, sym, **kwargs):
         formula = sym
         check = FormulaChecker(formula)
@@ -183,17 +186,17 @@ class Solver(ai.Expression):
             formula = FormulaWriter(sym)
             formula = formula(**kwargs)
         return formula
-    
-    def forward(self, sym: ai.Symbol, **kwargs) -> str:
+
+    def forward(self, sym: Symbol, **kwargs) -> str:
         classifier = ProblemClassifier(sym)
         problem = classifier(**kwargs)
-        
+
         if 'Arithmetics formula' == problem:
             formula = self.rewrite_formula(sym, **kwargs)
             print(formula)
         elif 'Equations' == problem:
             formula = self.rewrite_formula(sym, **kwargs)
-            print(formula)   
+            print(formula)
         elif 'Implication and logical expressions' == problem:
             raise NotImplementedError('This feature is not yet implemented.')
         elif 'Probability and statistics' == problem:
@@ -204,7 +207,7 @@ class Solver(ai.Expression):
             raise NotImplementedError('This feature is not yet implemented.')
         else:
             return "Sorry, something went wrong. Please check if your backend is available and try again or report an issue to the devs. :("
-    
+
     @property
     def _sym_return_type(self):
         return Solver

@@ -1,11 +1,10 @@
 from itertools import chain
 from typing import List
 
-import symai as ai
-from symai import Symbol
+from .symbol import Symbol, Expression
 
 
-class Memory(ai.Expression):
+class Memory(Expression):
     def __init__(self):
         super().__init__()
 

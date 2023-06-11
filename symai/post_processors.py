@@ -1,8 +1,9 @@
 import ast
+from collections import namedtuple
 from typing import Any
+
 import numpy as np
 from bs4 import BeautifulSoup
-from collections import namedtuple
 from sklearn.cluster import AffinityPropagation
 
 

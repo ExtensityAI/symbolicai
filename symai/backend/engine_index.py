@@ -2,11 +2,11 @@ import itertools
 import warnings
 from typing import List
 
-from symai.backend.base import Engine
-from symai.backend.settings import SYMAI_CONFIG
-
 warnings.filterwarnings('ignore', module='pinecone')
 import pinecone
+
+from .base import Engine
+from .settings import SYMAI_CONFIG
 
 
 def chunks(iterable, batch_size=100):
