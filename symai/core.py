@@ -1,9 +1,7 @@
 import functools
-from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
-import symai as ai
-
+from . import __root_dir__
 from .functional import (bind_registry_func, cache_registry_func, command_func,
                          crawler_func, embed_func, execute_func, few_shot_func,
                          imagerendering_func, index_func, ocr_func, open_func,
@@ -1937,8 +1935,8 @@ def setup(engines: Dict[str, Any],
 
 
 def cache(
-    in_memory: bool,
-    cache_path: str = Path.home() /'.symai/cache'
+    in_memory:  bool,
+    cache_path: str = __root_dir__ / 'cache'
 ):
     '''
     Cache the result of a *any* function call. This is very useful in cost optimization (e.g. computing embeddings).
