@@ -1,4 +1,7 @@
-from symai import *
+from typing import List
+
+from ..components import Clean, Outline, Sequence, Stream, Translate
+from ..symbol import Expression, Symbol
 
 
 class Summarizer(Expression):
@@ -11,7 +14,7 @@ class Summarizer(Expression):
             Outline(),
             *filters,
         ))
-        
+
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
         vals = list(self.data_stream(sym, **kwargs))
         if len(vals) == 1:

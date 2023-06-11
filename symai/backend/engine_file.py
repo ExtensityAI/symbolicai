@@ -1,7 +1,8 @@
 from typing import List
-from .base import Engine
-# importing required modules
+
 import PyPDF2
+
+from .base import Engine
 
 
 class FileEngine(Engine):
@@ -13,7 +14,7 @@ class FileEngine(Engine):
         input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
         if input_handler:
             input_handler((path,))
-        
+
         if 'pdf' in path:
             rsp = ''
             with open(path, 'rb') as f:
@@ -28,12 +29,12 @@ class FileEngine(Engine):
         else:
             with open(path, 'r') as f:
                 rsp = f.read()
-                
+
         output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
         if output_handler:
             output_handler(rsp)
-        
+
         return [rsp]
-    
+
     def prepare(self, args, kwargs, wrp_params):
         pass

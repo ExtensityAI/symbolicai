@@ -4,9 +4,7 @@ from random import sample
 from string import ascii_lowercase, ascii_uppercase
 from typing import Callable, Iterator, List, Optional
 
-import symai as ai
-
-from .prompts import Prompt
+from .core import *
 from .symbol import Expression, Symbol
 
 
@@ -269,8 +267,8 @@ class FileQuery(Expression):
 class Function(Expression):
     def __init__(self, prompt: str, static_context: str = "",
                  examples: Optional[str] = [],
-                 pre_processor: Optional[List[ai.PreProcessor]] = None,
-                 post_processor: Optional[List[ai.PostProcessor]] = None,
+                 pre_processor: Optional[List[PreProcessor]] = None,
+                 post_processor: Optional[List[PostProcessor]] = None,
                  default: Optional[object] = None, *args, **kwargs):
         super().__init__()
 
@@ -280,13 +278,13 @@ class Function(Expression):
         self.kwargs = kwargs
         self.prompt = prompt
         self._static_context = static_context
-        self.examples = ai.Prompt(examples)
+        self.examples = Prompt(examples)
         self.pre_processor = pre_processor
         self.post_processor = post_processor
         self.default = default
 
     def forward(self, *args, **kwargs) -> Expression:
-        @ai.few_shot(prompt=self.prompt,
+        @few_shot(prompt=self.prompt,
                      examples=self.examples,
                      pre_processor=self.pre_processor,
                      post_processor=self.post_processor,
@@ -324,7 +322,7 @@ class SimilarityClassification(Expression):
         return Symbol(similarities[0][0])
 
     def _dynamic_cache(self):
-        @ai.cache(in_memory=self.in_memory)
+        @cache(in_memory=self.in_memory)
         def embed_classes(self):
             opts = map(Symbol, self.classes)
             embeddings = [opt.embed() for opt in opts]
@@ -340,7 +338,7 @@ class InContextClassification(Expression):
         self.blueprint = blueprint
 
     def forward(self, x: Symbol, **kwargs) -> Symbol:
-        @ai.few_shot(
+        @few_shot(
             prompt=x,
             examples=self.blueprint,
             **kwargs

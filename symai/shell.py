@@ -1,8 +1,11 @@
-from symai.post_processors import StripPostProcessor
-from symai.pre_processors import PreProcessor
-from symai import ai
-import os
 import argparse
+import os
+
+from .components import Lambda, Try
+from .core import *
+from .post_processors import StripPostProcessor
+from .pre_processors import PreProcessor
+from .symbol import Expression
 
 
 SHELL_CONTEXT = """[Description]
@@ -44,13 +47,13 @@ class ShellPreProcessor(PreProcessor):
         return '// {}\n$>'.format(str(wrp_self))
 
 
-class Shell(ai.Expression):
+class Shell(Expression):
     @property
     def static_context(self):
         return SHELL_CONTEXT
-    
+
     def forward(self, **kwargs) -> str:
-        @ai.few_shot(prompt="Convert a user query to a shell command:\n", 
+        @few_shot(prompt="Convert a user query to a shell command:\n",
                      examples=[],
                      pre_processor=[ShellPreProcessor()],
                      post_processor=[StripPostProcessor()],
@@ -58,7 +61,7 @@ class Shell(ai.Expression):
         def _func(_) -> str:
             return "Sorry, something went wrong. Please check if your backend is available and try again or report an issue to the devs. :("
         return self._sym_return_type(_func(self))
-    
+
     @property
     def _sym_return_type(self):
         return Shell
@@ -68,7 +71,7 @@ def process_query(args) -> None:
     query = args.query
     shell = Shell(query)
     msg = shell()
-    
+
     if args.edit:
         msg = msg.modify(args.edit)
     if args.convert:
@@ -82,9 +85,9 @@ def process_query(args) -> None:
     if args.more:
         cmd = msg.extract('the main command used')
         cmd_help = cmd << 'get manual for the command'
-        expr = ai.Try(expr=ai.Lambda(lambda kwargs: os.system(str(kwargs['args'][0]))))
+        expr = Try(expr=Lambda(lambda kwargs: os.system(str(kwargs['args'][0]))))
         expr(cmd_help)
-    
+
     print(msg)
 
 
