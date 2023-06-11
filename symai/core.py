@@ -1693,7 +1693,6 @@ def speech(prompt: str = 'decode',
 
 def output(constraints: List[Callable] = [],
            default: Optional[object] = None,
-           limit: int = None,
            pre_processor: Optional[List[PreProcessor]] = [ConsolePreProcessor()],
            post_processor: Optional[List[PostProcessor]] = [ConsolePostProcessor()],
            *wrp_args,
@@ -1703,7 +1702,6 @@ def output(constraints: List[Callable] = [],
     Args:
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         default (object, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
-        limit (int, optional): The maximum number of outputs to be printed. Defaults to None.
         pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [ConsolePreProcessor()].
         post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [ConsolePostProcessor()].
         wrp_args (tuple, optional): Arguments to be passed to the wrapped function.
@@ -1719,7 +1717,6 @@ def output(constraints: List[Callable] = [],
                                func=func,
                                constraints=constraints,
                                default=default,
-                               limit=limit,
                                pre_processor=pre_processor,
                                post_processor=post_processor,
                                wrp_args=wrp_args,

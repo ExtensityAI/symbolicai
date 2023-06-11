@@ -6,7 +6,7 @@ from .utils import prep_as_str
 class PreProcessor:
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         raise NotImplementedError()
-    
+
     def override_reserved_signature_keys(self, wrp_params, *args: Any, **kwds: Any) -> Any:
         def _override_reserved_signature_keys(key) -> Any:
             assert type(wrp_params[key]) == type(kwds[key]), "Your function signature uses reserved keys from the decorator, but you passed in a different type of value. This is not allowed due to disambiguation issues in the arguments. We recommend to align the types of reserved keys in your function signature or rename your keyword."
@@ -39,7 +39,7 @@ class EqualsPreProcessor(PreProcessor):
         a = prep_as_str(wrp_self)
         b = prep_as_str(args[0])
         return f'{a} == {b} =>'
-    
+
 
 class WolframAlphaPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
@@ -49,7 +49,7 @@ class WolframAlphaPreProcessor(PreProcessor):
         val = val.replace('self', str(wrp_self))
         return f"{val}"
 
-    
+
 class IndexPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         assert len(args) == 1
@@ -57,8 +57,8 @@ class IndexPreProcessor(PreProcessor):
         a = prep_as_str(wrp_self)
         b = prep_as_str(args[0])
         return f'{a} index {b} =>'
-    
-    
+
+
 class SetIndexPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         assert len(args) == 2
@@ -67,8 +67,8 @@ class SetIndexPreProcessor(PreProcessor):
         b = prep_as_str(args[0])
         c = prep_as_str(args[1])
         return f'{a} index {b} set {c} =>'
-    
-    
+
+
 class DeleteIndexPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         assert len(args) == 1
@@ -77,20 +77,20 @@ class DeleteIndexPreProcessor(PreProcessor):
         b = prep_as_str(args[0])
         return f'{a} remove {b} =>'
 
-    
+
 class PromptPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         wrp_params['prompt'] = f"{wrp_params['prompt']} $>"
         return f"{wrp_params['prompt']} $>"
-    
-    
+
+
 class FlattenListExamplesPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         vals = ', '.join(wrp_params['examples'])
         return f'{vals}, '
 
-    
+
 class ComparePreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         assert len(args) == 1
@@ -99,8 +99,8 @@ class ComparePreProcessor(PreProcessor):
         a = prep_as_str(wrp_self)
         b = prep_as_str(args[0])
         return f"{a} {str(comp)} {b} =>"
-    
-    
+
+
 class RankPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         assert len(args) >= 1
@@ -120,14 +120,14 @@ class ReplacePreProcessor(PreProcessor):
         assert len(args) == 2
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         return f"text '{wrp_self}' replace '{str(args[0])}' with '{str(args[1])}'=>"
-    
-    
+
+
 class IncludePreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         assert len(args) == 1
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         return f"text '{wrp_self}' include '{str(args[0])}' =>"
-    
+
 
 class CombinePreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
@@ -136,8 +136,8 @@ class CombinePreProcessor(PreProcessor):
         a = prep_as_str(wrp_self)
         b = prep_as_str(args[0])
         return f"{a} + {b} =>"
-    
-    
+
+
 class TemplatePreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
@@ -147,15 +147,15 @@ class TemplatePreProcessor(PreProcessor):
         assert len(parts) == 2, f"Your template must contain exactly one placeholder '{placeholder}' split:" + str(len(parts))
         wrp_params['template_suffix'] = parts[1]
         return f'----------\n[Template]:\n{parts[0]}'
-    
+
 
 class NegatePreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         stmt = prep_as_str(wrp_self)
         return f"{stmt} =>"
-    
-    
+
+
 class ContainsPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         assert len(args) == 1
@@ -163,8 +163,8 @@ class ContainsPreProcessor(PreProcessor):
         a = prep_as_str(wrp_self)
         b = prep_as_str(args[0])
         return f"{b} in {a} =>"
-    
-    
+
+
 class IsInstanceOfPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         assert len(args) == 1
@@ -172,15 +172,15 @@ class IsInstanceOfPreProcessor(PreProcessor):
         a = prep_as_str(wrp_self)
         b = prep_as_str(args[0])
         return f"{a} isinstanceof {b} =>"
-    
-    
+
+
 class ExtractPatternPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         assert len(args) == 1
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         return f"from '{str(wrp_self)}' extract '{str(args[0])}' =>"
-    
-    
+
+
 class SimpleSymbolicExpressionPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         assert len(args) >= 1
@@ -188,8 +188,8 @@ class SimpleSymbolicExpressionPreProcessor(PreProcessor):
         val = str(args[0])
         val = val.replace('self', str(wrp_self))
         return f"expr :{val} =: =>"
-    
-    
+
+
 class LogicExpressionPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         assert len(args) >= 1
@@ -214,34 +214,34 @@ class SimulateCodePreProcessor(PreProcessor):
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         val = args[0] if len(args) >= 0 else ''
         return f"code '{str(wrp_self)}' params '{str(val)}' =>"
-    
-    
+
+
 class GenerateCodePreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         return f"description '{str(wrp_self)}' =>"
-    
-    
+
+
 class TextToOutlinePreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         return f"text '{str(wrp_self)}' =>"
-    
-    
+
+
 class UniquePreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         unique = wrp_params['keys']
         val = f'List of keys: {unique}\n'
         return f"{val}text '{str(wrp_self)}' =>"
-    
-    
+
+
 class GenerateTextPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         return f"{str(wrp_self)}"
-    
-    
+
+
 class ClusterPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
@@ -256,23 +256,23 @@ class ForEachPreProcessor(PreProcessor):
         cond = wrp_params['condition']
         apply = wrp_params['apply']
         return f"{val} foreach '{cond}' apply '{apply}' =>"
-    
-    
+
+
 class MapPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         val = prep_as_str(wrp_self)
         context = wrp_params['context']
         return f"{val} map '{str(context)}' =>"
-    
-    
+
+
 class ListPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         val = prep_as_str(wrp_self)
         cond = wrp_params['condition']
         return f"{val} list '{cond}' =>"
-    
+
 
 class QueryPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
@@ -281,15 +281,15 @@ class QueryPreProcessor(PreProcessor):
         query = f"Context: {wrp_params['context']}\n"
         return f"{val}{query}Answer:"
 
-        
+
 class SufficientInformationPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         val = prep_as_str(wrp_self)
         query = prep_as_str(wrp_params['query'])
         return f'query {query} content {val} =>'
-    
-    
+
+
 class ExpandFunctionPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
@@ -303,29 +303,29 @@ class FormatPromptWithArgs0PreProcessor(PreProcessor):
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         wrp_params['prompt'] = wrp_params['prompt'].format(str(args[0]))
         return ''
-    
-    
+
+
 class ModifyPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         changes = wrp_params['changes']
         return f"text '{str(wrp_self)}' modify '{str(changes)}'=>"
-    
-    
+
+
 class FilterPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         criteria = wrp_params['criteria']
         include = 'include' if wrp_params['include'] else 'remove'
         return f"text '{str(wrp_self)}' {include} '{str(criteria)}' =>"
-    
+
 
 class ArgsToInputPreProcessor(PreProcessor):
     def __init__(self, skip: Optional[List[int]] = None) -> None:
         super().__init__()
         skip = [skip] if skip and isinstance(skip, int) else skip
         self.skip = skip if skip is not None else []
-    
+
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         input_ = ''
@@ -334,25 +334,25 @@ class ArgsToInputPreProcessor(PreProcessor):
                 continue
             input_ += f"{str(arg)}\n"
         return input_
-    
-    
+
+
 class SelfToInputPreProcessor(PreProcessor):
     def __init__(self, skip: Optional[List[int]] = None) -> None:
         super().__init__()
         skip = [skip] if skip and isinstance(skip, int) else skip
         self.skip = skip if skip is not None else []
-    
+
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         input_ = f'{str(wrp_self)}\n'
         return input_
-    
+
 
 class DataTemplatePreProcessor(PreProcessor):
     def __init__(self, skip: Optional[List[int]] = None) -> None:
         super().__init__()
         self.skip = skip if skip is not None else []
-    
+
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         input_ = f'[Data]:\n{str(wrp_self)}\n'
@@ -368,25 +368,24 @@ class ConsoleInputPreProcessor(PreProcessor):
         super().__init__()
         skip = [skip] if skip and isinstance(skip, int) else skip
         self.skip = skip if skip is not None else []
-    
+
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         input_ = f'\n{str(args[0])}\n$> '
         return input_
 
-    
+
 class ConsolePreProcessor(PreProcessor):
     def __init__(self, skip: Optional[List[int]] = None) -> None:
         super().__init__()
         skip = [skip] if skip and isinstance(skip, int) else skip
         self.skip = skip if skip is not None else []
-    
+
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         object_ = f"args: {args}\nkwargs: {kwds}"
-        wrp_params['expression'] = wrp_params['expr']
         wrp_params['args'] = args
-        wrp_params['kwargs'] = kwds 
+        wrp_params['kwargs'] = kwds
         return object_
 
 
@@ -396,8 +395,8 @@ class LanguagePreProcessor(PreProcessor):
         language = wrp_params['language']
         wrp_params['prompt'] = wrp_params['prompt'].format(language)
         return f"{str(wrp_self)}"
-    
-    
+
+
 class FormatPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
@@ -405,16 +404,16 @@ class FormatPreProcessor(PreProcessor):
         wrp_params['prompt'] = wrp_params['prompt'].format(format_)
         val = prep_as_str(wrp_self)
         return f"text {val} format '{format_}' =>"
-    
-    
+
+
 class TranscriptionPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         modify_ = wrp_params['modify']
         val = prep_as_str(wrp_self)
         return f"text {val} modify only '{modify_}' =>"
-    
-    
+
+
 class StylePreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
@@ -432,7 +431,7 @@ class StylePreProcessor(PreProcessor):
             return f'f"{text}{libraries}{content}"----------\n[TEMPLATE]:\n{parts[0]}'
         return f"{text}{libraries}{content}"
 
-    
+
 class UnwrapListSymbolsPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
@@ -446,8 +445,8 @@ class UnwrapListSymbolsPreProcessor(PreProcessor):
                 res.append(entry)
         wrp_params['entries'] = res
         return ""
-    
-    
+
+
 class ExceptionPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
@@ -457,8 +456,8 @@ class ExceptionPreProcessor(PreProcessor):
         e = wrp_params['exception']
         exception = "".join(traceback.format_exception_only(type(e), e)).strip()
         return f"context '{val}' exception '{exception}' code'{ctxt}' =>"
-    
-    
+
+
 class CorrectionPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
@@ -480,39 +479,39 @@ class TextMessagePreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         return f'Text: {str(wrp_self)}\n'
-    
-    
+
+
 class SummaryPreProcessing(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         ctxt = f"Context: {wrp_params['context']} " if 'context' in wrp_params else ''
         return f'{ctxt}Text: {str(wrp_self)}\n'
-    
-    
+
+
 class CleanTextMessagePreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         return f"Text: '{str(wrp_self)}' =>"
-    
-    
+
+
 class CrawlPatternPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         return ''
-    
+
 
 class PredictionMessagePreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         return f'Prediction:'
-    
-    
+
+
 class ArrowMessagePreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         return f'{str(wrp_self)} =>'
-    
-    
+
+
 class ValuePreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)

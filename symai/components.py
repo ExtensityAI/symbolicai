@@ -73,7 +73,7 @@ class Output(Expression):
     def forward(self, *args, **kwargs) -> Expression:
         kwargs['verbose'] = self.verbose
         kwargs['handler'] = self.handler
-        return Expression.output(expr=self.expr, *args, **kwargs)
+        return self.output(expr=self.expr, *args, **kwargs)
 
 
 class Sequence(Expression):
