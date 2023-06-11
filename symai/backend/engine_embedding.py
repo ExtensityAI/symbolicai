@@ -1,9 +1,11 @@
-from .settings import SYMAI_CONFIG
-from typing import List
-from .base import Engine
-from time import sleep
-import openai
 import logging
+from time import sleep
+from typing import List
+
+import openai
+
+from .base import Engine
+from .settings import SYMAI_CONFIG
 
 
 class EmbeddingEngine(Engine):
@@ -29,11 +31,11 @@ class EmbeddingEngine(Engine):
         retry: int = 0
         success: bool = False
         errors: List[Exception] = []
-        
+
         input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
         if input_handler:
             input_handler((prompts_,))
-        
+
         max_retry = kwargs['max_retry'] if 'max_retry' in kwargs else self.max_retry
         while not success and retry < max_retry:
             try:
@@ -48,20 +50,20 @@ class EmbeddingEngine(Engine):
                 self.logger.warn(f"GPT Embedding service is unavailable or caused an error. Retry triggered: {e}")
                 sleep(self.api_cooldown_delay) # API cooldown
             retry += 1
-        
+
         if not success:
             msg = f"Failed to query GPT Embedding after {max_retry} retries. Errors: {errors}"
             # interpret error
-            from symai.symbol import Symbol
             from symai.components import Analyze
+            from symai.symbol import Symbol
             sym = Symbol(errors)
             expr = Analyze(exception=errors[-1], query="Explain the issue in this error message")
             sym.stream(expr=expr, max_retry=1)
             msg_reply = f"{msg}\n Analysis: {sym}"
             raise Exception(msg_reply)
-        
-        rsp = [r['embedding'] for r in res['data']]      
+
+        rsp = [r['embedding'] for r in res['data']]
         return [rsp]
-    
+
     def prepare(self, args, kwargs, wrp_params):
         wrp_params['prompts'] = wrp_params['entries']

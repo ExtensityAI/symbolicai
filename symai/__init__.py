@@ -1,74 +1,95 @@
-import os
 import json
 import logging
+import os
+from pathlib import Path
 
 
 SYMAI_VERSION = "0.2.21"
-__version__ = SYMAI_VERSION
-__root_dir__ = os.getcwd()
+__version__   = SYMAI_VERSION
+__root_dir__  = Path.home() / '.symai'
 
 
 def _start_symai():
     global _ai_config_
-    # check if symai is already initialized
-    _ai_config_path_ = os.path.join(__root_dir__, 'symai.config.json')
-    if not os.path.exists(_ai_config_path_):
-        _parent_dir_ = os.path.dirname(__file__)
-        _ai_config_path_ = os.path.join(_parent_dir_, 'symai.config.json')
 
-    # read the symai.config.json file
+    # CREATE THE SYMAI FOLDER IF IT DOES NOT EXIST YET
+    # *==============================================================================================================*
+    if not os.path.exists(__root_dir__):
+        os.makedirs(__root_dir__)
+
+    # CREATE THE CONFIGURATION FILE IF IT DOES NOT EXIST YET WITH THE DEFAULT VALUES
+    # *==============================================================================================================*
+    _ai_config_path_ = __root_dir__ / 'symai.config.json'
+
+    if not os.path.exists(_ai_config_path_):
+        with open(_ai_config_path_, 'w') as f:
+            json.dump({
+                "NEUROSYMBOLIC_ENGINE_API_KEY":   "",
+                "NEUROSYMBOLIC_ENGINE_MODEL":     "text-davinci-003",
+                "SYMBOLIC_ENGINE_API_KEY":        "",
+                "SYMBOLIC_ENGINE":                "wolframalpha",
+                "EMBEDDING_ENGINE_API_KEY":       "",
+                "EMBEDDING_ENGINE_MODEL":         "text-embedding-ada-002",
+                "IMAGERENDERING_ENGINE_API_KEY":  "",
+                "VISION_ENGINE_MODEL":            "openai/clip-vit-base-patch32",
+                "SEARCH_ENGINE_API_KEY":          "",
+                "SEARCH_ENGINE_MODEL":            "google",
+                "OCR_ENGINE_API_KEY":             "",
+                "SPEECH_ENGINE_MODEL":            "base",
+                "INDEXING_ENGINE_API_KEY":        "",
+                "INDEXING_ENGINE_ENVIRONMENT":    "us-west1-gcp"
+            }, f, indent=4)
+
+    # LOAD THE CONFIGURATION FILE
+    # *==============================================================================================================*
     with open(_ai_config_path_, 'r') as f:
         _ai_config_ = json.load(f)
     _tmp_ai_config_ = _ai_config_.copy()
 
-    # check which modules are already installed
-    _openai_api_key_ = os.environ.get('OPENAI_API_KEY', None)
-
-    _neurosymbolic_engine_api_key_ = os.environ.get('NEUROSYMBOLIC_ENGINE_API_KEY', None)
-    _neurosymbolic_engine_model_ = os.environ.get('NEUROSYMBOLIC_ENGINE_MODEL', None)
-
-    _symbolic_engine_api_key_ = os.environ.get('SYMBOLIC_ENGINE_API_KEY', None)
-
-    _embedding_engine_api_key_ = os.environ.get('EMBEDDING_ENGINE_API_KEY', None)
-    _embedding_engine_model_ = os.environ.get('EMBEDDING_ENGINE_MODEL', None)
-
+    # LOAD THE ENVIRONMENT VARIABLES
+    # *==============================================================================================================*
+    _openai_api_key_                = os.environ.get('OPENAI_API_KEY', None)
+    _neurosymbolic_engine_api_key_  = os.environ.get('NEUROSYMBOLIC_ENGINE_API_KEY', None)
+    _neurosymbolic_engine_model_    = os.environ.get('NEUROSYMBOLIC_ENGINE_MODEL', None)
+    _symbolic_engine_api_key_       = os.environ.get('SYMBOLIC_ENGINE_API_KEY', None)
+    _embedding_engine_api_key_      = os.environ.get('EMBEDDING_ENGINE_API_KEY', None)
+    _embedding_engine_model_        = os.environ.get('EMBEDDING_ENGINE_MODEL', None)
     _imagerendering_engine_api_key_ = os.environ.get('IMAGERENDERING_ENGINE_API_KEY', None)
+    _vision_engine_model_           = os.environ.get('VISION_ENGINE_MODEL', None)
+    _search_engine_api_key_         = os.environ.get('SEARCH_ENGINE_API_KEY', None)
+    _search_engine_model_           = os.environ.get('SEARCH_ENGINE_MODEL', None)
+    _ocr_engine_api_key_            = os.environ.get('OCR_ENGINE_API_KEY', None)
+    _speech_engine_model_           = os.environ.get('SPEECH_ENGINE_MODEL', None)
+    _indexing_engine_api_key_       = os.environ.get('INDEXING_ENGINE_API_KEY', None)
+    _indexing_engine_environment_   = os.environ.get('INDEXING_ENGINE_ENVIRONMENT', None)
 
-    _vision_engine_model_ = os.environ.get('VISION_ENGINE_MODEL', None)
-
-    _search_engine_api_key_ = os.environ.get('SEARCH_ENGINE_API_KEY', None)
-    _search_engine_model_ = os.environ.get('SEARCH_ENGINE_MODEL', None)
-
-    _ocr_engine_api_key_ = os.environ.get('OCR_ENGINE_API_KEY', None)
-
-    _speech_engine_model_ = os.environ.get('SPEECH_ENGINE_MODEL', None)
-
-    _indexing_engine_api_key_ = os.environ.get('INDEXING_ENGINE_API_KEY', None)
-    _indexing_engine_environment_ = os.environ.get('INDEXING_ENGINE_ENVIRONMENT', None)
-
-    # set or update the symai.config.json file
-    if _neurosymbolic_engine_api_key_: _ai_config_['NEUROSYMBOLIC_ENGINE_API_KEY'] = _neurosymbolic_engine_api_key_
-    if _symbolic_engine_api_key_: _ai_config_['SYMBOLIC_ENGINE_API_KEY'] = _symbolic_engine_api_key_
-    if _embedding_engine_api_key_: _ai_config_['EMBEDDING_ENGINE_API_KEY'] = _embedding_engine_api_key_
+    # SET/UPDATE THE API KEYS
+    # *==============================================================================================================*
+    if _neurosymbolic_engine_api_key_:  _ai_config_['NEUROSYMBOLIC_ENGINE_API_KEY']  = _neurosymbolic_engine_api_key_
+    if _symbolic_engine_api_key_:       _ai_config_['SYMBOLIC_ENGINE_API_KEY']       = _symbolic_engine_api_key_
+    if _embedding_engine_api_key_:      _ai_config_['EMBEDDING_ENGINE_API_KEY']      = _embedding_engine_api_key_
     if _imagerendering_engine_api_key_: _ai_config_['IMAGERENDERING_ENGINE_API_KEY'] = _imagerendering_engine_api_key_
 
-    # if user did not set the individual api keys, use the OPENAI_API_KEY environment variable
-    if _openai_api_key_ and not _neurosymbolic_engine_api_key_: _ai_config_['NEUROSYMBOLIC_ENGINE_API_KEY'] = _openai_api_key_
-    if _openai_api_key_ and not _embedding_engine_api_key_: _ai_config_['EMBEDDING_ENGINE_API_KEY'] = _openai_api_key_
+    # USE ENVIRONMENT VARIABLES IF THE USER DID NOT SET THE API KEYS
+    # *==============================================================================================================*
+    if _openai_api_key_ and not _neurosymbolic_engine_api_key_:  _ai_config_['NEUROSYMBOLIC_ENGINE_API_KEY']  = _openai_api_key_
+    if _openai_api_key_ and not _embedding_engine_api_key_:      _ai_config_['EMBEDDING_ENGINE_API_KEY']      = _openai_api_key_
     if _openai_api_key_ and not _imagerendering_engine_api_key_: _ai_config_['IMAGERENDERING_ENGINE_API_KEY'] = _openai_api_key_
 
-    # set optional keys and modules
-    if _neurosymbolic_engine_model_: _ai_config_['NEUROSYMBOLIC_ENGINE_MODEL'] = _neurosymbolic_engine_model_
-    if _embedding_engine_model_: _ai_config_['EMBEDDING_ENGINE_MODEL'] = _embedding_engine_model_
-    if _vision_engine_model_: _ai_config_['VISION_ENGINE_MODEL'] = _vision_engine_model_
-    if _search_engine_api_key_: _ai_config_['SEARCH_ENGINE_API_KEY'] = _search_engine_api_key_
-    if _search_engine_model_: _ai_config_['SEARCH_ENGINE_MODEL'] = _search_engine_model_
-    if _ocr_engine_api_key_: _ai_config_['OCR_ENGINE_API_KEY'] = _ocr_engine_api_key_
-    if _speech_engine_model_: _ai_config_['SPEECH_ENGINE_MODEL'] = _speech_engine_model_
-    if _indexing_engine_api_key_: _ai_config_['INDEXING_ENGINE_API_KEY'] = _indexing_engine_api_key_
+    # OPTIONAL MODULES
+    # *==============================================================================================================*
+    if _neurosymbolic_engine_model_:  _ai_config_['NEUROSYMBOLIC_ENGINE_MODEL']  = _neurosymbolic_engine_model_
+    if _embedding_engine_model_:      _ai_config_['EMBEDDING_ENGINE_MODEL']      = _embedding_engine_model_
+    if _vision_engine_model_:         _ai_config_['VISION_ENGINE_MODEL']         = _vision_engine_model_
+    if _search_engine_api_key_:       _ai_config_['SEARCH_ENGINE_API_KEY']       = _search_engine_api_key_
+    if _search_engine_model_:         _ai_config_['SEARCH_ENGINE_MODEL']         = _search_engine_model_
+    if _ocr_engine_api_key_:          _ai_config_['OCR_ENGINE_API_KEY']          = _ocr_engine_api_key_
+    if _speech_engine_model_:         _ai_config_['SPEECH_ENGINE_MODEL']         = _speech_engine_model_
+    if _indexing_engine_api_key_:     _ai_config_['INDEXING_ENGINE_API_KEY']     = _indexing_engine_api_key_
     if _indexing_engine_environment_: _ai_config_['INDEXING_ENGINE_ENVIRONMENT'] = _indexing_engine_environment_
 
-    # verify if the symai.config.json file has changed
+    # VERIFY IF THE CONFIGURATION FILE HAS CHANGED AND UPDATE IT
+    # *==============================================================================================================*
     _updated_key_ = {k: not _tmp_ai_config_[k] == _ai_config_[k] for k in _tmp_ai_config_.keys()}
     _has_changed_ = any(_updated_key_.values())
 
@@ -77,12 +98,14 @@ def _start_symai():
         with open(_ai_config_path_, 'w') as f:
             json.dump(_ai_config_, f, indent=4)
 
-    # check if the mandatory keys are set
+    # CHECK IF MANADATORY API KEYS ARE SET
+    # *==============================================================================================================*
     with open(_ai_config_path_, 'r') as f:
         _ai_config_ = json.load(f)
 
     if 'custom' not in _ai_config_['NEUROSYMBOLIC_ENGINE_MODEL'].lower() and \
-       (_ai_config_['NEUROSYMBOLIC_ENGINE_API_KEY'] is None or len(_ai_config_['NEUROSYMBOLIC_ENGINE_API_KEY']) == 0):
+                      (_ai_config_['NEUROSYMBOLIC_ENGINE_API_KEY'] is None or len(_ai_config_['NEUROSYMBOLIC_ENGINE_API_KEY']) == 0):
+
         logging.warn('The mandatory neuro-symbolic engine is not initialized. Please get a key from https://beta.openai.com/account/api-keys and set either a general environment variable OPENAI_API_KEY or a module specific environment variable NEUROSYMBOLIC_ENGINE_API_KEY.')
 
     import symai.backend.settings as settings
@@ -91,16 +114,17 @@ def _start_symai():
 
 _start_symai()
 
-
+from .backend.base import Engine
+from .chat import ChatBot
+from .components import *
 from .core import *
-from .pre_processors import *
+from .functional import ConstraintViolationException
+from .memory import *
 from .post_processors import *
 from .symbol import *
-from .components import *
 from .interfaces import *
+from .pre_processors import *
 from .prompts import Prompt
-from .backend.base import Engine
-from .functional import (_process_query, ConstraintViolationException)
-from .chat import ChatBot
 from .shell import Shell
-from .memory import *
+from .symbol import *
+

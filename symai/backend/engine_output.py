@@ -1,4 +1,5 @@
 from typing import List
+
 from .base import Engine
 
 
@@ -14,13 +15,13 @@ class OutputEngine(Engine):
                 kwargs['input'] = vals
             kwargs['kwargs']['input_handler'] = input_handler
             res = expr(*kwargs['args'], **kwargs['kwargs'])
-        
+
         kwargs['output'] = res
         handler = kwargs['handler'] if 'handler' in kwargs else None
         if handler:
             handler(kwargs)
-        
+
         return [kwargs]
-    
+
     def prepare(self, args, kwargs, wrp_params):
         pass

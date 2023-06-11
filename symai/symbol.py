@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
-import symai as ai
+from . import core
 
 
 class SymbolEncoder(JSONEncoder):
@@ -113,19 +113,19 @@ class Symbol(ABC):
         return self.__dict__[key]
 
     def __contains__(self, other) -> bool:
-        @ai.contains()
+        @core.contains()
         def _func(_, other) -> bool:
             pass
         return _func(self, other)
 
     def isinstanceof(self, query: str, **kwargs) -> bool:
-        @ai.isinstanceof()
+        @core.isinstanceof()
         def _func(_, query: str, **kwargs) -> bool:
             pass
         return _func(self, query, **kwargs)
 
     def __eq__(self, other) -> bool:
-        @ai.equals()
+        @core.equals()
         def _func(_, other) -> bool:
             pass
         return _func(self, other)
@@ -144,25 +144,25 @@ class Symbol(ABC):
         return not self.__eq__(other)
 
     def __gt__(self, other) -> bool:
-        @ai.compare(operator = '>')
+        @core.compare(operator = '>')
         def _func(_, other) -> bool:
             pass
         return _func(self, other)
 
     def __lt__(self, other) -> bool:
-        @ai.compare(operator = '<')
+        @core.compare(operator = '<')
         def _func(_, other) -> bool:
             pass
         return _func(self, other)
 
     def __le__(self, other) -> bool:
-        @ai.compare(operator = '<=')
+        @core.compare(operator = '<=')
         def _func(_, other) -> bool:
             pass
         return _func(self, other)
 
     def __ge__(self, other) -> bool:
-        @ai.compare(operator = '>=')
+        @core.compare(operator = '>=')
         def _func(_, other) -> bool:
             pass
         return _func(self, other)
@@ -185,7 +185,7 @@ class Symbol(ABC):
     def tokens(self) -> int:
         return self.tokenizer().encode(str(self))
 
-    @ai.bind(engine='neurosymbolic', property='tokenizer')
+    @core.bind(engine='neurosymbolic', property='tokenizer')
     def tokenizer(self) -> object:
         pass
 
@@ -237,7 +237,7 @@ class Symbol(ABC):
                 return self.value[key]
         except:
             pass
-        @ai.getitem()
+        @core.getitem()
         def _func(_, index: str):
             pass
         return self._sym_return_type(_func(self, key))
@@ -252,7 +252,7 @@ class Symbol(ABC):
                 return
         except:
             pass
-        @ai.setitem()
+        @core.setitem()
         def _func(_, index: str, value: str):
             pass
         self.value = Symbol(_func(self, key, value)).value
@@ -264,55 +264,55 @@ class Symbol(ABC):
                 return
         except:
             pass
-        @ai.delitem()
+        @core.delitem()
         def _func(_, index: str):
             pass
         self.value = Symbol(_func(self, key)).value
 
     def __neg__(self) -> "Symbol":
-        @ai.negate()
+        @core.negate()
         def _func(_):
             pass
         return self._sym_return_type(_func(self))
 
     def __not__(self) -> "Symbol":
-        @ai.negate()
+        @core.negate()
         def _func(_):
             pass
         return self._sym_return_type(_func(self))
 
     def __invert__(self) -> "Symbol":
-        @ai.invert()
+        @core.invert()
         def _func(_):
             pass
         return self._sym_return_type(_func(self))
 
     def __lshift__(self, information) -> "Symbol":
-        @ai.include()
+        @core.include()
         def _func(_, information: str):
             pass
         return self._sym_return_type(_func(self, information))
 
     def __rshift__(self, information) -> "Symbol":
-        @ai.include()
+        @core.include()
         def _func(_, information: str):
             pass
         return self._sym_return_type(_func(self, information))
 
     def __rrshift__(self, information) -> "Symbol":
-        @ai.include()
+        @core.include()
         def _func(_, information: str):
             pass
         return self._sym_return_type(_func(self, information))
 
     def __add__(self, other) -> "Symbol":
-        @ai.combine()
+        @core.combine()
         def _func(_, a: str, b: str):
             pass
         return self._sym_return_type(_func(self, other))
 
     def __radd__(self, other) -> "Symbol":
-        @ai.combine()
+        @core.combine()
         def _func(_, a: str, b: str):
             pass
         return self._sym_return_type(_func(other, self))
@@ -322,13 +322,13 @@ class Symbol(ABC):
         return self
 
     def __sub__(self, other) -> "Symbol":
-        @ai.replace()
+        @core.replace()
         def _func(_, text: str, replace: str, value: str):
             pass
         return self._sym_return_type(_func(self, other, ''))
 
     def __rsub__(self, other) -> "Symbol":
-        @ai.replace()
+        @core.replace()
         def _func(_, text: str, replace: str, value: str):
             pass
         return self._sym_return_type(_func(other, self, ''))
@@ -339,19 +339,19 @@ class Symbol(ABC):
         return self
 
     def __and__(self, other) -> "Symbol":
-        @ai.logic(operator='and')
+        @core.logic(operator='and')
         def _func(_, a: str, b: str):
             pass
         return self._sym_return_type(_func(self, other))
 
     def __or__(self, other) -> "Symbol":
-        @ai.logic(operator='or')
+        @core.logic(operator='or')
         def _func(_, a: str, b: str):
             pass
         return self._sym_return_type(_func(self, other))
 
     def __xor__(self, other) -> "Symbol":
-        @ai.logic(operator='xor')
+        @core.logic(operator='xor')
         def _func(_, a: str, b: str):
             pass
         return self._sym_return_type(_func(self, other))
@@ -360,13 +360,13 @@ class Symbol(ABC):
         return self._sym_return_type(str(self).split(str(other)))
 
     def index(self, item: str, **kwargs) -> "Symbol":
-        @ai.getitem(**kwargs)
+        @core.getitem(**kwargs)
         def _func(_, item: str) -> int:
             pass
         return self._sym_return_type(_func(self, item))
 
     def equals(self, other: str, context: str = 'contextually', **kwargs) -> "Symbol":
-        @ai.equals(context=context, **kwargs)
+        @core.equals(context=context, **kwargs)
         def _func(_, other: str) -> bool:
             pass
         return self._sym_return_type(_func(self, other))
@@ -374,133 +374,133 @@ class Symbol(ABC):
     def expression(self, expr: Optional[str] = None, expression_engine: str = None, **kwargs) -> "Symbol":
         if expr is None:
             expr = self.value
-        @ai.expression(expression_engine=expression_engine, **kwargs)
+        @core.expression(expression_engine=expression_engine, **kwargs)
         def _func(_, expr: str):
             pass
         return self._sym_return_type(_func(self, expr))
 
     def clean(self, **kwargs) -> "Symbol":
-        @ai.clean(**kwargs)
+        @core.clean(**kwargs)
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(self))
 
     def summarize(self, context: Optional[str] = None, **kwargs) -> "Symbol":
-        @ai.summarize(context=context, **kwargs)
+        @core.summarize(context=context, **kwargs)
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(self))
 
     def outline(self, **kwargs) -> "Symbol":
-        @ai.outline(**kwargs)
+        @core.outline(**kwargs)
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(self))
 
     def unique(self, keys: List[str] = [], **kwargs) -> "Symbol":
-        @ai.unique(keys=keys, **kwargs)
+        @core.unique(keys=keys, **kwargs)
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(self))
 
     def compose(self, **kwargs) -> "Symbol":
-        @ai.compose(**kwargs)
+        @core.compose(**kwargs)
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(self))
 
     def filter(self, criteria: str, include: bool = False, **kwargs) -> "Symbol":
-        @ai.filtering(criteria=criteria, include=include, **kwargs)
+        @core.filtering(criteria=criteria, include=include, **kwargs)
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(self))
 
     def modify(self, changes: str, **kwargs) -> "Symbol":
-        @ai.modify(changes=changes, **kwargs)
+        @core.modify(changes=changes, **kwargs)
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(self))
 
     def replace(self, replace: str, value: str, **kwargs) -> "Symbol":
-        @ai.replace(**kwargs)
+        @core.replace(**kwargs)
         def _func(_, replace: str, value: str):
             pass
         return self._sym_return_type(_func(self, replace, value))
 
     def remove(self, information: str, **kwargs) -> "Symbol":
-        @ai.replace(**kwargs)
+        @core.replace(**kwargs)
         def _func(_, text: str, replace: str, value: str):
             pass
         return self._sym_return_type(_func(self, information, ''))
 
     def include(self, information: str, **kwargs) -> "Symbol":
-        @ai.include(**kwargs)
+        @core.include(**kwargs)
         def _func(_, information: str):
             pass
         return self._sym_return_type(_func(self, information))
 
     def combine(self, sym: str, **kwargs) -> "Symbol":
-        @ai.combine(**kwargs)
+        @core.combine(**kwargs)
         def _func(_, a: str, b: str):
             pass
         return self._sym_return_type(_func(self, sym))
 
     def rank(self, measure: str = 'alphanumeric', order: str = 'desc', **kwargs) -> "Symbol":
-        @ai.rank(order=order, **kwargs)
+        @core.rank(order=order, **kwargs)
         def _func(_, measure: str) -> str:
             pass
         return self._sym_return_type(_func(self, measure))
 
     def extract(self, pattern: str, **kwargs) -> "Symbol":
-        @ai.extract(**kwargs)
+        @core.extract(**kwargs)
         def _func(_, pattern: str) -> str:
             pass
         return self._sym_return_type(_func(self, pattern))
 
     def analyze(self, exception: Exception, query: Optional[str] = '', **kwargs) -> "Symbol":
-        @ai.analyze(exception=exception, query=query, **kwargs)
+        @core.analyze(exception=exception, query=query, **kwargs)
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(self))
 
     def correct(self, context: str, **kwargs) -> "Symbol":
-        @ai.correct(context=context, **kwargs)
+        @core.correct(context=context, **kwargs)
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(self))
 
     def translate(self, language: str = 'English', **kwargs) -> "Symbol":
-        @ai.translate(language=language, **kwargs)
+        @core.translate(language=language, **kwargs)
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(self))
 
     def choice(self, cases: List[str], default: str, **kwargs) -> "Symbol":
-        @ai.case(enum=cases, default=default, **kwargs)
+        @core.case(enum=cases, default=default, **kwargs)
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(self))
 
     def query(self, context: str, prompt: Optional[str] = None, examples = [], **kwargs) -> "Symbol":
-        @ai.query(context=context, prompt=prompt, examples=examples, **kwargs)
+        @core.query(context=context, prompt=prompt, examples=examples, **kwargs)
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(self))
 
     def convert(self, format: str, **kwargs) -> "Symbol":
-        @ai.convert(format=format, **kwargs)
+        @core.convert(format=format, **kwargs)
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(self))
 
     def transcribe(self, modify: str, **kwargs) -> "Symbol":
-        @ai.transcribe(modify=modify, **kwargs)
+        @core.transcribe(modify=modify, **kwargs)
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(self))
 
     def execute(self, **kwargs) -> "Symbol":
-        @ai.execute(**kwargs)
+        @core.execute(**kwargs)
         def _func(_):
             pass
         return _func(self)
@@ -511,31 +511,31 @@ class Symbol(ABC):
         return self.ftry(_func, **kwargs)
 
     def simulate(self, **kwargs) -> "Symbol":
-        @ai.simulate(**kwargs)
+        @core.simulate(**kwargs)
         def _func(_):
             pass
         return self._sym_return_type(_func(self))
 
     def sufficient(self, query: str, **kwargs) -> "Symbol":
-        @ai.sufficient(query=query, **kwargs)
+        @core.sufficient(query=query, **kwargs)
         def _func(_) -> bool:
             pass
         return self._sym_return_type(_func(self))
 
     def list(self, condition: str, **kwargs) -> "Symbol":
-        @ai.listing(condition=condition, **kwargs)
+        @core.listing(condition=condition, **kwargs)
         def _func(_) -> list:
             pass
         return self._sym_return_type(_func(self))
 
     def contains(self, other, **kwargs) -> bool:
-        @ai.contains(**kwargs)
+        @core.contains(**kwargs)
         def _func(_, other) -> bool:
             pass
         return _func(self, other)
 
     def foreach(self, condition, apply, **kwargs) -> "Symbol":
-        @ai.foreach(condition=condition, apply=apply, **kwargs)
+        @core.foreach(condition=condition, apply=apply, **kwargs)
         def _func(_):
             pass
         return self._sym_return_type(_func(self))
@@ -551,13 +551,13 @@ class Symbol(ABC):
         return self._sym_return_type(map_)
 
     def dict(self, context: str, **kwargs) -> "Symbol":
-        @ai.dictionary(context=context, **kwargs)
+        @core.dictionary(context=context, **kwargs)
         def _func(_):
             pass
         return self._sym_return_type(_func(self))
 
     def template(self, template: str, placeholder = '{{placeholder}}', **kwargs) -> "Symbol":
-        @ai.template(template=template, placeholder=placeholder, **kwargs)
+        @core.template(template=template, placeholder=placeholder, **kwargs)
         def _func(_):
             pass
         return self._sym_return_type(_func(self))
@@ -565,13 +565,13 @@ class Symbol(ABC):
     def style(self, description: str, libraries = [], template: str = None, placeholder: str = '{{placeholder}}', **kwargs) -> "Symbol":
         if template is None:
             template = self.value
-        @ai.style(description=description, libraries=libraries, template=template, placeholder=placeholder, **kwargs)
+        @core.style(description=description, libraries=libraries, template=template, placeholder=placeholder, **kwargs)
         def _func(_):
             pass
         return self._sym_return_type(_func(self))
 
     def cluster(self, **kwargs) -> "Symbol":
-        @ai.cluster(entries=self.value, **kwargs)
+        @core.cluster(entries=self.value, **kwargs)
         def _func(_):
             pass
         return self._sym_return_type(_func(self))
@@ -579,7 +579,7 @@ class Symbol(ABC):
     def embed(self, **kwargs) -> "Symbol":
         if not isinstance(self.value, list): self.value = [self.value]
 
-        @ai.embed(entries=self.value, **kwargs)
+        @core.embed(entries=self.value, **kwargs)
         def _func(_) -> list:
             pass
         return self._sym_return_type(_func(self))
@@ -666,7 +666,7 @@ class Symbol(ABC):
                     sym = sym.correct(context=prompt['message'], exception=e, payload=res, max_tokens=2000)
 
     def expand(self, *args, **kwargs) -> "Symbol":
-        @ai.expand(max_tokens=2048, **kwargs)
+        @core.expand(max_tokens=2048, **kwargs)
         def _func(_, *args):
             pass
         _tmp_llm_func = self._sym_return_type(_func(self, *args))
@@ -678,7 +678,7 @@ class Symbol(ABC):
         return func_name
 
     def draw(self, operation: str = 'create', **kwargs) -> "Symbol":
-        @ai.draw(operation=operation, **kwargs)
+        @core.draw(operation=operation, **kwargs)
         def _func(_):
             pass
         return self._sym_return_type(_func(self))
@@ -696,7 +696,7 @@ class Symbol(ABC):
         return self
 
     def output(self, *args, **kwargs) -> "Symbol":
-        @ai.output(**kwargs)
+        @core.output(**kwargs)
         def _func(_, *args):
             pass
         return self._sym_return_type(_func(self, *args))
@@ -718,13 +718,13 @@ class Expression(Symbol):
         raise NotImplementedError()
 
     def input(self, message: str = "Please add more information", **kwargs) -> "Symbol":
-        @ai.userinput(**kwargs)
+        @core.userinput(**kwargs)
         def _func(_, message) -> str:
             pass
         return self._sym_return_type(_func(self, message))
 
     def fetch(self, url: str, pattern: str = '', **kwargs) -> "Symbol":
-        @ai.fetch(url=url, pattern=pattern, **kwargs)
+        @core.fetch(url=url, pattern=pattern, **kwargs)
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(self))
@@ -732,63 +732,63 @@ class Expression(Symbol):
     def ocr(self, image_url: str, **kwargs) -> "Symbol":
         if not image_url.startswith('http'):
             image_url = f'file://{image_url}'
-        @ai.ocr(image=image_url, **kwargs)
+        @core.ocr(image=image_url, **kwargs)
         def _func(_) -> dict:
             pass
         return self._sym_return_type(_func(self))
 
     def vision(self, image: Optional[str] = None, text: Optional[List[str]] = None, **kwargs) -> "Symbol":
-        @ai.vision(image=image, prompt=text, **kwargs)
+        @core.vision(image=image, prompt=text, **kwargs)
         def _func(_) -> np.ndarray:
             pass
         return self._sym_return_type(_func(self))
 
     def speech(self, audio_path: str, operation: str = 'decode', **kwargs) -> "Symbol":
-        @ai.speech(audio=audio_path, prompt=operation, **kwargs)
+        @core.speech(audio=audio_path, prompt=operation, **kwargs)
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(self))
 
     def search(self, query: str, **kwargs) -> "Symbol":
-        @ai.search(query=query, **kwargs)
+        @core.search(query=query, **kwargs)
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(self))
 
     def open(self, path: str, **kwargs) -> "Symbol":
-        @ai.opening(path=path, **kwargs)
+        @core.opening(path=path, **kwargs)
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(self))
 
     def index(self, path: str, **kwargs) -> "Symbol":
-        @ai.index(prompt=path, operation='config', **kwargs)
+        @core.index(prompt=path, operation='config', **kwargs)
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(self))
 
     def add(self, query: str, **kwargs) -> "Symbol":
-        @ai.index(prompt=query, operation='add', **kwargs)
+        @core.index(prompt=query, operation='add', **kwargs)
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(self))
 
     def get(self, query: str, **kwargs) -> "Symbol":
-        @ai.index(prompt=query, operation='search', **kwargs)
+        @core.index(prompt=query, operation='search', **kwargs)
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(self))
 
     @staticmethod
     def command(engines: List[str] = ['all'], **kwargs) -> "Symbol":
-        @ai.command(engines=engines, **kwargs)
+        @core.command(engines=engines, **kwargs)
         def _func(_):
             pass
         return Expression(_func(Expression()))
 
     @staticmethod
     def setup(engines: Dict[str, Any], **kwargs) -> "Symbol":
-        @ai.setup(engines=engines, **kwargs)
+        @core.setup(engines=engines, **kwargs)
         def _func(_):
             pass
         return Expression(_func(Expression()))
