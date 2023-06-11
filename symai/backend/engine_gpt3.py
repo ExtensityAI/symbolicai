@@ -1,9 +1,11 @@
-from .settings import SYMAI_CONFIG
-from typing import List
-from .base import Engine
-from time import sleep
-import openai
 import logging
+from time import sleep
+from typing import List
+
+import openai
+
+from .base import Engine
+from .settings import SYMAI_CONFIG
 
 
 class GPT3Engine(Engine):
@@ -16,7 +18,7 @@ class GPT3Engine(Engine):
         logger.setLevel(logging.WARNING)
         self.max_retry = max_retry
         self.api_cooldown_delay = api_cooldown_delay
-        
+
     def command(self, wrp_params):
         super().command(wrp_params)
         if 'NEUROSYMBOLIC_ENGINE_API_KEY' in wrp_params:
@@ -29,11 +31,11 @@ class GPT3Engine(Engine):
         input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
         if input_handler:
             input_handler((prompts_,))
-        
+
         retry: int = 0
         success: bool = False
         errors: List[Exception] = []
-        
+
         max_retry = kwargs['max_retry'] if 'max_retry' in kwargs else self.max_retry
         while not success and retry < max_retry:
             # send prompt to GPT-3
@@ -45,7 +47,7 @@ class GPT3Engine(Engine):
             frequency_penalty = kwargs['frequency_penalty'] if 'frequency_penalty' in kwargs else 0
             presence_penalty = kwargs['presence_penalty'] if 'presence_penalty' in kwargs else 0
             top_p = kwargs['top_p'] if 'top_p' in kwargs else 1
-            
+
             try:
                 res = openai.Completion.create(model=model,
                                                prompt=prompts_,
@@ -61,7 +63,7 @@ class GPT3Engine(Engine):
                 if output_handler:
                     output_handler(res)
                 success = True
-            except Exception as e:                  
+            except Exception as e:
                 errors.append(e)
                 self.logger.warn(f"GPT-3 service is unavailable or caused an error. Retry triggered: {e}")
                 sleep(self.api_cooldown_delay) # API cooldown
@@ -78,21 +80,21 @@ class GPT3Engine(Engine):
                     errors.append(e)
                     self.logger.warn(f"Failed to remedy the exceeding of the maximum token limitation! {e}")
             retry += 1
-        
+
         if not success:
             msg = f"Failed to query GPT-3 after {max_retry} retries. Errors: {errors}"
             # interpret error
-            from symai.symbol import Symbol
             from symai.components import Analyze
+            from symai.symbol import Symbol
             sym = Symbol(errors)
             expr = Analyze(exception=errors[-1], query="Explain the issue in this error message")
             sym.stream(expr=expr, max_retry=1)
             msg_reply = f"{msg}\n Analysis: {sym}"
             raise Exception(msg_reply)
-        
-        rsp = [r['text'] for r in res['choices']]      
+
+        rsp = [r['text'] for r in res['choices']]
         return rsp if isinstance(prompts, list) else rsp[0]
-    
+
     def prepare(self, args, kwargs, wrp_params):
         prompt: str = ''
         # add static context
@@ -116,7 +118,7 @@ class GPT3Engine(Engine):
         payload = wrp_params['payload'] if 'payload' in wrp_params else None
         if payload is not None:
             message += f"\n\n----------------\n\nAdditional Context: {payload}"
-            
+
         # add user request
         suffix: str = wrp_params['processed_input']
         if '=>' in suffix:

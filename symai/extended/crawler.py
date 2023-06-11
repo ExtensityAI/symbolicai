@@ -1,4 +1,7 @@
-from symai import *
+from typing import List
+
+from ..components import Clean, Sequence, Stream
+from ..symbol import Expression, Symbol
 
 
 class Crawler(Expression):
@@ -9,7 +12,7 @@ class Crawler(Expression):
             Clean(),
             *filters
         ))
-        
+
     def forward(self, url: str, pattern='www', **kwargs) -> Symbol:
         res = self.fetch(url=url, pattern=pattern, **kwargs)
         vals = list(self.data_stream(res, **kwargs))

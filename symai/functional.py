@@ -3,31 +3,29 @@ import inspect
 import os
 import pickle
 import traceback
-
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
 from .backend.settings import SYMAI_CONFIG
-from .prompts import Prompt
-from .pre_processors import *
 from .post_processors import *
+from .pre_processors import *
+from .prompts import Prompt
 
 
-# all engines are initialized after first usage
-config = SYMAI_CONFIG
-neurosymbolic_engine = None
-symbolic_engine = None
-ocr_engine = None
-vision_engine = None
-index_engine = None
-speech_engine = None
-embedding_engine = None
-userinput_engine = None
-search_engine = None
-crawler_engine = None
-execute_engine = None
-file_engine = None
-output_engine = None
+config                = SYMAI_CONFIG
+neurosymbolic_engine  = None
+symbolic_engine       = None
+ocr_engine            = None
+vision_engine         = None
+index_engine          = None
+speech_engine         = None
+embedding_engine      = None
+userinput_engine      = None
+search_engine         = None
+crawler_engine        = None
+execute_engine        = None
+file_engine           = None
+output_engine         = None
 imagerendering_engine = None
 
 

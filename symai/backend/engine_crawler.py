@@ -1,9 +1,9 @@
-from typing import Callable, Tuple, List
-from .driver.webclient import connect_browsers, page_loaded, dump_page_source
+from typing import Callable, List
+
 from .base import Engine
+from .driver.webclient import connect_browsers, dump_page_source, page_loaded
 
 
-#ctx.driver_handler = connect_browsers(debug=False, proxy=proxy)
 driver_handler = connect_browsers(debug=False, proxy=None)
 
 
@@ -11,7 +11,7 @@ class CrawlerEngine(Engine):
     def __init__(self, debug: bool = False):
         super().__init__()
         self.debug = debug
-    
+
     def get_page_source(self, url: str, pattern: str, script: Callable = None) -> str:
         # deprecated
         driver = driver_handler()
@@ -30,15 +30,15 @@ class CrawlerEngine(Engine):
         patterns = patterns if isinstance(patterns, list) else [patterns]
         assert len(urls) == len(patterns)
         rsp = []
-        
+
         input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
         if input_handler:
             input_handler((urls, patterns))
-        
+
         for url, p in zip(urls, patterns):
             page = self.get_page_source(url=url, pattern=p)
             rsp.append(page)
-            
+
         output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
         if output_handler:
             output_handler(rsp)
@@ -51,7 +51,7 @@ class CrawlerEngine(Engine):
             wrp_params['patterns'] = [wrp_params['pattern']]
         else:
             assert len(kwargs) >= 1 or len(args) >= 1
-        
+
         # be tolerant to kwarg or arg and assign values of urls and patterns
         # assign urls
         if len(args) >= 1:

@@ -1,5 +1,5 @@
-import os
 import logging
+import os
 import time
 from abc import ABC
 from typing import Any, List
@@ -45,16 +45,16 @@ class Engine(ABC):
         if self.logging:
             self.logger.debug(log)
         return res
-    
+
     def preview(self, wrp_params):
         return str(wrp_params['prompts'])
-    
+
     def forward(self, *args: Any, **kwds: Any) -> List[str]:
         raise NotADirectoryError()
-    
+
     def prepare(self, args, kwargs, wrp_params):
         raise NotImplementedError()
-    
+
     def command(self, wrp_params):
         if 'verbose' in wrp_params:
             self.verbose = wrp_params['verbose']

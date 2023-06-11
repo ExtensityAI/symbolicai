@@ -1,12 +1,14 @@
-from typing import List
-from .base import Engine
 import logging
+from typing import List
+
 import rpyc
+
+from .base import Engine
 
 
 class NeSyClientEngine(Engine):
     def __init__(self, host: str = 'localhost', port: int = 18100, max_retry: int = 3, api_cooldown_delay: int = 3, timeout: int = 240):
-        super().__init__()        
+        super().__init__()
         logger = logging.getLogger('nesy_client')
         logger.setLevel(logging.WARNING)
         self.host = host
@@ -20,16 +22,16 @@ class NeSyClientEngine(Engine):
         if self.connection is None:
             self.connection = rpyc.connect(self.host, self.port)
             self.connection._config['sync_request_timeout'] = self.timeout
-        
+
         prompts_ = prompts if isinstance(prompts, list) else [prompts]
         input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
         if input_handler:
             input_handler((prompts_,))
-        
+
         retry: int = 0
         success: bool = False
         errors: List[Exception] = []
-        
+
         max_retry = kwargs['max_retry'] if 'max_retry' in kwargs else self.max_retry
         while not success and retry < max_retry:
             # send prompt to Model
@@ -39,7 +41,7 @@ class NeSyClientEngine(Engine):
             temperature = kwargs['temperature'] if 'temperature' in kwargs else 0.7
             top_p = kwargs['top_p'] if 'top_p' in kwargs else 0.95
             top_k = kwargs['top_k'] if 'top_k' in kwargs else 50
-            
+
             try:
                 # use RPyC to send prompt to Model
                 res = self.connection.root.predict(prompts_[0],
@@ -53,7 +55,7 @@ class NeSyClientEngine(Engine):
                 if output_handler:
                     output_handler(res)
                 success = True
-            except Exception as e:                  
+            except Exception as e:
                 errors.append(e)
                 self.logger.warn(f"Model service is unavailable or caused an error. Retry triggered: {e}")
                 # remedy for Model API limitation
@@ -70,21 +72,21 @@ class NeSyClientEngine(Engine):
                     errors.append(e)
                     self.logger.warn(f"Failed to remedy the exceeding of the maximum token limitation! {e}")
             retry += 1
-        
+
         if not success:
             msg = f"Failed to query Model after {max_retry} retries. Errors: {errors}"
             # interpret error
-            from symai.symbol import Symbol
             from symai.components import Analyze
+            from symai.symbol import Symbol
             sym = Symbol(errors)
             expr = Analyze(exception=errors[-1], query="Explain the issue in this error message")
             sym.stream(expr=expr, max_retry=1)
             msg_reply = f"{msg}\n Analysis: {sym}"
             raise Exception(msg_reply)
-        
-        rsp = [res]      
+
+        rsp = [res]
         return rsp if isinstance(prompts, list) else rsp[0]
-    
+
     def prepare(self, args, kwargs, wrp_params):
         prompt: str = ''
         # add static context
@@ -108,7 +110,7 @@ class NeSyClientEngine(Engine):
         payload = wrp_params['payload'] if 'payload' in wrp_params else None
         if payload is not None:
             message += f"\n\n----------------\n\nAdditional Context: {payload}"
-            
+
         # add user request
         suffix: str = wrp_params['processed_input']
         if '=>' in suffix:
