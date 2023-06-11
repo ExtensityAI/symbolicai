@@ -130,8 +130,9 @@ from .core import *
 from .functional import ConstraintViolationException
 from .memory import *
 from .post_processors import *
+from .symbol import *
+from .interfaces import *
 from .pre_processors import *
 from .prompts import Prompt
 from .shell import Shell
 from .symbol import *
-
