@@ -1,13 +1,14 @@
-import symai as ai
+from ...symbol import Expression
+from ... import core
 
 
-class python(ai.Expression):
+class python(Expression):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     def __call__(self, expr: str, **kwargs) -> "python":
         sym = self._to_symbol(expr)
-        @ai.execute(**kwargs)
+        @core.execute(**kwargs)
         def _func(_):
             pass
         return _func(sym)
