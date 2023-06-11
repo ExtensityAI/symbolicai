@@ -1,8 +1,8 @@
-from typing import List
-from time import sleep
-import openai
 import logging
-import numpy as np
+from time import sleep
+from typing import List
+
+import openai
 import tiktoken
 
 from .base import Engine
@@ -89,8 +89,8 @@ class GPTXChatEngine(Engine):
         if not success:
             msg = f"Failed to query GPT-X Chat-based after {max_retry} retries. Errors: {errors}"
             # interpret error
-            from symai.symbol import Expression
             from symai.components import Analyze
+            from symai.symbol import Expression
             sym = Expression(errors)
             expr = Analyze(exception=errors[-1], query="Explain the issue in this error message")
             sym.stream(expr=expr, max_retry=1)

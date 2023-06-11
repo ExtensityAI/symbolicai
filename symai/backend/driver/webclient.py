@@ -13,15 +13,11 @@ from random import choice
 import chromedriver_autoinstaller
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options as ChromeOptions
-from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
-from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from selenium.webdriver.remote.remote_connection import LOGGER
-from webdriver_manager.chrome import ChromeDriverManager
 
-import symai.backend.settings as settings
+from ... import __root_dir__
+
 
 LOGGER.setLevel(logging.ERROR)
 
@@ -81,17 +77,14 @@ def connect_chrome(debug, proxy=None):
     options.add_argument('--incognito')
     options.add_argument("--headless")
     options.add_argument("--log-level=3")
-    from pathlib import Path
 
-    #*-------------------------------------------------------------------------*#
-    #@TODO: lines below will be removed when dealing with the config setup
-    driver_path = Path.home() / '.symai' / 'chromedriver'
-    if not os.path.exists(driver_path):
-        os.makedirs(driver_path)
-    #*-------------------------------------------------------------------------*#
-    chromedriver_autoinstaller.install()
+    driver_path = __root_dir__ / 'chromedriver'
+    if not os.path.exists(driver_path): os.makedirs(driver_path)
+
+    chromedriver_autoinstaller.install(path=driver_path)
     driver = webdriver.Chrome(options=options)
     if debug: print("Chrome Headless Browser Invoked")
+
     return driver
 
 

@@ -1,4 +1,9 @@
-from symai import *
+from ..components import Lambda
+from ..core import *
+from ..pre_processors import (GraphPreProcessor, PreProcessor,
+                              StripPostProcessor)
+from ..prompts import Prompt
+from ..symbol import Expression, Symbol
 
 
 GRAPH_DESCRIPTION = """[Description]
@@ -19,18 +24,18 @@ class Graph(Expression):
     @property
     def static_context(self) -> str:
         return GRAPH_DESCRIPTION
-    
+
     @property
     def _sym_return_type(self):
         return Graph
-    
+
     def __init__(self, lambda_: Lambda):
         super().__init__()
         self.lambda_ = lambda_
-        
+
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
-        @ai.few_shot(prompt="Extract relationships between entities:\n", 
-                     examples=ai.Prompt([
+        @few_shot(prompt="Extract relationships between entities:\n",
+                  examples=Prompt([
                          '$> John has a dog. =>John, dog, 1 EOF',
                          '$> Karl has two sons. =>Karl, sons, 2 EOF',
                          '$> Similarly, the term general linguistics is used to distinguish core linguistics from other types of study =>general linguistics, core linguistics, 1 EOF',
@@ -41,7 +46,7 @@ class Graph(Expression):
                      stop=['EOF'], **kwargs)
         def _func(_, text) -> str:
             pass
-        
+
         res = 'source,target,value\n'
         sym_list = self.lambda_(sym)
         for s in sym_list:

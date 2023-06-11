@@ -1,8 +1,9 @@
 import ast
+from collections import namedtuple
 from typing import Any
+
 import numpy as np
 from bs4 import BeautifulSoup
-from collections import namedtuple
 from sklearn.cluster import AffinityPropagation
 
 
@@ -42,8 +43,8 @@ class ClusterPostProcessor(PostProcessor):
             indices = np.where(clustering.labels_ == id_)[0]
             map_[id_] = [wrp_self.value[i] for i in indices]
         return map_
-    
-    
+
+
 class TemplatePostProcessor(PostProcessor):
     def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
         template = wrp_params['template']
@@ -51,14 +52,14 @@ class TemplatePostProcessor(PostProcessor):
         template = wrp_params['template']
         parts = str(template).split(placeholder)
         return f'{parts[0]}{response}{parts[1]}'
-    
+
 
 class SplitNewLinePostProcessor(PostProcessor):
     def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
         tmp = response.split('\n')
         return [t.strip() for t in tmp if len(t.strip()) > 0]
-    
-    
+
+
 class WolframAlphaPostProcessor(PostProcessor):
     def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
         try:
@@ -79,8 +80,8 @@ class SplitPipePostProcessor(PostProcessor):
         tmp = [r.split('|') for r in tmp if len(r.strip()) > 0]
         tmp = sum(tmp, [])
         return [t.strip() for t in tmp if len(t.strip()) > 0]
-    
-    
+
+
 class NotifySubscriberPostProcessor(PostProcessor):
     def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
         for k, v in wrp_params['subscriber'].items():
@@ -88,8 +89,8 @@ class NotifySubscriberPostProcessor(PostProcessor):
                 Event = namedtuple('Event', ['args', 'kwargs', 'response'])
                 v(Event(args, kwds, response))
         return response
-    
-    
+
+
 class ASTPostProcessor(PostProcessor):
     def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
         try:
@@ -97,8 +98,8 @@ class ASTPostProcessor(PostProcessor):
             return val
         except:
             return response
-        
-        
+
+
 class ConsolePostProcessor(PostProcessor):
     def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
         verbose = response['verbose'] if 'verbose' in response else False
@@ -114,11 +115,11 @@ class ConsolePostProcessor(PostProcessor):
         if verbose: print(output)
         return response['output']
 
-    
+
 class TakeLastPostProcessor(PostProcessor):
     def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
         return response[-1]
-    
+
 
 class ExpandFunctionPostProcessor(PostProcessor):
     def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
