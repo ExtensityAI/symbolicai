@@ -1,7 +1,7 @@
 from ..components import Lambda
 from ..core import *
-from ..pre_processors import (GraphPreProcessor, PreProcessor,
-                              StripPostProcessor)
+from ..pre_processors import PreProcessor
+from ..post_processors import StripPostProcessor
 from ..prompts import Prompt
 from ..symbol import Expression, Symbol
 
