@@ -4,8 +4,7 @@ import os
 from pathlib import Path
 
 
-logging.basicConfig(level=logging.DEBUG)
-SYMAI_VERSION = "0.2.21"
+SYMAI_VERSION = "0.2.22"
 __version__   = SYMAI_VERSION
 __root_dir__  = Path.home() / '.symai'
 
