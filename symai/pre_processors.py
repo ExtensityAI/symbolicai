@@ -385,7 +385,6 @@ class ConsolePreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         object_ = f"args: {args}\nkwargs: {kwds}"
-        wrp_params['expression'] = wrp_params['expr']
         wrp_params['args'] = args
         wrp_params['kwargs'] = kwds
         return object_

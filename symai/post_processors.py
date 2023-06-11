@@ -105,7 +105,7 @@ class ConsolePostProcessor(PostProcessor):
         verbose = response['verbose'] if 'verbose' in response else False
         input_ = response['input'] if 'input' in response else None
         if verbose: print(f"Input: {input_}")
-        expr_ = response['expression']
+        expr_ = response['expr'] if 'expr' in response else None
         if verbose: print(f"Expression: {expr_}")
         args_kwargs = (response['args'], response['kwargs'])
         if verbose: print(f"args: {args_kwargs[0]} kwargs: {args_kwargs[1]}")

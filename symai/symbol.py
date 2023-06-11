@@ -71,6 +71,11 @@ class Symbol(ABC):
         val_ = f"\nSPECIAL RULES:\n{val_}"
         return val_
 
+    def _to_symbol(self, value: Any) -> "Symbol":
+        if isinstance(value, Symbol):
+            return value
+        return Symbol(value)
+
     def update(self, feedback: str) -> "Symbol":
         type_ = str(type(self))
         if type_ not in Symbol._dynamic_context:
