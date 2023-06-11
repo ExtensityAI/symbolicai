@@ -1,16 +1,18 @@
+import sys
+import traceback
 from typing import List
+
 from .base import Engine
-from symai import *
-import traceback, sys
 
 
 def full_stack():
-    import traceback, sys
+    import sys
+    import traceback
     exc = sys.exc_info()[0]
     stack = traceback.extract_stack()[-10:-1]  # last one would be full_stack()
-    if exc is not None:  # i.e. an exception is present
-        del stack[-1]    # remove call of full_stack, the printed exception
-                         # will contain the caught exception caller instead
+    if exc is not None:                        # i.e. an exception is present
+        del stack[-1]                          # remove call of full_stack, the printed exception
+                                               # will contain the caught exception caller instead
     trc = 'Traceback (most recent call last):\n'
     stackstr = trc + ''.join(traceback.format_list(stack))
     if exc is not None:
@@ -24,11 +26,11 @@ class PythonEngine(Engine):
 
     def forward(self, *args, **kwargs) -> List[str]:
         code = kwargs['prompt']
-        
+
         input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
         if input_handler:
             input_handler((code,))
-        
+
         globals_ = dict(**globals())
         locals_ = dict(**locals())
         rsp = None
@@ -47,8 +49,8 @@ class PythonEngine(Engine):
                     output_handler(stack)
                 else:
                     output_handler(rsp)
-        
+
         return [rsp]
-    
+
     def prepare(self, args, kwargs, wrp_params):
         pass

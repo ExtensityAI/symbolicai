@@ -1,35 +1,39 @@
 import re
-from typing import Any, Callable, Dict, List, Optional
-from functools import partial
+from typing import Any, Optional
 
-import symai.backend.settings as settings
-from symai import ai
-from symai.components import Output
-from symai.symbol import Expression, Symbol
+from .backend import settings as settings
+from .components import (IncludeFilter, InContextClassification, Outline,
+                         Output, Sequence)
+from .core import *
+from .memory import Memory, SlidingWindowListMemory, VectorDatabaseMemory
+from .post_processors import ConsolePostProcessor, StripPostProcessor
+from .pre_processors import ConsoleInputPreProcessor
+from .prompts import SymbiaCapabilities
+from .symbol import Expression, Symbol
 
 
 class ChatBot(Expression):
     _symai_chat: str = """This is a conversation between a chatbot ({}:) and a human (User:). It also includes narration Text (Narrator:) describing the next dialog. The chatbot primarily follows the narrative instructions, and then uses the user input to condition on for the generated response.\n"""
 
-    def __init__(self, value = None, name: str = 'Symbia', output: Optional[Output] = None, verbose: bool = True):
+    def __init__(self, value = None, name: str = 'Symbia', output: Optional[Output] = None, verbose: bool = False):
         super().__init__(value)
         self.verbose: bool        = verbose
         self.name                 = name
         self.last_user_input: str = ''
 
-        self.memory:           ai.Memory = ai.SlidingWindowListMemory()
-        self.long_term_memory: ai.Memory = ai.VectorDatabaseMemory(enabled=settings.SYMAI_CONFIG['INDEXING_ENGINE_API_KEY'] is not None)
+        self.memory:           Memory = SlidingWindowListMemory()
+        self.long_term_memory: Memory = VectorDatabaseMemory(enabled=settings.SYMAI_CONFIG['INDEXING_ENGINE_API_KEY'] is not None)
 
         self._preprocessor  = ChatBot._init_custom_input_preprocessor(name=name, that=self)
         self._postprocessor = ChatBot._init_custom_input_postprocessor(that=self)
 
-        self.classify = ai.InContextClassification(ai.prompts.SymbiaCapabilities())
+        self.classify = InContextClassification(SymbiaCapabilities())
         Expression.command(engines=['symbolic'], expression_engine='wolframalpha')
 
     def repeat(self, query, **kwargs):
         return self.narrate('Symbia does not understand and asks to repeat and give more context.', prompt=query)
 
-    def narrate(self, message: str, context: str = None, end: bool = False, do_recall: bool = True, **kwargs) -> "Symbol":
+    def narrate(self, message: str, context: str = None, end: bool = False, do_recall: bool = True, **kwargs) -> Symbol:
         narration = f'Narrator: {message}'
         self.memory.store(narration)
 
@@ -47,8 +51,7 @@ class ChatBot(Expression):
         if self.verbose: print('[DEBUG] narration: ', narration)
         if self.verbose: print('[DEBUG] function context: ', ctxt)
 
-        @ai.zero_shot(prompt=value,
-                      stop=['User:'], **kwargs)
+        @zero_shot(prompt=value, stop=['User:'], **kwargs)
         def _func(_) -> str:
             pass
         model_rsp = _func(self)
@@ -67,10 +70,10 @@ class ChatBot(Expression):
 
         return sym
 
-    def input(self, message: str = "Please add more information", **kwargs) -> "Symbol":
-        @ai.userinput(
+    def input(self, message: str = "Please add more information", **kwargs) -> Symbol:
+        @userinput(
             pre_processor=[self._preprocessor()],
-            post_processor=[ai.StripPostProcessor(),
+            post_processor=[StripPostProcessor(),
                             self._postprocessor()],
             **kwargs
         )
@@ -89,7 +92,7 @@ class ChatBot(Expression):
 
     @staticmethod
     def _init_custom_input_preprocessor(name, that):
-        class CustomInputPreProcessor(ai.ConsoleInputPreProcessor):
+        class CustomInputPreProcessor(ConsoleInputPreProcessor):
             def __call__(self, wrp_self, wrp_params, *args: Any, **kwargs: Any) -> Any:
                 super().override_reserved_signature_keys(wrp_params, *args, **kwargs)
 
@@ -105,7 +108,7 @@ class ChatBot(Expression):
 
     @staticmethod
     def _init_custom_input_postprocessor(that):
-        class CustomInputPostProcessor(ai.ConsolePostProcessor):
+        class CustomInputPostProcessor(ConsolePostProcessor):
             def __call__(self, wrp_self, wrp_params, rsp, *args, **kwargs):
                 that.memory.store(f'User: {str(rsp)}')
 
@@ -139,7 +142,9 @@ class SymbiaChat(ChatBot):
 
             elif '[DK]' in ctxt:
                 thought = self._extract_thought(ctxt)
-                message = self.narrate(f'{self.name} restates verbatim the message.', context=thought, do_recall=False)
+                q = usr.extract('user query request')
+                rsp = self.search(q)
+                message = self.narrate(f'{self.name} is not sure about the message and references to search results.', context=thought, payload=rsp)
 
             else:
                 try:
@@ -177,7 +182,7 @@ class SymbiaChat(ChatBot):
 
                     elif '[OCR]' in ctxt:
                         url = usr.extract('extract url')
-                        rsp = ai.Expression().ocr(url)
+                        rsp = Expression().ocr(url)
                         thought = self._extract_thought(ctxt)
                         message = self.narrate('Symbia replies to the user and provides OCR text from the image.',
                                                 context=rsp)
@@ -186,9 +191,9 @@ class SymbiaChat(ChatBot):
                         file = usr.extract('extract file path')
                         q = usr.extract('user question')
                         rsp = file.fstream(
-                            ai.Sequence(
-                                ai.IncludeFilter('include only facts related to the user question: ' @ q),
-                                ai.Outline()
+                            Sequence(
+                                IncludeFilter('include only facts related to the user question: ' @ q),
+                                Outline()
                             )
                         )
                         thought = self._extract_thought(ctxt)
