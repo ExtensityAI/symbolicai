@@ -33,6 +33,7 @@ class Try(Expression):
         self.retries: int = retries
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
+        sym = self._to_symbol(sym)
         return sym.ftry(self.expr, retries=self.retries, **kwargs)
 
 
@@ -58,6 +59,7 @@ class Choice(Expression):
         self.default: Optional[str] = default
 
     def forward(self, sym: Symbol, *args, **kwargs) -> Symbol:
+        sym = self._to_symbol(sym)
         return sym.choice(cases=self.cases, default=self.default, *args, **kwargs)
 
 
@@ -94,7 +96,8 @@ class Stream(Expression):
         self.expr: Expression = expr
         self.force: bool = force
 
-    def forward(self, sym: Expression, **kwargs) -> Iterator[Symbol]:
+    def forward(self, sym: Symbol, **kwargs) -> Iterator[Symbol]:
+        sym = self._to_symbol(sym)
         if self.force:
             return sym.fstream(expr=self.expr,
                                max_tokens=self.max_tokens,
@@ -148,7 +151,8 @@ class Template(Expression):
         self.placeholder = placeholder
         self.template_ = template
 
-    def forward(self, sym: Symbol, *args, **kwargs) -> Symbol:
+    def forward(self, sym: Symbol, **kwargs) -> Symbol:
+        sym = self._to_symbol(sym)
         return sym.template(self.template_, self.placeholder, **kwargs)
 
 
@@ -158,7 +162,8 @@ class Style(Expression):
         self.description: str = description
         self.libraries: List[str] = libraries
 
-    def forward(self, sym: Symbol, *args, **kwargs) -> Symbol:
+    def forward(self, sym: Symbol, **kwargs) -> Symbol:
+        sym = self._to_symbol(sym)
         return sym.style(description=self.description, libraries=self.libraries, **kwargs)
 
 
@@ -168,21 +173,25 @@ class Query(Expression):
         self.prompt: str = prompt
 
     def forward(self, sym: Symbol, context: Symbol = None, *args, **kwargs) -> Symbol:
+        sym = self._to_symbol(sym)
         return sym.query(prompt=self.prompt, context=context, **kwargs)
 
 
 class Outline(Expression):
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
+        sym = self._to_symbol(sym)
         return sym.outline(**kwargs)
 
 
 class Clean(Expression):
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
+        sym = self._to_symbol(sym)
         return sym.clean(**kwargs)
 
 
 class Execute(Expression):
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
+        sym = self._to_symbol(sym)
         return sym.execute(**kwargs)
 
 
@@ -192,26 +201,31 @@ class Convert(Expression):
         self.format = format
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
+        sym = self._to_symbol(sym)
         return sym.convert(format=self.format, **kwargs)
 
 
 class Embed(Expression):
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
+        sym = self._to_symbol(sym)
         return sym.embed(**kwargs)
 
 
 class Cluster(Expression):
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
+        sym = self._to_symbol(sym)
         return sym.cluster(**kwargs)
 
 
 class Compose(Expression):
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
+        sym = self._to_symbol(sym)
         return sym.compose(**kwargs)
 
 
 class Map(Expression):
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
+        sym = self._to_symbol(sym)
         return sym.map(**kwargs)
 
 
@@ -221,6 +235,7 @@ class Translate(Expression):
         self.language = language
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
+        sym = self._to_symbol(sym)
         if sym.isinstanceof(f'{self.language} text'):
             return sym
         return sym.translate(language=self.language, **kwargs)
@@ -232,6 +247,7 @@ class IncludeFilter(Expression):
         self.include = include
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
+        sym = self._to_symbol(sym)
         return sym.filter(self.include, include=True, **kwargs)
 
 
@@ -241,12 +257,13 @@ class ExcludeFilter(Expression):
         self.exclude = exclude
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
+        sym = self._to_symbol(sym)
         return sym.filter(self.exclude, include=False, **kwargs)
 
 
 class Open(Expression):
     def forward(self, path: str, **kwargs) -> Expression:
-        return Expression.open(path, **kwargs)
+        return self.open(path, **kwargs)
 
 
 class FileQuery(Expression):
@@ -260,6 +277,7 @@ class FileQuery(Expression):
         self.file = file_open(path)
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
+        sym = self._to_symbol(sym)
         res = Symbol(list(self.query_stream(self.file)))
         return res.query(prompt=sym, context=res, **kwargs)
 

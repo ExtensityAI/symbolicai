@@ -1,7 +1,6 @@
 from typing import List
-
 import PyPDF2
-
+from tika import unpack
 from .base import Engine
 
 
@@ -17,7 +16,7 @@ class FileEngine(Engine):
 
         if 'pdf' in path:
             rsp = ''
-            with open(path, 'rb') as f:
+            with open(str(path), 'rb') as f:
                 # creating a pdf reader object
                 pdf_reader = PyPDF2.PdfReader(f)
                 n_pages = len(pdf_reader.pages)
@@ -27,8 +26,7 @@ class FileEngine(Engine):
                     page = pdf_reader.pages[i]
                     rsp += page.extract_text()
         else:
-            with open(path, 'r') as f:
-                rsp = f.read()
+            rsp = unpack.from_file(str(path))['content']
 
         output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
         if output_handler:

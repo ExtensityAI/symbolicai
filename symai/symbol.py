@@ -644,7 +644,7 @@ class Symbol(ABC):
         return self._sym_return_type(list(self.stream(expr, max_tokens, char_token_ratio, **kwargs)))
 
     def ftry(self, expr: "Expression", retries: int = 1, **kwargs) -> "Symbol":
-        prompt = {}
+        prompt = {'message': ''}
         def output_handler(input_):
             prompt['message'] = input_
         kwargs['output_handler'] = output_handler
@@ -652,7 +652,6 @@ class Symbol(ABC):
         sym = self
         while True:
             try:
-                print(expr, sym, kwargs)
                 sym = expr(sym, **kwargs)
                 retry_cnt = 0
                 return sym
