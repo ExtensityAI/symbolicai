@@ -8,6 +8,7 @@ channels:
 
 dependencies:
   - python
+  - setuptools
   - natsort
   - numpy
   - tqdm
@@ -16,6 +17,7 @@ dependencies:
   - pytorch
   - pytorch-cuda
   - torchvision
+  - torchaudio
   - pyyaml
   - transformers
   - openai
@@ -28,6 +30,7 @@ dependencies:
   - sentencepiece
   - webdriver-manager
   - pandas
+  - tika
   - pip
 
   - pip:
@@ -36,3 +39,5 @@ dependencies:
     - google-search-results
     - pinecone-client
     - sympy
+    - tiktoken
+    - chromedriver-autoinstaller
