@@ -9,7 +9,7 @@ logging.getLogger("urllib3").setLevel(logging.WARNING)
 logging.getLogger("requests").setLevel(logging.WARNING)
 
 
-SYMAI_VERSION = "0.2.23"
+SYMAI_VERSION = "0.2.24"
 __version__   = SYMAI_VERSION
 __root_dir__  = Path.home() / '.symai'
 
