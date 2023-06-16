@@ -1067,11 +1067,11 @@ Finally, let's assume you want to create a entirely new engine, but still keep o
 
 ## ⚡Limitations
 
-Uff... this is a long list. We are still in the early stages of development and are working hard to overcome these limitations. Just to name a few:
+We are constantly improving the framework and are working hard to overcome limitations and issues. Just to name a few:
 
 Engineering challenges:
-* Our framework is still in its early stages of development and is not yet meant for production use. For example, the Stream class only estimates the prompt size by an approximation, which sometimes can fail. One can also create more sophisticated prompt hierarchies and dynamically adjust the global context based on a state-based approach. This would allow making consistent predictions even for long text streams.
-* Many operations need to be further improved: verified for biases, fairness, robustness, etc.
+* Our framework constantly evolvs and gets bug fixes, hwoever, we ask for caustion when considering it for production use cases. For example, the Stream class only estimates the prompt size by an approximation, which can fail. One can also create more sophisticated prompt hierarchies and dynamically adjust the global context based on a state-based approach. This would allow making consistent predictions even for long text streams.
+* Operations need to be further improved: verified for biases, fairness, robustness, etc.
 * The code may not be complete and is not yet optimized for speed and memory usage, and uses API-based LLMs due to limitations of compute resources.
 * Code coverage is not yet complete and we are still working on the documentation.
 * Integrate with a more diverse set of models from [Hugging Face](https://huggingface.co/) or other platforms.
@@ -1137,17 +1137,17 @@ This project is inspired by the following works, but not limited to them:
 
 ### Comparison to other frameworks
 
-Since an often received request is to state the differences between our project and LangChain, this is a short list and by no means complete to contrast ourselves to other frameworks:
+Here is a short list that contrasts ourselves to other frameworks:
 
-* We focus on cognitive science and cognitive architectures research, and therefore, do not consider our framework as a production-ready implementation. We believe that the current state of the art in LLMs is not yet ready for general purpose tasks, and therefore, we focus on the advances of concept learning, reasoning and flow control of the generative process.
+* We focus on cognitive science and cognitive architectures research, and therefore, do not consider our framework. We believe that the current state of the art in LLMs are not yet ready for general purpose tasks, and therefore, we focus on the advances of concept learning, reasoning and flow control of the generative process.
 * We consider LLMs as one type of neuro-symbolic computation engines, which could be of any shape or form, such as knowledge graphs, rule-based systems, etc., therefore, not necessarily limited to Transformers or LLMs.
 * We focus on advancing the development of programming languages and new programming paradigms, and subsequently its programming stack, including neuro-symbolic design patterns to integrate with operators, inheritance, polymorphism, compositionality, etc. Classical object-oriented and compositional design pattern have been well studied in the literature, however, we bring a novel view on how LLMs integrate and augment fuzzy logic and neuro-symbolic computation.
-* We do not consider our main attention towards prompt engineering. Our proposed prompt design helps the purpose to combine object-oriented paradigms with machine learning models. We believe that prompt misalignments in their current form will alleviate with further advances in Reinforcement Learning from Human Feedback and other value alignment methods. Therefore, these approaches will solve the necessity to prompt engineer or the ability to prompt hack statements.
+* Our proposed prompt design helps the purpose to combine object-oriented paradigms with machine learning models. We believe that prompt misalignments in their current form will alleviate with further advances in Reinforcement Learning from Human Feedback and other value alignment methods. Therefore, these approaches will solve the necessity to prompt engineer or the ability to prompt hack statements.
 Consequently, this will result to much shorter zero- or few-shot examples (at least for small enough tasks). This is where we see the power of a divide a conquer approach, performing basic operations and re-combining them to solve the complex tasks.
 * We see operators / methods as being able to move along a spectrum between prompting and fine-tuning, based on task-specific requirements and availability of data. We believe that this is a more general approach, compared to prompting frameworks.
 * We propose a general approach how to handle large context sizes and how to transform a data stream problem into a search problem, related to the **reasoning as a search problem** in [Search and Reasoning in Problem Solving](https://www.sciencedirect.com/science/article/abs/pii/S0004370283800034).
 
-We also want to state, that we highly value and support the further development of LangChain. We believe that for the community they offer very important contributions and help advance the commercialization of LLMs. We hope that our work can be seen as complementary, and future outlook on how we would like to use machine learning models as an integral part of programming languages and therefore its entire computational stack.
+We hope that our work can be seen as complementary, and future outlook on how we would like to use machine learning models as an integral part of programming languages and therefore its entire computational stack.
 
 ### Acknowledgements
 
