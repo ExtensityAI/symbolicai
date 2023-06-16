@@ -619,12 +619,13 @@ class Symbol(ABC):
         for chunks in range(steps):
             # iterate over string in chunks of max_chars
             r = Symbol(str(self)[chunks * max_chars: (chunks + 1) * max_chars])
-            size = max_tokens - r.size()
+            size = max_tokens - len(r)
 
             # simulate the expression
             prev = expr(r, max_tokens=size, preview=True, **kwargs)
+            prev = self._to_symbol(prev)
             # if the expression is too big, split it
-            if prev.size() > max_tokens:
+            if len(prev) > max_tokens:
                 # split
                 r1_split = r.value[:len(r)//2]
                 r = expr(r1_split, max_tokens=size, **kwargs)
