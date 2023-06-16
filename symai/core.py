@@ -124,7 +124,7 @@ def summarize(prompt: str = 'Summarize the content of the following text:\n',
 
 def equals(context: str = 'contextually',
            default: bool = False,
-           prompt: str = "Are the following objects {} the same?\n",
+           prompt: str = "Make a fuzzy equals comparison. Are the following objects {} the same?\n",
            examples: Prompt = FuzzyEquals(),
            constraints: List[Callable] = [],
            pre_processor: Optional[List[PreProcessor]] = [EqualsPreProcessor()],
