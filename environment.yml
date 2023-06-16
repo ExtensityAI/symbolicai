@@ -34,10 +34,5 @@ dependencies:
   - pip
 
   - pip:
-    - git+https://github.com/openai/whisper.git
-    - wolframalpha
-    - google-search-results
-    - pinecone-client
     - sympy
-    - tiktoken
-    - chromedriver-autoinstaller
+    - symbolicai[all]

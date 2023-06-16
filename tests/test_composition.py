@@ -586,7 +586,7 @@ modified:   tests/test_composition.py
 
     def test_speech_decode(self):
         expr = Expression()
-        res = expr.speech('examples/audio.mp3')
+        res = expr.transcribe('examples/audio.mp3')
         self.assertTrue(res == 'I may have overslept.')
 
     def test_ocr(self):
