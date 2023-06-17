@@ -8,6 +8,7 @@ channels:
 
 dependencies:
   - python
+  - setuptools
   - natsort
   - numpy
   - tqdm
@@ -16,6 +17,7 @@ dependencies:
   - pytorch
   - pytorch-cuda
   - torchvision
+  - torchaudio
   - pyyaml
   - transformers
   - openai
@@ -28,11 +30,9 @@ dependencies:
   - sentencepiece
   - webdriver-manager
   - pandas
+  - tika
   - pip
 
   - pip:
-    - git+https://github.com/openai/whisper.git
-    - wolframalpha
-    - google-search-results
-    - pinecone-client
     - sympy
+    - symbolicai[all]
