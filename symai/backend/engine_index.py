@@ -62,7 +62,7 @@ class IndexEngine(Engine):
             input_handler((query, ))
 
         if operation == 'search':
-            index_top_k     = kwargs['index_top_k'] if 'index_top_k' in kwargs else self.index_top_k
+            index_top_k    = kwargs['index_top_k'] if 'index_top_k' in kwargs else self.index_top_k
             index_values   = kwargs['index_values'] if 'index_values' in kwargs else self.index_values
             index_metadata = kwargs['index_metadata'] if 'index_metadata' in kwargs else self.index_metadata
 

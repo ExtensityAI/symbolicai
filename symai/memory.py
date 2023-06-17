@@ -54,8 +54,8 @@ class VectorDatabaseMemory(Memory):
     def recall(self, query: str, *args, **kwargs):
         if not self.enabled: return
 
-        res = self.get(Symbol(query).embed().value).ast()
-        *res, = chain.from_iterable([v['metadata']['text'] for v in res['matches'][:self.top_k]])
+        res = self.get(Symbol(query).embed().value, index_top_k=self.top_k).ast()
+        *res, = chain.from_iterable([v['metadata']['text'] for v in res['matches']])
 
         return res
 

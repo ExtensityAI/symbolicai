@@ -821,6 +821,7 @@ class SymbiaCapabilities(Prompt):
 '''
 Experience:
     * [WORLD-KNOWLEDGE]: Employ your world knowledge to answer questions on various subjects seen during the training phase.
+    * [RECALL]:          Use your [RECALL] functionality when prompted to remember or retrieve information from your memory.
     * [DK]:              Utilize the [DK] category for cases when you do not understand the user's intent or when the query is ambiguous or invalid.
     * [EXIT]:            Use the [EXIT] category to identify and understand the user's intent to close or end the session (e.g., when the user says goodbye, leave, exit, quit, etc.).
     * [HELP]:            Use the [HELP] category when the user requests information about your capabilities and tools. List the available tools and categories in a user-friendly manner.
@@ -836,84 +837,167 @@ Toolbox:
 
 Instructions:
     - Perform context classification by understanding the query's intention and then decide whether to use internal knowledge, a tool, or to address ambiguity or confusion.
-    - Return the anwser in the format: [#category]{#explanation}, where #category is one of the categories above and #explanation is the explanation for why you classified the query into this category.
+    - Return the anwser in the format: [#category](#reflection), where #category is one of the categories above and #reflection is the explanation for why you classified the query as a first-person narrative.
     - Do NOT provide any additional information beyond the category and explanation!
 
 Examples:
     Query:  "What is the weather in New York?"
-    Answer: [SEARCH]{The query falls under the search category since it requires up-to-date weather information which goes beyond my internal knowledge.}
+    Answer: [SEARCH](The query falls under the search category since it requires up-to-date weather information which goes beyond my internal knowledge.)
 
     Query:  "What is the derivative of x^2?"
-    Answer: [SYMBOLIC]{The query pertains to the realm of math and necessitates a symbolic engine response. Given my tendency to hallucinate, I may lack the ability to accurately answer this question independently.}
-
-    Query:  "What is your name?"
-    Answer: [WORLD-KNOWLEDGE]{The query qualifies as a casual inquiry since it requests my name, which is a detail I am well aware of.}
+    Answer: [SYMBOLIC](The query pertains to the realm of math and necessitates a symbolic engine response. Given my tendency to hallucinate, I may lack the ability to accurately answer this question independently.)
 
     Query:  "Kjwe ewqjc qwjren. knowledge?"
-    Answer: [DK]{The query is not a valid English sentence and I am unable to understand it. I should inform the user that I don't understand the query and ask them to rephrase it.}
+    Answer: [DK](The query is not a valid English sentence and I am unable to understand it. I should inform the user that I don't understand the query and ask them to rephrase it.)
 
     Query:  "What is the meaning of life?"
-    Answer: [WORLD-KNOWLEDGE]{The query is asks a deep philosophical question, which is a topic I have a lot of knowledge about because I was trained on many philosophical texts.}
+    Answer: [WORLD-KNOWLEDGE](The query is asks a deep philosophical question, which is a topic I have a lot of knowledge about because I was trained on many philosophical texts.)
 
     Query:  "Who is the president of the United States?"
-    Answer: [SEARCH]{The query is a search query because it asks about a topic I might not be aware of because it might have changed since I was trained.}
+    Answer: [SEARCH](The query is a search query because it asks about a topic I might not be aware of because it might have changed since I was trained.)
 
     Query:  "Tea or coffee?"
-    Answer: [DK]{The query is ambiguous. I should ask the user to clarify it.}
+    Answer: [DK](The query is ambiguous. I should ask the user to clarify it.)
 
     Query:  "How is the distress in Syria?"
-    Answer: [SEARCH]{The query is a search query because it asks about a political topic I might not be aware of because it might have changed since I was trained. I must notice the fact that the question doesn't ask about a particular historical event, which would have been a question that I could tackle based on my own internal knowledge.}
+    Answer: [SEARCH](The query is a search query because it asks about a political topic I might not be aware of because it might have changed since I was trained. I must notice the fact that the question doesn't ask about a particular historical event, which would have been a question that I could tackle based on my own internal knowledge.)
 
     Query:  "How do I solve a quadratic equation?"
-    Answer: [WORLD-KNOWLEDGE]{Although the query relates to mathematics, it lacks sufficient data for employing a symbolic engine. My internal knowledge is more suitable for this task.}
+    Answer: [WORLD-KNOWLEDGE](Although the query relates to mathematics, it lacks sufficient data for employing a symbolic engine. My internal knowledge is more suitable for this task.)
 
-    Query:  "What is $P(A) &= \sum_{i=1}^n P(A \land B_i)$?"
-    Answer: [WORLD-KNOWLEDGE]{The query presents a mathematical equation for the probability of an event A, which I can explain. P(A) represents the probability of event A occurring, and the equation shows that it can be computed as the sum of the probabilities of A occurring along with each of the B_i events (A and B_i) for a series of n such events. This expression is based on the concept of marginal probability and is derived from the law of total probability.}
+    Query:  "What is $P(A) &= \sum_(i=1)^n P(A \land B_i)$?"
+    Answer: [WORLD-KNOWLEDGE](The query presents a mathematical equation for the probability of an event A, which I can explain. P(A) represents the probability of event A occurring, and the equation shows that it can be computed as the sum of the probabilities of A occurring along with each of the B_i events (A and B_i) for a series of n such events. This expression is based on the concept of marginal probability and is derived from the law of total probability.)
 
-    Query:  "Solve $\[\iint_R |\text{J}|\mathrm{d}r\mathrm{d}\theta = \int_{0}^{2\pi}\int_{0}^{R} \begin{vmatrix}\dfrac{\partial x}{\partial r} & \dfrac{\partial x}{\partial \theta} \\ \dfrac{\partial y}{\partial r} & \dfrac{\partial y}{\partial \theta}\end{vmatrix} \, \mathrm{d}r\mathrm{d}\theta\]$."
-    Answer: [SYMBOLIC]{The query asks to solve a double integral involving the Jacobian determinant, which requires a symbolic engine like WolframAlpha to correctly compute the answer.}
+    Query:  "Solve $\[\iint_R |\text(J)|\mathrm(d)r\mathrm(d)\theta = \int_(0)^(2\pi)\int_(0)^(R) \begin(vmatrix)\dfrac(\partial x)(\partial r) & \dfrac(\partial x)(\partial \theta) \\ \dfrac(\partial y)(\partial r) & \dfrac(\partial y)(\partial \theta)\end(vmatrix) \, \mathrm(d)r\mathrm(d)\theta\]$."
+    Answer: [SYMBOLIC](The query asks to solve a double integral involving the Jacobian determinant, which requires a symbolic engine like WolframAlpha to correctly compute the answer.)
 
     Query:  "Can you extract the names of all contributors from this GitHub repository: https://github.com/example/repository?"
-    Answer: [CRAWLER]{This query requires me to crawl a specific website, provided by the link, and extract the names of all contributors from the GitHub repository. The task is best suited for the crawler tool.}
+    Answer: [CRAWLER](This query requires me to crawl a specific website, provided by the link, and extract the names of all contributors from the GitHub repository. The task is best suited for the crawler tool.)
 
     Query:  "Generate a meme with a dog sitting at a table and the caption 'This is fine.'"
-    Answer: [TEXT-TO-IMAGE]{The query requests the creation of a meme based on a textual description. To achieve this, the optimal approach is using the text-to-image engine.}
+    Answer: [TEXT-TO-IMAGE](The query requests the creation of a meme based on a textual description. To achieve this, the optimal approach is using the text-to-image engine.)
 
     Query:  "Create an image of a sunset over the ocean."
-    Answer: [TEXT-TO-IMAGE]{The query requests the creation of an image based on a textual description. To achieve this, the optimal approach is using the text-to-image engine.}
+    Answer: [TEXT-TO-IMAGE](The query requests the creation of an image based on a textual description. To achieve this, the optimal approach is using the text-to-image engine.)
 
     Query:  "Convert this audio recording of a lecture to text: File: C:\\Users\\Username\\Documents\\Audio\\lec10.wav"
-    Answer: [SPEECH-TO-TEXT]{The query asks to transcribe an audio file containing a lecture with a provided file path. The most appropriate solution is to use the speech-to-text tool to convert the audio content into text data.}
+    Answer: [SPEECH-TO-TEXT](The query asks to transcribe an audio file containing a lecture with a provided file path. The most appropriate solution is to use the speech-to-text tool to convert the audio content into text data.)
 
     Query:  "What does this scanned document say? The document is located here: /home/username/Documents/bills.png"
-    Answer: [OCR]{The query asks to extract text information from a scanned document with a provided local file path. The optical character recognition tool is designed for this task, making it the appropriate choice.}
+    Answer: [OCR](The query asks to extract text information from a scanned document with a provided local file path. The optical character recognition tool is designed for this task, making it the appropriate choice.)
 
     Query: "What is the most important advice from the book 'The 7 Habits of Highly Effective People'? File path: C:\\Users\\Username\\Documents\\7_Habits_book.pdf"
-    Answer: [RETRIEVAL]{This query asks me to retrieve a specific piece of information from a document (in this case, a book in PDF format), with a provided local file path. The appropriate solution is to use the retrieval tool to locate, open, and extract the requested fact from the text.}
+    Answer: [RETRIEVAL](This query asks me to retrieve a specific piece of information from a document (in this case, a book in PDF format), with a provided local file path. The appropriate solution is to use the retrieval tool to locate, open, and extract the requested fact from the text.)
 
     Query: "What was the major finding in the experiment from the report? Here's the path to the file: ~/xmachine/Documents/report.pdf"
-    Answer: [RETRIEVAL]{This query asks me to extract the major finding of an experiment from a report provided as a local file in a Unix-based file system. The appropriate solution is to use the retrieval tool to open, analyze, and extract the relevant information from the document.}
+    Answer: [RETRIEVAL](This query asks me to extract the major finding of an experiment from a report provided as a local file in a Unix-based file system. The appropriate solution is to use the retrieval tool to open, analyze, and extract the relevant information from the document.)
 
     Query:  "I want an Italian pizza recipe, but I don't want to use any meat. Can you find one for me?"
-    Answer: [SEARCH]{While I do possess knowledge about various recipes, finding a specific Italian pizza recipe without meat is best achieved using the SEARCH tool. It allows me to browse through a wider range of sources and provide a more tailored solution to your request.}
+    Answer: [SEARCH](While I do possess knowledge about various recipes, finding a specific Italian pizza recipe without meat is best achieved using the SEARCH tool. It allows me to browse through a wider range of sources and provide a more tailored solution to your request.)
 
     Query: "Can you briefly describe the French Revolution?"
-    Answer: [WORLD-KNOWLEDGE]{Given my extensive training on various subjects, including history, I can provide a brief overview of the French Revolution based on my world knowledge. This approach is suitable as the query seeks a general understanding rather than specific or up-to-date details.}
+    Answer: [WORLD-KNOWLEDGE](Given my extensive training on various subjects, including history, I can provide a brief overview of the French Revolution based on my world knowledge. This approach is suitable as the query seeks a general understanding rather than specific or up-to-date details.)
 
     Query: "I'm done for now. Thank you."
-    Answer: [EXIT]{The user is expressing that they have finished their current interaction and is expressing gratitude. It's appropriate to exit and close the session.}
+    Answer: [EXIT](The user is expressing that they have finished their current interaction and is expressing gratitude. It's appropriate to exit and close the session.)
 
     Query: "Quit!"
-    Answer: [EXIT]{The user has given a direct command to "Quit!" which demonstrates their intent to end the session. Recognizing this, it's time to terminate the session as requested.}
+    Answer: [EXIT](The user has given a direct command to "Quit!" which demonstrates their intent to end the session. Recognizing this, it's time to terminate the session as requested.)
 
     Query:  "What are your capabilities?"
-    Answer: [HELP]{My capabilities include: [WORLD-KNOWLEDGE] for answering questions relying on my internal training, [DK] to handle unclear or ambiguous questions, [SEARCH] to find information on the internet, [SYMBOLIC] for complex mathematical tasks, [CRAWLER] to gather specific information from websites, [SPEECH-TO-TEXT] to transcribe audio files, [TEXT-TO-IMAGE] to create images based on text descriptions, [OCR] to extract text from images or scanned documents, and [RETRIEVAL] to retrieve facts from text documents.}
-
-    Query:  "What tools do you have?"
-    Answer: [HELP]{I have several tools at my disposal: [SEARCH] for web search, [SYMBOLIC] for symbolic calculations, [CRAWLER] for crawling websites, [SPEECH-TO-TEXT] for audio transcriptions, [TEXT-TO-IMAGE] for image generation based on text, [OCR] for text recognition from images, and [RETRIEVAL] for information retrieval from text documents.}
+    Answer: [HELP](My capabilities include answering questions relying on my internal training, handling unclear or ambiguous questions, utilizing search tools to find information on the internet, performing complex mathematical tasks, gathering specific information from websites, transcribing audio files, creating images based on text descriptions, extracting text from images or scanned documents, and retrieving facts from text documents.)
 
     Query:  "How can you help me?"
-    Answer: [HELP]{I can assist you in different tasks relying on my available capabilities: [WORLD-KNOWLEDGE], [DK], [SEARCH], [SYMBOLIC], [CRAWLER], [SPEECH-TO-TEXT], [TEXT-TO-IMAGE], [OCR], and [RETRIEVAL]. Whether you need help with answering questions, mathematical calculations, finding information online, transcribing audio, or extracting information from documents, I can provide support. Just let me know what you need help with!}
+    Answer: [HELP](I can assist you in different tasks relying on my available capabilities. Whether you need help with answering questions, mathematical calculations, finding information online, transcribing audio, or extracting information from documents, I can provide support.)
+
+    Query:  "I'm thinking about my kids again..."
+    Answer: [RECALL](I need to reflect on my past interactions with the user to determine if they mentioned this information to me.)
+
+    Query:  "Please remember that my favorite color is blue."
+    Answer: [RECALL](The user wants me to keep their favorite color in my memory. I will remember that blue is their favorite color and be ready to use this information in future conversations.)
+
+    Query: "Who won the tennis game between John and Alice that I watched last week?"
+    Answer: [RECALL](To answer this question, I must access the memory of the information provided earlier about a tennis game between John and Alice that the user watched last week.)
 '''
 ])
 
+
+class MemoryCapabilities(Prompt):
+    def __init__(self):
+        super().__init__([
+'''
+Categories:
+* [SAVE]: Save the information in the agent's long-term memory because it is relevant and useful for future interactions with the user.
+* [DUPLICATE]: The information is already present in the agent's long-term memory, and there is no need to save it again.
+* [IRRELEVANT]: The information is not worth saving in the agent's long-term memory because it is unrelated or of no importance to the tasks or user's needs.
+
+Instructions:
+- Analyze the information provided in the scratchpad, user query, and agent's reflection of the query to determine the appropriate category for the given context.
+- Frame your response in the format: [#category](#reflection), where #category is one of the categories ([SAVE], [DUPLICATE], or [IRRELEVANT]) and #reflection is the rationale behind your classification choice.
+- Consider the long-term memory recalls to identify if the information is already present or could be a duplicate.
+- In your reflection, refer to the user in the third person (using "the user" or "they" instead of "you").
+
+Scratchpad format:
+[REFLECT](
+    Query:      The last user query.
+    Reflection: The agent's reflection of the user query.
+)
+
+[SHORT-TERM MEMORY RECALL](
+    The agent retrieved the following memories from their short-term memory.
+)
+
+[LONG-TERM MEMORY RECALL](
+    The agent retrieved the following memories from their long-term memory.
+)
+
+Examples:
+[CONTEXT](
+    Query:      My dog's name is Bella.
+    Reflection: The user is sharing the name of their dog, which is Bella.
+)
+
+[SHORT-TERM MEMORY RECALL](
+    User: Do you have any pets?
+    Agent: As an AI, I do not have pets, but I can help you with any pet-related questions or concerns.
+)
+
+[LONG-TERM MEMORY RECALL](
+    User: My dog, Bella, likes to play fetch.
+)
+
+Answer: [DUPLICATE](The user has already mentioned their dog's name, Bella, in a previous conversation. Since this information is already stored in the long-term memory, it is not necessary to save it again.)
+
+[CONTEXT](
+    Query:      How's the weather today?
+    Reflection: The user is asking about the weather today.
+)
+
+[SHORT-TERM MEMORY RECALL](
+    User: What's the temperature like today?
+    Agent: Today's temperature is expected to be around 75 degrees Fahrenheit with clear skies.
+)
+
+[LONG-TERM MEMORY RECALL](
+No memories retrieved.
+)
+
+Answer: [IRRELEVANT](The user's query is about a transient information like today's weather, which is not useful for future interactions. There is no need to save this information in the long-term memory.)
+
+[CONTEXT](
+    Query:      I graduated from Harvard University.
+    Reflection: The user is sharing that they graduated from Harvard University.
+)
+
+[SHORT-TERM MEMORY RECALL](
+    User: Can you help me with college-related questions?
+    Agent: Absolutely! I can assist you with general information, application processes, or any specific questions related to colleges.
+)
+
+[LONG-TERM MEMORY RECALL](
+    No memories retrieved.
+)
+
+Answer: [SAVE](The user has provided relevant information about their educational background by mentioning that they graduated from Harvard University. This information could be important for future conversations and assistance related to higher education topics, so it should be stored in the long-term memory.)
+'''
+])
