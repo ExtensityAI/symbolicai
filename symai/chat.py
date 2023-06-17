@@ -183,11 +183,12 @@ class SymbiaChat(ChatBot):
 
                     elif '[SPEECH-TO-TEXT]' in ctxt:
                         q       = usr.extract('extract file path')
-                        rsp     = self.speech(q)
+                        rsp     = self.transcribe(q)
                         message = self.narrate('Symbia replies to the user and transcribes the content of the audio file.', context=rsp)
 
                     elif '[TEXT-TO-IMAGE]' in ctxt:
                         q       = usr.extract('text for image creation')
+                        q       = Expression(q)
                         rsp     = q.draw()
                         message = self.narrate('Symbia replies to the user and provides the image URL.', context=rsp)
 
