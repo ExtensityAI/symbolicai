@@ -17,7 +17,7 @@ logging.getLogger('charset_normalizer').setLevel(logging.ERROR)
 
 
 class ChatBot(Expression):
-    _symai_chat: str = """This is a conversation between a chatbot ({}:) and a human (User:). It also includes narration describing the dialog. The chatbot primarily follows the narrative instructions, and then uses the user input to condition on for the generated response. If the chatbot has retrieved any long-term memories, it checks the user query and narrates based on the long-term memory buffer."""
+    _symai_chat: str = '''This is a conversation between a chatbot (Symbia:) and a human (User:). The chatbot follows a narrative structure, primarily relying on the provided instructions. It uses the user's input as a conditioning factor to generate its responses. Whenever Symbia retrieves any long-term memories, it checks the user's query and incorporates information from the long-term memory buffer into its response. If the long-term memories cannot provide a suitable answer, Symbia then checks its short-term memory to be aware of the topics discussed in the recent conversation rounds. Your primary task is to reply to the user's question or statement by generating a relevant and contextually appropriate response. Do not focus on filling the scratchpad with narration, long-term memory recall, short-term memory recall, or reflections. Always consider any follow-up questions or relevant information from the user to generate a response that is contextually relevant. Endeavor to reply to the greatest possible effort.'''
 
     def __init__(self, value = None, name: str = 'Symbia', output: Optional[Output] = None, verbose: bool = False):
         super().__init__(value)
@@ -42,15 +42,10 @@ class ChatBot(Expression):
     def narrate(self, message: str, context: str, category: str = None, end: bool = False, **kwargs) -> Symbol:
         reflection = context if context is not None else ''
         ltmem_recall = 'No memories retrieved.'
-        stmem_recall = 'No memories retrieved.'
-
-        if self.verbose:
-            logging.debug(f'Narration:\n{message}\n')
-            logging.debug(f'Reflection:\n{reflection}\n')
+        stmem_recall = '\n'.join(self.short_term_memory.recall())
+        stmem_recall = stmem_recall if len(stmem_recall) > 0 else 'No memories retrieved.'
 
         if category == 'RECALL':
-            stmem_recall = '\n'.join(self.short_term_memory.recall())
-            stmem_recall = stmem_recall if len(stmem_recall) > 0 else 'No memories retrieved.'
             ltmem_recall = '\n'.join(self.long_term_memory.recall(reflection))
             ltmem_recall = ltmem_recall if len(ltmem_recall) > 0 else 'No memories retrieved.'
             scratchpad   = self._memory_scratchpad(reflection, stmem_recall, ltmem_recall)
@@ -69,16 +64,22 @@ class ChatBot(Expression):
                 self.long_term_memory.store(f'{self.name}: {reflection}')
                 if self.verbose: logging.debug(f'Store new long-term memory:\n{reflection}\n')
                 message = f'{self.name} inform the user that the memory was stored.'
+
             elif do == 'DUPLICATE':
                 message = f'{self.name} engages the user in a conversation about the duplicate topic, showing the user she remembered the past interaction.'
+
             elif do == 'IRRELEVANT':
                 message = f'{self.name} discusses the topic with the user.'
+
+            else: pass
 
         if self.verbose:
             logging.debug(f'Storing new short-term memory:\nUser: {self.last_user_input}\n')
             logging.debug(f'Storing new short-term memory:\n{self.name}: {reflection}\n')
 
         reply = f'{self.name}: {self._narration(message, self.last_user_input, reflection, ltmem_recall, stmem_recall, **kwargs)}'
+
+        if end: print('\n\n', reply)
 
         return Symbol(reply)
 
@@ -108,15 +109,13 @@ class ChatBot(Expression):
             def __call__(self, wrp_self, wrp_params, *args: Any, **kwargs: Any) -> Any:
                 super().override_reserved_signature_keys(wrp_params, *args, **kwargs)
 
-                if f'{name}:' in Symbol(args[0]): input_ = f'\n{str(args[0])}\n$> '
-                else:                             input_ = f'\n{name}: {str(args[0])}\n$> '
+                msg     = re.sub(f'{name}:\s*', '', str(args[0]))
+                console = f'\n{name}: {msg}\n$> '
 
-                memory = args[0].value.split(name+':')[-1]
-                memory = memory.split('(')[-1][:-1] #@NOTE: equivalent to self._extract_reflection
-                if len(memory) > 0:
-                    that.short_term_memory.store(f'{name}:' + memory)
+                if len(msg) > 0:
+                    that.short_term_memory.store(f'{name}: ' + msg)
 
-                return input_
+                return console
 
         return CustomInputPreProcessor
 
@@ -232,45 +231,48 @@ class SymbiaChat(ChatBot):
 
     def _memory_scratchpad(self, context, short_term_memory, long_term_memory):
         scratchpad = f'''
-[REFLECT](
-    Query:      {self.last_user_input}
-    Reflection: {context}
+    [REFLECT](
+Query:      {self.last_user_input}
+Reflection: {self._extract_reflection(context)}
 )
 
-[SHORT-TERM MEMORY RECALL](
-    {short_term_memory}
+    [SHORT-TERM MEMORY RECALL](
+{short_term_memory}
 )
 
-[LONG-TERM MEMORY RECALL](
-    {long_term_memory}
+    [LONG-TERM MEMORY RECALL](
+{long_term_memory}
 )
 '''
 
         return scratchpad
 
-    def _narration(self, msg: str, query: str, reply: str, ltmem_recall: str, stmem_recall: str, **kwargs):
+    def _narration(self, msg: str, query: str, reflection: str, ltmem_recall: str, stmem_recall: str, **kwargs):
         prompt = f'''
-{self._symai_chat}
+{self._symai_chat.format(self.name)}
 
-[NARRATION](
-    {msg}
+    [NARRATION](
+{msg}
 )
 
-[LONG-TERM MEMORY RECALL](
-    {ltmem_recall}
+    [LONG-TERM MEMORY RECALL](
+{ltmem_recall}
 )
 
-[SHORT-TERM MEMORY RECALL](
-    {stmem_recall}
+    [SHORT-TERM MEMORY RECALL](
+{stmem_recall}
 )
 
-[USER](
-    {query}
+    [USER](
+{query}
 )
 
-[REPLY](
-    {reply}
+    [REFLECTION](
+{reflection}
 )
+
+The chatbot always reply in the following format
+{self.name}: <reply>
 '''
 
         @zero_shot(prompt=prompt, **kwargs)

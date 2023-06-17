@@ -844,9 +844,6 @@ Examples:
     Query:  "What is the derivative of x^2?"
     Answer: [SYMBOLIC](The query pertains to the realm of math and necessitates a symbolic engine response. Given my tendency to hallucinate, I may lack the ability to accurately answer this question independently.)
 
-    Query:  "What is your name?"
-    Answer: [WORLD-KNOWLEDGE](The user is inquiring about my name, which is a piece of information that I am well aware of since it is an essential part of my identity.)
-
     Query:  "Kjwe ewqjc qwjren. knowledge?"
     Answer: [DK](The query is not a valid English sentence and I am unable to understand it. I should inform the user that I don't understand the query and ask them to rephrase it.)
 
