@@ -361,12 +361,6 @@ modified:   tests/test_composition.py
         sym = Symbol('I ate') / ' '
         self.assertTrue('I' in sym[0], sym)
 
-    def test_token_size(self):
-        sym = Symbol('I ate all the ice cream.')
-        tokens = sym.tokens
-        res = sym.size
-        self.assertTrue(res == len(tokens), res)
-
     def test_type(self):
         sym = Symbol(np.array([1, 2, 3, 4, 5]))
         self.assertTrue(np.ndarray == sym.type(), sym.type())
@@ -455,13 +449,13 @@ modified:   tests/test_composition.py
         res.save(path, replace=False)
 
     def test_cluster_component(self):
-        expr = Open()
+        reader = FileReader()
         stream = Stream(Sequence(
             Clean(),
             Translate(),
             Outline(),
         ))
-        sym = Symbol(list(stream(expr('examples/paper.pdf', n_pages=1))))
+        sym = Symbol(list(stream(reader('examples/paper.pdf', range=(1, 1)))))
         cluster = Cluster()
         res = cluster(sym)
         mapper = Map()
@@ -471,7 +465,7 @@ modified:   tests/test_composition.py
     def test_paper_component(self):
         paper = Paper(path='examples/paper.pdf')
         expr = Log(Trace(paper))
-        res = expr(n_pages=1)
+        res = expr(range=(1, 1))
         os.makedirs('results', exist_ok=True)
         path = os.path.abspath('results/news.html')
         res.save(path, replace=False)

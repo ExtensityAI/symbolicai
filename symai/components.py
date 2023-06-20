@@ -261,7 +261,7 @@ class ExcludeFilter(Expression):
         return sym.filter(self.exclude, include=False, **kwargs)
 
 
-class Open(Expression):
+class FileReader(Expression):
     def forward(self, path: str, **kwargs) -> Expression:
         return self.open(path, **kwargs)
 
@@ -270,7 +270,7 @@ class FileQuery(Expression):
     def __init__(self, path: str, filter: str):
         super().__init__()
         self.path = path
-        file_open = Open()
+        file_open = FileReader()
         self.query_stream = Stream(Sequence(
             IncludeFilter(filter),
         ))

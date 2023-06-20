@@ -370,14 +370,14 @@ class Symbol(ABC):
         return _func(self, other)
 
     def __len__(self):
-        """Get the length of the string representation of the Symbol's value.
+        """Get the length of the tokenized value of the Symbol.
 
         Returns:
-            int: The length of the string representation of the Symbol's value.
+            int: The length of the tokenized value of the Symbol.
         """
-        return len(str(self.value))
+        return len(self.tokens)
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         """Get the boolean value of the Symbol.
 
         If the Symbol's value is of type bool, the method returns the boolean value, otherwise it returns False.
@@ -385,25 +385,21 @@ class Symbol(ABC):
         Returns:
             bool: The boolean value of the Symbol.
         """
-        return bool(self.value) if isinstance(self.value, bool) else False
-
-    @property
-    def length(self) -> int:
-        """Get the length of the string representation of the Symbol's value.
-
-        Returns:
-            int: The length of the string representation of the Symbol's value.
-        """
-        return len(str(self.value))
+        val = False
+        if isinstance(self.value, bool):
+            val = self.value
+        elif self.value is not None:
+            val = True if self.value else False
+        return val
 
     @property
     def size(self) -> int:
-        """Get the number of tokens in the Symbol's value.
+        """Get the size of the container of the Symbol's value.
 
         Returns:
-            int: The number of tokens in the Symbol's value.
+            int: The size of the container of the Symbol's value.
         """
-        return len(self.tokens)
+        return len(self.value)
 
     @property
     def tokens(self) -> int:
@@ -1465,7 +1461,7 @@ class Symbol(ABC):
 
     def stream(self, expr: "Expression",
                max_tokens: int = 4000,
-               char_token_ratio: float = 0.6,
+               token_ratio: float = 0.6,
                **kwargs) -> "Symbol":
         """Streams the Symbol's value through an Expression object.
 
@@ -1474,7 +1470,7 @@ class Symbol(ABC):
         Args:
             expr (Expression): The Expression object to evaluate the Symbol's chunks.
             max_tokens (int, optional): The maximum number of tokens allowed in a chunk. Defaults to 4000.
-            char_token_ratio (float, optional): The ratio between characters and tokens for calculating max_chars. Defaults to 0.6.
+            token_ratio (float, optional): The ratio between input-output tokens for calculating max_chars. Defaults to 0.6.
             **kwargs: Additional keyword arguments for the given Expression.
 
         Returns:
@@ -1483,33 +1479,21 @@ class Symbol(ABC):
         Raises:
             ValueError: If the Expression object exceeds the maximum allowed tokens.
         """
-        max_chars = int(max_tokens * char_token_ratio)
-        steps = (len(self)// max_chars) + 1
+        max_ctxt_tokens = int(max_tokens * token_ratio)
+        steps = (len(self)// max_ctxt_tokens) + 1
         for chunks in range(steps):
             # iterate over string in chunks of max_chars
-            r = Symbol(str(self)[chunks * max_chars: (chunks + 1) * max_chars])
+            tokens_sliced = self.tokens[chunks * max_ctxt_tokens: (chunks + 1) * max_ctxt_tokens]
+            r = Symbol(self.tokenizer().decode(tokens_sliced))
             size = max_tokens - len(r)
-
             # simulate the expression
             prev = expr(r, max_tokens=size, preview=True, **kwargs)
             prev = self._to_symbol(prev)
-            # if the expression is too big, split it
-            if len(prev) > max_tokens:
-                # split
-                r1_split = r.value[:len(r)//2]
-                r = expr(r1_split, max_tokens=size, **kwargs)
-                yield r
-                r2_split = r.value[len(r)//2:]
-                r = expr(r2_split, max_tokens=size, **kwargs)
-            else:
-                # run the expression
-                r = expr(r, max_tokens=size, **kwargs)
-
-            yield r
+            yield prev
 
     def fstream(self, expr: "Expression",
                 max_tokens: int = 4000,
-                char_token_ratio: float = 0.6,
+                token_ratio: float = 0.6,
                 **kwargs) -> "Symbol":
         """Streams the Symbol's value through an Expression object and returns a Symbol containing a list of processed chunks.
 
@@ -1518,13 +1502,13 @@ class Symbol(ABC):
         Args:
             expr (Expression): The Expression object to evaluate the Symbol's chunks.
             max_tokens (int, optional): The maximum number of tokens allowed in a chunk. Defaults to 4000.
-            char_token_ratio (float, optional): The ratio between characters and tokens for calculating max_chars. Defaults to 0.6.
+            token_ratio (float, optional): The ratio between input-output tokens for calculating max_chars. Defaults to 0.6.
             **kwargs: Additional keyword arguments for the given Expression.
 
         Returns:
             Symbol: A Symbol object containing a list of processed chunks.
         """
-        return self._sym_return_type(list(self.stream(expr, max_tokens, char_token_ratio, **kwargs)))
+        return self._sym_return_type(list(self.stream(expr, max_tokens, token_ratio, **kwargs)))
 
     def ftry(self, expr: "Expression", retries: int = 1, **kwargs) -> "Symbol":
         """Tries to evaluate a Symbol using a given Expression.
