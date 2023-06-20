@@ -54,7 +54,7 @@ class TestInterface(unittest.TestCase):
         expr(Expression('Hello World!').zip(), operation='add')
         expr(Expression('I like cookies!').zip(), operation='add')
         res = expr(Expression('hello').embed().value, operation='search').ast()
-        self.assertTrue('Hello' in str(res['matches'][0]['metadata']), res)
+        self.assertTrue('Hello' in str(res['matches'][0]['metadata']['text']), res)
 
     def test_wolframalpha(self):
         expr = Interface('wolframalpha')

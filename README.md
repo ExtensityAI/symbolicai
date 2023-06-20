@@ -848,7 +848,7 @@ To transcribe audio files, we can perform speech transcription using `whisper`. 
 
 ```python
 expr = Expression()
-res = expr.transcribe('examples/audio.mp3')
+res = expr.speech('examples/audio.mp3')
 ```
 
 ```bash

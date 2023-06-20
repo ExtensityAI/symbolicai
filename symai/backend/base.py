@@ -10,6 +10,7 @@ class Engine(ABC):
         super().__init__()
         self.verbose = False
         self.logging = False
+        self.log_level = logging.DEBUG
         self.time_clock = False
         # create formatter
         os.makedirs('outputs', exist_ok=True)
@@ -43,7 +44,7 @@ class Engine(ABC):
             input_ = f"{str(log['Input']['self'])[:50]}, {str(log['Input']['func'])}, {str(view)}"
             print(input_[:150], str(log['Output'])[:100])
         if self.logging:
-            self.logger.debug(log)
+            self.logger.log(self.log_level, log)
         return res
 
     def preview(self, wrp_params):
@@ -60,5 +61,7 @@ class Engine(ABC):
             self.verbose = wrp_params['verbose']
         if 'logging' in wrp_params:
             self.logging = wrp_params['logging']
+        if 'log_level' in wrp_params:
+            self.log_level = wrp_params['log_level']
         if 'time_clock' in wrp_params:
             self.time_clock = wrp_params['time_clock']
