@@ -370,12 +370,6 @@ modified:   tests/test_composition.py
         sym = Symbol('I ate') / ' '
         self.assertTrue('I' in sym[0], sym)
 
-    def test_token_size(self):
-        sym = Symbol('I ate all the ice cream.')
-        tokens = sym.tokens
-        res = sym.size
-        self.assertTrue(res == len(tokens), res)
-
     def test_type(self):
         sym = Symbol(np.array([1, 2, 3, 4, 5]))
         self.assertTrue(np.ndarray == sym.type(), sym.type())
@@ -484,13 +478,13 @@ modified:   tests/test_composition.py
         self.assertIsNotNone(res)
 
     def test_cluster_component(self):
-        file_open = Open()
+        file_open = FileReader()
         stream = Stream(Sequence(
             Clean(),
             Translate(),
             Outline(),
         ))
-        sym = Symbol(list(stream(file_open('examples/paper.pdf', n_pages=1))))
+        sym = Symbol(list(stream(file_open('examples/paper.pdf', range=(1, 1)))))
         cluster = Cluster()
         res = cluster(sym)
         mapper = Map()
@@ -498,7 +492,7 @@ modified:   tests/test_composition.py
         self.assertIsNotNone(res)
 
     def test_file_read_and_query(self):
-        file_open = Open()
+        file_open = FileReader()
         stream = Stream(Sequence(
             IncludeFilter('include information related to version number'),
             Query('What version number is in the file?'),
@@ -520,7 +514,7 @@ modified:   tests/test_composition.py
     def test_paper_component(self):
         paper = Paper(path='examples/paper.pdf')
         expr = Log(Trace(paper))
-        res = expr(n_pages=1)
+        res = expr(range=(1, 1))
         os.makedirs('results', exist_ok=True)
         path = os.path.abspath('results/news.html')
         res.save(path, replace=False)
@@ -676,7 +670,7 @@ modified:   tests/test_composition.py
         sym = Symbol('[Gary]: Places the major question to the audience.')
         query = Query(prompt="What is the meaning of life?")
         res = query(sym, context=expr, preview=True)
-        self.assertTrue(43 == res.size(), res)
+        self.assertTrue(43 == len(res), res)
 
     def test_fetch_and_query_stream(self):
         expr = Expression()

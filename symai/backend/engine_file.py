@@ -14,17 +14,24 @@ class FileEngine(Engine):
         if input_handler:
             input_handler((path,))
 
+        range_ = None
+        if 'range' in kwargs:
+            range_ = kwargs['range']
+
         if 'pdf' in path:
             rsp = ''
             with open(str(path), 'rb') as f:
                 # creating a pdf reader object
                 pdf_reader = PyPDF2.PdfReader(f)
                 n_pages = len(pdf_reader.pages)
-                if 'n_pages' in kwargs:
-                    n_pages = kwargs['n_pages']
-                for i in range(n_pages):
-                    page = pdf_reader.pages[i]
-                    rsp += page.extract_text()
+                if range_ is None:
+                    for i in range(n_pages):
+                        page = pdf_reader.pages[i]
+                        rsp += page.extract_text()
+                else:
+                    for i in range(n_pages)[range_]:
+                        page = pdf_reader.pages[i]
+                        rsp += page.extract_text()
         else:
             rsp = unpack.from_file(str(path))['content']
 

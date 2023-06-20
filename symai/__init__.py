@@ -7,6 +7,7 @@ from pathlib import Path
 # do not remove - hides the libraries' debug messages
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 logging.getLogger("requests").setLevel(logging.WARNING)
+logging.getLogger("tika").setLevel(logging.ERROR)
 
 
 SYMAI_VERSION = "0.2.27"
