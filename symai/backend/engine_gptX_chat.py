@@ -6,10 +6,11 @@ import openai
 import tiktoken
 
 from .base import Engine
+from .mixin.openai import OpenAIMixin
 from .settings import SYMAI_CONFIG
 
 
-class GPTXChatEngine(Engine):
+class GPTXChatEngine(Engine, OpenAIMixin):
     def __init__(self, max_retry: int = 3, api_cooldown_delay: int = 3):
         super().__init__()
         logger = logging.getLogger('openai')
@@ -20,6 +21,7 @@ class GPTXChatEngine(Engine):
         self.max_retry          = max_retry
         self.api_cooldown_delay = api_cooldown_delay
         self.tokenizer          = tiktoken.encoding_for_model(self.model)
+        self.pricing            = self.api_pricing()
 
     def command(self, wrp_params):
         super().command(wrp_params)

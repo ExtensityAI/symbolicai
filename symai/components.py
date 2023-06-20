@@ -389,16 +389,24 @@ class OpenAICostTracker:
         return f'''
 [BREAKDOWN]
 {'-=-' * 13}
-{self._neurosymbolic()} usage:
+
+{self._neurosymbolic_model()} usage:
     ${self._compute_io_costs():.3f} for {sum(self._inputs)} inputs and {sum(self._outputs)} outputs
-{self._embedding()} usage:
+
+{self._embedding_model()} usage:
     ${self._compute_embedding_costs():.3f} for {sum(self._embeddings)} tokens
+
 Total:
     ${self._compute_io_costs() + self._compute_embedding_costs():.3f}
+
 {'-=-' * 13}
+
 Zero-shot calls: {self._zero_shots}
+
 {'-=-' * 13}
+
 Few-shot calls: {self._few_shots}
+
 {'-=-' * 13}
 '''
 
@@ -445,36 +453,30 @@ Few-shot calls: {self._few_shots}
             self._outputs.append(len(Symbol(arg).tokens))
 
     def _compute_io_costs(self):
-        i_costs = 0
-        o_costs = 0
+        pricing = self._neurosymbolic_pricing()
 
-        if self._neurosymbolic() == 'gpt-3.5-turbo':
-            i_costs += (sum(self._inputs) * 0.0015 / 1_000)
-            o_costs += (sum(self._outputs) * 0.002 / 1_000)
+        if pricing is not None:
+            return (sum(self._inputs) * pricing['input']) + (sum(self._outputs) * pricing['output'])
 
-        elif self._neurosymbolic() == 'gpt-4':
-            i_costs += (sum(self._inputs) * 0.03 / 1_000)
-            o_costs += (sum(self._outputs) * 0.06 / 1_000)
-
-        else: warnings.warn(f'Neurosymbolic engine {self._neurosymbolic()} not supported yet!')
-
-        return i_costs + o_costs
+        return 0
 
     def _compute_embedding_costs(self):
-        emb_costs = 0
+        pricing = self._embedding_pricing()
 
-        if self._embedding() == 'text-embedding-ada-002':
-            emb_costs += (sum(self._embeddings) * 0.0001 / 1_000)
+        if pricing is not None:
+            return sum(self._embeddings) * pricing['usage']
 
-        else: warnings.warn(f'Embedding engine {self._embedding()} not supported yet!')
-
-        return emb_costs
+        return 0
 
     @bind(engine='neurosymbolic', property='model')
-    def _neurosymbolic(self):
-        pass
+    def _neurosymbolic_model(self): pass
+
+    @bind(engine='neurosymbolic', property='pricing')
+    def _neurosymbolic_pricing(self): pass
 
     @bind(engine='embedding', property='model')
-    def _embedding(self):
-        pass
+    def _embedding_model(self): pass
+
+    @bind(engine='embedding', property='pricing')
+    def _embedding_pricing(self): pass
 
