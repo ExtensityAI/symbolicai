@@ -4,7 +4,7 @@ from typing import Any, Optional
 
 from .backend import settings as settings
 from .components import (IncludeFilter, InContextClassification, Outline,
-                         Output, Sequence)
+                         Output, Sequence, OpenAICostTracker)
 from .core import *
 from .memory import Memory, SlidingWindowListMemory, VectorDatabaseMemory
 from .post_processors import ConsolePostProcessor, StripPostProcessor
@@ -284,10 +284,12 @@ The chatbot always reply in the following format
 
         return _func(self)
 
-
 def run() -> None:
-    chat = SymbiaChat()
-    chat()
+    with OpenAICostTracker() as tracker:
+        chat = SymbiaChat()
+        chat()
+    print(tracker)
 
 if __name__ == '__main__':
     run()
+

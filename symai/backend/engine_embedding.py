@@ -5,19 +5,21 @@ from typing import List
 import openai
 
 from .base import Engine
+from .mixin.openai import OpenAIMixin
 from .settings import SYMAI_CONFIG
 
 
-class EmbeddingEngine(Engine):
+class EmbeddingEngine(Engine, OpenAIMixin):
     def __init__(self, max_retry: int = 3, api_cooldown_delay: int = 3):
         super().__init__()
-        config = SYMAI_CONFIG
-        openai.api_key = config['EMBEDDING_ENGINE_API_KEY']
-        self.model = config['EMBEDDING_ENGINE_MODEL']
         logger = logging.getLogger('openai')
         logger.setLevel(logging.WARNING)
-        self.max_retry = max_retry
+        config                  = SYMAI_CONFIG
+        openai.api_key          = config['EMBEDDING_ENGINE_API_KEY']
+        self.model              = config['EMBEDDING_ENGINE_MODEL']
+        self.max_retry          = max_retry
         self.api_cooldown_delay = api_cooldown_delay
+        self.pricing            = self.api_pricing()
 
     def command(self, wrp_params):
         super().command(wrp_params)
