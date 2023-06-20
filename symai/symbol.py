@@ -1479,17 +1479,24 @@ class Symbol(ABC):
         Raises:
             ValueError: If the Expression object exceeds the maximum allowed tokens.
         """
+        # write the algorithm in a more readable way
         max_ctxt_tokens = int(max_tokens * token_ratio)
-        steps = (len(self)// max_ctxt_tokens) + 1
-        for chunks in range(steps):
-            # iterate over string in chunks of max_chars
-            tokens_sliced = self.tokens[chunks * max_ctxt_tokens: (chunks + 1) * max_ctxt_tokens]
-            r = Symbol(self.tokenizer().decode(tokens_sliced))
-            size = max_tokens - len(r)
-            # simulate the expression
-            prev = expr(r, max_tokens=size, preview=True, **kwargs)
-            prev = self._to_symbol(prev)
-            yield prev
+        max_resp_tokens = max_tokens - max_ctxt_tokens
+        prev = expr(self, max_tokens=max_resp_tokens, preview=True, **kwargs)
+        prev = self._to_symbol(prev)
+        if len(prev) > max_tokens:
+            n_splits = (len(prev) // max_ctxt_tokens) + 1
+            for i in range(n_splits):
+                # iterate over string in chunks of max_chars
+                tokens_sliced = self.tokens[i * max_ctxt_tokens: (i + 1) * max_ctxt_tokens]
+                r = Symbol(self.tokenizer().decode(tokens_sliced))
+                # compute remaining tokens
+                max_resp_tokens = max_tokens - len(r)
+                yield expr(r, max_tokens=max_resp_tokens, **kwargs)
+        else:
+            # run the expression
+            r = expr(self, max_tokens=max_resp_tokens, **kwargs)
+            yield r
 
     def fstream(self, expr: "Expression",
                 max_tokens: int = 4000,
