@@ -1342,7 +1342,7 @@ and return the text:
 .. code:: python
 
    expr = Expression()
-   res = expr.transcribe('examples/audio.mp3')
+   res = expr.speech('examples/audio.mp3')
 
 .. code:: bash
 

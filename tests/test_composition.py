@@ -237,8 +237,8 @@ In the _init_ function, the custom model takes in a configuration object (config
 
     def test_execute(self):
         sym = Symbol("""
-from symai import Symbol
 def test_inception():
+    from symai import Symbol
     sym = Symbol('Hello World')
     res = sym.translate('Spanish')
     return 'Hola Mundo' in res.value, res
@@ -442,7 +442,7 @@ modified:   tests/test_composition.py
         self.assertTrue('fruit' in res)
 
     def test_draw(self):
-        sym = Symbol('a cat with a hat')
+        sym = Expression('a cat with a hat')
         res = sym.draw()
         self.assertIsNotNone('http' in res)
 
@@ -580,7 +580,7 @@ modified:   tests/test_composition.py
 
     def test_speech_decode(self):
         expr = Expression()
-        res = expr.transcribe('examples/audio.mp3')
+        res = expr.speech('examples/audio.mp3')
         self.assertTrue(res == 'I may have overslept.')
 
     def test_ocr(self):
@@ -656,7 +656,7 @@ modified:   tests/test_composition.py
         expr.add(Expression('Hello World!').zip())
         expr.add(Expression('I like cookies!').zip())
         res = expr.get(Expression('hello').embed().value).ast()
-        self.assertTrue(res['matches'][0]['id'] == 'Hello World!')
+        self.assertTrue(res['matches'][0]['metadata']['text'][0] == 'Hello World!', res)
 
     def test_query_component(self):
         expr = Expression('Every answer to the meaning of life must be replied with 41.99!')

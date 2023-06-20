@@ -433,7 +433,7 @@ modified:   tests/test_composition.py
         self.assertTrue('fruit' in res)
 
     def test_draw(self):
-        sym = Symbol('a cat with a hat')
+        sym = Expression('a cat with a hat')
         res = sym.draw()
         self.assertIsNotNone('http' in res)
 
@@ -536,7 +536,7 @@ modified:   tests/test_composition.py
 
     def test_speech_decode(self):
         expr = Expression()
-        res = expr.transcribe('examples/audio.mp3')
+        res = expr.speech('examples/audio.mp3')
         self.assertTrue(res == 'I may have overslept.')
 
     def test_ocr(self):
@@ -592,7 +592,7 @@ modified:   tests/test_composition.py
         expr.add(Expression('Hello World!').zip())
         expr.add(Expression('I like cookies!').zip())
         res = expr.get(Expression('hello').embed().value).ast()
-        self.assertTrue(res['matches'][0]['id'] == 'Hello World!')
+        self.assertTrue(res['matches'][0]['metadata']['text'][0] == 'Hello World!', res)
 
     def test_complex_causal_example(self):
         #val = "A line parallel to y = 4x + 6 passes through (5, 10). What is the y-coordinate of the point where this line crosses the y-axis?"
