@@ -54,7 +54,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
 
             if suffix: #TODO: move this suffix in prepare() method
                 prompts_[0]['content'] += f"[PLACEHOLDER]\n{suffix}\n\n"
-                prompts_[0]['content'] += f"Only generate content for the placeholder [PLACEHOLDER] following the instructions and context."
+                prompts_[0]['content'] += f"Only generate content for the placeholder [PLACEHOLDER] following the instructions and context. Do NOT write `[PLACEHOLDER]` in your output.\n\n"
 
             try:
                 res = openai.ChatCompletion.create(model=model,
