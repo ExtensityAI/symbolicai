@@ -1,9 +1,12 @@
+import sys
 import warnings
 from pathlib import Path
 from random import sample
 from string import ascii_lowercase, ascii_uppercase
 from typing import Callable, Iterator, List, Optional
 
+from .backend.engine_embedding import EmbeddingEngine
+from .backend.engine_gptX_chat import GPTXChatEngine
 from .core import *
 from .symbol import Expression, Symbol
 
@@ -365,4 +368,113 @@ class InContextClassification(Expression):
             pass
 
         return Symbol(_func(self))
+
+class OpenAICostTracker:
+    def __init__(self):
+        self._inputs     = []
+        self._outputs    = []
+        self._embeddings = []
+        self._zero_shots = 0
+        self._few_shots  = 0
+
+    def __enter__(self):
+        sys.settrace(self._trace_call)
+
+        return self
+
+    def __exit__(self, *args):
+        sys.settrace(None)
+
+    def __repr__(self):
+        return f'''
+[BREAKDOWN]
+{'-=-' * 13}
+{self._neurosymbolic()} usage:
+    ${self._compute_io_costs():.3f} for {sum(self._inputs)} inputs and {sum(self._outputs)} outputs
+{self._embedding()} usage:
+    ${self._compute_embedding_costs():.3f} for {sum(self._embeddings)} tokens
+Total:
+    ${self._compute_io_costs() + self._compute_embedding_costs():.3f}
+{'-=-' * 13}
+Zero-shot calls: {self._zero_shots}
+{'-=-' * 13}
+Few-shot calls: {self._few_shots}
+{'-=-' * 13}
+'''
+
+    def _trace_call(self, frame, event, arg):
+        if event != 'call': return
+
+        code      = frame.f_code
+        func_name = code.co_name
+
+        if func_name != '_execute_query':
+            if    func_name == 'zero_shot': self._zero_shots += 1
+            elif  func_name == 'few_shot': self._few_shots += 1
+            else: return
+
+        if isinstance(frame.f_locals.get('engine'), GPTXChatEngine):
+            inp      = ''
+            prompt   = frame.f_locals['wrp_params'].get('prompt')
+            examples = frame.f_locals['wrp_params'].get('examples')
+
+            if prompt is not None:
+                if isinstance(prompt, str): inp += prompt + '\n'
+
+            if examples is not None:
+                if    isinstance(examples, str): inp += examples
+                elif  isinstance(examples, list): inp += '\n'.join(examples)
+                elif  isinstance(examples, Prompt): inp += examples.__repr__()
+
+            self._inputs.append(len(Symbol(inp).tokens))
+
+        elif isinstance(frame.f_locals.get('engine'), EmbeddingEngine):
+            text = frame.f_locals.get('wrp_self')
+
+            if text is not None:
+                if   isinstance(text, str): self._embeddings.append(len(Symbol(text).tokens))
+                elif isinstance(text, list): self._embeddings.append(len(Symbol(text[0]).tokens))
+                elif isinstance(text, Symbol): self._embeddings.append(len(text.tokens))
+
+        return self._trace_return
+
+    def _trace_return(self, frame, event, arg):
+        if event != 'return': return
+
+        if isinstance(frame.f_locals.get('engine'), GPTXChatEngine):
+            self._outputs.append(len(Symbol(arg).tokens))
+
+    def _compute_io_costs(self):
+        i_costs = 0
+        o_costs = 0
+
+        if self._neurosymbolic() == 'gpt-3.5-turbo':
+            i_costs += (sum(self._inputs) * 0.0015 / 1_000)
+            o_costs += (sum(self._outputs) * 0.002 / 1_000)
+
+        elif self._neurosymbolic() == 'gpt-4':
+            i_costs += (sum(self._inputs) * 0.03 / 1_000)
+            o_costs += (sum(self._outputs) * 0.06 / 1_000)
+
+        else: warnings.warn(f'Neurosymbolic engine {self._neurosymbolic()} not supported yet!')
+
+        return i_costs + o_costs
+
+    def _compute_embedding_costs(self):
+        emb_costs = 0
+
+        if self._embedding() == 'text-embedding-ada-002':
+            emb_costs += (sum(self._embeddings) * 0.0001 / 1_000)
+
+        else: warnings.warn(f'Embedding engine {self._embedding()} not supported yet!')
+
+        return emb_costs
+
+    @bind(engine='neurosymbolic', property='model')
+    def _neurosymbolic(self):
+        pass
+
+    @bind(engine='embedding', property='model')
+    def _embedding(self):
+        pass
 
