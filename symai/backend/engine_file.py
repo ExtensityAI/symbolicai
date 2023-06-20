@@ -17,6 +17,8 @@ class FileEngine(Engine):
         range_ = None
         if 'range' in kwargs:
             range_ = kwargs['range']
+            if isinstance(range_, tuple) or isinstance(range_, list):
+                range_ = slice(*range_)
 
         if 'pdf' in path:
             rsp = ''
