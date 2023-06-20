@@ -3,6 +3,7 @@ import inspect
 import os
 import pickle
 import traceback
+import warnings
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
@@ -836,58 +837,99 @@ def bind_registry_func(
     ):
     if engine == 'neurosymbolic':
         check_or_init_neurosymbolic_func()
-        assert property in neurosymbolic_engine.__dict__, f'Property {property} not found in neurosymbolic engine'
-        return neurosymbolic_engine.__dict__[property]
+        if property not in neurosymbolic_engine.__dict__:
+            warnings.warn(f'Property {property} not found in neurosymbolic engine, returning None')
+
+        return neurosymbolic_engine.__dict__.get(property)
+
     if engine == 'symbolic':
         check_or_init_symbolic_func()
-        assert property in symbolic_engine.__dict__, f'Property {property} not found in symbolic engine'
-        return symbolic_engine.__dict__[property]
+        if property not in symbolic_engine.__dict__:
+            warnings.warn(f'Property {property} not found in symbolic engine, returning None')
+
+        return symbolic_engine.__dict__.get(property)
+
     if engine == 'ocr':
         check_or_init_ocr_func()
-        assert property in ocr_engine.__dict__, f'Property {property} not found in ocr engine'
-        return ocr_engine.__dict__[property]
+        if property not in ocr_engine.__dict__:
+            warnings.warn(f'Property {property} not found in ocr engine, returning None')
+
+        return ocr_engine.__dict__.get(property)
+
     if engine == 'vision':
         check_or_init_vision_func()
-        assert property in vision_engine.__dict__, f'Property {property} not found in vision engine'
-        return vision_engine.__dict__[property]
+        if property not in vision_engine.__dict__:
+            warnings.warn(f'Property {property} not found in vision engine, returning None')
+
+        return vision_engine.__dict__.get(property)
+
     if engine == 'speech':
         check_or_init_speech_func()
-        assert property in speech_engine.__dict__, f'Property {property} not found in speech engine'
-        return speech_engine.__dict__[property]
+        if property not in speech_engine.__dict__:
+            warnings.warn(f'Property {property} not found in speech engine, returning None')
+
+        return speech_engine.__dict__.get(property)
+
     if engine == 'embedding':
         check_or_init_embedding_func()
-        assert property in embedding_engine.__dict__, f'Property {property} not found in embedding engine'
-        return embedding_engine.__dict__[property]
+        if property not in embedding_engine.__dict__:
+            warnings.warn(f'Property {property} not found in embedding engine, returning None')
+
+        return embedding_engine.__dict__.get(property)
+
     if engine == 'userinput':
         check_or_init_userinput_func()
-        assert property in userinput_engine.__dict__, f'Property {property} not found in userinput engine'
-        return userinput_engine.__dict__[property]
+        if property not in userinput_engine.__dict__:
+            warnings.warn(f'Property {property} not found in userinput engine, returning None')
+
+        return userinput_engine.__dict__.get(property)
+
     if engine == 'search':
         check_or_init_search_func()
-        assert property in search_engine.__dict__, f'Property {property} not found in search engine'
-        return search_engine.__dict__[property]
+        if property not in search_engine.__dict__:
+            warnings.warn(f'Property {property} not found in search engine, returning None')
+
+        return search_engine.__dict__.get(property)
+
     if engine == 'crawler':
         check_or_init_crawler_func()
-        assert property in crawler_engine.__dict__, f'Property {property} not found in crawler engine'
-        return crawler_engine.__dict__[property]
+        if property not in crawler_engine.__dict__:
+            warnings.warn(f'Property {property} not found in crawler engine, returning None')
+
+        return crawler_engine.__dict__.get(property)
+
     if engine == 'execute':
         check_or_init_execute_func()
-        assert property in execute_engine.__dict__, f'Property {property} not found in execute engine'
-        return execute_engine.__dict__[property]
+        if property not in execute_engine.__dict__:
+            warnings.warn(f'Property {property} not found in execute engine, returning None')
+
+        return execute_engine.__dict__.get(property)
+
     if engine == 'index':
         check_or_init_index_func()
-        assert property in index_engine.__dict__, f'Property {property} not found in index engine'
-        return index_engine.__dict__[property]
+        if property not in index_engine.__dict__:
+            warnings.warn(f'Property {property} not found in index engine, returning None')
+
+        return index_engine.__dict__.get(property)
+
     if engine == 'open':
         check_or_init_open_func()
-        assert property in file_engine.__dict__, f'Property {property} not found in open engine'
-        return file_engine.__dict__[property]
+        if property not in file_engine.__dict__:
+            warnings.warn(f'Property {property} not found in open engine, returning None')
+
+        return file_engine.__dict__.get(property)
+
     if engine == 'output':
         check_or_init_output_func()
-        assert property in output_engine.__dict__, f'Property {property} not found in output engine'
-        return output_engine.__dict__[property]
+        if property not in output_engine.__dict__:
+            warnings.warn(f'Property {property} not found in output engine, returning None')
+
+        return output_engine.__dict__.get(property)
+
     if engine == 'imagerendering':
         check_or_init_imagerendering_func()
-        assert property in imagerendering_engine.__dict__, f'Property {property} not found in imagerendering engine'
-        return imagerendering_engine.__dict__[property]
+        if property not in imagerendering_engine.__dict__:
+            warnings.warn(f'Property {property} not found in imagerendering engine, returning None')
+
+        return imagerendering_engine.__dict__.get(property)
 
