@@ -1,5 +1,4 @@
 import sys
-import warnings
 from pathlib import Path
 from random import sample
 from string import ascii_lowercase, ascii_uppercase
@@ -7,8 +6,10 @@ from typing import Callable, Iterator, List, Optional
 
 from .backend.engine_embedding import EmbeddingEngine
 from .backend.engine_gptX_chat import GPTXChatEngine
+from .backend.mixin.openai import SUPPORTED_MODELS
 from .core import *
 from .symbol import Expression, Symbol
+from .utils import CustomUserWarning
 
 
 class Any(Expression):
@@ -331,8 +332,7 @@ class SimilarityClassification(Expression):
         self.in_memory = in_memory
 
         if self.in_memory:
-            warnings.showwarning = lambda message, category, *_: print(f'{category.__name__}: {message}')
-            warnings.warn(f'Caching mode is enabled! It is your responsability to empty the .cache folder if you did changes to the classes. The cache is located at {Path.home()}/.symai/cache')
+            CustomUserWarning(f'Caching mode is enabled! It is your responsability to empty the .cache folder if you did changes to the classes. The cache is located at {Path.home()}/.symai/cache')
 
     def forward(self, x: Symbol) -> Symbol:
         usr_embed    = x.embed()
@@ -370,6 +370,8 @@ class InContextClassification(Expression):
         return Symbol(_func(self))
 
 class OpenAICostTracker:
+    _supported_models = SUPPORTED_MODELS
+
     def __init__(self):
         self._inputs     = []
         self._outputs    = []
@@ -378,6 +380,7 @@ class OpenAICostTracker:
         self._few_shots  = 0
 
     def __enter__(self):
+        CustomUserWarning(f'We are currently supporting only the following models for the {self.__class__.__name__} feature: {self._supported_models}. Any other model will simply be ignored.')
         sys.settrace(self._trace_call)
 
         return self
@@ -391,7 +394,7 @@ class OpenAICostTracker:
 {'-=-' * 13}
 
 {self._neurosymbolic_model()} usage:
-    ${self._compute_io_costs():.3f} for {sum(self._inputs)} inputs and {sum(self._outputs)} outputs
+    ${self._compute_io_costs():.3f} for {sum(self._inputs)} input tokens and {sum(self._outputs)} output tokens
 
 {self._embedding_model()} usage:
     ${self._compute_embedding_costs():.3f} for {sum(self._embeddings)} tokens
@@ -421,7 +424,11 @@ Few-shot calls: {self._few_shots}
             elif  func_name == 'few_shot': self._few_shots += 1
             else: return
 
-        if isinstance(frame.f_locals.get('engine'), GPTXChatEngine):
+        engine = frame.f_locals.get('engine')
+
+        if isinstance(engine, GPTXChatEngine):
+            if self._neurosymbolic_model() not in self._supported_models: return
+
             inp      = ''
             prompt   = frame.f_locals['wrp_params'].get('prompt')
             examples = frame.f_locals['wrp_params'].get('examples')
@@ -436,7 +443,9 @@ Few-shot calls: {self._few_shots}
 
             self._inputs.append(len(Symbol(inp).tokens))
 
-        elif isinstance(frame.f_locals.get('engine'), EmbeddingEngine):
+        elif isinstance(engine, EmbeddingEngine):
+            if self._embedding_model() not in self._supported_models: return
+
             text = frame.f_locals.get('wrp_self')
 
             if text is not None:
@@ -449,24 +458,20 @@ Few-shot calls: {self._few_shots}
     def _trace_return(self, frame, event, arg):
         if event != 'return': return
 
-        if isinstance(frame.f_locals.get('engine'), GPTXChatEngine):
+        engine = frame.f_locals.get('engine')
+
+        if isinstance(engine, GPTXChatEngine):
             self._outputs.append(len(Symbol(arg).tokens))
 
     def _compute_io_costs(self):
-        pricing = self._neurosymbolic_pricing()
+        if self._neurosymbolic_model() not in self._supported_models: return 0
 
-        if pricing is not None:
-            return (sum(self._inputs) * pricing['input']) + (sum(self._outputs) * pricing['output'])
-
-        return 0
+        return (sum(self._inputs) * self._neurosymbolic_pricing()['input']) + (sum(self._outputs) * self._neurosymbolic_pricing()['output'])
 
     def _compute_embedding_costs(self):
-        pricing = self._embedding_pricing()
+        if self._embedding_model() not in self._supported_models: return 0
 
-        if pricing is not None:
-            return sum(self._embeddings) * pricing['usage']
-
-        return 0
+        return sum(self._embeddings) * self._embedding_pricing()['usage']
 
     @bind(engine='neurosymbolic', property='model')
     def _neurosymbolic_model(self): pass

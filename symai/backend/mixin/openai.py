@@ -1,4 +1,4 @@
-import warnings
+SUPPORTED_MODELS = ['gpt-3.5-turbo', 'gpt-4', 'text-embedding-ada-002']
 
 
 class OpenAIMixin:
@@ -20,5 +20,3 @@ class OpenAIMixin:
                 'usage': 0.0001 / 1_000
             }
 
-        else:
-            warnings.warn(f'Engine not yet supported for cost calculation: {type(self)}')
