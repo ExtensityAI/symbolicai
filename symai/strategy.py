@@ -1,19 +1,19 @@
-import symai as ai
+from .symbol import Expression
 import logging
 from pydoc import locate
 
 
-class Interface(ai.Expression):
+class Strategy(Expression):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.logger = logging.getLogger(__name__)
 
-    def __new__(self, module: str, *args, **kwargs) :
+    def __new__(self, module: str, *args, **kwargs):
         module = module.lower()
         module = module.replace('-', '_')
         self._module = module
-        self.module_path = f'symai.extended.interfaces.{module}'
-        return Interface.load_module_class(self.module_path, self._module)(*args, **kwargs)
+        self.module_path = f'symai.extended.strategies.{module}'
+        return Strategy.load_module_class(self.module_path, self._module)(*args, **kwargs)
 
     def __call__(self, *args, **kwargs):
         raise NotImplementedError()

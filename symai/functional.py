@@ -111,6 +111,7 @@ def _process_query(engine,
         'default': default,
         'limit': limit,
         'signature': sig,
+        **kwargs,
         **wrp_kwargs
     }
     # remove nested wrp_kwargs #TODO verify why this is needed

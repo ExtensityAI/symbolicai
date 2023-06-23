@@ -159,9 +159,9 @@ In the _init_ function, the custom model takes in a configuration object (config
         self.assertTrue('I love to eat apples and bananas' in res, res)
 
     def test_html_template(self):
-        sym = Template()
-        sym(Symbol('Create a table with two columns (title, price).', 'data points: Apple, 1.99; Banana, 2.99; Orange, 3.99'))
-        self.assertTrue('<table>' in sym, sym)
+        template = Template()
+        res = template(Symbol('Create a table with two columns (title, price).', 'data points: Apple, 1.99; Banana, 2.99; Orange, 3.99'))
+        self.assertTrue('<table>' in res, res)
 
     def test_rank(self):
         sym = Symbol('a, b, c, d, e, f, g')
@@ -458,8 +458,6 @@ modified:   tests/test_composition.py
         res.save(path, replace=False)
 
     def test_summarizer_component(self):
-        # crawler = Crawler(ExcludeFilter('sentences about subscriptions, licensing, newsletter, trademarks, terms of use, privacy policy'))
-        # data = crawler(url="https://en.wikipedia.org/wiki/Language_technology")
         data = Symbol("""Language technology, often called human language technology (HLT), studies methods of how computer programs or electronic devices can analyze, produce, modify or respond to human texts and speech.[1] Working with language technology often requires broad knowledge not only about linguistics but also about computer science. """)
         summarizer = Log(Trace(Summarizer()))
         res = summarizer(data)
@@ -468,9 +466,7 @@ modified:   tests/test_composition.py
         res.save(path, replace=False)
 
     def test_graph_component(self):
-        crawler = Crawler(ExcludeFilter('sentences about subscriptions, licensing, newsletter, trademarks, terms of use, privacy policy'))
-        data = crawler(url="https://en.wikipedia.org/wiki/Language_technology")
-        #data = """Language technology, often called human language technology (HLT), studies methods of how computer programs or electronic devices can analyze, produce, modify or respond to human texts and speech.[1] Working with language technology often requires broad knowledge not only about linguistics but also about computer science. """
+        data = """Language technology, often called human language technology (HLT), studies methods of how computer programs or electronic devices can analyze, produce, modify or respond to human texts and speech.[1] Working with language technology often requires broad knowledge not only about linguistics but also about computer science. """
         lambda_ = Lambda(lambda x: Symbol(x['args'][0]) / '.')
         graph = Graph(lambda_)
         expr = Log(Trace(graph))
@@ -626,7 +622,7 @@ modified:   tests/test_composition.py
         class TestEngine(GPT3Engine):
             def prepare(self, args, kwargs, wrp_params):
                 wrp_params['prompts'] = ['Write about cats.']
-        custom_engine = TestEngine(max_retry=1)
+        custom_engine = TestEngine()
         sym = Symbol('Write about dogs.')
         Expression.setup(engines={'neurosymbolic': custom_engine})
         res = sym.compose()

@@ -66,3 +66,6 @@ class TestInterface(unittest.TestCase):
         res = expr('x = 5')
         self.assertTrue(res is not None, res)
 
+
+if __name__ == '__main__':
+    unittest.main()

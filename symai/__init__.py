@@ -141,3 +141,4 @@ from .pre_processors import *
 from .prompts import Prompt
 from .shell import Shell
 from .symbol import *
+from .strategy import *
