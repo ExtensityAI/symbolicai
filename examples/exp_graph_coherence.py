@@ -1,8 +1,9 @@
 import logging
-import symai as ai
-import torch
 from functools import partial
 
+import torch
+
+import symai as ai
 
 SUB_TASKS_DESCRIPTION = """[Description]
 You need to read the problem statement and break it down into smaller tasks.

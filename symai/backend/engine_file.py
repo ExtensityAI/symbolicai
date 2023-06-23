@@ -1,6 +1,8 @@
 from typing import List
+
 import PyPDF2
 from tika import unpack
+
 from .base import Engine
 
 

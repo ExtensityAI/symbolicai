@@ -1,5 +1,5 @@
-from ...symbol import Expression
 from ... import core
+from ...symbol import Expression
 
 
 class ocr(Expression):

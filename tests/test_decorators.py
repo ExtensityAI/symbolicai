@@ -1,11 +1,13 @@
 import os
+import unittest
+
+from examples.demo import Demo
 from symai.symbol import Symbol
+
 # for debugging
 # attention this constantly overwrites the keys config file
 #os.environ['OPENAI_API_KEY'] = ''
 
-import unittest
-from examples.demo import Demo
 
 
 class TestDecorator(unittest.TestCase):

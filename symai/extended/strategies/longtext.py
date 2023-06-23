@@ -1,5 +1,6 @@
-from ... import Symbol, Expression
 import logging
+
+from ... import Expression, Symbol
 
 
 class longtext(Expression):

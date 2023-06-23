@@ -1,6 +1,7 @@
 import inspect
 import sys
 
+
 def ignore_exception(exception=Exception, default=None):
     """ Decorator for ignoring exception from a function
     e.g.   @ignore_exception(DivideByZero)

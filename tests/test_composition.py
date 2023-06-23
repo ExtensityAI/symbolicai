@@ -1,17 +1,20 @@
 import os
+import unittest
+
+import numpy as np
+
+from examples.news import News
+from examples.paper import Paper
+from examples.sql import SQL
+from symai import *
+from symai.chat import SymbiaChat
+from symai.extended import *
+
 # for debugging
 # attention this constantly overwrites the keys config file
 #os.environ['OPENAI_API_KEY'] = ''
 
-import unittest
-import numpy as np
-from examples.sql import SQL
 
-from symai import *
-from symai.extended import *
-from symai.chat import SymbiaChat
-from examples.paper import Paper
-from examples.news import News
 
 
 Expression.command(time_clock=True)

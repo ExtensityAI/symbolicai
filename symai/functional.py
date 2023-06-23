@@ -12,7 +12,6 @@ from .pre_processors import *
 from .prompts import Prompt
 from .utils import CustomUserWarning
 
-
 config                = SYMAI_CONFIG
 neurosymbolic_engine  = None
 symbolic_engine       = None
