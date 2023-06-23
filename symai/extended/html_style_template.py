@@ -1,7 +1,6 @@
 from ..components import Stream, Style, Template
 from ..symbol import Expression, Symbol
 
-
 HEADER_STYLE_DESCRIPTION = """[Description]
 Design a web view of data with HTML.
 Use dark theme and best practices for colors, text font, etc.

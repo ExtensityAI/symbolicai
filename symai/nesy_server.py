@@ -1,5 +1,6 @@
 import json
 import os
+
 from box import Box
 from rpyc.utils.server import ThreadedServer
 
@@ -15,6 +16,7 @@ os.makedirs(_args_.huggingface_cache, exist_ok=True)
 
 
 def run() -> None:
-    from symai.backend.services.huggingface_causallm_server import HuggingFaceService
+    from symai.backend.services.huggingface_causallm_server import \
+        HuggingFaceService
     server = ThreadedServer(HuggingFaceService, port=_args_.port)
     server.start()

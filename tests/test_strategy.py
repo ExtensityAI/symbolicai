@@ -1,5 +1,6 @@
 import unittest
-from symai import Interface, Function, Strategy
+
+from symai import Function, Interface, Strategy
 
 
 class TestStrategy(unittest.TestCase):

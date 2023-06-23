@@ -1,8 +1,9 @@
 from typing import List, Optional
 
 import numpy as np
-from ...symbol import Expression
+
 from ... import core
+from ...symbol import Expression
 
 
 class clip(Expression):

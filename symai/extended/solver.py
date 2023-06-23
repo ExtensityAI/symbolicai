@@ -6,7 +6,6 @@ from ..pre_processors import PreProcessor
 from ..prompts import Prompt
 from ..symbol import Expression, Symbol
 
-
 #############################################################################################
 #
 # Code for detecting different patterns in the user query

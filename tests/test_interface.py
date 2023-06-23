@@ -1,5 +1,6 @@
 import unittest
-from symai import Interface, Expression
+
+from symai import Expression, Interface
 
 
 class TestInterface(unittest.TestCase):

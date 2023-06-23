@@ -1,7 +1,7 @@
 from itertools import chain
 from typing import List
 
-from .symbol import Symbol, Expression
+from .symbol import Expression, Symbol
 
 
 class Memory(Expression):

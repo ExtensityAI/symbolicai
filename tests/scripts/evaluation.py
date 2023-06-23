@@ -11,13 +11,13 @@ Before using a local engine, make sure to run:
 """
 
 import argparse
-import pandas as pd
 from pathlib import Path
 
-import symai as ai
-from symai import Symbol, Expression
-from symai.backend.engine_nesy_client import NeSyClientEngine
+import pandas as pd
 
+import symai as ai
+from symai import Expression, Symbol
+from symai.backend.engine_nesy_client import NeSyClientEngine
 
 
 def setup_engine():

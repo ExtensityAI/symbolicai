@@ -1,6 +1,5 @@
 from symai import *
 
-
 HEADER_STYLE_DESCRIPTION = """Design a web app with HTML, CSS and inline JavaScript.
 Use dark theme and best practices for colors, text font, etc.
 Use Bootstrap for styling.

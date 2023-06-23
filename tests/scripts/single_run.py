@@ -1,11 +1,12 @@
 import argparse
-import pandas as pd
 from pathlib import Path
 
+import pandas as pd
+
 import symai as ai
-from symai.extended import Solver
-from symai import Symbol, Expression
+from symai import Expression, Symbol
 from symai.backend.engine_nesy_client import NeSyClientEngine
+from symai.extended import Solver
 
 
 def setup_engine():

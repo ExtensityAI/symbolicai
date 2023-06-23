@@ -1,6 +1,7 @@
-import symai as ai
 import logging
 from pydoc import locate
+
+import symai as ai
 
 
 class Interface(ai.Expression):

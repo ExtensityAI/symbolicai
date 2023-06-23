@@ -1,6 +1,7 @@
-from .symbol import Expression
 import logging
 from pydoc import locate
+
+from .symbol import Expression
 
 
 class Strategy(Expression):

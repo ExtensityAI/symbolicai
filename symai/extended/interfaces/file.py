@@ -1,5 +1,5 @@
-from ...symbol import Symbol, Expression
 from ... import core
+from ...symbol import Expression, Symbol
 
 
 class file(Expression):

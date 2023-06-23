@@ -3,15 +3,14 @@ import re
 from typing import Any, Optional
 
 from .backend import settings as settings
-from .components import (IncludeFilter, InContextClassification, Outline,
-                         Output, Sequence, OpenAICostTracker)
+from .components import (IncludeFilter, InContextClassification,
+                         OpenAICostTracker, Outline, Output, Sequence)
 from .core import *
 from .memory import Memory, SlidingWindowListMemory, VectorDatabaseMemory
 from .post_processors import ConsolePostProcessor, StripPostProcessor
 from .pre_processors import ConsoleInputPreProcessor
-from .prompts import SymbiaCapabilities, MemoryCapabilities
+from .prompts import MemoryCapabilities, SymbiaCapabilities
 from .symbol import Expression, Symbol
-
 
 logging.getLogger('charset_normalizer').setLevel(logging.ERROR)
 

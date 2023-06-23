@@ -18,7 +18,6 @@ from selenium.webdriver.remote.remote_connection import LOGGER
 
 from ... import __root_dir__
 
-
 LOGGER.setLevel(logging.ERROR)
 
 

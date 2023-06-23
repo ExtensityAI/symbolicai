@@ -3,7 +3,6 @@ import logging
 import os
 from pathlib import Path
 
-
 # do not remove - hides the libraries' debug messages
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 logging.getLogger("requests").setLevel(logging.WARNING)
@@ -133,12 +132,11 @@ from .chat import ChatBot
 from .components import *
 from .core import *
 from .functional import ConstraintViolationException
+from .interfaces import *
 from .memory import *
 from .post_processors import *
-from .symbol import *
-from .interfaces import *
 from .pre_processors import *
 from .prompts import Prompt
 from .shell import Shell
-from .symbol import *
 from .strategy import *
+from .symbol import *
