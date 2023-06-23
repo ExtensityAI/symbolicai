@@ -1349,24 +1349,20 @@ class Symbol(ABC):
             pass
         return self._sym_return_type(_func(self))
 
-    def style(self, description: str, libraries = [], template: str = None, placeholder: str = '{{placeholder}}', **kwargs) -> "Symbol":
+    def style(self, description: str, libraries = [], **kwargs) -> "Symbol":
         """Applies a style to the Symbol.
 
-        This method uses the @core.style decorator to apply the given style description, libraries, template, and placeholder to the Symbol. It is useful for providing structure and style to the Symbol's value.
+        This method uses the @core.style decorator to apply the given style description, libraries, and placeholder to the Symbol. It is useful for providing structure and style to the Symbol's value.
 
         Args:
             description (str): The description of the style to apply.
             libraries (List, optional): A list of libraries that may be included in the style. Defaults to an empty list.
-            template (str, optional): The template to apply, if any. Defaults to the Symbol's value.
-            placeholder (str, optional): The placeholder in the template to be replaced with the Symbol's value. Defaults to '{{placeholder}}'.
             **kwargs: Additional keyword arguments for the @core.style decorator.
 
         Returns:
             Symbol: A Symbol object with the style applied.
         """
-        if template is None:
-            template = self.value
-        @core.style(description=description, libraries=libraries, template=template, placeholder=placeholder, **kwargs)
+        @core.style(description=description, libraries=libraries, **kwargs)
         def _func(_):
             pass
         return self._sym_return_type(_func(self))

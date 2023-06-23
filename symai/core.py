@@ -492,7 +492,7 @@ def style(description: str,
           default: Optional[str] = None,
           prompt: str = "Style the [DATA] based on best practices and the descriptions in [...] brackets. Do not remove content from the data! Do not add libraries or other descriptions. \n",
           constraints: List[Callable] = [],
-          pre_processor: Optional[List[PreProcessor]] = [StylePreProcessor(), TemplatePreProcessor()],
+          pre_processor: Optional[List[PreProcessor]] = [StylePreProcessor()],
           post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
           **wrp_kwargs):
     """Styles a given text based on best practices and a given description.
