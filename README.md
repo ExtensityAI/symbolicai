@@ -54,7 +54,7 @@ Conceptually, SymbolicAI is a framework that leverages machine learning – spec
     - [Unit Testing Models](#unit-testing-models)
     - [🔥Debugging](#debugging)
     - [Example: News Summary](#example-news-summary)
-  - [▶️ Play around with our API](#️-play-around-with-our-api)
+  - [▶️ Experiment with Our API](#️-experiment-with-our-api)
   - [📈 Interface for Query and Response Inspection](#-interface-for-query-and-response-inspection)
   - [🤖 Engines](#-engines)
     - [Symbolic Engine](#symbolic-engine)
