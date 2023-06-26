@@ -465,9 +465,12 @@ class CorrectionPreProcessor(PreProcessor):
         ctxt = prep_as_str(wrp_self)
         ctxt = f"{ctxt}\n" if ctxt and len(ctxt) > 0 else ''
         val = wrp_params['context']
-        e = wrp_params['exception']
-        exception = "".join(traceback.format_exception_only(type(e), e)).strip()
-        return f'context "{val}" exception "{exception}" code "{ctxt}" =>'
+        exception = ''
+        if 'exception' not in wrp_params:
+            e = wrp_params['exception']
+            err_msg = "".join(traceback.format_exception_only(type(e), e)).strip()
+            exception = f" exception '{err_msg}'"
+        return f'context "{val}"{exception} code "{ctxt}" =>'
 
 
 class EnumPreProcessor(PreProcessor):
