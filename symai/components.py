@@ -321,7 +321,7 @@ class Function(Expression):
         })
         obj = _type()
         obj._sym_return_type = _type
-        return obj(*args, **kwargs)
+        return self._to_symbol(obj(*args, **kwargs))
 
 
 class SimilarityClassification(Expression):
