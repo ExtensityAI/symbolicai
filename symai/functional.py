@@ -167,7 +167,10 @@ def _process_query(engine,
                 rsp = wrp_params['default']
 
     # return based on return type
-    limit_ = wrp_params['limit'] if wrp_params['limit'] is not None else len(rsp)
+    try:
+        limit_ = wrp_params['limit'] if wrp_params['limit'] is not None else len(rsp)
+    except:
+        limit_ = None
     # if limit_ is greater than 1 and expected only single string return type, join the list into a string
     if limit_ is not None and limit_ > 1 and return_constraint == str and type(rsp) == list:
         rsp = '\n'.join(rsp[:limit_])

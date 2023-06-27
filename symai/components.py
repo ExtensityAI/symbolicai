@@ -3,6 +3,8 @@ from pathlib import Path
 from random import sample
 from string import ascii_lowercase, ascii_uppercase
 from typing import Callable, Iterator, List, Optional
+from tqdm import tqdm
+import re
 
 from .backend.engine_embedding import EmbeddingEngine
 from .backend.engine_gptX_chat import GPTXChatEngine
@@ -10,6 +12,7 @@ from .backend.mixin.openai import SUPPORTED_MODELS
 from .core import *
 from .symbol import Expression, Symbol
 from .utils import CustomUserWarning
+from .memory import VectorDatabaseMemory
 
 
 class Any(Expression):
@@ -485,3 +488,67 @@ Few-shot calls: {self._few_shots}
     @bind(engine='embedding', property='pricing')
     def _embedding_pricing(self): pass
 
+
+class Indexer(Expression):
+    def __init__(self, index_name: str = 'data-index', top_k: int = 10, batch_size: int = 20):
+        super().__init__()
+        self.index_name = index_name
+        self.elements   = []
+        self.batch_size = batch_size
+        self.top_k      = top_k
+        self.NEWLINES_RE = re.compile(r"\n{2,}")  # two or more "\n" characters
+
+    def split_paragraphs(self, input_text=""):
+        no_newlines = input_text.strip("\n")  # remove leading and trailing "\n"
+        split_text = self.NEWLINES_RE.split(no_newlines)  # regex splitting
+
+        paragraphs = [p + "\n" for p in split_text if p.strip()]
+        # p + "\n" ensures that all lines in the paragraph end with a newline
+        # p.strip() == True if paragraph has other characters than whitespace
+
+        return paragraphs
+
+    def split_huge_paragraphs(self, input_text: List[str], max_length=400):
+        paragraphs = []
+        for text in input_text:
+            words = text.split()
+            if len(words) > max_length:
+                for i in range(0, len(words), max_length):
+                    paragraph = ' '.join(words[i:i + max_length])
+                    paragraphs.append(paragraph + "\n")
+            else:
+                paragraphs.append(text)
+        return paragraphs
+
+    def forward(self, query: Optional[Symbol] = None, *args, **kwargs) -> Symbol:
+        that = self
+        if query is not None:
+            query = self._to_symbol(query)
+            # split text paragraph-wise and index each paragraph separately
+            self.elements = self.split_paragraphs(query.value)
+            self.elements = self.split_huge_paragraphs(self.elements)
+            # run over the elments in batches
+            for i in tqdm(range(0, len(self.elements), self.batch_size)):
+                val = Symbol(self.elements[i:i+self.batch_size]).zip()
+                that.add(val)
+
+        def _func(query):
+            res = that.get(Symbol(query).embed().value, index_top_k=that.top_k).ast()
+            res = [v['metadata']['text'] for v in res['matches']]
+            sym = that._to_symbol(res)
+            rsp = sym.query(query, max_tokens=2000)
+            return rsp
+
+        return _func
+
+
+class DocumentRetriever(Expression):
+    def __init__(self, file_path: str):
+        super().__init__()
+        reader = FileReader()
+        indexer = Indexer()
+        text = reader(file_path)
+        self.index = indexer(text)
+
+    def forward(self, query: Optional[Symbol]) -> Symbol:
+        return self.index(query)
