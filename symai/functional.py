@@ -2,6 +2,8 @@ import ast
 import inspect
 import os
 import pickle
+import random
+import time
 import traceback
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
@@ -939,4 +941,34 @@ def bind_registry_func(
             CustomUserWarning(f'Property "{property}" not found in imagerendering engine, returning "None"')
 
         return imagerendering_engine.__dict__.get(property)
+
+
+def retry_func(
+    func: callable,
+    exceptions: Exception,
+    tries: int,
+    delay: int,
+    max_delay: int,
+    backoff=int,
+    jitter=int
+):
+    _tries, _delay = tries, delay
+    while _tries:
+        try:
+            return func()
+        except exceptions as e:
+            _tries -= 1
+            if not _tries:
+                raise
+
+            time.sleep(_delay)
+            _delay *= backoff
+
+            if isinstance(jitter, tuple):
+                _delay += random.uniform(*jitter)
+            else:
+                _delay += jitter
+
+            if max_delay >= 0:
+                _delay = min(_delay, max_delay)
 

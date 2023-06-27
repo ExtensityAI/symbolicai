@@ -55,7 +55,6 @@ class VectorDatabaseMemory(Memory):
         if not self.enabled: return
 
         res = self.get(Symbol(query).embed().value, index_top_k=self.top_k).ast()
-        *res, = chain.from_iterable([v['metadata']['text'] for v in res['matches']])
 
-        return res
+        return [v['metadata']['text'] for v in res['matches']]
 
