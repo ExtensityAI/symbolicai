@@ -5,8 +5,9 @@ from . import __root_dir__
 from .functional import (bind_registry_func, cache_registry_func, command_func,
                          crawler_func, embed_func, execute_func, few_shot_func,
                          imagerendering_func, index_func, ocr_func, open_func,
-                         output_func, search_func, setup_func, speech_func,
-                         symbolic_func, userinput_func, vision_func)
+                         output_func, retry_func, search_func, setup_func,
+                         speech_func, symbolic_func, userinput_func,
+                         vision_func)
 from .post_processors import *
 from .pre_processors import *
 from .prompts import *
@@ -1963,3 +1964,42 @@ def bind(engine: str, property: str):
                 )
         return wrapper
     return decorator
+
+
+def retry(
+    exceptions=Exception,
+    tries=-1,
+    delay=0,
+    max_delay=-1,
+    backoff=1,
+    jitter=0
+):
+    '''
+    Returns a retry decorator.
+
+    :param exceptions: an exception or a tuple of exceptions to catch. default: Exception.
+    :param tries:      the maximum number of attempts. default: -1 (infinite).
+    :param delay:      initial delay between attempts. default: 0.
+    :param max_delay:  the maximum value of delay. default: -1 (no limit).
+    :param backoff:    multiplier applied to delay between attempts. default: 1 (no backoff).
+    :param jitter:     extra seconds added to delay between attempts. default: 0.
+                       fixed if a number, random if a range tuple (min, max)
+
+    Credits to invlpg (https://pypi.org/project/retry)
+    '''
+
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            return retry_func(
+                    functools.partial(func, *args, **kwargs),
+                    exceptions=exceptions,
+                    tries=tries,
+                    delay=delay,
+                    max_delay=max_delay,
+                    backoff=backoff,
+                    jitter=jitter
+                )
+        return wrapper
+    return decorator
+
