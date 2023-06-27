@@ -1444,16 +1444,20 @@ class Symbol(ABC):
             List[Tuple[str, List, Dict]]: A list of tuples containing a unique ID, the value's embeddings, and a query containing the value.
 
         Raises:
-            ValueError: If the Symbol's value is not a string.
+            ValueError: If the Symbol's value is not a string or list of strings.
         """
-        if not isinstance(self.value, str):
+        if isinstance(self.value, str):
+            self.value = [self.value]
+        elif isinstance(self.value, list):
+            pass
+        else:
             raise ValueError(f'Expected id to be a string, got {type(self.value)}')
 
         embeds = self.embed(**kwargs).value
-        idx    = str(uuid.uuid4())
-        query  = {'text': self.value}
+        idx    = [str(uuid.uuid4()) for _ in range(len(self.value))]
+        query  = [{'text': self.value[i]} for i in range(len(self.value))]
 
-        return list(zip([idx], embeds, [query]))
+        return list(zip(idx, embeds, query))
 
     def stream(self, expr: "Expression",
                max_tokens: int = 4000,
@@ -1780,37 +1784,37 @@ class Expression(Symbol):
             Symbol: An Expression object containing the configuration result.
         """
         @core.index(prompt=path, operation='config', **kwargs)
-        def _func(_) -> str:
+        def _func(_):
             pass
         return self._sym_return_type(_func(self))
 
-    def add(self, query: str, **kwargs) -> "Symbol":
+    def add(self, query: List[str], **kwargs) -> "Symbol":
         """Add an entry to the existing index.
 
         Args:
-            query (str): The query string used to add an entry to the index.
+            query (List[str]): The query string used to add an entry to the index.
             **kwargs: Arbitrary keyword arguments to be used by the core.index decorator.
 
         Returns:
             Symbol: An Expression object containing the addition result.
         """
         @core.index(prompt=query, operation='add', **kwargs)
-        def _func(_) -> str:
+        def _func(_):
             pass
         return self._sym_return_type(_func(self))
 
-    def get(self, query: str, **kwargs) -> "Symbol":
+    def get(self, query: List[int], **kwargs) -> "Symbol":
         """Search the index based on the provided query.
 
         Args:
-            query (str): The query string used to search entries in the index.
+            query (List[int]): The query vector used to search entries in the index.
             **kwargs: Arbitrary keyword arguments to be used by the core.index decorator.
 
         Returns:
             Symbol: An Expression object containing the search result.
         """
         @core.index(prompt=query, operation='search', **kwargs)
-        def _func(_) -> str:
+        def _func(_):
             pass
         return self._sym_return_type(_func(self))
 
