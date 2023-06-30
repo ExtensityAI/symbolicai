@@ -490,13 +490,14 @@ Few-shot calls: {self._few_shots}
 
 
 class Indexer(Expression):
-    def __init__(self, index_name: str = 'data-index', top_k: int = 10, batch_size: int = 20):
+    def __init__(self, index_name: str = 'data-index', top_k: int = 8, batch_size: int = 20):
         super().__init__()
-        self.index_name = index_name
-        self.elements   = []
-        self.batch_size = batch_size
-        self.top_k      = top_k
+        self.index_name  = index_name
+        self.elements    = []
+        self.batch_size  = batch_size
+        self.top_k       = top_k
         self.NEWLINES_RE = re.compile(r"\n{2,}")  # two or more "\n" characters
+        self.retrieval   = None
 
     def split_paragraphs(self, input_text=""):
         no_newlines = input_text.strip("\n")  # remove leading and trailing "\n"
@@ -508,7 +509,7 @@ class Indexer(Expression):
 
         return paragraphs
 
-    def split_huge_paragraphs(self, input_text: List[str], max_length=400):
+    def split_huge_paragraphs(self, input_text: List[str], max_length=300):
         paragraphs = []
         for text in input_text:
             words = text.split()
@@ -535,6 +536,7 @@ class Indexer(Expression):
         def _func(query):
             res = that.get(Symbol(query).embed().value, index_top_k=that.top_k).ast()
             res = [v['metadata']['text'] for v in res['matches']]
+            that.retrieval = res
             sym = that._to_symbol(res)
             rsp = sym.query(query, max_tokens=2000)
             return rsp
