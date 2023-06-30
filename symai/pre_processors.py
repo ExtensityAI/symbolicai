@@ -33,6 +33,16 @@ class PreProcessor:
                 _override_reserved_signature_keys(key)
 
 
+class FormatPreProcessor(PreProcessor):
+    def __init__(self, format: str) -> None:
+        self.format_str = format
+
+    def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
+        assert len(args) == 1
+        super().override_reserved_signature_keys(wrp_params, *args, **kwds)
+        return args[0].format(**self.format_str)
+
+
 class EqualsPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         assert len(args) == 1
@@ -298,12 +308,16 @@ class ExpandFunctionPreProcessor(PreProcessor):
         return f'{val} =>\ndef'
 
 
-class FormatPromptWithArgs0PreProcessor(PreProcessor):
+class ArgsPreProcessor(PreProcessor):
+    def __init__(self, format: str = '') -> None:
+        self.format = format
+
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
-        assert len(args) >= 1
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
-        wrp_params['prompt'] = wrp_params['prompt'].format(str(args[0]))
-        return ''
+        args_ = [str(arg) for arg in args]
+        args_ = [str(wrp_self), *args_]
+        breakpoint()
+        return self.format.format(*args_)
 
 
 class ModifyPreProcessor(PreProcessor):
@@ -398,7 +412,7 @@ class LanguagePreProcessor(PreProcessor):
         return f"{str(wrp_self)}"
 
 
-class FormatPreProcessor(PreProcessor):
+class TextFormatPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> Any:
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
         format_ = wrp_params['format']

@@ -70,38 +70,40 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
             if except_remedy is None:
                 raise e
             rsp = except_remedy(e, prompts_, *args, **kwargs)
-
         rsp = [r['text'] for r in res['choices']]
         return rsp if isinstance(prompts, list) else rsp[0]
 
     def prepare(self, args, kwargs, wrp_params):
-        prompt: str = ''
-        # add static context
+        user: str = ""
+        system: str = ""
+        system = f'{system}\n' if system and len(system) > 0 else ''
+
         ref = wrp_params['wrp_self']
         static_ctxt, dyn_ctxt = ref.global_context
         if len(static_ctxt) > 0:
-            prompt += f"General Context:\n{static_ctxt}\n\n----------------\n\n"
-        if wrp_params['prompt'] is not None:
-            prompt += str(wrp_params['prompt'])
-        # build operation
-        message = f'{prompt}\n' if prompt and len(prompt) > 0 else ''
-        # add examples
-        examples: List[str] = wrp_params['examples']
-        if examples:
-            message += f"Examples:\n"
-            message += f"{str(examples)}\n"
-        # add dynamic context
+            system += f"[STATIC CONTEXT]\n{static_ctxt}\n\n"
+
         if len(dyn_ctxt) > 0:
-            message += f"\n\n----------------\n\nDynamic Context:\n{dyn_ctxt}"
-        # add method payload
+            system += f"[DYNAMIC CONTEXT]\n{dyn_ctxt}\n\n"
+
         payload = wrp_params['payload'] if 'payload' in wrp_params else None
         if payload is not None:
-            message += f"\n\n----------------\n\nAdditional Context: {payload}"
+            system += f"[ADDITIONAL CONTEXT]\n{payload}\n\n"
 
-        # add user request
+        examples: List[str] = wrp_params['examples']
+        if examples:
+            system += f"[EXAMPLES]\n{str(examples)}\n\n"
+
         suffix: str = wrp_params['processed_input']
         if '=>' in suffix:
-            message += f"Last Task:\n"
-            message += f"----------------\n\n"
-        message += f"{suffix}"
-        wrp_params['prompts'] = [message]
+            user += f"[LAST TASK]\n"
+        if wrp_params['prompt'] is not None:
+            user += str(wrp_params['prompt'])
+        user += f"{suffix}"
+
+        template_suffix = wrp_params['template_suffix'] if 'template_suffix' in wrp_params else None
+        if template_suffix:
+            user += f"\n[[PLACEHOLDER]]\n{template_suffix}\n\n"
+            user += f"Only generate content for the placeholder `[[PLACEHOLDER]]` following the instructions and context information. Do NOT write `[[PLACEHOLDER]]` or anything else in your output.\n\n"
+
+        wrp_params['prompts'] = [f'---------SYSTEM BEHAVIOR--------\n{system}\n\n---------USER REQUEST--------\n{user}']
