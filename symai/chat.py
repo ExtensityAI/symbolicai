@@ -129,11 +129,23 @@ class ChatBot(Expression):
         return CustomInputPostProcessor
 
 class SymbiaChat(ChatBot):
-    def forward(self):
-        message = self.narrate(f'{self.name} introduces herself, writes a greeting message and asks how to help.', context=None)
+    def forward(self, usr: Optional[str] = None) -> Symbol:
+        loop = True
+        ask_input = True
+        if usr:
+            ask_input = False
+            usr = self._to_symbol(usr)
+        else:
+            message = self.narrate(f'{self.name} introduces herself, writes a greeting message and asks how to help.', context=None)
 
-        while True:
-            usr = self.input(message)
+        # added step-by-step interaction with the user if input is provided
+        while loop:
+            # if no input is provided, ask for input
+            if ask_input:
+                usr = self.input(message)
+            else:
+                loop = False # break the loop after the first iteration
+
             self.last_user_input = usr
             if self.verbose: logging.debug(f'User:\n{usr}\n')
 
@@ -145,7 +157,7 @@ class SymbiaChat(ChatBot):
             if self.verbose: logging.debug(f'In-context:\n{ctxt}\n')
 
             if '[EXIT]' in ctxt:
-                self.narrate(f'{self.name} writes friendly goodbye message.', context=None, end=True)
+                message = self.narrate(f'{self.name} writes friendly goodbye message.', context=None, end=True)
                 break
 
             elif '[HELP]' in ctxt:
@@ -168,7 +180,7 @@ class SymbiaChat(ChatBot):
                         rsp     = q.expression()
                         message = self.narrate(f'{self.name} replies to the user and provides the solution of the math problem.', context=rsp)
 
-                    if '[SEARCH]' in ctxt:
+                    elif '[SEARCH]' in ctxt:
                         q       = usr.extract('user query request')
                         rsp     = self.search(q)
                         message = self.narrate(f'{self.name} replies to the user based on the online search results.', context=rsp)
@@ -216,6 +228,8 @@ class SymbiaChat(ChatBot):
                 except Exception as e:
                     reflection = self._extract_reflection(ctxt)
                     message = self.narrate('Symbia apologizes and explains the user what went wrong.', context=str(e))
+
+        return message
 
     def _extract_reflection(self, msg: str) -> str:
         res = re.findall(r'\(([^)]+)\)', msg)
