@@ -129,20 +129,22 @@ class ChatBot(Expression):
         return CustomInputPostProcessor
 
 class SymbiaChat(ChatBot):
+    def __init__(self, name: str = 'Symbia', verbose: bool = False):
+        super().__init__(name=name, verbose=verbose)
+        self.message = self.narrate(f'{self.name} introduces herself, writes a greeting message and asks how to help.', context=None)
+
     def forward(self, usr: Optional[str] = None) -> Symbol:
         loop = True
         ask_input = True
         if usr:
             ask_input = False
             usr = self._to_symbol(usr)
-        else:
-            message = self.narrate(f'{self.name} introduces herself, writes a greeting message and asks how to help.', context=None)
 
         # added step-by-step interaction with the user if input is provided
         while loop:
             # if no input is provided, ask for input
             if ask_input:
-                usr = self.input(message)
+                usr = self.input(self.message)
             else:
                 loop = False # break the loop after the first iteration
 
@@ -157,79 +159,80 @@ class SymbiaChat(ChatBot):
             if self.verbose: logging.debug(f'In-context:\n{ctxt}\n')
 
             if '[EXIT]' in ctxt:
-                message = self.narrate(f'{self.name} writes friendly goodbye message.', context=None, end=True)
+                self.message = self.narrate(f'{self.name} writes friendly goodbye message.', context=None, end=True)
                 break
 
             elif '[HELP]' in ctxt:
-                reflection = self._extract_reflection(ctxt)
-                message    = self.narrate(f'{self.name} ', context=reflection)
+                reflection   = self._extract_reflection(ctxt)
+                self.message = self.narrate(f'{self.name} ', context=reflection)
 
             elif '[RECALL]' in ctxt:
-                reflection = self._extract_reflection(ctxt)
-                category   = self._extract_category(ctxt)
-                message    = self.narrate(f'{self.name} uses replies based on what has been recovered from the memory.', context=ctxt, category=category)
+                reflection   = self._extract_reflection(ctxt)
+                category     = self._extract_category(ctxt)
+                self.message = self.narrate(f'{self.name} uses replies based on what has been recovered from the memory.', context=ctxt, category=category)
 
             elif '[DK]' in ctxt:
-                reflection = self._extract_reflection(ctxt)
-                message    = self.narrate(f'{self.name} is not sure about the message and references and asks the user for more context.', context=reflection)
+                reflection   = self._extract_reflection(ctxt)
+                self.message = self.narrate(f'{self.name} is not sure about the message and references and asks the user for more context.', context=reflection)
 
             else:
                 try:
                     if '[SYMBOLIC]' in ctxt:
-                        q       = usr.extract("mathematical formula that WolframAlpha can solve")
-                        rsp     = q.expression()
-                        message = self.narrate(f'{self.name} replies to the user and provides the solution of the math problem.', context=rsp)
+                        q            = usr.extract("mathematical formula that WolframAlpha can solve")
+                        rsp          = q.expression()
+                        self.message = self.narrate(f'{self.name} replies to the user and provides the solution of the math problem.', context=rsp)
 
                     elif '[SEARCH]' in ctxt:
-                        q       = usr.extract('user query request')
-                        rsp     = self.search(q)
-                        message = self.narrate(f'{self.name} replies to the user based on the online search results.', context=rsp)
+                        q            = usr.extract('user query request')
+                        rsp          = self.search(q)
+                        self.message = self.narrate(f'{self.name} replies to the user based on the online search results.', context=rsp)
 
                     elif '[CRAWLER]' in ctxt:
-                        q       = usr.extract('URL from text')
-                        q       = q.convert('proper URL, example: https://www.google.com')
-                        site    = self.fetch(q)
+                        q    = usr.extract('URL from text')
+                        q    = q.convert('proper URL, example: https://www.google.com')
+                        site = self.fetch(q)
                         site.save('tmp.html')
-                        message = self.narrate(f'{self.name} explains that the website is downloaded to the `tmp.html` file.')
+                        self.message = self.narrate(f'{self.name} explains that the website is downloaded to the `tmp.html` file.')
 
                     elif '[SPEECH-TO-TEXT]' in ctxt:
-                        q       = usr.extract('extract file path')
-                        rsp     = self.speech(q)
-                        message = self.narrate('Symbia replies to the user and transcribes the content of the audio file.', context=rsp)
+                        q            = usr.extract('extract file path')
+                        rsp          = self.speech(q)
+                        self.message = self.narrate('Symbia replies to the user and transcribes the content of the audio file.', context=rsp)
 
                     elif '[TEXT-TO-IMAGE]' in ctxt:
-                        q       = usr.extract('text for image creation')
-                        q       = Expression(q)
-                        rsp     = q.draw()
-                        message = self.narrate('Symbia replies to the user and provides the image URL.', context=rsp)
+                        q            = usr.extract('text for image creation')
+                        q            = Expression(q)
+                        rsp          = q.draw()
+                        self.message = self.narrate('Symbia replies to the user and provides the image URL.', context=rsp)
 
                     elif '[OCR]' in ctxt:
-                        url     = usr.extract('extract url')
-                        rsp     = Expression().ocr(url)
-                        message = self.narrate('Symbia replies to the user and provides OCR text from the image.', context=rsp)
+                        url          = usr.extract('extract url')
+                        rsp          = Expression().ocr(url)
+                        self.message = self.narrate('Symbia replies to the user and provides OCR text from the image.', context=rsp)
 
                     elif '[RETRIEVAL]' in ctxt:
-                        file = usr.extract('extract file path')
+                        file_path = usr.extract('extract file path')
+                        file = self.open(file_path)
                         q    = usr.extract('user question')
-                        rsp  = file.fstream(
+                        rsp  = file.stream(
                             Sequence(
                                 IncludeFilter('include only facts related to the user question: ' @ q),
                                 Outline()
                             )
                         )
-                        message = self.narrate('Symbia replies to the user and outlines and relies to the user query.', context=rsp)
+                        self.message = self.narrate('Symbia replies to the user and outlines and relies to the user query.', context=rsp)
 
                     else:
-                        q          = usr.extract('user query request')
-                        rsp        = self.search(q)
-                        reflection = self._extract_reflection(ctxt)
-                        message    = self.narrate('Symbia tries to interpret the response, and if unclear asks the user to restate the statement or add more context.', context=reflection)
+                        q            = usr.extract('user query request')
+                        rsp          = self.search(q)
+                        reflection   = self._extract_reflection(ctxt)
+                        self.message = self.narrate('Symbia tries to interpret the response, and if unclear asks the user to restate the statement or add more context.', context=reflection)
 
                 except Exception as e:
-                    reflection = self._extract_reflection(ctxt)
-                    message = self.narrate('Symbia apologizes and explains the user what went wrong.', context=str(e))
+                    reflection   = self._extract_reflection(ctxt)
+                    self.message = self.narrate('Symbia apologizes and explains the user what went wrong.', context=str(e))
 
-        return message
+        return self.message
 
     def _extract_reflection(self, msg: str) -> str:
         res = re.findall(r'\(([^)]+)\)', msg)
@@ -288,14 +291,13 @@ Reflection: {self._extract_reflection(context)}
 The chatbot always reply in the following format
 {self.name}: <reply>
 '''
-
         @zero_shot(prompt=prompt, **kwargs)
         def _func(_) -> str:
             pass
-
         if self.verbose: logging.debug(f'Narration:\n{prompt}\n')
-
-        return _func(self)
+        res = _func(self)
+        res = res.replace(f'{self.name}: ', '').strip()
+        return res
 
 def run() -> None:
     with OpenAICostTracker() as tracker:

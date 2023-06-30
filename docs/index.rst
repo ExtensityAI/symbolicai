@@ -1556,7 +1556,7 @@ must sub-class the ``Engine`` class. Both methods can be specified to
 address one, more or all engines.
 
 Here is an example how to initialize your own engine. We will sub-class
-the existing ``GPT3Engine`` and override the ``prepare`` method. This
+the existing ``GPTXCompletionEngine`` and override the ``prepare`` method. This
 method is called before the neural computation and can be used to modify
 the parameters of the actual input prompt that will be passed in for
 execution. In this example, we will replace the prompt with dummy text
@@ -1564,8 +1564,8 @@ for illustration purposes:
 
 .. code:: python
 
-   from symai.backend.engine_gpt3 import GPT3Engine
-   class DummyEngine(GPT3Engine):
+   from symai.backend.engine_gptX_completion import GPTXCompletionEngine
+   class DummyEngine(GPTXCompletionEngine):
        def prepare(self, args, kwargs, wrp_params):
            wrp_params['prompts'] = ['Go wild and generate something!']
    custom_engine = DummyEngine()
@@ -1587,7 +1587,7 @@ useful for debugging purposes:
 .. code:: bash
 
    :Output:
-   <symai.backend.engine_gpt3.GPT3Engine object at 0, <function Symbol.translate.<locals>._func at 0x7fd68ba04820>, {'wrp_self': <class 'symai.symbol.S ['\n\nHallo Welt!']
+   <symai.backend.engine_gptX_completion.GPTXCompletionEngine object at 0, <function Symbol.translate.<locals>._func at 0x7fd68ba04820>, {'wrp_self': <class 'symai.symbol.S ['\n\nHallo Welt!']
 
 Here is the list of names of the engines that are currently supported:
 

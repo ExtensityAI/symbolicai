@@ -1,7 +1,7 @@
 from symai import *
 
-HEADER_STYLE_DESCRIPTION = """Design a web app with HTML, CSS and inline JavaScript. 
-Use dark theme and best practices for colors, text font, etc. 
+HEADER_STYLE_DESCRIPTION = """Design a web app with HTML, CSS and inline JavaScript.
+Use dark theme and best practices for colors, text font, etc.
 Use Bootstrap for styling.
 Do NOT remove the {{placeholder}} tag and do NOT add new tags into the body!"""
 
@@ -19,8 +19,8 @@ HTML_TEMPLATE = """<!doctype html>
 </html>"""
 
 HTML_STREAM_STYLE_DESCRIPTION = """Style the elements according to the bootstrap library.
-Replace the list items with a summary title and the item text. 
-Add highlighting animations. 
+Replace the list items with a summary title and the item text.
+Add highlighting animations.
 Use best practices for colors, text font, etc."""
 
 
@@ -35,11 +35,11 @@ class Paper(Expression):
             *filters,
             Compose(f'Write a paper summary. Keep all information with the corresponding citations:\n'),
         ))
-        self.header_style = Style(description=HEADER_STYLE_DESCRIPTION, 
-                                  libraries=['https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css', 
+        self.header_style = Style(description=HEADER_STYLE_DESCRIPTION,
+                                  libraries=['https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css',
                                              'https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js',
                                              'https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js'])
-        
+
         self.html_template = Symbol(HTML_TEMPLATE)
         self.html_template_seq = Template()
         self.html_stream = Stream(
@@ -48,11 +48,11 @@ class Paper(Expression):
                 Style(description=HTML_STREAM_STYLE_DESCRIPTION)
             )
         )
-        
+
     def forward(self, **kwargs) -> Symbol:
         res = self.open(self.path, **kwargs)
         data = ''
-        template = self.header_style(self.html_template, max_tokens=2000)
+        template = self.header_style(self.html_template)
         paragraphs = []
         for section in self.data_stream(res):
             key = section.unique(paragraphs)

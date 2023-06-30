@@ -3,18 +3,23 @@ from time import sleep
 from typing import List
 
 import openai
+import tiktoken
 
 from .base import Engine
+from .mixin.openai import OpenAIMixin
 from .settings import SYMAI_CONFIG
 
 
-class GPT3Engine(Engine):
+class GPTXCompletionEngine(Engine, OpenAIMixin):
     def __init__(self):
         super().__init__()
-        config = SYMAI_CONFIG
-        openai.api_key = config['NEUROSYMBOLIC_ENGINE_API_KEY']
-        self.model = config['NEUROSYMBOLIC_ENGINE_MODEL']
-        logger = logging.getLogger('openai')
+        config          = SYMAI_CONFIG
+        openai.api_key  = config['NEUROSYMBOLIC_ENGINE_API_KEY']
+        self.model      = config['NEUROSYMBOLIC_ENGINE_MODEL']
+        logger          = logging.getLogger('openai')
+        self.tokenizer  = tiktoken.encoding_for_model(self.model)
+        self.pricing    = self.api_pricing()
+        self.max_tokens = self.api_max_tokens()
         logger.setLevel(logging.WARNING)
 
     def command(self, wrp_params):
@@ -24,6 +29,12 @@ class GPT3Engine(Engine):
         if 'NEUROSYMBOLIC_ENGINE_MODEL' in wrp_params:
             self.model = wrp_params['NEUROSYMBOLIC_ENGINE_MODEL']
 
+    def compute_remaining_tokens(self, prompts: list) -> int:
+        # iterate over prompts and compute number of tokens
+        prompt = prompts[0]
+        val = len(self.tokenizer.encode(prompt))
+        return int((self.max_tokens - val) * 0.99)
+
     def forward(self, prompts: List[str], *args, **kwargs) -> List[str]:
         prompts_            = prompts if isinstance(prompts, list) else [prompts]
         input_handler       = kwargs['input_handler'] if 'input_handler' in kwargs else None
@@ -31,10 +42,10 @@ class GPT3Engine(Engine):
             input_handler((prompts_,))
 
         # send prompt to GPT-3
+        max_tokens          = kwargs['max_tokens'] if 'max_tokens' in kwargs else self.compute_remaining_tokens(prompts_)
         stop                = kwargs['stop'] if 'stop' in kwargs else None
         model               = kwargs['model'] if 'model' in kwargs else self.model
         suffix              = kwargs['template_suffix'] if 'template_suffix' in kwargs else None
-        max_tokens          = kwargs['max_tokens'] if 'max_tokens' in kwargs else 128
         temperature         = kwargs['temperature'] if 'temperature' in kwargs else 0.7
         frequency_penalty   = kwargs['frequency_penalty'] if 'frequency_penalty' in kwargs else 0
         presence_penalty    = kwargs['presence_penalty'] if 'presence_penalty' in kwargs else 0
@@ -43,15 +54,15 @@ class GPT3Engine(Engine):
 
         try:
             res = openai.Completion.create(model=model,
-                                            prompt=prompts_,
-                                            suffix=suffix,
-                                            max_tokens=max_tokens,
-                                            temperature=temperature,
-                                            frequency_penalty=frequency_penalty,
-                                            presence_penalty=presence_penalty,
-                                            top_p=top_p,
-                                            stop=stop,
-                                            n=1)
+                                           prompt=prompts_,
+                                           suffix=suffix,
+                                           max_tokens=max_tokens,
+                                           temperature=temperature,
+                                           frequency_penalty=frequency_penalty,
+                                           presence_penalty=presence_penalty,
+                                           top_p=top_p,
+                                           stop=stop,
+                                           n=1)
             output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
             if output_handler:
                 output_handler(res)

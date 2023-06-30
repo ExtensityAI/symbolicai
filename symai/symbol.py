@@ -1460,7 +1460,6 @@ class Symbol(ABC):
         return list(zip(idx, embeds, query))
 
     def stream(self, expr: "Expression",
-               max_tokens: int = 4000,
                token_ratio: float = 0.6,
                **kwargs) -> "Symbol":
         """Streams the Symbol's value through an Expression object.
@@ -1480,42 +1479,24 @@ class Symbol(ABC):
             ValueError: If the Expression object exceeds the maximum allowed tokens.
         """
         # write the algorithm in a more readable way
-        max_ctxt_tokens = int(max_tokens * token_ratio)
-        max_resp_tokens = max_tokens - max_ctxt_tokens
-        prev = expr(self, max_tokens=max_resp_tokens, preview=True, **kwargs)
+
+        @core.bind(engine='neurosymbolic', property='max_tokens')
+        def _max_tokens(_): pass
+
+        max_ctxt_tokens = int(_max_tokens(self) * token_ratio)
+        prev = expr(self, preview=True, **kwargs)
         prev = self._to_symbol(prev)
-        if len(prev) > max_tokens:
+        if len(prev) > _max_tokens(self):
             n_splits = (len(prev) // max_ctxt_tokens) + 1
             for i in range(n_splits):
                 # iterate over string in chunks of max_chars
                 tokens_sliced = self.tokens[i * max_ctxt_tokens: (i + 1) * max_ctxt_tokens]
                 r = Symbol(self.tokenizer().decode(tokens_sliced))
-                # compute remaining tokens
-                max_resp_tokens = max_tokens - len(r)
-                yield expr(r, max_tokens=max_resp_tokens, **kwargs)
+                yield expr(r, **kwargs)
         else:
             # run the expression
-            r = expr(self, max_tokens=max_resp_tokens, **kwargs)
+            r = expr(self, **kwargs)
             yield r
-
-    def fstream(self, expr: "Expression",
-                max_tokens: int = 4000,
-                token_ratio: float = 0.6,
-                **kwargs) -> "Symbol":
-        """Streams the Symbol's value through an Expression object and returns a Symbol containing a list of processed chunks.
-
-        This method is a wrapper around the `stream` method that returns a Symbol object containing a list of processed chunks instead of a generator.
-
-        Args:
-            expr (Expression): The Expression object to evaluate the Symbol's chunks.
-            max_tokens (int, optional): The maximum number of tokens allowed in a chunk. Defaults to 4000.
-            token_ratio (float, optional): The ratio between input-output tokens for calculating max_chars. Defaults to 0.6.
-            **kwargs: Additional keyword arguments for the given Expression.
-
-        Returns:
-            Symbol: A Symbol object containing a list of processed chunks.
-        """
-        return self._sym_return_type(list(self.stream(expr, max_tokens, token_ratio, **kwargs)))
 
     def ftry(self, expr: "Expression", retries: int = 1, **kwargs) -> "Symbol":
         """Tries to evaluate a Symbol using a given Expression.
@@ -1550,8 +1531,8 @@ class Symbol(ABC):
                     raise e
                 else:
                     err =  Symbol(prompt['message'])
-                    res = err.analyze(query="What is the issue in this expression?", payload=sym, exception=e, max_tokens=2000)
-                    sym = sym.correct(context=prompt['message'], exception=e, payload=res, max_tokens=2000)
+                    res = err.analyze(query="What is the issue in this expression?", payload=sym, exception=e)
+                    sym = sym.correct(context=prompt['message'], exception=e, payload=res)
 
     def expand(self, *args, **kwargs) -> "Symbol":
         """Expand the current Symbol and create a new sub-component.
@@ -1563,7 +1544,7 @@ class Symbol(ABC):
         Returns:
             Symbol: The name of the newly created sub-component.
         """
-        @core.expand(max_tokens=2048, **kwargs)
+        @core.expand(**kwargs)
         def _func(_, *args):
             pass
         _tmp_llm_func = self._sym_return_type(_func(self, *args))

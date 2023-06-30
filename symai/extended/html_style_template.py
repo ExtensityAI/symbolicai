@@ -82,7 +82,6 @@ class HtmlStyleTemplate(Expression):
         style_data = [str(self.style_template(html,
                                               template=HTML_TEMPLATE_STYLE,
                                               placeholder='{{placeholder}}',
-                                              max_tokens=2000,
                                               **kwargs)) for html in html_data]
         res = '\n'.join(style_data)
         res = Symbol(res)

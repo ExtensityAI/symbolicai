@@ -12,7 +12,6 @@ from .backend.mixin.openai import SUPPORTED_MODELS
 from .core import *
 from .symbol import Expression, Symbol
 from .utils import CustomUserWarning
-from .memory import VectorDatabaseMemory
 
 
 class Any(Expression):
@@ -96,22 +95,14 @@ class Sequence(Expression):
 
 
 class Stream(Expression):
-    def __init__(self, expr: Expression, force: bool = False, max_tokens: int = 4000): #4097
+    def __init__(self, expr: Expression):
         super().__init__()
-        self.max_tokens: int = max_tokens
         self.char_token_ratio: float = 0.6
         self.expr: Expression = expr
-        self.force: bool = force
 
     def forward(self, sym: Symbol, **kwargs) -> Iterator[Symbol]:
         sym = self._to_symbol(sym)
-        if self.force:
-            return sym.fstream(expr=self.expr,
-                               max_tokens=self.max_tokens,
-                               char_token_ratio=self.char_token_ratio,
-                               **kwargs)
         return sym.stream(expr=self.expr,
-                          max_tokens=self.max_tokens,
                           char_token_ratio=self.char_token_ratio,
                           **kwargs)
 
@@ -372,6 +363,7 @@ class InContextClassification(Expression):
 
         return Symbol(_func(self))
 
+
 class OpenAICostTracker:
     _supported_models = SUPPORTED_MODELS
 
@@ -383,7 +375,8 @@ class OpenAICostTracker:
         self._few_shots  = 0
 
     def __enter__(self):
-        CustomUserWarning(f'We are currently supporting only the following models for the {self.__class__.__name__} feature: {self._supported_models}. Any other model will simply be ignored.')
+        if self._neurosymbolic_model() not in self._supported_models:
+            CustomUserWarning(f'We are currently supporting only the following models for the {self.__class__.__name__} feature: {self._supported_models}. Any other model will simply be ignored.')
         sys.settrace(self._trace_call)
 
         return self
@@ -538,19 +531,7 @@ class Indexer(Expression):
             res = [v['metadata']['text'] for v in res['matches']]
             that.retrieval = res
             sym = that._to_symbol(res)
-            rsp = sym.query(query, max_tokens=2000)
+            rsp = sym.query(query)
             return rsp
 
         return _func
-
-
-class DocumentRetriever(Expression):
-    def __init__(self, file_path: str):
-        super().__init__()
-        reader = FileReader()
-        indexer = Indexer()
-        text = reader(file_path)
-        self.index = indexer(text)
-
-    def forward(self, query: Optional[Symbol]) -> Symbol:
-        return self.index(query)

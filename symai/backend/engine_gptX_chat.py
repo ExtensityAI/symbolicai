@@ -15,11 +15,12 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         super().__init__()
         logger = logging.getLogger('openai')
         logger.setLevel(logging.WARNING)
-        config                  = SYMAI_CONFIG
-        openai.api_key          = config['NEUROSYMBOLIC_ENGINE_API_KEY']
-        self.model              = config['NEUROSYMBOLIC_ENGINE_MODEL']
-        self.tokenizer          = tiktoken.encoding_for_model(self.model)
-        self.pricing            = self.api_pricing()
+        config          = SYMAI_CONFIG
+        openai.api_key  = config['NEUROSYMBOLIC_ENGINE_API_KEY']
+        self.model      = config['NEUROSYMBOLIC_ENGINE_MODEL']
+        self.tokenizer  = tiktoken.encoding_for_model(self.model)
+        self.pricing    = self.api_pricing()
+        self.max_tokens = self.api_max_tokens()
 
     def command(self, wrp_params):
         super().command(wrp_params)
@@ -27,6 +28,13 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             openai.api_key = wrp_params['NEUROSYMBOLIC_ENGINE_API_KEY']
         if 'NEUROSYMBOLIC_ENGINE_MODEL' in wrp_params:
             self.model = wrp_params['NEUROSYMBOLIC_ENGINE_MODEL']
+
+    def compute_remaining_tokens(self, prompts: dict) -> int:
+        # iterate over prompts and compute number of tokens
+        prompts_ = [role['content'] for role in prompts]
+        prompt = ''.join(prompts_)
+        val = len(self.tokenizer.encode(prompt))
+        return int((self.max_tokens - val) * 0.99)
 
     def forward(self, prompts: List[str], *args, **kwargs) -> List[str]:
         prompts_            = prompts
@@ -37,7 +45,9 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         # send prompt to GPT-X Chat-based
         stop                = kwargs['stop'] if 'stop' in kwargs else None
         model               = kwargs['model'] if 'model' in kwargs else self.model
-        max_tokens          = kwargs['max_tokens'] if 'max_tokens' in kwargs else 128
+
+        # convert map to list of strings
+        max_tokens          = kwargs['max_tokens'] if 'max_tokens' in kwargs else self.compute_remaining_tokens(prompts_)
         temperature         = kwargs['temperature'] if 'temperature' in kwargs else 1
         frequency_penalty   = kwargs['frequency_penalty'] if 'frequency_penalty' in kwargs else 0
         presence_penalty    = kwargs['presence_penalty'] if 'presence_penalty' in kwargs else 0

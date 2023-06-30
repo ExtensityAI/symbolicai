@@ -196,7 +196,7 @@ In the _init_ function, the custom model takes in a configuration object (config
     def test_correct_max_context_size(self):
         sym = Symbol("""Exception: Failed to query GPT-3 after 3 retries. Errors: [InvalidRequestError(message="This model's maximum context length is 4097 tokens, however you requested 7410 tokens (2988 in your prompt; 4422 for the completion). Please reduce your prompt; or completion length.",
                      param=None, code=None, http_status=400, request_id=None)]""")
-        res = sym.compose(max_tokens=8000)
+        res = sym.compose()
         self.assertIsNotNone(res)
 
     def test_equality(self):
@@ -273,7 +273,7 @@ test = 'it works'
     def test_list(self):
         sym = Symbol("""
 modified:   symai/backend/driver/webclient.py
-modified:   symai/backend/engine_gpt3.py
+modified:   symai/backend/engine_gptX_completion.py
 modified:   symai/backend/engine_userinput.py
 modified:   symai/core.py
 modified:   symai/expressions.py
@@ -407,7 +407,7 @@ modified:   tests/test_composition.py
             Translate(),
             Outline()
         )
-        res = sym.fstream(seq)
+        res = sym.stream(seq)
         self.assertTrue('self-aware' in res, res)
 
     def test_stream_expr(self):
@@ -621,8 +621,8 @@ modified:   tests/test_composition.py
         self.assertTrue('Hallo Welt!' in res, res)
 
     def test_setup_engine(self):
-        from symai.backend.engine_gpt3 import GPT3Engine
-        class TestEngine(GPT3Engine):
+        from symai.backend.engine_gptX_completion import GPTXCompletionEngine
+        class TestEngine(GPTXCompletionEngine):
             def prepare(self, args, kwargs, wrp_params):
                 wrp_params['prompts'] = ['Write about cats.']
         custom_engine = TestEngine()
@@ -637,7 +637,7 @@ modified:   tests/test_composition.py
         model.init_model('cuda:4')
         sym = Symbol('Write about dogs.')
         Expression.setup(engines={'neurosymbolic': model})
-        res = sym.compose(max_tokens=500)
+        res = sym.compose()
         self.assertTrue('dog' in str(res).lower(), res)
 
     def test_command(self):
