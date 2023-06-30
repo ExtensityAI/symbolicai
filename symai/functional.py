@@ -199,8 +199,8 @@ def check_or_init_neurosymbolic_func(engine=None):
                 config['NEUROSYMBOLIC_ENGINE_MODEL'].startswith('curie') or \
                     config['NEUROSYMBOLIC_ENGINE_MODEL'].startswith('babbage') or \
                         config['NEUROSYMBOLIC_ENGINE_MODEL'].startswith('ada'):
-            from .backend.engine_gpt3 import GPT3Engine
-            neurosymbolic_engine = GPT3Engine()
+            from .backend.engine_gptX_completion import GPTXCompletionEngine
+            neurosymbolic_engine = GPTXCompletionEngine()
         elif config['NEUROSYMBOLIC_ENGINE_MODEL'].startswith('gpt-'):
             from .backend.engine_gptX_chat import GPTXChatEngine
             neurosymbolic_engine = GPTXChatEngine()

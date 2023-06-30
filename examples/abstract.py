@@ -1,16 +1,16 @@
 from symai import *
 
-HEADER_DESCRIPTION = """Design a web app with HTML, CSS and inline JavaScript. 
-Use dark theme and best practices for colors, text font, etc. 
+HEADER_DESCRIPTION = """Design a web app with HTML, CSS and inline JavaScript.
+Use dark theme and best practices for colors, text font, etc.
 Use Bootstrap for styling.
 Do NOT remove the {{placeholder}} tag and do NOT add new tags into the body!"""
 
 
 class Abstract(Expression):
-    
+
     def static_context(self):
         return HEADER_DESCRIPTION
-    
+
     def __init__(self, path: str, filters: List[Expression] = []):
         super().__init__()
         self.path = path
@@ -21,11 +21,11 @@ class Abstract(Expression):
             *filters,
             Compose(f'Write a paper summary. Keep all information with the corresponding citations:\n'),
         ))
-        
+
     def forward(self, **kwargs) -> Symbol:
         res = self.open(self.path, **kwargs)
         data = ''
-        template = self.header_style(self.html_template, max_tokens=2000)
+        template = self.header_style(self.html_template)
         paragraphs = []
         for section in self.data_stream(res):
             key = section.unique(paragraphs)

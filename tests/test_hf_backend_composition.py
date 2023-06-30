@@ -187,7 +187,7 @@ In the _init_ function, the custom model takes in a configuration object (config
     def test_correct_max_context_size(self):
         sym = Symbol("""Exception: Failed to query GPT-3 after 3 retries. Errors: [InvalidRequestError(message="This model's maximum context length is 4097 tokens, however you requested 7410 tokens (2988 in your prompt; 4422 for the completion). Please reduce your prompt; or completion length.",
                      param=None, code=None, http_status=400, request_id=None)]""")
-        res = sym.compose(max_tokens=8000)
+        res = sym.compose()
         self.assertIsNotNone(res)
 
     def test_equality(self):
@@ -264,7 +264,7 @@ test = 'it works'
     def test_list(self):
         sym = Symbol("""
 modified:   symai/backend/driver/webclient.py
-modified:   symai/backend/engine_gpt3.py
+modified:   symai/backend/engine_gptX_completion.py
 modified:   symai/backend/engine_userinput.py
 modified:   symai/core.py
 modified:   symai/expressions.py
@@ -398,7 +398,7 @@ modified:   tests/test_composition.py
             Translate(),
             Outline()
         )
-        res = sym.fstream(seq)
+        res = sym.stream(seq)
         self.assertTrue('self-aware' in res, res)
 
     def test_stream_expr(self):
@@ -495,7 +495,7 @@ modified:   tests/test_composition.py
   <h1>News Headlines</h1>
   {{placeholder}}
   </body>
-</html>"""), max_tokens=2000)
+</html>"""))
         stream = Stream(
             Sequence(
                 Template(template=tmp),

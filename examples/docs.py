@@ -18,9 +18,9 @@ DOC_CONTEXT = '''General Python Template example:
     """
 
     Method Signature Example:
-    def summarize(prompt: str = 'Summarize the content of the following text:\n', 
-              constraints: List[Callable] = [], 
-              default: object = None, 
+    def summarize(prompt: str = 'Summarize the content of the following text:\n',
+              constraints: List[Callable] = [],
+              default: object = None,
               pre_processor: List[PreProcessor] = [TextMessagePreProcessor()],
               post_processor: List[PostProcessor] = [StripPostProcessor()],
               **wrp_kwargs):
@@ -32,7 +32,7 @@ DOC_CONTEXT = '''General Python Template example:
                     pre_processor=pre_processor,
                     post_processor=post_processor,
                     **wrp_kwargs)
-                    
+
     Documentation Example Text:
     """Summarizes the content of a text.
 
@@ -45,7 +45,7 @@ DOC_CONTEXT = '''General Python Template example:
 
     Returns:
         str: The summary of the text.
-    """ 
+    """
     '''
 
 
@@ -59,21 +59,20 @@ class Docs(Expression):
     @property
     def static_context(self):
         return DOC_CONTEXT
-    
+
     def forward(self, sym: Symbol, *args, **kwargs):
-        @ai.few_shot(prompt="Create only Python style documentation text based on the given template and shown in the example with the provided function signature:", 
+        @ai.few_shot(prompt="Create only Python style documentation text based on the given template and shown in the example with the provided function signature:",
                      examples=[],
-                     max_tokens=3000,
                      pre_processor=[DocsPreProcessor()],
                      post_processor=[StripPostProcessor()], **kwargs)
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(Docs(sym)))
-    
+
     @property
     def _sym_return_type(self):
         return Docs
-    
+
 
 CPP_DOC_CONTEXT = """Documentation example for a C++ code snippet:
 
@@ -100,22 +99,21 @@ Documentation text:
  */
 """
 
-    
+
 class CppDocs(Expression):
     @property
     def static_context(self):
         return CPP_DOC_CONTEXT
-    
+
     def forward(self, sym: Symbol, *args, **kwargs):
-        @ai.few_shot(prompt="Create only C++ style documentation text based on the given template and shown in the example with the provided function signature:", 
+        @ai.few_shot(prompt="Create only C++ style documentation text based on the given template and shown in the example with the provided function signature:",
                      examples=[],
-                     max_tokens=3000,
                      pre_processor=[DocsPreProcessor()],
                      post_processor=[StripPostProcessor()], **kwargs)
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(Docs(sym)))
-    
+
     @property
     def _sym_return_type(self):
         return CppDocs

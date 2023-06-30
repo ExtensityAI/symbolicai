@@ -1012,11 +1012,11 @@ res = sym.compose()
 
 If you want to replace or extend the functionality of our framework, you can do so by customizing the existing engines or creating new engines. The `Symbol` class provides helper methods for this functionality, such as `command` and `setup`. The `command` method can pass on configurations (as `**kwargs`) to the engines and change functionalities or parameters. The `setup` method can be used to re-initialize an engine with your custom engine implementation, which must subclass the `Engine` class. Both methods can be specified to address one, more, or all engines.
 
-Here is an example of how to initialize your own engine. We will subclass the existing `GPT3Engine` and override the `prepare` method. This method is called before the neural computation and can be used to modify the input prompt's parameters that will be passed in for execution. In this example, we will replace the prompt with dummy text for illustration purposes:
+Here is an example of how to initialize your own engine. We will subclass the existing `GPTXCompletionEngine` and override the `prepare` method. This method is called before the neural computation and can be used to modify the input prompt's parameters that will be passed in for execution. In this example, we will replace the prompt with dummy text for illustration purposes:
 
 ```python
-from symai.backend.engine_gpt3 import GPT3Engine
-class DummyEngine(GPT3Engine):
+from symai.backend.engine_gptX_completion import GPTXCompletionEngine
+class DummyEngine(GPTXCompletionEngine):
     def prepare(self, args, kwargs, wrp_params):
         wrp_params['prompts'] = ['Go wild and generate something!']
 custom_engine = DummyEngine()
@@ -1035,7 +1035,7 @@ res = sym.translate('German')
 
 ```bash
 :Output:
-<symai.backend.engine_gpt3.GPT3Engine object at 0, <function Symbol.translate.<locals>._func at 0x7fd68ba04820>, {'wrp_self': <class 'symai.symbol.S ['\n\nHallo Welt!']
+<symai.backend.engine_gptX_completion.GPTXCompletionEngine object at 0, <function Symbol.translate.<locals>._func at 0x7fd68ba04820>, {'wrp_self': <class 'symai.symbol.S ['\n\nHallo Welt!']
 ```
 
 Here is the list of names of the engines that are currently supported:
