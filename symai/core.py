@@ -15,8 +15,8 @@ from .prompts import *
 _symbolic_expression_engine = None
 
 
-def few_shot(prompt: str,
-             examples: Prompt,
+def few_shot(prompt: str = '',
+             examples: Any = [],
              constraints: List[Callable] = [],
              default: Optional[object] = None,
              limit: int = 1,
@@ -28,7 +28,7 @@ def few_shot(prompt: str,
 
     Args:
         prompt (str): The prompt describing the task. Defaults to 'Summarize the content of the following text:\n'.
-        examples (Prompt): A Prompt object containing a list of examples to be used for the task in specified format.
+        examples (Any): A object containing examples to be used for the task in specified format.
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         default (object, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         limit (int, optional): The maximum number of results to be returned, if more are obtained.
@@ -58,7 +58,7 @@ def few_shot(prompt: str,
     return decorator
 
 
-def zero_shot(prompt: str,
+def zero_shot(prompt: str = '',
               constraints: List[Callable] = [],
               default: Optional[object] = None,
               limit: int = 1,
@@ -426,7 +426,7 @@ def convert(format: str,
             prompt: str = "Translate the following text into {} format.\n",
             examples: Prompt = Format(),
             constraints: List[Callable] = [],
-            pre_processor: Optional[List[PreProcessor]] = [FormatPreProcessor()],
+            pre_processor: Optional[List[PreProcessor]] = [TextFormatPreProcessor()],
             post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
             **wrp_kwargs):
     """Transformation operation from one format to another.
@@ -437,7 +437,7 @@ def convert(format: str,
         prompt (str, optional): The prompt describing the task. Defaults to "Translate the following text into {} format.\n".
         examples (Prompt, optional): List of format examples. Defaults to Format().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (list, optional): A list of pre-processors to be applied to the input and shape the input to the model.. Defaults to [FormatPreProcessor()].
+        pre_processor (list, optional): A list of pre-processors to be applied to the input and shape the input to the model.. Defaults to [TextFormatPreProcessor()].
         post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
@@ -470,7 +470,7 @@ def transcribe(modify: str,
         prompt (str, optional): The prompt describing the task. Defaults to "Transcribe the following text by only modifying the text by the provided instruction.\n".
         examples (Prompt, optional): List of format examples. Defaults to Format().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (list, optional): A list of pre-processors to be applied to the input and shape the input to the model.. Defaults to [FormatPreProcessor()].
+        pre_processor (list, optional): A list of pre-processors to be applied to the input and shape the input to the model.. Defaults to [TextFormatPreProcessor()].
         post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:

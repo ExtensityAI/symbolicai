@@ -140,7 +140,9 @@ def _process_query(engine,
     while try_cnt < trials:
         try_cnt += 1
         try:
+            breakpoint()
             rsp = _execute_query(engine, post_processor, wrp_self, wrp_params, return_constraint, args, kwargs)
+            breakpoint()
             # return preview of the command if preview is set
             if 'preview' in wrp_params and wrp_params['preview']:
                 return rsp

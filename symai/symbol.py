@@ -457,7 +457,7 @@ class Symbol(ABC):
             str: The string representation of the Symbol's value.
         """
         if self.value is None:
-            return str(None)
+            return ''
         elif isinstance(self.value, list) or isinstance(self.value, np.ndarray) or isinstance(self.value, tuple):
             return str([str(v) for v in self.value])
         elif isinstance(self.value, dict):
