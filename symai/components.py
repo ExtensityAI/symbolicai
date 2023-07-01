@@ -1,10 +1,11 @@
 import sys
+import inspect
+import re
 from pathlib import Path
 from random import sample
 from string import ascii_lowercase, ascii_uppercase
 from typing import Callable, Iterator, List, Optional
 from tqdm import tqdm
-import re
 
 from .backend.engine_embedding import EmbeddingEngine
 from .backend.engine_gptX_chat import GPTXChatEngine
@@ -95,20 +96,61 @@ class Sequence(Expression):
 
 
 class Stream(Expression):
-    def __init__(self, expr: Expression):
+    def __init__(self, expr: Optional[Expression] = None, retrieval: Optional[str] = None):
         super().__init__()
         self.char_token_ratio: float = 0.6
         self.expr: Expression = expr
+        self.retrieval: Optional[str] = retrieval
+        self._trace: bool = False
+        self._previous_frame = None
 
     def forward(self, sym: Symbol, **kwargs) -> Iterator[Symbol]:
         sym = self._to_symbol(sym)
-        return sym.stream(expr=self.expr,
-                          char_token_ratio=self.char_token_ratio,
-                          **kwargs)
+
+        if self._trace:
+            local_vars = self._previous_frame.f_locals
+            vals = []
+            for key, var in local_vars.items():
+                if isinstance(var, Function) or \
+                    isinstance(var, Sequence) or \
+                        isinstance(var, Query):
+                    vals.append(var)
+
+            if len(vals) == 1:
+                self.expr = vals[0]
+            else:
+                raise ValueError(f"Invalid number of functions: {len(vals)}")
+
+        res = sym.stream(expr=self.expr,
+                         char_token_ratio=self.char_token_ratio,
+                         **kwargs)
+
+        if self.retrieval is not None:
+            if self.retrieval == 'all':
+                res = list(res)
+            elif self.retrieval == 'longest':
+                res = list(res)
+                res = sorted(res, key=lambda x: len(x), reverse=True)
+                res = res[0]
+            elif self.retrieval == 'contains':
+                res = list(res)
+                res = [r for r in res if self.expr in r]
+            else:
+                raise ValueError(f"Invalid retrieval method: {self.retrieval}")
+
+        return self._to_symbol(res)
+
+    def __enter__(self):
+        self._trace = True
+        self._previous_frame = inspect.currentframe().f_back
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self._trace = False
 
 
 class Trace(Expression):
-    def __init__(self, expr: Expression, engines=['all']):
+    def __init__(self, expr: Optional[Expression] = None, engines=['all']):
         super().__init__()
         self.expr: Expression = expr
         self.engines: List[str] = engines
@@ -118,6 +160,17 @@ class Trace(Expression):
         res = self.expr(*args, **kwargs)
         Expression.command(verbose=False, engines=self.engines)
         return res
+
+    def __enter__(self):
+        Expression.command(verbose=True, engines=self.engines)
+        if self.expr is not None:
+            return self.expr.__enter__()
+        return self
+
+    def __exit__(self, type, value, traceback):
+        Expression.command(verbose=False, engines=self.engines)
+        if self.expr is not None:
+            return self.expr.__exit__(type, value, traceback)
 
 
 class Analyze(Expression):
@@ -131,7 +184,7 @@ class Analyze(Expression):
 
 
 class Log(Expression):
-    def __init__(self, expr: Expression, engines=['all']):
+    def __init__(self, expr: Optional[Expression] = None, engines=['all']):
         super().__init__()
         self.expr: Expression = expr
         self.engines: List[str] = engines
@@ -141,6 +194,17 @@ class Log(Expression):
         res = self.expr(*args, **kwargs)
         Expression.command(logging=False, engines=self.engines)
         return res
+
+    def __enter__(self):
+        Expression.command(logging=True, engines=self.engines)
+        if self.expr is not None:
+            return self.expr.__enter__()
+        return self
+
+    def __exit__(self, type, value, traceback):
+        Expression.command(logging=False, engines=self.engines)
+        if self.expr is not None:
+            return self.expr.__exit__(type, value, traceback)
 
 
 class Template(Expression):
