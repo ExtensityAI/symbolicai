@@ -9,6 +9,7 @@ channels:
 dependencies:
   - python
   - setuptools
+  - toml
   - natsort
   - numpy
   - tqdm
