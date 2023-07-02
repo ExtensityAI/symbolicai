@@ -17,19 +17,19 @@
 
 import toml
 
-with open("../pyproject.toml") as f:
+with open("pyproject.toml") as f:
     data = toml.load(f)
 
 # -- Project information -----------------------------------------------------
 
-project = "< AI /> SymbolicAI"
-copyright = "2023, Marius-Constantin Dinu"
+project = "SymbolicAI"
+copyright = "2023, AlphaCore AI e.U."
 author = "Marius-Constantin Dinu"
 
 version = data["project"]["dynamic"][0]
 release = version
 
-html_title = project + " " + version
+html_title = project
 
 
 # -- General configuration ---------------------------------------------------
@@ -42,13 +42,13 @@ extensions = [
     "sphinx.ext.autodoc.typehints",
     "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
+    "sphinx.ext.todo",
     "sphinx.ext.viewcode",
-    "sphinxcontrib.autodoc_pydantic_settings",
     "myst_nb",
     "sphinx_panels",
     "IPython.sphinxext.ipython_console_highlighting",
 ]
-source_suffix = [".py", ".ipynb", ".html", ".md", ".rst"]
+source_suffix = [".py", ".md", ".rst"]
 
 autodoc_pydantic_model_show_json = False
 autodoc_pydantic_field_list_validators = False
@@ -67,7 +67,7 @@ templates_path = ["_templates"]
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "build", "dist", "docs", "output", "symbolicai.egg-info", "tests", ".vscode", "notebooks", "examples", "assets"]
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -81,12 +81,18 @@ html_theme_options = {
     "path_to_docs": "docs",
     "repository_url": "https://github.com/xpitfire/symbolicai",
     "use_repository_button": True,
+    "show_toc_level": 2,
+    "header_links_before_dropdown": 5,
+    "icon_links_label": "Quick Links",
+    "primary_sidebar_end": ["indices.html"],
 }
 
 html_context = {
     "display_github": True,  # Integrate GitHub
     "github_user": "Xpitfire",  # Username
     "github_repo": "symbolicai",  # Repo name
-    "github_version": "master",  # Version
+    "github_version": "main",  # Version
     "conf_py_path": "/docs/",  # Path in the checkout to the docs root
 }
+
+master_doc = 'index'
