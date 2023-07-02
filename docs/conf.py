@@ -23,10 +23,10 @@ with open("../pyproject.toml") as f:
 # -- Project information -----------------------------------------------------
 
 project = "< AI /> SymbolicAI"
-copyright = "2022, Marius-Constantin Dinu"
+copyright = "2023, Marius-Constantin Dinu"
 author = "Marius-Constantin Dinu"
 
-version = data["tool"]["poetry"]["version"]
+version = data["project"]["dynamic"][0]
 release = version
 
 html_title = project + " " + version
@@ -43,12 +43,12 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
-    "sphinxcontrib.autodoc_pydantic",
+    "sphinxcontrib.autodoc_pydantic_settings",
     "myst_nb",
     "sphinx_panels",
     "IPython.sphinxext.ipython_console_highlighting",
 ]
-source_suffix = [".ipynb", ".html", ".md", ".rst"]
+source_suffix = [".py", ".ipynb", ".html", ".md", ".rst"]
 
 autodoc_pydantic_model_show_json = False
 autodoc_pydantic_field_list_validators = False

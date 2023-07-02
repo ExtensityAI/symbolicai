@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 from random import sample
 from string import ascii_lowercase, ascii_uppercase
-from typing import Callable, Iterator, List, Optional
+from typing import Callable, Iterator, List, Optional, Type, Any as AnyType
 from tqdm import tqdm
 
 from .backend.engine_embedding import EmbeddingEngine
@@ -349,7 +349,8 @@ class Function(Expression):
                  examples: Optional[str] = [],
                  pre_processor: Optional[List[PreProcessor]] = None,
                  post_processor: Optional[List[PostProcessor]] = None,
-                 default: Optional[object] = None, *args, **kwargs):
+                 default: Optional[object] = None,
+                 return_type: Optional[Type] = str, *args, **kwargs):
         super().__init__()
 
         chars = ascii_lowercase + ascii_uppercase
@@ -362,6 +363,7 @@ class Function(Expression):
         self.pre_processor = pre_processor
         self.post_processor = post_processor
         self.default = default
+        self.return_type = return_type
 
     def forward(self, *args, **kwargs) -> Expression:
         @few_shot(prompt=self.prompt,
@@ -370,7 +372,7 @@ class Function(Expression):
                      post_processor=self.post_processor,
                      default=self.default,
                      *self.args, **self.kwargs)
-        def _func(_):
+        def _func(_) -> self.return_type:
             pass
         _type = type(self.name, (Expression, ), {
             # constructor
