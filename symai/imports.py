@@ -3,13 +3,14 @@ import os
 import json
 import importlib
 import subprocess
-from pydoc import locate
 import symai as ai
 import shutil
+from pathlib import Path
 
 
+__root_dir__  = Path.home() / '.symai/packages/'
 BASE_PACKAGE_MODULE = 'symai.extended.packages'
-BASE_PACKAGE_PATH = 'symai/extended/packages'
+BASE_PACKAGE_PATH = str(__root_dir__)
 
 
 class Import(ai.Expression):
