@@ -4,27 +4,29 @@ import json
 import importlib
 import subprocess
 import symai as ai
+import stat
 import shutil
 from pathlib import Path
-
+import sys
 
 __root_dir__  = Path.home() / '.symai/packages/'
-BASE_PACKAGE_MODULE = 'symai.extended.packages'
+BASE_PACKAGE_MODULE = '' # use relative path
 BASE_PACKAGE_PATH = str(__root_dir__)
+sys.path.append(str(__root_dir__))
 
 
 class Import(ai.Expression):
-    def __init__(self, module: str, *args, **kwargs):
+    def __init__(self, module: str, auto_clone: bool = True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.logger = logging.getLogger(__name__)
         self.module = module
         self.module_path = f'{BASE_PACKAGE_MODULE}.{self.module.replace("/",".")}'
-        if not self.exists(self.module):
+        if not self.exists(self.module) and auto_clone:
             self.get_from_github(self.module)
         self._module_class = self.load_module_class()
 
     def exists(self, module):
-        return os.path.isfile(f'{BASE_PACKAGE_PATH}/{module}/package.json')
+        return os.path.exists(f'{BASE_PACKAGE_PATH}/{module}/package.json')
 
     def get_from_github(self, module):
         # Clone repository
@@ -42,7 +44,7 @@ class Import(ai.Expression):
             pkg = json.load(f)
             module_classes = []
             for expr in pkg['expressions']:
-                module_path = f'{BASE_PACKAGE_MODULE}.{self.module.replace("/", ".")}.{expr["module"].replace("/", ".")}'
+                module_path = f'{self.module.replace("/", ".")}.{expr["module"].replace("/", ".")}'
                 module_class = getattr(importlib.import_module(module_path), expr['type'])
                 module_classes.append(module_class)
             return module_classes
@@ -53,7 +55,7 @@ class Import(ai.Expression):
             if 'run' not in pkg:
                 raise Exception(f"Module '{self.module}' has no 'run' expression defined.")
             expr = pkg['run']
-            module_path = f'{BASE_PACKAGE_MODULE}.{self.module.replace("/", ".")}.{expr["module"].replace("/", ".")}'
+            module_path = f'{self.module.replace("/", ".")}.{expr["module"].replace("/", ".")}'
             class_ = expr['type']
             module_class = getattr(importlib.import_module(module_path), class_)
             instance = module_class()
@@ -64,21 +66,28 @@ class Import(ai.Expression):
 
     @staticmethod
     def install(module: str):
-        if not Import(module).exists(module):
+        if not Import(module, auto_clone=True).exists(module):
             Import(module).get_from_github(module)
+            print(f"Module '{module}' installed.")
         else:
             print(f"Module '{module}' already installed.")
 
     @staticmethod
     def remove(module: str):
-        try:
-            module_path = f'{BASE_PACKAGE_PATH}/{module.replace(".", "/")}'
-            if Import(module).exists(module):
-                shutil.rmtree(module_path, ignore_errors=True)
-            else:
-                print(f"Module '{module}' not found.")
-        except ImportError:
-            print(f"Error when trying to import module '{module}'.")
+        module_path = f'{BASE_PACKAGE_PATH}/{module}'
+        if os.path.exists(f'{BASE_PACKAGE_PATH}/{module}'):
+            def del_rw(action, name, exc):
+                os.chmod(name, stat.S_IWRITE)
+                os.remove(name)
+            shutil.rmtree(module_path, onerror=del_rw)
+            print(f"Removed module '{module}'")
+        else:
+            print(f"Module '{module}' not found.")
+        # check if folder is empty and remove it
+        module_path = f'{BASE_PACKAGE_PATH}/{module.split("/")[0]}'
+        if os.path.exists(module_path) and not os.listdir(module_path):
+            os.rmdir(module_path)
+            print(f"Removed empty parent folder '{module_path}'")
 
     @staticmethod
     def list_installed():
@@ -93,7 +102,7 @@ class Import(ai.Expression):
 
     @staticmethod
     def update(module: str):
-        if Import(module).exists(module):
+        if Import(module, auto_clone=False).exists(module):
             subprocess.check_call(['git', '-C', f'{BASE_PACKAGE_PATH}/{module.replace(".","/")}', 'pull'])
         else:
             print(f"Module '{module}' not found.")
