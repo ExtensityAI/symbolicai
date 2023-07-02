@@ -1,12 +1,11 @@
+SymbolicAI: A Neuro-Symbolic Perspective on Large Language Models (LLMs)
+===========================================================================
+
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 5
    :caption: Contents:
 
    README
-
-.. automodule:: symai.components
-   :members:
-
-.. automodule:: symai.symbol
-   :members:
-
+   modules
+   CONTRIBUTING
+   LICENSE
