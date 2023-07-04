@@ -1620,10 +1620,11 @@ class Expression(Symbol):
         """
         raise NotImplementedError()
 
-    def draw(self, operation: str = 'create', **kwargs) -> "Symbol":
+    def draw(self, query: Optional[str] = None, operation: str = 'create', **kwargs) -> "Symbol":
         """Draw an image using the current Symbol as the base.
 
         Args:
+            query (Optional[str], optional): The query to be used for the drawing operation. Defaults to None.
             operation (str, optional): The operation to perform on the Symbol. Defaults to 'create'.
             **kwargs: Additional keyword arguments to be passed to the `@core.draw` decorator.
 
@@ -1633,7 +1634,10 @@ class Expression(Symbol):
         @core.draw(operation=operation, **kwargs)
         def _func(_):
             pass
-        return self._sym_return_type(_func(self))
+        val = str(self)
+        if query is not None:
+            val = str(query)
+        return self._sym_return_type(_func(val))
 
     def input(self, message: str = "Please add more information", **kwargs) -> "Symbol":
         """Request user input and return a Symbol containing the user input.
