@@ -1,4 +1,4 @@
-SUPPORTED_MODELS = ['gpt-3.5-turbo', 'gpt-4', 'text-embedding-ada-002']
+SUPPORTED_MODELS = ['gpt-3.5-turbo', 'gpt-3.5-turbo-16k', 'gpt-4', 'gpt-4-16k', 'text-embedding-ada-002']
 
 
 class OpenAIMixin:
@@ -9,10 +9,22 @@ class OpenAIMixin:
                 'output': 0.0020 / 1_000
             }
 
+        elif self.model == 'gpt-3.5-turbo-16k':
+            return {
+                'input':  0.003 / 1_000,
+                'output': 0.004 / 1_000
+            }
+
         elif self.model == 'gpt-4':
             return {
                 'input':  0.03 / 1_000,
                 'output': 0.06 / 1_000
+            }
+
+        elif self.model == 'gpt-4-16k':
+            return {
+                'input':  0.06 / 1_000,
+                'output': 0.12 / 1_000
             }
 
         elif self.model == 'text-embedding-ada-002':

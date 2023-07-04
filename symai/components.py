@@ -7,12 +7,18 @@ from string import ascii_lowercase, ascii_uppercase
 from typing import Callable, Iterator, List, Optional, Type, Any as AnyType
 from tqdm import tqdm
 
+from symai.symbol import Symbol
+
 from .backend.engine_embedding import EmbeddingEngine
 from .backend.engine_gptX_chat import GPTXChatEngine
 from .backend.mixin.openai import SUPPORTED_MODELS
 from .core import *
 from .symbol import Expression, Symbol
 from .utils import CustomUserWarning
+
+
+class TrackerTraceable(Expression):
+    pass
 
 
 class Any(Expression):
@@ -83,7 +89,7 @@ class Output(Expression):
         return self.output(expr=self.expr, *args, **kwargs)
 
 
-class Sequence(Expression):
+class Sequence(TrackerTraceable):
     def __init__(self, *expr: List[Expression]):
         super().__init__()
         self.expr: List[Expression] = expr
@@ -111,15 +117,13 @@ class Stream(Expression):
             local_vars = self._previous_frame.f_locals
             vals = []
             for key, var in local_vars.items():
-                if isinstance(var, Function) or \
-                    isinstance(var, Sequence) or \
-                        isinstance(var, Query):
+                if isinstance(var, TrackerTraceable):
                     vals.append(var)
 
             if len(vals) == 1:
                 self.expr = vals[0]
             else:
-                raise ValueError(f"Invalid number of functions: {len(vals)}")
+                raise ValueError(f"This component does either not inherit from TrackerTraceable or has an invalid number of component declarations: {len(vals)}! Only one component that inherits from TrackerTraceable is allowed in the with stream clause.")
 
         res = sym.stream(expr=self.expr,
                          char_token_ratio=self.char_token_ratio,
@@ -137,6 +141,8 @@ class Stream(Expression):
                 res = [r for r in res if self.expr in r]
             else:
                 raise ValueError(f"Invalid retrieval method: {self.retrieval}")
+        elif self._trace:
+            res = list(res)
 
         return self._to_symbol(res)
 
@@ -229,7 +235,7 @@ class Style(Expression):
         return sym.style(description=self.description, libraries=self.libraries, **kwargs)
 
 
-class Query(Expression):
+class Query(TrackerTraceable):
     def __init__(self, prompt: str):
         super().__init__()
         self.prompt: str = prompt
@@ -344,7 +350,7 @@ class FileQuery(Expression):
         return res.query(prompt=sym, context=res, **kwargs)
 
 
-class Function(Expression):
+class Function(TrackerTraceable):
     def __init__(self, prompt: str, static_context: str = "",
                  examples: Optional[str] = [],
                  pre_processor: Optional[List[PreProcessor]] = None,
@@ -546,6 +552,34 @@ Few-shot calls: {self._few_shots}
 
     @bind(engine='embedding', property='pricing')
     def _embedding_pricing(self): pass
+
+
+class UsageTracker(Expression):
+    def __init__(self):
+        super().__init__()
+        self._trace: bool    = False
+        self._previous_frame = None
+
+    @bind(engine='neurosymbolic', property='max_tokens')
+    def max_tokens(self): pass
+
+    def __enter__(self):
+        self._trace = True
+        self._previous_frame = inspect.currentframe().f_back
+
+        local_vars = self._previous_frame.f_locals
+        vals = []
+        for key, var in local_vars.items():
+            if hasattr(var, 'token_ratio'):
+                vals.append(var)
+
+        for val in vals:
+            max_ = self.max_tokens() * val.token_ratio
+            print('Tokens: {:2f}%'.format(len(val) / max_))
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self._trace = False
 
 
 class Indexer(Expression):
