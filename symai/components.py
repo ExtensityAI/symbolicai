@@ -9,6 +9,7 @@ from tqdm import tqdm
 
 from symai.symbol import Symbol
 
+from .backend.engine_index import IndexEngine
 from .backend.engine_embedding import EmbeddingEngine
 from .backend.engine_gptX_chat import GPTXChatEngine
 from .backend.mixin.openai import SUPPORTED_MODELS
@@ -554,7 +555,7 @@ Few-shot calls: {self._few_shots}
     def _embedding_pricing(self): pass
 
 
-class UsageTracker(Expression):
+class TokenTracker(Expression):
     def __init__(self):
         super().__init__()
         self._trace: bool    = False
@@ -566,7 +567,9 @@ class UsageTracker(Expression):
     def __enter__(self):
         self._trace = True
         self._previous_frame = inspect.currentframe().f_back
+        return self
 
+    def __exit__(self, type, value, traceback):
         local_vars = self._previous_frame.f_locals
         vals = []
         for key, var in local_vars.items():
@@ -575,15 +578,14 @@ class UsageTracker(Expression):
 
         for val in vals:
             max_ = self.max_tokens() * val.token_ratio
-            print('Tokens: {:2f}%'.format(len(val) / max_))
-        return self
-
-    def __exit__(self, type, value, traceback):
+            print('\n\n================\n[Used tokens: {:.2f}%]\n================\n'.format(len(val) / max_ * 100))
         self._trace = False
 
 
 class Indexer(Expression):
-    def __init__(self, index_name: str = 'data-index', top_k: int = 8, batch_size: int = 20):
+    DEFAULT = 'data-index'
+
+    def __init__(self, index_name: str = DEFAULT, top_k: int = 8, batch_size: int = 20):
         super().__init__()
         self.index_name  = index_name
         self.elements    = []
@@ -591,6 +593,8 @@ class Indexer(Expression):
         self.top_k       = top_k
         self.NEWLINES_RE = re.compile(r"\n{2,}")  # two or more "\n" characters
         self.retrieval   = None
+        if index_name != Indexer.DEFAULT:
+            Expression.setup({'index': IndexEngine(index_name=index_name)})
 
     def split_paragraphs(self, input_text=""):
         no_newlines = input_text.strip("\n")  # remove leading and trailing "\n"
