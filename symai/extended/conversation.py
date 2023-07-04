@@ -1,9 +1,9 @@
-from typing import Any, Callable, Optional
 from datetime import datetime
+from typing import Any, Callable, Optional
 
-from ..symbol import Symbol
 from ..components import Indexer
-from .. import SlidingWindowStringConcatMemory
+from ..memory import SlidingWindowStringConcatMemory
+from ..symbol import Symbol
 
 
 class CodeFormatter:

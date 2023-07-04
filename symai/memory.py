@@ -80,7 +80,6 @@ class SlidingWindowStringConcatMemory(Memory):
         return Symbol(self._memory).query(query, *args, **kwargs)
 
 
-
 class VectorDatabaseMemory(Memory):
     def __init__(self, enabled: bool = True, top_k: int = 3):
         super().__init__()

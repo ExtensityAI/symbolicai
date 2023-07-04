@@ -1,5 +1,6 @@
 from typing import Optional
-from .. import Expression, Symbol, FileReader, Indexer
+
+from .. import Expression, FileReader, Indexer, Symbol
 
 
 class DocumentRetriever(Expression):

@@ -1,17 +1,16 @@
-import sys
 import inspect
 import re
+import sys
 from pathlib import Path
 from random import sample
 from string import ascii_lowercase, ascii_uppercase
-from typing import Callable, Iterator, List, Optional, Type, Any as AnyType
+from typing import Callable, Iterator, List, Optional, Type
+
 from tqdm import tqdm
 
-from symai.symbol import Symbol
-
-from .backend.engine_index import IndexEngine
 from .backend.engine_embedding import EmbeddingEngine
 from .backend.engine_gptX_chat import GPTXChatEngine
+from .backend.engine_index import IndexEngine
 from .backend.mixin.openai import SUPPORTED_MODELS
 from .core import *
 from .symbol import Expression, Symbol
