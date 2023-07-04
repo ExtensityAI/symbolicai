@@ -126,33 +126,26 @@ class Symbol(ABC):
             return value
         return Symbol(value)
 
-    def update(self, feedback: str) -> "Symbol":
+    def update(self, feedback: str):
         """Update the dynamic context with a given runtime feedback.
 
         Args:
             feedback (str): The feedback to be added to the dynamic context.
 
-        Returns:
-            Symbol: The updated symbol.
         """
         type_ = str(type(self))
         if type_ not in Symbol._dynamic_context:
             Symbol._dynamic_context[type_] = []
         self._dynamic_context[type_].append(feedback)
-        return self
 
-    def clear(self) -> "Symbol":
+    def clear(self):
         """Clear the dynamic context associated with this symbol type.
-
-        Returns:
-            Symbol: The symbol with cleared dynamic context.
         """
         type_ = str(type(self))
         if type_ not in Symbol._dynamic_context:
             Symbol._dynamic_context[type_] = []
             return self
         self._dynamic_context.clear()
-        return self
 
     def __call__(self, *args, **kwargs):
         """Evaluate the symbol and return its value."""
@@ -481,9 +474,7 @@ class Symbol(ABC):
         Returns:
             str: The HTML representation of the Symbol's value.
         """
-        return f"""<div class="alert alert-success" role="alert">
-  {str(self.value)}
-</div>"""
+        return str(self.value)
 
     def __iter__(self):
         """Get an iterator for the Symbol's value.

@@ -1,6 +1,6 @@
-from itertools import chain
 from typing import List
 
+from . import core
 from .symbol import Expression, Symbol
 
 
@@ -38,6 +38,47 @@ class SlidingWindowListMemory(Memory):
 
     def recall(self, *args, **kwargs):
         return self._memory[-self._window_size:]
+
+
+class SlidingWindowStringConcatMemory(Memory):
+    def __init__(self, token_ratio: float = 0.6):
+        super().__init__()
+        self._memory: str       = ''
+        self.marker: str        = '[--++=|=++--]'
+        self.token_ratio: float  = token_ratio
+
+    @core.bind(engine='neurosymbolic', property='max_tokens')
+    def max_tokens(self): pass
+
+    def history(self):
+        return self._memory.split(self.marker)
+
+    def clean(self):
+        self._memory = ''
+
+    def store(self, query: str, *args, **kwargs):
+        # append to string to memory
+        self._memory += f'{str(query)}{self.marker}'
+        sym = Symbol(self._memory)
+        tokens = len(sym)
+        # while memory larger than max_tokens * data_ratio remove a character from the front
+        while tokens > self.max_tokens() * self.token_ratio:
+            val = sym.value.strip()
+            val = val.split(' ')[1:]
+            self._memory = ' '.join(val)
+            sym = Symbol(self._memory)
+            tokens = len(sym)
+
+    def forget(self, query: Symbol, *args, **kwargs):
+        # remove substring from memory
+        sym = Symbol(self._memory)
+        self._memory = str(sym - query)
+
+    def recall(self, query: str, *args, **kwargs) -> Symbol:
+        val = self.history()
+        val = ''.join(val)
+        return Symbol(self._memory).query(query, *args, **kwargs)
+
 
 
 class VectorDatabaseMemory(Memory):
