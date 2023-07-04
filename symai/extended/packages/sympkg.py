@@ -1,7 +1,7 @@
 import sys
 import argparse
 import os
-from symai.imports import Import
+from ... import Import
 
 
 class PackageHandler():
