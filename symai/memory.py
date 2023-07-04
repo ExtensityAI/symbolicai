@@ -53,7 +53,7 @@ class SlidingWindowStringConcatMemory(Memory):
     def history(self):
         return self._memory.split(self.marker)
 
-    def clean(self):
+    def drop(self):
         self._memory = ''
 
     def store(self, query: str, *args, **kwargs):
