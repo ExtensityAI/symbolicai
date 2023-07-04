@@ -128,12 +128,12 @@ _start_symai()
 
 
 from .backend.base import Engine
-from .chat import SymbiaChat, ChatBot
+from .chat import ChatBot, SymbiaChat
 from .components import *
 from .core import *
 from .functional import ConstraintViolationException
-from .interfaces import *
 from .imports import *
+from .interfaces import *
 from .memory import *
 from .post_processors import *
 from .pre_processors import *

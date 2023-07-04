@@ -1,7 +1,6 @@
 import logging
 
-from ... import core
-from ... import Expression, Symbol
+from ... import Expression, Symbol, core
 
 
 class MaxTokensExceptRemedy(Expression):

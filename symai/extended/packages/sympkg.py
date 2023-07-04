@@ -1,6 +1,7 @@
-import sys
 import argparse
 import os
+import sys
+
 from ... import Import
 
 

@@ -1,13 +1,15 @@
+import importlib
+import json
 import logging
 import os
-import json
-import importlib
-import subprocess
-import symai as ai
-import stat
 import shutil
-from pathlib import Path
+import stat
+import subprocess
 import sys
+from pathlib import Path
+
+from .symbol import Expression
+
 
 __root_dir__  = Path.home() / '.symai/packages/'
 BASE_PACKAGE_MODULE = '' # use relative path
@@ -15,7 +17,7 @@ BASE_PACKAGE_PATH = str(__root_dir__)
 sys.path.append(str(__root_dir__))
 
 
-class Import(ai.Expression):
+class Import(Expression):
     def __init__(self, module: str, auto_clone: bool = True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.logger = logging.getLogger(__name__)
