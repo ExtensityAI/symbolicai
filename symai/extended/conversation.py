@@ -1,10 +1,9 @@
 from typing import Any, Callable, Optional
 from datetime import datetime
-from symai.post_processors import PostProcessor
 
-from symai.symbol import Symbol
-from .. import Symbol, SlidingWindowStringConcatMemory
+from ..symbol import Symbol
 from ..components import Indexer
+from .. import SlidingWindowStringConcatMemory
 
 
 class CodeFormatter:
