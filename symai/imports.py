@@ -38,7 +38,13 @@ class Import(Expression):
         with open(f'{BASE_PACKAGE_PATH}/{module}/package.json') as f:
             pkg = json.load(f)
             for dependency in pkg['dependencies']:
-                subprocess.check_call(['pip', 'install', dependency])
+                subprocess.check_call(['git', 'clone', git_url, f'{BASE_PACKAGE_PATH}/{dependency}'])
+
+        # Install requirements
+        if os.path.exists(f'{BASE_PACKAGE_PATH}/{module}/requirements.txt'):
+            with open(f'{BASE_PACKAGE_PATH}/{module}/requirements.txt') as f:
+                for dependency in f.readlines():
+                    subprocess.check_call(['pip', 'install', dependency])
 
     def load_module_class(self):
         with open(f'{BASE_PACKAGE_PATH}/{self.module}/package.json') as f:
