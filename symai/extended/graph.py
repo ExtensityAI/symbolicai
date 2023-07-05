@@ -1,11 +1,11 @@
-from ..formatter import SentenceFormatter
+from multiprocessing import Pool
+
 from ..core import *
+from ..formatter import SentenceFormatter
 from ..post_processors import StripPostProcessor
 from ..pre_processors import PreProcessor
 from ..prompts import Prompt
 from ..symbol import Expression, Symbol
-from multiprocessing import Pool
-
 
 GRAPH_DESCRIPTION = """[Description]
 Build source-target relationship pairs for named entities based for the [DATA] section. The [DATA] section contains one sentence.

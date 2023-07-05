@@ -1,7 +1,7 @@
-from typing import List
 import re
+from typing import List
 
-from .symbol import Symbol, Expression
+from .symbol import Expression, Symbol
 
 
 class ParagraphFormatter(Expression):
