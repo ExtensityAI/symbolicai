@@ -80,7 +80,7 @@ class MyExpression(Expression):
 
     def forward(self, data, template: str = ''):
         data = self._to_symbol(data)
-        self.fn.prompt.format(template)
+        self.fn.prompt.format(template=template)
         return self.fn(data)""")
             print('Package created successfully at: ' + package_path)
 
