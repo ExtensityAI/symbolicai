@@ -10,7 +10,6 @@ from pathlib import Path
 
 from .symbol import Expression
 
-
 __root_dir__  = Path.home() / '.symai/packages/'
 BASE_PACKAGE_MODULE = '' # use relative path
 BASE_PACKAGE_PATH = str(__root_dir__)

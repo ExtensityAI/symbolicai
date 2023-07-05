@@ -2,12 +2,14 @@ import json
 import logging
 import os
 from abc import ABC
+from pathlib import Path
 from typing import List
+
 import rpyc
 import torch
-from pathlib import Path
 from box import Box
 from rpyc.utils.server import ThreadedServer
+
 rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True
 
 
@@ -24,8 +26,9 @@ print('huggingface_cache:', _args_.huggingface_cache)
 os.environ['TRANSFORMERS_CACHE'] = _args_.huggingface_cache # set the environment variable for transformers cache
 
 
-from transformers import (AutoModelForCausalLM, AutoTokenizer, GenerationConfig,
-                          StoppingCriteria, StoppingCriteriaList, set_seed)
+from transformers import (AutoModelForCausalLM, AutoTokenizer,
+                          GenerationConfig, StoppingCriteria,
+                          StoppingCriteriaList, set_seed)
 
 
 class StoppingCriteriaSub(StoppingCriteria):

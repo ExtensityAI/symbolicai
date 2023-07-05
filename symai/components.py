@@ -12,9 +12,9 @@ from .backend.engine_gptX_chat import GPTXChatEngine
 from .backend.engine_index import IndexEngine
 from .backend.mixin.openai import SUPPORTED_MODELS
 from .core import *
+from .formatter import ParagraphFormatter
 from .symbol import Expression, Symbol
 from .utils import CustomUserWarning
-from .formatter import ParagraphFormatter
 
 
 class TrackerTraceable(Expression):

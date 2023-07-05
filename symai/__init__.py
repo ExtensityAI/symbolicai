@@ -131,6 +131,7 @@ from .backend.base import Engine
 from .chat import ChatBot, SymbiaChat
 from .components import *
 from .core import *
+from .formatter import *
 from .functional import ConstraintViolationException
 from .imports import *
 from .interfaces import *
@@ -141,4 +142,3 @@ from .prompts import Prompt
 from .shell import Shell
 from .strategy import *
 from .symbol import *
-from .formatter import *
