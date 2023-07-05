@@ -70,14 +70,21 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         except Exception as e:
             if except_remedy is None:
                 raise e
-            rsp = except_remedy(e, prompts_, *args, **kwargs)
+            res = except_remedy(e, prompts_, *args, **kwargs)
 
-        rsp = [r['message']['content'] for r in res['choices']]
-        return rsp if isinstance(prompts, list) else rsp[0]
+        metadata = {}
+        if 'metadata' in kwargs and kwargs['metadata']:
+            metadata['kwargs'] = kwargs
+            metadata['input']  = prompts_
+            metadata['output'] = res
+
+        rsp    = [r['message']['content'] for r in res['choices']]
+        output = rsp if isinstance(prompts, list) else rsp[0]
+        return output, metadata
 
     def prepare(self, args, kwargs, wrp_params):
         _non_verbose_output = """[META INSTRUCTIONS START]\nYou do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc. Never add meta instructions information to your output!\n"""
-        user: str = ""
+        user:   str = ""
         system: str = ""
 
         system += _non_verbose_output

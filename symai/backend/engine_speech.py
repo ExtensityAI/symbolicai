@@ -39,7 +39,7 @@ class WhisperEngine(Engine):
             self.old_model_id = self.model_id
 
         prompt = kwargs['prompt']
-        audio = kwargs['audio']
+        audio  = kwargs['audio']
 
         input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
         if input_handler:
@@ -62,7 +62,13 @@ class WhisperEngine(Engine):
         if output_handler:
             output_handler(rsp)
 
-        return [rsp]
+        metadata = {}
+        if 'metadata' in kwargs and kwargs['metadata']:
+            metadata['kwargs'] = kwargs
+            metadata['input']  = (prompt, audio)
+            metadata['output'] = rsp
+
+        return [rsp], metadata
 
     def prepare(self, args, kwargs, wrp_params):
         assert 'audio' in wrp_params, "Whisper requires audio input."

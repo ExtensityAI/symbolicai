@@ -145,7 +145,7 @@ class HtmlGetTextPostProcessor(PostProcessor):
         return res
 
 class ConfirmToBoolPostProcessor(PostProcessor):
-    def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
+    def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> bool:
         if response is None:
             return False
         rsp = response.strip()

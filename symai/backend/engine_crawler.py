@@ -25,7 +25,7 @@ class CrawlerEngine(Engine):
             return None
 
     def forward(self, urls: List[str], patterns: List[str], *args, **kwargs) -> List[str]:
-        urls = urls if isinstance(urls, list) else [urls]
+        urls     = urls if isinstance(urls, list) else [urls]
         patterns = patterns if isinstance(patterns, list) else [patterns]
         assert len(urls) == len(patterns)
         rsp = []
@@ -42,7 +42,13 @@ class CrawlerEngine(Engine):
         if output_handler:
             output_handler(rsp)
 
-        return rsp
+        metadata = {}
+        if 'metadata' in kwargs and kwargs['metadata']:
+            metadata['kwargs'] = kwargs
+            metadata['input']  = (urls, patterns)
+            metadata['output'] = rsp
+
+        return rsp, metadata
 
     def prepare(self, args, kwargs, wrp_params):
         if 'url' in wrp_params and 'pattern' in wrp_params:

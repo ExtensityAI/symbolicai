@@ -25,12 +25,12 @@ class CLIPEngine(Engine):
 
     def forward(self, *args, **kwargs) -> List[str]:
         if self.model is None or self.model_id != self.old_model_id:
-            self.model = CLIPModel.from_pretrained(self.model_id)
-            self.processor = CLIPProcessor.from_pretrained(self.model_id)
+            self.model        = CLIPModel.from_pretrained(self.model_id)
+            self.processor    = CLIPProcessor.from_pretrained(self.model_id)
             self.old_model_id = self.model_id
 
         image_url = kwargs['image'] if 'image' in kwargs else None
-        text = kwargs['prompt']
+        text      = kwargs['prompt']
 
         input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
         if input_handler:
@@ -55,7 +55,14 @@ class CLIPEngine(Engine):
             output_handler(rsp)
 
         rsp = rsp.detach().cpu().numpy()
-        return [rsp]
+
+        metadata = {}
+        if 'metadata' in kwargs and kwargs['metadata']:
+            metadata['kwargs'] = kwargs
+            metadata['input']  = (image_url, text)
+            metadata['output'] = rsp
+
+        return [rsp], metadata
 
     def prepare(self, args, kwargs, wrp_params):
         pass

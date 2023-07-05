@@ -27,9 +27,9 @@ class EmbeddingEngine(Engine, OpenAIMixin):
             self.model = wrp_params['EMBEDDING_ENGINE_MODEL']
 
     def forward(self, prompts: List[str], *args, **kwargs) -> List[str]:
-        prompts_        = prompts if isinstance(prompts, list) else [prompts]
-        except_remedy   = kwargs['except_remedy'] if 'except_remedy' in kwargs else None
-        input_handler   = kwargs['input_handler'] if 'input_handler' in kwargs else None
+        prompts_      = prompts if isinstance(prompts, list) else [prompts]
+        except_remedy = kwargs['except_remedy'] if 'except_remedy' in kwargs else None
+        input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
 
         if input_handler:
             input_handler((prompts_,))
@@ -43,10 +43,17 @@ class EmbeddingEngine(Engine, OpenAIMixin):
         except Exception as e:
             if except_remedy is None:
                 raise e
-            rsp = except_remedy(e, prompts_, *args, **kwargs)
+            res = except_remedy(e, prompts_, *args, **kwargs)
 
         rsp = [r['embedding'] for r in res['data']]
-        return [rsp]
+
+        metadata = {}
+        if 'metadata' in kwargs and kwargs['metadata']:
+            metadata['kwargs'] = kwargs
+            metadata['input']  = prompts_
+            metadata['output'] = res
+
+        return [rsp], metadata
 
     def prepare(self, args, kwargs, wrp_params):
         wrp_params['prompts'] = wrp_params['entries']

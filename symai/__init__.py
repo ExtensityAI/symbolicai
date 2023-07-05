@@ -9,7 +9,7 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 logging.getLogger("tika").setLevel(logging.ERROR)
 
 
-SYMAI_VERSION = "0.2.32"
+SYMAI_VERSION = "0.2.33"
 __version__   = SYMAI_VERSION
 __root_dir__  = Path.home() / '.symai'
 
@@ -141,3 +141,4 @@ from .prompts import Prompt
 from .shell import Shell
 from .strategy import *
 from .symbol import *
+from .formatter import *

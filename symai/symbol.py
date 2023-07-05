@@ -35,13 +35,21 @@ class Symbol(ABC):
         Attributes:
             value (Any): The value of the symbol.
             _static_context (str): Static context associated with the symbol.
-            relations (List[Symbol]): List of related symbols.
+            children (List[Symbol]): List of related symbols.
         """
         super().__init__()
+        self._static_context: str     = ''
+        self.value                    = None
+        self.parent: Optional[Symbol] = None
+        self.children: List[Symbol]   = []
+        self.metadata: dict           = {}
         if len(value) == 1:
             value = value[0]
             if isinstance(value, Symbol):
-                self.value = value.value
+                self.value    = value.value
+                self.parent   = value.parent
+                self.children = value.children
+                self.metadata = value.metadata
             elif isinstance(value, list) or isinstance(value, dict) or \
                     isinstance(value, set) or isinstance(value, tuple) or \
                         isinstance(value, str) or isinstance(value, int) or \
@@ -60,11 +68,6 @@ class Symbol(ABC):
                 self.value = value
         elif len(value) > 1:
             self.value = [v.value if isinstance(v, Symbol) else v for v in value]
-        else:
-            self.value = None
-
-        self._static_context: str = ''
-        self.relations: List[Symbol] = []
 
     @property
     def _sym_return_type(self):
@@ -1307,20 +1310,6 @@ class Symbol(ABC):
         def _func(_):
             pass
         return self._sym_return_type(_func(self))
-
-    def relate(self, sym: "Symbol") -> "Symbol":
-        """Relates the given Symbol to the current Symbol.
-
-        This method appends the input Symbol to the current Symbol's relations list, creating a relationship between them. It is useful for tracking dependencies and relations between Symbol objects.
-
-        Args:
-            sym (Symbol): The Symbol to relate to the current Symbol.
-
-        Returns:
-            Symbol: The current Symbol object (self) with the relation added.
-        """
-        self.relations.append(sym)
-        return self
 
     def template(self, template: str, placeholder = '{{placeholder}}', **kwargs) -> "Symbol":
         """Applies a template to the Symbol.

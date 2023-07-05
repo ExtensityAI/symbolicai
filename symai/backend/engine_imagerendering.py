@@ -23,8 +23,8 @@ class ImageRenderingEngine(Engine):
             openai.api_key = wrp_params['IMAGERENDERING_ENGINE_API_KEY']
 
     def forward(self, prompt: str, *args, **kwargs) -> List[str]:
-        size            = f"{kwargs['image_size']}x{kwargs['image_size']}" if 'image_size' in kwargs else f"{self.size}x{self.size}"
-        except_remedy   = kwargs['except_remedy'] if 'except_remedy' in kwargs else None
+        size          = f"{kwargs['image_size']}x{kwargs['image_size']}" if 'image_size' in kwargs else f"{self.size}x{self.size}"
+        except_remedy = kwargs['except_remedy'] if 'except_remedy' in kwargs else None
 
         try:
             if kwargs['operation'] == 'create':
@@ -77,10 +77,16 @@ class ImageRenderingEngine(Engine):
         except Exception as e:
             if except_remedy is None:
                 raise e
-            rsp = except_remedy(e, prompt, *args, **kwargs)
+            res = except_remedy(e, prompt, *args, **kwargs)
+
+        metadata = {}
+        if 'metadata' in kwargs and kwargs['metadata']:
+            metadata['kwargs'] = kwargs
+            metadata['input']  = prompt
+            metadata['output'] = res
 
         rsp = res['data'][0]['url']
-        return [rsp]
+        return [rsp], metadata
 
     def prepare(self, args, kwargs, wrp_params):
         prompt = str(wrp_params['prompt'])

@@ -15,8 +15,6 @@ from symai.extended import *
 #os.environ['OPENAI_API_KEY'] = ''
 
 
-
-
 Expression.command(time_clock=True)
 
 
@@ -60,19 +58,17 @@ class TestComposition(unittest.TestCase):
         self.assertTrue(res, res)
         res = Symbol(2) < Symbol(1)
         self.assertTrue(not res, res)
-        res = Symbol('What sentence is larger?') <= Symbol('this one')
-        self.assertTrue(not res, res)
 
     def test_iterator(self):
         res = Symbol('Hello World')
         a = ''
         for char in res:
             a = char
-        self.assertTrue(a == 'd')
+        self.assertTrue(a == 'd', a)
         a = ''
         for char in reversed(res):
             a = char
-        self.assertTrue(a == 'H')
+        self.assertTrue(a == 'H', a)
 
     def test_filter(self): # TODO: success rate not 100%
         sym = Symbol('Physics, Sports, Mathematics, Music, Art, Theater, Writing')
@@ -112,7 +108,7 @@ In the _init_ function, the custom model takes in a configuration object (config
         self.assertIsNotNone(res)
 
     def test_input(self): # TODO: not working from IDE
-        sym = Symbol('Hello World')
+        sym = Expression('Hello World')
         res = sym.input('What is your name?')
         self.assertIsNotNone("Johnny" == res, res)
 

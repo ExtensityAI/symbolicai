@@ -9,7 +9,7 @@ class OutputEngine(Engine):
 
     def forward(self, *args, **kwargs) -> List[str]:
         expr = kwargs['expr'] if 'expr' in kwargs else None
-        res = None
+        res  = None
         if expr:
             def input_handler(vals):
                 kwargs['input'] = vals
@@ -17,11 +17,17 @@ class OutputEngine(Engine):
             res = expr(*kwargs['args'], **kwargs['kwargs'])
 
         kwargs['output'] = res
-        handler = kwargs['handler'] if 'handler' in kwargs else None
+        handler          = kwargs['handler'] if 'handler' in kwargs else None
         if handler:
             handler(kwargs)
 
-        return [kwargs]
+        metadata = {}
+        if 'metadata' in kwargs and kwargs['metadata']:
+            metadata['kwargs'] = kwargs
+            metadata['input']  = expr
+            metadata['output'] = res
+
+        return [kwargs], metadata
 
     def prepare(self, args, kwargs, wrp_params):
         pass
