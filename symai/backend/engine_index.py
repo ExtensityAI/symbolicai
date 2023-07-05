@@ -78,6 +78,8 @@ class IndexEngine(Engine):
         operation     = kwargs['operation']
         query         = kwargs['prompt']
         input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
+        rsp           = None
+
         if input_handler:
             input_handler((query, ))
 
@@ -110,8 +112,13 @@ class IndexEngine(Engine):
         if output_handler:
             output_handler(rsp)
 
-        return [rsp]
-        # return rsp
+        metadata = {}
+        if 'metadata' in kwargs and kwargs['metadata']:
+            metadata['kwargs'] = kwargs
+            metadata['input']  = (operation, query)
+            metadata['output'] = rsp
+
+        return [rsp], metadata
 
     def prepare(self, args, kwargs, wrp_params):
         wrp_params['prompt'] = wrp_params['prompt']

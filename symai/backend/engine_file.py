@@ -11,7 +11,7 @@ class FileEngine(Engine):
         super().__init__()
 
     def forward(self, *args, **kwargs) -> List[str]:
-        path = kwargs['prompt']
+        path          = kwargs['prompt']
         input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
         if input_handler:
             input_handler((path,))
@@ -43,7 +43,13 @@ class FileEngine(Engine):
         if output_handler:
             output_handler(rsp)
 
-        return [rsp]
+        metadata = {}
+        if 'metadata' in kwargs and kwargs['metadata']:
+            metadata['kwargs'] = kwargs
+            metadata['input']  = path
+            metadata['output'] = rsp
+
+        return [rsp], metadata
 
     def prepare(self, args, kwargs, wrp_params):
         pass

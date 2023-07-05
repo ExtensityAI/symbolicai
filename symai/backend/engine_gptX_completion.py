@@ -69,14 +69,22 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
         except Exception as e:
             if except_remedy is None:
                 raise e
-            rsp = except_remedy(e, prompts_, *args, **kwargs)
-        rsp = [r['text'] for r in res['choices']]
-        return rsp if isinstance(prompts, list) else rsp[0]
+            res = except_remedy(e, prompts_, *args, **kwargs)
+
+        metadata = {}
+        if 'metadata' in kwargs and kwargs['metadata']:
+            metadata['kwargs'] = kwargs
+            metadata['input']  = prompts_
+            metadata['output'] = res
+
+        rsp    = [r['text'] for r in res['choices']]
+        output = rsp if isinstance(prompts, list) else rsp[0]
+        return output, metadata
 
     def prepare(self, args, kwargs, wrp_params):
-        user: str = ""
+        user:   str = ""
         system: str = ""
-        system = f'{system}\n' if system and len(system) > 0 else ''
+        system      = f'{system}\n' if system and len(system) > 0 else ''
 
         ref = wrp_params['wrp_self']
         static_ctxt, dyn_ctxt = ref.global_context

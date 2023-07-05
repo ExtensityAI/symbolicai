@@ -35,7 +35,13 @@ class WolframAlphaEngine(Engine):
         if output_handler:
             output_handler(rsp)
 
-        return [rsp]
+        metadata = {}
+        if 'metadata' in kwargs and kwargs['metadata']:
+            metadata['kwargs'] = kwargs
+            metadata['input']  = queries_
+            metadata['output'] = rsp
+
+        return [rsp], metadata
 
     def prepare(self, args, kwargs, wrp_params):
         wrp_params['queries'] = [args[0]]

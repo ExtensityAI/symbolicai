@@ -1,5 +1,4 @@
 import inspect
-import re
 import sys
 from pathlib import Path
 from random import sample
@@ -15,6 +14,7 @@ from .backend.mixin.openai import SUPPORTED_MODELS
 from .core import *
 from .symbol import Expression, Symbol
 from .utils import CustomUserWarning
+from .formatter import ParagraphFormatter
 
 
 class TrackerTraceable(Expression):
@@ -401,6 +401,7 @@ class SimilarityClassification(Expression):
             CustomUserWarning(f'Caching mode is enabled! It is your responsability to empty the .cache folder if you did changes to the classes. The cache is located at {Path.home()}/.symai/cache')
 
     def forward(self, x: Symbol) -> Symbol:
+        x            = self._to_symbol(x)
         usr_embed    = x.embed()
         embeddings   = self._dynamic_cache()
         similarities = [usr_embed.similarity(emb, metric=self.metric) for emb in embeddings]
@@ -590,40 +591,17 @@ class Indexer(Expression):
         self.elements    = []
         self.batch_size  = batch_size
         self.top_k       = top_k
-        self.NEWLINES_RE = re.compile(r"\n{2,}")  # two or more "\n" characters
         self.retrieval   = None
+        self.formatter   = ParagraphFormatter()
         if index_name != Indexer.DEFAULT:
             Expression.setup({'index': IndexEngine(index_name=index_name)})
-
-    def split_paragraphs(self, input_text=""):
-        no_newlines = input_text.strip("\n")  # remove leading and trailing "\n"
-        split_text = self.NEWLINES_RE.split(no_newlines)  # regex splitting
-
-        paragraphs = [p + "\n" for p in split_text if p.strip()]
-        # p + "\n" ensures that all lines in the paragraph end with a newline
-        # p.strip() == True if paragraph has other characters than whitespace
-
-        return paragraphs
-
-    def split_huge_paragraphs(self, input_text: List[str], max_length=300):
-        paragraphs = []
-        for text in input_text:
-            words = text.split()
-            if len(words) > max_length:
-                for i in range(0, len(words), max_length):
-                    paragraph = ' '.join(words[i:i + max_length])
-                    paragraphs.append(paragraph + "\n")
-            else:
-                paragraphs.append(text)
-        return paragraphs
 
     def forward(self, query: Optional[Symbol] = None, *args, **kwargs) -> Symbol:
         that = self
         if query is not None:
             query = self._to_symbol(query)
             # split text paragraph-wise and index each paragraph separately
-            self.elements = self.split_paragraphs(query.value)
-            self.elements = self.split_huge_paragraphs(self.elements)
+            self.elements = self.formatter(query).value
             # run over the elments in batches
             for i in tqdm(range(0, len(self.elements), self.batch_size)):
                 val = Symbol(self.elements[i:i+self.batch_size]).zip()

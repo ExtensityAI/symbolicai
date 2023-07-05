@@ -43,7 +43,10 @@ def _execute_query(engine, post_processor, wrp_self, wrp_params, return_constrai
     if 'preview' in wrp_params and wrp_params['preview']:
         return engine.preview(wrp_params)
 
-    rsp = engine(**wrp_params)[0] # currently only support single query
+    outputs  = engine(**wrp_params) # currently only support single query
+    rsp      = outputs[0][0]
+    metadata = outputs[1]
+
     if post_processor:
         for pp in post_processor:
             rsp = pp(wrp_self, wrp_params, rsp, *args, **kwargs)
@@ -64,7 +67,10 @@ def _execute_query(engine, post_processor, wrp_self, wrp_params, return_constrai
         rsp = res
     elif return_constraint == bool:
         # do not cast with bool -> always returns true
-        rsp = str(rsp).lower() in ['true', '1', 't', 'y', 'yes', 'yeah', 'yup', 'certainly', 'uh-huh', 'ok']
+        if len(rsp) <= 0:
+            rsp = False
+        else:
+            rsp = str(rsp).lower() in "'true', '1', 't', 'y', 'yes', 'yeah', 'yup', 'certainly', 'ok', ['true']"
     elif return_constraint == inspect._empty:
         pass
     else:
@@ -75,7 +81,7 @@ def _execute_query(engine, post_processor, wrp_self, wrp_params, return_constrai
         if not constraint(rsp):
             raise ConstraintViolationException("Constraint not satisfied:", res, constraint)
 
-    return rsp
+    return rsp, metadata
 
 
 def _process_query(engine,
@@ -136,11 +142,11 @@ def _process_query(engine,
     wrp_params['processed_input'] = suffix
 
     # try run the function
-    try_cnt = 0
+    try_cnt  = 0
     while try_cnt < trials:
         try_cnt += 1
         try:
-            rsp = _execute_query(engine, post_processor, wrp_self, wrp_params, return_constraint, args, kwargs)
+            rsp, metadata = _execute_query(engine, post_processor, wrp_self, wrp_params, return_constraint, args, kwargs)
             # return preview of the command if preview is set
             if 'preview' in wrp_params and wrp_params['preview']:
                 return rsp
@@ -173,6 +179,7 @@ def _process_query(engine,
         limit_ = wrp_params['limit'] if wrp_params['limit'] is not None else len(rsp)
     except:
         limit_ = None
+
     # if limit_ is greater than 1 and expected only single string return type, join the list into a string
     if limit_ is not None and limit_ > 1 and return_constraint == str and type(rsp) == list:
         rsp = '\n'.join(rsp[:limit_])
@@ -185,6 +192,7 @@ def _process_query(engine,
         rsp = set(list(rsp)[:limit_])
     elif limit_ is not None and limit_ > 1 and return_constraint == tuple:
         rsp = tuple(list(rsp)[:limit_])
+
     return rsp
 
 

@@ -15,7 +15,6 @@ from symai.chat import SymbiaChat
 #os.environ['OPENAI_API_KEY'] = ''
 
 
-
 engine = NeSyClientEngine()
 Expression.setup(engines={'neurosymbolic': engine})
 Expression.command(time_clock=True)
@@ -113,7 +112,7 @@ In the _init_ function, the custom model takes in a configuration object (config
         self.assertIsNotNone(res)
 
     def test_input(self): # TODO: not working from IDE
-        sym = Symbol('Hello World')
+        sym = Expression('Hello World')
         res = sym.input('What is your name?')
         self.assertIsNotNone("Johnny" == res, res)
 

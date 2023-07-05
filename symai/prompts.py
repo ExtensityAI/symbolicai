@@ -285,6 +285,8 @@ class ContainsValue(Prompt):
             "'The number Pi' in 3.14159265359... =>True",
             "1 in [1, 2, 3] =>True",
             "1 in [2, 3, 4] =>False",
+            "10 in {1: 'one', 2: 'two', 3: 'three'} =>False",
+            "1 in {'1': 'one', '2': 'two', '3': 'three'} =>True",
             "'ten' in [1, 2, 3] =>False",
             "'option 1' in 'option 2 = [specific task or command]' =>False",
             "'option 2' in 'option 2 = [specific task or command]' =>True",

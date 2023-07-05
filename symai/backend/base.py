@@ -8,9 +8,9 @@ from typing import Any, List
 class Engine(ABC):
     def __init__(self) -> None:
         super().__init__()
-        self.verbose = False
-        self.logging = False
-        self.log_level = logging.DEBUG
+        self.verbose    = False
+        self.logging    = False
+        self.log_level  = logging.DEBUG
         self.time_clock = False
         # create formatter
         os.makedirs('outputs', exist_ok=True)
@@ -32,20 +32,20 @@ class Engine(ABC):
                 **kwds
             }
         }
-        start_time = None
+        start_time = time.time()
+        res, metadata = self.forward(*args, **kwds)
+        req_time = time.time() - start_time
+        metadata['time'] = req_time
         if self.time_clock:
-            start_time = time.time()
-        res = self.forward(*args, **kwds)
-        if start_time is not None:
-            print(f"{kwds['func']}: {(time.time() - start_time)} sec")
+            print(f"{kwds['func']}: {req_time} sec")
         log['Output'] = res
         if self.verbose:
-            view = {k: v for k, v in list(log['Input'].items()) if k != 'self' and k != 'func' and k != 'args'}
+            view   = {k: v for k, v in list(log['Input'].items()) if k != 'self' and k != 'func' and k != 'args'}
             input_ = f"{str(log['Input']['self'])[:50]}, {str(log['Input']['func'])}, {str(view)}"
             print(input_[:150], str(log['Output'])[:100])
         if self.logging:
             self.logger.log(self.log_level, log)
-        return res
+        return res, metadata
 
     def preview(self, wrp_params):
         return str(wrp_params['prompts'])

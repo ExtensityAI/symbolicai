@@ -23,7 +23,7 @@ class GoogleEngine(Engine):
 
     def forward(self, queries: List[str], *args, **kwargs) -> List[str]:
         queries_ = queries if isinstance(queries, list) else [queries]
-        rsp = []
+        rsp      = []
 
         input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
         if input_handler:
@@ -61,7 +61,14 @@ class GoogleEngine(Engine):
         if output_handler:
             output_handler(rsp)
 
-        return rsp if isinstance(queries, list) else rsp[0]
+        metadata = {}
+        if 'metadata' in kwargs and kwargs['metadata']:
+            metadata['kwargs'] = kwargs
+            metadata['input']  = queries_
+            metadata['output'] = rsp
+
+        output = rsp if isinstance(queries, list) else rsp[0]
+        return output, metadata
 
     def prepare(self, args, kwargs, wrp_params):
         wrp_params['queries'] = [str(wrp_params['query'])]

@@ -50,7 +50,13 @@ class PythonEngine(Engine):
                 else:
                     output_handler(rsp)
 
-        return [rsp]
+        metadata = {}
+        if 'metadata' in kwargs and kwargs['metadata']:
+            metadata['kwargs'] = kwargs
+            metadata['input']  = code
+            metadata['output'] = rsp
+
+        return [rsp], metadata
 
     def prepare(self, args, kwargs, wrp_params):
         pass
