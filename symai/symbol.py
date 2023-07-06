@@ -1,5 +1,6 @@
 import ast
 import os
+import pickle
 import uuid
 from abc import ABC
 from json import JSONEncoder
@@ -1535,12 +1536,13 @@ class Symbol(ABC):
         setattr(self, func_name, _llm_func)
         return func_name
 
-    def save(self, path: str, replace: bool = False) -> "Symbol":
+    def save(self, path: str, replace: bool = False, serialize: bool = True) -> "Symbol":
         """Save the current Symbol to a file.
 
         Args:
             path (str): The filepath of the saved file.
             replace (bool, optional): Whether to replace the file if it already exists. Defaults to False.
+            serialize (bool, optional): Whether to serialize the object via pickle instead of writing the string. Defaults to True.
 
         Returns:
             Symbol: The current Symbol.
@@ -1552,9 +1554,25 @@ class Symbol(ABC):
                 filename, file_extension = os.path.splitext(path)
                 file_path = f'{filename}_{cnt}{file_extension}'
                 cnt += 1
-        with open(file_path, 'w') as f:
-            f.write(str(self))
-        return self
+        if serialize:
+            # serialize the object via pickle instead of writing the string
+            pickle.dump(self, open(file_path + '.pkl', 'wb'))
+        else:
+            with open(file_path, 'w') as f:
+                f.write(str(self))
+
+    @staticmethod
+    def load(path: str) -> "Symbol":
+        """Load a Symbol from a file.
+
+        Args:
+            path (str): The filepath of the saved file.
+
+        Returns:
+            Symbol: The loaded Symbol.
+        """
+        with open(path, 'rb') as f:
+            return pickle.load(f)
 
     def output(self, *args, **kwargs) -> "Symbol":
         """Output the current Symbol to a output handler.

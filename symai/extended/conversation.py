@@ -23,16 +23,22 @@ class Conversation(SlidingWindowStringConcatMemory):
         self.auto_print  = auto_print
         self.file_link   = file_link
         if init is not None:
-            val = f"[SYSTEM::INSTRUCTION] <<<\n{str(init)}\n>>>\n"
-            self.store(val, *args, **kwargs)
+            self.store_system_message(init, *args, **kwargs)
         if file_link is not None:
-            # read in file
-            with open(file_link, 'r') as file:
-                content = file.read()
-            val = f"[DATA::{file_link}] <<<\n{str(content)}\n>>>\n"
-            self.store(val, *args, **kwargs)
+            self.store_file(file_link, *args, **kwargs)
         self.indexer = Indexer(index_name=index_name)
         self._index  = self.indexer()
+
+    def store_system_message(self, message: str, *args, **kwargs):
+        val = f"[SYSTEM::INSTRUCTION] <<<\n{str(message)}\n>>>\n"
+        self.store(val, *args, **kwargs)
+
+    def store_file(self, file_path: str, *args, **kwargs):
+        # read in file
+        with open(file_path, 'r') as file:
+            content = file.read()
+        val = f"[DATA::{file_path}] <<<\n{str(content)}\n>>>\n"
+        self.store(val, *args, **kwargs)
 
     def commit(self, formatter: Optional[Callable] = None):
         if self.file_link is not None:
