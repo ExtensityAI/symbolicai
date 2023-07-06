@@ -5,12 +5,11 @@ from colorama import Fore, Style
 
 from .components import Lambda, Try
 from .core import *
+from .misc.console import ConsoleStyle
+from .misc.loader import Loader
 from .post_processors import StripPostProcessor
 from .pre_processors import PreProcessor
 from .symbol import Expression
-from .misc.loader import Loader
-from .misc.console import ConsoleStyle
-
 
 SHELL_CONTEXT = """[Description]
 This shell program is the command interpreter on the Linux systems, MacOS and Windows PowerShell.
