@@ -62,7 +62,7 @@ class Import(Expression):
                 module_classes.append(module_class)
             return module_classes
 
-    def __new__(self, module, auto_clone: bool = True, *args, **kwargs):
+    def __new__(self, module, auto_clone: bool = True, verbose: bool = False, *args, **kwargs):
         if not Import.exists(module) and auto_clone:
             Import.get_from_github(module)
         with open(f'{BASE_PACKAGE_PATH}/{module}/package.json') as f:
@@ -76,7 +76,8 @@ class Import(Expression):
         # Replace with actual username and package_name values
         relative_module_path = module.split('/')[0] + '.' + module.split('/')[1] + '.' + relative_module_path
         class_ = expr['type']
-        print(f"Loading module '{relative_module_path}.{expr['type']}'")
+        if verbose:
+            print(f"Loading module '{relative_module_path}.{expr['type']}'")
         module_class = getattr(importlib.import_module(relative_module_path), class_)
         instance = module_class(*args, **kwargs)
         return instance

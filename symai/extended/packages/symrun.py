@@ -82,9 +82,9 @@ class PackageRunner():
 
         try:
             expr = Import(package)
-        except:
+        except Exception as e:
             with ConsoleStyle('error'):
-                print("Package `{}` not found. Please check your command {}".format(package, args))
+                print("Error: {} in package `{}`.\nPlease check your command {} or if package is available.".format(str(e), package, args))
             parser.print_help()
             return
 
