@@ -3,7 +3,10 @@ import warnings
 from typing import List
 
 warnings.filterwarnings('ignore', module='pinecone')
-import pinecone
+try:
+    import pinecone
+except:
+    pinecone = None
 
 from ..core import retry
 from .base import Engine
