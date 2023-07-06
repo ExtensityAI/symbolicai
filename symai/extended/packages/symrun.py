@@ -7,7 +7,8 @@ from typing import Optional
 
 from colorama import Fore, Style
 
-from symai import Import
+from ... import Import
+from ...misc.loader import Loader
 
 
 class PackageRunner():
@@ -90,7 +91,8 @@ class PackageRunner():
         arg_values = [arg for arg in args.params if '=' not in arg]
         kwargs = {arg.split('=')[0]: arg.split('=')[1] for arg in args.params if '=' in arg}
 
-        result = expr(*arg_values, **kwargs)
+        with Loader(desc="Inference ...", end=""):
+            result = expr(*arg_values, **kwargs)
         self.console("Execution of {} => {} resulted in the following output:".format(args.alias, package), result)
         return result
 

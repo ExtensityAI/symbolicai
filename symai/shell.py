@@ -6,6 +6,8 @@ from .core import *
 from .post_processors import StripPostProcessor
 from .pre_processors import PreProcessor
 from .symbol import Expression
+from .misc.loader import Loader
+
 
 SHELL_CONTEXT = """[Description]
 This shell program is the command interpreter on the Linux systems, MacOS and Windows PowerShell.
@@ -69,7 +71,9 @@ class Shell(Expression):
 def process_query(args) -> None:
     query = args.query
     shell = Shell(query)
-    msg = shell()
+
+    with Loader(desc="Inference ...", end=""):
+        msg = shell()
 
     if args.edit:
         msg = msg.modify(args.edit)
