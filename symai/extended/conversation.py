@@ -1,4 +1,5 @@
 from datetime import datetime
+import os
 from typing import Any, Callable, Optional
 
 from ..components import Indexer
@@ -34,6 +35,8 @@ class Conversation(SlidingWindowStringConcatMemory):
         self.store(val, *args, **kwargs)
 
     def store_file(self, file_path: str, *args, **kwargs):
+        if not os.path.exists(file_path):
+            return
         # read in file
         with open(file_path, 'r') as file:
             content = file.read()
@@ -48,6 +51,7 @@ class Conversation(SlidingWindowStringConcatMemory):
             val = self.value
             if formatter is not None:
                 val = formatter(val)
+            # if file does not exist, create it
             with open(self.file_link, 'w') as file:
                 file.write(str(val))
 
