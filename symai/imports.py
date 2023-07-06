@@ -38,7 +38,8 @@ class Import(Expression):
         with open(f'{BASE_PACKAGE_PATH}/{module}/package.json') as f:
             pkg = json.load(f)
             for dependency in pkg['dependencies']:
-                subprocess.check_call(['git', 'clone', git_url, f'{BASE_PACKAGE_PATH}/{dependency}'])
+                if not os.path.exists(f'{BASE_PACKAGE_PATH}/{dependency}'):
+                    subprocess.check_call(['git', 'clone', git_url, f'{BASE_PACKAGE_PATH}/{dependency}'])
 
         # Install requirements
         if os.path.exists(f'{BASE_PACKAGE_PATH}/{module}/requirements.txt'):
@@ -76,8 +77,6 @@ class Import(Expression):
         if not Import(module, auto_clone=True).exists(module):
             Import(module).get_from_github(module)
             print(f"Module '{module}' installed.")
-        else:
-            print(f"Module '{module}' already installed.")
 
     @staticmethod
     def remove(module: str):

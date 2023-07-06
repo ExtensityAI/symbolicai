@@ -60,11 +60,11 @@ class PackageInitializer():
                 'version': '0.0.1',
                 'name': username+'/'+package_name,
                 'description': '<Project Description>',
-                'expressions': [{'module': 'src/'+package_name, 'type': 'MyExpression'}],
-                'run': {'module': 'src/'+package_name, 'type': 'MyExpression'},
+                'expressions': [{'module': 'src/func', 'type': 'MyExpression'}],
+                'run': {'module': 'src/func', 'type': 'MyExpression'},
                 'dependencies': []
             }, f, indent=4)
-        with open(os.path.join(package_path, 'src', package_name+'.py'), 'w') as f:
+        with open(os.path.join(package_path, 'src', 'func.py'), 'w') as f:
             f.write("""from symai import Expression, Function
 
 
