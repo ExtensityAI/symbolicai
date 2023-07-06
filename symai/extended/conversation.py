@@ -59,6 +59,9 @@ class Conversation(SlidingWindowStringConcatMemory):
         val = str(f"[USER::{timestamp}] <<<\n{str(query)}\n>>>\n")
         self.store(val, *args, **kwargs)
         history = Symbol(f'[HISTORY] <<<\n{self._memory}\n>>>\n')
+        if 'payload' in kwargs:
+            history =  f'{history}\n{kwargs["payload"]}'
+            del kwargs['payload']
         res = self.recall(query, payload=history, *args, **kwargs)
         self.value = res.value # save last response
         val = str(f"[ASSISTANT::{timestamp}] <<<\n{str(res)}\n>>>\n")
