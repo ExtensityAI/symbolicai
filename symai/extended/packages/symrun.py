@@ -3,6 +3,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from typing import Optional
 from symai import Import
 from colorama import Fore, Style
 
@@ -21,7 +22,13 @@ class PackageRunner():
             parser = argparse.ArgumentParser(
                 description='''SymbolicAI package runner.
                 Run a package in command line.''',
-                usage='''symrun <alias> [<args>] | <command> <alias> [<package>]'''
+                usage='''symrun <alias> [<args>] | <command> <alias> [<package>]
+                The most commonly used symrun commands are:
+                <alias> [<args>]    Run an alias
+                c <alias> <package> Create a new alias
+                l                   List all aliases
+                r <alias>           Remove an alias
+'''
             )
 
             parser.add_argument('command', help='Subcommand to run')
@@ -45,14 +52,15 @@ class PackageRunner():
         with open(self.aliases_file, 'w') as f:
             json.dump(aliases, f)
 
-    def console(self, alias, package, output: str):
-        print(Fore.GREEN + Style.BRIGHT + "Execution of {}::{} resulted in the following output:".format(alias, package))
-        print(Fore.MAGENTA + Style.DIM + str(output))
+    def console(self, header: str, output: Optional[object] = None):
+        print(Fore.GREEN + Style.BRIGHT + header)
+        if output is not None:
+            print(Fore.LIGHTCYAN_EX + str(output))
         print(Style.RESET_ALL)
 
     def run_alias(self):
         parser = argparse.ArgumentParser(
-            description='This will create a new alias entry in the alias json file. Exsisting aliases will be overwritten.',
+            description='This command runs the alias from the aliases.json file. If the alias is not found, it will run the command as a package.',
             usage='symrun <alias> [<args> | <kwargs>]*'
         )
         parser.add_argument('alias', help='Name of alias to run')
@@ -60,20 +68,28 @@ class PackageRunner():
         args = parser.parse_args(sys.argv[1:])
 
         aliases = self.load_aliases()
-        package = aliases.get(args.alias)
+        # try running the alias or as package
+        package = aliases.get(args.alias) or args.alias
 
         if package is None:
             print(Fore.RED + Style.BRIGHT + "Alias run of `{}` not found. Please check your command {}".format(args.alias, args))
             print(Style.RESET_ALL)
             parser.print_help()
             return
-        expr = Import(package)
+
+        try:
+            expr = Import(package)
+        except:
+            print(Fore.RED + Style.BRIGHT + "Package `{}` not found. Please check your command {}".format(package, args))
+            print(Style.RESET_ALL)
+            parser.print_help()
+            return
 
         arg_values = [arg for arg in args.params if '=' not in arg]
         kwargs = {arg.split('=')[0]: arg.split('=')[1] for arg in args.params if '=' in arg}
 
         result = expr(*arg_values, **kwargs)
-        self.console(args.alias, package, result)
+        self.console("Execution of {} => {} resulted in the following output:".format(args.alias, package), result)
         return result
 
     def c(self):
@@ -88,6 +104,15 @@ class PackageRunner():
         aliases = self.load_aliases()
         aliases[args.alias] = args.package
         self.save_aliases(aliases)
+        self.console("Alias {} => {} created successfully.".format(args.alias, args.package))
+
+    def l(self):
+        aliases = self.load_aliases()
+        # format the aliases output as a table of key value pairs
+        self.console("Aliases:\n------------------")
+        for alias, package in aliases.items():
+            self.console(f'{alias} => {package}')
+        self.console("------------------")
 
     def r(self):
         parser = argparse.ArgumentParser(
@@ -101,6 +126,7 @@ class PackageRunner():
         if args.alias in aliases:
             del aliases[args.alias]
         self.save_aliases(aliases)
+        self.console("Alias {} => {} removed.".format(args.alias, args.package))
 
 
 def run() -> None:

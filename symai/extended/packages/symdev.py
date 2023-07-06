@@ -17,25 +17,32 @@ class PackageInitializer():
         parser = argparse.ArgumentParser(
             description='''SymbolicAI package initializer.
             Initialize a new GitHub package from the command line.''',
-            usage='''symdev <command> <username>/<package_name>'''
+            usage='''symdev <command> <username>/<package_name>
+            Available commands:
+            c   Create a new package [default if no command is given]
+'''
         )
 
         parser.add_argument('command', help='Subcommand to run')
         args = parser.parse_args(sys.argv[1:2])
-        if not hasattr(self, args.command):
+        if len(args.command) > 1 and not hasattr(self, args.command):
+            setattr(args, 'package', args.command)
+            self.c(args)
+        elif len(args.command) == 1 and not hasattr(self, args.command):
             print('Unrecognized command')
             parser.print_help()
             exit(1)
+        else:
+            getattr(self, args.command)()
 
-        getattr(self, args.command)()
-
-    def c(self):
+    def c(self, args = None):
         parser = argparse.ArgumentParser(
             description='Create a new package',
             usage='symdev c <username>/<package>'
         )
         parser.add_argument('package', help='Name of user based on GitHub username and package to install')
-        args = parser.parse_args(sys.argv[2:])
+        if args is None:
+            args = parser.parse_args(sys.argv[2:3])
         vals = args.package.split('/')
         username = vals[0]
         package_name = vals[1]
