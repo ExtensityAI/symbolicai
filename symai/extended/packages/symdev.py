@@ -2,12 +2,13 @@ import argparse
 import json
 import os
 import sys
+from pathlib import Path
 
 
 class PackageInitializer():
     def __init__(self):
-        self.home_dir = os.path.expanduser("~")
-        self.package_dir = os.path.join(self.home_dir, ".symai", "packages")
+        self.package_dir = Path.home() / '.symai/packages/'
+
         if not os.path.exists(self.package_dir):
             os.makedirs(self.package_dir)
 
