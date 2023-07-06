@@ -17,19 +17,16 @@ sys.path.append(str(__root_dir__))
 
 
 class Import(Expression):
-    def __init__(self, module: str, auto_clone: bool = True, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, module: str, *args, **kwargs):
+        super(self).__init__(*args, **kwargs)
         self.logger = logging.getLogger(__name__)
-        self.module = module
-        self.module_path = f'{BASE_PACKAGE_MODULE}.{self.module.replace("/",".")}'
-        if not self.exists(self.module) and auto_clone:
-            self.get_from_github(self.module)
-        self._module_class = self.load_module_class()
 
-    def exists(self, module):
+    @staticmethod
+    def exists(module):
         return os.path.exists(f'{BASE_PACKAGE_PATH}/{module}/package.json')
 
-    def get_from_github(self, module):
+    @staticmethod
+    def get_from_github(module):
         # Clone repository
         git_url = f'https://github.com/{module}'
         subprocess.check_call(['git', 'clone', git_url, f'{BASE_PACKAGE_PATH}/{module}'])
@@ -47,30 +44,35 @@ class Import(Expression):
                 for dependency in f.readlines():
                     subprocess.check_call(['pip', 'install', dependency])
 
-    def load_module_class(self):
-        with open(f'{BASE_PACKAGE_PATH}/{self.module}/package.json') as f:
+    @staticmethod
+    def load_module_class(module):
+        with open(f'{BASE_PACKAGE_PATH}/{module}/package.json') as f:
             pkg = json.load(f)
             module_classes = []
             for expr in pkg['expressions']:
-                module_path = f'{self.module.replace("/", ".")}.{expr["module"].replace("/", ".")}'
+                module_path = f'{module.replace("/", ".")}.{expr["module"].replace("/", ".")}'
                 module_class = getattr(importlib.import_module(module_path), expr['type'])
                 module_classes.append(module_class)
             return module_classes
 
-    def __call__(self, *args, **kwargs):
-        with open(f'{BASE_PACKAGE_PATH}/{self.module}/package.json') as f:
+    def __new__(self, module, auto_clone: bool = True, *args, **kwargs):
+        if not Import.exists(module) and auto_clone:
+            Import.get_from_github(module)
+        Import._module_class = Import.load_module_class(module)
+        with open(f'{BASE_PACKAGE_PATH}/{module}/package.json') as f:
             pkg = json.load(f)
-            if 'run' not in pkg:
-                raise Exception(f"Module '{self.module}' has no 'run' expression defined.")
-            expr = pkg['run']
-            module_path = f'{self.module.replace("/", ".")}.{expr["module"].replace("/", ".")}'
-            class_ = expr['type']
-            module_class = getattr(importlib.import_module(module_path), class_)
-            instance = module_class()
-            return instance(*args, **kwargs)
+        if 'run' not in pkg:
+            raise Exception(f"Module '{module}' has no 'run' expression defined.")
+        expr = pkg['run']
+        module_path = f'{module.replace("/", ".")}.{expr["module"].replace("/", ".")}'
+        class_ = expr['type']
+        print(f"Loading module '{module_path}'")
+        module_class = getattr(importlib.import_module(module_path), class_)
+        instance = module_class()
+        return instance
 
-    def types(self):
-        return self._module_class
+    def __call__(self, *args, **kwargs):
+        raise NotImplementedError()
 
     @staticmethod
     def install(module: str):
