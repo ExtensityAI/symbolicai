@@ -3,17 +3,16 @@ from typing import Callable, List
 from .base import Engine
 from .driver.webclient import connect_browsers, dump_page_source, page_loaded
 
-driver_handler = connect_browsers(debug=False, proxy=None)
-
 
 class CrawlerEngine(Engine):
     def __init__(self, debug: bool = False):
         super().__init__()
         self.debug = debug
+        self.driver_handler = connect_browsers(debug=False, proxy=None)
 
     def get_page_source(self, url: str, pattern: str, script: Callable = None) -> str:
         # deprecated
-        driver = driver_handler()
+        driver = self.driver_handler()
         driver.get(url)
         try:
             with page_loaded(driver, pattern, debug=self.debug):
