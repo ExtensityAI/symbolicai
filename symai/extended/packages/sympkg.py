@@ -31,20 +31,24 @@ class PackageHandler():
 
         parser.add_argument('command', help='Subcommand to run')
         args = parser.parse_args(sys.argv[1:2])
-        if not hasattr(self, args.command):
+        if len(args.command) > 1 and not hasattr(self, args.command):
+            setattr(args, 'package', args.command)
+            self.i(args)
+        elif len(args.command) == 1 and not hasattr(self, args.command):
             print('Unrecognized command')
             parser.print_help()
             exit(1)
+        else:
+            getattr(self, args.command)()
 
-        getattr(self, args.command)()
-
-    def i(self):
+    def i(self, args = None):
         parser = argparse.ArgumentParser(
             description='Install a new package',
             usage='sympkg i [package]'
         )
         parser.add_argument('package', help='Name of package to install')
-        args = parser.parse_args(sys.argv[2:])
+        if args is None:
+            args = parser.parse_args(sys.argv[2:])
         Import.install(args.package)
 
     def r(self):

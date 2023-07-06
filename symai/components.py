@@ -372,13 +372,17 @@ class Function(TrackerTraceable):
         self.return_type = return_type
 
     def forward(self, *args, **kwargs) -> Expression:
+        # special case for few shot function prompt definition override
+        if 'fn' in kwargs:
+            self.prompt = kwargs['fn']
+            del kwargs['fn']
         @few_shot(prompt=self.prompt,
                      examples=self.examples,
                      pre_processor=self.pre_processor,
                      post_processor=self.post_processor,
                      default=self.default,
                      *self.args, **self.kwargs)
-        def _func(_) -> self.return_type:
+        def _func(_, *args, **kwargs) -> self.return_type:
             pass
         _type = type(self.name, (Expression, ), {
             # constructor
