@@ -5,10 +5,9 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from colorama import Fore, Style
-
 from ... import Import
 from ...misc.loader import Loader
+from ...misc.console import ConsoleStyle
 
 
 class PackageRunner():
@@ -56,10 +55,11 @@ class PackageRunner():
             json.dump(aliases, f)
 
     def console(self, header: str, output: Optional[object] = None):
-        print(Fore.GREEN + Style.BRIGHT + header)
+        with ConsoleStyle('success'):
+            print(header)
         if output is not None:
-            print(Fore.LIGHTCYAN_EX + str(output))
-        print(Style.RESET_ALL)
+            with ConsoleStyle('info'):
+                print(str(output))
 
     def run_alias(self):
         parser = argparse.ArgumentParser(
@@ -75,16 +75,16 @@ class PackageRunner():
         package = aliases.get(args.alias) or args.alias
 
         if package is None:
-            print(Fore.RED + Style.BRIGHT + "Alias run of `{}` not found. Please check your command {}".format(args.alias, args))
-            print(Style.RESET_ALL)
+            with ConsoleStyle('error'):
+                print("Alias run of `{}` not found. Please check your command {}".format(args.alias, args))
             parser.print_help()
             return
 
         try:
             expr = Import(package)
         except:
-            print(Fore.RED + Style.BRIGHT + "Package `{}` not found. Please check your command {}".format(package, args))
-            print(Style.RESET_ALL)
+            with ConsoleStyle('error'):
+                print("Package `{}` not found. Please check your command {}".format(package, args))
             parser.print_help()
             return
 

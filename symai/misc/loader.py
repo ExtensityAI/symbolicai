@@ -3,6 +3,8 @@ from shutil import get_terminal_size
 from threading import Thread
 from time import sleep
 
+from .console import ConsoleStyle
+
 
 class Loader:
     def __init__(self, desc="Loading...", end="", timeout=0.1):
@@ -30,7 +32,8 @@ class Loader:
         for c in cycle(self.steps):
             if self.done:
                 break
-            print(f"\r{self.desc} {c}", flush=True, end="")
+            with ConsoleStyle('debug'):
+                print(f"\r{self.desc} {c}", flush=True, end="")
             sleep(self.timeout)
 
     def __enter__(self):
@@ -39,8 +42,9 @@ class Loader:
     def stop(self):
         self.done = True
         cols = get_terminal_size((80, 20)).columns
-        print("\r" + " " * cols, end="", flush=True)
-        print(f"\r{self.end}", flush=True)
+        with ConsoleStyle('debug'):
+            print("\r" + " " * cols, end="", flush=True)
+            print(f"\r{self.end}", flush=True)
 
     def __exit__(self, exc_type, exc_value, tb):
         # handle exceptions with those variables ^

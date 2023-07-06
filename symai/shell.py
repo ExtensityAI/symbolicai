@@ -1,12 +1,15 @@
 import argparse
 import os
 
+from colorama import Fore, Style
+
 from .components import Lambda, Try
 from .core import *
 from .post_processors import StripPostProcessor
 from .pre_processors import PreProcessor
 from .symbol import Expression
 from .misc.loader import Loader
+from .misc.console import ConsoleStyle
 
 
 SHELL_CONTEXT = """[Description]
@@ -89,9 +92,11 @@ def process_query(args) -> None:
         cmd = msg.extract('the main command used')
         cmd_help = cmd << 'get manual for the command'
         expr = Try(expr=Lambda(lambda kwargs: os.system(str(kwargs['args'][0]))))
-        expr(cmd_help)
+        with Loader(desc="Inference ...", end=""):
+            expr(cmd_help)
 
-    print(msg)
+    with ConsoleStyle('info'):
+        print(msg)
 
 
 def run() -> None:
