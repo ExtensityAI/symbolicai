@@ -79,10 +79,10 @@ class MyExpression(Expression):
         super().__init__()
         self.fn = Function(FUNCTION_DESCRIPTION)
 
-    def forward(self, data, template: str = ''):
+    def forward(self, data, template: str = '', *args, **kwargs):
         data = self._to_symbol(data)
         self.fn.prompt.format(template=template)
-        return self.fn(data)""")
+        return self.fn(data, *args, **kwargs)""")
             print('Package created successfully at: ' + package_path)
 
 
