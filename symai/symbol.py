@@ -1556,9 +1556,11 @@ class Symbol(ABC):
                 cnt += 1
         if serialize:
             # serialize the object via pickle instead of writing the string
-            pickle.dump(self, open(file_path + '.pkl', 'wb'))
+            path_ = str(file_path) + '.pkl' if not str(file_path).endswith('.pkl') else str(file_path)
+            with open(path_, 'wb') as f:
+                pickle.dump(self, file=f)
         else:
-            with open(file_path, 'w') as f:
+            with open(str(file_path), 'w') as f:
                 f.write(str(self))
 
     @staticmethod
