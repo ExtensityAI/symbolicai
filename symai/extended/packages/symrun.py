@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import Optional
 
 from ... import Import
-from ...misc.loader import Loader
 from ...misc.console import ConsoleStyle
+from ...misc.loader import Loader
 
 
 class PackageRunner():
