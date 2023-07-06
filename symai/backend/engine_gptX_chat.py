@@ -34,7 +34,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         prompts_ = [role['content'] for role in prompts]
         prompt = ''.join(prompts_)
         val = len(self.tokenizer.encode(prompt))
-        return int((self.max_tokens - val) * 0.99)
+        return int((self.max_tokens - val) * 0.98)
 
     def forward(self, prompts: List[str], *args, **kwargs) -> List[str]:
         prompts_            = prompts
