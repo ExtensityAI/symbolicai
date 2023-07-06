@@ -19,6 +19,7 @@ sys.path.append(str(__root_dir__))
 class Import(Expression):
     def __init__(self, module: str, *args, **kwargs):
         super(self).__init__(*args, **kwargs)
+        self.module = module
         self.logger = logging.getLogger(__name__)
 
     @staticmethod
@@ -85,9 +86,11 @@ class Import(Expression):
 
     @staticmethod
     def install(module: str):
-        if not Import(module, auto_clone=True).exists(module):
-            Import(module).get_from_github(module)
+        if not Import.exists(module):
+            Import.get_from_github(module)
             print(f"Module '{module}' installed.")
+        else:
+            print(f"Module '{module}' already installed.")
 
     @staticmethod
     def remove(module: str):
@@ -119,7 +122,7 @@ class Import(Expression):
 
     @staticmethod
     def update(module: str):
-        if Import(module, auto_clone=False).exists(module):
+        if Import.exists(module):
             subprocess.check_call(['git', '-C', f'{BASE_PACKAGE_PATH}/{module.replace(".","/")}', 'pull'])
         else:
             print(f"Module '{module}' not found.")
