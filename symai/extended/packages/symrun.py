@@ -4,8 +4,10 @@ import os
 import sys
 from pathlib import Path
 from typing import Optional
-from symai import Import
+
 from colorama import Fore, Style
+
+from symai import Import
 
 
 class PackageRunner():
