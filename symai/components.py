@@ -11,6 +11,7 @@ from .backend.engine_embedding import EmbeddingEngine
 from .backend.engine_gptX_chat import GPTXChatEngine
 from .backend.engine_pinecone import IndexEngine
 from .backend.mixin.openai import SUPPORTED_MODELS
+from .constraints import DictFormatConstraint
 from .core import *
 from .formatter import ParagraphFormatter
 from .symbol import Expression, Symbol
@@ -356,9 +357,9 @@ class Function(TrackerTraceable):
                  pre_processor: Optional[List[PreProcessor]] = None,
                  post_processor: Optional[List[PostProcessor]] = None,
                  default: Optional[object] = None,
+                 constraints: List[Callable] = [],
                  return_type: Optional[Type] = str, *args, **kwargs):
         super().__init__()
-
         chars = ascii_lowercase + ascii_uppercase
         self.name = 'func_' + ''.join(sample(chars, 15))
         self.args = args
@@ -368,6 +369,7 @@ class Function(TrackerTraceable):
         self.examples = Prompt(examples)
         self.pre_processor = pre_processor
         self.post_processor = post_processor
+        self.constraints = constraints
         self.default = default
         self.return_type = return_type
 
@@ -377,11 +379,12 @@ class Function(TrackerTraceable):
             self.prompt = kwargs['fn']
             del kwargs['fn']
         @few_shot(prompt=self.prompt,
-                     examples=self.examples,
-                     pre_processor=self.pre_processor,
-                     post_processor=self.post_processor,
-                     default=self.default,
-                     *self.args, **self.kwargs)
+                  examples=self.examples,
+                  pre_processor=self.pre_processor,
+                  post_processor=self.post_processor,
+                  constraints=self.constraints,
+                  default=self.default,
+                  *self.args, **self.kwargs)
         def _func(_, *args, **kwargs) -> self.return_type:
             pass
         _type = type(self.name, (Expression, ), {
@@ -392,6 +395,23 @@ class Function(TrackerTraceable):
         obj = _type()
         obj._sym_return_type = _type
         return self._to_symbol(obj(*args, **kwargs))
+
+
+class JsonParser(Expression):
+    def __init__(self, query: str, json_: dict):
+        super().__init__()
+        self.constraints = [DictFormatConstraint(json_)]
+        self.fn = Function(f"""Query: {query} => json output.
+Use the following example json format as guidance: {json_}
+Do not return anything else than a json format.
+Your first character must be a""" \
+"""'{' and your last character must be a '}', everything else follows the instructions above and json format.
+""", constraints=[DictFormatConstraint(json_)])
+
+    def forward(self, sym: Symbol, **kwargs) -> Symbol:
+        sym = self._to_symbol(sym)
+        res = self.fn(sym, **kwargs)
+        return self._sym_return_type(res.ast())
 
 
 class SimilarityClassification(Expression):
