@@ -1,20 +1,30 @@
 import os
-
-os.environ['WDM_LOG'] = '0' # disable webdriver-manager logging
+os.environ['WDM_LOG'] = 'false' # disable webdriver-manager logging
 
 import logging
+logging.getLogger('WDM').setLevel(logging.NOTSET)
+
 import random
 import re
 import sys
 import time
 import urllib.request
+import warnings
 from random import choice
 
-import chromedriver_autoinstaller
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options as ChromeOptions
-from selenium.webdriver.common.by import By
-from selenium.webdriver.remote.remote_connection import LOGGER
+
+try:
+    warnings.filterwarnings('ignore', module='chromedriver')
+    warnings.filterwarnings('ignore', module='chromedriver_autoinstaller')
+    warnings.filterwarnings('ignore', module='selenium')
+    import chromedriver_autoinstaller
+    from selenium import webdriver
+    from selenium.webdriver.chrome.options import Options as ChromeOptions
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.remote.remote_connection import LOGGER
+except:
+    chromedriver_autoinstaller = None
+    webdriver = None
 
 from ... import __root_dir__
 
@@ -70,6 +80,8 @@ class page_loaded(object):
 
 
 def connect_chrome(debug, proxy=None):
+    assert webdriver is not None, "selenium is not installed"
+
     options = ChromeOptions()
     if proxy: options.add_argument(f"--proxy-server=socks5://{proxy.host}:{proxy.port}")
     options.add_argument('--ignore-certificate-errors')
@@ -88,6 +100,7 @@ def connect_chrome(debug, proxy=None):
 
 
 def connect_browsers(debug, proxy):
+    assert webdriver is not None, "selenium is not installed"
     class BrowserHandler(object):
         def __init__(self, debug):
             self.browsers = [connect_chrome(debug, proxy=proxy)]

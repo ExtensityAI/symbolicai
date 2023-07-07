@@ -665,7 +665,7 @@ def check_or_init_index_func(engine = None):
     if engine is not None:
         index_engine = engine
     elif index_engine is None:
-        from .backend.engine_index import IndexEngine
+        from .backend.engine_pinecone import IndexEngine
         index_engine = IndexEngine()
 
 
