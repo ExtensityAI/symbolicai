@@ -397,16 +397,16 @@ class Function(TrackerTraceable):
         return self._to_symbol(obj(*args, **kwargs))
 
 
+
+
 class JsonParser(Expression):
     def __init__(self, query: str, json_: dict):
         super().__init__()
-        self.constraints = [DictFormatConstraint(json_)]
-        self.fn = Function(f"""Query: {query} => json output.
-Use the following example json format as guidance: {json_}
-Do not return anything else than a json format.
-Your first character must be a""" \
-"""'{' and your last character must be a '}', everything else follows the instructions above and json format.
-""", constraints=[DictFormatConstraint(json_)])
+        func = Function(prompt=JsonPromptTemplate(query),
+                        constraints=[DictFormatConstraint(json_)],
+                        pre_processor=[JsonPreProcessor()],
+                        post_processor=[JsonTruncatePostProcessor()])
+        self.fn = Try(func)
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
         sym = self._to_symbol(sym)

@@ -60,6 +60,25 @@ class SplitNewLinePostProcessor(PostProcessor):
         return [t.strip() for t in tmp if len(t.strip()) > 0]
 
 
+class JsonTruncatePostProcessor(PostProcessor):
+    def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
+        print('debug before: ', response)
+        # cut off everything until the first '{'
+        start_idx = response.find('{')
+        response = response[start_idx:]
+        # find the first occurence of '}' looking backwards
+        end_idx = response.rfind('}') + 1
+        response = response[:end_idx]
+        # search after the first character of '{' if it is a '"' and if not, replace it
+        try:
+            if response[1:].strip()[0] == "'":
+                response = response.replace("'", '"')
+        except IndexError:
+            pass
+        print('debug after: ', response)
+        return response
+
+
 class WolframAlphaPostProcessor(PostProcessor):
     def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
         try:

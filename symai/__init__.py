@@ -132,8 +132,8 @@ from .chat import ChatBot, SymbiaChat
 from .components import *
 from .constraints import *
 from .core import *
+from .exceptions import *
 from .formatter import *
-from .functional import ConstraintViolationException
 from .imports import *
 from .interfaces import *
 from .memory import *

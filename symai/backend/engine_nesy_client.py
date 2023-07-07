@@ -79,6 +79,10 @@ class NeSyClientEngine(Engine):
         return output, metadata
 
     def prepare(self, args, kwargs, wrp_params):
+        if 'raw_input' in wrp_params:
+            wrp_params['prompts'] = wrp_params['raw_input']
+            return
+
         user:   str = ""
         system: str = ""
         system      = f'{system}\n' if system and len(system) > 0 else ''
@@ -96,14 +100,14 @@ class NeSyClientEngine(Engine):
             system += f"[ADDITIONAL CONTEXT]\n{payload}\n\n"
 
         examples: List[str] = wrp_params['examples']
-        if examples:
+        if examples and len(examples) > 0:
             system += f"[EXAMPLES]\n{str(examples)}\n\n"
 
         suffix: str = wrp_params['processed_input']
         if '=>' in suffix:
             user += f"[LAST TASK]\n"
         if wrp_params['prompt'] is not None:
-            user += str(wrp_params['prompt'])
+            user += f"[INSTRUCTION]\n{str(wrp_params['prompt'])}"
         user += f"{suffix}"
 
         template_suffix = wrp_params['template_suffix'] if 'template_suffix' in wrp_params else None
