@@ -102,14 +102,14 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
             system += f"[ADDITIONAL CONTEXT]\n{payload}\n\n"
 
         examples: List[str] = wrp_params['examples']
-        if examples:
+        if examples and len(examples) > 0:
             system += f"[EXAMPLES]\n{str(examples)}\n\n"
 
         suffix: str = wrp_params['processed_input']
         if '=>' in suffix:
             user += f"[LAST TASK]\n"
         if wrp_params['prompt'] is not None:
-            user += str(wrp_params['prompt'])
+            user += f"[INSTRUCTION]\n{str(wrp_params['prompt'])}"
         user += f"{suffix}"
 
         template_suffix = wrp_params['template_suffix'] if 'template_suffix' in wrp_params else None

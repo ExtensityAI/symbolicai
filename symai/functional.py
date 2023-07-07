@@ -79,7 +79,7 @@ def _execute_query(engine, post_processor, wrp_self, wrp_params, return_constrai
     # check if satisfies constraints
     for constraint in wrp_params['constraints']:
         if not constraint(rsp):
-            raise ConstraintViolationException("Constraint not satisfied:", res, constraint)
+            raise ConstraintViolationException("Constraint not satisfied:", rsp, constraint)
 
     return rsp, metadata
 
@@ -128,7 +128,7 @@ def _process_query(engine,
 
     # pre-process text
     suffix = ''
-    if pre_processor:
+    if pre_processor and 'raw_input' not in wrp_params:
         for pp in pre_processor:
             t = pp(wrp_self, wrp_params, *args, **kwargs)
             suffix += t if t is not None else ''

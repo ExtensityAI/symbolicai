@@ -1,11 +1,13 @@
 from abc import ABC
 from typing import Any, Callable, List
 
+from .exceptions import TemplatePropertyException
+
 
 class Prompt(ABC):
     stop_token = 'EOF'
 
-    def __init__(self, value):
+    def __init__(self, value, **format_kwargs):
         super().__init__()
         if isinstance(value, str):
             self.value = [value]
@@ -26,6 +28,7 @@ class Prompt(ABC):
         else:
             raise TypeError(f"Prompt value must be of type str, List[str], Prompt, or List[Prompt], not {type(value)}")
         self.dynamic_value = []
+        self.format_kwargs = format_kwargs
 
     def __call__(self, *args: Any, **kwds: Any) -> List["Prompt"]:
         return self.value
@@ -34,7 +37,21 @@ class Prompt(ABC):
         val_ = '\n'.join([str(p) for p in self.value])
         for p in self.dynamic_value:
             val_ += f'\n{p}'
+        if len(self.format_kwargs) > 0:
+            for k, v in self.format_kwargs.items():
+                template_ = '{'+k+'}'
+                count = val_.count(template_)
+                if count <= 0:
+                    raise TemplatePropertyException(f"Template property `{k}` not found.")
+                elif count > 1:
+                    raise TemplatePropertyException(f"Template property {k} found multiple times ({count}), expected only once.")
+                if v is None:
+                    raise TemplatePropertyException(f"Invalid value: Template property {k} is None.")
+                val_ = val_.replace(template_, v)
         return val_
+
+    def __len__(self) -> int:
+        return len(self.value)
 
     def __repr__(self) -> str:
         return self.__str__()
@@ -47,6 +64,21 @@ class Prompt(ABC):
 
     def clear(self) -> None:
         self.dynamic_value.clear()
+
+
+class JsonPromptTemplate(Prompt):
+    def __init__(self, query: str):
+        super().__init__(["""Process the query over the data create a Json format: <data_query> => [JSON_BEGIN]<json_output>[JSON_END].
+Use the following json format must be used for the formatting, however the keys and value must be replace with the query data values:
+{query}
+
+Do not return anything other format than a valid json format.
+Your first character must always be a""" \
+"""'{' and your last character must always be a '}', everything else follows the formatting above.
+Only use double quotes " for the keys and values.
+Start the generation process after [JSON_BEGIN] and end it with [JSON_END]
+
+"""], query=query)
 
 
 class FuzzyEquals(Prompt):
