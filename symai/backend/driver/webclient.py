@@ -1,7 +1,9 @@
 import os
+
 os.environ['WDM_LOG'] = 'false' # disable webdriver-manager logging
 
 import logging
+
 logging.getLogger('WDM').setLevel(logging.NOTSET)
 
 import random
@@ -11,7 +13,6 @@ import time
 import urllib.request
 import warnings
 from random import choice
-
 
 try:
     warnings.filterwarnings('ignore', module='chromedriver')
