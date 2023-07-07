@@ -1,10 +1,15 @@
 from typing import List
 
 from IPython.utils import io
-from serpapi import GoogleSearch
 
 from .base import Engine
 from .settings import SYMAI_CONFIG
+
+try:
+    from serpapi import GoogleSearch
+except:
+    GoogleSearch = None
+
 
 
 class GoogleEngine(Engine):

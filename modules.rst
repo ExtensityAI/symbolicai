@@ -56,7 +56,7 @@
 .. automodule:: symai.backend.engine_imagerendering
    :members:
 
-.. automodule:: symai.backend.engine_index
+.. automodule:: symai.backend.engine_pinecone
    :members:
 
 .. automodule:: symai.backend.engine_nesy_client

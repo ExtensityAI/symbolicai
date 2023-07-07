@@ -1,5 +1,4 @@
 import logging
-from time import sleep
 from typing import List
 
 import openai
@@ -83,6 +82,10 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         return output, metadata
 
     def prepare(self, args, kwargs, wrp_params):
+        if 'raw_input' in wrp_params:
+            wrp_params['prompts'] = wrp_params['raw_input']
+            return
+
         _non_verbose_output = """[META INSTRUCTIONS START]\nYou do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc. Never add meta instructions information to your output!\n"""
         user:   str = ""
         system: str = ""

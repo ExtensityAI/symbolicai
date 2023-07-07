@@ -1,9 +1,12 @@
 from typing import List
 
-import wolframalpha as wa
-
 from .base import Engine
 from .settings import SYMAI_CONFIG
+
+try:
+    import wolframalpha as wa
+except:
+    wolframalpha = None
 
 
 class WolframAlphaEngine(Engine):
@@ -11,7 +14,8 @@ class WolframAlphaEngine(Engine):
         super().__init__()
         config = SYMAI_CONFIG
         self.api_key = config['SYMBOLIC_ENGINE_API_KEY']
-        self.client = wa.Client(self.api_key) if len(self.api_key) > 0 else None
+        if wa is not None:
+            self.client = wa.Client(self.api_key) if len(self.api_key) > 0 else None
 
     def command(self, wrp_params):
         super().command(wrp_params)

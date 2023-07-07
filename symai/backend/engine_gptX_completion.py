@@ -1,5 +1,4 @@
 import logging
-from time import sleep
 from typing import List
 
 import openai
@@ -82,6 +81,10 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
         return output, metadata
 
     def prepare(self, args, kwargs, wrp_params):
+        if 'raw_input' in wrp_params:
+            wrp_params['prompts'] = wrp_params['raw_input']
+            return
+
         user:   str = ""
         system: str = ""
         system      = f'{system}\n' if system and len(system) > 0 else ''

@@ -955,7 +955,7 @@ Hello World!
 
 Here, the `zip` method creates a pair of strings and embedding vectors, which are then added to the index. The line with `get` retrieves the original source based on the vector value of `hello` and uses `ast` to cast the value to a dictionary.
 
-You can set several optional arguments for the indexing engine. For more details, see the `symai/backend/engine_index.py` file.
+You can set several optional arguments for the indexing engine. For more details, see the `symai/backend/engine_pinecone.py` file.
 
 ### CLIP Engine
 

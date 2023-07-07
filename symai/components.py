@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 from .backend.engine_embedding import EmbeddingEngine
 from .backend.engine_gptX_chat import GPTXChatEngine
-from .backend.engine_index import IndexEngine
+from .backend.engine_pinecone import IndexEngine
 from .backend.mixin.openai import SUPPORTED_MODELS
 from .core import *
 from .formatter import ParagraphFormatter
