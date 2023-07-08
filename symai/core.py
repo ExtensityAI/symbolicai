@@ -560,11 +560,11 @@ def analyze(query: str,
 def correct(context: str,
             exception: Exception,
             default: Optional[str] = None,
-            prompt: str = str(FixCode()),
-            examples: Prompt = ExecutionCorrection(),
+            prompt: str = "Correct the code according to the context description.\n",
+            examples: Prompt = None,
             constraints: List[Callable] = [],
             pre_processor: Optional[List[PreProcessor]] = [CorrectionPreProcessor()],
-            post_processor: Optional[List[PostProcessor]] = [StripPostProcessor(), FixCodePostProcessor()],
+            post_processor: Optional[List[PostProcessor]] = [StripPostProcessor(), CodeExtractPostProcessor()],
             **wrp_kwargs):
     """Analyses an Exception and proposes a correction.
 
@@ -572,7 +572,7 @@ def correct(context: str,
         context (str): The context of the error.
         exception (Exception): The exception to be analyzed.
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
-        prompt (str, optional): The prompt describing the task. Defaults to 'Correct an code error by following the context description.'.
+        prompt (str, optional): The prompt describing the task. Defaults to 'Correct the code according to the context description.'.
         examples (Prompt, optional): A list of example answers to the error. Defaults to ExecutionCorrection().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [CorrectionPreProcessor()].

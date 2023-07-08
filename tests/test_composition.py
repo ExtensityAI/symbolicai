@@ -9,6 +9,7 @@ from examples.sql import SQL
 from symai import *
 from symai.chat import SymbiaChat
 from symai.extended import *
+from symai import FileReader, JsonParser
 
 # for debugging
 # attention this constantly overwrites the keys config file
@@ -230,9 +231,60 @@ In the _init_ function, the custom model takes in a configuration object (config
         self.assertTrue(3 == res['locals']['a'], res)
 
     def test_analyze_fail_correct_ftry(self):
-        sym = Symbol('a = int("3,")')
-        res = sym.fexecute()
-        self.assertTrue(3 == res['locals']['a'], res)
+        sym = Symbol('a = int("3,"). + 2')
+        res = sym.fexecute(retries=2)
+        self.assertTrue(5 == res['locals']['a'], res['locals'])
+
+    def test_json_parser(self):
+        err = """During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/xpitfire/workspace/symbolicai/tests/test_composition.py", line 245, in test_json_parser
+    res = parser(code)
+          ^^^^^^^^^^^^
+  File "/Users/xpitfire/workspace/symbolicai/symai/symbol.py", line 1640, in __call__
+    self.value = self.forward(*args, **kwargs)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/xpitfire/workspace/symbolicai/symai/components.py", line 413, in forward
+    res = self.fn(sym, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/xpitfire/workspace/symbolicai/symai/symbol.py", line 1640, in __call__
+    self.value = self.forward(*args, **kwargs)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/xpitfire/workspace/symbolicai/symai/components.py", line 51, in forward
+    return sym.ftry(self.expr, retries=self.retries, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/xpitfire/workspace/symbolicai/symai/symbol.py", line 1529, in ftry
+    sym     = code.correct(context=context,
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/xpitfire/workspace/symbolicai/symai/symbol.py", line 1111, in correct
+    return self._sym_return_type(_func(self))
+                                 ^^^^^^^^^^^
+  File "/Users/xpitfire/workspace/symbolicai/symai/core.py", line 46, in wrapper
+    return few_shot_func(wrp_self,
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/xpitfire/workspace/symbolicai/symai/functional.py", line 232, in few_shot_func
+    return _process_query(engine=neurosymbolic_engine,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/xpitfire/workspace/symbolicai/symai/functional.py", line 173, in _process_query
+    raise e # raise exception if no default and no function implementation
+    ^^^^^^^
+  File "/Users/xpitfire/workspace/symbolicai/symai/functional.py", line 149, in _process_query
+    rsp, metadata = _execute_query(engine, post_processor, wrp_self, wrp_params, return_constraint, args, kwargs)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/xpitfire/workspace/symbolicai/symai/functional.py", line 81, in _execute_query
+    if not constraint(rsp):
+           ^^^^^^^^^^^^^^^
+  File "/Users/xpitfire/workspace/symbolicai/symai/constraints.py", line 21, in __call__
+    raise ConstraintViolationException(f"Invalid JSON: ```json\n{input.value}\n```\n{e}")"""
+
+
+        parser = JsonParser("Extract all error messages into a json format. I am only interested in the `message` and if there are multiple errors, extract a list of messages.:", {'errors': [
+    {'message': '<The fist Exception>'},
+    {'message': '<The second Exception>'},
+]})
+        res = parser(err)
+        self.assertTrue('methods' in str(res), res)
 
     def test_execute(self):
         sym = Symbol("""
