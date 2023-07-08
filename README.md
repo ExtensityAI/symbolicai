@@ -18,14 +18,25 @@ Read further [**documentation here**](https://symbolicai.readthedocs.io/en/lates
 
 Conceptually, SymbolicAI is a framework that leverages machine learning – specifically LLMs – as its foundation, and composes operations based on task-specific prompting. We adopt a divide-and-conquer approach to break down a complex problem into smaller, more manageable problems. Consequently, each operation addresses a simpler task. By reassembling these operations, we can resolve the complex problem. Moreover, our design principles enable us to transition seamlessly between differentiable and classical programming, allowing us to harness the power of both paradigms.
 
+## Tutorials
+
+> The future is neuro-symbolic: Expressiveness of ChatGPT and generalizability of symbols
+[![The future is neuro-symbolic: Expressiveness of ChatGPT and generalizability of symbols](assets/images/vid1.png)](https://www.youtube.com/watch?v=RW_7JdXvbRA)
+
+> Symbols, Operations, Expressions, LLM-based functions!
+[![Symbols, Operations, Expressions, LLM-based functions!](assets/images/vid2.png)](https://www.youtube.com/watch?v=Ch9ygW62A34)
+
+> ChatBot In-Depth Demonstration (Tool Use and Iterative Processing)
+[![ChatBot In-Depth Demonstration (Tool Use and Iterative Processing)](assets/images/vid3.png)](https://www.youtube.com/watch?v=R46SskmmrCE)
+
 ## 📖 Table of Contents
 
 - [**SymbolicAI**](#symbolicai)
   - [**A Neuro-Symbolic Perspective on Large Language Models (LLMs)**](#a-neuro-symbolic-perspective-on-large-language-models-llms)
   - [Abstract](#abstract)
+  - [Tutorials](#tutorials)
   - [📖 Table of Contents](#-table-of-contents)
   - [🔧 Get Started](#-get-started)
-    - [Tutorials](#tutorials)
     - [➡️ Quick Install](#️-quick-install)
     - [API Keys](#api-keys)
     - [*\[Optional\]* Installs](#optional-installs)
@@ -93,17 +104,6 @@ Conceptually, SymbolicAI is a framework that leverages machine learning – spec
 
 
 ## 🔧 Get Started
-
-### Tutorials
-
-> The future is neuro-symbolic: Expressiveness of ChatGPT and generalizability of symbols
-[![The future is neuro-symbolic: Expressiveness of ChatGPT and generalizability of symbols](assets/images/vid1.png)](https://www.youtube.com/watch?v=RW_7JdXvbRA)
-
-> Symbols, Operations, Expressions, LLM-based functions!
-[![Symbols, Operations, Expressions, LLM-based functions!](assets/images/vid2.png)](https://www.youtube.com/watch?v=Ch9ygW62A34)
-
-> ChatBot In-Depth Demonstration (Tool Use and Iterative Processing)
-[![ChatBot In-Depth Demonstration (Tool Use and Iterative Processing)](assets/images/vid3.png)](https://www.youtube.com/watch?v=R46SskmmrCE)
 
 ### ➡️ Quick Install
 
