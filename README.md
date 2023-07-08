@@ -25,6 +25,7 @@ Conceptually, SymbolicAI is a framework that leverages machine learning – spec
   - [Abstract](#abstract)
   - [📖 Table of Contents](#-table-of-contents)
   - [🔧 Get Started](#-get-started)
+    - [Tutorials](#tutorials)
     - [➡️ Quick Install](#️-quick-install)
     - [API Keys](#api-keys)
     - [*\[Optional\]* Installs](#optional-installs)
@@ -92,6 +93,17 @@ Conceptually, SymbolicAI is a framework that leverages machine learning – spec
 
 
 ## 🔧 Get Started
+
+### Tutorials
+
+> The future is neuro-symbolic: Expressiveness of ChatGPT and generalizability of symbols
+[![The future is neuro-symbolic: Expressiveness of ChatGPT and generalizability of symbols](assets/images/vid1.png)](https://www.youtube.com/watch?v=RW_7JdXvbRA)
+
+> Symbols, Operations, Expressions, LLM-based functions!
+[![Symbols, Operations, Expressions, LLM-based functions!](assets/images/vid2.png)](https://www.youtube.com/watch?v=Ch9ygW62A34)
+
+> ChatBot In-Depth Demonstration (Tool Use and Iterative Processing)
+[![ChatBot In-Depth Demonstration (Tool Use and Iterative Processing)](assets/images/vid3.png)](https://www.youtube.com/watch?v=R46SskmmrCE)
 
 ### ➡️ Quick Install
 
@@ -488,7 +500,7 @@ Output:
 
 ### Evaluating Expressions by Best Effort
 
-Our approach is inspired by the method shown in [word2vec](https://arxiv.org/abs/1301.3781).
+Evaluations are resolved in the language domain and by best effort. We showcase this on the example of [word2vec](https://arxiv.org/abs/1301.3781).
 
 **Word2Vec** generates dense vector representations of words by training a shallow neural network to predict a word based on its neighbors in a text corpus. These resulting vectors are then employed in numerous natural language processing applications, such as sentiment analysis, text classification, and clustering.
 
@@ -537,7 +549,7 @@ True
 
 ### 🧠 Causal Reasoning
 
-The main goal of our framework is to enable reasoning capabilities on top of the statistical inference of Language Models (LMs). As a result, our `Symbol` objects can also perform deductive reasoning operations. One such operation involves defining rules that describe the causal relationship between symbols. The following example demonstrates how the `&` operator computes the logical implication of two symbols.
+The main goal of our framework is to enable reasoning capabilities on top of the statistical inference of Language Models (LMs). As a result, our `Symbol` objects offers operations to perform deductive reasoning expressions. One such operation involves defining rules that describe the causal relationship between symbols. The following example demonstrates how the `&` operator is overloaded to compute the logical implication of two symbols.
 
 ```python
 res = ai.Symbol('The horn only sounds on Sundays.') & ai.Symbol('I hear the horn.')
