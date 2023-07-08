@@ -406,12 +406,12 @@ class JsonParser(Expression):
                         constraints=[DictFormatConstraint(json_)],
                         pre_processor=[JsonPreProcessor()],
                         post_processor=[JsonTruncatePostProcessor()])
-        self.fn = Try(func)
+        self.fn = Try(func, retries=1)
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
         sym = self._to_symbol(sym)
         res = self.fn(sym, **kwargs)
-        return self._sym_return_type(res.ast())
+        return self._to_symbol(res.ast())
 
 
 class SimilarityClassification(Expression):

@@ -1495,15 +1495,18 @@ class Symbol(ABC):
         Raises:
             Exception: If the evaluation fails after all retries.
         """
-        prompt = {'message': ''}
+        prompt = {'out_msg': ''}
         def output_handler(input_):
-            prompt['message'] = input_
+            prompt['out_msg'] = input_
         kwargs['output_handler'] = output_handler
         retry_cnt: int = 0
-        sym = self
+        code = self # original input
+        if hasattr(expr, 'prompt'):
+            prompt['prompt_instruction'] = expr.prompt
+        sym = self # used for getting passed from one iteration to the next
         while True:
             try:
-                sym = expr(sym, **kwargs)
+                sym = expr(sym, **kwargs) # run the expression
                 retry_cnt = 0
                 return sym
             except Exception as e:
@@ -1511,9 +1514,29 @@ class Symbol(ABC):
                 if retry_cnt > retries:
                     raise e
                 else:
-                    err =  Symbol(prompt['message'])
-                    res = err.analyze(query="What is the issue in this expression?", payload=sym, exception=e)
-                    sym = sym.correct(context=prompt['message'], exception=e, payload=res)
+                    # analyze the error
+                    payload = f'[ORIGINAL_USER_PROMPT]\n{prompt["prompt_instruction"]}\n\n' if 'prompt_instruction' in prompt else ''
+                    payload = payload + f'[ORIGINAL_USER_DATA]\n{code}\n\n[ORIGINAL_GENERATED_OUTPUT]\n{prompt["out_msg"]}'
+                    probe   = sym.analyze(query="What is the issue in this expression?", payload=payload, exception=e)
+                    # attempt to correct the error
+                    payload = f'[ORIGINAL_USER_PROMPT]\n{prompt["prompt_instruction"]}\n\n' if 'prompt_instruction' in prompt else ''
+                    payload = payload + f'[ANALYSIS]\n{probe}\n\n'
+                    context = f'Try to correct the error of the original user request based on the analysis above: \n [GENERATED_OUTPUT]\n{prompt["out_msg"]}\n\n'
+
+                    constraints = expr.constraints if hasattr(expr, 'constraints') else []
+                    if hasattr(expr, 'post_processor'):
+                        post_processor = expr.post_processor
+                        sym     = code.correct(context=context,
+                                            exception=e,
+                                            payload=payload,
+                                            constraints=constraints,
+                                            post_processor=post_processor)
+                    else:
+                        sym     = code.correct(context=context,
+                                            exception=e,
+                                            payload=payload,
+                                            constraints=constraints)
+                    # TODO: find a way to pass on the constraints and behavior from the self.expr to the corrected code
 
     def expand(self, *args, **kwargs) -> "Symbol":
         """Expand the current Symbol and create a new sub-component.

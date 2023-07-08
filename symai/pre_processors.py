@@ -35,9 +35,10 @@ class PreProcessor:
 
 class JsonPreProcessor(PreProcessor):
     def __call__(self, wrp_self, wrp_params, *args: Any, **kwds: Any) -> None:
+        assert len(args) == 1
         self.format = format
         super().override_reserved_signature_keys(wrp_params, *args, **kwds)
-        value = prep_as_str(wrp_self)
+        value = str(args[0])
         return f'{value} => [JSON_BEGIN]'
 
 

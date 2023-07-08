@@ -1,4 +1,5 @@
 import ast
+import re
 from collections import namedtuple
 from typing import Any
 
@@ -23,15 +24,6 @@ class StripPostProcessor(PostProcessor):
             tmp = tmp[1:-1]
             tmp = tmp.strip()
         return tmp
-
-
-class FixCodePostProcessor(PostProcessor):
-    def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
-        if '```' in str(response):
-            response = response.replace('```', '#')
-            responses = response.split('#code')
-            response = response[1] if len(responses) > 1 else responses[0]
-        return response
 
 
 class ClusterPostProcessor(PostProcessor):
@@ -62,7 +54,10 @@ class SplitNewLinePostProcessor(PostProcessor):
 
 class JsonTruncatePostProcessor(PostProcessor):
     def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
-        print('debug before: ', response)
+        count_b = response.count('[JSON_BEGIN]')
+        count_e = response.count('[JSON_END]')
+        if count_b > 1 or count_e > 1:
+            raise ValueError("More than one [JSON_BEGIN] or [JSON_END] found. Please only generate one JSON response.")
         # cut off everything until the first '{'
         start_idx = response.find('{')
         response = response[start_idx:]
@@ -75,8 +70,21 @@ class JsonTruncatePostProcessor(PostProcessor):
                 response = response.replace("'", '"')
         except IndexError:
             pass
-        print('debug after: ', response)
         return response
+
+
+class CodeExtractPostProcessor(PostProcessor):
+    def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
+        if '```' not in response:
+            return response
+        matches = []
+        try:
+            pattern = r'```(?:\w*\n)?(.*?)```'
+            matches = re.findall(pattern, response, re.DOTALL)
+        except IndexError:
+            pass
+        code = "\n".join(matches).strip()
+        return code
 
 
 class WolframAlphaPostProcessor(PostProcessor):

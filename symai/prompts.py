@@ -69,14 +69,15 @@ class Prompt(ABC):
 class JsonPromptTemplate(Prompt):
     def __init__(self, query: str):
         super().__init__(["""Process the query over the data create a Json format: <data_query> => [JSON_BEGIN]<json_output>[JSON_END].
-Use the following json format must be used for the formatting, however the keys and value must be replace with the query data values:
-{query}
-
+--------------------------
+Use the following json format must be used for the formatting, however the keys and value must be replace with the query data values. Definition of the <data_query> := {query}
+--------------------------
 Do not return anything other format than a valid json format.
 Your first character must always be a""" \
 """'{' and your last character must always be a '}', everything else follows the formatting above.
 Only use double quotes " for the keys and values.
 Start the generation process after [JSON_BEGIN] and end it with [JSON_END]
+--------------------------
 
 """], query=query)
 
@@ -359,25 +360,6 @@ class IsInstanceOf(Prompt):
             "['orange', 'banana', 'apple'] isinstanceof 'apple' =>False",
             "'Input: Function call: (_, *args)\nObject: type(<class 'str'>) | value(Hello World)' isinstanceof 'log message' =>True",
         ])
-
-
-class FixCode(Prompt):
-    def __init__(self):
-        super().__init__([
-            """Correct the following code according to the context description.
-The description of the error is analyzed and the entire code is re-written to fix the error, not only the line where the error occurred.
-This ensures that the code is always fixed, validated and can be executed again without errors.
-Write only code in the languge provided. Do not use ``` or any other characters to mark the beginning or end of a code block.
-All comments or descriptions that are not valid code must be uncommented with the language specific comment character.
-The outcome must be valid code that can be compiled or executed without errors.
-
---------------------------- CODE TEMPLATE DESCRIPTION
-```code
-<YOUR_CORRECTED_CODE_HERE>
-```
-<YOUR_CORRECTED_CODE_HERE> is replaced with the code you write.
----------------------------
-"""])
 
 
 class FewShotPattern(Prompt):
