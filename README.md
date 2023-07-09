@@ -739,12 +739,12 @@ def few_shot(prompt: str,
              constraints: List[Callable] = [],
              default: Optional[object] = None,
              limit: int = 1,
-             pre_processor: Optional[List[PreProcessor]] = None,
-             post_processor: Optional[List[PostProcessor]] = None,
+             pre_processors: Optional[List[PreProcessor]] = None,
+             post_processors: Optional[List[PostProcessor]] = None,
              **wrp_kwargs):
 ```
 
-The `prompt` and `constraints` attributes behave similarly to those in the `zero_shot` decorator. The `examples` and `limit` arguments are new. The `examples` argument defines a list of demonstrations used to condition the neural computation engine, while the `limit` argument specifies the maximum number of examples returned, given that there are more results. The `pre_processor` argument accepts a list of `PreProcessor` objects for pre-processing input before it's fed into the neural computation engine. The `post_processor` argument accepts a list of `PostProcessor` objects for post-processing output before returning it to the user. Lastly, the `wrp_kwargs` argument passes additional arguments to the wrapped method, which are streamlined towards the neural computation engine and other engines.
+The `prompt` and `constraints` attributes behave similarly to those in the `zero_shot` decorator. The `examples` and `limit` arguments are new. The `examples` argument defines a list of demonstrations used to condition the neural computation engine, while the `limit` argument specifies the maximum number of examples returned, given that there are more results. The `pre_processors` argument accepts a list of `PreProcessor` objects for pre-processing input before it's fed into the neural computation engine. The `post_processors` argument accepts a list of `PostProcessor` objects for post-processing output before returning it to the user. Lastly, the `wrp_kwargs` argument passes additional arguments to the wrapped method, which are streamlined towards the neural computation engine and other engines.
 
 To provide a more comprehensive understanding of our conceptual implementation, refer to the flow diagram below, containing the most important classes:
 

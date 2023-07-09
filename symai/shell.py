@@ -58,8 +58,8 @@ class Shell(Expression):
     def forward(self, **kwargs) -> str:
         @few_shot(prompt="Convert a user query to a shell command:\n",
                      examples=[],
-                     pre_processor=[ShellPreProcessor()],
-                     post_processor=[StripPostProcessor()],
+                     pre_processors=[ShellPreProcessor()],
+                     post_processors=[StripPostProcessor()],
                      stop=['EOF'], **kwargs)
         def _func(_) -> str:
             return "Sorry, something went wrong. Please check if your backend is available and try again or report an issue to the devs. :("

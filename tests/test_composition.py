@@ -270,7 +270,7 @@ Traceback (most recent call last):
     raise e # raise exception if no default and no function implementation
     ^^^^^^^
   File "/Users/xpitfire/workspace/symbolicai/symai/functional.py", line 149, in _process_query
-    rsp, metadata = _execute_query(engine, post_processor, wrp_self, wrp_params, return_constraint, args, kwargs)
+    rsp, metadata = _execute_query(engine, post_processors, wrp_self, wrp_params, return_constraint, args, kwargs)
                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/Users/xpitfire/workspace/symbolicai/symai/functional.py", line 81, in _execute_query
     if not constraint(rsp):
