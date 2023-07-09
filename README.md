@@ -21,13 +21,13 @@ Conceptually, SymbolicAI is a framework that leverages machine learning – spec
 ## Tutorials
 
 > The future is neuro-symbolic: Expressiveness of ChatGPT and generalizability of symbols
-[![The future is neuro-symbolic: Expressiveness of ChatGPT and generalizability of symbols](assets/images/vid1.png)](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/vid1.png)
+[![The future is neuro-symbolic: Expressiveness of ChatGPT and generalizability of symbols](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/vid1.png)](https://www.youtube.com/watch?v=RW_7JdXvbRA)
 
 > Symbols, Operations, Expressions, LLM-based functions!
-[![Symbols, Operations, Expressions, LLM-based functions!](assets/images/vid2.png)](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/vid2.png)
+[![Symbols, Operations, Expressions, LLM-based functions!](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/vid2.png)](https://www.youtube.com/watch?v=Ch9ygW62A34)
 
 > ChatBot In-Depth Demonstration (Tool Use and Iterative Processing)
-[![ChatBot In-Depth Demonstration (Tool Use and Iterative Processing)](assets/images/vid3.png)](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/vid3.png)
+[![ChatBot In-Depth Demonstration (Tool Use and Iterative Processing)](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/vid3.png)](https://www.youtube.com/watch?v=R46SskmmrCE)
 
 ## 📖 Table of Contents
 
