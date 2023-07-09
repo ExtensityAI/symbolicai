@@ -52,7 +52,7 @@ Conceptually, SymbolicAI is a framework that leverages machine learning – spec
     - [📦 Package Initializer](#-package-initializer)
       - [Usage](#usage-1)
       - [Examples](#examples-1)
-      - [Note](#note-1)
+    - [Import](#import)
     - [💯 Other Use Cases](#-other-use-cases)
     - [Community Demos](#community-demos)
   - [🤷‍♂️ Why SymbolicAI?](#️-why-symbolicai)
@@ -307,7 +307,7 @@ The available commands are:
 - `l` or `list`: List all installed packages. To list installed packages, use the following command: `sympkg l`
 - `u` or `update`: Update an installed package. To update a package, use the following command: `sympkg u <package>`
 
-For more information on each command, you can use the `--help` flag. For example, to get help on the `install` command, use the following command: `sympkg install --help`.
+For more information on each command, you can use the `--help` flag. For example, to get help on the `i` command, use the following command: `sympkg i --help`.
 
 Note: The package manager is based on GitHub, so you will need `git` installed to install or update packages. The packages names use the GitHub `<username>/<repo_name>` convention.
 
@@ -364,6 +364,9 @@ This command removes the alias named `my_alias`.
 
 The Package Runner stores aliases in a JSON file named `aliases.json`. This file is located in the `.symai/packages/` directory in your home directory (`~/.symai/packages/`). You can view the contents of this file to see the existing aliases.
 
+Here is an example how to use the `sympkg` and `symrun` via shell:
+![Demo Usage of symask](assets/images/screen1.jpeg)
+
 #### Note
 
 If the alias specified cannot be found in the alias file, the Package Runner will attempt to run the command as a package. If the package is not found or an error occurs during execution, an appropriate error message will be displayed.
@@ -405,11 +408,55 @@ The Package Initializer creates the following files and directories:
 - `package.json`: Provides metadata for the package, including version, name, description, and expressions.
 - `src/func.py`: Contains the main function and expression code for the package.
 
-#### Note
+The Package Initializer creates the package in the `.symai/packages/` directory in your home directory (`~/.symai/packages/<username>/<repo_name>`).
+Within the created package you will see the `package.json` config file defining the new package metadata and `symrun` entry point and offers the declared expression types to the `Import` class.
 
-The Package Initializer creates the package in the `.symai/packages/` directory in your home directory (`~/.symai/packages/`).
+### Import
 
-That's it! You now have a basic understanding of how to use the Package Initializer provided by SymbolicAI to create new GitHub packages from the command line.
+The `Import` class is a module management class in the SymbolicAI library. This class provides an easy and controlled way to manage the use of external modules in the user’s project, with main functions including the ability to install, uninstall, update, and check installed modules. It is used to manage expression loading from packages and accesses the respective metadata from the `package.json`.
+
+The metadata for the package includes version, name, description, and expressions. It also lists the package dependencies required by the package.
+
+Here is an example of a `package.json` file:
+
+```json
+{
+    "version": "0.0.1",
+    "name": "<username>/<repo_name>",
+    "description": "<Project Description>",
+    "expressions": [{"module": "src/func", "type": "MyExpression"}],
+    "run": {"module": "src/func", "type": "MyExpression"},
+    "dependencies": []
+}
+```
+
+- `version`: Specifies the version number of the package. It is recommended to follow semantic versioning.
+- `name`: Specifies the name of the package. It typically follows the format `<username>/<repo_name>`, where `<username>` is your GitHub username and `<repo_name>` is the name of your package repository.
+- `description`: Provides a brief description of the package.
+- `expressions`: Defines the exported expressions for the package. Each expression is defined by its `module` and `type`. The `module` specifies the file path or module name where the expression is defined, and the `type` specifies the type of the expression. These are used to be accessed from code by calling `Import.
+- `run`: Specifies the expression that should be executed when the package is run. It follows the same format as the `expressions` property, only defined by a single entry point type.
+- `dependencies`: Lists the package dependencies to other SymbolicAI packages! Dependencies can be specified with their package name `<username>/<repo_name>`.
+
+Note that the `package.json` file is automatically created when you use the Package Initializer tool (`symdev`) to create a new package. Alongside the `package.json` also a `requirements.txt` is created. This file contains all the `pip` relevant dependencies.
+
+To import a package from code, see the following example:
+
+```python
+from symai import Import
+symask_module = Import("ExtensityAI/symask")
+```
+
+This command will clone the module from the given GitHub repository (`ExtensityAI/symask` in this case), install any dependencies, and expose the module's classes for use in your project.
+
+You can also install a module without instantiating it using the `install` method:
+
+```python
+Import.install("ExtensityAI/symask")
+```
+
+The `Import` class will automatically handle the cloning of the repository and the installation of dependencies that are declared in the `package.json` and `requirements.txt` files of the repository.
+
+Please refer to the comments in the code for more detailed explanations of how each method of the `Import` class works.
 
 ### 💯 Other Use Cases
 
