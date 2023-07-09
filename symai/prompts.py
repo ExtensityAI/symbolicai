@@ -67,19 +67,25 @@ class Prompt(ABC):
 
 
 class JsonPromptTemplate(Prompt):
-    def __init__(self, query: str):
-        super().__init__(["""Process the query over the data create a Json format: <data_query> => [JSON_BEGIN]<json_output>[JSON_END].
+    def __init__(self, query: str, json_format: dict):
+        super().__init__(["""Process the query over the data to create a Json format: <data_query> => [JSON_BEGIN]<json_output>[JSON_END].
 --------------------------
-Use the following json format must be used for the formatting, however the keys and value must be replace with the query data values. Definition of the <data_query> := {query}
+The json format is:
+{json_format}
 --------------------------
-Do not return anything other format than a valid json format.
+The generated output must follow the <json_output> formatting, however the keys and values must be replaced with the requested user data query results. Definition of the <data_query> := {query}
+--------------------------
+Do not return anything other than a valid json format.
 Your first character must always be a""" \
-"""'{' and your last character must always be a '}', everything else follows the formatting above.
+"""'{' and your last character must always be a '}', everything else follows the user specified instructions.
 Only use double quotes " for the keys and values.
-Start the generation process after [JSON_BEGIN] and end it with [JSON_END]
+Start the generation process after [JSON_BEGIN] and end it with [JSON_END].
+Every key that has no semantic placeholder brackets around it (e.g. {placeholder}, {entity}, {attribute}, etc.) must be available in the generated json output.
+All semantic placeholders (e.g. {placeholder}, {entity}, {attribute}, etc.) must be replaced according to their wheather or not they are found in the data query results.
+DO NOT WRITE the semantic placeholders (e.g. {placeholder}, {entity}, {attribute}, etc.) in the generated json output.
 --------------------------
 
-"""], query=query)
+"""], query=query, json_format=str(json_format))
 
 
 class FuzzyEquals(Prompt):
