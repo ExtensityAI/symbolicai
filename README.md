@@ -21,13 +21,13 @@ Conceptually, SymbolicAI is a framework that leverages machine learning – spec
 ## Tutorials
 
 > The future is neuro-symbolic: Expressiveness of ChatGPT and generalizability of symbols
-[![The future is neuro-symbolic: Expressiveness of ChatGPT and generalizability of symbols](assets/images/vid1.png)](https://www.youtube.com/watch?v=RW_7JdXvbRA)
+[![The future is neuro-symbolic: Expressiveness of ChatGPT and generalizability of symbols](assets/images/vid1.png)](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/vid1.png)
 
 > Symbols, Operations, Expressions, LLM-based functions!
-[![Symbols, Operations, Expressions, LLM-based functions!](assets/images/vid2.png)](https://www.youtube.com/watch?v=Ch9ygW62A34)
+[![Symbols, Operations, Expressions, LLM-based functions!](assets/images/vid2.png)](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/vid2.png)
 
 > ChatBot In-Depth Demonstration (Tool Use and Iterative Processing)
-[![ChatBot In-Depth Demonstration (Tool Use and Iterative Processing)](assets/images/vid3.png)](https://www.youtube.com/watch?v=R46SskmmrCE)
+[![ChatBot In-Depth Demonstration (Tool Use and Iterative Processing)](assets/images/vid3.png)](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/vid3.png)
 
 ## 📖 Table of Contents
 
@@ -365,7 +365,7 @@ This command removes the alias named `my_alias`.
 The Package Runner stores aliases in a JSON file named `aliases.json`. This file is located in the `.symai/packages/` directory in your home directory (`~/.symai/packages/`). You can view the contents of this file to see the existing aliases.
 
 Here is an example how to use the `sympkg` and `symrun` via shell:
-![Demo Usage of symask](assets/images/screen1.jpeg)
+![Demo Usage of symask](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/screen1.jpeg)
 
 #### Note
 
