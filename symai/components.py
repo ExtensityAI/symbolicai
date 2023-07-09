@@ -402,7 +402,7 @@ class Function(TrackerTraceable):
 class JsonParser(Expression):
     def __init__(self, query: str, json_: dict):
         super().__init__()
-        func = Function(prompt=JsonPromptTemplate(query),
+        func = Function(prompt=JsonPromptTemplate(query, json_),
                         constraints=[DictFormatConstraint(json_)],
                         pre_processor=[JsonPreProcessor()],
                         post_processor=[JsonTruncatePostProcessor()])
