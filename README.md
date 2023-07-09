@@ -1110,7 +1110,7 @@ https://oaidalleapiprodscus.blob.core.windows.net/private/org-l6FsXDfth6Uct ...
 
 Don't worry, we would never hide an image of a cat with a hat from you. Here is the image preview and [link](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/cat.jpg):
 
-<img src="assets/images/cat.jpg" width="200px">
+<img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/cat.jpg" width="200px">
 
 
 ### File Engine
