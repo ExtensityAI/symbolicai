@@ -59,7 +59,7 @@ conda activate symenv
 
 # Install ipython configuration
 mkdir -p ~/.ipython/profile_default/startup
-echo "from symai import *; from symai.extended.conversation import Conversation; q = Conversation()" > ~/.ipython/profile_default/startup/startup.py
+echo "from symai import *; from symai.extended.conversation import Conversation; q = Conversation(auto_print=True)" > ~/.ipython/profile_default/startup/startup.py
 
 # Create a desktop icon on Linux
 if [ "$(uname)" == "Darwin" ]; then

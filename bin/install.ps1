@@ -1,8 +1,3 @@
-# PowerShell
-# The script checks if Git and Anaconda are installed on Windows. If not, it downloads and installs them.
-# It then creates a Conda environment and installs Jupyter notebook and SymbolicAI in it.
-# Finally, it sets up the ipython configuration.
-
 # Check if Git is installed
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
     # Download Git from the official site and install
@@ -30,18 +25,18 @@ conda install -n symenv jupyter -y
 conda activate symenv
 
 # Install symbolicai using pip that comes with the Anaconda environment
-pip install symbolicai
+& "$env:USERPROFILE\Anaconda3\envs\symenv\Scripts\pip" install symbolicai
 
 # Set up an ipython configuration
 if (!(Test-Path -Path "$env:USERPROFILE\.ipython\profile_default\startup")) {
     New-Item -ItemType directory -Path "$env:USERPROFILE\.ipython\profile_default\startup"
 }
-Add-Content "$env:USERPROFILE\.ipython\profile_default\startup\startup.py" "from symai import *; from symai.extended.conversation import Conversation; q = Conversation()"
+Add-Content "$env:USERPROFILE\.ipython\profile_default\startup\startup.py" "from symai import *; from symai.extended.conversation import Conversation; q = Conversation(auto_print=True)"
 
 # Create a shortcut for the ipython console on Desktop
-$Shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut("$env:USERPROFILE\Desktop\IPython Console.lnk")
+$Shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut("$([Environment]::GetFolderPath('Desktop'))\IPython Console.lnk")
 $Shortcut.TargetPath = "powershell.exe"
-
-# Start powershell, load the conda environment 'symenv' and open the ipython console
-$Shortcut.Arguments = "-ExecutionPolicy Bypass -NoExit -Command "& 'conda activate symenv && ipython'"
+$Shortcut.WorkingDirectory = "" # set this to the intended starting directory
+$command = '-ExecutionPolicy Bypass -NoExit -Command . "$env:USERPROFILE\Anaconda3\envs\symenv\Scripts\ipython.exe"'
+$Shortcut.Arguments = $command
 $Shortcut.Save()

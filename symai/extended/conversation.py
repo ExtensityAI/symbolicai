@@ -79,3 +79,11 @@ class Conversation(SlidingWindowStringConcatMemory):
         if self.auto_print:
             print(res)
         return res
+
+    def __repr__(self):
+            """Get the representation of the Symbol object as a string.
+
+            Returns:
+                str: The representation of the Symbol object.
+            """
+            return str(self.value)
