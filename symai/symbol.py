@@ -78,7 +78,7 @@ class Symbol(ABC):
         Returns:
             type: The Symbol class.
         """
-        return Symbol
+        return type(self)
 
     @property
     def global_context(self) -> str:
