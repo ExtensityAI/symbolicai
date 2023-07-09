@@ -40,9 +40,9 @@ class Demo(ai.Symbol):
         pass
 
     @ai.zero_shot(default=False,
-                  pre_processor=[ai.ArgsPreProcessor("Are this {} names?"),
+                  pre_processors=[ai.ArgsPreProcessor("Are this {} names?"),
                                  ai.ArgsToInputPreProcessor(skip=[0])],
-                  post_processor=[ai.ConfirmToBoolPostProcessor()])
+                  post_processors=[ai.ConfirmToBoolPostProcessor()])
     def is_name(self, language: str, text: str) -> bool:
         pass
 

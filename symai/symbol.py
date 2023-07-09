@@ -1524,13 +1524,13 @@ class Symbol(ABC):
                     context = f'Try to correct the error of the original user request based on the analysis above: \n [GENERATED_OUTPUT]\n{prompt["out_msg"]}\n\n'
 
                     constraints = expr.constraints if hasattr(expr, 'constraints') else []
-                    if hasattr(expr, 'post_processor'):
-                        post_processor = expr.post_processor
+                    if hasattr(expr, 'post_processors'):
+                        post_processors = expr.post_processors
                         sym     = code.correct(context=context,
                                             exception=e,
                                             payload=payload,
                                             constraints=constraints,
-                                            post_processor=post_processor)
+                                            post_processors=post_processors)
                     else:
                         sym     = code.correct(context=context,
                                             exception=e,

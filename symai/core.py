@@ -20,8 +20,8 @@ def few_shot(prompt: str = '',
              constraints: List[Callable] = [],
              default: Optional[object] = None,
              limit: int = 1,
-             pre_processor: Optional[List[PreProcessor]] = None,
-             post_processor: Optional[List[PostProcessor]] = None,
+             pre_processors: Optional[List[PreProcessor]] = None,
+             post_processors: Optional[List[PostProcessor]] = None,
              **wrp_kwargs):
     """"General decorator for the neural processing engine.
     This method is used to decorate functions which can build any expression in a examples-based way.
@@ -33,8 +33,8 @@ def few_shot(prompt: str = '',
         default (object, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         limit (int, optional): The maximum number of results to be returned, if more are obtained.
         default (object, optional): Default value if prediction fails. Defaults to None.
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model to match the format of the examples. Defaults to None.
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model to match the format of the examples. Defaults to None.
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
         **wrp_kwargs: Additional arguments as key-value pairs passed to the decorated function, which can later accessed in pre_processors and post_processors via the wrp_params['key'] dictionary.
 
     Returns:
@@ -50,8 +50,8 @@ def few_shot(prompt: str = '',
                                  constraints=constraints,
                                  default=default,
                                  limit=limit,
-                                 pre_processor=pre_processor,
-                                 post_processor=post_processor,
+                                 pre_processors=pre_processors,
+                                 post_processors=post_processors,
                                  wrp_kwargs=wrp_kwargs,
                                  args=args, kwargs=kwargs)
         return wrapper
@@ -62,8 +62,8 @@ def zero_shot(prompt: str = '',
               constraints: List[Callable] = [],
               default: Optional[object] = None,
               limit: int = 1,
-              pre_processor: Optional[List[PreProcessor]] = None,
-              post_processor: Optional[List[PostProcessor]] = None,
+              pre_processors: Optional[List[PreProcessor]] = None,
+              post_processors: Optional[List[PostProcessor]] = None,
               **wrp_kwargs):
     """"General decorator for the neural processing engine.
     This method is used to decorate functions which can build any expression without examples.
@@ -74,8 +74,8 @@ def zero_shot(prompt: str = '',
         default (object, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         limit (int, optional): The maximum number of results to be returned, if more are obtained.
         default (object, optional): Default value if prediction fails. Defaults to None.
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
         **wrp_kwargs: Additional arguments as key-value pairs passed to the decorated function, which can later accessed in pre_processors and post_processors via the wrp_params['key'] dictionary.
 
     Returns:
@@ -86,8 +86,8 @@ def zero_shot(prompt: str = '',
                     constraints=constraints,
                     default=default,
                     limit=limit,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     wrp_kwargs=wrp_kwargs)
 
 
@@ -95,8 +95,8 @@ def summarize(prompt: str = 'Summarize the content of the following text:\n',
               context: Optional[str] = None,
               constraints: List[Callable] = [],
               default: Optional[object] = None,
-              pre_processor: Optional[List[PreProcessor]] = [SummaryPreProcessing()],
-              post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+              pre_processors: Optional[List[PreProcessor]] = [SummaryPreProcessing()],
+              post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
               **wrp_kwargs):
     """Summarizes the content of a text.
 
@@ -105,8 +105,8 @@ def summarize(prompt: str = 'Summarize the content of the following text:\n',
         context (str, optional): Provide the context how text should be summarized. Defaults to None.
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         default (object, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         str: The summary of the text.
@@ -117,8 +117,8 @@ def summarize(prompt: str = 'Summarize the content of the following text:\n',
                     constraints=constraints,
                     default=default,
                     limit=1,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -127,8 +127,8 @@ def equals(context: str = 'contextually',
            prompt: str = "Make a fuzzy equals comparison. Are the following objects {} the same?\n",
            examples: Prompt = FuzzyEquals(),
            constraints: List[Callable] = [],
-           pre_processor: Optional[List[PreProcessor]] = [EqualsPreProcessor()],
-           post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+           pre_processors: Optional[List[PreProcessor]] = [EqualsPreProcessor()],
+           post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
            **wrp_kwargs):
     """Equality function for two objects.
 
@@ -138,8 +138,8 @@ def equals(context: str = 'contextually',
         prompt (str, optional): The prompt describing the task. Defaults to "Are the following objects {} the same?\n".
         examples (Prompt, optional): List of fuzzy examples showing how to compare objects in specified format. Defaults to FuzzyEquals().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [EqualsPreProcessor()] and uses 'self' plus one required argument for comparison (other).
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [EqualsPreProcessor()] and uses 'self' plus one required argument for comparison (other).
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         bool: The equality of the two objects.
@@ -151,8 +151,8 @@ def equals(context: str = 'contextually',
                     limit=1,
                     stop=['\n'],
                     max_tokens=10,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -161,8 +161,8 @@ def sufficient(query: str,
                default: bool = False,
                examples: Prompt = SufficientInformation(),
                constraints: List[Callable] = [],
-               pre_processor: Optional[List[PreProcessor]] = [SufficientInformationPreProcessor()],
-               post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+               pre_processors: Optional[List[PreProcessor]] = [SufficientInformationPreProcessor()],
+               post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
                **wrp_kwargs) -> bool:
     """Determines if there is sufficient information to answer the given query.
 
@@ -172,8 +172,8 @@ def sufficient(query: str,
         default (bool, optional): The default value to be returned if the task cannot be solved. Defaults to False. Alternatively, one can implement the decorated function.
         examples (Prompt, optional): A list of example inputs used to train the model. Defaults to SufficientInformation().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [SufficientInformationPreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [SufficientInformationPreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         bool: True if there is sufficient information to answer the query, False otherwise.
@@ -186,8 +186,8 @@ def sufficient(query: str,
                     limit=1,
                     stop=['\n'],
                     max_tokens=10,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -195,8 +195,8 @@ def delitem(default: Optional[str] = None,
             prompt: str = "Delete the items at the index position\n",
             examples: Prompt = RemoveIndex(),
             constraints: List[Callable] = [],
-            pre_processor: Optional[List[PreProcessor]] = [DeleteIndexPreProcessor()],
-            post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+            pre_processors: Optional[List[PreProcessor]] = [DeleteIndexPreProcessor()],
+            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
             **wrp_kwargs):
     """Deletes the items at the specified index position.
 
@@ -205,8 +205,8 @@ def delitem(default: Optional[str] = None,
         prompt (str, optional): The prompt describing the task. Defaults to 'Delete the items at the index position'
         examples (Prompt, optional): A list of strings from which the model can learn. Defaults to RemoveIndex().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [DeleteIndexPreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [DeleteIndexPreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         str: The item at the specified index position.
@@ -217,8 +217,8 @@ def delitem(default: Optional[str] = None,
                     default=default,
                     limit=1,
                     stop=['\n'],
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -226,8 +226,8 @@ def setitem(default: Optional[str] = None,
             prompt: str = "Set item at index position\n",
             examples: Prompt = SetIndex(),
             constraints: List[Callable] = [],
-            pre_processor: Optional[List[PreProcessor]] = [SetIndexPreProcessor()],
-            post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+            pre_processors: Optional[List[PreProcessor]] = [SetIndexPreProcessor()],
+            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
             **wrp_kwargs):
     """Sets an item at a given index position in a sequence.
 
@@ -236,8 +236,8 @@ def setitem(default: Optional[str] = None,
         prompt (str, optional): The prompt describing the task. Defaults to "Set item at index position"
         examples (Prompt, optional): A list of examples that the model should be trained on. Defaults to SetIndex().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [SetIndexPreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [SetIndexPreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         str: The item set at the specified index position.
@@ -248,8 +248,8 @@ def setitem(default: Optional[str] = None,
                     default=default,
                     limit=1,
                     stop=['\n'],
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -257,8 +257,8 @@ def getitem(default: Optional[str] = None,
             prompt: str = "Get item at index position\n",
             examples: Prompt = Index(),
             constraints: List[Callable] = [],
-            pre_processor: Optional[List[PreProcessor]] = [IndexPreProcessor()],
-            post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+            pre_processors: Optional[List[PreProcessor]] = [IndexPreProcessor()],
+            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
             **wrp_kwargs):
     """Retrieves the item at the given index position.
 
@@ -267,8 +267,8 @@ def getitem(default: Optional[str] = None,
         prompt (str, optional): The prompt describing the task. Defaults to 'Get item at index position
         examples (Prompt, optional): A list of examples to be used for training. Defaults to Index().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [IndexPreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [IndexPreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         str: The item at the given index position.
@@ -279,8 +279,8 @@ def getitem(default: Optional[str] = None,
                     default=default,
                     limit=1,
                     stop=['\n'],
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -289,8 +289,8 @@ def modify(changes: str,
            prompt: str = "Modify the text to match the criteria:\n",
            examples: Prompt = Modify(),
            constraints: List[Callable] = [],
-           pre_processor: Optional[List[PreProcessor]] = [ModifyPreProcessor()],
-           post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+           pre_processors: Optional[List[PreProcessor]] = [ModifyPreProcessor()],
+           post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
            **wrp_kwargs):
     """A function to modify a text based on a set of criteria.
 
@@ -300,8 +300,8 @@ def modify(changes: str,
         prompt (str, optional): The prompt describing the task. Defaults to "Modify the text to match the criteria:\n".
         examples (Prompt, optional): List of possible modifications in specified format. Defaults to Modify().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [ModifyPreProcessor()] and requires one argument (text).
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [ModifyPreProcessor()] and requires one argument (text).
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         str: The modified text.
@@ -312,8 +312,8 @@ def modify(changes: str,
                     constraints=constraints,
                     default=default,
                     limit=1,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -323,8 +323,8 @@ def filtering(criteria: str,
               prompt: str = "Filter the information from the text based on the filter criteria. Leave sentences unchanged if they are unrelated to the filter criteria:\n",
               examples: Prompt = Filter(),
               constraints: List[Callable] = [],
-              pre_processor: Optional[List[PreProcessor]] = [FilterPreProcessor()],
-              post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+              pre_processors: Optional[List[PreProcessor]] = [FilterPreProcessor()],
+              post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
               **wrp_kwargs):
     """Filter information from a text based on a set of criteria.
 
@@ -335,8 +335,8 @@ def filtering(criteria: str,
         prompt (str, optional): The prompt describing the task. Defaults to "Remove the information from the text based on the filter criteria:\n".
         examples (Prompt, optional): List of filtered examples in specified format. Defaults to Filter().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model.. Defaults to [FilterPreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model.. Defaults to [FilterPreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         str: The filtered text.
@@ -348,8 +348,8 @@ def filtering(criteria: str,
                     constraints=constraints,
                     default=default,
                     limit=1,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -358,8 +358,8 @@ def notify(subscriber: Dict[str, Callable],
            prompt: str = "List the semantically related topics:\n",
            examples: Prompt = SemanticMapping(),
            constraints: List[Callable] = [],
-           pre_processor: Optional[List[PreProcessor]] = [SemanticMappingPreProcessor()],
-           post_processor: Optional[List[PostProcessor]] = [SplitPipePostProcessor(), NotifySubscriberPostProcessor()],
+           pre_processors: Optional[List[PreProcessor]] = [SemanticMappingPreProcessor()],
+           post_processors: Optional[List[PostProcessor]] = [SplitPipePostProcessor(), NotifySubscriberPostProcessor()],
            **wrp_kwargs):
     """Notify subscribers based on a set of topics if detected in the input text and matching the key of the subscriber.
 
@@ -369,8 +369,8 @@ def notify(subscriber: Dict[str, Callable],
         prompt (_type_, optional): The prompt describing the task. Defaults to "List the semantically related topics:\n".
         examples (Prompt, optional): List of semantic mapping examples. Defaults to SemanticMapping().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model.. Defaults to [SemanticMappingPreProcessor()]. Requires one argument (text).
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [SplitPipePostProcessor(), NotifySubscriberPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model.. Defaults to [SemanticMappingPreProcessor()]. Requires one argument (text).
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [SplitPipePostProcessor(), NotifySubscriberPostProcessor()].
 
     Returns:
         str: A string with a list of topics detected in the input text separated by a pipe (|).
@@ -381,8 +381,8 @@ def notify(subscriber: Dict[str, Callable],
                     constraints=constraints,
                     default=default,
                     limit=1,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -391,8 +391,8 @@ def compare(default: bool = False,
             prompt: str = "Compare number 'A' to 'B':\n",
             examples: Prompt = CompareValues(),
             constraints: List[Callable] = [],
-            pre_processor: Optional[List[PreProcessor]] = [ComparePreProcessor()],
-            post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+            pre_processors: Optional[List[PreProcessor]] = [ComparePreProcessor()],
+            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
             **wrp_kwargs):
     """Compare two objects based on the specified operator.
 
@@ -402,8 +402,8 @@ def compare(default: bool = False,
         prompt (_type_, optional): The prompt describing the task. Defaults to "Compare number 'A' to 'B':\n".
         examples (Prompt, optional): List of comparison examples. Defaults to CompareValues().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model.. Defaults to [ComparePreProcessor()]. Uses 'self' for 'A' and requires exactly one argument (B) to compare.
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model.. Defaults to [ComparePreProcessor()]. Uses 'self' for 'A' and requires exactly one argument (B) to compare.
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         bool: Conditional outcome of the comparison.
@@ -416,8 +416,8 @@ def compare(default: bool = False,
                     stop=['\n'],
                     max_tokens=10,
                     operator=operator,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -426,8 +426,8 @@ def convert(format: str,
             prompt: str = "Translate the following text into {} format.\n",
             examples: Prompt = Format(),
             constraints: List[Callable] = [],
-            pre_processor: Optional[List[PreProcessor]] = [TextFormatPreProcessor()],
-            post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+            pre_processors: Optional[List[PreProcessor]] = [TextFormatPreProcessor()],
+            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
             **wrp_kwargs):
     """Transformation operation from one format to another.
 
@@ -437,8 +437,8 @@ def convert(format: str,
         prompt (str, optional): The prompt describing the task. Defaults to "Translate the following text into {} format.\n".
         examples (Prompt, optional): List of format examples. Defaults to Format().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (list, optional): A list of pre-processors to be applied to the input and shape the input to the model.. Defaults to [TextFormatPreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (list, optional): A list of pre-processors to be applied to the input and shape the input to the model.. Defaults to [TextFormatPreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         str: The formatted text.
@@ -449,8 +449,8 @@ def convert(format: str,
                     default=default,
                     limit=1,
                     format=format,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -459,8 +459,8 @@ def transcribe(modify: str,
                prompt: str = "Transcribe the following text by only modifying the text by the provided instruction.\n",
                examples: Prompt = Transcription(),
                constraints: List[Callable] = [],
-               pre_processor: Optional[List[PreProcessor]] = [TranscriptionPreProcessor()],
-               post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+               pre_processors: Optional[List[PreProcessor]] = [TranscriptionPreProcessor()],
+               post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
                **wrp_kwargs):
     """Transcription operation of a text to another styled text.
 
@@ -470,8 +470,8 @@ def transcribe(modify: str,
         prompt (str, optional): The prompt describing the task. Defaults to "Transcribe the following text by only modifying the text by the provided instruction.\n".
         examples (Prompt, optional): List of format examples. Defaults to Format().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (list, optional): A list of pre-processors to be applied to the input and shape the input to the model.. Defaults to [TextFormatPreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (list, optional): A list of pre-processors to be applied to the input and shape the input to the model.. Defaults to [TextFormatPreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         str: The transcribed text.
@@ -482,8 +482,8 @@ def transcribe(modify: str,
                     default=default,
                     limit=1,
                     modify=modify,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -492,8 +492,8 @@ def style(description: str,
           default: Optional[str] = None,
           prompt: str = "Style the [DATA] based on best practices and the descriptions in [...] brackets. Do not remove content from the data! Do not add libraries or other descriptions. \n",
           constraints: List[Callable] = [],
-          pre_processor: Optional[List[PreProcessor]] = [StylePreProcessor()],
-          post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+          pre_processors: Optional[List[PreProcessor]] = [StylePreProcessor()],
+          post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
           **wrp_kwargs):
     """Styles a given text based on best practices and a given description.
 
@@ -503,8 +503,8 @@ def style(description: str,
         default (str, optional): The default style to be applied if the task cannot be solved. Defaults to None.
         prompt (str, optional): The prompt describing the task. Defaults to 'Style the following content based on best practices and the following description. Do not change content of the data!
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [StylePreProcessor(), TemplatePreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [StylePreProcessor(), TemplatePreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         str: The given text, styled according to best practices.
@@ -516,8 +516,8 @@ def style(description: str,
                     default=default,
                     limit=1,
                     description=description,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -527,8 +527,8 @@ def analyze(query: str,
             prompt: str = "Only analyze the error message and suggest a potential correction, however, do NOT provide the code!\n",
             examples: Prompt = ExceptionMapping(),
             constraints: List[Callable] = [],
-            pre_processor: Optional[List[PreProcessor]] = [ExceptionPreProcessor()],
-            post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+            pre_processors: Optional[List[PreProcessor]] = [ExceptionPreProcessor()],
+            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
             **wrp_kwargs):
     """Analyses an Exception and proposes a correction.
 
@@ -539,8 +539,8 @@ def analyze(query: str,
         prompt (str, optional): The prompt describing the task. Defaults to 'Analyses the error and propose a correction.'.
         examples (Prompt, optional): A list of example answers to the error. Defaults to ExceptionMapping().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [ExceptionPreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [ExceptionPreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         str: The proposed correction for the given error.
@@ -552,8 +552,8 @@ def analyze(query: str,
                     constraints=constraints,
                     default=default,
                     limit=1,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -563,8 +563,8 @@ def correct(context: str,
             prompt: str = "Correct the code according to the context description.\n",
             examples: Prompt = None,
             constraints: List[Callable] = [],
-            pre_processor: Optional[List[PreProcessor]] = [CorrectionPreProcessor()],
-            post_processor: Optional[List[PostProcessor]] = [StripPostProcessor(), CodeExtractPostProcessor()],
+            pre_processors: Optional[List[PreProcessor]] = [CorrectionPreProcessor()],
+            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor(), CodeExtractPostProcessor()],
             **wrp_kwargs):
     """Analyses an Exception and proposes a correction.
 
@@ -575,8 +575,8 @@ def correct(context: str,
         prompt (str, optional): The prompt describing the task. Defaults to 'Correct the code according to the context description.'.
         examples (Prompt, optional): A list of example answers to the error. Defaults to ExecutionCorrection().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [CorrectionPreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [CorrectionPreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         str: The proposed correction for the given error.
@@ -588,8 +588,8 @@ def correct(context: str,
                     constraints=constraints,
                     default=default,
                     limit=1,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -598,8 +598,8 @@ def translate(language: str = 'English',
               prompt: str = "Translate the following text into {}:\n",
               examples: Optional[Prompt] = None,
               constraints: List[Callable] = [],
-              pre_processor: Optional[List[PreProcessor]] = [LanguagePreProcessor()],
-              post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+              pre_processors: Optional[List[PreProcessor]] = [LanguagePreProcessor()],
+              post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
               **wrp_kwargs):
     """Translates a given text into a specified language.
 
@@ -609,8 +609,8 @@ def translate(language: str = 'English',
         prompt (str, optional): The prompt describing the task. Defaults to "Translate the following text into {}:".
         examples (Prompt, optional): A list of example texts to be used as a reference. Defaults to [].
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [LanguagePreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [LanguagePreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         str: The translated text.
@@ -621,8 +621,8 @@ def translate(language: str = 'English',
                     default=default,
                     limit=1,
                     language=language,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -631,8 +631,8 @@ def rank(default: Optional[object] = None,
          prompt: str = "Order the list of objects based on their quality measure and oder literal:\n",
          examples: Prompt = RankList(),
          constraints: List[Callable] = [],
-         pre_processor: Optional[List[PreProcessor]] = [RankPreProcessor()],
-         post_processor: Optional[List[PostProcessor]] = [ASTPostProcessor()],
+         pre_processors: Optional[List[PreProcessor]] = [RankPreProcessor()],
+         post_processors: Optional[List[PostProcessor]] = [ASTPostProcessor()],
          **wrp_kwargs):
     """Ranks a list of objects based on their quality measure and order literal.
 
@@ -642,8 +642,8 @@ def rank(default: Optional[object] = None,
         prompt (str, optional): The prompt describing the task. Defaults to "Order the list of objects based on their quality measure and oder literal:".
         examples (Prompt, optional): A list of examples of ordered objects. Defaults to RankList().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [RankPreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [ASTPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [RankPreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [ASTPostProcessor()].
 
     Returns:
         List[str]: The list of objects in the given order.
@@ -655,8 +655,8 @@ def rank(default: Optional[object] = None,
                     limit=1,
                     stop=['\n'],
                     order=order,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -664,8 +664,8 @@ def replace(prompt: str = "Replace text parts by string pattern.\n",
             default: Optional[str] = None,
             examples: Prompt = ReplaceText(),
             constraints: List[Callable] = [],
-            pre_processor: Optional[List[PreProcessor]] = [ReplacePreProcessor()],
-            post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+            pre_processors: Optional[List[PreProcessor]] = [ReplacePreProcessor()],
+            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
             **wrp_kwargs):
     """Replaces text parts by a given string pattern.
 
@@ -674,8 +674,8 @@ def replace(prompt: str = "Replace text parts by string pattern.\n",
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None.
         examples (Prompt, optional): A list of examples to be used to train the model. Defaults to ReplaceText().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [ReplacePreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [ReplacePreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         str: The replaced text.
@@ -685,8 +685,8 @@ def replace(prompt: str = "Replace text parts by string pattern.\n",
                     constraints=constraints,
                     default=default,
                     limit=1,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -694,8 +694,8 @@ def include(prompt: str = "Include information based on description.\n",
             default: Optional[str] = None,
             examples: Prompt = IncludeText(),
             constraints: List[Callable] = [],
-            pre_processor: Optional[List[PreProcessor]] = [IncludePreProcessor()],
-            post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+            pre_processors: Optional[List[PreProcessor]] = [IncludePreProcessor()],
+            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
             **wrp_kwargs):
     """Include information from a description.
 
@@ -704,8 +704,8 @@ def include(prompt: str = "Include information based on description.\n",
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         examples (Prompt, optional): A list of examples containing information to be included. Defaults to IncludeText().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         str: The included information from the description.
@@ -715,8 +715,8 @@ def include(prompt: str = "Include information based on description.\n",
                     constraints=constraints,
                     default=default,
                     limit=1,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -724,8 +724,8 @@ def combine(prompt: str = "Add the two data types in a logical way:\n",
             default: Optional[str] = None,
             examples: Prompt = CombineText(),
             constraints: List[Callable] = [],
-            pre_processor: Optional[List[PreProcessor]] = [CombinePreProcessor()],
-            post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+            pre_processors: Optional[List[PreProcessor]] = [CombinePreProcessor()],
+            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
             **wrp_kwargs):
     """Combines two data types in a logical way.
 
@@ -734,8 +734,8 @@ def combine(prompt: str = "Add the two data types in a logical way:\n",
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None.
         examples (Prompt, optional): A list of examples to show how the data should be combined. Defaults to CombineText().
         constraints (List[Callable], optional): A list of constraints applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [CombinePreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [CombinePreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         str: The combined data types.
@@ -745,8 +745,8 @@ def combine(prompt: str = "Add the two data types in a logical way:\n",
                     constraints=constraints,
                     default=default,
                     limit=1,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -756,8 +756,8 @@ def template(template: str,
              default: Optional[str] = None,
              examples: Optional[Prompt] = None,
              constraints: List[Callable] = [],
-             pre_processor: Optional[List[PreProcessor]] = [DataTemplatePreProcessor(), TemplatePreProcessor()],
-             post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+             pre_processors: Optional[List[PreProcessor]] = [DataTemplatePreProcessor(), TemplatePreProcessor()],
+             post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
              **wrp_kwargs):
     """Fills in a template with the given data.
 
@@ -768,8 +768,8 @@ def template(template: str,
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         examples (Prompt, optional): A list of examples to train the model. Defaults to [].
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [DataTemplatePreProcessor(), TemplatePreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [DataTemplatePreProcessor(), TemplatePreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         str: The filled template.
@@ -781,8 +781,8 @@ def template(template: str,
                     constraints=constraints,
                     default=default,
                     limit=1,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -790,8 +790,8 @@ def negate(prompt: str = "Negate the following statement:\n",
            default: Optional[str] = None,
            examples: Prompt = NegateStatement(),
            constraints: List[Callable] = [],
-           pre_processor: Optional[List[PreProcessor]] = [NegatePreProcessor()],
-           post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+           pre_processors: Optional[List[PreProcessor]] = [NegatePreProcessor()],
+           post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
            **wrp_kwargs):
     """Negates a given statement.
 
@@ -800,8 +800,8 @@ def negate(prompt: str = "Negate the following statement:\n",
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None.
         examples (Prompt, optional): A list of example statements to be used for training. Defaults to NegateStatement().
         constraints (List[Callable], optional): A list of constraints applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [NegatePreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [NegatePreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         str: The negated statement.
@@ -811,8 +811,8 @@ def negate(prompt: str = "Negate the following statement:\n",
                     constraints=constraints,
                     default=default,
                     limit=1,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -820,8 +820,8 @@ def contains(default: bool = False,
              prompt: str = "Is information 'A' contained in 'B'?\n",
              examples: Prompt = ContainsValue(),
              constraints: List[Callable] = [],
-             pre_processor: Optional[List[PreProcessor]] = [ContainsPreProcessor()],
-             post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+             pre_processors: Optional[List[PreProcessor]] = [ContainsPreProcessor()],
+             post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
              **wrp_kwargs):
     """Determines whether a given string contains another string.
 
@@ -830,8 +830,8 @@ def contains(default: bool = False,
         prompt (str, optional): The prompt describing the task. Defaults to 'Is information 'A' contained in 'B'?'
         examples (Prompt, optional): Examples of strings to check if they contain the given string. Defaults to ContainsValue().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [ContainsPreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [ContainsPreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         bool: Whether the given string is contained in the provided string.
@@ -843,8 +843,8 @@ def contains(default: bool = False,
                     limit=1,
                     stop=['\n'],
                     max_tokens=10,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -852,8 +852,8 @@ def isinstanceof(default: bool = False,
                  prompt: str = "Detect if 'A' isinstanceof 'B':\n",
                  examples: Prompt = IsInstanceOf(),
                  constraints: List[Callable] = [],
-                 pre_processor: Optional[List[PreProcessor]] = [IsInstanceOfPreProcessor()],
-                 post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+                 pre_processors: Optional[List[PreProcessor]] = [IsInstanceOfPreProcessor()],
+                 post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
                  **wrp_kwargs):
     """Detects if one object is an instance of another.
 
@@ -862,8 +862,8 @@ def isinstanceof(default: bool = False,
         prompt (str, optional): The prompt describing the task. Defaults to "Detect if 'A' isinstanceof 'B':".
         examples (Prompt, optional): A list of examples used to train the model. Defaults to IsInstanceOf().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to IsInstanceOfPreProcessor().
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to IsInstanceOfPreProcessor().
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         bool: Whether or not the object is an instance of the other.
@@ -875,8 +875,8 @@ def isinstanceof(default: bool = False,
                     limit=1,
                     stop=['\n'],
                     max_tokens=10,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -885,8 +885,8 @@ def case(enum: List[str],
          prompt: str = "Classify the text according to one of the following categories: ",
          examples: Optional[Prompt] = None,
          stop: List[str] = ['\n'],
-         pre_processor: Optional[List[PreProcessor]] = [EnumPreProcessor(), TextMessagePreProcessor(), PredictionMessagePreProcessor()],
-         post_processor: Optional[List[PostProcessor]] = [StripPostProcessor(), CaseInsensitivePostProcessor()],
+         pre_processors: Optional[List[PreProcessor]] = [EnumPreProcessor(), TextMessagePreProcessor(), PredictionMessagePreProcessor()],
+         post_processors: Optional[List[PostProcessor]] = [StripPostProcessor(), CaseInsensitivePostProcessor()],
          **wrp_kwargs):
     """Classifies a text according to one of the given categories.
 
@@ -896,8 +896,8 @@ def case(enum: List[str],
         examples (Prompt, optional): A list of examples used to train the model.
         stop (List[str], optional): A list of strings that will stop the prompt. Defaults to ['\n'].
         prompt (str, optional): The prompt describing the task. Defaults to "Classify the text according to one of the following categories: ".
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [EnumPreProcessor(), TextMessagePreProcessor(), PredictionMessagePreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor(), CaseInsensitivePostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [EnumPreProcessor(), TextMessagePreProcessor(), PredictionMessagePreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor(), CaseInsensitivePostProcessor()].
 
     Returns:
         str: The category the text is classified as.
@@ -907,8 +907,8 @@ def case(enum: List[str],
                     default=default,
                     limit=1,
                     stop=stop,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     enum=enum,
                     **wrp_kwargs)
 
@@ -917,8 +917,8 @@ def extract(prompt: str = "Extract a pattern from text:\n",
             default: Optional[str] = None,
             examples: Prompt = ExtractPattern(),
             constraints: List[Callable] = [],
-            pre_processor: Optional[List[PreProcessor]] = [ExtractPatternPreProcessor()],
-            post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+            pre_processors: Optional[List[PreProcessor]] = [ExtractPatternPreProcessor()],
+            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
             **wrp_kwargs):
     """Extracts a pattern from text.
 
@@ -927,8 +927,8 @@ def extract(prompt: str = "Extract a pattern from text:\n",
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         examples (Prompt, optional): A list of examples of the pattern to be extracted. Defaults to ExtractPattern().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [ExtractPatternPreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [ExtractPatternPreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         str: The extracted pattern.
@@ -938,8 +938,8 @@ def extract(prompt: str = "Extract a pattern from text:\n",
                     constraints=constraints,
                     default=default,
                     limit=1,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -947,8 +947,8 @@ def expression(prompt: str = "Evaluate the symbolic expressions:\n",
                default: Optional[str] = None,
                examples: Prompt = SimpleSymbolicExpression(),
                constraints: List[Callable] = [],
-               pre_processor: Optional[List[PreProcessor]] = [SimpleSymbolicExpressionPreProcessor()],
-               post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+               pre_processors: Optional[List[PreProcessor]] = [SimpleSymbolicExpressionPreProcessor()],
+               post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
                eval_engine: Optional[str] = None,
                **wrp_kwargs):
     """Evaluates the symbolic expressions.
@@ -958,8 +958,8 @@ def expression(prompt: str = "Evaluate the symbolic expressions:\n",
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         examples (Prompt, optional): A list of examples used to train the model. Defaults to SimpleSymbolicExpression().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [SimpleSymbolicExpressionPreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [SimpleSymbolicExpressionPreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
         eval_engine (str, optional): The symbolic engine to be used. Defaults to None. Alternatively, one can set the symbolic engine using the command(expression_engine='wolframalpha').
 
     Returns:
@@ -978,8 +978,8 @@ def expression(prompt: str = "Evaluate the symbolic expressions:\n",
                                      default=default,
                                      limit=1,
                                      examples=examples,
-                                     pre_processor=[WolframAlphaPreProcessor()], # no need for pre-processing since the expression is sent to wolframalpha
-                                     post_processor=[WolframAlphaPostProcessor()],
+                                     pre_processors=[WolframAlphaPreProcessor()], # no need for pre-processing since the expression is sent to wolframalpha
+                                     post_processors=[WolframAlphaPostProcessor()],
                                      wrp_kwargs=wrp_kwargs,
                                      args=args, kwargs=kwargs)
             return wrapper
@@ -991,8 +991,8 @@ def expression(prompt: str = "Evaluate the symbolic expressions:\n",
                     default=default,
                     limit=1,
                     stop=['\n'],
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -1001,8 +1001,8 @@ def logic(prompt: str = "Evaluate the logic expressions:\n",
           default: Optional[str] = None,
           examples: Prompt = LogicExpression(),
           constraints: List[Callable] = [],
-          pre_processor: Optional[List[PreProcessor]] = [LogicExpressionPreProcessor()],
-          post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+          pre_processors: Optional[List[PreProcessor]] = [LogicExpressionPreProcessor()],
+          post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
           **wrp_kwargs):
     """Evaluates a logic expression.
 
@@ -1012,8 +1012,8 @@ def logic(prompt: str = "Evaluate the logic expressions:\n",
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         examples (Prompt, optional): The list of examples to be tested. Defaults to LogicExpression().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         str: The evaluated expression.
@@ -1025,8 +1025,8 @@ def logic(prompt: str = "Evaluate the logic expressions:\n",
                     default=default,
                     limit=1,
                     stop=['\n'],
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -1034,8 +1034,8 @@ def invert(prompt: str = "Invert the logic of the content:\n",
            default: Optional[str] = None,
            examples: Prompt = InvertExpression(),
            constraints: List[Callable] = [],
-           pre_processor: Optional[List[PreProcessor]] = [ArrowMessagePreProcessor()],
-           post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+           pre_processors: Optional[List[PreProcessor]] = [ArrowMessagePreProcessor()],
+           post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
            **wrp_kwargs):
     """Inverts the logic of a statement.
 
@@ -1044,8 +1044,8 @@ def invert(prompt: str = "Invert the logic of the content:\n",
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         examples (Prompt, optional): A list of examples used to train the model. Defaults to InvertExpression().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [ArrowMessagePreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [ArrowMessagePreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         str: The logic of the statement inverted.
@@ -1056,8 +1056,8 @@ def invert(prompt: str = "Invert the logic of the content:\n",
                     default=default,
                     limit=1,
                     stop=['\n'],
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -1066,8 +1066,8 @@ def simulate(prompt: str = "Simulate the following code:\n",
              limit: int = None,
              examples: Prompt = SimulateCode(),
              constraints: List[Callable] = [],
-             pre_processor: Optional[List[PreProcessor]] = [SimulateCodePreProcessor()],
-             post_processor: Optional[List[PostProcessor]] = [SplitPipePostProcessor(), TakeLastPostProcessor()],
+             pre_processors: Optional[List[PreProcessor]] = [SimulateCodePreProcessor()],
+             post_processors: Optional[List[PostProcessor]] = [SplitPipePostProcessor(), TakeLastPostProcessor()],
              **wrp_kwargs):
     """Simulates code and returns the result.
 
@@ -1077,8 +1077,8 @@ def simulate(prompt: str = "Simulate the following code:\n",
         limit (int, optional): The number of results to be returned. Defaults to None.
         examples (Prompt, optional): A list of example codes used to train the model. Defaults to SimulateCode().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [SimulateCodePreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [SplitPipePostProcessor(), TakeLastPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [SimulateCodePreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [SplitPipePostProcessor(), TakeLastPostProcessor()].
 
     Returns:
         str: The result of the code simulation.
@@ -1088,8 +1088,8 @@ def simulate(prompt: str = "Simulate the following code:\n",
                     constraints=constraints,
                     default=default,
                     limit=limit,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -1098,8 +1098,8 @@ def code(prompt: str = "Generate code that solves the following problems:\n",
          limit: int = None,
          examples: Prompt = GenerateCode(),
          constraints: List[Callable] = [],
-         pre_processor: Optional[List[PreProcessor]] = [GenerateCodePreProcessor()],
-         post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+         pre_processors: Optional[List[PreProcessor]] = [GenerateCodePreProcessor()],
+         post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
          **wrp_kwargs):
     """Generates code that solves a given problem.
 
@@ -1109,8 +1109,8 @@ def code(prompt: str = "Generate code that solves the following problems:\n",
         limit (int, optional): The maximum amount of code to be generated. Defaults to None.
         examples (Prompt, optional): A list of given examples of code. Defaults to GenerateCode().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to GenerateCodePreProcessor().
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to GenerateCodePreProcessor().
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         str: The generated code that solves the given problem.
@@ -1120,8 +1120,8 @@ def code(prompt: str = "Generate code that solves the following problems:\n",
                     constraints=constraints,
                     default=default,
                     limit=limit,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
 
@@ -1130,8 +1130,8 @@ def outline(prompt: str = "Outline only the essential content as a short list of
             limit: int = None,
             examples: Prompt = TextToOutline(),
             constraints: List[Callable] = [],
-            pre_processor: Optional[List[PreProcessor]] = [TextToOutlinePreProcessor()],
-            post_processor: Optional[List[PostProcessor]] = [StripPostProcessor(), SplitNewLinePostProcessor()],
+            pre_processors: Optional[List[PreProcessor]] = [TextToOutlinePreProcessor()],
+            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor(), SplitNewLinePostProcessor()],
             **wrp_kwargs):
     """Outlines the essential content as a short list of bullets.
 
@@ -1141,8 +1141,8 @@ def outline(prompt: str = "Outline only the essential content as a short list of
         limit (int, optional): The maximum length of the output. Defaults to None.
         examples (Prompt, optional): The list of examples provided. Defaults to TextToOutline().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor(), SplitNewLinePostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor(), SplitNewLinePostProcessor()].
 
     Returns:
         List[str]: The short list of bullets outlining the essential content.
@@ -1152,8 +1152,8 @@ def outline(prompt: str = "Outline only the essential content as a short list of
                     constraints=constraints,
                     default=default,
                     limit=limit,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     wrp_kwargs=wrp_kwargs)
 
 
@@ -1163,8 +1163,8 @@ def unique(prompt: str = "Create a short unique key that captures the essential 
            limit: int = None,
            examples: Prompt = UniqueKey(),
            constraints: List[Callable] = [],
-           pre_processor: Optional[List[PreProcessor]] = [UniquePreProcessor()],
-           post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+           pre_processors: Optional[List[PreProcessor]] = [UniquePreProcessor()],
+           post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
            **wrp_kwargs):
     """Creates a short, unique key that captures the essential topic from the given statements and does not collide with the list of keys.
 
@@ -1175,8 +1175,8 @@ def unique(prompt: str = "Create a short unique key that captures the essential 
         limit (int, optional): The maximum number of keys to return. Defaults to None.
         examples (Prompt, optional): A list of example keys that the unique key should be based on. Defaults to UniqueKey().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [UniquePreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [UniquePreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         List[str]: The list of unique keys.
@@ -1187,8 +1187,8 @@ def unique(prompt: str = "Create a short unique key that captures the essential 
                     constraints=constraints,
                     default=default,
                     limit=limit,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     wrp_kwargs=wrp_kwargs)
 
 
@@ -1197,8 +1197,8 @@ def clean(prompt: str = "Clean up the text from special characters or escape seq
           limit: int = None,
           examples: Prompt = CleanText(),
           constraints: List[Callable] = [],
-          pre_processor: Optional[List[PreProcessor]] = [CleanTextMessagePreProcessor()],
-          post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+          pre_processors: Optional[List[PreProcessor]] = [CleanTextMessagePreProcessor()],
+          post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
           **wrp_kwargs):
     """Cleans up a text from special characters and escape sequences.
 
@@ -1208,8 +1208,8 @@ def clean(prompt: str = "Clean up the text from special characters or escape seq
         limit (int, optional): The maximum number of cleaned up words to be returned. Defaults to None.
         examples (Prompt, optional): A list of examples to be used to train the model. Defaults to [CleanText()].
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [CleanTextMessagePreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [CleanTextMessagePreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         List[str]: The cleaned up text.
@@ -1219,8 +1219,8 @@ def clean(prompt: str = "Clean up the text from special characters or escape seq
                     constraints=constraints,
                     default=default,
                     limit=limit,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     wrp_kwargs=wrp_kwargs)
 
 
@@ -1228,8 +1228,8 @@ def compose(prompt: str = "Create a coherent text based on the facts listed in t
             default: Optional[str] = None,
             examples: Optional[Prompt] = None,
             constraints: List[Callable] = [],
-            pre_processor: Optional[List[PreProcessor]] = [GenerateTextPreProcessor()],
-            post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+            pre_processors: Optional[List[PreProcessor]] = [GenerateTextPreProcessor()],
+            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
             **wrp_kwargs):
     """Compose a coherent text based on an outline.
 
@@ -1238,8 +1238,8 @@ def compose(prompt: str = "Create a coherent text based on the facts listed in t
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         examples (Prompt, optional): A list of examples that help guide the model to solve the task. Defaults to [].
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [GenerateTextPreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [GenerateTextPreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         str: The composed text.
@@ -1249,8 +1249,8 @@ def compose(prompt: str = "Create a coherent text based on the facts listed in t
                     constraints=constraints,
                     default=default,
                     limit=1,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     wrp_kwargs=wrp_kwargs)
 
 
@@ -1260,8 +1260,8 @@ def foreach(condition: str,
             default: Optional[str] = None,
             examples: Prompt = ForEach(),
             constraints: List[Callable] = [],
-            pre_processor: Optional[List[PreProcessor]] = [ForEachPreProcessor()],
-            post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+            pre_processors: Optional[List[PreProcessor]] = [ForEachPreProcessor()],
+            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
             **wrp_kwargs):
     """Applies an operation based on a given condition to each element in a list.
 
@@ -1272,8 +1272,8 @@ def foreach(condition: str,
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         examples (Prompt, optional): A list of examples to be used by the model. Defaults to ForEach().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         List[str]: A list of elements with the applied operation.
@@ -1285,8 +1285,8 @@ def foreach(condition: str,
                     constraints=constraints,
                     default=default,
                     limit=1,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     wrp_kwargs=wrp_kwargs)
 
 
@@ -1295,8 +1295,8 @@ def dictionary(context: str,
                default: Optional[str] = None,
                examples: Prompt = MapContent(),
                constraints: List[Callable] = [],
-               pre_processor: Optional[List[PreProcessor]] = [MapPreProcessor()],
-               post_processor: Optional[List[PostProcessor]] = [StripPostProcessor(), ASTPostProcessor()],
+               pre_processors: Optional[List[PreProcessor]] = [MapPreProcessor()],
+               post_processors: Optional[List[PostProcessor]] = [StripPostProcessor(), ASTPostProcessor()],
                **wrp_kwargs):
     """Maps related content together under a common abstract topic.
 
@@ -1306,8 +1306,8 @@ def dictionary(context: str,
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         examples (Prompt, optional): A list of example content to be mapped. Defaults to MapContent().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [MapPreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor(), ASTPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [MapPreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor(), ASTPostProcessor()].
 
     Returns:
         str: The mapped content of the text.
@@ -1318,8 +1318,8 @@ def dictionary(context: str,
                     constraints=constraints,
                     default=default,
                     limit=1,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     wrp_kwargs=wrp_kwargs)
 
 
@@ -1328,8 +1328,8 @@ def listing(condition: str,
             default: Optional[str] = None,
             examples: Prompt = ListObjects(),
              constraints: List[Callable] = [],
-            pre_processor: Optional[List[PreProcessor]] = [ListPreProcessor()],
-            post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+            pre_processors: Optional[List[PreProcessor]] = [ListPreProcessor()],
+            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
             **wrp_kwargs):
     """Lists each element contained in the text or list based on the given condition.
 
@@ -1339,8 +1339,8 @@ def listing(condition: str,
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         examples (Prompt, optional): A list of examples that can be used to validate the output of the model. Defaults to ListObjects().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         List[str]: The list of elements filtered by the given condition.
@@ -1351,8 +1351,8 @@ def listing(condition: str,
                     constraints=constraints,
                     default=default,
                     limit=1,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     wrp_kwargs=wrp_kwargs)
 
 
@@ -1361,8 +1361,8 @@ def query(context: str,
           examples: Optional[Prompt] = None,
           constraints: List[Callable] = [],
           default: Optional[object] = None,
-          pre_processor: Optional[List[PreProcessor]] = [QueryPreProcessor()],
-          post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+          pre_processors: Optional[List[PreProcessor]] = [QueryPreProcessor()],
+          post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
           **wrp_kwargs):
     """Performs a query given a context.
 
@@ -1372,8 +1372,8 @@ def query(context: str,
         examples (Prompt, optional): A list of examples to provide to the model. Defaults to [].
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         default (object, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [QueryPreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [QueryPreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         str: The answer to the query.
@@ -1384,8 +1384,8 @@ def query(context: str,
                     constraints=constraints,
                     default=default,
                     limit=1,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     wrp_kwargs=wrp_kwargs)
 
 
@@ -1393,8 +1393,8 @@ def expand(prompt: Optional[str] = 'Write a self-contained function (with all im
            examples: Optional[Prompt] = ExpandFunction(),
            constraints: List[Callable] = [],
            default: Optional[object] = None,
-           pre_processor: Optional[List[PreProcessor]] = ExpandFunctionPreProcessor(),
-           post_processor: Optional[List[PostProcessor]] = [StripPostProcessor(), ExpandFunctionPostProcessor()],
+           pre_processors: Optional[List[PreProcessor]] = ExpandFunctionPreProcessor(),
+           post_processors: Optional[List[PostProcessor]] = [StripPostProcessor(), ExpandFunctionPostProcessor()],
            **wrp_kwargs):
     """Performs a expand command given a context to generate new prompts.
 
@@ -1403,8 +1403,8 @@ def expand(prompt: Optional[str] = 'Write a self-contained function (with all im
         examples (Prompt, optional): A list of examples to provide to the model. Defaults to ExpandFunction().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         default (object, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [QueryPreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [QueryPreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         str: The answer to the query.
@@ -1415,8 +1415,8 @@ def expand(prompt: Optional[str] = 'Write a self-contained function (with all im
                     default=default,
                     limit=1,
                     stop=[Prompt.stop_token],
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     wrp_kwargs=wrp_kwargs)
 
 
@@ -1424,8 +1424,8 @@ def search(query: str,
            constraints: List[Callable] = [],
            default: Optional[object] = None,
            limit: int = 1,
-           pre_processor: Optional[List[PreProcessor]] = None,
-           post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+           pre_processors: Optional[List[PreProcessor]] = None,
+           post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
            *wrp_args,
            **wrp_kwargs):
     """Searches for a given query on the internet.
@@ -1435,8 +1435,8 @@ def search(query: str,
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         default (object, optional): The default value to be returned if the task cannot be solved. Defaults to None.
         limit (int, optional): The maximum number of results to be returned. Defaults to 1.
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
         *wrp_args: Additional arguments to be passed to the decorated function.
         **wrp_kwargs: Additional keyword arguments to be passed to the decorated function.
 
@@ -1452,8 +1452,8 @@ def search(query: str,
                                constraints=constraints,
                                default=default,
                                limit=limit,
-                               pre_processor=pre_processor,
-                               post_processor=post_processor,
+                               pre_processors=pre_processors,
+                               post_processors=post_processors,
                                wrp_args=wrp_args,
                                wrp_kwargs=wrp_kwargs,
                                args=args, kwargs=kwargs)
@@ -1465,8 +1465,8 @@ def opening(path: str,
             constraints: List[Callable] = [],
             default: Optional[object] = None,
             limit: int = None,
-            pre_processor: Optional[List[PreProcessor]] = None,
-            post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+            pre_processors: Optional[List[PreProcessor]] = None,
+            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
             *wrp_args,
             **wrp_kwargs):
     """Opens a file and applies a given function to it.
@@ -1476,8 +1476,8 @@ def opening(path: str,
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         default (object, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         limit (int, optional): The maximum number of results to be returned. Defaults to None.
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
         *wrp_args: Variable length argument list to be passed to the function.
         **wrp_kwargs: Arbitrary keyword arguments to be passed to the function.
 
@@ -1493,8 +1493,8 @@ def opening(path: str,
                              constraints=constraints,
                              default=default,
                              limit=limit,
-                             pre_processor=pre_processor,
-                             post_processor=post_processor,
+                             pre_processors=pre_processors,
+                             post_processors=post_processors,
                              wrp_args=wrp_args,
                              wrp_kwargs=wrp_kwargs,
                              args=args, kwargs=kwargs)
@@ -1503,16 +1503,16 @@ def opening(path: str,
 
 
 def embed(entries: List[str],
-          pre_processor: Optional[List[PreProcessor]] = [UnwrapListSymbolsPreProcessor()],
-          post_processor: Optional[List[PostProcessor]] = None,
+          pre_processors: Optional[List[PreProcessor]] = [UnwrapListSymbolsPreProcessor()],
+          post_processors: Optional[List[PostProcessor]] = None,
           *wrp_args,
           **wrp_kwargs):
     """Embeds the entries provided in a decorated function.
 
     Args:
         entries (List[str]): A list of entries that will be embedded in the decorated function.
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the entries. Defaults to None.
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the entries. Defaults to None.
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the entries. Defaults to None.
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the entries. Defaults to None.
         *wrp_args: Additional positional arguments to be passed to the decorated function.
         **wrp_kwargs: Additional keyword arguments to be passed to the decorated function.
 
@@ -1525,8 +1525,8 @@ def embed(entries: List[str],
             return embed_func(wrp_self,
                               entries=entries,
                               func=func,
-                              pre_processor=pre_processor,
-                              post_processor=post_processor,
+                              pre_processors=pre_processors,
+                              post_processors=post_processors,
                               wrp_args=wrp_args,
                               wrp_kwargs=wrp_kwargs,
                               args=args, kwargs=kwargs)
@@ -1535,30 +1535,30 @@ def embed(entries: List[str],
 
 
 def cluster(entries: List[str],
-            pre_processor: Optional[List[PreProcessor]] = [UnwrapListSymbolsPreProcessor()],
-            post_processor: Optional[List[PostProcessor]] = [ClusterPostProcessor()],
+            pre_processors: Optional[List[PreProcessor]] = [UnwrapListSymbolsPreProcessor()],
+            post_processors: Optional[List[PostProcessor]] = [ClusterPostProcessor()],
             **wrp_kwargs):
     """Embeds and clusters the input entries.
 
     Args:
         entries (List[str]): The list of entries to be clustered.
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [ClusterPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [ClusterPostProcessor()].
         **wrp_kwargs (optional): Additional keyword arguments to be passed to the underlying embedding model.
 
     Returns:
         List[List[str]]: The list of clustered entries.
     """
     return embed(entries=entries,
-                 pre_processor=pre_processor,
-                 post_processor=post_processor,
+                 pre_processors=pre_processors,
+                 post_processors=post_processors,
                  wrp_kwargs=wrp_kwargs)
 
 
 def draw(operation: str = 'create',
          prompt: str = '',
-         pre_processor: Optional[List[PreProcessor]] = [ValuePreProcessor()],
-         post_processor: Optional[List[PostProcessor]] = None,
+         pre_processors: Optional[List[PreProcessor]] = [ValuePreProcessor()],
+         post_processors: Optional[List[PostProcessor]] = None,
          *wrp_args,
          **wrp_kwargs):
     """Draws an image provided in a decorated function.
@@ -1566,8 +1566,8 @@ def draw(operation: str = 'create',
     Args:
         operation (str, optional): The specific operation to be performed. Defaults to 'create'.
         prompt (str, optional): The prompt describing context of the image generation process.
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the entries. Defaults to None.
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the entries. Defaults to None.
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the entries. Defaults to None.
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the entries. Defaults to None.
         *wrp_args: Additional positional arguments to be passed to the decorated function.
         **wrp_kwargs: Additional keyword arguments to be passed to the decorated function.
 
@@ -1581,8 +1581,8 @@ def draw(operation: str = 'create',
                                        operation=operation,
                                        prompt=prompt,
                                        func=func,
-                                       pre_processor=pre_processor,
-                                       post_processor=post_processor,
+                                       pre_processors=pre_processors,
+                                       post_processors=post_processors,
                                        wrp_args=wrp_args,
                                        wrp_kwargs=wrp_kwargs,
                                        args=args, kwargs=kwargs)
@@ -1592,8 +1592,8 @@ def draw(operation: str = 'create',
 
 def vision(image: Optional[str] = None,
            text: List[str] = None,
-           pre_processor: Optional[List[PreProcessor]] = None,
-           post_processor: Optional[List[PostProcessor]] = None,
+           pre_processors: Optional[List[PreProcessor]] = None,
+           post_processors: Optional[List[PostProcessor]] = None,
            *wrp_args,
            **wrp_kwargs):
     """Performs vision-related associative tasks. Currently limited to CLIP model embeddings.
@@ -1601,8 +1601,8 @@ def vision(image: Optional[str] = None,
     Args:
         image (str, optional): The image the task should be performed on. Defaults to None.
         text (List[str], optional): The text describing the task. Defaults to None.
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to None.
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to None.
         *wrp_args: Additional positional arguments for the decorated method.
         **wrp_kwargs: Additional keyword arguments for the decorated method.
 
@@ -1616,8 +1616,8 @@ def vision(image: Optional[str] = None,
                                image=image,
                                prompt=text,
                                func=func,
-                               pre_processor=pre_processor,
-                               post_processor=post_processor,
+                               pre_processors=pre_processors,
+                               post_processors=post_processors,
                                wrp_args=wrp_args,
                                wrp_kwargs=wrp_kwargs,
                                args=args, kwargs=kwargs)
@@ -1626,16 +1626,16 @@ def vision(image: Optional[str] = None,
 
 
 def ocr(image: str,
-        pre_processor: Optional[List[PreProcessor]] = None,
-        post_processor: Optional[List[PostProcessor]] = None,
+        pre_processors: Optional[List[PreProcessor]] = None,
+        post_processors: Optional[List[PostProcessor]] = None,
         *wrp_args,
         **wrp_kwargs):
     """Performs Optical Character Recognition (OCR) on an image.
 
     Args:
         image (str): The filepath of the image containing the text to be recognized.
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the image before performing OCR. Defaults to None.
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the output of the OCR before returning the result. Defaults to None.
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the image before performing OCR. Defaults to None.
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the output of the OCR before returning the result. Defaults to None.
         *wrp_args: Additional arguments to pass to the decorated function.
         **wrp_kwargs: Additional keyword arguments to pass to the decorated function.
 
@@ -1648,8 +1648,8 @@ def ocr(image: str,
             return ocr_func(wrp_self,
                             image=image,
                             func=func,
-                            pre_processor=pre_processor,
-                            post_processor=post_processor,
+                            pre_processors=pre_processors,
+                            post_processors=post_processors,
                             wrp_args=wrp_args,
                             wrp_kwargs=wrp_kwargs,
                             args=args, kwargs=kwargs)
@@ -1658,16 +1658,16 @@ def ocr(image: str,
 
 
 def speech(prompt: str = 'decode',
-           pre_processor: Optional[List[PreProcessor]] = None,
-           post_processor: Optional[List[PostProcessor]] = None,
+           pre_processors: Optional[List[PreProcessor]] = None,
+           post_processors: Optional[List[PostProcessor]] = None,
            *wrp_args,
            **wrp_kwargs):
     """Decorates the given function for speech recognition.
 
     Args:
         prompt (str, optional): The prompt describing the task. Defaults to 'decode'.
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to None.
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to None.
         *wrp_args: Additional arguments.
         **wrp_kwargs: Additional keyword arguments.
 
@@ -1680,8 +1680,8 @@ def speech(prompt: str = 'decode',
             return speech_func(wrp_self,
                                prompt=prompt,
                                func=func,
-                               pre_processor=pre_processor,
-                               post_processor=post_processor,
+                               pre_processors=pre_processors,
+                               post_processors=post_processors,
                                wrp_args=wrp_args,
                                wrp_kwargs=wrp_kwargs,
                                args=args, kwargs=kwargs)
@@ -1691,8 +1691,8 @@ def speech(prompt: str = 'decode',
 
 def output(constraints: List[Callable] = [],
            default: Optional[object] = None,
-           pre_processor: Optional[List[PreProcessor]] = [ConsolePreProcessor()],
-           post_processor: Optional[List[PostProcessor]] = [ConsolePostProcessor()],
+           pre_processors: Optional[List[PreProcessor]] = [ConsolePreProcessor()],
+           post_processors: Optional[List[PostProcessor]] = [ConsolePostProcessor()],
            *wrp_args,
            **wrp_kwargs):
     """Offers an output stream for writing results.
@@ -1700,8 +1700,8 @@ def output(constraints: List[Callable] = [],
     Args:
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         default (object, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [ConsolePreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [ConsolePostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [ConsolePreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [ConsolePostProcessor()].
         wrp_args (tuple, optional): Arguments to be passed to the wrapped function.
         wrp_kwargs (dict, optional): Keyword arguments to be passed to the wrapped function.
 
@@ -1715,8 +1715,8 @@ def output(constraints: List[Callable] = [],
                                func=func,
                                constraints=constraints,
                                default=default,
-                               pre_processor=pre_processor,
-                               post_processor=post_processor,
+                               pre_processors=pre_processors,
+                               post_processors=post_processors,
                                wrp_args=wrp_args,
                                wrp_kwargs=wrp_kwargs,
                                args=args, kwargs=kwargs)
@@ -1729,8 +1729,8 @@ def fetch(url: str,
           constraints: List[Callable] = [],
           default: Optional[object] = None,
           limit: int = 1,
-          pre_processor: Optional[List[PreProcessor]] = [CrawlPatternPreProcessor()],
-          post_processor: Optional[List[PostProcessor]] = [HtmlGetTextPostProcessor()],
+          pre_processors: Optional[List[PreProcessor]] = [CrawlPatternPreProcessor()],
+          post_processors: Optional[List[PostProcessor]] = [HtmlGetTextPostProcessor()],
           *wrp_args,
           **wrp_kwargs):
     """Fetches data from a given URL and applies the provided post-processors.
@@ -1741,8 +1741,8 @@ def fetch(url: str,
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         default (object, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         limit (int, optional): The maximum number of matching items to return. Defaults to 1.
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [CrawlPatternPreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [HtmlGetTextPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [CrawlPatternPreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [HtmlGetTextPostProcessor()].
         wrp_args (tuple, optional): Additional arguments to pass to the decorated function. Defaults to ().
         wrp_kwargs (dict, optional): Additional keyword arguments to pass to the decorated function. Defaults to {}.
 
@@ -1759,8 +1759,8 @@ def fetch(url: str,
                                 constraints=constraints,
                                 default=default,
                                 limit=limit,
-                                pre_processor=pre_processor,
-                                post_processor=post_processor,
+                                pre_processors=pre_processors,
+                                post_processors=post_processors,
                                 wrp_args=wrp_args,
                                 wrp_kwargs=wrp_kwargs,
                                 args=args, kwargs=kwargs)
@@ -1770,8 +1770,8 @@ def fetch(url: str,
 
 def userinput(constraints: List[Callable] = [],
               default: Optional[object] = None,
-              pre_processor: Optional[List[PreProcessor]] = [ConsoleInputPreProcessor()],
-              post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+              pre_processors: Optional[List[PreProcessor]] = [ConsoleInputPreProcessor()],
+              post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
               *wrp_args,
               **wrp_kwargs):
     """Prompts for user input and returns the user response through a decorator.
@@ -1780,8 +1780,8 @@ def userinput(constraints: List[Callable] = [],
         prompt (str): The prompt that will be displayed to the user.
         constraints (List[Callable], optional): A list of constraints applied to the user input. Defaults to [].
         default (object, optional): The default value to be returned if the user input does not pass the constraints. Defaults to None.
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the desired form. Defaults to [ConsolePreProcessor()].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the desired form. Defaults to [ConsolePreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
         *wrp_args (tuple): Additional arguments to be passed to the decorated function.
         **wrp_kwargs (dict): Additional keyword arguments to be passed to the decorated function.
 
@@ -1795,8 +1795,8 @@ def userinput(constraints: List[Callable] = [],
                                   func=func,
                                   constraints=constraints,
                                   default=default,
-                                  pre_processor=pre_processor,
-                                  post_processor=post_processor,
+                                  pre_processors=pre_processors,
+                                  post_processors=post_processors,
                                   wrp_args=wrp_args,
                                   wrp_kwargs=wrp_kwargs,
                                   args=args, kwargs=kwargs)
@@ -1806,8 +1806,8 @@ def userinput(constraints: List[Callable] = [],
 
 def execute(default: Optional[str] = None,
             constraints: List[Callable] = [],
-            pre_processor: Optional[List[PreProcessor]] = [],
-            post_processor: Optional[List[PostProcessor]] = [],
+            pre_processors: Optional[List[PreProcessor]] = [],
+            post_processors: Optional[List[PostProcessor]] = [],
             *wrp_args,
             **wrp_kwargs):
     """Executes a given function after applying constraints, pre-processing and post-processing.
@@ -1815,8 +1815,8 @@ def execute(default: Optional[str] = None,
     Args:
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None.
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [].
         *wrp_args (optional): The additional arguments to be passed to the decorated function.
         **wrp_kwargs (optional): The additional keyword arguments to be passed to the decorated function.
 
@@ -1831,8 +1831,8 @@ def execute(default: Optional[str] = None,
                                 code=str(wrp_self),
                                 constraints=constraints,
                                 default=default,
-                                pre_processor=pre_processor,
-                                post_processor=post_processor,
+                                pre_processors=pre_processors,
+                                post_processors=post_processors,
                                 wrp_args=wrp_args,
                                 wrp_kwargs=wrp_kwargs,
                                 args=args, kwargs=kwargs)
@@ -1845,8 +1845,8 @@ def index(prompt: str,
           operation: str = 'search', # | add | config
           default: Optional[str] = None,
           constraints: List[Callable] = [],
-          pre_processor: Optional[List[PreProcessor]] = [],
-          post_processor: Optional[List[PostProcessor]] = [],
+          pre_processors: Optional[List[PreProcessor]] = [],
+          post_processors: Optional[List[PostProcessor]] = [],
           *wrp_args,
           **wrp_kwargs):
     """Query for a given index and returns the result through a decorator.
@@ -1856,8 +1856,8 @@ def index(prompt: str,
         operation (str, optional): The operation to be performed on the index. Defaults to 'search'.
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None.
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [].
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [].
         *wrp_args (optional): The additional arguments to be passed to the decorated function.
         **wrp_kwargs (optional): The additional keyword arguments to be passed to the decorated function.
 
@@ -1873,8 +1873,8 @@ def index(prompt: str,
                               operation=operation,
                               constraints=constraints,
                               default=default,
-                              pre_processor=pre_processor,
-                              post_processor=post_processor,
+                              pre_processors=pre_processors,
+                              post_processors=post_processors,
                               wrp_args=wrp_args,
                               wrp_kwargs=wrp_kwargs,
                               args=args, kwargs=kwargs)

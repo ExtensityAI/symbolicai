@@ -84,8 +84,8 @@ class ChatBot(Expression):
 
     def input(self, message: str = "Please add more information", **kwargs) -> Symbol:
         @userinput(
-            pre_processor=[self._preprocessor()],
-            post_processor=[StripPostProcessor(),
+            pre_processors=[self._preprocessor()],
+            post_processors=[StripPostProcessor(),
                             self._postprocessor()],
             **kwargs
         )

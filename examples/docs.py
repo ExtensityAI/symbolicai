@@ -10,8 +10,8 @@ DOC_CONTEXT = '''General Python Template example:
         prompt (_type_, optional): _description_. Defaults to 'Summarize the content of the following text:\n'.
         constraints (List[Callable], optional): _description_. Defaults to [].
         default (object, optional): _description_. Defaults to None.
-        pre_processor (List[PreProcessor], optional): _description_. Defaults to [TextMessagePreProcessor()].
-        post_processor (List[PostProcessor], optional): _description_. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): _description_. Defaults to [TextMessagePreProcessor()].
+        post_processors (List[PostProcessor], optional): _description_. Defaults to [StripPostProcessor()].
 
     Returns:
         _type_: _description_
@@ -21,16 +21,16 @@ DOC_CONTEXT = '''General Python Template example:
     def summarize(prompt: str = 'Summarize the content of the following text:\n',
               constraints: List[Callable] = [],
               default: object = None,
-              pre_processor: List[PreProcessor] = [TextMessagePreProcessor()],
-              post_processor: List[PostProcessor] = [StripPostProcessor()],
+              pre_processors: List[PreProcessor] = [TextMessagePreProcessor()],
+              post_processors: List[PostProcessor] = [StripPostProcessor()],
               **wrp_kwargs):
     return few_shot(prompt,
                     examples=[],
                     constraints=constraints,
                     default=default,
                     limit=1,
-                    pre_processor=pre_processor,
-                    post_processor=post_processor,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
                     **wrp_kwargs)
 
     Documentation Example Text:
@@ -40,8 +40,8 @@ DOC_CONTEXT = '''General Python Template example:
         prompt (str, optional): The prompt describing the task. Defaults to 'Summarize the content of the following text:\n'.
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         default (object, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
-        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
-        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
 
     Returns:
         str: The summary of the text.
@@ -63,8 +63,8 @@ class Docs(Expression):
     def forward(self, sym: Symbol, *args, **kwargs):
         @ai.few_shot(prompt="Create only Python style documentation text based on the given template and shown in the example with the provided function signature:",
                      examples=[],
-                     pre_processor=[DocsPreProcessor()],
-                     post_processor=[StripPostProcessor()], **kwargs)
+                     pre_processors=[DocsPreProcessor()],
+                     post_processors=[StripPostProcessor()], **kwargs)
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(Docs(sym)))
@@ -108,8 +108,8 @@ class CppDocs(Expression):
     def forward(self, sym: Symbol, *args, **kwargs):
         @ai.few_shot(prompt="Create only C++ style documentation text based on the given template and shown in the example with the provided function signature:",
                      examples=[],
-                     pre_processor=[DocsPreProcessor()],
-                     post_processor=[StripPostProcessor()], **kwargs)
+                     pre_processors=[DocsPreProcessor()],
+                     post_processors=[StripPostProcessor()], **kwargs)
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(Docs(sym)))
