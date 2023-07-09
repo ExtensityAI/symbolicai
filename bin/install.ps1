@@ -34,7 +34,7 @@ if (!(Test-Path -Path "$env:USERPROFILE\.ipython\profile_default\startup")) {
 Add-Content "$env:USERPROFILE\.ipython\profile_default\startup\startup.py" "from symai import *; from symai.extended.conversation import Conversation; q = Conversation(auto_print=True)"
 
 # Create a shortcut for the ipython console on Desktop
-$Shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut("$([Environment]::GetFolderPath('Desktop'))\IPython Console.lnk")
+$Shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut("$([Environment]::GetFolderPath('Desktop'))\SymbolicAI.lnk")
 $Shortcut.TargetPath = "powershell.exe"
 $Shortcut.WorkingDirectory = "" # set this to the intended starting directory
 $command = '-ExecutionPolicy Bypass -NoExit -Command . "$env:USERPROFILE\Anaconda3\envs\symenv\Scripts\ipython.exe"'
