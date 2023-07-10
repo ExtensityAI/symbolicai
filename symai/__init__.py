@@ -50,7 +50,7 @@ def _start_symai():
                     "SPEECH_ENGINE_MODEL":            "base",
                     "INDEXING_ENGINE_API_KEY":        "",
                     "INDEXING_ENGINE_ENVIRONMENT":    "us-west1-gcp",
-                    "CAPTION_ENGINE_MODEL":           "facebook/opt-2.7b"
+                    "CAPTION_ENGINE_MODEL":           "base_coco"
                 }, f, indent=4)
 
         # LOAD THE CONFIGURATION FILE
