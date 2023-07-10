@@ -2,7 +2,10 @@ from typing import List
 import torch
 import requests
 from PIL import Image
-from transformers import BlipForConditionalGeneration, Blip2Processor
+from accelerate import init_empty_weights
+from lavis.models.blip2_models.blip2_opt import Blip2OPT
+from lavis.processors import load_processor
+from lavis.models import load_model, load_preprocess, load_model_and_preprocess
 from .base import Engine
 from .settings import SYMAI_CONFIG
 
@@ -10,13 +13,14 @@ from .settings import SYMAI_CONFIG
 class Blip2Engine(Engine):
     def __init__(self):
         super().__init__()
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = None  # lazy loading
-        self.processor = None  # lazy loading
-
-        config = SYMAI_CONFIG
-        self.model_id = config['CAPTION_ENGINE_MODEL']
-        self.old_model_id = config['CAPTION_ENGINE_MODEL']
+        config              = SYMAI_CONFIG
+        ids                 = config['CAPTION_ENGINE_MODEL'].split('/')
+        self.name_id        = ids[0]
+        self.model_id       = ids[1]
+        self.model          = None  # lazy loading
+        self.vis_processors = None  # lazy loading
+        self.txt_processors = None  # lazy loading
+        self.device         = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     def command(self, wrp_params):
         super().command(wrp_params)
@@ -28,41 +32,39 @@ class Blip2Engine(Engine):
 
     def forward(self, *args, **kwargs) -> List[str]:
         if self.model is None:
-            self.processor = Blip2Processor.from_pretrained(self.model_id)
-            self.model = BlipForConditionalGeneration.from_pretrained(self.model_id, low_cpu_mem_usage=True).to(self.device)
+            self.model, self.vis_processors, self.txt_processors  = load_model_and_preprocess(name       = self.name_id,
+                                                                                              model_type = self.model_id,
+                                                                                              is_eval    = True,
+                                                                                              device     = self.device)
 
-        img, prompt = kwargs['image'], kwargs['prompt']
-
+        image, prompt = kwargs['image'], kwargs['prompt']
+        except_remedy = kwargs['except_remedy'] if 'except_remedy' in kwargs else None
         input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
-        if input_handler:
-            input_handler((img, prompt))
 
-        if 'http' in img:
-            img = Image.open(requests.get(img, stream=True).raw).convert('RGB')
-        elif '/' in img or '\\' in img:
-            img = Image.open(img).convert('RGB')
+        if input_handler:
+            input_handler((image, prompt))
+
+        if 'http' in image:
+            image = Image.open(requests.get(image, stream=True).raw).convert('RGB')
+        elif '/' in image or '\\' in image:
+            image = Image.open(image).convert('RGB')
 
         try:
-            inputs = self.processor(img, prompt, return_tensors="pt").to(self.device)
-            inputs = {name: tensor.to(self.device) for name, tensor in inputs.items()}
-            outputs = self.model.generate(**inputs)
-            res = self.processor.decode(outputs[0], skip_special_tokens=True)
+            image   = self.vis_processors['eval'](image).unsqueeze(0).to(self.device)
+            res     = self.model.generate(samples={"image": image, "prompt": prompt})[0]
         except Exception as e:
             if except_remedy is None:
                 raise e
             res = except_remedy(e, prompt, *args, **kwargs)
 
-        # remove the input text from the response
-        res = res[len(prompt):].strip()
-
         output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
         if output_handler:
-            output_handler(outputs)
+            output_handler(res)
 
         metadata = {}
         if 'metadata' in kwargs and kwargs['metadata']:
             metadata['kwargs'] = kwargs
-            metadata['input'] = (img, prompt)
-            metadata['output'] = outputs
+            metadata['input'] = (image, prompt)
+            metadata['output'] = res
 
         return [res], metadata
