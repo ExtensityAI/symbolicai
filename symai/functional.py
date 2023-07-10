@@ -14,21 +14,25 @@ from .pre_processors import *
 from .prompts import Prompt
 from .utils import CustomUserWarning
 
-config                = SYMAI_CONFIG
-neurosymbolic_engine  = None
-symbolic_engine       = None
-ocr_engine            = None
-vision_engine         = None
-index_engine          = None
-speech_engine         = None
-embedding_engine      = None
-userinput_engine      = None
-search_engine         = None
-crawler_engine        = None
-execute_engine        = None
-file_engine           = None
-output_engine         = None
-imagerendering_engine = None
+
+# global variables
+config                 = SYMAI_CONFIG
+neurosymbolic_engine   = None
+symbolic_engine        = None
+ocr_engine             = None
+vision_engine          = None
+index_engine           = None
+speech_engine          = None
+embedding_engine       = None
+userinput_engine       = None
+search_engine          = None
+crawler_engine         = None
+execute_engine         = None
+file_engine            = None
+output_engine          = None
+imagerendering_engine  = None
+imagecaptioning_engine = None
+finetuning_engine      = None
 
 
 class ConstraintViolationException(Exception):
@@ -587,6 +591,80 @@ def imagerendering_func(wrp_self,
                           kwargs=kwargs)
 
 
+def check_or_init_imagecaptioning_func(engine = None):
+    global imagecaptioning_engine
+    if engine is not None:
+        imagecaptioning_engine = engine
+    elif imagecaptioning_engine is None:
+        from .backend.engine_blip2 import Blip2Engine
+        imagecaptioning_engine = Blip2Engine()
+
+
+def imagecaptioning_func(wrp_self,
+                         func: Callable,
+                         prompt: str,
+                         image: str,
+                         trials: int = 1,
+                         pre_processor: Optional[List[PreProcessor]] = None,
+                         post_processor: Optional[List[PostProcessor]] = None,
+                         wrp_args = [], wrp_kwargs = [],
+                         args = [], kwargs = []):
+    check_or_init_imagecaptioning_func()
+    wrp_kwargs['image'] = image
+    return _process_query(engine=imagecaptioning_engine,
+                          wrp_self=wrp_self,
+                          func=func,
+                          prompt=prompt,
+                          examples=None,
+                          constraints=[],
+                          default=None,
+                          limit=None,
+                          trials=trials,
+                          pre_processor=pre_processor,
+                          post_processor=post_processor,
+                          wrp_args=wrp_args,
+                          wrp_kwargs=wrp_kwargs,
+                          args=args,
+                          kwargs=kwargs)
+
+
+def check_or_init_finetuning_func(engine = None):
+    global finetuning_engine
+    if engine is not None:
+        finetuning_engine = engine
+    elif finetuning_engine is None:
+        from .backend.engine_gptfinetuner import GPTFineTuner
+        finetuning_engine = GPTFineTuner()
+
+
+def finetuning_func(wrp_self,
+                    func: Callable,
+                    dataset: dict,
+                    prompt: str = '',
+                    trials: int = 1,
+                    pre_processor: Optional[List[PreProcessor]] = None,
+                    post_processor: Optional[List[PostProcessor]] = None,
+                    wrp_args = [], wrp_kwargs = [],
+                    args = [], kwargs = []):
+    check_or_init_finetuning_func()
+    wrp_kwargs['dataset'] = dataset
+    return _process_query(engine=finetuning_engine,
+                          wrp_self=wrp_self,
+                          func=func,
+                          prompt=prompt,
+                          examples=None,
+                          constraints=[],
+                          default=None,
+                          limit=None,
+                          trials=trials,
+                          pre_processor=pre_processor,
+                          post_processor=post_processor,
+                          wrp_args=wrp_args,
+                          wrp_kwargs=wrp_kwargs,
+                          args=args,
+                          kwargs=kwargs)
+
+
 def check_or_init_ocr_func(engine = None):
     global ocr_engine
     if engine is not None:
@@ -824,6 +902,8 @@ def setup_func(wrp_self,
         check_or_init_output_func(engine=engines['output'])
     if 'imagerendering' in engines:
         check_or_init_imagerendering_func(engine=engines['imagerendering'])
+    if 'imagecaptioning' in engines:
+        check_or_init_imagecaptioning_func(engine=engines['imagecaptioning'])
 
 
 def cache_registry_func(
@@ -949,6 +1029,20 @@ def bind_registry_func(
             CustomUserWarning(f'Property "{property}" not found in imagerendering engine, returning "None"')
 
         return imagerendering_engine.__dict__.get(property)
+
+    if engine == 'imagecaptioning':
+        check_or_init_imagecaptioning_func()
+        if property not in imagecaptioning_engine.__dict__:
+            CustomUserWarning(f'Property "{property}" not found in imagecaptioning engine, returning "None"')
+
+        return imagecaptioning_engine.__dict__.get(property)
+
+    if engine == 'finetuning':
+        check_or_init_finetuning_func()
+        if property not in finetuning_engine.__dict__:
+            CustomUserWarning(f'Property "{property}" not found in finetuning engine, returning "None"')
+
+        return finetuning_engine.__dict__.get(property)
 
 
 def retry_func(

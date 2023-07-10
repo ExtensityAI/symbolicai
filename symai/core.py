@@ -7,7 +7,7 @@ from .functional import (bind_registry_func, cache_registry_func, command_func,
                          imagerendering_func, index_func, ocr_func, open_func,
                          output_func, retry_func, search_func, setup_func,
                          speech_func, symbolic_func, userinput_func,
-                         vision_func)
+                         vision_func, imagecaptioning_func, finetuning_func)
 from .post_processors import *
 from .pre_processors import *
 from .prompts import *
@@ -2003,3 +2003,72 @@ def retry(
         return wrapper
     return decorator
 
+
+def tune(dataset: dict,
+         operation: str = 'start',
+         pre_processor: Optional[List[PreProcessor]] = [ValuePreProcessor()],
+         post_processor: Optional[List[PostProcessor]] = None,
+         *wrp_args,
+         **wrp_kwargs):
+    """Fine tune a LLM.
+
+    Args:
+        dataset (dict): The dataset to be used for fine-tuning.
+        operation (str, optional): The specific operation to be performed. Defaults to 'start'.
+        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the entries. Defaults to None.
+        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the entries. Defaults to None.
+        *wrp_args: Additional positional arguments to be passed to the decorated function.
+        **wrp_kwargs: Additional keyword arguments to be passed to the decorated function.
+
+    Returns:
+        function: A function with the entries embedded.
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(wrp_self, *args, **kwargs):
+            return finetuning_func(wrp_self,
+                                   dataset=dataset,
+                                   operation=operation,
+                                   func=func,
+                                   pre_processor=pre_processor,
+                                   post_processor=post_processor,
+                                   wrp_args=wrp_args,
+                                   wrp_kwargs=wrp_kwargs,
+                                   args=args, kwargs=kwargs)
+        return wrapper
+    return decorator
+
+
+def caption(image: str,
+            prompt: str,
+            pre_processor: Optional[List[PreProcessor]] = [ValuePreProcessor()],
+            post_processor: Optional[List[PostProcessor]] = None,
+            *wrp_args,
+            **wrp_kwargs):
+    """Caption the content of an image.
+
+    Args:
+        image (str, optional): The path to the image to be captioned.
+        prompt (str, optional): The prompt describing context of the image generation process.
+        pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the entries. Defaults to None.
+        post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the entries. Defaults to None.
+        *wrp_args: Additional positional arguments to be passed to the decorated function.
+        **wrp_kwargs: Additional keyword arguments to be passed to the decorated function.
+
+    Returns:
+        function: A function with the entries embedded.
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(wrp_self, *args, **kwargs):
+            return imagecaptioning_func(wrp_self,
+                                        prompt=prompt,
+                                        image=image,
+                                        func=func,
+                                        pre_processor=pre_processor,
+                                        post_processor=post_processor,
+                                        wrp_args=wrp_args,
+                                        wrp_kwargs=wrp_kwargs,
+                                        args=args, kwargs=kwargs)
+        return wrapper
+    return decorator
