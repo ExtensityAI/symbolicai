@@ -9,7 +9,7 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 logging.getLogger("tika").setLevel(logging.ERROR)
 
 
-SYMAI_VERSION = "0.2.45"
+SYMAI_VERSION = "0.2.46"
 __version__   = SYMAI_VERSION
 __root_dir__  = Path.home() / '.symai'
 
@@ -49,7 +49,8 @@ def _start_symai():
                     "OCR_ENGINE_API_KEY":             "",
                     "SPEECH_ENGINE_MODEL":            "base",
                     "INDEXING_ENGINE_API_KEY":        "",
-                    "INDEXING_ENGINE_ENVIRONMENT":    "us-west1-gcp"
+                    "INDEXING_ENGINE_ENVIRONMENT":    "us-west1-gcp",
+                    "CAPTION_ENGINE_MODEL":           "facebook/opt-2.7b"
                 }, f, indent=4)
 
         # LOAD THE CONFIGURATION FILE
@@ -74,6 +75,7 @@ def _start_symai():
         _speech_engine_model_           = os.environ.get('SPEECH_ENGINE_MODEL', None)
         _indexing_engine_api_key_       = os.environ.get('INDEXING_ENGINE_API_KEY', None)
         _indexing_engine_environment_   = os.environ.get('INDEXING_ENGINE_ENVIRONMENT', None)
+        _caption_engine_environment_    = os.environ.get('CAPTION_ENGINE_ENVIRONMENT', None)
 
         # SET/UPDATE THE API KEYS
         # *==========================================================================================================*
@@ -99,6 +101,7 @@ def _start_symai():
         if _speech_engine_model_:         _ai_config_['SPEECH_ENGINE_MODEL']         = _speech_engine_model_
         if _indexing_engine_api_key_:     _ai_config_['INDEXING_ENGINE_API_KEY']     = _indexing_engine_api_key_
         if _indexing_engine_environment_: _ai_config_['INDEXING_ENGINE_ENVIRONMENT'] = _indexing_engine_environment_
+        if _caption_engine_environment_:  _ai_config_['CAPTION_ENGINE_ENVIRONMENT']  = _caption_engine_environment_
 
         # VERIFY IF THE CONFIGURATION FILE HAS CHANGED AND UPDATE IT
         # *==========================================================================================================*

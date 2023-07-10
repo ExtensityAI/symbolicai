@@ -1766,6 +1766,36 @@ class Expression(Symbol):
             pass
         return self._sym_return_type(_func(self))
 
+    def caption(self, prompt: str, **kwargs) -> "Symbol":
+        """Query information from the current image symbol.
+
+        Args:
+            prompt (str): The prompt for the query operation.
+            **kwargs: Additional keyword arguments to be passed to the `@core.search` decorator.
+
+        Returns:
+            Symbol: The resulting Symbol after performing the search operation.
+        """
+        @core.caption(prompt=prompt, **kwargs)
+        def _func(_) -> str:
+            pass
+        return self._sym_return_type(_func(self))
+
+    def tune(self, operation: str = 'start', **kwargs) -> "Symbol":
+        """Query information from the current image symbol.
+
+        Args:
+            query (str): The query for the query operation.
+            **kwargs: Additional keyword arguments to be passed to the `@core.search` decorator.
+
+        Returns:
+            Symbol: The resulting Symbol after performing the search operation.
+        """
+        @core.tune(dataset=self.value, operation=operation, **kwargs)
+        def _func(_) -> str:
+            pass
+        return self._sym_return_type(_func(self))
+
     def open(self, path: str, **kwargs) -> "Symbol":
         """Open a file and store its content in an Expression object as a string.
 

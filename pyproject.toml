@@ -26,6 +26,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+blip2 = ["bitsandbytes==0.39.1", "salesforce-lavis==1.0.2"]
 wolframalpha = ["wolframalpha==5.0.0"]
 whisper = ["symai-whisper"]
 selenium = ["selenium==4.10.0", "webdriver-manager==3.8.6", "chromedriver-autoinstaller==0.4.0"]
