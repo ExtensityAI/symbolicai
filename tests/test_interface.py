@@ -67,6 +67,12 @@ class TestInterface(unittest.TestCase):
         res = expr('x = 5')
         self.assertTrue(res is not None, res)
 
+    def test_blip2(self):
+        caption = Interface('blip-2')
+        res = caption(r"https://storage.googleapis.com/sfr-vision-language-research/BLIP/demo.jpg",
+                'a photography of')
+        self.assertTrue(res is not None, res)
+
 
 if __name__ == '__main__':
     unittest.main()

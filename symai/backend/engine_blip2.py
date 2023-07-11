@@ -50,8 +50,10 @@ class Blip2Engine(Engine):
             image = Image.open(image).convert('RGB')
 
         try:
+            breakpoint()
             image   = self.vis_processors['eval'](image).unsqueeze(0).to(self.device)
-            res     = self.model.generate(samples={"image": image, "prompt": prompt})[0]
+            prompt  = self.txt_processors['eval'](prompt)
+            res     = self.model.generate(samples={"image": image, "prompt": prompt}, use_nucleus_sampling=True, num_captions=3)
         except Exception as e:
             if except_remedy is None:
                 raise e
