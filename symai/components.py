@@ -364,7 +364,8 @@ class Function(TrackerTraceable):
         self.name = 'func_' + ''.join(sample(chars, 15))
         self.args = args
         self.kwargs = kwargs
-        self.prompt = prompt
+        self._promptTemplate = prompt
+        self._promptFormat = {}
         self._static_context = static_context
         self.examples = Prompt(examples)
         self.pre_processor = pre_processor
@@ -372,6 +373,14 @@ class Function(TrackerTraceable):
         self.constraints = constraints
         self.default = default
         self.return_type = return_type
+
+    @property
+    def prompt(self):
+        # return a copy of the prompt template
+        return f"{self._promptTemplate}".format(**self._promptFormat)
+
+    def format(self, **kwargs):
+        self._promptFormat = kwargs
 
     def forward(self, *args, **kwargs) -> Expression:
         # special case for few shot function prompt definition override
