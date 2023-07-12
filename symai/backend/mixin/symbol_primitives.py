@@ -384,12 +384,6 @@ class UniquenessPrimitives:
         return Symbol(_func(self))
 
 
-class ValueTransformationPrimitives:
-    '''
-    This mixin includes functions for performing various filtering and ceremonial modifications on symbol values.
-    It can be extended to include functionalities that involve
-    '''
-
 class PatternMatchingPrimitives:
     '''
     This mixin houses functions that deal with ranking symbols, extracting details based on patterns, and correcting symbols.
@@ -708,6 +702,7 @@ class ExecutionControlPrimitives:
             yield r
 
     def ftry(self, expr: 'Expression', retries: Optional[int] = 1, **kwargs) -> 'Symbol':
+        # TODO: find a way to pass on the constraints and behavior from the self.expr to the corrected code
         '''
         Tries to evaluate a Symbol using a given Expression.
         This method evaluates a Symbol using a given Expression.
@@ -774,8 +769,6 @@ class ExecutionControlPrimitives:
                             payload=payload,
                             constraints=constraints
                         )
-                    # TODO: find a way to pass on the constraints and behavior from the self.expr to the corrected code
-
 
 
 class DictHandlingPrimitives:
