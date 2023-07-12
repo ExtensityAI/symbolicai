@@ -5,7 +5,7 @@ from typing import Any, Dict, Iterator, List, Optional, Union
 import numpy as np
 
 from . import core
-from .backend.mixin import SYMBOL_PRIMITIVES
+from .ops import SYMBOL_PRIMITIVES
 
 
 class SymbolEncoder(JSONEncoder):
