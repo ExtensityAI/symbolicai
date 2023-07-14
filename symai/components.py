@@ -354,8 +354,8 @@ class FileQuery(Expression):
 class Function(TrackerTraceable):
     def __init__(self, prompt: str, static_context: str = "",
                  examples: Optional[str] = [],
-                 pre_processor: Optional[List[PreProcessor]] = None,
-                 post_processor: Optional[List[PostProcessor]] = None,
+                 pre_processors: Optional[List[PreProcessor]] = None,
+                 post_processors: Optional[List[PostProcessor]] = None,
                  default: Optional[object] = None,
                  constraints: List[Callable] = [],
                  return_type: Optional[Type] = str, *args, **kwargs):
@@ -369,8 +369,8 @@ class Function(TrackerTraceable):
         self._promptFormatKwargs = {}
         self._static_context = static_context
         self.examples = Prompt(examples)
-        self.pre_processor = pre_processor
-        self.post_processor = post_processor
+        self.pre_processors = pre_processors
+        self.post_processors = post_processors
         self.constraints = constraints
         self.default = default
         self.return_type = return_type
@@ -392,8 +392,8 @@ class Function(TrackerTraceable):
             del kwargs['fn']
         @few_shot(prompt=self.prompt,
                   examples=self.examples,
-                  pre_processor=self.pre_processor,
-                  post_processor=self.post_processor,
+                  pre_processors=self.pre_processors,
+                  post_processors=self.post_processors,
                   constraints=self.constraints,
                   default=self.default,
                   *self.args, **self.kwargs)
@@ -416,8 +416,8 @@ class JsonParser(Expression):
         super().__init__()
         func = Function(prompt=JsonPromptTemplate(query, json_),
                         constraints=[DictFormatConstraint(json_)],
-                        pre_processor=[JsonPreProcessor()],
-                        post_processor=[JsonTruncatePostProcessor()])
+                        pre_processors=[JsonPreProcessor()],
+                        post_processors=[JsonTruncatePostProcessor()])
         self.fn = Try(func, retries=1)
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:

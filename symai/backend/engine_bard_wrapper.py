@@ -3,11 +3,11 @@ from typing import List
 
 import requests
 import tiktoken
+from bardapi import Bard
 
 from .base import Engine
 from .mixin.openai import OpenAIMixin
 from .settings import SYMAI_CONFIG
-from bardapi import Bard
 
 
 class GPTXCompletionEngine(Engine, OpenAIMixin):
