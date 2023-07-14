@@ -605,8 +605,8 @@ def imagecaptioning_func(wrp_self,
                          prompt: str,
                          image: str,
                          trials: int = 1,
-                         pre_processor: Optional[List[PreProcessor]] = None,
-                         post_processor: Optional[List[PostProcessor]] = None,
+                         pre_processors: Optional[List[PreProcessor]] = None,
+                         post_processors: Optional[List[PostProcessor]] = None,
                          wrp_args = [], wrp_kwargs = [],
                          args = [], kwargs = []):
     check_or_init_imagecaptioning_func()
@@ -642,8 +642,8 @@ def finetuning_func(wrp_self,
                     dataset: dict,
                     prompt: str = '',
                     trials: int = 1,
-                    pre_processor: Optional[List[PreProcessor]] = None,
-                    post_processor: Optional[List[PostProcessor]] = None,
+                    pre_processors: Optional[List[PreProcessor]] = None,
+                    post_processors: Optional[List[PostProcessor]] = None,
                     wrp_args = [], wrp_kwargs = [],
                     args = [], kwargs = []):
     check_or_init_finetuning_func()
