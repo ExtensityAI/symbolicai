@@ -45,8 +45,8 @@ class Graph(Expression):
                         '$> Similarly, the term general linguistics is used to distinguish core linguistics from other types of study =>general linguistics, core linguistics, 1 EOF',
                         '$> X has Y and Z has Y =>X, Y, 1\nZ, Y, 1 EOF',
                   ]),
-                  pre_processor=[GraphPreProcessor()],
-                  post_processor=[StripPostProcessor()],
+                  pre_processors=[GraphPreProcessor()],
+                  post_processors=[StripPostProcessor()],
                   stop=['EOF'], **kwargs)
         def _func(_, text) -> str:
             pass

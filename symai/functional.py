@@ -39,7 +39,7 @@ class ConstraintViolationException(Exception):
     pass
 
 
-def _execute_query(engine, post_processor, wrp_self, wrp_params, return_constraint, args, kwargs) -> List[object]:
+def _execute_query(engine, post_processors, wrp_self, wrp_params, return_constraint, args, kwargs) -> List[object]:
     # build prompt and query engine
     engine.prepare(args, kwargs, wrp_params)
 
@@ -51,8 +51,8 @@ def _execute_query(engine, post_processor, wrp_self, wrp_params, return_constrai
     rsp      = outputs[0][0]
     metadata = outputs[1]
 
-    if post_processor:
-        for pp in post_processor:
+    if post_processors:
+        for pp in post_processors:
             rsp = pp(wrp_self, wrp_params, rsp, *args, **kwargs)
 
     # check if return type cast
@@ -67,7 +67,7 @@ def _execute_query(engine, post_processor, wrp_self, wrp_params, return_constrai
         except Exception as e:
             print('functional parsing failed', e, rsp)
             res = rsp
-        assert res is not None, "Return type cast failed! Check if the return type is correct or post_processor output matches desired format: " + str(rsp)
+        assert res is not None, "Return type cast failed! Check if the return type is correct or post_processors output matches desired format: " + str(rsp)
         rsp = res
     elif return_constraint == bool:
         # do not cast with bool -> always returns true
@@ -97,15 +97,15 @@ def _process_query(engine,
                    default: Optional[object] = None,
                    limit: int = 1,
                    trials: int = 1,
-                   pre_processor: Optional[List[PreProcessor]] = None,
-                   post_processor: Optional[List[PostProcessor]] = None,
+                   pre_processors: Optional[List[PreProcessor]] = None,
+                   post_processors: Optional[List[PostProcessor]] = None,
                    wrp_args = [], wrp_kwargs = {},
                    args = [], kwargs = {}):
 
-    if pre_processor and not isinstance(pre_processor, list):
-        pre_processor = [pre_processor]
-    if post_processor and not isinstance(post_processor, list):
-        post_processor = [post_processor]
+    if pre_processors and not isinstance(pre_processors, list):
+        pre_processors = [pre_processor]
+    if post_processors and not isinstance(post_processors, list):
+        post_processors = [post_processors]
 
     # check signature for return type
     sig = inspect.signature(func)
@@ -132,8 +132,8 @@ def _process_query(engine,
 
     # pre-process text
     suffix = ''
-    if pre_processor and 'raw_input' not in wrp_params:
-        for pp in pre_processor:
+    if pre_processors and 'raw_input' not in wrp_params:
+        for pp in pre_processors:
             t = pp(wrp_self, wrp_params, *args, **kwargs)
             suffix += t if t is not None else ''
     else:
@@ -150,7 +150,7 @@ def _process_query(engine,
     while try_cnt < trials:
         try_cnt += 1
         try:
-            rsp, metadata = _execute_query(engine, post_processor, wrp_self, wrp_params, return_constraint, args, kwargs)
+            rsp, metadata = _execute_query(engine, post_processors, wrp_self, wrp_params, return_constraint, args, kwargs)
             # return preview of the command if preview is set
             if 'preview' in wrp_params and wrp_params['preview']:
                 return rsp
@@ -228,8 +228,8 @@ def few_shot_func(wrp_self,
                   default: Optional[object] = None,
                   limit: int = 1,
                   trials: int = 1,
-                  pre_processor: Optional[List[PreProcessor]] = None,
-                  post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+                  pre_processors: Optional[List[PreProcessor]] = None,
+                  post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
                   wrp_args = [], wrp_kwargs = [],
                   args = [], kwargs = []):
     check_or_init_neurosymbolic_func()
@@ -242,8 +242,8 @@ def few_shot_func(wrp_self,
                           default=default,
                           limit=limit,
                           trials=trials,
-                          pre_processor=pre_processor,
-                          post_processor=post_processor,
+                          pre_processors=pre_processors,
+                          post_processors=post_processors,
                           wrp_args=wrp_args,
                           wrp_kwargs=wrp_kwargs,
                           args=args,
@@ -267,8 +267,8 @@ def symbolic_func(wrp_self,
                   default: Optional[object] = None,
                   limit: int = 1,
                   trials: int = 1,
-                  pre_processor: Optional[List[PreProcessor]] = None,
-                  post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+                  pre_processors: Optional[List[PreProcessor]] = None,
+                  post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
                   wrp_args = [], wrp_kwargs = [],
                   args = [], kwargs = []):
     check_or_init_symbolic_func()
@@ -281,8 +281,8 @@ def symbolic_func(wrp_self,
                           default=default,
                           limit=limit,
                           trials=trials,
-                          pre_processor=pre_processor,
-                          post_processor=post_processor,
+                          pre_processors=pre_processors,
+                          post_processors=post_processors,
                           wrp_args=wrp_args,
                           wrp_kwargs=wrp_kwargs,
                           args=args,
@@ -305,8 +305,8 @@ def search_func(wrp_self,
                 default: Optional[object] = None,
                 limit: int = 1,
                 trials: int = 1,
-                pre_processor: Optional[List[PreProcessor]] = None,
-                post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+                pre_processors: Optional[List[PreProcessor]] = None,
+                post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
                 wrp_args = [], wrp_kwargs = [],
                 args = [], kwargs = []):
     check_or_init_search_func()
@@ -320,8 +320,8 @@ def search_func(wrp_self,
                           default=default,
                           limit=limit,
                           trials=trials,
-                          pre_processor=pre_processor,
-                          post_processor=post_processor,
+                          pre_processors=pre_processors,
+                          post_processors=post_processors,
                           wrp_args=wrp_args,
                           wrp_kwargs=wrp_kwargs,
                           args=args,
@@ -344,8 +344,8 @@ def open_func(wrp_self,
               default: Optional[object] = None,
               limit: Optional[int] = None,
               trials: int = 1,
-              pre_processor: Optional[List[PreProcessor]] = None,
-              post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+              pre_processors: Optional[List[PreProcessor]] = None,
+              post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
               wrp_args = [], wrp_kwargs = [],
               args = [], kwargs = []):
     check_or_init_open_func()
@@ -359,8 +359,8 @@ def open_func(wrp_self,
                           default=default,
                           limit=limit,
                           trials=trials,
-                          pre_processor=pre_processor,
-                          post_processor=post_processor,
+                          pre_processors=pre_processors,
+                          post_processors=post_processors,
                           wrp_args=wrp_args,
                           wrp_kwargs=wrp_kwargs,
                           args=args,
@@ -381,8 +381,8 @@ def output_func(wrp_self,
                 constraints: List[Callable] = [],
                 default: Optional[object] = None,
                 trials: int = 1,
-                pre_processor: List[PreProcessor] = [ConsolePreProcessor()],
-                post_processor: Optional[List[PostProcessor]] = [ConsolePostProcessor()],
+                pre_processors: List[PreProcessor] = [ConsolePreProcessor()],
+                post_processors: Optional[List[PostProcessor]] = [ConsolePostProcessor()],
                 wrp_args = [], wrp_kwargs = [],
                 args = [], kwargs = []):
     check_or_init_output_func()
@@ -395,8 +395,8 @@ def output_func(wrp_self,
                           default=default,
                           limit=None,
                           trials=trials,
-                          pre_processor=pre_processor,
-                          post_processor=post_processor,
+                          pre_processors=pre_processors,
+                          post_processors=post_processors,
                           wrp_args=wrp_args,
                           wrp_kwargs=wrp_kwargs,
                           args=args,
@@ -420,8 +420,8 @@ def crawler_func(wrp_self,
                  default: Optional[object] = None,
                  limit: int = 1,
                  trials: int = 1,
-                 pre_processor: Optional[List[PreProcessor]] = None,
-                 post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+                 pre_processors: Optional[List[PreProcessor]] = None,
+                 post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
                  wrp_args = [], wrp_kwargs = [],
                  args = [], kwargs = []):
     check_or_init_crawler_func()
@@ -436,8 +436,8 @@ def crawler_func(wrp_self,
                           default=default,
                           limit=limit,
                           trials=trials,
-                          pre_processor=pre_processor,
-                          post_processor=post_processor,
+                          pre_processors=pre_processors,
+                          post_processors=post_processors,
                           wrp_args=wrp_args,
                           wrp_kwargs=wrp_kwargs,
                           args=args,
@@ -459,8 +459,8 @@ def userinput_func(wrp_self,
                    constraints: List[Callable] = [],
                    default: Optional[object] = None,
                    trials: int = 1,
-                   pre_processor: Optional[List[PreProcessor]] = None,
-                   post_processor: Optional[List[PostProcessor]] = [StripPostProcessor()],
+                   pre_processors: Optional[List[PreProcessor]] = None,
+                   post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
                    wrp_args = [], wrp_kwargs = [],
                    args = [], kwargs = []):
     check_or_init_userinput_func()
@@ -473,8 +473,8 @@ def userinput_func(wrp_self,
                           default=default,
                           limit=None,
                           trials=trials,
-                          pre_processor=pre_processor,
-                          post_processor=post_processor,
+                          pre_processors=pre_processors,
+                          post_processors=post_processors,
                           wrp_args=wrp_args,
                           wrp_kwargs=wrp_kwargs,
                           args=args,
@@ -496,8 +496,8 @@ def execute_func(wrp_self,
                  constraints: List[Callable] = [],
                  default: Optional[object] = None,
                  trials: int = 1,
-                 pre_processor: List[PreProcessor] = [],
-                 post_processor: Optional[List[PostProcessor]] = [],
+                 pre_processors: List[PreProcessor] = [],
+                 post_processors: Optional[List[PostProcessor]] = [],
                  wrp_args = [], wrp_kwargs = [],
                  args = [], kwargs = []):
     check_or_init_execute_func()
@@ -510,8 +510,8 @@ def execute_func(wrp_self,
                           default=default,
                           limit=None,
                           trials=trials,
-                          pre_processor=pre_processor,
-                          post_processor=post_processor,
+                          pre_processors=pre_processors,
+                          post_processors=post_processors,
                           wrp_args=wrp_args,
                           wrp_kwargs=wrp_kwargs,
                           args=args,
@@ -531,8 +531,8 @@ def embed_func(wrp_self,
                entries: List[str],
                func: Callable,
                trials: int = 1,
-               pre_processor: Optional[List[PreProcessor]] = None,
-               post_processor: Optional[List[PostProcessor]] = None,
+               pre_processors: Optional[List[PreProcessor]] = None,
+               post_processors: Optional[List[PostProcessor]] = None,
                wrp_args = [], wrp_kwargs = [],
                args = [], kwargs = []):
     check_or_init_embedding_func()
@@ -546,8 +546,8 @@ def embed_func(wrp_self,
                           default=None,
                           limit=None,
                           trials=trials,
-                          pre_processor=pre_processor,
-                          post_processor=post_processor,
+                          pre_processors=pre_processors,
+                          post_processors=post_processors,
                           wrp_args=wrp_args,
                           wrp_kwargs=wrp_kwargs,
                           args=args,
@@ -568,8 +568,8 @@ def imagerendering_func(wrp_self,
                         operation: str = 'create',
                         prompt: str = '',
                         trials: int = 1,
-                        pre_processor: Optional[List[PreProcessor]] = None,
-                        post_processor: Optional[List[PostProcessor]] = None,
+                        pre_processors: Optional[List[PreProcessor]] = None,
+                        post_processors: Optional[List[PostProcessor]] = None,
                         wrp_args = [], wrp_kwargs = [],
                         args = [], kwargs = []):
     check_or_init_imagerendering_func()
@@ -583,8 +583,8 @@ def imagerendering_func(wrp_self,
                           default=None,
                           limit=None,
                           trials=trials,
-                          pre_processor=pre_processor,
-                          post_processor=post_processor,
+                          pre_processors=pre_processors,
+                          post_processors=post_processors,
                           wrp_args=wrp_args,
                           wrp_kwargs=wrp_kwargs,
                           args=args,
@@ -678,8 +678,8 @@ def ocr_func(wrp_self,
              image: str,
              func: Callable,
              trials: int = 1,
-             pre_processor: Optional[List[PreProcessor]] = None,
-             post_processor: Optional[List[PostProcessor]] = None,
+             pre_processors: Optional[List[PreProcessor]] = None,
+             post_processors: Optional[List[PostProcessor]] = None,
              wrp_args = [], wrp_kwargs = [],
              args = [], kwargs = []):
     check_or_init_ocr_func()
@@ -693,8 +693,8 @@ def ocr_func(wrp_self,
                           default=None,
                           limit=None,
                           trials=trials,
-                          pre_processor=pre_processor,
-                          post_processor=post_processor,
+                          pre_processors=pre_processors,
+                          post_processors=post_processors,
                           wrp_args=wrp_args,
                           wrp_kwargs=wrp_kwargs,
                           args=args,
@@ -715,8 +715,8 @@ def vision_func(wrp_self,
                 image: Optional[str] = None,
                 prompt: Optional[str] = None,
                 trials: int = 1,
-                pre_processor: Optional[List[PreProcessor]] = None,
-                post_processor: Optional[List[PostProcessor]] = None,
+                pre_processors: Optional[List[PreProcessor]] = None,
+                post_processors: Optional[List[PostProcessor]] = None,
                 wrp_args = [], wrp_kwargs = [],
                 args = [], kwargs = []):
     check_or_init_vision_func()
@@ -730,8 +730,8 @@ def vision_func(wrp_self,
                           default=None,
                           limit=None,
                           trials=trials,
-                          pre_processor=pre_processor,
-                          post_processor=post_processor,
+                          pre_processors=pre_processors,
+                          post_processors=post_processors,
                           wrp_args=wrp_args,
                           wrp_kwargs=wrp_kwargs,
                           args=args,
@@ -754,8 +754,8 @@ def index_func(wrp_self,
                default: Optional[str] = None,
                constraints: List[Callable] = [],
                trials: int = 1,
-               pre_processor: Optional[List[PreProcessor]] = None,
-               post_processor: Optional[List[PostProcessor]] = None,
+               pre_processors: Optional[List[PreProcessor]] = None,
+               post_processors: Optional[List[PostProcessor]] = None,
                wrp_args = [], wrp_kwargs = [],
                args = [], kwargs = []):
     check_or_init_index_func()
@@ -769,8 +769,8 @@ def index_func(wrp_self,
                           default=default,
                           limit=None,
                           trials=trials,
-                          pre_processor=pre_processor,
-                          post_processor=post_processor,
+                          pre_processors=pre_processors,
+                          post_processors=post_processors,
                           wrp_args=wrp_args,
                           wrp_kwargs=wrp_kwargs,
                           args=args,
@@ -790,8 +790,8 @@ def speech_func(wrp_self,
                 func: Callable,
                 trials: int = 1,
                 prompt='decode',
-                pre_processor: Optional[List[PreProcessor]] = None,
-                post_processor: Optional[List[PostProcessor]] = None,
+                pre_processors: Optional[List[PreProcessor]] = None,
+                post_processors: Optional[List[PostProcessor]] = None,
                 wrp_args = [], wrp_kwargs = [],
                 args = [], kwargs = []):
     check_or_init_speech_func()
@@ -804,8 +804,8 @@ def speech_func(wrp_self,
                           default=None,
                           limit=None,
                           trials=trials,
-                          pre_processor=pre_processor,
-                          post_processor=post_processor,
+                          pre_processors=pre_processors,
+                          post_processors=post_processors,
                           wrp_args=wrp_args,
                           wrp_kwargs=wrp_kwargs,
                           args=args,

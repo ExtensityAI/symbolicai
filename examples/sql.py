@@ -11,7 +11,7 @@ Most SQL commands are used with operators to modify or reduce the scope of data 
 
 SQL SELECT. The SELECT command is used to get some or all data in a table. SELECT can be used with operators to narrow down the amount of data selected.
 SQL CREATE. The CREATE command is used to create a new SQL database or SQL table. Most versions of SQL create a new database by creating a new directory, in which tables and other database objects are stored as files.
-SQL DELETE. The DELETE command removes rows from a named table. 
+SQL DELETE. The DELETE command removes rows from a named table.
 The CREATE TABLE command is used create a table in SQL.
 
 [Examples]
@@ -48,17 +48,17 @@ class SQL(Expression):
     @property
     def static_context(self):
         return SQL_CONTEXT
-    
+
     def forward(self, sym: Symbol, *args, **kwargs):
-        @ai.few_shot(prompt="Generate queries based on the SQL domain specific language description\n", 
+        @ai.few_shot(prompt="Generate queries based on the SQL domain specific language description\n",
                      examples=[],
-                     pre_processor=[SQLPreProcessor()],
-                     post_processor=[StripPostProcessor()],
+                     pre_processors=[SQLPreProcessor()],
+                     post_processors=[StripPostProcessor()],
                      stop=[';'], **kwargs)
         def _func(_) -> str:
             pass
         return self._sym_return_type(_func(SQL(sym)))
-    
+
     @property
     def _sym_return_type(self):
         return SQL

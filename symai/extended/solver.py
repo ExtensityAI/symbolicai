@@ -80,8 +80,8 @@ class ProblemClassifier(Expression):
                          '$> :PROBABILITY AND STATISTICS: == :Probability and statistics: =>True EOF',
                          '$> :PROBABILITY AND STATISTICS: == :UNKNOWN CATEGORY: =>False EOF',
                      ]),
-                     pre_processor=[OptionsPreProcessor()],
-                     post_processor=[StripPostProcessor()],
+                     pre_processors=[OptionsPreProcessor()],
+                     post_processors=[StripPostProcessor()],
                      stop=['EOF'], **kwargs)
         def _func(_, other) -> bool:
             pass
@@ -90,8 +90,8 @@ class ProblemClassifier(Expression):
     def forward(self, **kwargs) -> str:
         @few_shot(prompt="Classify the user query to the mathematical classes:\n",
                      examples=[],
-                     pre_processor=[ProblemClassifierPreProcessor()],
-                     post_processor=[StripPostProcessor()],
+                     pre_processors=[ProblemClassifierPreProcessor()],
+                     post_processors=[StripPostProcessor()],
                      stop=['EOF'], **kwargs)
         def _func(_) -> str:
             pass
@@ -128,8 +128,8 @@ class FormulaChecker(Expression):
                          '$> The sum of the first n natural numbers =>False EOF',
                          '$> Sum[x=5, {i=0, n=10}] =>True EOF',
                      ]),
-                     pre_processor=[FormulaCheckerPreProcessor()],
-                     post_processor=[StripPostProcessor()],
+                     pre_processors=[FormulaCheckerPreProcessor()],
+                     post_processors=[StripPostProcessor()],
                      stop=['EOF'], **kwargs)
         def _func(_) -> bool:
             pass
@@ -162,8 +162,8 @@ class FormulaWriter(Expression):
                          '$> Sum x n times from i equals 0 to n equals 10. x is equals to 5. =>Sum[x=5, {i=0, n=10}] EOF',
                          '$> Multiply the first statement in brackets a plus b times the second term in brackets c minus d =>(a + b) * (c - d) EOF'
                      ]),
-                     pre_processor=[FormulaWriterPreProcessor()],
-                     post_processor=[StripPostProcessor()],
+                     pre_processors=[FormulaWriterPreProcessor()],
+                     post_processors=[StripPostProcessor()],
                      stop=['EOF'], **kwargs)
         def _func(_) -> str:
             pass
