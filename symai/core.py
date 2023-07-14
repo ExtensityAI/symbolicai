@@ -2006,8 +2006,8 @@ def retry(
 
 def tune(dataset: dict,
          operation: str = 'start',
-         pre_processor: Optional[List[PreProcessor]] = [ValuePreProcessor()],
-         post_processor: Optional[List[PostProcessor]] = None,
+         pre_processors: Optional[List[PreProcessor]] = [ValuePreProcessor()],
+         post_processors: Optional[List[PostProcessor]] = None,
          *wrp_args,
          **wrp_kwargs):
     """Fine tune a LLM.
@@ -2030,8 +2030,8 @@ def tune(dataset: dict,
                                    dataset=dataset,
                                    operation=operation,
                                    func=func,
-                                   pre_processor=pre_processor,
-                                   post_processor=post_processor,
+                                   pre_processors=pre_processors,
+                                   post_processors=post_processors,
                                    wrp_args=wrp_args,
                                    wrp_kwargs=wrp_kwargs,
                                    args=args, kwargs=kwargs)
@@ -2041,8 +2041,8 @@ def tune(dataset: dict,
 
 def caption(image: str,
             prompt: str,
-            pre_processor: Optional[List[PreProcessor]] = [ValuePreProcessor()],
-            post_processor: Optional[List[PostProcessor]] = None,
+            pre_processors: Optional[List[PreProcessor]] = [ValuePreProcessor()],
+            post_processors: Optional[List[PostProcessor]] = None,
             *wrp_args,
             **wrp_kwargs):
     """Caption the content of an image.
@@ -2065,8 +2065,8 @@ def caption(image: str,
                                         prompt=prompt,
                                         image=image,
                                         func=func,
-                                        pre_processor=pre_processor,
-                                        post_processor=post_processor,
+                                        pre_processors=pre_processors,
+                                        post_processors=post_processors,
                                         wrp_args=wrp_args,
                                         wrp_kwargs=wrp_kwargs,
                                         args=args, kwargs=kwargs)
