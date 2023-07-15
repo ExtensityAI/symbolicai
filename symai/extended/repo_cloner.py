@@ -20,13 +20,16 @@ class RepositoryCloner(Expression):
         super().__init__()
         self.repo_dir = Path.home() / '.symai/repos/' if repo_path is None else Path(repo_path)
 
-    def forward(self, url: str) -> None:
+    def forward(self, url: str) -> str:
         """
         Clones a repository if not already cloned or checks if the cloned repository
         is up-to-date and updates it if necessary.
 
         Parameters:
           url (str): The url of the repository to clone.
+
+        Returns:
+          str: The root path of the cloned repository.
         """
         repo_name = url.split('/')[-1].replace('.git', '')
         if (self.repo_dir / repo_name).is_dir():
@@ -48,3 +51,4 @@ class RepositoryCloner(Expression):
                 print(f'Repository {repo_name} cloned successfully.')
             except Exception as e:
                 print(f'Failed to clone the repository. An error occurred: {e}')
+        return str(self.repo_dir / repo_name)

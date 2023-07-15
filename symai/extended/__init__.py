@@ -3,6 +3,9 @@ from .document import *
 from .graph import *
 from .html_style_template import *
 from .packages import *
+from .file_merger import *
 from .repo_cloner import *
 from .solver import *
 from .summarizer import *
+from .conversation import *
+from .arxiv_pdf_parser import *
