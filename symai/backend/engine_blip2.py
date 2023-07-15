@@ -1,11 +1,13 @@
 from typing import List
-import torch
+
 import requests
-from PIL import Image
+import torch
 from accelerate import init_empty_weights
+from lavis.models import load_model, load_model_and_preprocess, load_preprocess
 from lavis.models.blip2_models.blip2_opt import Blip2OPT
 from lavis.processors import load_processor
-from lavis.models import load_model, load_preprocess, load_model_and_preprocess
+from PIL import Image
+
 from .base import Engine
 from .settings import SYMAI_CONFIG
 

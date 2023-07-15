@@ -4,10 +4,11 @@ from typing import Callable, Dict, List, Optional
 from . import __root_dir__
 from .functional import (bind_registry_func, cache_registry_func, command_func,
                          crawler_func, embed_func, execute_func, few_shot_func,
+                         finetuning_func, imagecaptioning_func,
                          imagerendering_func, index_func, ocr_func, open_func,
                          output_func, retry_func, search_func, setup_func,
                          speech_func, symbolic_func, userinput_func,
-                         vision_func, imagecaptioning_func, finetuning_func)
+                         vision_func)
 from .post_processors import *
 from .pre_processors import *
 from .prompts import *
