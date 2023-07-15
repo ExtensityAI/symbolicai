@@ -1,8 +1,10 @@
 import os
 import re
 import shutil
-import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+import requests
+
 from .. import Expression, Symbol
 from .file_merger import FileMerger
 

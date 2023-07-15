@@ -14,7 +14,6 @@ from .pre_processors import *
 from .prompts import Prompt
 from .utils import CustomUserWarning
 
-
 # global variables
 config                 = SYMAI_CONFIG
 neurosymbolic_engine   = None
