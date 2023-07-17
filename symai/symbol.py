@@ -1025,7 +1025,7 @@ class Expression(Symbol):
         Returns:
             type: The type of the object.
         """
-        return type(self)
+        return Symbol
 
     def _to_symbol(self, value: Any) -> "Symbol":
         """

@@ -30,7 +30,6 @@ class FileMerger(Expression):
         for root, dirs, files in os.walk(root_path):
             for file in files:
                 file_path = os.path.join(root, file)
-                print(file_path)
                 # Exclude files with the specified names in the path
                 if any(exclude in file_path for exclude in self.file_excludes):
                     continue
