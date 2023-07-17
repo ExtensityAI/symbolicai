@@ -43,7 +43,7 @@ class ArxivPdfParser(Expression):
         merged_file = self.merger(output_path)
 
         # Return the merged file as a Symbol
-        return_file = self._sym_return_type(merged_file)
+        return_file = self._to_symbol(merged_file)
 
         # Delete the temporary folder after merging the files
         shutil.rmtree(output_path)
