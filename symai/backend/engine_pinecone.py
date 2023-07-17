@@ -95,7 +95,7 @@ class IndexEngine(Engine):
 
         elif operation == 'add':
             for ids_vectors_chunk in chunks(query, batch_size=100):
-                rsp = self._upsert(ids_vectors_chunk)
+                self._upsert(ids_vectors_chunk)
 
         elif operation == 'config':
             index_name = kwargs['index_name'] if 'index_name' in kwargs else self.index_name
@@ -129,7 +129,7 @@ class IndexEngine(Engine):
     def _init_index_engine(self):
         pinecone.init(api_key=self.api_key, environment=self.environment)
 
-        if self.index_name not in pinecone.list_indexes():
+        if self.index_name is not None and self.index_name not in pinecone.list_indexes():
             pinecone.create_index(name=self.index_name, dimension=self.index_dims, metric=self.index_metric)
 
         self.index = pinecone.Index(index_name=self.index_name)
