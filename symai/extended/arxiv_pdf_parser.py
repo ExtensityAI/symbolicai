@@ -28,7 +28,6 @@ class ArxivPdfParser(Expression):
         os.makedirs(output_path, exist_ok=True)
 
         pdf_files = []
-        print(pdf_urls)
         with ThreadPoolExecutor() as executor:
             # Download all pdfs in parallel
             future_to_url = {executor.submit(self.download_pdf, url, output_path): url for url in pdf_urls}
