@@ -10,7 +10,7 @@ class FileMerger(Expression):
     Files specified in the exclude list will not be included.
     """
     def __init__(self, file_endings: List[str] = ['.py', '.md', '.txt', '.sh', '.pdf', '.json', '.yaml'],
-                       file_excludes: List[str] = ['__init__.py', '__pycache__', 'LICENSE', 'requirements.txt', 'environment.yaml']):
+                       file_excludes: List[str] = ['__init__.py', '__pycache__', 'LICENSE', 'requirements.txt', 'environment.yaml', '.git']):
         super().__init__()
         self.file_endings = file_endings
         self.file_excludes = file_excludes
@@ -30,7 +30,7 @@ class FileMerger(Expression):
         for root, dirs, files in os.walk(root_path):
             for file in files:
                 file_path = os.path.join(root, file)
-
+                print(file_path)
                 # Exclude files with the specified names in the path
                 if any(exclude in file_path for exclude in self.file_excludes):
                     continue
@@ -49,4 +49,4 @@ class FileMerger(Expression):
                     merged_file += file_content
 
         # Return the merged file as a Symbol
-        return self._sym_return_type(merged_file)
+        return self._to_symbol(merged_file)
