@@ -102,7 +102,7 @@ def _process_query(engine,
                    args = [], kwargs = {}):
 
     if pre_processors and not isinstance(pre_processors, list):
-        pre_processors = [pre_processor]
+        pre_processors = [pre_processors]
     if post_processors and not isinstance(post_processors, list):
         post_processors = [post_processors]
 
@@ -619,8 +619,8 @@ def imagecaptioning_func(wrp_self,
                           default=None,
                           limit=None,
                           trials=trials,
-                          pre_processor=pre_processor,
-                          post_processor=post_processor,
+                          pre_processors=pre_processors,
+                          post_processors=post_processors,
                           wrp_args=wrp_args,
                           wrp_kwargs=wrp_kwargs,
                           args=args,
@@ -656,8 +656,8 @@ def finetuning_func(wrp_self,
                           default=None,
                           limit=None,
                           trials=trials,
-                          pre_processor=pre_processor,
-                          post_processor=post_processor,
+                          pre_processors=pre_processors,
+                          post_processors=post_processors,
                           wrp_args=wrp_args,
                           wrp_kwargs=wrp_kwargs,
                           args=args,
