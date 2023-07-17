@@ -779,7 +779,7 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
 
 
 class Expression(Symbol):
-    def __init__(self, value = None):
+    def __init__(self, value = None, *args, **kwargs):
         """Create an Expression object that will be evaluated lazily using the forward method.
 
         Args:

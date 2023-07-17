@@ -632,23 +632,29 @@ class Indexer(Expression):
         if index_name != Indexer.DEFAULT:
             Expression.setup({'index': IndexEngine(index_name=index_name)})
 
-    def forward(self, query: Optional[Symbol] = None, *args, **kwargs) -> Symbol:
+    @property
+    def _sym_return_type(self):
+        return Expression # TODO: find a better way to avoid circular init after cast (Indexer -> setup -> Indexer -> setup -> ...)
+
+    def forward(self, data: Optional[Symbol] = None) -> Symbol:
         that = self
-        if query is not None:
-            query = self._to_symbol(query)
+        if data is not None:
+            data = self._to_symbol(data)
             # split text paragraph-wise and index each paragraph separately
-            self.elements = self.formatter(query).value
+            self.elements = self.formatter(data).value
             # run over the elments in batches
             for i in tqdm(range(0, len(self.elements), self.batch_size)):
                 val = Symbol(self.elements[i:i+self.batch_size]).zip()
                 that.add(val)
 
-        def _func(query):
-            res = that.get(Symbol(query).embed().value, index_top_k=that.top_k).ast()
+        def _func(query, *args, **kwargs):
+            query_emb = Symbol(query).embed().value
+            res = that.get(query_emb, index_top_k=that.top_k)
+            res = res.ast()
             res = [v['metadata']['text'] for v in res['matches']]
             that.retrieval = res
             sym = that._to_symbol(res)
-            rsp = sym.query(query)
+            rsp = sym.query(query, *args, **kwargs)
             return rsp
 
         return _func

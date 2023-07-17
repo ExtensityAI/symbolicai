@@ -1842,7 +1842,7 @@ def execute(default: Optional[str] = None,
 
 
 
-def index(prompt: str,
+def index(prompt: Any,
           operation: str = 'search', # | add | config
           default: Optional[str] = None,
           constraints: List[Callable] = [],
@@ -1853,7 +1853,7 @@ def index(prompt: str,
     """Query for a given index and returns the result through a decorator.
 
     Args:
-        prompt (str): The query to be used by the search, add or config of the index.
+        prompt (Any): The query to be used by the search, add or config of the index.
         operation (str, optional): The operation to be performed on the index. Defaults to 'search'.
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None.
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
