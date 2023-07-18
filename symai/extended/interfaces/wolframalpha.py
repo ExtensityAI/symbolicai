@@ -11,4 +11,4 @@ class wolframalpha(Expression):
         @core.expression(expression_engine=self.engine, **kwargs)
         def _func(_, expr: str):
             pass
-        return self._sym_return_type(_func(self, expr))
+        return self.sym_return_type(_func(self, expr))

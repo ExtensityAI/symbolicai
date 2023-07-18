@@ -20,8 +20,9 @@ class ChatBot(Expression):
 
     def __init__(self, value = None, name: str = 'Symbia', output: Optional[Output] = None, verbose: bool = False):
         super().__init__(value)
-        self.verbose: bool        = verbose
-        self.name                 = name
+        self.sym_return_type = ChatBot
+        self.verbose: bool   = verbose
+        self.name            = name
         self.last_user_input: str = ''
 
         self.short_term_memory: Memory = SlidingWindowListMemory(window_size=10)
@@ -97,10 +98,6 @@ class ChatBot(Expression):
     @property
     def static_context(self) -> str:
         return ChatBot._symai_chat.format(self.name)
-
-    @property
-    def _sym_return_type(self):
-        return ChatBot
 
     @staticmethod
     def _init_custom_input_preprocessor(name, that):

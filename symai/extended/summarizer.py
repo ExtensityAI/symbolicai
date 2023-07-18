@@ -19,10 +19,10 @@ class Summarizer(Expression):
         vals = list(self.data_stream(sym, **kwargs))
         if len(vals) == 1:
             res = {str(vals[0]): Expression(vals[0]).compose(**kwargs)}
-            return self._sym_return_type(res)
+            return self.sym_return_type(res)
         res = Expression(vals).cluster()
         sym = res.map()
         summary = {}
         for k, v in sym.value.items():
             summary[k] = Expression(v).compose(**kwargs)
-        return self._sym_return_type(summary)
+        return self.sym_return_type(summary)

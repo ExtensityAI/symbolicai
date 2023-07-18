@@ -3,9 +3,9 @@ import unittest
 
 import numpy as np
 
-from examples.news import News
-from examples.paper import Paper
-from examples.sql import SQL
+# from examples.news import News
+# from examples.paper import Paper
+# from examples.sql import SQL
 from symai import *
 from symai.chat import SymbiaChat
 from symai.extended import *
@@ -258,7 +258,7 @@ Traceback (most recent call last):
     sym     = code.correct(context=context,
               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/Users/xpitfire/workspace/symbolicai/symai/symbol.py", line 1111, in correct
-    return self._sym_return_type(_func(self))
+    return self.sym_return_type(_func(self))
                                  ^^^^^^^^^^^
   File "/Users/xpitfire/workspace/symbolicai/symai/core.py", line 46, in wrapper
     return few_shot_func(wrp_self,
