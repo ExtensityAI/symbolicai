@@ -1,6 +1,6 @@
 from abc import ABC
 from json import JSONEncoder
-from typing import Any, Dict, Iterator, List, Optional, Union
+from typing import Any, Dict, Iterator, List, Optional, Union, Type
 
 import numpy as np
 
@@ -453,13 +453,17 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
 
         Returns:
             Symbol: The item of the Symbol value with the specified key or index.
+
+        Raises:
+            KeyError: If the key or index is not found in the Symbol value.
         '''
         try:
             if (isinstance(key, int) or isinstance(key, slice)) and (isinstance(self.value, list) or isinstance(self.value, tuple) or isinstance(self.value, np.ndarray)):
                 return self.value[key]
             elif (isinstance(key, str) or isinstance(key, int)) and isinstance(self.value, dict):
                 return self.value[key]
-        except: pass
+        except KeyError:
+            raise KeyError(f'Key {key} not found in {self.value}')
 
         @core.getitem()
         def _func(_, index: str):
@@ -477,6 +481,9 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
         Args:
             key (Union[str, int, slice]): The key or index for the item in the Symbol value.
             value: The value to set the item to.
+
+        Raises:
+            KeyError: If the key or index is not found in the Symbol value.
         '''
         try:
             if (isinstance(key, int) or isinstance(key, slice)) and (isinstance(self.value, list) or isinstance(self.value, tuple) or isinstance(self.value, np.ndarray)):
@@ -485,7 +492,8 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
             elif (isinstance(key, str) or isinstance(key, int)) and isinstance(self.value, dict):
                 self.value[key] = value
                 return
-        except: pass
+        except KeyError:
+            raise KeyError(f'Key {key} not found in {self.value}')
 
         @core.setitem()
         def _func(_, index: str, value: str):
@@ -502,12 +510,15 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
         Args:
             key (Union[str, int]): The key for the item in the Symbol value.
 
+        Raises:
+            KeyError: If the key or index is not found in the Symbol value.
         '''
         try:
             if (isinstance(key, str) or isinstance(key, int)) and isinstance(self.value, dict):
                 del self.value[key]
                 return
-        except: pass
+        except KeyError:
+            raise KeyError(f'Key {key} not found in {self.value}')
 
         @core.delitem()
         def _func(_, index: str):
@@ -779,17 +790,24 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
 
 
 class Expression(Symbol):
+    _default_return_type = Symbol
+
     def __init__(self, value = None, *args, **kwargs):
-        """Create an Expression object that will be evaluated lazily using the forward method.
+        '''
+        Create an Expression object that will be evaluated lazily using the forward method.
 
         Args:
             value (Any, optional): The value to be stored in the Expression object. Usually not provided as the value
-                                    is computed using the forward method when called. Defaults to None.
-        """
+                                   is computed using the forward method when called. Defaults to None.
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+        '''
         super().__init__(value)
+        self._sym_return_type = self._default_return_type
 
     def __call__(self, *args, **kwargs) -> Symbol:
-        """Evaluate the expression using the forward method and assign the result to the value attribute.
+        '''
+        Evaluate the expression using the forward method and assign the result to the value attribute.
 
         Args:
             *args: Variable length argument list.
@@ -797,12 +815,50 @@ class Expression(Symbol):
 
         Returns:
             Symbol: The evaluated result of the forward method, stored as the value attribute.
-        """
+        '''
         self.value = self.forward(*args, **kwargs)
         return self.value
 
+    @property
+    def sym_return_type(self) -> Type:
+        '''
+        Returns the casting type of this expression.
+
+        Returns:
+            Type: The casting type of this expression. Defaults to 'Symbol'.
+        '''
+        return self._sym_return_type
+
+    @sym_return_type.setter
+    def sym_return_type(self, type: Type) -> None:
+        '''
+        Sets the casting type of this expression.
+
+        Args:
+            type (Type): The casting type of this expression.
+        '''
+        self._sym_return_type = type
+
+    def _to_symbol(self, value: Any) -> 'Symbol':
+        '''
+        Create a Symbol instance from a given input value.
+        Helper function used to ensure that all values are wrapped in a Symbol instance.
+
+        Args:
+            value (Any): The input value.
+
+        Returns:
+            Symbol: The Symbol instance with the given input value.
+        '''
+        if isinstance(value, Symbol):
+            return value
+
+        return Symbol(value)
+
+
     def forward(self, *args, **kwargs) -> Symbol:
-        """Needs to be implemented by subclasses to specify the behavior of the expression during evaluation.
+        '''
+        Needs to be implemented by subclasses to specify the behavior of the expression during evaluation.
 
         Args:
             *args: Variable length argument list.
@@ -810,11 +866,12 @@ class Expression(Symbol):
 
         Returns:
             Symbol: The evaluated result of the implemented forward method.
-        """
+        '''
         raise NotImplementedError()
 
-    def draw(self, query: Optional[str] = None, operation: str = 'create', **kwargs) -> "Symbol":
-        """Draw an image using the current Symbol as the base.
+    def draw(self, query: Optional[str] = None, operation: str = 'create', **kwargs) -> 'Symbol':
+        '''
+        Draw an image using the current Symbol as the base.
 
         Args:
             query (Optional[str], optional): The query to be used for the drawing operation. Defaults to None.
@@ -823,32 +880,34 @@ class Expression(Symbol):
 
         Returns:
             Symbol: The resulting Symbol after the drawing operation.
-        """
+        '''
         @core.draw(operation=operation, **kwargs)
         def _func(_):
             pass
         val = str(self)
         if query is not None:
             val = str(query)
-        return self._sym_return_type(_func(val))
+        return self.sym_return_type(_func(val))
 
-    def input(self, message: str = "Please add more information", **kwargs) -> "Symbol":
-        """Request user input and return a Symbol containing the user input.
+    def input(self, message: str = 'Please add more information', **kwargs) -> 'Symbol':
+        '''
+        Request user input and return a Symbol containing the user input.
 
         Args:
-            message (str, optional): The message displayed to request the user input. Defaults to "Please add more information".
+            message (str, optional): The message displayed to request the user input. Defaults to 'Please add more information'.
             **kwargs: Additional keyword arguments to be passed to the `@core.userinput` decorator.
 
         Returns:
             Symbol: The resulting Symbol after receiving the user input.
-        """
+        '''
         @core.userinput(**kwargs)
         def _func(_, message) -> str:
             pass
-        return self._sym_return_type(_func(self, message))
+        return self.sym_return_type(_func(self, message))
 
-    def fetch(self, url: str, pattern: str = '', **kwargs) -> "Symbol":
-        """Fetch data from a URL and return a Symbol containing the fetched data.
+    def fetch(self, url: str, pattern: str = '', **kwargs) -> 'Symbol':
+        '''
+        Fetch data from a URL and return a Symbol containing the fetched data.
 
         Args:
             url (str): The URL to fetch data from.
@@ -857,14 +916,15 @@ class Expression(Symbol):
 
         Returns:
             Symbol: The resulting Symbol after fetching data from the URL.
-        """
+        '''
         @core.fetch(url=url, pattern=pattern, **kwargs)
         def _func(_) -> str:
             pass
-        return self._sym_return_type(_func(self))
+        return self.sym_return_type(_func(self))
 
-    def ocr(self, image_url: str, **kwargs) -> "Symbol":
-        """Perform OCR on an image using the image URL or image path.
+    def ocr(self, image_url: str, **kwargs) -> 'Symbol':
+        '''
+        Perform OCR on an image using the image URL or image path.
 
         Args:
             image_url (str): The URL of the image to perform OCR on.
@@ -872,16 +932,17 @@ class Expression(Symbol):
 
         Returns:
             Symbol: The resulting Symbol after performing OCR on the image.
-        """
+        '''
         if not image_url.startswith('http'):
             image_url = f'file://{image_url}'
         @core.ocr(image=image_url, **kwargs)
         def _func(_) -> dict:
             pass
-        return self._sym_return_type(_func(self))
+        return self.sym_return_type(_func(self))
 
-    def vision(self, image: Optional[str] = None, text: Optional[List[str]] = None, **kwargs) -> "Symbol":
-        """Perform a vision operation on an image using the image URL or image path.
+    def vision(self, image: Optional[str] = None, text: Optional[List[str]] = None, **kwargs) -> 'Symbol':
+        '''
+        Perform a vision operation on an image using the image URL or image path.
 
         Args:
             image (str, optional): The image to use for the vision operation. Defaults to None.
@@ -890,14 +951,15 @@ class Expression(Symbol):
 
         Returns:
             Symbol: The resulting Symbol after performing the vision operation.
-        """
+        '''
         @core.vision(image=image, prompt=text, **kwargs)
         def _func(_) -> np.ndarray:
             pass
-        return self._sym_return_type(_func(self))
+        return self.sym_return_type(_func(self))
 
-    def speech(self, audio_path: str, operation: str = 'decode', **kwargs) -> "Symbol":
-        """Perform a speech operation on an audio file using the audio file path.
+    def speech(self, audio_path: str, operation: str = 'decode', **kwargs) -> 'Symbol':
+        '''
+        Perform a speech operation on an audio file using the audio file path.
 
         Args:
             audio_path (str): The path of the audio file to perform the speech operation on.
@@ -906,14 +968,15 @@ class Expression(Symbol):
 
         Returns:
             Symbol: The resulting Symbol after performing the speech operation.
-        """
+        '''
         @core.speech(audio=audio_path, prompt=operation, **kwargs)
         def _func(_) -> str:
             pass
-        return self._sym_return_type(_func(self))
+        return self.sym_return_type(_func(self))
 
-    def search(self, query: str, **kwargs) -> "Symbol":
-        """Search for information on the internet based on the query.
+    def search(self, query: str, **kwargs) -> 'Symbol':
+        '''
+        Search for information on the internet based on the query.
 
         Args:
             query (str): The query for the search operation.
@@ -921,14 +984,15 @@ class Expression(Symbol):
 
         Returns:
             Symbol: The resulting Symbol after performing the search operation.
-        """
+        '''
         @core.search(query=query, **kwargs)
         def _func(_) -> str:
             pass
-        return self._sym_return_type(_func(self))
+        return self.sym_return_type(_func(self))
 
-    def caption(self, prompt: str, **kwargs) -> "Symbol":
-        """Query information from the current image symbol.
+    def caption(self, prompt: str, **kwargs) -> 'Symbol':
+        '''
+        Query information from the current image symbol.
 
         Args:
             prompt (str): The prompt for the query operation.
@@ -936,14 +1000,15 @@ class Expression(Symbol):
 
         Returns:
             Symbol: The resulting Symbol after performing the search operation.
-        """
+        '''
         @core.caption(prompt=prompt, **kwargs)
         def _func(_) -> str:
             pass
-        return self._sym_return_type(_func(self))
+        return self.sym_return_type(_func(self))
 
-    def tune(self, operation: str = 'start', **kwargs) -> "Symbol":
-        """Query information from the current image symbol.
+    def tune(self, operation: str = 'start', **kwargs) -> 'Symbol':
+        '''
+        Query information from the current image symbol.
 
         Args:
             query (str): The query for the query operation.
@@ -951,14 +1016,15 @@ class Expression(Symbol):
 
         Returns:
             Symbol: The resulting Symbol after performing the search operation.
-        """
+        '''
         @core.tune(dataset=self.value, operation=operation, **kwargs)
         def _func(_) -> str:
             pass
-        return self._sym_return_type(_func(self))
+        return self.sym_return_type(_func(self))
 
-    def open(self, path: str, **kwargs) -> "Symbol":
-        """Open a file and store its content in an Expression object as a string.
+    def open(self, path: str, **kwargs) -> 'Symbol':
+        '''
+        Open a file and store its content in an Expression object as a string.
 
         Args:
             path (str): The path to the file that needs to be opened.
@@ -966,14 +1032,15 @@ class Expression(Symbol):
 
         Returns:
             Symbol: An Expression object containing the content of the file as a string value.
-        """
+        '''
         @core.opening(path=path, **kwargs)
         def _func(_) -> str:
             pass
-        return self._sym_return_type(_func(self))
+        return self.sym_return_type(_func(self))
 
-    def index(self, path: str, **kwargs) -> "Symbol":
-        """Execute a configuration operation on the index.
+    def index(self, path: str, **kwargs) -> 'Symbol':
+        '''
+        Execute a configuration operation on the index.
 
         Args:
             path (str): Index configuration path.
@@ -981,14 +1048,15 @@ class Expression(Symbol):
 
         Returns:
             Symbol: An Expression object containing the configuration result.
-        """
+        '''
         @core.index(prompt=path, operation='config', **kwargs)
         def _func(_):
             pass
-        return self._sym_return_type(_func(self))
+        return self.sym_return_type(_func(self))
 
-    def add(self, query: List[str], **kwargs) -> "Symbol":
-        """Add an entry to the existing index.
+    def add(self, query: List[str], **kwargs) -> 'Symbol':
+        '''
+        Add an entry to the existing index.
 
         Args:
             query (List[str]): The query string used to add an entry to the index.
@@ -996,14 +1064,15 @@ class Expression(Symbol):
 
         Returns:
             Symbol: An Expression object containing the addition result.
-        """
+        '''
         @core.index(prompt=query, operation='add', **kwargs)
         def _func(_):
             pass
-        return self._sym_return_type(_func(self))
+        return self.sym_return_type(_func(self))
 
-    def get(self, query: List[int], **kwargs) -> "Symbol":
-        """Search the index based on the provided query.
+    def get(self, query: List[int], **kwargs) -> 'Symbol':
+        '''
+        Search the index based on the provided query.
 
         Args:
             query (List[int]): The query vector used to search entries in the index.
@@ -1011,41 +1080,17 @@ class Expression(Symbol):
 
         Returns:
             Symbol: An Expression object containing the search result.
-        """
+        '''
         @core.index(prompt=query, operation='search', **kwargs)
         def _func(_):
             pass
-        return self._sym_return_type(_func(self))
-
-    @property
-    def _sym_return_type(self):
-        """
-        Get the return type of the current object.
-
-        Returns:
-            type: The type of the object.
-        """
-        return Symbol
-
-    def _to_symbol(self, value: Any) -> "Symbol":
-        """
-        Create a Symbol instance from a given input value.
-        Used to ensure that all values are wrapped in a Symbol instance.
-
-        Args:
-            value (Any): The input value.
-
-        Returns:
-            Symbol: The Symbol instance with the given input value.
-        """
-        if isinstance(value, Symbol): return value
-
-        return Symbol(value)
+        return self.sym_return_type(_func(self))
 
     #@TODO: these must be searched after and replaced with core.command and core.setup; or moved somewhere else
     @staticmethod
-    def command(engines: List[str] = ['all'], **kwargs) -> "Symbol":
-        """Execute command(s) on engines.
+    def command(engines: List[str] = ['all'], **kwargs) -> 'Symbol':
+        '''
+        Execute command(s) on engines.
 
         Args:
             engines (List[str], optional): The list of engines on which to execute the command(s). Defaults to ['all'].
@@ -1053,15 +1098,16 @@ class Expression(Symbol):
 
         Returns:
             Symbol: An Expression object representing the command execution result.
-        """
+        '''
         @core.command(engines=engines, **kwargs)
         def _func(_):
             pass
         return Expression(_func(Expression()))
 
     @staticmethod
-    def setup(engines: Dict[str, Any], **kwargs) -> "Symbol":
-        """Configure multiple engines.
+    def setup(engines: Dict[str, Any], **kwargs) -> 'Symbol':
+        '''
+        Configure multiple engines.
 
         Args:
             engines (Dict[str, Any]): A dictionary containing engine names as keys and their configurations as values.
@@ -1069,7 +1115,7 @@ class Expression(Symbol):
 
         Returns:
             Symbol: An Expression object representing the setup result.
-        """
+        '''
         @core.setup(engines=engines, **kwargs)
         def _func(_):
             pass

@@ -76,3 +76,10 @@ class TestComponents(unittest.TestCase):
         y = f(x)
         self.assertTrue('[HELP]' in y.value, y)
 
+    def test_indexer(self):
+        indexer = Indexer(index_name='data-index')
+        indexer('This is a test!')      # upsert
+        index = indexer()
+        rsp = index('Is there a test?') # retrieve
+        self.assertTrue('confirmation that there is a test' in rsp)
+

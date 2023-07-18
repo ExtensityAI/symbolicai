@@ -14,4 +14,4 @@ class clip(Expression):
         @core.vision(image=image, prompt=text, **kwargs)
         def _func(_) -> np.ndarray:
             pass
-        return self._sym_return_type(_func(self))
+        return self.sym_return_type(_func(self))

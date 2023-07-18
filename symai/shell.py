@@ -51,10 +51,6 @@ class ShellPreProcessor(PreProcessor):
 
 
 class Shell(Expression):
-    @property
-    def static_context(self):
-        return SHELL_CONTEXT
-
     def forward(self, **kwargs) -> str:
         @few_shot(prompt="Convert a user query to a shell command:\n",
                      examples=[],
@@ -63,12 +59,12 @@ class Shell(Expression):
                      stop=['EOF'], **kwargs)
         def _func(_) -> str:
             return "Sorry, something went wrong. Please check if your backend is available and try again or report an issue to the devs. :("
-        return self._sym_return_type(_func(self))
+
+        return Shell(_func(self))
 
     @property
-    def _sym_return_type(self):
-        return Shell
-
+    def static_context(self) -> str:
+        return SHELL_CONTEXT
 
 def process_query(args) -> None:
     query = args.query

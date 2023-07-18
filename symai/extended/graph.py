@@ -26,14 +26,11 @@ class Graph(Expression):
     def static_context(self) -> str:
         return GRAPH_DESCRIPTION
 
-    @property
-    def _sym_return_type(self):
-        return Graph
-
     def __init__(self, formatter: Callable = SentenceFormatter(), n_workers: int = 4):
         super().__init__()
         self.formatter = formatter
         self.n_workers = n_workers
+        self.sym_return_type = Graph
 
     def process_symbol(self, s, *args, **kwargs):
         res = ''

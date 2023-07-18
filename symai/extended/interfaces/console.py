@@ -11,4 +11,4 @@ class console(Expression):
         @core.output(**kwargs)
         def _func(_, *args):
             pass
-        return self._sym_return_type(_func(self, *args))
+        return self.sym_return_type(_func(self, *args))
