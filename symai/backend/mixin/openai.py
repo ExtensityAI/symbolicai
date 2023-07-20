@@ -56,3 +56,6 @@ class OpenAIMixin:
              self.model == 'babbage' or \
              self.model == 'ada':
             return 2_049
+
+        elif self.model == 'text-embedding-ada-002':
+            return 8_191

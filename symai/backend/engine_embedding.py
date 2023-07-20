@@ -17,6 +17,7 @@ class EmbeddingEngine(Engine, OpenAIMixin):
         openai.api_key          = config['EMBEDDING_ENGINE_API_KEY']
         self.model              = config['EMBEDDING_ENGINE_MODEL']
         self.pricing            = self.api_pricing()
+        self.max_tokens         = self.api_max_tokens()
 
     def command(self, wrp_params):
         super().command(wrp_params)

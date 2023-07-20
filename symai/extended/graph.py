@@ -26,11 +26,12 @@ class Graph(Expression):
     def static_context(self) -> str:
         return GRAPH_DESCRIPTION
 
-    def __init__(self, formatter: Callable = SentenceFormatter(), n_workers: int = 4):
+    def __init__(self, formatter: Callable = SentenceFormatter(), n_workers: int = 1, verbose: bool = False):
         super().__init__()
-        self.formatter = formatter
-        self.n_workers = n_workers
+        self.formatter       = formatter
+        self.n_workers       = n_workers
         self.sym_return_type = Graph
+        self.verbose         = verbose
 
     def process_symbol(self, s, *args, **kwargs):
         res = ''
@@ -49,6 +50,7 @@ class Graph(Expression):
             pass
 
         if len(str(s)) > 0:
+            if self.verbose: print(s)
             r = _func(self, s)
             rec = str(r)
             lines = rec.split('\n')
@@ -57,18 +59,27 @@ class Graph(Expression):
                 if len(l) > 0:
                     csv = l.split(',')
                     try:
-                        if len(csv) == 3 and csv[0].strip() != '' and csv[1].strip() != '' and csv[2].strip() > 0:
-                            test_ = int(csv[-1])
+                        if len(csv) == 3 and \
+                            csv[0].strip() != '' and \
+                                csv[1].strip() != '' and \
+                                    int(csv[2].strip()) > 0:
                             res += l + '\n'
-                    except:
+                    except Exception as e:
+                        if self.verbose: print(e)
                         pass
         return res
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
         res = 'source,target,value\n'
         sym_list = self.formatter(sym).value
+        if self.n_workers == 1:
+            for s in sym_list:
+                res += self.process_symbol(s)
+            return res
         with Pool(self.n_workers) as p:
             results = p.map(self.process_symbol, sym_list)
         for r in results:
             res += r
         return res
+
+

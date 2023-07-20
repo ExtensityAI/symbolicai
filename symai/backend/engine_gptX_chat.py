@@ -32,7 +32,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         # iterate over prompts and compute number of tokens
         prompts_ = [role['content'] for role in prompts]
         prompt = ''.join(prompts_)
-        val = len(self.tokenizer.encode(prompt))
+        val = len(self.tokenizer.encode(prompt, disallowed_special=()))
         return int((self.max_tokens - val) * 0.98)
 
     def forward(self, prompts: List[str], *args, **kwargs) -> List[str]:
@@ -55,14 +55,14 @@ class GPTXChatEngine(Engine, OpenAIMixin):
 
         try:
             res = openai.ChatCompletion.create(model=model,
-                                                messages=prompts_,
-                                                max_tokens=max_tokens,
-                                                temperature=temperature,
-                                                frequency_penalty=frequency_penalty,
-                                                presence_penalty=presence_penalty,
-                                                top_p=top_p,
-                                                stop=stop,
-                                                n=1)
+                                               messages=prompts_,
+                                               max_tokens=max_tokens,
+                                               temperature=temperature,
+                                               frequency_penalty=frequency_penalty,
+                                               presence_penalty=presence_penalty,
+                                               top_p=top_p,
+                                               stop=stop,
+                                               n=1)
             output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
             if output_handler:
                 output_handler(res)

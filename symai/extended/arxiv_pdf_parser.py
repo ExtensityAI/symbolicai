@@ -15,7 +15,7 @@ class ArxivPdfParser(Expression):
         self.url_pattern = url_pattern
         self.merger = FileMerger()
 
-    def forward(self, data: Symbol) -> Symbol:
+    def forward(self, data: Symbol, **kwargs) -> Symbol:
         # Extract all urls from the data
         urls = re.findall(self.url_pattern, str(data))
 
@@ -39,7 +39,7 @@ class ArxivPdfParser(Expression):
                     print('%r generated an exception: %s' % (url, exc))
 
         # Merge all pdfs into one file
-        merged_file = self.merger(output_path)
+        merged_file = self.merger(output_path, **kwargs)
 
         # Return the merged file as a Symbol
         return_file = self._to_symbol(merged_file)

@@ -1,6 +1,6 @@
 from abc import ABC
 from json import JSONEncoder
-from typing import Any, Dict, Iterator, List, Optional, Union, Type
+from typing import Any, Dict, Iterator, List, Optional, Type, Union
 
 import numpy as np
 
