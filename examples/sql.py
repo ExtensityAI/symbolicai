@@ -57,8 +57,5 @@ class SQL(Expression):
                      stop=[';'], **kwargs)
         def _func(_) -> str:
             pass
-        return self._sym_return_type(_func(SQL(sym)))
+        return SQL(_func(SQL(sym)))
 
-    @property
-    def _sym_return_type(self):
-        return SQL

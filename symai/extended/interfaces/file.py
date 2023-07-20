@@ -11,4 +11,4 @@ class file(Expression):
         @core.opening(path=path.value, **kwargs)
         def _func(_) -> str:
             pass
-        return self._sym_return_type(_func(self))
+        return self.sym_return_type(_func(self))

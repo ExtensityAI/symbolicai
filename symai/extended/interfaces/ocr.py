@@ -12,4 +12,4 @@ class ocr(Expression):
         @core.ocr(image=image_url, **kwargs)
         def _func(_) -> dict:
             pass
-        return self._sym_return_type(_func(self))
+        return self.sym_return_type(_func(self))
