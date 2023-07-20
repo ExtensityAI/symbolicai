@@ -10,4 +10,4 @@ class input(Expression):
         @core.userinput(**kwargs)
         def _func(_, message) -> str:
             pass
-        return self._sym_return_type(_func(self, message))
+        return self.sym_return_type(_func(self, message))

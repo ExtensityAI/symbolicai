@@ -67,11 +67,7 @@ class Docs(Expression):
                      post_processors=[StripPostProcessor()], **kwargs)
         def _func(_) -> str:
             pass
-        return self._sym_return_type(_func(Docs(sym)))
-
-    @property
-    def _sym_return_type(self):
-        return Docs
+        return Docs(_func(Docs(sym)))
 
 
 CPP_DOC_CONTEXT = """Documentation example for a C++ code snippet:
@@ -112,8 +108,5 @@ class CppDocs(Expression):
                      post_processors=[StripPostProcessor()], **kwargs)
         def _func(_) -> str:
             pass
-        return self._sym_return_type(_func(Docs(sym)))
+        return CppDocs(_func(Docs(sym)))
 
-    @property
-    def _sym_return_type(self):
-        return CppDocs
