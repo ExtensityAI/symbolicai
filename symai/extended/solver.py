@@ -95,11 +95,8 @@ class ProblemClassifier(Expression):
                      stop=['EOF'], **kwargs)
         def _func(_) -> str:
             pass
-        return self._sym_return_type(_func(self))
 
-    @property
-    def _sym_return_type(self):
-        return ProblemClassifier
+        return ProblemClassifier(_func(self))
 
 
 class FormulaCheckerPreProcessor(PreProcessor):
@@ -178,6 +175,9 @@ class FormulaWriter(Expression):
 
 
 class Solver(Expression):
+    def __init__(self):
+        self.sym_return_type = Solver
+
     def rewrite_formula(self, sym, **kwargs):
         formula = sym
         check = FormulaChecker(formula)
@@ -206,10 +206,6 @@ class Solver(Expression):
             raise NotImplementedError('This feature is not yet implemented.')
         else:
             return "Sorry, something went wrong. Please check if your backend is available and try again or report an issue to the devs. :("
-
-    @property
-    def _sym_return_type(self):
-        return Solver
 
 
 def process_query(args) -> None:

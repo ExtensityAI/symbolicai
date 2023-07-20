@@ -10,4 +10,4 @@ class selenium(Expression):
         @core.fetch(url=url, pattern=pattern, **kwargs)
         def _func(_) -> str:
             pass
-        return self._sym_return_type(_func(self))
+        return self.sym_return_type(_func(self))

@@ -11,4 +11,4 @@ class google(Expression):
         @core.search(query=query.value, **kwargs)
         def _func(_) -> str:
             pass
-        return self._sym_return_type(_func(self))
+        return self.sym_return_type(_func(self))
