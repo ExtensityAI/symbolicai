@@ -365,7 +365,7 @@ class Function(TrackerTraceable):
         self.args = args
         self.kwargs = kwargs
         self._promptTemplate = prompt
-        self._promptFormatArgs = {}
+        self._promptFormatArgs = []
         self._promptFormatKwargs = {}
         self._static_context = static_context
         self.examples = Prompt(examples)
@@ -378,6 +378,8 @@ class Function(TrackerTraceable):
     @property
     def prompt(self):
         # return a copy of the prompt template
+        if len(self._promptFormatArgs) == 0 and len(self._promptFormatKwargs) == 0:
+            return self._promptTemplate
         return f"{self._promptTemplate}".format(*self._promptFormatArgs,
                                                 **self._promptFormatKwargs)
 
