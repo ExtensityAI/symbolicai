@@ -16,7 +16,7 @@ class FileMerger(Expression):
         self.file_excludes = file_excludes
         self.reader = FileReader()
 
-    def forward(self, root_path: str) -> Symbol:
+    def forward(self, root_path: str, **kwargs) -> Symbol:
         """
         Method to find, read, merge and return contents of files in the form of a Symbol starting from the root_path.
 
@@ -37,7 +37,7 @@ class FileMerger(Expression):
                 # Look only for files with the specified endings
                 if file.endswith(tuple(self.file_endings)):
                     # Read in the file using the FileReader
-                    file_content = self.reader(file_path).value
+                    file_content = self.reader(file_path, **kwargs).value
 
                     # Append start and end markers for each file
                     file_content = f"# ----[FILE_START] {file_path}\n" + \

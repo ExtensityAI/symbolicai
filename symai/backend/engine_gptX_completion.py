@@ -31,7 +31,7 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
     def compute_remaining_tokens(self, prompts: list) -> int:
         # iterate over prompts and compute number of tokens
         prompt = prompts[0]
-        val = len(self.tokenizer.encode(prompt))
+        val = len(self.tokenizer.encode(prompt, disallowed_special=()))
         return int((self.max_tokens - val) * 0.98)
 
     def forward(self, prompts: List[str], *args, **kwargs) -> List[str]:

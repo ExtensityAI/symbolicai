@@ -1,6 +1,7 @@
 import re
 from typing import List
 
+from . import core
 from .symbol import Expression, Symbol
 
 
@@ -31,11 +32,31 @@ class ParagraphFormatter(Expression):
                 paragraphs.append(text)
         return paragraphs
 
+    @core.bind(engine='embedding', property='max_tokens')
+    def _max_tokens(self): pass
+
+    def split_max_tokens_exceeded(self, input_text: List[str], token_ratio=0.5):
+        paragraphs = []
+        max_ctxt_tokens = int(self._max_tokens() * token_ratio)
+        for text in input_text:
+            len_ = len(self.tokenizer().encode(text, disallowed_special=()))
+            if len_ > max_ctxt_tokens:
+                # split into chunks of max_ctxt_tokens
+                splits_ = len_ // max_ctxt_tokens
+                text_len_ = len(str(text)) // splits_
+                for i in range(splits_):
+                    paragraph = text[i * text_len_:(i + 1) * text_len_]
+                    paragraphs.append(paragraph + "\n")
+            else:
+                paragraphs.append(text)
+        return paragraphs
+
     def forward(self, sym: Symbol, *args, **kwargs) -> Symbol:
         sym = self._to_symbol(sym)
         # split text paragraph-wise and index each paragraph separately
         self.elements = self.split_paragraphs(sym.value)
         self.elements = self.split_huge_paragraphs(self.elements)
+        self.elements = self.split_max_tokens_exceeded(self.elements)
         return self._to_symbol(self.elements)
 
 

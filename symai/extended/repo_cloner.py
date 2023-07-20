@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Optional
 
-# from git import Repo
+from git import Repo
 
 from .. import Expression
 
