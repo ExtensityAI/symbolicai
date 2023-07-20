@@ -14,4 +14,4 @@ class blip_2(Expression):
         @core.caption(image=image, prompt=text, **kwargs)
         def _func(_) -> str:
             pass
-        return self._sym_return_type(_func(self))
+        return self.sym_return_type(_func(self))

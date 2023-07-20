@@ -966,7 +966,7 @@ class DataClusteringPrimitives:
 
         embeds = self.embed(**kwargs).value
         idx    = [str(uuid.uuid4()) for _ in range(len(self.value))]
-        query  = [{'text': self.value[i]} for i in range(len(self.value))]
+        query  = [{'text': str(self.value[i])} for i in range(len(self.value))]
 
         return list(zip(idx, embeds, query))
 

@@ -28,7 +28,7 @@ class Any(Expression):
         self.expr: List[Expression] = expr
 
     def forward(self, *args, **kwargs) -> Symbol:
-        return self._sym_return_type(any([e() for e in self.expr(*args, **kwargs)]))
+        return self.sym_return_type(any([e() for e in self.expr(*args, **kwargs)]))
 
 
 class All(Expression):
@@ -37,7 +37,7 @@ class All(Expression):
         self.expr: List[Expression] = expr
 
     def forward(self, *args, **kwargs) -> Symbol:
-        return self._sym_return_type(all([e() for e in self.expr(*args, **kwargs)]))
+        return self.sym_return_type(all([e() for e in self.expr(*args, **kwargs)]))
 
 
 class Try(Expression):
@@ -377,9 +377,10 @@ class Function(TrackerTraceable):
 
     @property
     def prompt(self):
-        # return a copy of the prompt template
-        return f"{self._promptTemplate}".format(*self._promptFormatArgs,
-                                                **self._promptFormatKwargs)
+        return f"{self._promptTemplate}".format(
+             *self._promptFormatArgs,
+            **self._promptFormatKwargs
+        )
 
     def format(self, *args, **kwargs):
         self._promptFormatArgs = args
@@ -402,13 +403,12 @@ class Function(TrackerTraceable):
         _type = type(self.name, (Expression, ), {
             # constructor
             "forward": _func,
-            "_sym_return_type": self.name,
+            "sym_return_type": self.name,
         })
         obj = _type()
-        obj._sym_return_type = _type
+        obj.sym_return_type = _type
+
         return self._to_symbol(obj(*args, **kwargs))
-
-
 
 
 class JsonParser(Expression):
@@ -623,18 +623,16 @@ class Indexer(Expression):
 
     def __init__(self, index_name: str = DEFAULT, top_k: int = 8, batch_size: int = 20):
         super().__init__()
-        self.index_name  = index_name
-        self.elements    = []
-        self.batch_size  = batch_size
-        self.top_k       = top_k
-        self.retrieval   = None
-        self.formatter   = ParagraphFormatter()
+        self.index_name = index_name
+        self.elements   = []
+        self.batch_size = batch_size
+        self.top_k      = top_k
+        self.retrieval  = None
+        self.formatter  = ParagraphFormatter()
+        self.sym_return_type = Expression
+
         if index_name != Indexer.DEFAULT:
             Expression.setup({'index': IndexEngine(index_name=index_name)})
-
-    @property
-    def _sym_return_type(self):
-        return Expression # TODO: find a better way to avoid circular init after cast (Indexer -> setup -> Indexer -> setup -> ...)
 
     def forward(self, data: Optional[Symbol] = None) -> Symbol:
         that = self

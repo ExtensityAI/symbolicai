@@ -11,4 +11,4 @@ class dall_e(Expression):
         @core.draw(operation=operation, **kwargs)
         def _func(_):
             pass
-        return self._sym_return_type(_func(sym))
+        return self.sym_return_type(_func(sym))
