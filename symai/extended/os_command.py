@@ -52,7 +52,7 @@ Start-Process 'spotify:track:Anti-Hero%20by%20Taylor%20Swift'
 ```
 If the current platform is Windows, and the user query requires to open Spotify and play a song, and Spotify is in the programs list, and metadata is added, then the command could look like:
 ```powershell
-Start-Process 'spotify:track:https://open.spotify.com/track/0V3wPSX9ygBnCm8psDIegu?si=81646e6079d34526'
+Start-Process 'spotify:track:0V3wPSX9ygBnCm8psDIegu?si=81646e6079d34526'
 ```
 
 ---------------------------
