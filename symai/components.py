@@ -105,11 +105,11 @@ class Sequence(TrackerTraceable):
 class Stream(Expression):
     def __init__(self, expr: Optional[Expression] = None, retrieval: Optional[str] = None):
         super().__init__()
-        self.char_token_ratio: float = 0.6
-        self.expr: Expression = expr
-        self.retrieval: Optional[str] = retrieval
-        self._trace: bool = False
-        self._previous_frame = None
+        self.char_token_ratio:    float = 0.6
+        self.expr: Optional[Expression] = expr
+        self.retrieval:   Optional[str] = retrieval
+        self._trace:               bool = False
+        self._previous_frame            = None
 
     def forward(self, sym: Symbol, **kwargs) -> Iterator[Symbol]:
         sym = self._to_symbol(sym)
@@ -142,7 +142,7 @@ class Stream(Expression):
                 res = [r for r in res if self.expr in r]
             else:
                 raise ValueError(f"Invalid retrieval method: {self.retrieval}")
-        elif self._trace:
+        else:
             res = list(res)
 
         return self._to_symbol(res)
@@ -404,7 +404,7 @@ class Function(TrackerTraceable):
         _type = type(self.name, (Expression, ), {
             # constructor
             "forward": _func,
-            "sym_return_type": self.name,
+            "sym_return_type": Symbol,
         })
         obj = _type()
         obj.sym_return_type = _type

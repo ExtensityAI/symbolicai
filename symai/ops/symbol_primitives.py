@@ -697,9 +697,7 @@ class ExecutionControlPrimitives:
                 yield expr(r, **kwargs)
 
         else:
-            r = expr(self, **kwargs)
-
-            yield r
+            yield expr(self, **kwargs)
 
     def ftry(self, expr: 'Expression', retries: Optional[int] = 1, **kwargs) -> 'Symbol':
         # TODO: find a way to pass on the constraints and behavior from the self.expr to the corrected code
