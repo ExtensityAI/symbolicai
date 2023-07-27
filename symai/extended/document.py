@@ -1,13 +1,14 @@
-from typing import Optional
+from typing import Callable, Optional
 
 from .. import Expression, FileReader, Indexer, Symbol
+from .. import ParagraphFormatter
 
 
 class DocumentRetriever(Expression):
-    def __init__(self, file_path: str, index_name: str = Indexer.DEFAULT, top_k = 5, **kwargs):
+    def __init__(self, file_path: str, index_name: str = Indexer.DEFAULT, top_k = 5, formatter: Callable = ParagraphFormatter(), **kwargs):
         super().__init__()
         reader = FileReader()
-        indexer = Indexer(index_name=index_name, top_k=top_k)
+        indexer = Indexer(index_name=index_name, top_k=top_k, formatter=formatter)
         text = reader(file_path, **kwargs)
         self.index = indexer(text, **kwargs)
 

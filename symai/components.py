@@ -622,14 +622,14 @@ class TokenTracker(Expression):
 class Indexer(Expression):
     DEFAULT = 'data-index'
 
-    def __init__(self, index_name: str = DEFAULT, top_k: int = 8, batch_size: int = 20):
+    def __init__(self, index_name: str = DEFAULT, top_k: int = 8, batch_size: int = 20, formatter: Callable = ParagraphFormatter()):
         super().__init__()
         self.index_name = index_name
         self.elements   = []
         self.batch_size = batch_size
         self.top_k      = top_k
         self.retrieval  = None
-        self.formatter  = ParagraphFormatter()
+        self.formatter  = formatter
         self.sym_return_type = Expression
 
         if index_name != Indexer.DEFAULT:

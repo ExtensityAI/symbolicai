@@ -146,7 +146,7 @@ Overall, the following engines are currently supported:
 * **Embedding Engine**: [OpenAI's Embedding API](https://beta.openai.com/docs/introduction/overview)
 * **[Optional] Symbolic Engine**: [WolframAlpha](https://www.wolframalpha.com/)
 * **[Optional] Search Engine**: [SerpApi](https://serpapi.com/)
-* **[Optional] OCR Engine**: [APILayer](https://apilayer.com/ocr)
+* **[Optional] OCR Engine**: [APILayer](https://apilayer.com)
 * **[Optional] SpeechToText Engine**: [OpenAI's Whisper](https://openai.com/blog/whisper/)
 * **[Optional] WebCrawler Engine**: [Selenium](https://selenium-python.readthedocs.io/)
 * **[Optional] Image Rendering Engine**: [DALL·E 2](https://openai.com/dall-e-2/)
