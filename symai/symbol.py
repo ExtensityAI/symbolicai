@@ -817,7 +817,7 @@ class Expression(Symbol):
             Symbol: The evaluated result of the forward method, stored as the value attribute.
         '''
         self.value = self.forward(*args, **kwargs)
-        return self.value
+        return self
 
     @property
     def sym_return_type(self) -> Type:
