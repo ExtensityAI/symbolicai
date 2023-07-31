@@ -93,12 +93,16 @@ def connect_chrome(debug, proxy=None):
     driver_path = __root_dir__ / 'chromedriver'
     if not os.path.exists(driver_path): os.makedirs(driver_path)
 
+    chromedriver_autoinstaller.install(path=driver_path)
     try:
-        chromedriver_autoinstaller.install(path=driver_path)
         driver = webdriver.Chrome(options=options)
-    except Exception as e:
-        print(f"Issue with finding an appropriate driver version. Your current browser might be newer than the driver. Please either downgrade Chrome or try to install a proper chromedriver manually.\nOriginal error: {e}")
-        raise e
+    except Exception as e1:
+        try:
+            print(f"ERROR REMEDY: Trying to use Firefox as an alternative.")
+            driver = webdriver.Firefox(options=options)
+        except Exception as e2:
+            print(f"Issue with finding an appropriate driver version. Your current browser might be newer than the driver. Please either downgrade Chrome or try to install a proper chromedriver manually.\nOriginal error: {e1}; Remedy attempt error: {e2}")
+            raise e2
     if debug: print("Chrome Headless Browser Invoked")
 
     return driver

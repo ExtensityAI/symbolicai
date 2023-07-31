@@ -8,6 +8,9 @@ class CrawlerEngine(Engine):
     def __init__(self, debug: bool = False):
         super().__init__()
         self.debug = debug
+        self.driver_handler = None
+
+    def _init_crawler_engine(self):
         self.driver_handler = connect_browsers(debug=False, proxy=None)
 
     def get_page_source(self, url: str, pattern: str, script: Callable = None) -> str:
@@ -28,6 +31,9 @@ class CrawlerEngine(Engine):
         patterns = patterns if isinstance(patterns, list) else [patterns]
         assert len(urls) == len(patterns)
         rsp = []
+
+        if self.driver_handler is None:
+            self._init_crawler_engine()
 
         input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
         if input_handler:

@@ -6,16 +6,15 @@ from .settings import SYMAI_CONFIG
 try:
     import wolframalpha as wa
 except:
-    wolframalpha = None
+    wa = None
 
 
 class WolframAlphaEngine(Engine):
     def __init__(self):
         super().__init__()
-        config = SYMAI_CONFIG
+        config       = SYMAI_CONFIG
         self.api_key = config['SYMBOLIC_ENGINE_API_KEY']
-        if wa is not None:
-            self.client = wa.Client(self.api_key) if len(self.api_key) > 0 else None
+        self.client  = None
 
     def command(self, wrp_params):
         super().command(wrp_params)
@@ -24,7 +23,8 @@ class WolframAlphaEngine(Engine):
             self.client = wa.Client(self.api_key) if len(self.api_key) > 0 else None
 
     def forward(self, queries: List[str], *args, **kwargs) -> List[str]:
-        assert self.client is not None, "WolframAlpha API key is not set."
+        if self.client is None:
+            self.client = wa.Client(self.api_key) if len(self.api_key) > 0 else None
 
         queries_ = queries if isinstance(queries, list) else [queries]
         rsp = []

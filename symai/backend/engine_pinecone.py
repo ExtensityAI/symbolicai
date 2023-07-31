@@ -67,8 +67,7 @@ class IndexEngine(Engine):
         self.max_delay      = max_delay
         self.backoff        = backoff
         self.jitter         = jitter
-
-        self._init_index_engine()
+        self.index          = None
 
     def command(self, wrp_params):
         super().command(wrp_params)
@@ -82,6 +81,9 @@ class IndexEngine(Engine):
         query         = kwargs['prompt']
         input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
         rsp           = None
+
+        if self.index is None:
+            self._init_index_engine()
 
         if input_handler:
             input_handler((query, ))
