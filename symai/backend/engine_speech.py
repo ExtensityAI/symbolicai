@@ -8,7 +8,8 @@ from .settings import SYMAI_CONFIG
 
 try:
     import whisper
-except:
+    from whisper.tokenizer import get_tokenizer
+except ImportError:
     whisper = None
 
 
@@ -25,7 +26,7 @@ class WhisperEngine(Engine):
         if 'SPEECH_ENGINE_MODEL' in wrp_params:
             self.model_id = wrp_params['SPEECH_ENGINE_MODEL']
 
-    def forward(self, *args, **kwargs) -> List[str]:
+    def forward(self, **kwargs) -> List[str]:
         assert whisper is not None, "Whisper is not installed. Please install it first."
         if self.model is None or self.model_id != self.old_model_id:
             device_fallback = 'cpu'
@@ -33,16 +34,16 @@ class WhisperEngine(Engine):
             device = kwargs['device'] if 'device' in kwargs else device # user preference over auto detection
             try:
                 self.model = whisper.load_model(self.model_id, device=device)
-            except:
+            except RuntimeError:
                 logging.warn(f"Whisper failed to load model on device {device}. Fallback to {device_fallback}.")
                 self.model = whisper.load_model(self.model_id, device=device_fallback)
             self.old_model_id = self.model_id
 
         prompt = kwargs['prompt']
         audio  = kwargs['audio']
-
-        input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
-        if input_handler:
+        word_timestamps = kwargs.get("word_timestamps")
+        input_handler   = kwargs.get("input_handler")
+        if input_handler is not None:
             input_handler((prompt, audio))
 
         mel = whisper.log_mel_spectrogram(audio).to(self.model.device)
@@ -54,7 +55,11 @@ class WhisperEngine(Engine):
             # decode the audio
             options = whisper.DecodingOptions(fp16 = False)
             result = whisper.decode(self.model, mel, options)
-            rsp = result.text
+            if word_timestamps is not None:
+                tokenizer = get_tokenizer(self.model.is_multilingual)
+                rsp = tokenizer.decode_with_timestamps(result.tokens)
+            else:
+                rsp = result.text
         else:
             raise Exception(f"Unknown whisper command prompt: {prompt}")
 
