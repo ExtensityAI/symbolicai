@@ -1958,7 +1958,7 @@ def bind(engine: str, property: str):
     '''
     def decorator(func):
         @functools.wraps(func)
-        def wrapper(_):
+        def wrapper(*args, **kwargs):
             return bind_registry_func(
                     engine=engine,
                     property=property
