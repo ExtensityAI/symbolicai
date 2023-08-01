@@ -1,13 +1,15 @@
 import logging
-from typing import List
+from typing import List, Iterable
 
 import torch
+from tqdm import tqdm
 
 from .base import Engine
 from .settings import SYMAI_CONFIG
 
 try:
     import whisper
+    from whisper.audio import N_SAMPLES #@NOTE: sample_rate (16_000) * chunk_length (30) = 480_000
     from whisper.tokenizer import get_tokenizer
 except ImportError:
     whisper = None
@@ -16,10 +18,12 @@ except ImportError:
 class WhisperEngine(Engine):
     def __init__(self):
         super().__init__()
-        self.model = None # lazy loading
         config = SYMAI_CONFIG
+        self.model = None # lazy loading
         self.model_id = config['SPEECH_ENGINE_MODEL']
         self.old_model_id = config['SPEECH_ENGINE_MODEL']
+        self.tokens = []
+        self.text = []
 
     def command(self, wrp_params):
         super().command(wrp_params)
@@ -53,18 +57,24 @@ class WhisperEngine(Engine):
             _, probs = self.model.detect_language(mel)
             rsp = max(probs, key=probs.get)
         elif prompt == 'decode':
-            result = self.model.transcribe(
-                audio,
-                language="en" if language is None else language,
-                word_timestamps=word_timestamps is not None,
-                fp16=False
-            )
+            for chunk in tqdm(self._get_chunks(audio)):
+                result = self.model.transcribe(
+                    chunk,
+                    language="en" if language is None else language,
+                    word_timestamps=word_timestamps is not None,
+                    fp16=False
+                )
+                self.text.append(result["text"])
+                self.tokens.append([
+                    token
+                    for segment in result["segments"]
+                    for token in segment["tokens"]
+                ])
             if word_timestamps is not None:
-                tokens = [token for segment in result["segments"] for token in segment["tokens"]]
                 tokenizer = get_tokenizer(self.model.is_multilingual)
-                rsp = tokenizer.decode_with_timestamps(tokens)
+                rsp = [tokenizer.decode_with_timestamps(tokens) for tokens in self.tokens]
             else:
-                rsp = result["text"]
+                rsp = " ".join(self.text)
         else:
             raise Exception(f"Unknown whisper command prompt: {prompt}")
 
@@ -83,8 +93,14 @@ class WhisperEngine(Engine):
     def prepare(self, args, kwargs, wrp_params):
         assert 'audio' in wrp_params, "Whisper requires audio input."
         audio_file = str(wrp_params['audio'])
-        # load audio and pad/trim it to fit 30 seconds
         audio = whisper.load_audio(audio_file)
-        audio = whisper.pad_or_trim(audio)
         wrp_params['audio'] = audio
+
+    def _get_chunks(self, it: Iterable, batch: int = N_SAMPLES) -> torch.Tensor:
+        """
+        Split an iterable into chunks of size `batch`. It defaults to `N_SAMPLES` 480_000 samples which is equal to 30 seconds.
+        """
+        size = len(it)
+        for i in range(0, size, batch):
+            yield torch.tensor(it[i:min(i + batch, size)]).to(self.model.device)
 
