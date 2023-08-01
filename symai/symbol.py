@@ -6,6 +6,7 @@ import numpy as np
 
 from . import core
 from .ops import SYMBOL_PRIMITIVES
+from .utils import deprecated
 
 
 class SymbolEncoder(JSONEncoder):
@@ -790,7 +791,6 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
 
 
 class Expression(Symbol):
-    _default_return_type = Symbol
 
     def __init__(self, value = None, *args, **kwargs):
         '''
@@ -803,9 +803,9 @@ class Expression(Symbol):
             **kwargs: Arbitrary keyword arguments.
         '''
         super().__init__(value)
-        self._sym_return_type = self._default_return_type
+        self._sym_return_type = type(self)
 
-    def __call__(self, *args, **kwargs) -> Symbol:
+    def __call__(self, *args, **kwargs) -> "Expression":
         '''
         Evaluate the expression using the forward method and assign the result to the value attribute.
 
@@ -814,7 +814,7 @@ class Expression(Symbol):
             **kwargs: Arbitrary keyword arguments.
 
         Returns:
-            Symbol: The evaluated result of the forward method, stored as the value attribute.
+            Expression: The current Expression object after forward evaluation.
         '''
         self.value = self.forward(*args, **kwargs)
         return self
@@ -825,7 +825,7 @@ class Expression(Symbol):
         Returns the casting type of this expression.
 
         Returns:
-            Type: The casting type of this expression. Defaults to 'Symbol'.
+            Type: The casting type of this expression. Defaults to the current Expression-type.
         '''
         return self._sym_return_type
 
@@ -856,7 +856,7 @@ class Expression(Symbol):
         return Symbol(value)
 
 
-    def forward(self, *args, **kwargs) -> Symbol:
+    def forward(self, *args, **kwargs) -> Symbol: #TODO make reserved kwargs with underscore: __<cmd>__
         '''
         Needs to be implemented by subclasses to specify the behavior of the expression during evaluation.
 
@@ -869,6 +869,7 @@ class Expression(Symbol):
         '''
         raise NotImplementedError()
 
+    @deprecated("Use Interface('dall-e') instead. Will be removed future versions.")
     def draw(self, query: Optional[str] = None, operation: str = 'create', **kwargs) -> 'Symbol':
         '''
         Draw an image using the current Symbol as the base.
@@ -889,6 +890,7 @@ class Expression(Symbol):
             val = str(query)
         return self.sym_return_type(_func(val))
 
+    # TODO: consider if this should be deprecated and moved only as an Interface
     def input(self, message: str = 'Please add more information', **kwargs) -> 'Symbol':
         '''
         Request user input and return a Symbol containing the user input.
@@ -905,6 +907,7 @@ class Expression(Symbol):
             pass
         return self.sym_return_type(_func(self, message))
 
+    @deprecated("Use Interface('selenium') instead. Will be removed future versions.")
     def fetch(self, url: str, pattern: str = '', **kwargs) -> 'Symbol':
         '''
         Fetch data from a URL and return a Symbol containing the fetched data.
@@ -922,6 +925,7 @@ class Expression(Symbol):
             pass
         return self.sym_return_type(_func(self))
 
+    @deprecated("Use Interface('ocr') instead. Will be removed future versions.")
     def ocr(self, image_url: str, **kwargs) -> 'Symbol':
         '''
         Perform OCR on an image using the image URL or image path.
@@ -940,6 +944,7 @@ class Expression(Symbol):
             pass
         return self.sym_return_type(_func(self))
 
+    @deprecated("Use Interface('clip') instead. Will be removed future versions.")
     def vision(self, image: Optional[str] = None, text: Optional[List[str]] = None, **kwargs) -> 'Symbol':
         '''
         Perform a vision operation on an image using the image URL or image path.
@@ -957,6 +962,7 @@ class Expression(Symbol):
             pass
         return self.sym_return_type(_func(self))
 
+    @deprecated("Use Interface('whisper') instead. Will be removed future versions.")
     def speech(self, audio_path: str, operation: str = 'decode', **kwargs) -> 'Symbol':
         '''
         Perform a speech operation on an audio file using the audio file path.
@@ -974,6 +980,7 @@ class Expression(Symbol):
             pass
         return self.sym_return_type(_func(self))
 
+    @deprecated("Use Interface('google') instead. Will be removed future versions.")
     def search(self, query: str, **kwargs) -> 'Symbol':
         '''
         Search for information on the internet based on the query.
@@ -990,6 +997,7 @@ class Expression(Symbol):
             pass
         return self.sym_return_type(_func(self))
 
+    @deprecated("Use Interface('blip_2') instead. Will be removed future versions.")
     def caption(self, prompt: str, **kwargs) -> 'Symbol':
         '''
         Query information from the current image symbol.
@@ -1022,6 +1030,7 @@ class Expression(Symbol):
             pass
         return self.sym_return_type(_func(self))
 
+    # TODO: consider if this should be deprecated and moved only as an Interface
     def open(self, path: str, **kwargs) -> 'Symbol':
         '''
         Open a file and store its content in an Expression object as a string.
@@ -1038,6 +1047,7 @@ class Expression(Symbol):
             pass
         return self.sym_return_type(_func(self))
 
+    # TODO: consider if this should be deprecated and moved only as an Interface
     def index(self, path: str, **kwargs) -> 'Symbol':
         '''
         Execute a configuration operation on the index.
@@ -1054,6 +1064,7 @@ class Expression(Symbol):
             pass
         return self.sym_return_type(_func(self))
 
+    # TODO: consider if this should be deprecated and moved only as an Interface
     def add(self, query: List[str], **kwargs) -> 'Symbol':
         '''
         Add an entry to the existing index.
@@ -1070,6 +1081,7 @@ class Expression(Symbol):
             pass
         return self.sym_return_type(_func(self))
 
+    # TODO: consider if this should be deprecated and moved only as an Interface
     def get(self, query: List[int], **kwargs) -> 'Symbol':
         '''
         Search the index based on the provided query.
@@ -1086,7 +1098,6 @@ class Expression(Symbol):
             pass
         return self.sym_return_type(_func(self))
 
-    #@TODO: these must be searched after and replaced with core.command and core.setup; or moved somewhere else
     @staticmethod
     def command(engines: List[str] = ['all'], **kwargs) -> 'Symbol':
         '''
