@@ -41,25 +41,30 @@ class WhisperEngine(Engine):
 
         prompt = kwargs['prompt']
         audio  = kwargs['audio']
+        language        = kwargs.get("language")
         word_timestamps = kwargs.get("word_timestamps")
         input_handler   = kwargs.get("input_handler")
         if input_handler is not None:
             input_handler((prompt, audio))
 
-        mel = whisper.log_mel_spectrogram(audio).to(self.model.device)
         if prompt == 'detect_language':
-            # detect the spoken language
+            #@NOTE: the accuracy of mel spectrogram is not good enough; don't use it to transcribe
+            mel = whisper.log_mel_spectrogram(audio).to(self.model.device)
             _, probs = self.model.detect_language(mel)
             rsp = max(probs, key=probs.get)
         elif prompt == 'decode':
-            # decode the audio
-            options = whisper.DecodingOptions(fp16 = False)
-            result = whisper.decode(self.model, mel, options)
+            result = self.model.transcribe(
+                audio,
+                language="en" if language is None else language,
+                word_timestamps=word_timestamps is not None,
+                fp16=False
+            )
             if word_timestamps is not None:
+                tokens = [token for segment in result["segments"] for token in segment["tokens"]]
                 tokenizer = get_tokenizer(self.model.is_multilingual)
-                rsp = tokenizer.decode_with_timestamps(result.tokens)
+                rsp = tokenizer.decode_with_timestamps(tokens)
             else:
-                rsp = result.text
+                rsp = result["text"]
         else:
             raise Exception(f"Unknown whisper command prompt: {prompt}")
 
