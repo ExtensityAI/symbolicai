@@ -2,12 +2,16 @@ import ast
 import os
 import pickle
 import uuid
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union, TYPE_CHECKING
 
 import numpy as np
 
 from .. import core
 from ..prompts import Prompt
+
+
+if TYPE_CHECKING:
+    from ..symbol import Symbol, Expression
 
 
 class ContextualPrimitives:
@@ -183,7 +187,8 @@ class ExpressionHandlingPrimitives:
         Returns:
             Symbol: A new symbol with the result of the expression evaluation.
         '''
-        if expr is None: expr = self.value
+        if expr is None:
+            expr = self.value
 
         @core.expression(expression_engine=expression_engine, **kwargs)
         def _func(_, expr: str):
@@ -739,7 +744,8 @@ class ExecutionControlPrimitives:
 
             except Exception as e:
                 retry_cnt += 1
-                if retry_cnt > retries: raise e
+                if retry_cnt > retries:
+                    raise e
                 else:
                     # analyze the error
                     payload = f'[ORIGINAL_USER_PROMPT]\n{prompt["prompt_instruction"]}\n\n' if 'prompt_instruction' in prompt else ''
@@ -813,7 +819,7 @@ class DictHandlingPrimitives:
         map_ = {}
         keys = []
         for v in self.value.values():
-            k = Symbol(v).unique(keys, **kwargs)
+            k = self.__class__(v).unique(keys, **kwargs)
             keys.append(k.value)
             map_[k.value] = v
 
@@ -901,7 +907,8 @@ class DataClusteringPrimitives:
         Returns:
             Symbol: A Symbol object with its value embedded.
         '''
-        if not isinstance(self.value, list): self.value = [self.value]
+        if not isinstance(self.value, list):
+            self.value = [self.value]
 
         @core.embed(entries=self.value, **kwargs)
         def _func(_) -> list:
