@@ -1,4 +1,5 @@
 import re
+from itertools import takewhile
 from typing import List
 
 from . import core
@@ -80,3 +81,38 @@ class SentenceFormatter(Expression):
         # split text sentence-wise and index each sentence separately
         self.elements = self.split_sentences(sym.value)
         return self._to_symbol(self.elements)
+
+
+class WhisperTimestampsFormatter(Expression):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, response: List[str]) -> str:
+        cur_tmp = 0.0
+        result = []
+        for interval in response:
+            interval = self._filter_empty_string(interval)
+            for head, tail in zip(interval[::2], interval[1::2]):
+                start = self._get_timestamp(head)
+                end   = self._get_timestamp(tail)
+                cur_tmp += (end - start)
+                result.append(f"{self._format_to_hours(cur_tmp)} {self._get_sentence(head)}")
+        return "\n".join(result)
+
+    def _filter_empty_string(self, s: str) -> List[str]:
+        return list(filter(lambda x: x, s.split("<|")))
+
+    def _get_timestamp(self, s: str) -> float:
+        return float("".join(list(takewhile(lambda x: x != "|", s))))
+
+    def _get_sentence(self, s: str) -> str:
+        return s.split("|>")[-1]
+
+    def _format_to_hours(self, seconds: float) -> str:
+        hours = int(seconds // 3600)
+        seconds %= 3600
+        minutes = int(seconds // 60)
+        seconds %= 60
+        formatted_time = "{:02d}:{:02d}:{:02d}".format(hours, minutes, int(seconds))
+        return formatted_time
+

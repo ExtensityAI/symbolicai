@@ -1,15 +1,17 @@
 import logging
-from typing import List, Iterable
+from typing import Iterable, List
 
 import torch
 from tqdm import tqdm
 
+from ..formatter import WhisperTimestampsFormatter
 from .base import Engine
 from .settings import SYMAI_CONFIG
 
 try:
     import whisper
-    from whisper.audio import N_SAMPLES #@NOTE: sample_rate (16_000) * chunk_length (30) = 480_000
+    from whisper.audio import \
+        N_SAMPLES  # @NOTE: sample_rate (16_000) * chunk_length (30) = 480_000
     from whisper.tokenizer import get_tokenizer
 except ImportError:
     whisper = None
@@ -24,6 +26,7 @@ class WhisperEngine(Engine):
         self.old_model_id = config['SPEECH_ENGINE_MODEL']
         self.tokens = []
         self.text = []
+        self.formatter = WhisperTimestampsFormatter()
 
     def command(self, wrp_params):
         super().command(wrp_params)
@@ -43,9 +46,11 @@ class WhisperEngine(Engine):
                 self.model = whisper.load_model(self.model_id, device=device_fallback)
             self.old_model_id = self.model_id
 
+        self._try_compile()
         prompt = kwargs['prompt']
         audio  = kwargs['audio']
         language        = kwargs.get("language")
+        temperature     = kwargs.get("temperature")
         word_timestamps = kwargs.get("word_timestamps")
         input_handler   = kwargs.get("input_handler")
         if input_handler is not None:
@@ -62,7 +67,8 @@ class WhisperEngine(Engine):
                     chunk,
                     language="en" if language is None else language,
                     word_timestamps=word_timestamps is not None,
-                    fp16=False
+                    temperature=(0.0, 0.2, 0.4, 0.6, 0.8, 1.0) if temperature is None else temperature,
+                    fp16=False,
                 )
                 self.text.append(result["text"])
                 self.tokens.append([
@@ -72,7 +78,8 @@ class WhisperEngine(Engine):
                 ])
             if word_timestamps is not None:
                 tokenizer = get_tokenizer(self.model.is_multilingual)
-                rsp = [tokenizer.decode_with_timestamps(tokens) for tokens in self.tokens]
+                tokens = [tokenizer.decode_with_timestamps(t) for t in self.tokens]
+                rsp = self.formatter(tokens)
             else:
                 rsp = " ".join(self.text)
         else:
@@ -104,3 +111,8 @@ class WhisperEngine(Engine):
         for i in range(0, size, batch):
             yield torch.tensor(it[i:min(i + batch, size)]).to(self.model.device)
 
+    def _try_compile(self):
+        try:
+            self.model = torch.compile(self.model)
+        except Exception:
+            pass
