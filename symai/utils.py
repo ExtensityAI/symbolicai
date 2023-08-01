@@ -1,5 +1,6 @@
 import inspect
 import sys
+import warnings
 
 
 def ignore_exception(exception=Exception, default=None):
@@ -18,6 +19,25 @@ def ignore_exception(exception=Exception, default=None):
 
 def prep_as_str(x):
     return f"'{str(x)}'" if ignore_exception()(int)(str(x)) is None else str(x)
+
+
+def deprecated(message):
+    def deprecated_decorator(func):
+        def deprecated_func(*args, **kwargs):
+            warnings.warn("{} is a deprecated function. {}".format(func.__name__, message),
+                          category=DeprecationWarning,
+                          stacklevel=2)
+            warnings.simplefilter('default', DeprecationWarning)
+            return func(*args, **kwargs)
+        return deprecated_func
+    return deprecated_decorator
+
+
+class Args:
+    def __init__(self, **kwargs):
+        # for each key set an attribute
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
 
 class CustomUserWarning:
