@@ -118,6 +118,21 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
 
         return f'\n[DYNAMIC CONTEXT]\n{val}' if val else ''
 
+    def _to_symbol(self, value: Any) -> "Symbol":
+        '''
+        Convert a value to a Symbol instance.
+
+        Args:
+            value (Any): The value to convert to a Symbol instance.
+
+        Returns:
+            Symbol: The Symbol instance.
+        '''
+        if isinstance(value, Symbol):
+            return value
+
+        return Symbol(value)
+
     def __call__(self):
         '''
         Evaluate the symbol and return its value.
@@ -805,7 +820,7 @@ class Expression(Symbol):
         super().__init__(value)
         self._sym_return_type = type(self)
 
-    def __call__(self, *args, **kwargs) -> "Expression":
+    def __call__(self, *args, **kwargs) -> Any:
         '''
         Evaluate the expression using the forward method and assign the result to the value attribute.
 
@@ -814,10 +829,9 @@ class Expression(Symbol):
             **kwargs: Arbitrary keyword arguments.
 
         Returns:
-            Expression: The current Expression object after forward evaluation.
+            Any: The result of the forward method.
         '''
-        self.value = self.forward(*args, **kwargs)
-        return self
+        return self.forward(*args, **kwargs)
 
     @property
     def sym_return_type(self) -> Type:
