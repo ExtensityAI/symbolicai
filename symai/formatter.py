@@ -88,15 +88,23 @@ class WhisperTimestampsFormatter(Expression):
         super().__init__()
 
     def forward(self, response: List[str]) -> str:
-        cur_tmp = 0.0
         result = []
-        for interval in response:
+        for i, interval in enumerate(response):
             interval = self._filter_empty_string(interval)
+            prev_end = 0.0
             for head, tail in zip(interval[::2], interval[1::2]):
                 start = self._get_timestamp(head)
-                end   = self._get_timestamp(tail)
-                cur_tmp += (end - start)
-                result.append(f"{self._format_to_hours(cur_tmp)} {self._get_sentence(head)}")
+                end = self._get_timestamp(tail)
+                if start >= prev_end:
+                    start = prev_end
+                    prev_end = end
+                    result.append(f"{self._format_to_hours(start + (i*30))} {self._get_sentence(head)}")
+                    continue
+                delta = end - start
+                start += prev_end
+                end = start + delta
+                prev_end = end
+                result.append(f"{self._format_to_hours(start + (i*30))} {self._get_sentence(head)}")
         return "\n".join(result)
 
     def _filter_empty_string(self, s: str) -> List[str]:

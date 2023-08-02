@@ -15,7 +15,7 @@ try:
     from whisper.tokenizer import get_tokenizer
 except ImportError:
     whisper = None
-    N_SAMPLES = 480_000
+    N_SAMPLES = 16_000 * 30
 
 
 class WhisperEngine(Engine):
