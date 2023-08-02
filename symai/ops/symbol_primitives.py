@@ -2,16 +2,16 @@ import ast
 import os
 import pickle
 import uuid
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple,
+                    Type, Union)
 
 import numpy as np
 
 from .. import core
 from ..prompts import Prompt
 
-
 if TYPE_CHECKING:
-    from ..symbol import Symbol, Expression
+    from ..symbol import Expression, Symbol
 
 
 class ContextualPrimitives:

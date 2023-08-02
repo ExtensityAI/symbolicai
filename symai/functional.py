@@ -638,7 +638,6 @@ def check_or_init_finetuning_func(engine = None):
 
 def finetuning_func(wrp_self,
                     func: Callable,
-                    dataset: dict,
                     prompt: str = '',
                     trials: int = 1,
                     pre_processors: Optional[List[PreProcessor]] = None,
@@ -646,7 +645,6 @@ def finetuning_func(wrp_self,
                     wrp_args = [], wrp_kwargs = [],
                     args = [], kwargs = []):
     check_or_init_finetuning_func()
-    wrp_kwargs['dataset'] = dataset
     return _process_query(engine=finetuning_engine,
                           wrp_self=wrp_self,
                           func=func,
