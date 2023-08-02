@@ -1,7 +1,6 @@
 from typing import Callable, Optional
 
-from .. import Expression, FileReader, Indexer, Symbol
-from .. import ParagraphFormatter
+from .. import Expression, FileReader, Indexer, ParagraphFormatter, Symbol
 
 
 class DocumentRetriever(Expression):

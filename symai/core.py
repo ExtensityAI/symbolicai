@@ -2005,17 +2005,15 @@ def retry(
     return decorator
 
 
-def tune(dataset: dict,
-         operation: str = 'start',
-         pre_processors: Optional[List[PreProcessor]] = [ValuePreProcessor()],
+def tune(operation: str = 'create',
+         pre_processors: Optional[List[PreProcessor]] = None,
          post_processors: Optional[List[PostProcessor]] = None,
          *wrp_args,
          **wrp_kwargs):
     """Fine tune a LLM.
 
     Args:
-        dataset (dict): The dataset to be used for fine-tuning.
-        operation (str, optional): The specific operation to be performed. Defaults to 'start'.
+        operation (str, optional): The specific operation to be performed. Defaults to 'create'.
         pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the entries. Defaults to None.
         post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the entries. Defaults to None.
         *wrp_args: Additional positional arguments to be passed to the decorated function.
@@ -2027,9 +2025,8 @@ def tune(dataset: dict,
     def decorator(func):
         @functools.wraps(func)
         def wrapper(wrp_self, *args, **kwargs):
+            kwargs['__cmd__'] = operation
             return finetuning_func(wrp_self,
-                                   dataset=dataset,
-                                   operation=operation,
                                    func=func,
                                    pre_processors=pre_processors,
                                    post_processors=post_processors,

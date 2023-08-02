@@ -34,10 +34,12 @@ def deprecated(message):
 
 
 class Args:
-    def __init__(self, **kwargs):
+    def __init__(self, skip_none: bool = False, **kwargs):
         # for each key set an attribute
         for key, value in kwargs.items():
-            setattr(self, key, value)
+            if value is not None or not skip_none:
+                if not key.startswith('_'):
+                    setattr(self, key, value)
 
 
 class CustomUserWarning:
