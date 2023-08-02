@@ -50,9 +50,10 @@ class WhisperEngine(Engine):
         self._try_compile()
         prompt = kwargs['prompt']
         audio  = kwargs['audio']
-        language        = kwargs.get("language")
-        temperature     = kwargs.get("temperature")
-        word_timestamps = kwargs.get("word_timestamps")
+        disable_pbar    = kwargs.get("disable_pbar", False)
+        language        = kwargs.get("language", "en")
+        temperature     = kwargs.get("temperature", (0.0, 0.2, 0.4, 0.6, 0.8, 1.0))
+        word_timestamps = kwargs.get("word_timestamps", False)
         input_handler   = kwargs.get("input_handler")
         if input_handler is not None:
             input_handler((prompt, audio))
@@ -63,12 +64,13 @@ class WhisperEngine(Engine):
             _, probs = self.model.detect_language(mel)
             rsp = max(probs, key=probs.get)
         elif prompt == 'decode':
-            for chunk in tqdm(self._get_chunks(audio)):
+            pbar = tqdm(self._get_chunks(audio), disable=disable_pbar)
+            for chunk in pbar:
                 result = self.model.transcribe(
                     chunk,
-                    language="en" if language is None else language,
-                    word_timestamps=word_timestamps is not None,
-                    temperature=(0.0, 0.2, 0.4, 0.6, 0.8, 1.0) if temperature is None else temperature,
+                    language=language,
+                    word_timestamps=word_timestamps,
+                    temperature=temperature,
                     fp16=False,
                 )
                 self.text.append(result["text"])

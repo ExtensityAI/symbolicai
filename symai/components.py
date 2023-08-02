@@ -102,6 +102,7 @@ class Sequence(TrackerTraceable):
         return sym
 
 
+#@TODO: BinPacker(format="...") -> ensure that data packages form a "bin" that's consistent (e.g. never break a sentence in the middle)
 class Stream(Expression):
     def __init__(self, expr: Optional[Expression] = None, retrieval: Optional[str] = None):
         super().__init__()
@@ -111,7 +112,7 @@ class Stream(Expression):
         self._trace:               bool = False
         self._previous_frame            = None
 
-    def forward(self, sym: Symbol, **kwargs) -> Iterator[Symbol]:
+    def forward(self, sym: Symbol, **kwargs) -> Iterator:
         sym = self._to_symbol(sym)
 
         if self._trace:
@@ -131,21 +132,18 @@ class Stream(Expression):
                          **kwargs)
 
         if self.retrieval is not None:
-            if self.retrieval == 'all':
-                res = list(res)
-            elif self.retrieval == 'longest':
-                res = list(res)
-                res = sorted(res, key=lambda x: len(x), reverse=True)
-                res = res[0]
-            elif self.retrieval == 'contains':
-                res = list(res)
-                res = [r for r in res if self.expr in r]
-            else:
-                raise ValueError(f"Invalid retrieval method: {self.retrieval}")
-        else:
             res = list(res)
+            if self.retrieval == 'all':
+                return res
+            if self.retrieval == 'longest':
+                res = sorted(res, key=lambda x: len(x), reverse=True)
+                return res[0]
+            if self.retrieval == 'contains':
+                res = [r for r in res if self.expr in r]
+                return res
+            raise ValueError(f"Invalid retrieval method: {self.retrieval}")
 
-        return self._to_symbol(res)
+        return res
 
     def __enter__(self):
         self._trace = True

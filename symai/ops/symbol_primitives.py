@@ -126,7 +126,7 @@ class ValueHandlingPrimitives:
         @core.getitem(**kwargs)
         def _func(_, item: str) -> int:
             pass
-        return self.__class__(_func(self, item))
+        return self._to_symbol(_func(self, item))
 
 
 class ComparisonPrimitives:
@@ -150,7 +150,7 @@ class ComparisonPrimitives:
         def _func(_, string: str) -> bool:
             pass
 
-        return self.__class__(_func(self, string))
+        return self._to_symbol(_func(self, string))
 
     def contains(self, element: Any, **kwargs) -> bool:
         '''
@@ -194,7 +194,7 @@ class ExpressionHandlingPrimitives:
         def _func(_, expr: str):
             pass
 
-        return self.__class__(_func(self, expr))
+        return self._to_symbol(_func(self, expr))
 
 
 class DataHandlingPrimitives:
@@ -214,7 +214,7 @@ class DataHandlingPrimitives:
         def _func(_) -> str:
             pass
 
-        return self.__class__(_func(self))
+        return self._to_symbol(_func(self))
 
     def summarize(self, context: Optional[str] = None, **kwargs) -> 'Symbol':
         '''
@@ -231,7 +231,7 @@ class DataHandlingPrimitives:
         def _func(_) -> str:
             pass
 
-        return self.__class__(_func(self))
+        return self._to_symbol(_func(self))
 
     def outline(self, **kwargs) -> 'Symbol':
         '''
@@ -245,7 +245,7 @@ class DataHandlingPrimitives:
         def _func(_) -> str:
             pass
 
-        return self.__class__(_func(self))
+        return self._to_symbol(_func(self))
 
     def filter(self, criteria: str, include: Optional[bool] = False, **kwargs) -> 'Symbol':
         '''
@@ -263,7 +263,7 @@ class DataHandlingPrimitives:
         def _func(_) -> str:
             pass
 
-        return self.__class__(_func(self))
+        return self._to_symbol(_func(self))
 
     def modify(self, changes: str, **kwargs) -> 'Symbol':
         '''
@@ -280,7 +280,7 @@ class DataHandlingPrimitives:
         def _func(_) -> str:
             pass
 
-        return self.__class__(_func(self))
+        return self._to_symbol(_func(self))
 
     def replace(self, old: str, new: str, **kwargs) -> 'Symbol':
         '''
@@ -298,7 +298,7 @@ class DataHandlingPrimitives:
         def _func(_, old: str, new: str):
             pass
 
-        return self.__class__(_func(self, old, new))
+        return self._to_symbol(_func(self, old, new))
 
     def remove(self, information: str, **kwargs) -> 'Symbol':
         '''
@@ -315,7 +315,7 @@ class DataHandlingPrimitives:
         def _func(_, text: str, replace: str, value: str):
             pass
 
-        return self.__class__(_func(self, information, ''))
+        return self._to_symbol(_func(self, information, ''))
 
     def include(self, information: str, **kwargs) -> 'Symbol':
         '''
@@ -332,7 +332,7 @@ class DataHandlingPrimitives:
         def _func(_, information: str):
             pass
 
-        return self.__class__(_func(self, information))
+        return self._to_symbol(_func(self, information))
 
     def combine(self, information: str, **kwargs) -> 'Symbol':
         '''
@@ -349,7 +349,7 @@ class DataHandlingPrimitives:
         def _func(_, a: str, b: str):
             pass
 
-        return self.__class__(_func(self, information))
+        return self._to_symbol(_func(self, information))
 
 
 class UniquenessPrimitives:
@@ -372,7 +372,7 @@ class UniquenessPrimitives:
         def _func(_) -> str:
             pass
 
-        return self.__class__(_func(self))
+        return self._to_symbol(_func(self))
 
     def compose(self, **kwargs) -> 'Symbol':
         '''
@@ -386,7 +386,7 @@ class UniquenessPrimitives:
         def _func(_) -> str:
             pass
 
-        return self.__class__(_func(self))
+        return self._to_symbol(_func(self))
 
 
 class PatternMatchingPrimitives:
@@ -411,7 +411,7 @@ class PatternMatchingPrimitives:
         def _func(_, measure: str) -> str:
             pass
 
-        return self.__class__(_func(self, measure))
+        return self._to_symbol(_func(self, measure))
 
     def extract(self, pattern: str, **kwargs) -> 'Symbol':
         '''
@@ -428,7 +428,7 @@ class PatternMatchingPrimitives:
         def _func(_, pattern: str) -> str:
             pass
 
-        return self.__class__(_func(self, pattern))
+        return self._to_symbol(_func(self, pattern))
 
     def correct(self, context: str, **kwargs) -> 'Symbol':
         '''
@@ -446,7 +446,7 @@ class PatternMatchingPrimitives:
         def _func(_) -> str:
             pass
 
-        return self.__class__(_func(self))
+        return self._to_symbol(_func(self))
 
     def translate(self, language: Optional[str] = 'English', **kwargs) -> 'Symbol':
         '''
@@ -464,7 +464,7 @@ class PatternMatchingPrimitives:
         def _func(_) -> str:
             pass
 
-        return self.__class__(_func(self))
+        return self._to_symbol(_func(self))
 
     def choice(self, cases: List[str], default: str, **kwargs) -> 'Symbol':
         '''
@@ -483,7 +483,7 @@ class PatternMatchingPrimitives:
         def _func(_) -> str:
             pass
 
-        return self.__class__(_func(self))
+        return self._to_symbol(_func(self))
 
 
 class QueryHandlingPrimitives:
@@ -509,7 +509,7 @@ class QueryHandlingPrimitives:
         def _func(_) -> str:
             pass
 
-        return self.__class__(_func(self))
+        return self._to_symbol(_func(self))
 
     def convert(self, format: str, **kwargs) -> 'Symbol':
         '''
@@ -527,7 +527,7 @@ class QueryHandlingPrimitives:
         def _func(_) -> str:
             pass
 
-        return self.__class__(_func(self))
+        return self._to_symbol(_func(self))
 
     def transcribe(self, modify: str, **kwargs) -> 'Symbol':
         '''
@@ -545,7 +545,7 @@ class QueryHandlingPrimitives:
         def _func(_) -> str:
             pass
 
-        return self.__class__(_func(self))
+        return self._to_symbol(_func(self))
 
 
 class ExecutionControlPrimitives:
@@ -568,7 +568,7 @@ class ExecutionControlPrimitives:
         def _func(_) -> str:
             pass
 
-        return self.__class__(_func(self))
+        return self._to_symbol(_func(self))
 
     def execute(self, **kwargs) -> 'Symbol':
         '''
@@ -615,7 +615,7 @@ class ExecutionControlPrimitives:
         def _func(_):
             pass
 
-        return self.__class__(_func(self))
+        return self._to_symbol(_func(self))
 
     def sufficient(self, query: str, **kwargs) -> 'Symbol':
         '''
@@ -632,7 +632,7 @@ class ExecutionControlPrimitives:
         def _func(_) -> bool:
             pass
 
-        return self.__class__(_func(self))
+        return self._to_symbol(_func(self))
 
     def list(self, condition: str, **kwargs) -> 'Symbol':  #@TODO: can't filter directly handle this case?
         '''
@@ -649,7 +649,7 @@ class ExecutionControlPrimitives:
         def _func(_) -> list:
             pass
 
-        return self.__class__(_func(self))
+        return self._to_symbol(_func(self))
 
     def foreach(self, condition: str, apply: str, **kwargs) -> 'Symbol':
         '''
@@ -667,7 +667,7 @@ class ExecutionControlPrimitives:
         def _func(_):
             pass
 
-        return self.__class__(_func(self))
+        return self._to_symbol(_func(self))
 
     def stream(self, expr: 'Expression', token_ratio: Optional[float] = 0.6, **kwargs) -> 'Symbol':
         '''
@@ -697,7 +697,7 @@ class ExecutionControlPrimitives:
 
             for i in range(n_splits):
                 tokens_sliced = self.tokens[i * max_ctxt_tokens: (i + 1) * max_ctxt_tokens]
-                r = self.__class__(self.tokenizer().decode(tokens_sliced))
+                r = self._to_symbol(self.tokenizer().decode(tokens_sliced))
 
                 yield expr(r, **kwargs)
 
@@ -797,7 +797,7 @@ class DictHandlingPrimitives:
         def _func(_):
             pass
 
-        return self.__class__(_func(self))
+        return self._to_symbol(_func(self))
 
     def map(self, **kwargs) -> 'Symbol':
         '''
@@ -819,11 +819,11 @@ class DictHandlingPrimitives:
         map_ = {}
         keys = []
         for v in self.value.values():
-            k = self.__class__(v).unique(keys, **kwargs)
+            k = self._to_symbol(v).unique(keys, **kwargs)
             keys.append(k.value)
             map_[k.value] = v
 
-        return self.__class__(map_)
+        return self._to_symbol(map_)
 
 
 class TemplateStylingPrimitives:
@@ -849,7 +849,7 @@ class TemplateStylingPrimitives:
         def _func(_):
             pass
 
-        return self.__class__(_func(self))
+        return self._to_symbol(_func(self))
 
     def style(self, description: str, libraries: Optional[List] = [], **kwargs) -> 'Symbol':
         '''
@@ -869,7 +869,7 @@ class TemplateStylingPrimitives:
         def _func(_):
             pass
 
-        return self.__class__(_func(self))
+        return self._to_symbol(_func(self))
 
 
 class DataClusteringPrimitives:
@@ -893,7 +893,7 @@ class DataClusteringPrimitives:
         def _func(_):
             pass
 
-        return self.__class__(_func(self))
+        return self._to_symbol(_func(self))
 
     def embed(self, **kwargs) -> 'Symbol':
         '''
@@ -914,7 +914,7 @@ class DataClusteringPrimitives:
         def _func(_) -> list:
             pass
 
-        return self.__class__(_func(self))
+        return self._to_symbol(_func(self))
 
     def similarity(self, other: Union['Symbol', np.ndarray], metric: Optional[str] = 'cosine') -> float:
         '''
@@ -935,7 +935,7 @@ class DataClusteringPrimitives:
         '''
         def _ensure_format(x):
             if not isinstance(x, np.ndarray):
-                if not isinstance(x, self.__class__):
+                if not isinstance(x, type(self._to_symbol(None))): #@NOTE: enforce Symbol to avoid circular import
                     raise TypeError(f'Cannot compute similarity with type {type(x)}')
                 x = np.array(x.value)
             return x.squeeze()[:, None]
@@ -998,7 +998,7 @@ class PersistencePrimitives:
         @core.expand(**kwargs)
         def _func(_, *args): pass
 
-        _tmp_llm_func = self.__class__(_func(self, *args))
+        _tmp_llm_func = self._to_symbol(_func(self, *args))
         func_name = str(_tmp_llm_func.extract('function name'))
 
         def _llm_func(*args, **kwargs):
@@ -1075,5 +1075,5 @@ class OutputHandlingPrimitives:
         def _func(_, *args):
             pass
 
-        return self.__class__(_func(self, *args))
+        return self._to_symbol(_func(self, *args))
 
