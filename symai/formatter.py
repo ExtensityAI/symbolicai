@@ -92,17 +92,27 @@ class WhisperTimestampsFormatter(Expression):
         for i, interval in enumerate(response):
             interval = self._filter_empty_string(interval)
             prev_end = 0.0
+            prev_start = 0.0
             for head, tail in zip(interval[::2], interval[1::2]):
                 start = self._get_timestamp(head)
                 end = self._get_timestamp(tail)
                 if start >= prev_end:
                     start = prev_end
                     prev_end = end
+                    prev_start = start
                     result.append(f"{self._format_to_hours(start + (i*30))} {self._get_sentence(head)}")
                     continue
+                if start < prev_start:
+                    continue
                 delta = end - start
-                start += prev_end
-                end = start + delta
+                if start + prev_end > 30:
+                    start = prev_end
+                else:
+                    start += prev_end
+                if start + delta > 30:
+                    end = 30
+                else:
+                    end = start + delta
                 prev_end = end
                 result.append(f"{self._format_to_hours(start + (i*30))} {self._get_sentence(head)}")
         return "\n".join(result)
