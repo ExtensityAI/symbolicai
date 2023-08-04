@@ -1199,7 +1199,7 @@ res = sym.compose()
 
 ### Custom Engine
 
-If you want to replace or extend the functionality of our framework, you can do so by customizing the existing engines or creating new engines. The `Symbol` class provides helper methods for this functionality, such as `command` and `setup`. The `command` method can pass on configurations (as `**kwargs`) to the engines and change functionalities or parameters. The `setup` method can be used to re-initialize an engine with your custom engine implementation, which must subclass the `Engine` class. Both methods can be specified to address one, more, or all engines.
+If you want to replace or extend the functionality of our framework, you can do so by customizing the existing engines or creating new engines. The `Expression` class provides helper methods for this functionality, such as `command` and `setup`. The `command` method can pass on configurations (as `**kwargs`) to the engines and change functionalities or parameters. The `setup` method can be used to re-initialize an engine with your custom engine implementation, which must subclass the `Engine` class. Both methods can be specified to address one, more, or all engines.
 
 Here is an example of how to initialize your own engine. We will subclass the existing `GPTXCompletionEngine` and override the `prepare` method. This method is called before the neural computation and can be used to modify the input prompt's parameters that will be passed in for execution. In this example, we will replace the prompt with dummy text for illustration purposes:
 
