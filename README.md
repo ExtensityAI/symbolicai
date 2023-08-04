@@ -1167,14 +1167,14 @@ array([[9.72840726e-01, 6.34790864e-03, 2.59368378e-03, 3.41371237e-03,
 
 ### Local Neuro-Symbolic Engine
 
-You can use a locally hosted instance for the Neuro-Symbolic Engine. Out of the box, we provide a Hugging Face client-server backend and host the model `EleutherAI/gpt-j-6B` to perform the inference. As the name suggests, this is a six billion parameter model and requires a GPU with ~16GB RAM to run properly. The following example shows how to host and configure the usage of the local Neuro-Symbolic Engine.
+You can use a locally hosted instance for the Neuro-Symbolic Engine. Out of the box, we provide a Hugging Face client-server backend and host the model `openlm-research/open_llama_13b` to perform the inference. As the name suggests, this is a six billion parameter model and requires a GPU with ~16GB RAM to run properly. The following example shows how to host and configure the usage of the local Neuro-Symbolic Engine.
 
 First, we start the backend server:
 
 ```bash
 # optional: set cache folder for transformers (Linux/MacOS)
 export TRANSFORMERS_CACHE="<path-to-cache-folder>"
-# start server backend (default model is EleutherAI/gpt-j-6B)
+# start server backend (default model is openlm-research/open_llama_13b)
 symsvr
 # initialize server with client call
 symclient
