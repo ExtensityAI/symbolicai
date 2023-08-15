@@ -1028,22 +1028,6 @@ class Expression(Symbol):
             pass
         return self.sym_return_type(_func(self))
 
-    def tune(self, operation: str = 'create', **kwargs) -> 'Symbol':
-        '''
-        Fine tune a base model.
-
-        Args:
-            operation (str, optional): The specific operation to be performed. Defaults to 'create'.
-            **kwargs: Additional keyword arguments to be passed to the `@core.tune` decorator dependent on the used operation.
-
-        Returns:
-            Symbol: The resulting Symbol containing the fine tuned model ID.
-        '''
-        @core.tune(operation=operation, **kwargs)
-        def _func(_, *args, **kwargs) -> str:
-            pass
-        return self.sym_return_type(_func(self))
-
     # TODO: consider if this should be deprecated and moved only as an Interface
     def open(self, path: str, **kwargs) -> 'Symbol':
         '''
