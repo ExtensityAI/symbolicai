@@ -6,7 +6,7 @@ import multiprocessing as mp
 from pathos.multiprocessing import ProcessingPool as PPool
 
 
-def parallel(worker=mp.cpu_count()):
+def parallel(worker=mp.cpu_count()//2):
     def dec(function):
         @functools.wraps(function)
         def _dec(*args, **kwargs):
