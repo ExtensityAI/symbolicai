@@ -1,17 +1,20 @@
 import inspect
 import sys
 import warnings
-# Parallelizing using Pool.map()
+import functools
+import itertools
+import dill
 import multiprocessing as mp
 
 
 def parallel(worker=mp.cpu_count()):
     def dec(function):
+        @functools.wraps(function)
         def _dec(*args, **kwargs):
-            pool = mp.Pool(mp.cpu_count())
-            with mp.Pool(worker) as pool:
-                results = pool.map(function, *args, **kwargs)
-            return results
+            with mp.Pool(processes=worker) as pool:
+                func_dill = dill.dumps(function)
+                map_obj = pool.map(dill.loads(func_dill), itertools.chain(*args), **kwargs)
+            return map_obj
         return _dec
     return dec
 
