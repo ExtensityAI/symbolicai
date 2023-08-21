@@ -1,6 +1,19 @@
 import inspect
 import sys
 import warnings
+# Parallelizing using Pool.map()
+import multiprocessing as mp
+
+
+def parallel(worker=mp.cpu_count()):
+    def dec(function):
+        def _dec(*args, **kwargs):
+            pool = mp.Pool(mp.cpu_count())
+            with mp.Pool(worker) as pool:
+                results = pool.map(function, *args, **kwargs)
+            return results
+        return _dec
+    return dec
 
 
 def ignore_exception(exception=Exception, default=None):
@@ -16,6 +29,7 @@ def ignore_exception(exception=Exception, default=None):
                 return default
         return _dec
     return dec
+
 
 def prep_as_str(x):
     return f"'{str(x)}'" if ignore_exception()(int)(str(x)) is None else str(x)
