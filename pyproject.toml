@@ -22,7 +22,7 @@ dependencies = [
     "setuptools==67.7.2", "toml==0.10.2", "natsort==8.3.1", "numpy==1.24.3", "tqdm==4.65.0", "python-box==7.0.1", "rpyc==5.3.1", "pandas==2.0.2",
     "scikit-learn==1.2.2", "torch>=2.0.0", "torchaudio==2.0.1", "torchvision>=0.15.0", "PyYAML==6.0", "transformers==4.30.2", "sympy==1.12",
     "openai==0.27.8", "PyPDF2==3.0.1", "ipython==8.14.0", "accelerate==0.20.3", "sentencepiece==0.1.99",
-    "tiktoken==0.3.3", "tika==2.6.0", "beautifulsoup4==4.12.2", "colorama==0.4.6", "GitPython>=3.1.32"
+    "tiktoken==0.3.3", "tika==2.6.0", "beautifulsoup4==4.12.2", "colorama==0.4.6", "GitPython>=3.1.32", "pathos>=0.3.1"
 ]
 
 [project.optional-dependencies]

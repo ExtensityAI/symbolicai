@@ -2,18 +2,16 @@ import inspect
 import sys
 import warnings
 import functools
-import itertools
-import dill
 import multiprocessing as mp
+from pathos.multiprocessing import ProcessingPool as PPool
 
 
 def parallel(worker=mp.cpu_count()):
     def dec(function):
         @functools.wraps(function)
         def _dec(*args, **kwargs):
-            with mp.Pool(processes=worker) as pool:
-                func_dill = dill.dumps(function)
-                map_obj = pool.map(dill.loads(func_dill), itertools.chain(*args), **kwargs)
+            with PPool(worker) as pool:
+                map_obj = pool.map(function, *args, **kwargs)
             return map_obj
         return _dec
     return dec
