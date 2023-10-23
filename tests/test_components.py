@@ -83,3 +83,6 @@ class TestComponents(unittest.TestCase):
         rsp = index('Is there a test?') # retrieve
         self.assertTrue('confirmation that there is a test' in rsp)
 
+
+if __name__ == '__main__':
+    unittest.main()

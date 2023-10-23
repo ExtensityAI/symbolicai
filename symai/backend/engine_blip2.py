@@ -59,7 +59,8 @@ class Blip2Engine(Engine):
         except Exception as e:
             if except_remedy is None:
                 raise e
-            res = except_remedy(e, prompt, *args, **kwargs)
+            callback = self.model.generate
+            res = except_remedy(e, prompt, callback, *args, **kwargs)
 
         output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
         if output_handler:
