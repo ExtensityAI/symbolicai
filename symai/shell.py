@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 
 from .components import Lambda, Try
 from .core import *
@@ -69,8 +70,10 @@ class Shell(Expression):
 
 def process_query(args) -> None:
     query = args.query
-    if args.query is None or args.query == "":
+    if query is None or len(query) == 0:
+        print("Starting interactive shell ...")
         shellsv_run()
+        return
 
     shell = Shell(query)
 
@@ -86,7 +89,8 @@ def process_query(args) -> None:
     if args.delete:
         msg = msg - args.delete
     if args.exec:
-        os.system(str(msg))
+        msg = str(msg).strip().replace('EOF', '')
+        os.system(msg)
     if args.more:
         cmd = msg.extract('the main command used')
         cmd_help = cmd << 'get manual for the command'
@@ -95,28 +99,26 @@ def process_query(args) -> None:
             expr(cmd_help)
 
     with ConsoleStyle('info'):
-        print(msg.replace('EOF', ''))
+        msg = str(msg).strip().replace('EOF', '')
+        print(msg)
 
 
 def run() -> None:
-    try:
-        # All the logic of argparse goes in this function
-        parser = argparse.ArgumentParser(description='Welcome to the Symbolic<AI/> Shell support tool!')
-        parser.add_argument('query', type=str, required=False, help='The prompt for the shell query.')
-        parser.add_argument('--add', dest='add', default="", required=False, type=str,
-                            help='integrate the added text to the query.')
-        parser.add_argument('--convert', dest='convert', default="", required=False, type=str,
-                            help='convert a command to another shell. (e.g. --convert=windows or --convert=linux)')
-        parser.add_argument('--edit', dest='edit', default="", required=False, type=str,
-                            help='edit the added text to the query.')
-        parser.add_argument('--del', dest='delete', default="", required=False, type=str,
-                            help='remove the added text to the query.')
-        parser.add_argument('--more', dest='more', default=False, required=False, action=argparse.BooleanOptionalAction,
-                            help='add more context to the generated command.')
-        parser.add_argument('--exec', dest='exec', default=False, required=False, action=argparse.BooleanOptionalAction,
-                            help='execute command after creation (ATTENTION: Executing a generated command without verification may be risky!).')
+    # All the logic of argparse goes in this function
+    parser = argparse.ArgumentParser(description='Welcome to the Symbolic<AI/> Shell support tool!')
+    parser.add_argument('query', type=str, nargs='?', help='The prompt for the shell query.')
+    parser.add_argument('--add', dest='add', default="", required=False, type=str,
+                        help='integrate the added text to the query.')
+    parser.add_argument('--convert', dest='convert', default="", required=False, type=str,
+                        help='convert a command to another shell. (e.g. --convert=windows or --convert=linux)')
+    parser.add_argument('--edit', dest='edit', default="", required=False, type=str,
+                        help='edit the added text to the query.')
+    parser.add_argument('--del', dest='delete', default="", required=False, type=str,
+                        help='remove the added text to the query.')
+    parser.add_argument('--more', dest='more', default=False, required=False, action=argparse.BooleanOptionalAction,
+                        help='add more context to the generated command.')
+    parser.add_argument('--exec', dest='exec', default=False, required=False, action=argparse.BooleanOptionalAction,
+                        help='execute command after creation (ATTENTION: Executing a generated command without verification may be risky!).')
 
-        args = parser.parse_args()
-        process_query(args)
-    except:
-        shellsv_run()
+    args = parser.parse_args()
+    process_query(args)
