@@ -105,8 +105,10 @@ class MergedCompleter(Completer):
             text.startswith('~/') or\
             text.startswith('/'):
             yield from self.path_completer.get_completions(document, complete_event)
+            yield from self.history_completer.get_completions(document, complete_event)
         else:
             yield from self.history_completer.get_completions(document, complete_event)
+            yield from self.path_completer.get_completions(document, complete_event)
 
 
 # Create custom keybindings
