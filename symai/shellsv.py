@@ -247,9 +247,16 @@ def query_language_model(query: str, from_shell=True, *args, **kwargs):
 # run shell command
 def run_shell_command(cmd: str):
     # Execute the command
-    res = subprocess.run(cmd,
-                         shell=True,
-                         stderr=subprocess.PIPE)
+    try:
+        res = subprocess.run(cmd,
+                            shell=True,
+                            stderr=subprocess.PIPE)
+    except FileNotFoundError as e:
+        print(e)
+        return
+    except PermissionError as e:
+        print(e)
+        return
 
     # all good
     if res.returncode == 0:
@@ -329,6 +336,11 @@ def listen(session: PromptSession, word_comp: WordCompleter):
                         os.chdir(cmd.split(' ')[1])
                     except FileNotFoundError as e:
                         print(e)
+                        continue
+                    except PermissionError as e:
+                        print(e)
+                        continue
+
                 elif os.path.isdir(cmd):
                     try:
                         # replace ~ with home directory
@@ -337,6 +349,11 @@ def listen(session: PromptSession, word_comp: WordCompleter):
                         os.chdir(cmd)
                     except FileNotFoundError as e:
                         print(e)
+                        continue
+                    except PermissionError as e:
+                        print(e)
+                        continue
+
                 elif cmd.startswith('ll'):
                     run_shell_command('ls -l')
                 else:
