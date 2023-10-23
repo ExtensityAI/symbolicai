@@ -34,7 +34,7 @@ class InvalidRequestErrorRemedyStrategy:
         stop                = kwargs['stop'] if 'stop' in kwargs else None
         model               = kwargs['model'] if 'model' in kwargs else None
 
-        msg = error.messge
+        msg = error.message
 
         tollerance = 10
         if "InvalidRequestError: This model's maximum context length is" in msg:
