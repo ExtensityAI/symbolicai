@@ -1,6 +1,6 @@
 import os
 from datetime import datetime
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, List
 
 from ..components import Indexer
 from ..memory import SlidingWindowStringConcatMemory
@@ -15,18 +15,22 @@ class CodeFormatter:
 
 class Conversation(SlidingWindowStringConcatMemory):
     def __init__(self, init:     Optional[str] = None,
-                 file_link:      Optional[str] = None,
+                 file_link:      Optional[List[str]] = None,
                  index_name:     str           = Indexer.DEFAULT,
                  auto_print:     bool          = True,
                  token_ratio:    float         = 0.6, *args, **kwargs):
         super().__init__(token_ratio)
         self.token_ratio = token_ratio
         self.auto_print  = auto_print
+        if file_link is not None and type(file_link) is str:
+            file_link = [file_link]
         self.file_link   = file_link
+
         if init is not None:
             self.store_system_message(init, *args, **kwargs)
         if file_link is not None:
-            self.store_file(file_link, *args, **kwargs)
+            for fl in file_link:
+                self.store_file(fl, *args, **kwargs)
         self.indexer = Indexer(index_name=index_name)
         self._index  = self.indexer()
 
@@ -43,17 +47,23 @@ class Conversation(SlidingWindowStringConcatMemory):
         val = f"[DATA::{file_path}] <<<\n{str(content)}\n>>>\n"
         self.store(val, *args, **kwargs)
 
-    def commit(self, formatter: Optional[Callable] = None):
-        if self.file_link is not None:
+    def commit(self, target_file: str = None, formatter: Optional[Callable] = None):
+        if target_file is not None and type(target_file) is str:
+            file_link = target_file
+        else:
+            file_link = self.file_link if self.file_link is not None and type(self.file_link) is str else None
+        if file_link is not None:
             # if file extension is .py, then format code
             format_ = formatter
-            formatter = CodeFormatter() if format_ is None and self.file_link.endswith('.py') else formatter
+            formatter = CodeFormatter() if format_ is None and file_link.endswith('.py') else formatter
             val = self.value
             if formatter is not None:
                 val = formatter(val)
             # if file does not exist, create it
-            with open(self.file_link, 'w') as file:
+            with open(file_link, 'w') as file:
                 file.write(str(val))
+        else:
+            raise Exception('File link is not set or a set of files.')
 
     def save(self, path: str, replace: bool = False) -> Symbol:
         return Symbol(self._memory).save(path, replace=replace)

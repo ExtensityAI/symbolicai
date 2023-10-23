@@ -44,7 +44,7 @@ class EmbeddingEngine(Engine, OpenAIMixin):
             if except_remedy is None:
                 raise e
             callback = openai.Embedding.create
-            res = except_remedy(e, prompts_, callback, *args, **kwargs)
+            res = except_remedy(e, prompts_, callback, self, *args, **kwargs)
 
         rsp = [r['embedding'] for r in res['data']]
 

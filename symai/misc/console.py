@@ -1,30 +1,76 @@
-import sys
+import pygments
+from pygments.lexers.python import PythonLexer
+from pygments.lexers.javascript import JavascriptLexer
+from pygments.lexers.c_cpp import CppLexer
+from pygments.lexers.shell import BashLexer
+from prompt_toolkit import print_formatted_text
+from prompt_toolkit import HTML
+from prompt_toolkit.formatted_text import PygmentsTokens
 
-from colorama import Fore, Style
-from colorama import init
-init(autoreset=True)
+
+print = print_formatted_text
 
 
-class ConsoleStyle:
+class ConsoleStyle(object):
     style_types = {
-        'alert': Fore.RED + Style.BRIGHT,
-        'error': Fore.RED + Style.BRIGHT,
-        'warn': Fore.YELLOW + Style.BRIGHT,
-        'info': Fore.LIGHTCYAN_EX,
-        'success': Fore.GREEN + Style.BRIGHT,
-        'debug': Fore.LIGHTBLACK_EX,
-        'reset': Style.RESET_ALL,
+        'alert':   'ansired',
+        'error':   'ansired',
+        'warn':    'ansiyellow',
+        'info':    'ansiblue',
+        'success': 'ansigreen',
+        'debug':   'ansigray',
+        'custom':  'custom',
+        'code': 'code',
+        'default': '',
     }
 
-    def __init__(self, style_type = 'info'):
-        self.style_start = self.style_types.get(style_type, '')
-        self.style_end = Style.RESET_ALL if style_type in self.style_types else ''
+    def __init__(self, style_type = '', color = ''):
+        self.style_type = style_type
+        self.color = color
+
+    def __call__(self, message):
+        self.print(message)
 
     def __enter__(self):
-        sys.stdout.write(self.style_start)
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        sys.stdout.write(self.style_end)
+        pass
 
     def print(self, message):
-        print(message)  # The style will be added due to the __enter__ and __exit__ methods
+        message = str(message)
+        style = self.style_types.get(self.style_type, self.style_types['default'])
+        # check if message is code
+        if style == self.style_types['code'] or any([lang in message.lower() for lang in ['python', 'javascript', 'typescript', 'c++', 'bash', 'shell']]):
+            # select lexer
+            if 'python' in message.lower():
+                lexer = PythonLexer()
+            elif 'javascript' in message.lower() or 'typescript' in message.lower():
+                lexer = JavascriptLexer()
+            elif 'c++' in message.lower():
+                lexer = CppLexer()
+            else:
+                lexer = BashLexer()
+
+            if '```' in message:
+                messages = message.split('```')
+                for i, msg in enumerate(messages):
+                    if i % 2 == 0:
+                        print(msg)
+                    else:
+                        print('```', end='')
+                        tokens = list(pygments.lex(msg, lexer=lexer))
+                        print(PygmentsTokens(tokens))
+                        print('```')
+
+            else:
+                tokens = list(pygments.lex(message, lexer=lexer))
+                print(PygmentsTokens(tokens))
+            return
+
+        if style == self.style_types['default']:
+            print(message)
+        elif style == self.style_types['custom']:
+            print(HTML(f'<{self.color}>{message}</{self.color}>'))
+        else:
+            print(HTML(f'<{style}>{message}</{style}>'))

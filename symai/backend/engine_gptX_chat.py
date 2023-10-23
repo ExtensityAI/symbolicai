@@ -71,7 +71,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
                 raise e
             callback = openai.ChatCompletion.create
             kwargs['model'] = model
-            res = except_remedy(e, prompts_, callback, *args, **kwargs)
+            res = except_remedy(e, prompts_, callback, self, *args, **kwargs)
 
         metadata = {}
         if 'metadata' in kwargs and kwargs['metadata']:

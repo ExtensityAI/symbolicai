@@ -1,7 +1,12 @@
 import os
 import subprocess
 import glob
+import time
+import signal
+import logging
 from typing import Iterable
+from pygments.lexers.shell import BashLexer
+from prompt_toolkit.lexers import PygmentsLexer
 from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit import PromptSession
 from prompt_toolkit.history import History
@@ -12,10 +17,18 @@ from prompt_toolkit.styles import Style
 from prompt_toolkit.keys import Keys
 from prompt_toolkit import HTML
 from prompt_toolkit.patch_stdout import patch_stdout
-from symai.misc.console import ConsoleStyle
-from symai.misc.loader import Loader
-from symai.components import Function
-from symai.symbol import Symbol
+from prompt_toolkit.shortcuts import ProgressBar
+from prompt_toolkit import print_formatted_text
+from .misc.console import ConsoleStyle
+from .misc.loader import Loader
+from .extended import Conversation
+from .components import Function
+from .symbol import Symbol
+
+logging.getLogger("prompt_toolkit").setLevel(logging.ERROR)
+
+
+print = print_formatted_text
 
 
 SHELL_CONTEXT = """[Description]
@@ -27,11 +40,8 @@ Shell commands are instructions that instruct the system to do some action.
 If user requests commands, you will only process user queries and return valid Linux/MacOS shell or Windows PowerShell commands and no other text.
 If no further specified, use as default the Linux/MacOS shell commands.
 If additional instructions are provided the follow the user query to produce the requested output.
+A well related and helpful answer with suggested improvements is preferred over "I don't know" or "I don't understand" answers or stating the obvious.
 """
-
-
-current_command = None
-current_language_model_result = None
 
 
 def supports_ansi_escape():
@@ -80,13 +90,23 @@ class HistoryCompleter(WordCompleter):
 
 
 class MergedCompleter(Completer):
-    def __init__(self, *completers):
-        self.completers = completers
+    def __init__(self, path_completer, history_completer):
+        self.path_completer = path_completer
+        self.history_completer = history_completer
 
     def get_completions(self, document, complete_event):
-        for completer in self.completers:
-            for completion in completer.get_completions(document, complete_event):
-                yield completion
+        text = document.text.lstrip()
+        if text.startswith('cd ') or\
+            text.startswith('ls ') or\
+            text.startswith('touch ') or\
+            text.startswith('cat ') or\
+            text.startswith('mkdir ') or\
+            text.startswith('./') or\
+            text.startswith('~/') or\
+            text.startswith('/'):
+            yield from self.path_completer.get_completions(document, complete_event)
+        else:
+            yield from self.history_completer.get_completions(document, complete_event)
 
 
 # Create custom keybindings
@@ -101,20 +121,55 @@ def get_conda_env():
 @bindings.add(Keys.ControlSpace)
 def _(event):
     current_user_input = event.current_buffer.document.text
-    query_language_model(current_user_input)
+    func = Function(SHELL_CONTEXT)
+
+    bottom_toolbar = HTML(' <b>[f]</b> Print "f" <b>[x]</b> Abort.')
+
+    # Create custom key bindings first.
+    kb = KeyBindings()
+
+    cancel = [False]
+    @kb.add('f')
+    def _(event):
+        print('You pressed `f`.')
+
+    @kb.add('x')
+    def _(event):
+        " Send Abort (control-c) signal. "
+        cancel[0] = True
+        os.kill(os.getpid(), signal.SIGINT)
+
+    # Use `patch_stdout`, to make sure that prints go above the
+    # application.
+    with patch_stdout():
+        with ProgressBar(key_bindings=kb, bottom_toolbar=bottom_toolbar) as pb:
+            # TODO: hack to simulate progress bar of indeterminate length of an synchronous function
+            for i in pb(range(100)):
+                if i > 50 and i < 70:
+                    time.sleep(.01)
+
+                if i == 60:
+                    res = func(current_user_input) # hack to see progress bar
+
+                # Stop when the cancel flag has been set.
+                if cancel[0]:
+                    break
+
+    with ConsoleStyle('code') as console:
+        console.print(res)
 
 
 @bindings.add(Keys.PageUp)
 def _(event):
     # Moving up for 5 lines
-    for i in range(5):
+    for _ in range(5):
         event.current_buffer.auto_up()
 
 
 @bindings.add(Keys.PageDown)
 def _(event):
     # Moving down for 5 lines
-    for i in range(5):
+    for _ in range(5):
         event.current_buffer.auto_down()
 
 
@@ -169,33 +224,62 @@ def get_git_branch():
 
 
 # query language model
-def query_language_model(query: str, *args, **kwargs):
-    global current_language_model_result
-    func = Function(SHELL_CONTEXT)
+def query_language_model(query: str, from_shell=True, *args, **kwargs):
+    if '|' in query and from_shell:
+        cmds = query.split('|')
+        query = cmds[0]
+        files = ' '.join(cmds[1:]).split(' ')
+        # filter out only files
+        files = [f for f in files if os.path.isfile(f)]
+        func = Conversation(file_link=files, auto_print=False)
+    else:
+        func = Function(SHELL_CONTEXT)
+
     with Loader(desc="Inference ...", end=""):
         msg = func(query, *args, **kwargs)
 
-    with ConsoleStyle('info'):
-        print(msg)
-
-    current_language_model_result = msg
+    with ConsoleStyle('code') as console:
+        console.print(msg)
 
 
 # run shell command
 def run_shell_command(cmd: str):
     # Execute the command
-    res = subprocess.run(cmd, shell=True)
+    res = subprocess.run(cmd,
+                         shell=True,
+                         stderr=subprocess.PIPE)
 
+    # all good
+    if res.returncode == 0:
+        pass
     # If command not found, then try to query language model
-    if res.returncode != 0:
-        msg = Symbol(cmd) @ str(res)
+    else:
+        msg = Symbol(cmd) @ f'\n{str(res)}'
         if not ('command not found' in str(res)):
-            query_language_model(msg)
+            stderr = res.stderr
+            if stderr:
+                rsp = stderr.decode('utf-8')
+                print(rsp)
+                msg = msg @ f"\n{rsp}"
+                if 'usage:' in rsp:
+                    try:
+                        cmd = cmd.split('usage: ')[-1].split(' ')[0]
+                        # get man page result for command
+                        res = subprocess.run('man -P cat %s' % cmd,
+                                             shell=True,
+                                             stdout=subprocess.PIPE)
+                        stdout = res.stdout
+                        if stdout:
+                            rsp = stdout.decode('utf-8')[:500]
+                            msg = msg @ f"\n{rsp}"
+                    except Exception as e:
+                        pass
+
+            query_language_model(msg, from_shell=False)
 
 
 # Function to listen for user input and execute commands
 def listen(session: PromptSession, word_comp: WordCompleter):
-    global current_command
     with patch_stdout():
         while True:
             try:
@@ -221,17 +305,19 @@ def listen(session: PromptSession, word_comp: WordCompleter):
                     prompt = HTML(f"<ansiblue>{cur_working_dir}</ansiblue> <ansiwhite>conda:[</ansiwhite><ansigray>{conda_env}</ansigray><ansiwhite>]</ansiwhite> <ansicyan><b>symsh:</b> ❯</ansicyan> ")
 
                 # Read user input
-                cmd = session.prompt(prompt)
+                cmd = session.prompt(prompt, lexer=PygmentsLexer(BashLexer))
                 if cmd.strip() == '':
                     continue
-                current_command = cmd
 
                 # Append the command to the word completer list
                 word_comp.words.append(cmd)
 
                 if cmd == 'quit' or cmd == 'exit':
                     os._exit(0)
-                elif cmd.startswith('"') or cmd.startswith("'"):
+                elif cmd.startswith('"') or\
+                     cmd.startswith("'") or\
+                     cmd.startswith('`') or\
+                     '...' in cmd:
                     query_language_model(cmd)
                 elif cmd.startswith('cd') or cmd.startswith('mkdir'):
                     try:

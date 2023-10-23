@@ -97,9 +97,9 @@ def process_query(args) -> None:
         with Loader(desc="Inference ...", end=""):
             expr(cmd_help)
 
-    with ConsoleStyle('info'):
+    with ConsoleStyle('code') as console:
         msg = str(msg).strip().replace('EOF', '')
-        print(msg)
+        console.print(msg)
 
 
 def run() -> None:
