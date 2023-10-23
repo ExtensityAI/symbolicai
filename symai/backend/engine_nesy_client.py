@@ -66,7 +66,8 @@ class NeSyClientEngine(Engine):
         except Exception as e:
             if except_remedy is None:
                 raise e
-            res = except_remedy(e, prompts_, *args, **kwargs)
+            callback = self.connection.root.predict
+            res = except_remedy(e, prompts_, callback, *args, **kwargs)
 
         metadata = {}
         if 'metadata' in kwargs and kwargs['metadata']:

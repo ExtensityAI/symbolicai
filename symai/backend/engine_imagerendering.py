@@ -25,12 +25,14 @@ class ImageRenderingEngine(Engine):
         size          = f"{kwargs['image_size']}x{kwargs['image_size']}" if 'image_size' in kwargs else f"{self.size}x{self.size}"
         except_remedy = kwargs['except_remedy'] if 'except_remedy' in kwargs else None
 
+        callback = None
         try:
             if kwargs['operation'] == 'create':
                 input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
                 if input_handler:
                     input_handler((prompt,))
 
+                callback = openai.Image.create
                 res = openai.Image.create(
                     prompt=prompt,
                     n=1,
@@ -44,6 +46,7 @@ class ImageRenderingEngine(Engine):
                 if input_handler:
                     input_handler((prompt, image_path))
 
+                callback = openai.Image.create_variation
                 res = openai.Image.create_variation(
                     image=open(image_path, "rb"),
                     n=1,
@@ -59,6 +62,7 @@ class ImageRenderingEngine(Engine):
                 if input_handler:
                     input_handler((prompt, image_path, mask_path))
 
+                callback = openai.Image.create_edit
                 res = openai.Image.create_edit(
                     image=open(image_path, "rb"),
                     mask=open(mask_path, "rb"),
@@ -76,7 +80,7 @@ class ImageRenderingEngine(Engine):
         except Exception as e:
             if except_remedy is None:
                 raise e
-            res = except_remedy(e, prompt, *args, **kwargs)
+            res = except_remedy(e, prompt, callback, *args, **kwargs)
 
         metadata = {}
         if 'metadata' in kwargs and kwargs['metadata']:

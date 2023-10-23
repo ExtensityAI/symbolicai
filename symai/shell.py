@@ -1,8 +1,6 @@
 import argparse
 import os
 
-from colorama import Fore, Style
-
 from .components import Lambda, Try
 from .core import *
 from .misc.console import ConsoleStyle
@@ -10,10 +8,12 @@ from .misc.loader import Loader
 from .post_processors import StripPostProcessor
 from .pre_processors import PreProcessor
 from .symbol import Expression
+from .shellsv import run as shellsv_run
+
 
 SHELL_CONTEXT = """[Description]
 This shell program is the command interpreter on the Linux systems, MacOS and Windows PowerShell.
-It the program that interacts with the users in the terminal emulation window.
+It is a program that interacts with the users in the terminal emulation window.
 Shell commands are instructions that instruct the system to do some action.
 
 [Program Instructions]
@@ -66,8 +66,12 @@ class Shell(Expression):
     def static_context(self) -> str:
         return SHELL_CONTEXT
 
+
 def process_query(args) -> None:
     query = args.query
+    if args.query is None or args.query == "":
+        shellsv_run()
+
     shell = Shell(query)
 
     with Loader(desc="Inference ...", end=""):
@@ -91,25 +95,28 @@ def process_query(args) -> None:
             expr(cmd_help)
 
     with ConsoleStyle('info'):
-        print(msg)
+        print(msg.replace('EOF', ''))
 
 
 def run() -> None:
-    # All the logic of argparse goes in this function
-    parser = argparse.ArgumentParser(description='Welcome to the Symbolic<AI/> Shell support tool!')
-    parser.add_argument('query', type=str, help='The prompt for the shell query.')
-    parser.add_argument('--add', dest='add', default="", required=False, type=str,
-                        help='integrate the added text to the query.')
-    parser.add_argument('--convert', dest='convert', default="", required=False, type=str,
-                        help='convert a command to another shell. (e.g. --convert=windows or --convert=linux)')
-    parser.add_argument('--edit', dest='edit', default="", required=False, type=str,
-                        help='edit the added text to the query.')
-    parser.add_argument('--del', dest='delete', default="", required=False, type=str,
-                        help='remove the added text to the query.')
-    parser.add_argument('--more', dest='more', default=False, required=False, action=argparse.BooleanOptionalAction,
-                        help='add more context to the generated command.')
-    parser.add_argument('--exec', dest='exec', default=False, required=False, action=argparse.BooleanOptionalAction,
-                        help='execute command after creation (ATTENTION: Executing a generated command without verification may be risky!).')
+    try:
+        # All the logic of argparse goes in this function
+        parser = argparse.ArgumentParser(description='Welcome to the Symbolic<AI/> Shell support tool!')
+        parser.add_argument('query', type=str, required=False, help='The prompt for the shell query.')
+        parser.add_argument('--add', dest='add', default="", required=False, type=str,
+                            help='integrate the added text to the query.')
+        parser.add_argument('--convert', dest='convert', default="", required=False, type=str,
+                            help='convert a command to another shell. (e.g. --convert=windows or --convert=linux)')
+        parser.add_argument('--edit', dest='edit', default="", required=False, type=str,
+                            help='edit the added text to the query.')
+        parser.add_argument('--del', dest='delete', default="", required=False, type=str,
+                            help='remove the added text to the query.')
+        parser.add_argument('--more', dest='more', default=False, required=False, action=argparse.BooleanOptionalAction,
+                            help='add more context to the generated command.')
+        parser.add_argument('--exec', dest='exec', default=False, required=False, action=argparse.BooleanOptionalAction,
+                            help='execute command after creation (ATTENTION: Executing a generated command without verification may be risky!).')
 
-    args = parser.parse_args()
-    process_query(args)
+        args = parser.parse_args()
+        process_query(args)
+    except:
+        shellsv_run()
