@@ -1,6 +1,5 @@
 import argparse
 import os
-import sys
 
 from .components import Lambda, Try
 from .core import *

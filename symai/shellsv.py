@@ -30,6 +30,18 @@ If additional instructions are provided the follow the user query to produce the
 """
 
 
+current_command = None
+current_language_model_result = None
+
+
+def supports_ansi_escape():
+    try:
+        os.get_terminal_size(0)
+        return True
+    except OSError:
+        return False
+
+
 class PathCompleter(Completer):
     def get_completions(self, document, complete_event):
         complete_word = document.get_word_before_cursor(WORD=True)
@@ -41,9 +53,21 @@ class PathCompleter(Completer):
         for file in files:
             # split the command into words by space (ignore escaped spaces)
             command_words = document.text.split(' ')
-            # Calculate start position of the completion
-            start_position = len(document.text) - len(' '.join(command_words[:-1])) - len(command_words) + 1
-            yield Completion(file, start_position=-start_position, style='class:path-completion')
+            if len(command_words) > 1:
+                # Calculate start position of the completion
+                start_position = len(document.text) - len(' '.join(command_words[:-1])) - 1
+                start_position = max(0, start_position)
+            else:
+                start_position = len(document.text)
+            # if there is a space in the file name, then escape it
+            if ' ' in file:
+                file = file.replace(' ', '\\ ')
+            if (document.text.startswith('cd') or document.text.startswith('mkdir')) and os.path.isfile(file):
+                continue
+
+            yield Completion(file, start_position=-start_position,
+                             style='class:path-completion',
+                             selected_style='class:path-completion-selected')
 
 
 class HistoryCompleter(WordCompleter):
@@ -51,6 +75,7 @@ class HistoryCompleter(WordCompleter):
         completions = super().get_completions(document, complete_event)
         for completion in completions:
             completion.style = 'class:history-completion'
+            completion.selected_style = 'class:history-completion-selected'
             yield completion
 
 
@@ -72,17 +97,25 @@ def get_conda_env():
     return os.environ.get('CONDA_DEFAULT_ENV')
 
 
-# Define what happens when 'Ctrl + C' is pressed
-@bindings.add(Keys.ControlC)
+# bind to 'Ctrl' + 'Space'
+@bindings.add(Keys.ControlSpace)
 def _(event):
-    event.current_buffer.cancel_completion()
-    event.app.current_buffer.reset()
+    current_user_input = event.current_buffer.document.text
+    query_language_model(current_user_input)
 
 
-@bindings.add(Keys.Tab)
+@bindings.add(Keys.PageUp)
 def _(event):
-    event.current_buffer.cancel_completion()
-    event.app.current_buffer.reset()
+    # Moving up for 5 lines
+    for i in range(5):
+        event.current_buffer.auto_up()
+
+
+@bindings.add(Keys.PageDown)
+def _(event):
+    # Moving down for 5 lines
+    for i in range(5):
+        event.current_buffer.auto_down()
 
 
 class FileHistory(History):
@@ -137,12 +170,15 @@ def get_git_branch():
 
 # query language model
 def query_language_model(query: str, *args, **kwargs):
+    global current_language_model_result
+    func = Function(SHELL_CONTEXT)
     with Loader(desc="Inference ...", end=""):
-        func = Function(SHELL_CONTEXT)
         msg = func(query, *args, **kwargs)
 
     with ConsoleStyle('info'):
         print(msg)
+
+    current_language_model_result = msg
 
 
 # run shell command
@@ -159,6 +195,7 @@ def run_shell_command(cmd: str):
 
 # Function to listen for user input and execute commands
 def listen(session: PromptSession, word_comp: WordCompleter):
+    global current_command
     with patch_stdout():
         while True:
             try:
@@ -187,6 +224,7 @@ def listen(session: PromptSession, word_comp: WordCompleter):
                 cmd = session.prompt(prompt)
                 if cmd.strip() == '':
                     continue
+                current_command = cmd
 
                 # Append the command to the word completer list
                 word_comp.words.append(cmd)
@@ -195,12 +233,20 @@ def listen(session: PromptSession, word_comp: WordCompleter):
                     os._exit(0)
                 elif cmd.startswith('"') or cmd.startswith("'"):
                     query_language_model(cmd)
-                elif cmd.startswith('cd'):
+                elif cmd.startswith('cd') or cmd.startswith('mkdir'):
                     try:
                         # replace ~ with home directory
                         cmd = cmd.replace('~', os.path.expanduser('~'))
                         # Change directory
                         os.chdir(cmd.split(' ')[1])
+                    except FileNotFoundError as e:
+                        print(e)
+                elif os.path.isdir(cmd):
+                    try:
+                        # replace ~ with home directory
+                        cmd = cmd.replace('~', os.path.expanduser('~'))
+                        # Change directory
+                        os.chdir(cmd)
                     except FileNotFoundError as e:
                         print(e)
                 elif cmd.startswith('ll'):
@@ -213,6 +259,9 @@ def listen(session: PromptSession, word_comp: WordCompleter):
 
 
 def run():
+    if not supports_ansi_escape():
+        print("Unfortunately, your terminal does not support ANSI escape sequences.")
+
     # Load history
     history, history_strings = load_history()
 
@@ -221,22 +270,25 @@ def run():
     custom_completer = PathCompleter()
 
     # Merge completers
-    merged_completer = MergedCompleter(word_comp, custom_completer)
+    merged_completer = MergedCompleter(custom_completer, word_comp)
 
     style = Style.from_dict({
-        "completion-menu.completion.current": "bg:#ffffff #000000",  # Change to your preference
-        "completion-menu.completion": "ansigreen",
+        "completion-menu.completion.current": "bg:#323232 #000080",  # Change to your preference
+        "completion-menu.completion": "bg:#800080 #000080",
         "scrollbar.background": "bg:#222222",
         "scrollbar.button": "bg:#776677",
-        "history-completion": "bg:#323232 #ffffff",
-        "path-completion": "bg:#800080 #ffffff",
+        "history-completion": "bg:#323232 #efefef",
+        "path-completion": "bg:#800080 #efefef",
+        "history-completion-selected": "bg:#efefef #000000",
+        "path-completion-selected": "bg:#efefef #800080",
     })
 
     # Session for the auto-completion
     session = PromptSession(history=history,
                             completer=merged_completer,
-                            complete_style=CompleteStyle.COLUMN,
-                            style=style)
+                            complete_style=CompleteStyle.MULTI_COLUMN,
+                            style=style,
+                            key_bindings=bindings)
 
     listen(session, word_comp)
 

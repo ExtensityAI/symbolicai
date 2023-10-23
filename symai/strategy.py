@@ -34,10 +34,11 @@ class InvalidRequestErrorRemedyStrategy:
         stop                = kwargs['stop'] if 'stop' in kwargs else None
         model               = kwargs['model'] if 'model' in kwargs else None
 
-        msg = error.message
+        msg = str(error)
+        print(msg)
 
         tollerance = 10
-        if "InvalidRequestError: This model's maximum context length is" in msg:
+        if "This model's maximum context length is" in msg:
             usr = msg.split('(')[-1].split(' ')[0]
             max_ = msg.split('tokens')[0].split(' ')[-1]
             overflow_tokens = int(usr) - int(max_) + tollerance
