@@ -1,6 +1,8 @@
 import os
 import subprocess
+import glob
 from typing import Iterable
+from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit import PromptSession
 from prompt_toolkit.history import History
 from prompt_toolkit.completion import WordCompleter
@@ -28,6 +30,40 @@ If additional instructions are provided the follow the user query to produce the
 """
 
 
+class PathCompleter(Completer):
+    def get_completions(self, document, complete_event):
+        complete_word = document.get_word_before_cursor(WORD=True)
+        if complete_word.startswith('~/'):
+            complete_word = complete_word.replace('~/', os.path.expanduser('~'))
+
+        files = glob.glob(complete_word + '*')
+
+        for file in files:
+            # split the command into words by space (ignore escaped spaces)
+            command_words = document.text.split(' ')
+            # Calculate start position of the completion
+            start_position = len(document.text) - len(' '.join(command_words[:-1])) - len(command_words) + 1
+            yield Completion(file, start_position=-start_position, style='class:path-completion')
+
+
+class HistoryCompleter(WordCompleter):
+    def get_completions(self, document, complete_event):
+        completions = super().get_completions(document, complete_event)
+        for completion in completions:
+            completion.style = 'class:history-completion'
+            yield completion
+
+
+class MergedCompleter(Completer):
+    def __init__(self, *completers):
+        self.completers = completers
+
+    def get_completions(self, document, complete_event):
+        for completer in self.completers:
+            for completion in completer.get_completions(document, complete_event):
+                yield completion
+
+
 # Create custom keybindings
 bindings = KeyBindings()
 
@@ -47,7 +83,6 @@ def _(event):
 def _(event):
     event.current_buffer.cancel_completion()
     event.app.current_buffer.reset()
-    print('penis')
 
 
 class FileHistory(History):
@@ -144,14 +179,17 @@ def listen(session: PromptSession, word_comp: WordCompleter):
                     cur_working_dir = f'<b>{last_path}</b>'
 
                 if git_branch:
-                    prompt = HTML(f"<ansiblue>{cur_working_dir}</ansiblue><ansiwhite> on git:[</ansiwhite><ansigreen>{git_branch}</ansigreen><ansiwhite>]</ansiwhite> <ansiwhite>conda:[</ansiwhite><ansimagenta>{conda_env}</ansimagenta><ansiwhite>]</ansiwhite> <ansired><b>symsh:</b> ❯</ansired> ")
+                    prompt = HTML(f"<ansiblue>{cur_working_dir}</ansiblue><ansiwhite> on git:[</ansiwhite><ansigreen>{git_branch}</ansigreen><ansiwhite>]</ansiwhite> <ansiwhite>conda:[</ansiwhite><ansimagenta>{conda_env}</ansimagenta><ansiwhite>]</ansiwhite> <ansicyan><b>symsh:</b> ❯</ansicyan> ")
                 else:
-                    prompt = HTML(f"<ansiblue>{cur_working_dir}</ansiblue> <ansiwhite>conda:[</ansiwhite><ansigray>{conda_env}</ansigray><ansiwhite>]</ansiwhite> <ansired><b>symsh:</b> ❯</ansired> ")
+                    prompt = HTML(f"<ansiblue>{cur_working_dir}</ansiblue> <ansiwhite>conda:[</ansiwhite><ansigray>{conda_env}</ansigray><ansiwhite>]</ansiwhite> <ansicyan><b>symsh:</b> ❯</ansicyan> ")
 
                 # Read user input
                 cmd = session.prompt(prompt)
                 if cmd.strip() == '':
                     continue
+
+                # Append the command to the word completer list
+                word_comp.words.append(cmd)
 
                 if cmd == 'quit' or cmd == 'exit':
                     os._exit(0)
@@ -178,19 +216,25 @@ def run():
     # Load history
     history, history_strings = load_history()
 
-    # Defining the auto-completion words (according to history)
-    word_comp = WordCompleter(history_strings, ignore_case=True, sentence=True)
+    # Create your specific completers
+    word_comp = HistoryCompleter(history_strings, ignore_case=True, sentence=True)
+    custom_completer = PathCompleter()
+
+    # Merge completers
+    merged_completer = MergedCompleter(word_comp, custom_completer)
 
     style = Style.from_dict({
-        "completion-menu.completion": "bg:#a33a33 #ffffff",
-        "completion-menu.completion.current": "bg:#aaccaa #000000",
+        "completion-menu.completion.current": "bg:#ffffff #000000",  # Change to your preference
+        "completion-menu.completion": "ansigreen",
         "scrollbar.background": "bg:#222222",
         "scrollbar.button": "bg:#776677",
+        "history-completion": "bg:#323232 #ffffff",
+        "path-completion": "bg:#800080 #ffffff",
     })
 
     # Session for the auto-completion
     session = PromptSession(history=history,
-                            completer=word_comp,
+                            completer=merged_completer,
                             complete_style=CompleteStyle.COLUMN,
                             style=style)
 
