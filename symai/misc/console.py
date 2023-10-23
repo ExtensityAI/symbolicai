@@ -1,6 +1,8 @@
 import sys
 
 from colorama import Fore, Style
+from colorama import init
+init(autoreset=True)
 
 
 class ConsoleStyle:
