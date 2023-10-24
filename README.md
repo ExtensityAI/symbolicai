@@ -40,7 +40,7 @@ Conceptually, SymbolicAI is a framework that leverages machine learning – spec
     - [*\[Optional\]* Installs](#optional-installs)
   - [🦖 Apps](#-apps)
     - [Shell Command Tool](#shell-command-tool)
-    - [Starting an Interactive Shell](#starting-an-interactive-shell)
+    - [🖥️ Starting an Interactive Shell](#️-starting-an-interactive-shell)
       - [1. Auto-completion](#1-auto-completion)
       - [2. Query Neuro-Symbolic Model](#2-query-neuro-symbolic-model)
       - [3. Pipe with Files](#3-pipe-with-files)
@@ -277,7 +277,7 @@ $> symsh "Set-ItemProperty -Path '/Users/myuser' -Name Demo -Value SymbolicAI" -
 # export Demo="SymbolicAI"
 ```
 
-### Starting an Interactive Shell
+### 🖥️ Starting an Interactive Shell
 
 `symsh` is also a regular shell program that interacts with users in the terminal emulation window. It interprets Linux, MacOS, and Windows PowerShell shell commands, and supports ANSI escape sequences.
 
