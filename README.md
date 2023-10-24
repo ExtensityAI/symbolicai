@@ -41,11 +41,11 @@ Conceptually, SymbolicAI is a framework that leverages machine learning – spec
   - [🦖 Apps](#-apps)
     - [Shell Command Tool](#shell-command-tool)
     - [🖥️ Starting an Interactive Shell](#️-starting-an-interactive-shell)
-      - [1. Auto-completion](#1-auto-completion)
-      - [2. Query Neuro-Symbolic Model](#2-query-neuro-symbolic-model)
-      - [3. Pipe with Files](#3-pipe-with-files)
+      - [Auto-completion](#auto-completion)
+      - [Query Neuro-Symbolic Model](#query-neuro-symbolic-model)
+      - [Pipe with Files](#pipe-with-files)
       - [Slicing Operation on Files](#slicing-operation-on-files)
-      - [4. Stateful Conversation](#4-stateful-conversation)
+      - [Stateful Conversation](#stateful-conversation)
     - [Chatbot](#chatbot)
     - [📦 Package Manager](#-package-manager)
     - [📦 Package Runner](#-package-runner)
@@ -293,13 +293,13 @@ The interactive shell uses the `python -m symai.shell` feature and runs on top o
 
 Within the interactive shell you can use your regular shell commands and additionally use the `symsh` neuro-symbolic commands. The interactive shell supports the following commands:
 
-#### 1. Auto-completion
+#### Auto-completion
 `symsh` provides path auto-completion and history auto-completion enhanced by the neuro-symbolic engine. Start typing the path or command, and `symsh` will provide you with relevant suggestions based on your input and command history.
 To trigger a suggestion, press `Tab` or `Ctrl+Space`.
 
 ![Demo usage of symsh](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/symsh.png)
 
-#### 2. Query Neuro-Symbolic Model
+#### Query Neuro-Symbolic Model
 `symsh` can interact with a language model. By beginning a command with a special character (`"`, `'`, or `` ` ``), `symsh` will treat the command as a query for a language model.
 
 For instance, to make a query, you can type:
@@ -311,7 +311,7 @@ For instance, to make a query, you can type:
 # Paris
 ```
 
-#### 3. Pipe with Files
+#### Pipe with Files
 
 The shell command in `symsh` also has the capability to interact with files using the pipe (`|`) operator. It operates like a Unix-like pipe but with a few enhancements due to the neuro-symbolic nature of `symsh`.
 
@@ -358,7 +358,7 @@ The above commands would read and include the specified lines from file `file_pa
 
 This feature enables you to maintain highly efficient and context-thoughtful conversations with `symsh`, especially useful when dealing with large files where only a subset of content in specific locations within the file is relevant at any given moment.
 
-#### 4. Stateful Conversation
+#### Stateful Conversation
 
 The stateful_conversation feature is used for maintaining a continuing conversation with the language model. To use this feature, you have to start your commands with specific symbols in the shell:
 
