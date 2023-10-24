@@ -38,13 +38,17 @@ class InvalidRequestErrorRemedyStrategy:
         msg = str(error)
 
         tolerance = 10
-        if "This model's maximum context length is" in msg:
-            usr = msg.split('(')[-1].split(' ')[0]
-            max_ = msg.split('tokens')[0].split(' ')[-1]
-            overflow_tokens = int(usr) - int(max_) + tolerance
-        else:
-            # extract number until 'is'
-            overflow_tokens = int(msg.split(' ')[0]) * (-1) + tolerance
+        try:
+            if "This model's maximum context length is" in msg:
+                usr = msg.split('you requested ')[-1].split(' ')[0]
+                max_ = msg.split(' tokens')[0].split(' ')[-1]
+                overflow_tokens = int(usr) - int(max_) + tolerance
+            else:
+                # extract number until 'is'
+                overflow_tokens = int(msg.split(' ')[0]) * (-1) + tolerance
+        except Exception as e:
+            print(msg)
+            raise e
 
         prompts = [p for p in prompts_ if p['role'] == 'user']
         truncated_content_ = [p['content'][overflow_tokens:] for p in prompts]
