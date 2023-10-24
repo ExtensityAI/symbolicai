@@ -3,7 +3,7 @@
     "max_seq_len": 2048,
     "huggingface_cache": ".symai/cache/llms",
     "verbose": true,
-    "device": "cuda:0",
+    "device": "mps",
     "port": 18100,
     "seed": null,
     "dtype": "float16"

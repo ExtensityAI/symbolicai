@@ -18,3 +18,6 @@ class TestBackend(unittest.TestCase):
         template(Symbol('Create a table with two columns (title, price).', 'data points: Apple, 1.99; Banana, 2.99; Orange, 3.99'))
         self.assertTrue('<table>' in template, template)
 
+
+if __name__ == '__main__':
+    unittest.main()

@@ -1,6 +1,20 @@
 import inspect
 import sys
 import warnings
+import functools
+import multiprocessing as mp
+from pathos.multiprocessing import ProcessingPool as PPool
+
+
+def parallel(worker=mp.cpu_count()//2):
+    def dec(function):
+        @functools.wraps(function)
+        def _dec(*args, **kwargs):
+            with PPool(worker) as pool:
+                map_obj = pool.map(function, *args, **kwargs)
+            return map_obj
+        return _dec
+    return dec
 
 
 def ignore_exception(exception=Exception, default=None):
@@ -16,6 +30,7 @@ def ignore_exception(exception=Exception, default=None):
                 return default
         return _dec
     return dec
+
 
 def prep_as_str(x):
     return f"'{str(x)}'" if ignore_exception()(int)(str(x)) is None else str(x)

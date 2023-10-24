@@ -1,8 +1,6 @@
 import argparse
 import os
 
-from colorama import Fore, Style
-
 from .components import Lambda, Try
 from .core import *
 from .misc.console import ConsoleStyle
@@ -10,10 +8,12 @@ from .misc.loader import Loader
 from .post_processors import StripPostProcessor
 from .pre_processors import PreProcessor
 from .symbol import Expression
+from .shellsv import run as shellsv_run
+
 
 SHELL_CONTEXT = """[Description]
 This shell program is the command interpreter on the Linux systems, MacOS and Windows PowerShell.
-It the program that interacts with the users in the terminal emulation window.
+It is a program that interacts with the users in the terminal emulation window.
 Shell commands are instructions that instruct the system to do some action.
 
 [Program Instructions]
@@ -66,8 +66,14 @@ class Shell(Expression):
     def static_context(self) -> str:
         return SHELL_CONTEXT
 
+
 def process_query(args) -> None:
     query = args.query
+    if query is None or len(query) == 0:
+        print("Starting interactive shell ...")
+        shellsv_run()
+        return
+
     shell = Shell(query)
 
     with Loader(desc="Inference ...", end=""):
@@ -82,7 +88,8 @@ def process_query(args) -> None:
     if args.delete:
         msg = msg - args.delete
     if args.exec:
-        os.system(str(msg))
+        msg = str(msg).strip().replace('EOF', '')
+        os.system(msg)
     if args.more:
         cmd = msg.extract('the main command used')
         cmd_help = cmd << 'get manual for the command'
@@ -90,14 +97,15 @@ def process_query(args) -> None:
         with Loader(desc="Inference ...", end=""):
             expr(cmd_help)
 
-    with ConsoleStyle('info'):
-        print(msg)
+    with ConsoleStyle('code') as console:
+        msg = str(msg).strip().replace('EOF', '')
+        console.print(msg)
 
 
 def run() -> None:
     # All the logic of argparse goes in this function
     parser = argparse.ArgumentParser(description='Welcome to the Symbolic<AI/> Shell support tool!')
-    parser.add_argument('query', type=str, help='The prompt for the shell query.')
+    parser.add_argument('query', type=str, nargs='?', help='The prompt for the shell query.')
     parser.add_argument('--add', dest='add', default="", required=False, type=str,
                         help='integrate the added text to the query.')
     parser.add_argument('--convert', dest='convert', default="", required=False, type=str,
