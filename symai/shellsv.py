@@ -349,7 +349,7 @@ def listen(session: PromptSession, word_comp: WordCompleter):
                 if git_branch:
                     prompt = HTML(f"<ansiblue>{cur_working_dir}</ansiblue><ansiwhite> on git:[</ansiwhite><ansigreen>{git_branch}</ansigreen><ansiwhite>]</ansiwhite> <ansiwhite>conda:[</ansiwhite><ansimagenta>{conda_env}</ansimagenta><ansiwhite>]</ansiwhite> <ansicyan><b>symsh:</b> ❯</ansicyan> ")
                 else:
-                    prompt = HTML(f"<ansiblue>{cur_working_dir}</ansiblue> <ansiwhite>conda:[</ansiwhite><ansigray>{conda_env}</ansigray><ansiwhite>]</ansiwhite> <ansicyan><b>symsh:</b> ❯</ansicyan> ")
+                    prompt = HTML(f"<ansiblue>{cur_working_dir}</ansiblue> <ansiwhite>conda:[</ansiwhite><ansimagenta>{conda_env}</ansimagenta><ansiwhite>]</ansiwhite> <ansicyan><b>symsh:</b> ❯</ansicyan> ")
 
                 # Read user input
                 cmd = session.prompt(prompt, lexer=PygmentsLexer(BashLexer))
@@ -436,6 +436,7 @@ def run():
     session = PromptSession(history=history,
                             completer=merged_completer,
                             complete_style=CompleteStyle.MULTI_COLUMN,
+                            reserve_space_for_menu=5,
                             style=style,
                             key_bindings=bindings)
 
