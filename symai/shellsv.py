@@ -63,6 +63,9 @@ class PathCompleter(Completer):
 
         files = glob.glob(complete_word + '*')
 
+        dirs_ = []
+        files_ = []
+
         for file in files:
             # split the command into words by space (ignore escaped spaces)
             command_words = document.text.split(' ')
@@ -77,10 +80,20 @@ class PathCompleter(Completer):
                 file = file.replace(' ', '\\ ')
             if (document.text.startswith('cd') or document.text.startswith('mkdir')) and os.path.isfile(file):
                 continue
+            if os.path.isdir(file):
+                dirs_.append(file)
+            else:
+                files_.append(file)
 
-            yield Completion(file, start_position=-start_position,
+        for d in dirs_:
+            yield Completion(d + '/', start_position=-start_position,
                              style='class:path-completion',
                              selected_style='class:path-completion-selected')
+
+        for f in files_:
+            yield Completion(f, start_position=-start_position,
+                             style='class:file-completion',
+                             selected_style='class:file-completion-selected')
 
 
 class HistoryCompleter(WordCompleter):
@@ -413,8 +426,10 @@ def run():
         "scrollbar.button": "bg:#776677",
         "history-completion": "bg:#323232 #efefef",
         "path-completion": "bg:#800080 #efefef",
+        "file-completion": "bg:#9040b2 #efefef",
         "history-completion-selected": "bg:#efefef #000000",
         "path-completion-selected": "bg:#efefef #800080",
+        "file-completion-selected": "bg:#efefef #9040b2",
     })
 
     # Session for the auto-completion
