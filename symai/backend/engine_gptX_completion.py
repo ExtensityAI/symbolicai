@@ -28,10 +28,14 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
         if 'NEUROSYMBOLIC_ENGINE_MODEL' in wrp_params:
             self.model = wrp_params['NEUROSYMBOLIC_ENGINE_MODEL']
 
-    def compute_remaining_tokens(self, prompts: list) -> int:
-        # iterate over prompts and compute number of tokens
+    def compute_required_tokens(self, prompts: dict) -> int:
+       # iterate over prompts and compute number of tokens
         prompt = prompts[0]
         val = len(self.tokenizer.encode(prompt, disallowed_special=()))
+        return val
+
+    def compute_remaining_tokens(self, prompts: list) -> int:
+        val = self.compute_required_tokens(prompts)
         return int((self.max_tokens - val) * 0.98)
 
     def forward(self, prompts: List[str], *args, **kwargs) -> List[str]:
@@ -68,7 +72,9 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
         except Exception as e:
             if except_remedy is None:
                 raise e
-            res = except_remedy(e, prompts_, *args, **kwargs)
+            callback = openai.ChatCompletion.create
+            kwargs['model'] = model
+            res = except_remedy(e, prompts_, callback, self, *args, **kwargs)
 
         metadata = {}
         if 'metadata' in kwargs and kwargs['metadata']:

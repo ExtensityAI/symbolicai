@@ -1,6 +1,7 @@
 import os
+import pickle
 from datetime import datetime
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, List
 
 from ..components import Indexer
 from ..memory import SlidingWindowStringConcatMemory
@@ -15,19 +16,38 @@ class CodeFormatter:
 
 class Conversation(SlidingWindowStringConcatMemory):
     def __init__(self, init:     Optional[str] = None,
-                 file_link:      Optional[str] = None,
+                 file_link:      Optional[List[str]] = None,
                  index_name:     str           = Indexer.DEFAULT,
                  auto_print:     bool          = True,
                  token_ratio:    float         = 0.6, *args, **kwargs):
         super().__init__(token_ratio)
         self.token_ratio = token_ratio
         self.auto_print  = auto_print
+        if file_link is not None and type(file_link) is str:
+            file_link = [file_link]
         self.file_link   = file_link
+        self.index_name = index_name
+
         if init is not None:
             self.store_system_message(init, *args, **kwargs)
         if file_link is not None:
-            self.store_file(file_link, *args, **kwargs)
+            for fl in file_link:
+                self.store_file(fl, *args, **kwargs)
         self.indexer = Indexer(index_name=index_name)
+        self._index  = self.indexer()
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        # Remove the unpickleable entries such as the `indexer` attribute because it is not serializable
+        del state['indexer']
+        del state['_index']
+        return state
+
+    def __setstate__(self, state):
+        # Restore instance attributes
+        self.__dict__.update(state)
+        # Add back the attribute that were removed in __getstate__
+        self.indexer = Indexer(index_name=state['index_name'])
         self._index  = self.indexer()
 
     def store_system_message(self, message: str, *args, **kwargs):
@@ -35,25 +55,100 @@ class Conversation(SlidingWindowStringConcatMemory):
         self.store(val, *args, **kwargs)
 
     def store_file(self, file_path: str, *args, **kwargs):
+        # check if file is empty
+        if file_path is None or file_path.strip() == '':
+            return
+
+        slices_ = None
+        if '[' in file_path and ']' in file_path:
+            file_parts = file_path.split('[')
+            file_path = file_parts[0]
+            # remove string up to '[' and after ']'
+            slices_s = file_parts[1].split(']')[0].split(',')
+            slices_ = []
+            for s in slices_s:
+                if s == '':
+                    continue
+                elif ':' in s:
+                    s_split = s.split(':')
+                    if len(s_split) == 2:
+                        start_slice = int(s_split[0]) if s_split[0] != '' else None
+                        end_slice = int(s_split[1]) if s_split[1] != '' else None
+                        slices_.append(slice(start_slice, end_slice, None))
+                    elif len(s_split) == 3:
+                        start_slice = int(s_split[0]) if s_split[0] != '' else None
+                        end_slice = int(s_split[1]) if s_split[1] != '' else None
+                        step_slice = int(s_split[2]) if s_split[2] != '' else None
+                        slices_.append(slice(start_slice, end_slice, step_slice))
+                else:
+                    slices_.append(int(s))
+
         if not os.path.exists(file_path):
             return
-        # read in file
+
+        # read in file content. if slices_ is not None, then read in only the slices_ of the file
         with open(file_path, 'r') as file:
-            content = file.read()
+            content = file.readlines()
+            if slices_ is not None:
+                new_content = []
+                for s in slices_:
+                    new_content.extend(content[s])
+                content = new_content
+            content = ''.join(content)
+
         val = f"[DATA::{file_path}] <<<\n{str(content)}\n>>>\n"
         self.store(val, *args, **kwargs)
 
-    def commit(self, formatter: Optional[Callable] = None):
-        if self.file_link is not None:
+    @staticmethod
+    def save_conversation_state(conversation: "Conversation", path: str) -> None:
+        # Save the conversation object as a pickle file
+        with open(path, 'wb') as handle:
+            pickle.dump(conversation, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    @staticmethod
+    def load_conversation_state(path: str) -> "Conversation":
+        # Check if the file exists and it's not empty
+        if os.path.exists(path):
+            if os.path.getsize(path) <= 0:
+                raise Exception("File is empty.")
+            # Load the conversation object from a pickle file
+            with open(path, 'rb') as handle:
+                conversation_state = pickle.load(handle)
+        else:
+            raise Exception("File does not exist or is empty.")
+
+        # Create a new instance of the `Conversation` class and restore
+        # the state from the saved conversation
+        conversation = Conversation()
+        return conversation.restore(conversation_state)
+
+    def restore(self, conversation_state: "Conversation") -> "Conversation":
+        self._memory = conversation_state._memory
+        self.token_ratio = conversation_state.token_ratio
+        self.auto_print = conversation_state.auto_print
+        self.file_link = conversation_state.file_link
+        self.index_name = conversation_state.index_name
+        self.indexer = conversation_state.indexer
+        self._index  = conversation_state._index
+        return self
+
+    def commit(self, target_file: str = None, formatter: Optional[Callable] = None):
+        if target_file is not None and type(target_file) is str:
+            file_link = target_file
+        else:
+            file_link = self.file_link if self.file_link is not None and type(self.file_link) is str else None
+        if file_link is not None:
             # if file extension is .py, then format code
             format_ = formatter
-            formatter = CodeFormatter() if format_ is None and self.file_link.endswith('.py') else formatter
+            formatter = CodeFormatter() if format_ is None and file_link.endswith('.py') else formatter
             val = self.value
             if formatter is not None:
                 val = formatter(val)
             # if file does not exist, create it
-            with open(self.file_link, 'w') as file:
+            with open(file_link, 'w') as file:
                 file.write(str(val))
+        else:
+            raise Exception('File link is not set or a set of files.')
 
     def save(self, path: str, replace: bool = False) -> Symbol:
         return Symbol(self._memory).save(path, replace=replace)

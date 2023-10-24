@@ -13,6 +13,7 @@ SYMBOL_PRIMITIVES = [
     TemplateStylingPrimitives,
     DataClusteringPrimitives,
     PersistencePrimitives,
-    OutputHandlingPrimitives
+    OutputHandlingPrimitives,
+    FineTuningPrimitives,
 ]
 
