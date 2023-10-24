@@ -1,4 +1,5 @@
 import os
+import pickle
 from datetime import datetime
 from typing import Any, Callable, Optional, List
 
@@ -25,6 +26,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         if file_link is not None and type(file_link) is str:
             file_link = [file_link]
         self.file_link   = file_link
+        self.index_name = index_name
 
         if init is not None:
             self.store_system_message(init, *args, **kwargs)
@@ -32,6 +34,20 @@ class Conversation(SlidingWindowStringConcatMemory):
             for fl in file_link:
                 self.store_file(fl, *args, **kwargs)
         self.indexer = Indexer(index_name=index_name)
+        self._index  = self.indexer()
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        # Remove the unpickleable entries such as the `indexer` attribute because it is not serializable
+        del state['indexer']
+        del state['_index']
+        return state
+
+    def __setstate__(self, state):
+        # Restore instance attributes
+        self.__dict__.update(state)
+        # Add back the attribute that were removed in __getstate__
+        self.indexer = Indexer(index_name=state['index_name'])
         self._index  = self.indexer()
 
     def store_system_message(self, message: str, *args, **kwargs):
@@ -46,6 +62,39 @@ class Conversation(SlidingWindowStringConcatMemory):
             content = file.read()
         val = f"[DATA::{file_path}] <<<\n{str(content)}\n>>>\n"
         self.store(val, *args, **kwargs)
+
+    @staticmethod
+    def save_conversation_state(conversation: "Conversation", path: str) -> None:
+        # Save the conversation object as a pickle file
+        with open(path, 'wb') as handle:
+            pickle.dump(conversation, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    @staticmethod
+    def load_conversation_state(path: str) -> "Conversation":
+        # Check if the file exists and it's not empty
+        if os.path.exists(path):
+            if os.path.getsize(path) <= 0:
+                raise Exception("File is empty.")
+            # Load the conversation object from a pickle file
+            with open(path, 'rb') as handle:
+                conversation_state = pickle.load(handle)
+        else:
+            raise Exception("File does not exist or is empty.")
+
+        # Create a new instance of the `Conversation` class and restore
+        # the state from the saved conversation
+        conversation = Conversation()
+        return conversation.restore(conversation_state)
+
+    def restore(self, conversation_state: "Conversation") -> "Conversation":
+        self._memory = conversation_state._memory
+        self.token_ratio = conversation_state.token_ratio
+        self.auto_print = conversation_state.auto_print
+        self.file_link = conversation_state.file_link
+        self.index_name = conversation_state.index_name
+        self.indexer = conversation_state.indexer
+        self._index  = conversation_state._index
+        return self
 
     def commit(self, target_file: str = None, formatter: Optional[Callable] = None):
         if target_file is not None and type(target_file) is str:
