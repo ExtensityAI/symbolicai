@@ -104,6 +104,7 @@ class MergedCompleter(Completer):
             text.startswith('touch ') or\
             text.startswith('cat ') or\
             text.startswith('mkdir ') or\
+            text.startswith('open ') or\
             text.startswith('./') or\
             text.startswith('~/') or\
             text.startswith('/'):
@@ -247,8 +248,6 @@ def query_language_model(query: str, from_shell=True, *args, **kwargs):
         cmds = query.split('|')
         query = cmds[0]
         files = ' '.join(cmds[1:]).split(' ')
-        # filter out only files
-        files = [f for f in files if os.path.isfile(f)]
         if query.startswith('."') or query.startswith(".'") or query.startswith('.`') or\
             query.startswith('!"') or query.startswith("!'") or query.startswith('!`'):
             func = stateful_conversation

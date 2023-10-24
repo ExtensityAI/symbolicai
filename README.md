@@ -40,6 +40,12 @@ Conceptually, SymbolicAI is a framework that leverages machine learning – spec
     - [*\[Optional\]* Installs](#optional-installs)
   - [🦖 Apps](#-apps)
     - [Shell Command Tool](#shell-command-tool)
+    - [Starting an Interactive Shell](#starting-an-interactive-shell)
+      - [1. Auto-completion](#1-auto-completion)
+      - [2. Query Neuro-Symbolic Model](#2-query-neuro-symbolic-model)
+      - [3. Pipe with Files](#3-pipe-with-files)
+      - [Slicing Operation on Files](#slicing-operation-on-files)
+      - [4. Stateful Conversation](#4-stateful-conversation)
     - [Chatbot](#chatbot)
     - [📦 Package Manager](#-package-manager)
     - [📦 Package Runner](#-package-runner)
@@ -269,6 +275,119 @@ $> symsh "Set-ItemProperty -Path '/Users/myuser' -Name Demo -Value SymbolicAI" -
 
 # :Output:
 # export Demo="SymbolicAI"
+```
+
+### Starting an Interactive Shell
+
+`symsh` is also a regular shell program that interacts with users in the terminal emulation window. It interprets Linux, MacOS, and Windows PowerShell shell commands, and supports ANSI escape sequences.
+
+> [NOTE]: Currently tested and supported for `bash` and `zsh` shells on MacOS.
+
+To enter an interactive shell, simply run without any additional parameters:
+
+```bash
+symsh
+```
+
+The interactive shell uses the `python -m symai.shell` feature and runs on top of your existing terminal.
+
+Within the interactive shell you can use your regular shell commands and additionally use the `symsh` neuro-symbolic commands. The interactive shell supports the following commands:
+
+#### 1. Auto-completion
+`symsh` provides path auto-completion and history auto-completion enhanced by the neuro-symbolic engine. Start typing the path or command, and `symsh` will provide you with relevant suggestions based on your input and command history.
+To trigger a suggestion, press `Tab` or `Ctrl+Space`.
+
+![Demo usage of symsh](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/symsh.png)
+
+#### 2. Query Neuro-Symbolic Model
+`symsh` can interact with a language model. By beginning a command with a special character (`"`, `'`, or `` ` ``), `symsh` will treat the command as a query for a language model.
+
+For instance, to make a query, you can type:
+
+```bash
+"What is the capital of France?"
+
+# :Output:
+# Paris
+```
+
+#### 3. Pipe with Files
+
+The shell command in `symsh` also has the capability to interact with files using the pipe (`|`) operator. It operates like a Unix-like pipe but with a few enhancements due to the neuro-symbolic nature of `symsh`.
+
+Here is the basic usage of the pipe with files:
+
+```bash
+"explain this file" | file_path.txt
+```
+
+This command would instruct the AI to explain the file `file_path.txt` and consider its contents for the conversation.
+
+#### Slicing Operation on Files
+The real power of `symsh` shines through when dealing with large files. `symsh` extends the typical file interaction by allowing users to select specific sections or slices of a file.
+
+To use this feature, you would need to append the desired slices to the filename within square brackets `[]`. The slices should be comma-separated, and you can apply Python's indexing rules. You can specify a single line, a range of lines, or step indexing.
+
+Here are a few examples:
+
+Single line:
+
+```bash
+"analyze this line" | file_path.txt[10]
+```
+
+Range of lines:
+
+```bash
+"analyze these lines" | file_path.txt[10:20]
+```
+
+Step indexing:
+
+```bash
+"analyze every third line in this range" | file_path.txt[10:30:3]
+```
+
+Multi-line indexing:
+
+```bash
+"analyze multiple lines separated by ," | file_path.txt[10:30:3,20,40:50]
+```
+
+The above commands would read and include the specified lines from file `file_path.txt` into the ongoing conversation.
+
+This feature enables you to maintain highly efficient and context-thoughtful conversations with `symsh`, especially useful when dealing with large files where only a subset of content in specific locations within the file is relevant at any given moment.
+
+#### 4. Stateful Conversation
+
+The stateful_conversation feature is used for maintaining a continuing conversation with the language model. To use this feature, you have to start your commands with specific symbols in the shell:
+
+1. Creating a new stateful conversation:
+
+   Use any of these three symbols at the start of your command: `!"`, `!'`, or `` !` ``. This will initialize a new stateful conversation. If there was a previously saved conversation, these commands will overwrite it.
+
+2. Continuing a stateful conversation:
+
+   Use one of these three symbols at the start of your command: `."`, `.'`, or `` .` ``. The command can then be used to continue the most recent stateful conversation. If no previous conversation exists, a new one is created.
+
+Example:
+
+   1. Starting a new conversation: `!"what is your name"`
+   2. Continuing the conversation: `."how old are you"`
+
+These commands can be used in any shell operation. Keep in mind, stateful conversations are saved and can be resumed later. The shell will save the conversation automatically if you type `exit` or `quit` to exit the interactive shell.
+
+Stateful conversation offers the capability to process files as well. If your command contains a pipe (`|`), the shell will treat the text after the pipe as the name of a file to add it to the conversation.
+
+Example:
+```bash
+!"explain this file" | my_file.txt
+```
+
+This command will instruct the AI to explain the file `my_file.txt` and consider its contents in the conversation. Afterwards you can continue the conversation with:
+
+```bash
+."what did you mean with ...?"
 ```
 
 ### Chatbot
