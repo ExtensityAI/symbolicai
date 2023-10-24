@@ -360,9 +360,6 @@ def listen(session: PromptSession, word_comp: WordCompleter):
                 if cmd.strip() == '':
                     continue
 
-                # Append the command to the word completer list
-                word_comp.words.append(cmd)
-
                 if cmd == 'quit' or cmd == 'exit':
                     if stateful_conversation is not None:
                         home_path = os.path.expanduser('~')
@@ -405,7 +402,14 @@ def listen(session: PromptSession, word_comp: WordCompleter):
                 else:
                     run_shell_command(cmd)
 
+                # Append the command to the word completer list
+                word_comp.words.append(cmd)
+
             except KeyboardInterrupt:
+                pass
+
+            except Exception as e:
+                print(e)
                 pass
 
 
