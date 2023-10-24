@@ -24,8 +24,12 @@ from .misc.loader import Loader
 from .extended import Conversation
 from .components import Function
 from .symbol import Symbol
+from .strategy import InvalidRequestErrorRemedyStrategy
 
 logging.getLogger("prompt_toolkit").setLevel(logging.ERROR)
+
+
+except_remedy_strategy = InvalidRequestErrorRemedyStrategy()
 
 
 print = print_formatted_text
@@ -140,7 +144,7 @@ def get_conda_env():
 @bindings.add(Keys.ControlSpace)
 def _(event):
     current_user_input = event.current_buffer.document.text
-    func = Function(SHELL_CONTEXT)
+    func = Function(SHELL_CONTEXT, except_remedy=except_remedy_strategy)
 
     bottom_toolbar = HTML(' <b>[f]</b> Print "f" <b>[x]</b> Abort.')
 
@@ -273,7 +277,7 @@ def query_language_model(query: str, from_shell=True, *args, **kwargs):
             query.startswith('!"') or query.startswith("!'") or query.startswith('!`'):
             func = stateful_conversation
         else:
-            func = Function(SHELL_CONTEXT)
+            func = Function(SHELL_CONTEXT, except_remedy=except_remedy_strategy)
 
     with Loader(desc="Inference ...", end=""):
         msg = func(query, *args, **kwargs)
