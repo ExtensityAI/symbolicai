@@ -44,6 +44,9 @@ A well related and helpful answer with suggested improvements is preferred over 
 """
 
 
+stateful_conversation = None
+
+
 def supports_ansi_escape():
     try:
         os.get_terminal_size(0)
@@ -227,15 +230,38 @@ def get_git_branch():
 
 # query language model
 def query_language_model(query: str, from_shell=True, *args, **kwargs):
+    global stateful_conversation
+    home_path = os.path.expanduser('~')
+    symai_path = os.path.join(home_path, '.symai', '.conversation_state')
+    if (query.startswith('!"') or query.startswith("!'") or query.startswith('!`')):
+        os.makedirs(os.path.dirname(symai_path), exist_ok=True)
+        Conversation.save_conversation_state(Conversation(auto_print=False), symai_path)
+        stateful_conversation = Conversation.load_conversation_state(symai_path)
+    elif (query.startswith('."') or query.startswith(".'") or query.startswith('.`')) and stateful_conversation is None:
+        if not os.path.exists(symai_path):
+            os.makedirs(os.path.dirname(symai_path), exist_ok=True)
+            Conversation.save_conversation_state(Conversation(auto_print=False), symai_path)
+        stateful_conversation = Conversation.load_conversation_state(symai_path)
+
     if '|' in query and from_shell:
         cmds = query.split('|')
         query = cmds[0]
         files = ' '.join(cmds[1:]).split(' ')
         # filter out only files
         files = [f for f in files if os.path.isfile(f)]
-        func = Conversation(file_link=files, auto_print=False)
+        if query.startswith('."') or query.startswith(".'") or query.startswith('.`') or\
+            query.startswith('!"') or query.startswith("!'") or query.startswith('!`'):
+            func = stateful_conversation
+            for fl in files:
+                func.store_file(fl)
+        else:
+            func = Conversation(file_link=files, auto_print=False)
     else:
-        func = Function(SHELL_CONTEXT)
+        if query.startswith('."') or query.startswith(".'") or query.startswith('.`') or\
+            query.startswith('!"') or query.startswith("!'") or query.startswith('!`'):
+            func = stateful_conversation
+        else:
+            func = Function(SHELL_CONTEXT)
 
     with Loader(desc="Inference ...", end=""):
         msg = func(query, *args, **kwargs)
@@ -322,10 +348,14 @@ def listen(session: PromptSession, word_comp: WordCompleter):
                 word_comp.words.append(cmd)
 
                 if cmd == 'quit' or cmd == 'exit':
+                    if stateful_conversation is not None:
+                        home_path = os.path.expanduser('~')
+                        symai_path = os.path.join(home_path, '.symai', '.conversation_state')
+                        Conversation.save_conversation_state(stateful_conversation, symai_path)
                     os._exit(0)
-                elif cmd.startswith('"') or\
-                     cmd.startswith("'") or\
-                     cmd.startswith('`') or\
+                elif cmd.startswith('"') or cmd.startswith('."') or cmd.startswith('!"') or\
+                     cmd.startswith("'") or cmd.startswith(".'") or cmd.startswith("!'") or\
+                     cmd.startswith('`') or cmd.startswith('.`') or cmd.startswith('!`') or\
                      '...' in cmd:
                     query_language_model(cmd)
                 elif cmd.startswith('cd') or cmd.startswith('mkdir'):
