@@ -286,7 +286,7 @@ $> symsh "Set-ItemProperty -Path '/Users/myuser' -Name Demo -Value SymbolicAI" -
 To enter an interactive shell, simply run without any additional parameters:
 
 ```bash
-symsh
+$> symsh
 ```
 
 The interactive shell uses the `python -m symai.shell` feature and runs on top of your existing terminal.
@@ -305,7 +305,7 @@ To trigger a suggestion, press `Tab` or `Ctrl+Space`.
 For instance, to make a query, you can type:
 
 ```bash
-"What is the capital of France?"
+$> "What is the capital of France?"
 
 # :Output:
 # Paris
@@ -318,7 +318,7 @@ The shell command in `symsh` also has the capability to interact with files usin
 Here is the basic usage of the pipe with files:
 
 ```bash
-"explain this file" | file_path.txt
+$> "explain this file" | file_path.txt
 ```
 
 This command would instruct the AI to explain the file `file_path.txt` and consider its contents for the conversation.
@@ -333,25 +333,25 @@ Here are a few examples:
 Single line:
 
 ```bash
-"analyze this line" | file_path.txt[10]
+$> "analyze this line" | file_path.txt[10]
 ```
 
 Range of lines:
 
 ```bash
-"analyze these lines" | file_path.txt[10:20]
+$> "analyze these lines" | file_path.txt[10:20]
 ```
 
 Step indexing:
 
 ```bash
-"analyze every third line in this range" | file_path.txt[10:30:3]
+$> "analyze every third line in this range" | file_path.txt[10:30:3]
 ```
 
 Multi-line indexing:
 
 ```bash
-"analyze multiple lines separated by ," | file_path.txt[10:30:3,20,40:50]
+$> "analyze multiple lines separated by ," | file_path.txt[10:30:3,20,40:50]
 ```
 
 The above commands would read and include the specified lines from file `file_path.txt` into the ongoing conversation.
@@ -381,13 +381,13 @@ Stateful conversation offers the capability to process files as well. If your co
 
 Example:
 ```bash
-!"explain this file" | my_file.txt
+$> !"explain this file" | my_file.txt
 ```
 
 This command will instruct the AI to explain the file `my_file.txt` and consider its contents in the conversation. Afterwards you can continue the conversation with:
 
 ```bash
-."what did you mean with ...?"
+$> ."what did you mean with ...?"
 ```
 
 ### Chatbot
@@ -395,7 +395,7 @@ This command will instruct the AI to explain the file `my_file.txt` and consider
 You can engage in a basic conversation with `Symbia`, a chatbot that uses `SymbolicAI` to detect the content of your request and switch between different contextual modes to answer your questions. These modes include search engines, speech engines, and more. To start the chatbot, simply run:
 
 ```bash
-symchat
+$> symchat
 ```
 
 This will launch a chatbot interface:
@@ -439,7 +439,7 @@ The Package Runner is a command-line tool that allows you to run packages via al
 To use the Package Runner, you can run the following command:
 
 ```bash
-symrun <alias> [<args>] | <command> <alias> [<package>]
+$> symrun <alias> [<args>] | <command> <alias> [<package>]
 ```
 
 The most commonly used Package Runner commands are:
@@ -499,7 +499,7 @@ The Package Initializer is a command-line tool provided that allows developers t
 To use the Package Initializer, you can run the following command:
 
 ```bash
-symdev c <username>/<repo_name>
+$> symdev c <username>/<repo_name>
 ```
 
 The most commonly used Package Initializer command is:
