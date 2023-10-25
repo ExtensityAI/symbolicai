@@ -62,8 +62,9 @@ def supports_ansi_escape():
 class PathCompleter(Completer):
     def get_completions(self, document, complete_event):
         complete_word = document.get_word_before_cursor(WORD=True)
-        if complete_word.startswith('~/'):
-            complete_word = complete_word.replace('~/', os.path.expanduser('~'))
+        sep = os.path.sep
+        if complete_word.startswith(f'~{sep}'):
+            complete_word = complete_word.replace(f'~{sep}', os.path.expanduser('~'))
 
         files = glob.glob(complete_word + '*')
 
@@ -90,7 +91,8 @@ class PathCompleter(Completer):
                 files_.append(file)
 
         for d in dirs_:
-            yield Completion(d + '/', start_position=-start_position,
+            sep = os.path.sep
+            yield Completion(d + sep, start_position=-start_position,
                              style='class:path-completion',
                              selected_style='class:path-completion-selected')
 
@@ -116,12 +118,20 @@ class MergedCompleter(Completer):
 
     def get_completions(self, document, complete_event):
         text = document.text.lstrip()
+        sep = os.path.sep
         if text.startswith('cd ') or\
             text.startswith('ls ') or\
             text.startswith('touch ') or\
             text.startswith('cat ') or\
             text.startswith('mkdir ') or\
             text.startswith('open ') or\
+            text.startswith('rm ') or\
+            text.startswith(r'.\\') or\
+            text.startswith(r'~\\') or\
+            text.startswith(r'\\') or\
+            text.startswith('.\\') or\
+            text.startswith('~\\') or\
+            text.startswith('\\') or\
             text.startswith('./') or\
             text.startswith('~/') or\
             text.startswith('/'):
@@ -241,8 +251,13 @@ def load_history(home_path=os.path.expanduser('~'), history_file=f'.bash_history
 
 # Function to check if current directory is a git directory
 def get_git_branch():
-    if os.path.exists('.git') or os.system('git rev-parse > /dev/null 2>&1') == 0:
-        return subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).strip().decode('utf-8')
+    try:
+        git_process = subprocess.Popen(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = git_process.communicate()
+        if git_process.returncode == 0:
+            return stdout.strip().decode('utf-8')
+    except FileNotFoundError:
+        pass
     return None
 
 
@@ -290,9 +305,10 @@ def query_language_model(query: str, from_shell=True, *args, **kwargs):
 def run_shell_command(cmd: str):
     # Execute the command
     try:
+        shell_true = not os.name == 'nt'
         res = subprocess.run(cmd,
-                            shell=True,
-                            stderr=subprocess.PIPE)
+                             shell=shell_true,
+                             stderr=subprocess.PIPE)
     except FileNotFoundError as e:
         print(e)
         return
@@ -306,7 +322,9 @@ def run_shell_command(cmd: str):
     # If command not found, then try to query language model
     else:
         msg = Symbol(cmd) @ f'\n{str(res)}'
-        if not ('command not found' in str(res)):
+        if 'command not found' in str(res) or 'not recognized as an internal or external command' in str(res):
+            print(res.stderr.decode('utf-8'))
+        else:
             stderr = res.stderr
             if stderr:
                 rsp = stderr.decode('utf-8')
@@ -316,8 +334,9 @@ def run_shell_command(cmd: str):
                     try:
                         cmd = cmd.split('usage: ')[-1].split(' ')[0]
                         # get man page result for command
+                        shell_true = not os.name == 'nt'
                         res = subprocess.run('man -P cat %s' % cmd,
-                                             shell=True,
+                                             shell=shell_true,
                                              stdout=subprocess.PIPE)
                         stdout = res.stdout
                         if stdout:
@@ -338,15 +357,16 @@ def listen(session: PromptSession, word_comp: WordCompleter):
                 conda_env = get_conda_env()
                 # get directory from the shell
                 cur_working_dir = os.getcwd()
-                if cur_working_dir.startswith('/'):
+                sep = os.path.sep
+                if cur_working_dir.startswith(sep):
                     cur_working_dir = cur_working_dir.replace(os.path.expanduser('~'), '~')
-                paths = cur_working_dir.split('/')
-                prev_paths = '/'.join(paths[:-1])
+                paths = cur_working_dir.split(sep)
+                prev_paths = sep.join(paths[:-1])
                 last_path = paths[-1]
 
                 # Format the prompt
                 if len(paths) > 1:
-                    cur_working_dir = f'{prev_paths}/<b>{last_path}</b>'
+                    cur_working_dir = f'{prev_paths}{sep}<b>{last_path}</b>'
                 else:
                     cur_working_dir = f'<b>{last_path}</b>'
 
@@ -366,17 +386,22 @@ def listen(session: PromptSession, word_comp: WordCompleter):
                         symai_path = os.path.join(home_path, '.symai', '.conversation_state')
                         Conversation.save_conversation_state(stateful_conversation, symai_path)
                     os._exit(0)
+
                 elif cmd.startswith('"') or cmd.startswith('."') or cmd.startswith('!"') or\
                      cmd.startswith("'") or cmd.startswith(".'") or cmd.startswith("!'") or\
                      cmd.startswith('`') or cmd.startswith('.`') or cmd.startswith('!`') or\
                      '...' in cmd:
                     query_language_model(cmd)
-                elif cmd.startswith('cd') or cmd.startswith('mkdir'):
+
+                elif cmd.startswith('cd'):
                     try:
                         # replace ~ with home directory
                         cmd = cmd.replace('~', os.path.expanduser('~'))
                         # Change directory
-                        os.chdir(cmd.split(' ')[1])
+                        path = ' '.join(cmd.split(' ')[1:])
+                        if path.endswith(sep):
+                            path = path[:-1]
+                        os.chdir(path)
                     except FileNotFoundError as e:
                         print(e)
                         continue
@@ -398,7 +423,11 @@ def listen(session: PromptSession, word_comp: WordCompleter):
                         continue
 
                 elif cmd.startswith('ll'):
-                    run_shell_command('ls -l')
+                    if os.name == 'nt':
+                        run_shell_command('dir')
+                    else:
+                        run_shell_command('ls -l')
+
                 else:
                     run_shell_command(cmd)
 
@@ -414,9 +443,6 @@ def listen(session: PromptSession, word_comp: WordCompleter):
 
 
 def run():
-    if not supports_ansi_escape():
-        print("Unfortunately, your terminal does not support ANSI escape sequences.")
-
     # Load history
     history, history_strings = load_history()
 
