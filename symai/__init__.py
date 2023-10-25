@@ -25,7 +25,7 @@ def _start_symai():
     # CHECK IF THE USER HAS A CONFIGURATION FILE IN THE CURRENT WORKING DIRECTORY (DEBUGGING MODE)
     # *==============================================================================================================*
     if os.path.exists(Path.cwd() / 'symai.config.json'):
-        logging.warn('Using the configuration file in the current working directory.')
+        logging.debug('Using the configuration file in the current working directory.')
         _ai_config_path_ = Path.cwd() / 'symai.config.json'
 
     else:
