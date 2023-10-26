@@ -1,3 +1,4 @@
+import re
 import pygments
 from pygments.lexers.python import PythonLexer
 from pygments.lexers.javascript import JavascriptLexer
@@ -20,7 +21,7 @@ class ConsoleStyle(object):
         'success': 'ansigreen',
         'debug':   'ansigray',
         'custom':  'custom',
-        'code': 'code',
+        'code':    'code',
         'default': '',
     }
 
@@ -40,37 +41,35 @@ class ConsoleStyle(object):
     def print(self, message):
         message = str(message)
         style = self.style_types.get(self.style_type, self.style_types['default'])
-        # check if message is code
-        if style == self.style_types['code'] or any([lang in message.lower() for lang in ['python', 'javascript', 'typescript', 'c++', 'bash', 'shell']]):
-            # select lexer
-            if 'python' in message.lower():
-                lexer = PythonLexer()
-            elif 'javascript' in message.lower() or 'typescript' in message.lower():
-                lexer = JavascriptLexer()
-            elif 'c++' in message.lower():
-                lexer = CppLexer()
-            else:
-                lexer = BashLexer()
 
-            if '```' in message:
-                messages = message.split('```')
-                for i, msg in enumerate(messages):
-                    if i % 2 == 0:
-                        print(msg)
+        if style == self.style_types['code']:
+            # Split the message using ``` as delimiter
+            segments = re.split(r'(```)', message)
+            is_code = False
+            for segment in segments:
+                if segment == '```':
+                    is_code = not is_code
+                    continue
+                if is_code:
+                    # Determine lexer
+                    if 'python' in segment.lower():
+                        lexer = PythonLexer()
+                    elif 'javascript' in segment.lower() or 'typescript' in segment.lower():
+                        lexer = JavascriptLexer()
+                    elif 'c++' in segment.lower():
+                        lexer = CppLexer()
                     else:
-                        print('```', end='')
-                        tokens = list(pygments.lex(msg, lexer=lexer))
-                        print(PygmentsTokens(tokens))
-                        print('```')
-
-            else:
-                tokens = list(pygments.lex(message, lexer=lexer))
-                print(PygmentsTokens(tokens))
-            return
-
-        if style == self.style_types['default']:
+                        lexer = BashLexer()
+                    # Print highlighted code
+                    tokens = list(pygments.lex("```" + segment + "```", lexer))
+                    print(PygmentsTokens(tokens), end='')
+                else:
+                    # Print the segment normally
+                    print(segment, end='\n')
+        elif style == self.style_types['default']:
             print(message)
         elif style == self.style_types['custom']:
             print(HTML(f'<{self.color}>{message}</{self.color}>'))
         else:
             print(HTML(f'<{style}>{message}</{style}>'))
+

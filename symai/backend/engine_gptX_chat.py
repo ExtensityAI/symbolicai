@@ -37,7 +37,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
 
     def compute_remaining_tokens(self, prompts: dict) -> int:
         val = self.compute_required_tokens(prompts)
-        return int((self.max_tokens - val) * 0.98)
+        return int((self.max_tokens - val) * 0.95) #@TODO: this 0.95 fucks us in the ass; find better strategy!
 
     def forward(self, prompts: List[str], *args, **kwargs) -> List[str]:
         prompts_            = prompts
