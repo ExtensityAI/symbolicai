@@ -126,6 +126,7 @@ class MergedCompleter(Completer):
             text.startswith('mkdir ') or\
             text.startswith('open ') or\
             text.startswith('rm ') or\
+            text.startswith('git ') or\
             text.startswith(r'.\\') or\
             text.startswith(r'~\\') or\
             text.startswith(r'\\') or\
