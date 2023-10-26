@@ -1,30 +1,29 @@
-import os
-import subprocess
 import glob
-import time
-import signal
 import logging
+import os
+import signal
+import subprocess
+import time
 from typing import Iterable
-from pygments.lexers.shell import BashLexer
-from prompt_toolkit.lexers import PygmentsLexer
-from prompt_toolkit.completion import Completer, Completion
-from prompt_toolkit import PromptSession
+
+from prompt_toolkit import HTML, PromptSession, print_formatted_text
+from prompt_toolkit.completion import Completer, Completion, WordCompleter
 from prompt_toolkit.history import History
-from prompt_toolkit.completion import WordCompleter
-from prompt_toolkit.shortcuts import CompleteStyle
 from prompt_toolkit.key_binding import KeyBindings
-from prompt_toolkit.styles import Style
 from prompt_toolkit.keys import Keys
-from prompt_toolkit import HTML
+from prompt_toolkit.lexers import PygmentsLexer
 from prompt_toolkit.patch_stdout import patch_stdout
-from prompt_toolkit.shortcuts import ProgressBar
-from prompt_toolkit import print_formatted_text
+from prompt_toolkit.shortcuts import CompleteStyle, ProgressBar
+from prompt_toolkit.styles import Style
+from pygments.lexers.shell import BashLexer
+
+from .backend.settings import SHELL_CONFIG
+from .components import Function
+from .extended import Conversation
 from .misc.console import ConsoleStyle
 from .misc.loader import Loader
-from .extended import Conversation
-from .components import Function
-from .symbol import Symbol
 from .strategy import InvalidRequestErrorRemedyStrategy
+from .symbol import Symbol
 
 logging.getLogger("prompt_toolkit").setLevel(logging.ERROR)
 
@@ -118,7 +117,6 @@ class MergedCompleter(Completer):
 
     def get_completions(self, document, complete_event):
         text = document.text.lstrip()
-        sep = os.path.sep
         if text.startswith('cd ') or\
             text.startswith('ls ') or\
             text.startswith('touch ') or\
@@ -243,7 +241,7 @@ class FileHistory(History):
 
 
 # Defining commands history
-def load_history(home_path=os.path.expanduser('~'), history_file=f'.bash_history'):
+def load_history(home_path=os.path.expanduser('~'), history_file='.bash_history'):
     history_file_path = os.path.join(home_path, history_file)
     history = FileHistory(history_file_path)
     return history, list(history.load_history_strings())
@@ -349,7 +347,7 @@ def run_shell_command(cmd: str, prev=None):
                         if stdout:
                             rsp = stdout.decode('utf-8')[:500]
                             msg = msg @ f"\n{rsp}"
-                    except Exception as e:
+                    except Exception:
                         pass
 
             query_language_model(msg, from_shell=False)
@@ -479,18 +477,8 @@ def run():
     # Merge completers
     merged_completer = MergedCompleter(custom_completer, word_comp)
 
-    style = Style.from_dict({
-        "completion-menu.completion.current": "bg:#323232 #000080",  # Change to your preference
-        "completion-menu.completion": "bg:#800080 #000080",
-        "scrollbar.background": "bg:#222222",
-        "scrollbar.button": "bg:#776677",
-        "history-completion": "bg:#323232 #efefef",
-        "path-completion": "bg:#800080 #efefef",
-        "file-completion": "bg:#9040b2 #efefef",
-        "history-completion-selected": "bg:#efefef #000000",
-        "path-completion-selected": "bg:#efefef #800080",
-        "file-completion-selected": "bg:#efefef #9040b2",
-    })
+    # Load style
+    style = Style.from_dict(SHELL_CONFIG)
 
     # Session for the auto-completion
     session = PromptSession(history=history,
