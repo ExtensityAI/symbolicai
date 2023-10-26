@@ -16,7 +16,7 @@ __root_dir__  = Path.home() / '.symai'
 
 def _start_symai():
     global _symai_config_
-    global _shell_config_
+    global _symsh_config_
 
     # CREATE THE SYMAI FOLDER IF IT DOES NOT EXIST YET
     # *==============================================================================================================*
@@ -25,9 +25,9 @@ def _start_symai():
 
     # CREATE THE SHELL CONFIGURATION FILE IF IT DOES NOT EXIST YET
     # *==============================================================================================================*
-    _shell_config_path_ = __root_dir__ / 'shell.config.json'
-    if not os.path.exists(_shell_config_path_):
-        with open(_shell_config_path_, "w") as f:
+    _symsh_config_path_ = __root_dir__ / 'symsh.config.json'
+    if not os.path.exists(_symsh_config_path_):
+        with open(_symsh_config_path_, "w") as f:
             json.dump({
                 "completion-menu.completion.current": "bg:#323232 #212121",
                 "completion-menu.completion":         "bg:#800080 #212121",
@@ -139,8 +139,8 @@ def _start_symai():
 
     # LOAD THE SHELL CONFIGURATION FILE
     # *==========================================================================================================*
-    with open(_shell_config_path_, 'r') as f:
-        _shell_config_ = json.load(f)
+    with open(_symsh_config_path_, 'r') as f:
+        _symsh_config_ = json.load(f)
 
     if 'custom' not in _symai_config_['NEUROSYMBOLIC_ENGINE_MODEL'].lower() and \
                       (_symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY'] is None or len(_symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY']) == 0):
@@ -149,7 +149,7 @@ def _start_symai():
 
     import symai.backend.settings as settings
     settings.SYMAI_CONFIG = _symai_config_
-    settings.SHELL_CONFIG = _shell_config_
+    settings.SYMSH_CONFIG = _symsh_config_
 
 
 _start_symai()
