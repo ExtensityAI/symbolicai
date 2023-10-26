@@ -17,7 +17,7 @@ from prompt_toolkit.shortcuts import CompleteStyle, ProgressBar
 from prompt_toolkit.styles import Style
 from pygments.lexers.shell import BashLexer
 
-from .backend.settings import SHELL_CONFIG
+from .backend.settings import SYMSH_CONFIG
 from .components import Function
 from .extended import Conversation
 from .misc.console import ConsoleStyle
@@ -478,7 +478,7 @@ def run():
     merged_completer = MergedCompleter(custom_completer, word_comp)
 
     # Load style
-    style = Style.from_dict(SHELL_CONFIG)
+    style = Style.from_dict(SYMSH_CONFIG)
 
     # Session for the auto-completion
     session = PromptSession(history=history,
