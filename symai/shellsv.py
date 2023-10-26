@@ -262,7 +262,7 @@ def get_git_branch():
 
 
 # query language model
-def query_language_model(query: str, from_shell=True, *args, **kwargs):
+def query_language_model(query: str, from_shell=True, res=None, *args, **kwargs):
     global stateful_conversation
     home_path = os.path.expanduser('~')
     symai_path = os.path.join(home_path, '.symai', '.conversation_state')
@@ -295,14 +295,21 @@ def query_language_model(query: str, from_shell=True, *args, **kwargs):
             func = Function(SHELL_CONTEXT, except_remedy=except_remedy_strategy)
 
     with Loader(desc="Inference ...", end=""):
+        if res is not None:
+            query = f'{str(res)}\n' @ Symbol(query)
         msg = func(query, *args, **kwargs)
 
     with ConsoleStyle('code') as console:
         console.print(msg)
 
+    return msg
+
 
 # run shell command
-def run_shell_command(cmd: str):
+def run_shell_command(cmd: str, prev=None):
+    if prev is not None:
+        cmd = prev + ' && ' + cmd
+
     # Execute the command
     try:
         shell_true = not os.name == 'nt'
@@ -348,6 +355,67 @@ def run_shell_command(cmd: str):
             query_language_model(msg, from_shell=False)
 
 
+def is_llm_request(cmd: str):
+    return cmd.startswith('"') or cmd.startswith('."') or cmd.startswith('!"') or\
+            cmd.startswith("'") or cmd.startswith(".'") or cmd.startswith("!'") or\
+            cmd.startswith('`') or cmd.startswith('.`') or cmd.startswith('!`')
+
+
+def process_command(cmd: str, res=None):
+    # check if commands are chained
+    if '&&' in cmd:
+        cmds = cmd.split('&&')
+        for c in cmds:
+            res = process_command(c.strip(), res=res)
+        return res
+
+    if '|' in cmd and not is_llm_request(cmd):
+        return run_shell_command(cmd, prev=res)
+
+    # check command type
+    if  is_llm_request(cmd) or '...' in cmd:
+        return query_language_model(cmd, res=res)
+
+    elif cmd.startswith('cd'):
+        try:
+            # replace ~ with home directory
+            cmd = cmd.replace('~', os.path.expanduser('~'))
+            # Change directory
+            sep = os.path.sep
+            path = ' '.join(cmd.split(' ')[1:])
+            if path.endswith(sep):
+                path = path[:-1]
+            return os.chdir(path)
+        except FileNotFoundError as e:
+            print(e)
+            return e
+        except PermissionError as e:
+            print(e)
+            return e
+
+    elif os.path.isdir(cmd):
+        try:
+            # replace ~ with home directory
+            cmd = cmd.replace('~', os.path.expanduser('~'))
+            # Change directory
+            os.chdir(cmd)
+        except FileNotFoundError as e:
+            print(e)
+            return e
+        except PermissionError as e:
+            print(e)
+            return e
+
+    elif cmd.startswith('ll'):
+        if os.name == 'nt':
+            return run_shell_command('dir', prev=res)
+        else:
+            return run_shell_command('ls -l', prev=res)
+
+    else:
+        return run_shell_command(cmd, prev=res)
+
+
 # Function to listen for user input and execute commands
 def listen(session: PromptSession, word_comp: WordCompleter):
     with patch_stdout():
@@ -386,50 +454,8 @@ def listen(session: PromptSession, word_comp: WordCompleter):
                         symai_path = os.path.join(home_path, '.symai', '.conversation_state')
                         Conversation.save_conversation_state(stateful_conversation, symai_path)
                     os._exit(0)
-
-                elif cmd.startswith('"') or cmd.startswith('."') or cmd.startswith('!"') or\
-                     cmd.startswith("'") or cmd.startswith(".'") or cmd.startswith("!'") or\
-                     cmd.startswith('`') or cmd.startswith('.`') or cmd.startswith('!`') or\
-                     '...' in cmd:
-                    query_language_model(cmd)
-
-                elif cmd.startswith('cd'):
-                    try:
-                        # replace ~ with home directory
-                        cmd = cmd.replace('~', os.path.expanduser('~'))
-                        # Change directory
-                        path = ' '.join(cmd.split(' ')[1:])
-                        if path.endswith(sep):
-                            path = path[:-1]
-                        os.chdir(path)
-                    except FileNotFoundError as e:
-                        print(e)
-                        continue
-                    except PermissionError as e:
-                        print(e)
-                        continue
-
-                elif os.path.isdir(cmd):
-                    try:
-                        # replace ~ with home directory
-                        cmd = cmd.replace('~', os.path.expanduser('~'))
-                        # Change directory
-                        os.chdir(cmd)
-                    except FileNotFoundError as e:
-                        print(e)
-                        continue
-                    except PermissionError as e:
-                        print(e)
-                        continue
-
-                elif cmd.startswith('ll'):
-                    if os.name == 'nt':
-                        run_shell_command('dir')
-                    else:
-                        run_shell_command('ls -l')
-
                 else:
-                    run_shell_command(cmd)
+                    process_command(cmd)
 
                 # Append the command to the word completer list
                 word_comp.words.append(cmd)
