@@ -380,7 +380,7 @@ def listen(session: PromptSession, word_comp: WordCompleter):
                 if cmd.strip() == '':
                     continue
 
-                if cmd == 'quit' or cmd == 'exit':
+                if cmd == 'quit' or cmd == 'exit' or cmd == 'q':
                     if stateful_conversation is not None:
                         home_path = os.path.expanduser('~')
                         symai_path = os.path.join(home_path, '.symai', '.conversation_state')
