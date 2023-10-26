@@ -1407,6 +1407,7 @@ This project draws inspiration from the following works, among others:
 * [Search and Reasoning in Problem Solving](https://www.sciencedirect.com/science/article/abs/pii/S0004370283800034)
 * [The Algebraic Theory of Context-Free Languages](http://www-igm.univ-mlv.fr/~berstel/Mps/Travaux/A/1963-7ChomskyAlgebraic.pdf)
 * [Neural Networks and the Chomsky Hierarchy](https://arxiv.org/abs/2207.02098)
+* [Binding Language Models in Symbolic Languages](https://arxiv.org/abs/2210.02875)
 * [Tracr: Compiled Transformers as a Laboratory for Interpretability](https://arxiv.org/abs/2301.05062)
 * [How can computers get common sense?](https://www.science.org/doi/10.1126/science.217.4566.1237)
 * [Artificial Intelligence: A Modern Approach](http://aima.cs.berkeley.edu/)
