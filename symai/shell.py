@@ -118,6 +118,8 @@ def run() -> None:
                         help='add more context to the generated command.')
     parser.add_argument('--exec', dest='exec', default=False, required=False, action=argparse.BooleanOptionalAction,
                         help='execute command after creation (ATTENTION: Executing a generated command without verification may be risky!).')
+    parser.add_argument('--auto', dest='auto', default=False, required=False, action=argparse.BooleanOptionalAction,
+                        help='query the the LLM if a command resulted unsuccessfully.')
 
     args = parser.parse_args()
     process_query(args)
