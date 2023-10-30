@@ -1,30 +1,31 @@
-import os
-import subprocess
 import glob
-import time
-import signal
 import logging
+import os
+import signal
+import subprocess
+import time
 from typing import Iterable
-from pygments.lexers.shell import BashLexer
-from prompt_toolkit.lexers import PygmentsLexer
-from prompt_toolkit.completion import Completer, Completion
-from prompt_toolkit import PromptSession
+
+from prompt_toolkit import HTML, PromptSession, print_formatted_text
+from prompt_toolkit.completion import Completer, Completion, WordCompleter
 from prompt_toolkit.history import History
-from prompt_toolkit.completion import WordCompleter
-from prompt_toolkit.shortcuts import CompleteStyle
 from prompt_toolkit.key_binding import KeyBindings
-from prompt_toolkit.styles import Style
 from prompt_toolkit.keys import Keys
-from prompt_toolkit import HTML
+from prompt_toolkit.lexers import PygmentsLexer
 from prompt_toolkit.patch_stdout import patch_stdout
-from prompt_toolkit.shortcuts import ProgressBar
-from prompt_toolkit import print_formatted_text
+from prompt_toolkit.shortcuts import CompleteStyle, ProgressBar
+from prompt_toolkit.styles import Style
+from pygments.lexers.shell import BashLexer
+
+from .backend.settings import SYMSH_CONFIG
+from .components import Function
+from .extended import Conversation
 from .misc.console import ConsoleStyle
 from .misc.loader import Loader
-from .extended import Conversation
-from .components import Function
-from .symbol import Symbol
 from .strategy import InvalidRequestErrorRemedyStrategy
+from .symbol import Symbol
+from .extended import DocumentRetriever
+
 
 logging.getLogger("prompt_toolkit").setLevel(logging.ERROR)
 
@@ -118,7 +119,6 @@ class MergedCompleter(Completer):
 
     def get_completions(self, document, complete_event):
         text = document.text.lstrip()
-        sep = os.path.sep
         if text.startswith('cd ') or\
             text.startswith('ls ') or\
             text.startswith('touch ') or\
@@ -127,6 +127,7 @@ class MergedCompleter(Completer):
             text.startswith('open ') or\
             text.startswith('rm ') or\
             text.startswith('git ') or\
+            text.startswith(r'#') or\
             text.startswith(r'.\\') or\
             text.startswith(r'~\\') or\
             text.startswith(r'\\') or\
@@ -244,7 +245,7 @@ class FileHistory(History):
 
 
 # Defining commands history
-def load_history(home_path=os.path.expanduser('~'), history_file=f'.bash_history'):
+def load_history(home_path=os.path.expanduser('~'), history_file='.bash_history'):
     history_file_path = os.path.join(home_path, history_file)
     history = FileHistory(history_file_path)
     return history, list(history.load_history_strings())
@@ -307,7 +308,7 @@ def query_language_model(query: str, from_shell=True, res=None, *args, **kwargs)
 
 
 # run shell command
-def run_shell_command(cmd: str, prev=None):
+def run_shell_command(cmd: str, prev=None, auto_query_on_error: bool=False):
     if prev is not None:
         cmd = prev + ' && ' + cmd
 
@@ -334,7 +335,7 @@ def run_shell_command(cmd: str, prev=None):
             print(res.stderr.decode('utf-8'))
         else:
             stderr = res.stderr
-            if stderr:
+            if stderr and auto_query_on_error:
                 rsp = stderr.decode('utf-8')
                 print(rsp)
                 msg = msg @ f"\n{rsp}"
@@ -350,10 +351,10 @@ def run_shell_command(cmd: str, prev=None):
                         if stdout:
                             rsp = stdout.decode('utf-8')[:500]
                             msg = msg @ f"\n{rsp}"
-                    except Exception as e:
+                    except Exception:
                         pass
 
-            query_language_model(msg, from_shell=False)
+                query_language_model(msg, from_shell=False)
 
 
 def is_llm_request(cmd: str):
@@ -362,7 +363,7 @@ def is_llm_request(cmd: str):
             cmd.startswith('`') or cmd.startswith('.`') or cmd.startswith('!`')
 
 
-def process_command(cmd: str, res=None):
+def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
     # check if commands are chained
     if '&&' in cmd:
         cmds = cmd.split('&&')
@@ -371,11 +372,16 @@ def process_command(cmd: str, res=None):
         return res
 
     if '|' in cmd and not is_llm_request(cmd):
-        return run_shell_command(cmd, prev=res)
+        return run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
 
     # check command type
     if  is_llm_request(cmd) or '...' in cmd:
         return query_language_model(cmd, res=res)
+
+    elif cmd.startswith('#'):
+        path = cmd[1:]
+        retreiver = DocumentRetriever(file_path=path, index_name=path)
+        return None
 
     elif cmd.startswith('cd'):
         try:
@@ -409,16 +415,16 @@ def process_command(cmd: str, res=None):
 
     elif cmd.startswith('ll'):
         if os.name == 'nt':
-            return run_shell_command('dir', prev=res)
+            return run_shell_command('dir', prev=res, auto_query_on_error=auto_query_on_error)
         else:
-            return run_shell_command('ls -l', prev=res)
+            return run_shell_command('ls -l', prev=res, auto_query_on_error=auto_query_on_error)
 
     else:
-        return run_shell_command(cmd, prev=res)
+        return run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
 
 
 # Function to listen for user input and execute commands
-def listen(session: PromptSession, word_comp: WordCompleter):
+def listen(session: PromptSession, word_comp: WordCompleter, auto_query_on_error: bool=False):
     with patch_stdout():
         while True:
             try:
@@ -456,7 +462,7 @@ def listen(session: PromptSession, word_comp: WordCompleter):
                         Conversation.save_conversation_state(stateful_conversation, symai_path)
                     os._exit(0)
                 else:
-                    process_command(cmd)
+                    process_command(cmd, auto_query_on_error=auto_query_on_error)
 
                 # Append the command to the word completer list
                 word_comp.words.append(cmd)
@@ -469,7 +475,7 @@ def listen(session: PromptSession, word_comp: WordCompleter):
                 pass
 
 
-def run():
+def run(auto_query_on_error=False):
     # Load history
     history, history_strings = load_history()
 
@@ -480,18 +486,8 @@ def run():
     # Merge completers
     merged_completer = MergedCompleter(custom_completer, word_comp)
 
-    style = Style.from_dict({
-        "completion-menu.completion.current": "bg:#323232 #000080",  # Change to your preference
-        "completion-menu.completion": "bg:#800080 #000080",
-        "scrollbar.background": "bg:#222222",
-        "scrollbar.button": "bg:#776677",
-        "history-completion": "bg:#323232 #efefef",
-        "path-completion": "bg:#800080 #efefef",
-        "file-completion": "bg:#9040b2 #efefef",
-        "history-completion-selected": "bg:#efefef #000000",
-        "path-completion-selected": "bg:#efefef #800080",
-        "file-completion-selected": "bg:#efefef #9040b2",
-    })
+    # Load style
+    style = Style.from_dict(SYMSH_CONFIG)
 
     # Session for the auto-completion
     session = PromptSession(history=history,
@@ -501,7 +497,7 @@ def run():
                             style=style,
                             key_bindings=bindings)
 
-    listen(session, word_comp)
+    listen(session, word_comp, auto_query_on_error)
 
 
 if __name__ == '__main__':

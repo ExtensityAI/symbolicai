@@ -282,6 +282,7 @@ $> symsh "Set-ItemProperty -Path '/Users/myuser' -Name Demo -Value SymbolicAI" -
 `symsh` is also a regular shell program that interacts with users in the terminal emulation window. It interprets Linux, MacOS, and Windows PowerShell shell commands, and supports ANSI escape sequences.
 
 > [NOTE]: Currently tested and supported for `bash` and `zsh` shells on MacOS.
+> [NOTE]: Because the colors for the default style is highly dependent on whether the theme is light or dark, they may not be displayed correctly in some terminals. You can change the default style to better fit your needs by modifying the `symsh.config.json` file in the `.symai` directory in your home directory (`~/.symai/symsh.config.json`).
 
 To enter an interactive shell, simply run without any additional parameters:
 
