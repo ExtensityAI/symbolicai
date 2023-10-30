@@ -24,6 +24,8 @@ from .misc.console import ConsoleStyle
 from .misc.loader import Loader
 from .strategy import InvalidRequestErrorRemedyStrategy
 from .symbol import Symbol
+from .extended import DocumentRetriever
+
 
 logging.getLogger("prompt_toolkit").setLevel(logging.ERROR)
 
@@ -124,6 +126,8 @@ class MergedCompleter(Completer):
             text.startswith('mkdir ') or\
             text.startswith('open ') or\
             text.startswith('rm ') or\
+            text.startswith('git ') or\
+            text.startswith(r'#') or\
             text.startswith(r'.\\') or\
             text.startswith(r'~\\') or\
             text.startswith(r'\\') or\
@@ -304,7 +308,7 @@ def query_language_model(query: str, from_shell=True, res=None, *args, **kwargs)
 
 
 # run shell command
-def run_shell_command(cmd: str, prev=None):
+def run_shell_command(cmd: str, prev=None, auto_query_on_error: bool=False):
     if prev is not None:
         cmd = prev + ' && ' + cmd
 
@@ -331,7 +335,7 @@ def run_shell_command(cmd: str, prev=None):
             print(res.stderr.decode('utf-8'))
         else:
             stderr = res.stderr
-            if stderr:
+            if stderr and auto_query_on_error:
                 rsp = stderr.decode('utf-8')
                 print(rsp)
                 msg = msg @ f"\n{rsp}"
@@ -350,7 +354,7 @@ def run_shell_command(cmd: str, prev=None):
                     except Exception:
                         pass
 
-            query_language_model(msg, from_shell=False)
+                query_language_model(msg, from_shell=False)
 
 
 def is_llm_request(cmd: str):
@@ -359,7 +363,7 @@ def is_llm_request(cmd: str):
             cmd.startswith('`') or cmd.startswith('.`') or cmd.startswith('!`')
 
 
-def process_command(cmd: str, res=None):
+def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
     # check if commands are chained
     if '&&' in cmd:
         cmds = cmd.split('&&')
@@ -368,11 +372,16 @@ def process_command(cmd: str, res=None):
         return res
 
     if '|' in cmd and not is_llm_request(cmd):
-        return run_shell_command(cmd, prev=res)
+        return run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
 
     # check command type
     if  is_llm_request(cmd) or '...' in cmd:
         return query_language_model(cmd, res=res)
+
+    elif cmd.startswith('#'):
+        path = cmd[1:]
+        retreiver = DocumentRetriever(file_path=path, index_name=path)
+        return None
 
     elif cmd.startswith('cd'):
         try:
@@ -406,16 +415,16 @@ def process_command(cmd: str, res=None):
 
     elif cmd.startswith('ll'):
         if os.name == 'nt':
-            return run_shell_command('dir', prev=res)
+            return run_shell_command('dir', prev=res, auto_query_on_error=auto_query_on_error)
         else:
-            return run_shell_command('ls -l', prev=res)
+            return run_shell_command('ls -l', prev=res, auto_query_on_error=auto_query_on_error)
 
     else:
-        return run_shell_command(cmd, prev=res)
+        return run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
 
 
 # Function to listen for user input and execute commands
-def listen(session: PromptSession, word_comp: WordCompleter):
+def listen(session: PromptSession, word_comp: WordCompleter, auto_query_on_error: bool=False):
     with patch_stdout():
         while True:
             try:
@@ -453,7 +462,7 @@ def listen(session: PromptSession, word_comp: WordCompleter):
                         Conversation.save_conversation_state(stateful_conversation, symai_path)
                     os._exit(0)
                 else:
-                    process_command(cmd)
+                    process_command(cmd, auto_query_on_error=auto_query_on_error)
 
                 # Append the command to the word completer list
                 word_comp.words.append(cmd)
@@ -466,7 +475,7 @@ def listen(session: PromptSession, word_comp: WordCompleter):
                 pass
 
 
-def run():
+def run(auto_query_on_error=False):
     # Load history
     history, history_strings = load_history()
 
@@ -488,7 +497,7 @@ def run():
                             style=style,
                             key_bindings=bindings)
 
-    listen(session, word_comp)
+    listen(session, word_comp, auto_query_on_error)
 
 
 if __name__ == '__main__':
