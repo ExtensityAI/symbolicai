@@ -17,38 +17,42 @@ class CodeFormatter:
 class Conversation(SlidingWindowStringConcatMemory):
     def __init__(self, init:     Optional[str] = None,
                  file_link:      Optional[List[str]] = None,
-                 index_name:     str           = Indexer.DEFAULT,
+                 index_name:     Optional[str] = None,
                  auto_print:     bool          = True,
                  token_ratio:    float         = 0.6, *args, **kwargs):
         super().__init__(token_ratio)
         self.token_ratio = token_ratio
         self.auto_print  = auto_print
         if file_link is not None and type(file_link) is str:
-            file_link = [file_link]
+            file_link    = [file_link]
         self.file_link   = file_link
-        self.index_name = index_name
+        self.index_name  = index_name
 
         if init is not None:
             self.store_system_message(init, *args, **kwargs)
         if file_link is not None:
             for fl in file_link:
                 self.store_file(fl, *args, **kwargs)
-        self.indexer = Indexer(index_name=index_name)
-        self._index  = self.indexer()
+        self.indexer     = None
+        self.index       = None
+        if index_name is not None:
+            self.indexer = Indexer(index_name=index_name)
+            self.index   = self.indexer(raw_result=True)
 
     def __getstate__(self):
         state = self.__dict__.copy()
         # Remove the unpickleable entries such as the `indexer` attribute because it is not serializable
         del state['indexer']
-        del state['_index']
+        del state['index']
         return state
 
     def __setstate__(self, state):
         # Restore instance attributes
         self.__dict__.update(state)
         # Add back the attribute that were removed in __getstate__
-        self.indexer = Indexer(index_name=state['index_name'])
-        self._index  = self.indexer()
+        if self.index_name is not None:
+            self.indexer = Indexer(index_name=self.index_name)
+            self.index  = self.indexer()
 
     def store_system_message(self, message: str, *args, **kwargs):
         val = f"[SYSTEM::INSTRUCTION] <<<\n{str(message)}\n>>>\n"
@@ -123,13 +127,14 @@ class Conversation(SlidingWindowStringConcatMemory):
         return conversation.restore(conversation_state)
 
     def restore(self, conversation_state: "Conversation") -> "Conversation":
-        self._memory = conversation_state._memory
+        self._memory     = conversation_state._memory
         self.token_ratio = conversation_state.token_ratio
-        self.auto_print = conversation_state.auto_print
-        self.file_link = conversation_state.file_link
-        self.index_name = conversation_state.index_name
-        self.indexer = conversation_state.indexer
-        self._index  = conversation_state._index
+        self.auto_print  = conversation_state.auto_print
+        self.file_link   = conversation_state.file_link
+        self.index_name  = conversation_state.index_name
+        if self.index_name is not None:
+            self.indexer = Indexer(index_name=self.index_name)
+            self.index   = self.indexer()
         return self
 
     def commit(self, target_file: str = None, formatter: Optional[Callable] = None):
@@ -153,9 +158,6 @@ class Conversation(SlidingWindowStringConcatMemory):
     def save(self, path: str, replace: bool = False) -> Symbol:
         return Symbol(self._memory).save(path, replace=replace)
 
-    def index(self, file_path: str):
-        return self._index(file_path)
-
     def forward(self, query: str, *args, **kwargs):
         query = self._to_symbol(query)
         # get timestamp in string format
@@ -167,6 +169,10 @@ class Conversation(SlidingWindowStringConcatMemory):
         if 'payload' in kwargs:
             history =  f'{history}\n{kwargs["payload"]}'
             del kwargs['payload']
+        if self.index is not None:
+            memory = self.index(query, payload=str(history), *args, **kwargs)
+            history = f'{history}\n[MEMORY] <<<\n{str(memory)[:1000]}\n>>>\n' # limit to 1000 characters
+
         res = self.recall(query, payload=history, *args, **kwargs)
         self.value = res.value # save last response
         val = str(f"[ASSISTANT::{timestamp}] <<<\n{str(res)}\n>>>\n")

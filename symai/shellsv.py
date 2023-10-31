@@ -22,15 +22,11 @@ from .components import Function
 from .extended import Conversation
 from .misc.console import ConsoleStyle
 from .misc.loader import Loader
-from .strategy import InvalidRequestErrorRemedyStrategy
 from .symbol import Symbol
-from .extended import DocumentRetriever
+from .extended import DocumentRetriever, RepositoryCloner, FileMerger, ArxivPdfParser
 
 
 logging.getLogger("prompt_toolkit").setLevel(logging.ERROR)
-
-
-except_remedy_strategy = InvalidRequestErrorRemedyStrategy()
 
 
 print = print_formatted_text
@@ -119,6 +115,7 @@ class MergedCompleter(Completer):
 
     def get_completions(self, document, complete_event):
         text = document.text.lstrip()
+
         if text.startswith('cd ') or\
             text.startswith('ls ') or\
             text.startswith('touch ') or\
@@ -127,7 +124,7 @@ class MergedCompleter(Completer):
             text.startswith('open ') or\
             text.startswith('rm ') or\
             text.startswith('git ') or\
-            text.startswith(r'#') or\
+            text.startswith('*') or\
             text.startswith(r'.\\') or\
             text.startswith(r'~\\') or\
             text.startswith(r'\\') or\
@@ -156,7 +153,7 @@ def get_conda_env():
 @bindings.add(Keys.ControlSpace)
 def _(event):
     current_user_input = event.current_buffer.document.text
-    func = Function(SHELL_CONTEXT, except_remedy=except_remedy_strategy)
+    func = Function(SHELL_CONTEXT)
 
     bottom_toolbar = HTML(' <b>[f]</b> Print "f" <b>[x]</b> Abort.')
 
@@ -294,30 +291,71 @@ def query_language_model(query: str, from_shell=True, res=None, *args, **kwargs)
             query.startswith('!"') or query.startswith("!'") or query.startswith('!`'):
             func = stateful_conversation
         else:
-            func = Function(SHELL_CONTEXT, except_remedy=except_remedy_strategy)
+            func = Function(SHELL_CONTEXT)
 
     with Loader(desc="Inference ...", end=""):
         if res is not None:
             query = f'{str(res)}\n' @ Symbol(query)
         msg = func(query, *args, **kwargs)
 
-    with ConsoleStyle('code') as console:
-        console.print(msg)
+    return msg
 
+
+def retrieval_augmented_indexing(query: str, *args, **kwargs):
+    global stateful_conversation
+    sep = os.path.sep
+    path = query
+    if path.startswith('git@') or path.startswith('git:'):
+        repo_path = os.path.join(os.path.expanduser('~'), '.symai', 'temp')
+        cloner = RepositoryCloner(repo_path=repo_path)
+        url = path[4:]
+        if 'http' not in url:
+            url = 'https://' + url
+        url = url.replace('.com:', '.com/')
+        # if ends with '.git' then remove it
+        if url.endswith('.git'):
+            url = url[:-4]
+        path = cloner(url)
+
+    merger = FileMerger()
+    file = merger(path)
+    arxiv = ArxivPdfParser()
+    pdf_file = arxiv(file)
+    if pdf_file is not None:
+        file = file @'\n'@ pdf_file
+
+    index_name = path.split(sep)[-1]
+    print(f'Indexing {index_name} ...')
+    # creates index if not exists
+    DocumentRetriever(file=file, index_name=index_name, overwrite=False)
+
+    home_path = os.path.expanduser('~')
+    symai_path = os.path.join(home_path, '.symai', '.conversation_state')
+    os.makedirs(os.path.dirname(symai_path), exist_ok=True)
+    Conversation.save_conversation_state(Conversation(auto_print=False, index_name=index_name), symai_path)
+    stateful_conversation = Conversation.load_conversation_state(symai_path)
+    message = f'Repository {url} cloned and ' if query.startswith('git@') or query.startswith('git:') else f'Directory {path} '
+    msg = f'{message}successfully indexed: {index_name}'
     return msg
 
 
 # run shell command
-def run_shell_command(cmd: str, prev=None, auto_query_on_error: bool=False):
+def run_shell_command(cmd: str, prev=None, auto_query_on_error: bool=False, stdout=None, stderr=None):
     if prev is not None:
         cmd = prev + ' && ' + cmd
-
     # Execute the command
     try:
         shell_true = not os.name == 'nt'
+        stdout = subprocess.PIPE if auto_query_on_error else stdout
+        stderr = subprocess.PIPE if auto_query_on_error else stderr
         res = subprocess.run(cmd,
                              shell=shell_true,
-                             stderr=subprocess.PIPE)
+                             stdout=stdout,
+                             stderr=stderr)
+        if res and stdout and res.stdout:
+            print(res.stdout.decode('utf-8'))
+        if res and stderr and res.stderr:
+            print(res.stderr.decode('utf-8'))
     except FileNotFoundError as e:
         print(e)
         return
@@ -355,6 +393,11 @@ def run_shell_command(cmd: str, prev=None, auto_query_on_error: bool=False):
                         pass
 
                 query_language_model(msg, from_shell=False)
+            else:
+                stdout = res.stdout
+                if stdout:
+                    rsp = stderr.decode('utf-8')
+                    print(rsp)
 
 
 def is_llm_request(cmd: str):
@@ -364,6 +407,7 @@ def is_llm_request(cmd: str):
 
 
 def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
+    sep = os.path.sep
     # check if commands are chained
     if '&&' in cmd:
         cmds = cmd.split('&&')
@@ -371,24 +415,22 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
             res = process_command(c.strip(), res=res)
         return res
 
-    if '|' in cmd and not is_llm_request(cmd):
-        return run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
+    if not is_llm_request(cmd) and '|' in cmd:
+        return run_shell_command(cmd, prev=res, auto_query_on_error=True, stderr=subprocess.PIPE)
 
     # check command type
     if  is_llm_request(cmd) or '...' in cmd:
         return query_language_model(cmd, res=res)
 
-    elif cmd.startswith('#'):
-        path = cmd[1:]
-        retreiver = DocumentRetriever(file_path=path, index_name=path)
-        return None
+    elif cmd.startswith('*'):
+        cmd = cmd[1:]
+        return retrieval_augmented_indexing(cmd)
 
     elif cmd.startswith('cd'):
         try:
             # replace ~ with home directory
             cmd = cmd.replace('~', os.path.expanduser('~'))
             # Change directory
-            sep = os.path.sep
             path = ' '.join(cmd.split(' ')[1:])
             if path.endswith(sep):
                 path = path[:-1]
@@ -415,9 +457,9 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
 
     elif cmd.startswith('ll'):
         if os.name == 'nt':
-            return run_shell_command('dir', prev=res, auto_query_on_error=auto_query_on_error)
+            return run_shell_command('dir', prev=res)
         else:
-            return run_shell_command('ls -l', prev=res, auto_query_on_error=auto_query_on_error)
+            return run_shell_command('ls -l', prev=res)
 
     else:
         return run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
@@ -460,14 +502,19 @@ def listen(session: PromptSession, word_comp: WordCompleter, auto_query_on_error
                         home_path = os.path.expanduser('~')
                         symai_path = os.path.join(home_path, '.symai', '.conversation_state')
                         Conversation.save_conversation_state(stateful_conversation, symai_path)
+                    print('Goodbye!')
                     os._exit(0)
                 else:
-                    process_command(cmd, auto_query_on_error=auto_query_on_error)
+                    msg = process_command(cmd, auto_query_on_error=auto_query_on_error)
+                    if msg is not None:
+                        with ConsoleStyle('code') as console:
+                            console.print(msg)
 
                 # Append the command to the word completer list
                 word_comp.words.append(cmd)
 
             except KeyboardInterrupt:
+                print()
                 pass
 
             except Exception as e:
@@ -475,17 +522,7 @@ def listen(session: PromptSession, word_comp: WordCompleter, auto_query_on_error
                 pass
 
 
-def run(auto_query_on_error=False):
-    # Load history
-    history, history_strings = load_history()
-
-    # Create your specific completers
-    word_comp = HistoryCompleter(history_strings, ignore_case=True, sentence=True)
-    custom_completer = PathCompleter()
-
-    # Merge completers
-    merged_completer = MergedCompleter(custom_completer, word_comp)
-
+def create_session(history, merged_completer):
     # Load style
     style = Style.from_dict(SYMSH_CONFIG)
 
@@ -497,6 +534,25 @@ def run(auto_query_on_error=False):
                             style=style,
                             key_bindings=bindings)
 
+    return session
+
+
+def create_completer():
+    # Load history
+    history, history_strings = load_history()
+
+    # Create your specific completers
+    word_comp = HistoryCompleter(history_strings, ignore_case=True, sentence=True)
+    custom_completer = PathCompleter()
+
+    # Merge completers
+    merged_completer = MergedCompleter(custom_completer, word_comp)
+    return history, word_comp, merged_completer
+
+
+def run(auto_query_on_error=False):
+    history, word_comp, merged_completer = create_completer()
+    session = create_session(history, merged_completer)
     listen(session, word_comp, auto_query_on_error)
 
 

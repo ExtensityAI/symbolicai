@@ -620,7 +620,7 @@ class TokenTracker(Expression):
 class Indexer(Expression):
     DEFAULT = 'data-index'
 
-    def __init__(self, index_name: str = DEFAULT, top_k: int = 8, batch_size: int = 20, formatter: Callable = ParagraphFormatter()):
+    def __init__(self, index_name: str = DEFAULT, top_k: int = 8, batch_size: int = 20, formatter: Callable = ParagraphFormatter(), auto_add=True):
         super().__init__()
         self.index_name = index_name
         self.elements   = []
@@ -632,8 +632,39 @@ class Indexer(Expression):
 
         if index_name != Indexer.DEFAULT:
             Expression.setup({'index': IndexEngine(index_name=index_name)})
+            # append index name to indices.txt in home directory .symai folder (default)
+            self.path = Path.home() / '.symai' / 'indices.txt'
+            if not self.path.exists():
+                self.path.parent.mkdir(parents=True, exist_ok=True)
+                self.path.touch()
+            if auto_add:
+                self.register()
 
-    def forward(self, data: Optional[Symbol] = None) -> Symbol:
+    def register(self):
+        # check if index already exists in indices.txt and append if not
+        change = False
+        with open(self.path, 'r') as f:
+            indices = f.read().split('\n')
+            # filter out empty strings
+            indices = [i for i in indices if i]
+            if self.index_name not in indices:
+                indices.append(self.index_name)
+                change = True
+        if change:
+            with open(self.path, 'w') as f:
+                f.write('\n'.join(indices))
+
+    def exists(self) -> bool:
+        # check if index exists in home directory .symai folder (default) indices.txt
+        path = Path.home() / '.symai' / 'indices.txt'
+        if not path.exists():
+            return False
+        with open(path, 'r') as f:
+            indices = f.read().split('\n')
+            if self.index_name in indices:
+                return True
+
+    def forward(self, data: Optional[Symbol] = None, raw_result: bool = False) -> Symbol:
         that = self
         if data is not None:
             data = self._to_symbol(data)
@@ -651,6 +682,8 @@ class Indexer(Expression):
             res = [v['metadata']['text'] for v in res['matches']]
             that.retrieval = res
             sym = that._to_symbol(res)
+            if raw_result:
+                return sym
             rsp = sym.query(query, *args, **kwargs)
             return rsp
 

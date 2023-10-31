@@ -38,6 +38,9 @@ class ArxivPdfParser(Expression):
                 except Exception as exc:
                     print('%r generated an exception: %s' % (url, exc))
 
+        if len(pdf_files) == 0:
+            return None
+
         # Merge all pdfs into one file
         merged_file = self.merger(output_path, **kwargs)
 
