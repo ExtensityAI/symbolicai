@@ -1,11 +1,6 @@
 from typing import List
-from symai.strategy import InvalidRequestErrorRemedyStrategy
-
 from . import core
 from .symbol import Expression, Symbol
-
-
-except_remedy_strategy = InvalidRequestErrorRemedyStrategy()
 
 
 class Memory(Expression):
@@ -81,7 +76,7 @@ class SlidingWindowStringConcatMemory(Memory):
     def recall(self, query: str, *args, **kwargs) -> Symbol:
         val = self.history()
         val = ''.join(val)
-        return Symbol(self._memory).query(query, except_remedy=except_remedy_strategy, *args, **kwargs)
+        return Symbol(self._memory).query(query, *args, **kwargs)
 
 
 class VectorDatabaseMemory(Memory):

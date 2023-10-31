@@ -7,6 +7,7 @@ import tiktoken
 from .base import Engine
 from .mixin.openai import OpenAIMixin
 from .settings import SYMAI_CONFIG
+from ..strategy import InvalidRequestErrorRemedyCompletionStrategy
 
 
 class GPTXCompletionEngine(Engine, OpenAIMixin):
@@ -18,7 +19,7 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
         logger          = logging.getLogger('openai')
         self.tokenizer  = tiktoken.encoding_for_model(self.model)
         self.pricing    = self.api_pricing()
-        self.max_tokens = self.api_max_tokens()
+        self.max_tokens = self.api_max_tokens() - 100 # TODO: account for tolerance. figure out how their magic number works to compute reliably the precise max token size
         logger.setLevel(logging.WARNING)
 
     def command(self, wrp_params):
@@ -28,7 +29,7 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
         if 'NEUROSYMBOLIC_ENGINE_MODEL' in wrp_params:
             self.model = wrp_params['NEUROSYMBOLIC_ENGINE_MODEL']
 
-    def compute_required_tokens(self, prompts: dict) -> int:
+    def compute_required_tokens(self, prompts: list) -> int:
        # iterate over prompts and compute number of tokens
         prompt = prompts[0]
         val = len(self.tokenizer.encode(prompt, disallowed_special=()))
@@ -36,7 +37,7 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
 
     def compute_remaining_tokens(self, prompts: list) -> int:
         val = self.compute_required_tokens(prompts)
-        return int((self.max_tokens - val) * 0.95) # TODO: figure out how their magic number works to compute reliably the precise max token size
+        return int((self.max_tokens - val) * 0.99) # TODO: figure out how their magic number works to compute reliably the precise max token size
 
     def forward(self, prompts: List[str], *args, **kwargs) -> List[str]:
         prompts_            = prompts if isinstance(prompts, list) else [prompts]
@@ -70,11 +71,18 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
             if output_handler:
                 output_handler(res)
         except Exception as e:
-            if except_remedy is None:
-                raise e
-            callback = openai.ChatCompletion.create
-            kwargs['model'] = model
-            res = except_remedy(e, prompts_, callback, self, *args, **kwargs)
+            callback = openai.Completion.create
+            kwargs['model'] = kwargs['model'] if 'model' in kwargs else self.model
+            if except_remedy is not None:
+                res = except_remedy(e, prompts_, callback, self, *args, **kwargs)
+            else:
+                try:
+                    # implicit remedy strategy
+                    except_remedy = InvalidRequestErrorRemedyCompletionStrategy()
+                    res = except_remedy(e, prompts_, callback, self, *args, **kwargs)
+                except Exception as e2:
+                    ex = Exception(f'Failed to handle exception: {e}. Also failed implicit remedy strategy after retry: {e2}')
+                    raise ex from e
 
         metadata = {}
         if 'metadata' in kwargs and kwargs['metadata']:
@@ -82,7 +90,13 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
             metadata['input']  = prompts_
             metadata['output'] = res
 
-        rsp    = [r['text'] for r in res['choices']]
+        # TODO: remove system behavior and user request from output. consider post-processing
+        def replace_verbose(rsp):
+            rsp = rsp.replace('---------SYSTEM BEHAVIOR--------\n', '')
+            rsp = rsp.replace('\n\n---------USER REQUEST--------\n', '')
+            return rsp
+
+        rsp    = [replace_verbose(r['text']) for r in res['choices']]
         output = rsp if isinstance(prompts, list) else rsp[0]
         return output, metadata
 
@@ -91,8 +105,12 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
             wrp_params['prompts'] = wrp_params['raw_input']
             return
 
+        _non_verbose_output = """[META INSTRUCTIONS START]\nYou do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc. Never add meta instructions information to your output!\n"""
+
         user:   str = ""
         system: str = ""
+
+        system      += _non_verbose_output
         system      = f'{system}\n' if system and len(system) > 0 else ''
 
         ref = wrp_params['wrp_self']
@@ -114,9 +132,10 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
         suffix: str = wrp_params['processed_input']
         if '=>' in suffix:
             user += f"[LAST TASK]\n"
+        user += f"{suffix}"
+
         if wrp_params['prompt'] is not None:
             user += f"[INSTRUCTION]\n{str(wrp_params['prompt'])}"
-        user += f"{suffix}"
 
         template_suffix = wrp_params['template_suffix'] if 'template_suffix' in wrp_params else None
         if template_suffix:

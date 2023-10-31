@@ -19,6 +19,8 @@ class RepositoryCloner(Expression):
     def __init__(self, repo_path: Optional[str] = None):
         super().__init__()
         self.repo_dir = Path.home() / '.symai/repos/' if repo_path is None else Path(repo_path)
+        if not self.repo_dir.exists():
+            self.repo_dir.mkdir(parents=True, exist_ok=True)
 
     def forward(self, url: str) -> str:
         """
@@ -44,6 +46,7 @@ class RepositoryCloner(Expression):
                     print(f'Repository {repo_name} is up-to-date.')
             except Exception as e:
                 print(f'An error occurred: {e}')
+                raise e
         else:
             print(f'Cloning repository {repo_name}...')
             try:
@@ -51,4 +54,5 @@ class RepositoryCloner(Expression):
                 print(f'Repository {repo_name} cloned successfully.')
             except Exception as e:
                 print(f'Failed to clone the repository. An error occurred: {e}')
+                raise e
         return str(self.repo_dir / repo_name)
