@@ -343,7 +343,7 @@ def retrieval_augmented_indexing(query: str, *args, **kwargs):
     index_name = path.split(sep)[-1]
     print(f'Indexing {index_name} ...')
     # creates index if not exists
-    DocumentRetriever(file=file, index_name=index_name, overwrite=False)
+    DocumentRetriever(file=file, index_name=index_name, overwrite=True)
 
     home_path = os.path.expanduser('~')
     symai_path = os.path.join(home_path, '.symai', '.conversation_state')

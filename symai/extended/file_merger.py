@@ -36,6 +36,8 @@ class FileMerger(Expression):
 
                 # Look only for files with the specified endings
                 if file.endswith(tuple(self.file_endings)):
+                    print(f"Reading file: {file_path}")
+
                     # Read in the file using the FileReader
                     file_content = self.reader(file_path, **kwargs).value
 
