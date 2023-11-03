@@ -1,6 +1,7 @@
 import glob
 import logging
 import os
+import sys
 import signal
 import subprocess
 import time
@@ -55,15 +56,17 @@ def supports_ansi_escape():
     except OSError:
         return False
 
-
 class PathCompleter(Completer):
     def get_completions(self, document, complete_event):
         complete_word = document.get_word_before_cursor(WORD=True)
         sep = os.path.sep
         if complete_word.startswith(f'~{sep}'):
-            complete_word = complete_word.replace(f'~{sep}', os.path.expanduser('~'))
+            complete_word = complete_word.replace(f'~', os.path.expanduser('~'))
 
-        files = glob.glob(complete_word + '*')
+        # list all files and directories in current directory
+        files = list(glob.glob(complete_word + '*'))
+        if len(files) == 0:
+            return None
 
         dirs_ = []
         files_ = []
@@ -88,12 +91,16 @@ class PathCompleter(Completer):
                 files_.append(file)
 
         for d in dirs_:
-            sep = os.path.sep
-            yield Completion(d + sep, start_position=-start_position,
+            # if starts with home directory, then replace it with ~
+            if d != os.path.expanduser('~'):
+                d = d.replace(os.path.expanduser('~'), '~')
+            yield Completion(d, start_position=-start_position,
                              style='class:path-completion',
                              selected_style='class:path-completion-selected')
 
         for f in files_:
+            # if starts with home directory, then replace it with ~
+            f = f.replace(os.path.expanduser('~'), '~')
             yield Completion(f, start_position=-start_position,
                              style='class:file-completion',
                              selected_style='class:file-completion-selected')
@@ -114,7 +121,7 @@ class MergedCompleter(Completer):
         self.history_completer = history_completer
 
     def get_completions(self, document, complete_event):
-        text = document.text.lstrip()
+        text = document.text
 
         if text.startswith('cd ') or\
             text.startswith('ls ') or\
@@ -143,10 +150,19 @@ class MergedCompleter(Completer):
 
 # Create custom keybindings
 bindings = KeyBindings()
+previous_prefix = None
+exec_prefix = 'default'
+
+
+def get_exec_prefix():
+    return sys.exec_prefix if exec_prefix == 'default' else exec_prefix
 
 
 def get_conda_env():
-    return os.environ.get('CONDA_DEFAULT_ENV')
+    # what conda env am I in (e.g., where is my Python process from)?
+    ENVBIN = get_exec_prefix()
+    env_name = os.path.basename(ENVBIN)
+    return env_name
 
 
 # bind to 'Ctrl' + 'Space'
@@ -407,6 +423,7 @@ def is_llm_request(cmd: str):
 
 
 def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
+    global exec_prefix, previous_prefix
     sep = os.path.sep
     # check if commands are chained
     if '&&' in cmd:
@@ -426,6 +443,52 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
         cmd = cmd[1:]
         return retrieval_augmented_indexing(cmd)
 
+    elif cmd.startswith('conda activate'):
+        # check conda execution prefix and verify if environment exists
+        env = sys.exec_prefix
+        env_base = os.path.join(sep, *env.split(sep)[:-1])
+        req_env = cmd.split(' ')[2]
+        # check if environment exists
+        env_path = os.path.join(env_base, req_env)
+        if not os.path.exists(env_path):
+            return f'Environment {req_env} does not exist!'
+        previous_prefix = exec_prefix
+        exec_prefix = os.path.join(env_base, req_env)
+        return exec_prefix
+
+    elif cmd.startswith('conda deactivate'):
+        if previous_prefix is not None:
+            exec_prefix = previous_prefix
+        if previous_prefix == 'default':
+            previous_prefix = None
+        return get_exec_prefix()
+
+    elif cmd.startswith('conda'):
+        env = get_exec_prefix()
+        env_base = os.path.join(sep, *env.split(sep)[:-2])
+        cmd = cmd.replace('conda', os.path.join(env_base, "condabin", "conda"))
+        return run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
+
+    elif cmd.startswith('jupyter'):
+        env = get_exec_prefix()
+        cmd = cmd.replace('jupyter', os.path.join(env, 'bin', "jupyter"))
+        return run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
+
+    elif cmd.startswith('python'):
+        env = get_exec_prefix()
+        cmd = cmd.replace('python', os.path.join(env, 'bin', "python"))
+        return run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
+
+    elif cmd.startswith('ipython'):
+        env = get_exec_prefix()
+        cmd = cmd.replace('ipython', os.path.join(env, 'bin', "ipython"))
+        return run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
+
+    elif cmd.startswith('pip'):
+        env = get_exec_prefix()
+        cmd = cmd.replace('pip', os.path.join(env, 'bin', "pip"))
+        return run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
+
     elif cmd.startswith('cd'):
         try:
             # replace ~ with home directory
@@ -436,10 +499,8 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
                 path = path[:-1]
             return os.chdir(path)
         except FileNotFoundError as e:
-            print(e)
             return e
         except PermissionError as e:
-            print(e)
             return e
 
     elif os.path.isdir(cmd):
@@ -449,17 +510,18 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
             # Change directory
             os.chdir(cmd)
         except FileNotFoundError as e:
-            print(e)
             return e
         except PermissionError as e:
-            print(e)
             return e
 
     elif cmd.startswith('ll'):
+
         if os.name == 'nt':
-            return run_shell_command('dir', prev=res)
+            cmd = cmd.replace('ll', 'dir')
+            return run_shell_command(cmd, prev=res)
         else:
-            return run_shell_command('ls -l', prev=res)
+            cmd = cmd.replace('ll', 'ls -l')
+            return run_shell_command(cmd, prev=res)
 
     else:
         return run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
