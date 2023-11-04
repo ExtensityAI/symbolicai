@@ -25,6 +25,7 @@ from .misc.console import ConsoleStyle
 from .misc.loader import Loader
 from .symbol import Symbol
 from .extended import DocumentRetriever, RepositoryCloner, FileMerger, ArxivPdfParser
+from .interfaces import Interface
 
 
 logging.getLogger("prompt_toolkit").setLevel(logging.ERROR)
@@ -55,6 +56,7 @@ def supports_ansi_escape():
         return True
     except OSError:
         return False
+
 
 class PathCompleter(Completer):
     def get_completions(self, document, complete_event):
@@ -152,6 +154,8 @@ class MergedCompleter(Completer):
 bindings = KeyBindings()
 previous_prefix = None
 exec_prefix = 'default'
+# Get a copy of the current environment
+default_env = os.environ.copy()
 
 
 def get_exec_prefix():
@@ -310,9 +314,7 @@ def query_language_model(query: str, from_shell=True, res=None, *args, **kwargs)
             func = Function(SHELL_CONTEXT)
 
     with Loader(desc="Inference ...", end=""):
-        if res is not None:
-            query = f'{str(res)}\n' @ Symbol(query)
-        msg = func(query, *args, **kwargs)
+        msg = func(query, payload=res, *args, **kwargs)
 
     return msg
 
@@ -321,6 +323,14 @@ def retrieval_augmented_indexing(query: str, *args, **kwargs):
     global stateful_conversation
     sep = os.path.sep
     path = query
+
+    # check if path contains overwrite flag
+    overwrite = False
+    if path.startswith('!'):
+        overwrite = True
+        path = path[1:]
+
+    # check if path contains git flag
     if path.startswith('git@') or path.startswith('git:'):
         repo_path = os.path.join(os.path.expanduser('~'), '.symai', 'temp')
         cloner = RepositoryCloner(repo_path=repo_path)
@@ -333,8 +343,10 @@ def retrieval_augmented_indexing(query: str, *args, **kwargs):
             url = url[:-4]
         path = cloner(url)
 
+    # merge files
     merger = FileMerger()
     file = merger(path)
+    # check if file contains arxiv pdf file and parse it
     arxiv = ArxivPdfParser()
     pdf_file = arxiv(file)
     if pdf_file is not None:
@@ -343,7 +355,7 @@ def retrieval_augmented_indexing(query: str, *args, **kwargs):
     index_name = path.split(sep)[-1]
     print(f'Indexing {index_name} ...')
     # creates index if not exists
-    DocumentRetriever(file=file, index_name=index_name, overwrite=True)
+    DocumentRetriever(file=file, index_name=index_name, overwrite=overwrite)
 
     home_path = os.path.expanduser('~')
     symai_path = os.path.join(home_path, '.symai', '.conversation_state')
@@ -355,33 +367,56 @@ def retrieval_augmented_indexing(query: str, *args, **kwargs):
     return msg
 
 
+def search_engine(query: str, res=None, *args, **kwargs):
+    search = Interface('google')
+    with Loader(desc="Searching ...", end=""):
+        search_query = Symbol(query).extract('search engine optimized query')
+        res = search(search_query)
+    with Loader(desc="Inference ...", end=""):
+        func = Function(query)
+        msg = func(res, payload=res)
+        # write a temp dump file with the query and results
+        home_path = os.path.expanduser('~')
+        symai_path = os.path.join(home_path, '.symai', '.search_dump')
+        os.makedirs(os.path.dirname(symai_path), exist_ok=True)
+        with open(symai_path, 'w') as f:
+            f.write(f'[SEARCH_QUERY]:\n{search_query}\n[RESULTS]\n{res}\n[MESSAGE]\n{msg}')
+    return msg
+
+
 # run shell command
 def run_shell_command(cmd: str, prev=None, auto_query_on_error: bool=False, stdout=None, stderr=None):
     if prev is not None:
         cmd = prev + ' && ' + cmd
+    message = None
     # Execute the command
     try:
         shell_true = not os.name == 'nt'
         stdout = subprocess.PIPE if auto_query_on_error else stdout
         stderr = subprocess.PIPE if auto_query_on_error else stderr
+        conda_env = get_exec_prefix()
+        # copy default_env
+        new_env = default_env.copy()
+        if exec_prefix != 'default':
+            # remove current env from PATH
+            new_env["PATH"] = new_env["PATH"].replace(sys.exec_prefix, conda_env)
         res = subprocess.run(cmd,
                              shell=shell_true,
                              stdout=stdout,
-                             stderr=stderr)
+                             stderr=stderr,
+                             env=new_env)
         if res and stdout and res.stdout:
-            print(res.stdout.decode('utf-8'))
+            message = res.stdout.decode('utf-8')
         if res and stderr and res.stderr:
-            print(res.stderr.decode('utf-8'))
+            message = res.stderr.decode('utf-8')
     except FileNotFoundError as e:
-        print(e)
-        return
+        return e
     except PermissionError as e:
-        print(e)
-        return
+        return e
 
     # all good
     if res.returncode == 0:
-        pass
+        return message
     # If command not found, then try to query language model
     else:
         msg = Symbol(cmd) @ f'\n{str(res)}'
@@ -408,18 +443,18 @@ def run_shell_command(cmd: str, prev=None, auto_query_on_error: bool=False, stdo
                     except Exception:
                         pass
 
-                query_language_model(msg, from_shell=False)
+                return query_language_model(msg, from_shell=False)
             else:
                 stdout = res.stdout
                 if stdout:
-                    rsp = stderr.decode('utf-8')
-                    print(rsp)
+                    message = stderr.decode('utf-8')
+                return message
 
 
 def is_llm_request(cmd: str):
-    return cmd.startswith('"') or cmd.startswith('."') or cmd.startswith('!"') or\
-            cmd.startswith("'") or cmd.startswith(".'") or cmd.startswith("!'") or\
-            cmd.startswith('`') or cmd.startswith('.`') or cmd.startswith('!`')
+    return cmd.startswith('"') or cmd.startswith('."') or cmd.startswith('!"') or cmd.startswith('?"') or\
+           cmd.startswith("'") or cmd.startswith(".'") or cmd.startswith("!'") or cmd.startswith("?'") or\
+           cmd.startswith('`') or cmd.startswith('.`') or cmd.startswith('!`') or cmd.startswith('?`')
 
 
 def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
@@ -432,8 +467,18 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
             res = process_command(c.strip(), res=res)
         return res
 
+    # check if the entire command is a language model request
     if not is_llm_request(cmd) and '|' in cmd:
-        return run_shell_command(cmd, prev=res, auto_query_on_error=True, stderr=subprocess.PIPE)
+        cmds = cmd.split('|')
+        res = None
+        for c in cmds:
+            c = c.strip()
+            # check if the part of the command is a language model request
+            if not is_llm_request(c):
+                res = run_shell_command(c, prev=res, auto_query_on_error=auto_query_on_error, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            else:
+                res = process_command(c, res=res, auto_query_on_error=auto_query_on_error)
+        return res
 
     # check command type
     if  is_llm_request(cmd) or '...' in cmd:
@@ -442,6 +487,10 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
     elif cmd.startswith('*'):
         cmd = cmd[1:]
         return retrieval_augmented_indexing(cmd)
+
+    elif cmd.startswith('?"') or cmd.startswith("?'") or cmd.startswith('?`'):
+        cmd = cmd[1:]
+        return search_engine(cmd, res=res)
 
     elif cmd.startswith('conda activate'):
         # check conda execution prefix and verify if environment exists
@@ -467,26 +516,6 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
         env = get_exec_prefix()
         env_base = os.path.join(sep, *env.split(sep)[:-2])
         cmd = cmd.replace('conda', os.path.join(env_base, "condabin", "conda"))
-        return run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
-
-    elif cmd.startswith('jupyter'):
-        env = get_exec_prefix()
-        cmd = cmd.replace('jupyter', os.path.join(env, 'bin', "jupyter"))
-        return run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
-
-    elif cmd.startswith('python'):
-        env = get_exec_prefix()
-        cmd = cmd.replace('python', os.path.join(env, 'bin', "python"))
-        return run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
-
-    elif cmd.startswith('ipython'):
-        env = get_exec_prefix()
-        cmd = cmd.replace('ipython', os.path.join(env, 'bin', "ipython"))
-        return run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
-
-    elif cmd.startswith('pip'):
-        env = get_exec_prefix()
-        cmd = cmd.replace('pip', os.path.join(env, 'bin', "pip"))
         return run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
 
     elif cmd.startswith('cd'):
