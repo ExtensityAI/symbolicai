@@ -340,19 +340,22 @@ $> "analyze this line" | file_path.txt[10]
 Range of lines:
 
 ```bash
-$> "analyze these lines" | file_path.txt[10:20]
+# analyze lines 10 to 20
+$> "analyze this line" | file_path.txt[10:20]
 ```
 
 Step indexing:
 
 ```bash
-$> "analyze every third line in this range" | file_path.txt[10:30:3]
+# analyze lines 10 to 30 with a step size of 3
+$> "analyze this line" | file_path.txt[10:30:3]
 ```
 
 Multi-line indexing:
 
 ```bash
-$> "analyze multiple lines separated by ," | file_path.txt[10:30:3,20,40:50]
+# analyze lines 10 to 30 with a step size of 3, and lines 40 to 50
+$> "analyze this line" | file_path.txt[10:30:3,20,40:50]
 ```
 
 The above commands would read and include the specified lines from file `file_path.txt` into the ongoing conversation.
