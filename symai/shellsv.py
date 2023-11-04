@@ -314,7 +314,9 @@ def query_language_model(query: str, from_shell=True, res=None, *args, **kwargs)
             func = Function(SHELL_CONTEXT)
 
     with Loader(desc="Inference ...", end=""):
-        msg = func(query, payload=res, *args, **kwargs)
+        if res is None:
+            query = f"[Context]\n{res}\n\n[Query]\n{query}"
+        msg = func(query, *args, **kwargs)
 
     return msg
 
@@ -491,6 +493,14 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
     elif cmd.startswith('*'):
         cmd = cmd[1:]
         return retrieval_augmented_indexing(cmd)
+
+    elif cmd.startswith('man symsh'):
+        # read symsh.md file and print it
+        # get symsh path
+        pkg_path = os.path.dirname(os.path.abspath(__file__))
+        symsh_path = os.path.join(pkg_path, 'symsh.md')
+        with open(symsh_path, 'r') as f:
+            return f.read()
 
     elif cmd.startswith('conda activate'):
         # check conda execution prefix and verify if environment exists
