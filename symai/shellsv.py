@@ -481,16 +481,16 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
         return res
 
     # check command type
-    if  is_llm_request(cmd) or '...' in cmd:
+    if cmd.startswith('?"') or cmd.startswith("?'") or cmd.startswith('?`'):
+        cmd = cmd[1:]
+        return search_engine(cmd, res=res)
+
+    elif  is_llm_request(cmd) or '...' in cmd:
         return query_language_model(cmd, res=res)
 
     elif cmd.startswith('*'):
         cmd = cmd[1:]
         return retrieval_augmented_indexing(cmd)
-
-    elif cmd.startswith('?"') or cmd.startswith("?'") or cmd.startswith('?`'):
-        cmd = cmd[1:]
-        return search_engine(cmd, res=res)
 
     elif cmd.startswith('conda activate'):
         # check conda execution prefix and verify if environment exists
