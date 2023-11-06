@@ -229,7 +229,8 @@ Alternatively, you can specify in your project path a `symai.config.json` file w
     "SEARCH_ENGINE_API_KEY": "<SERP_API_KEY>",
     "SEARCH_ENGINE_MODEL": "google",
     "OCR_ENGINE_API_KEY": "<APILAYER_API_KEY>",
-    "SPEECH_ENGINE_MODEL": "base",
+    "SPEECH_TO_TEXT_ENGINE_MODEL": "base",
+    "TEXT_TO_SPEECH_ENGINE_MODEL": "tts-1",
     "INDEXING_ENGINE_API_KEY": "<PINECONE_API_KEY>",
     "INDEXING_ENGINE_ENVIRONMENT": "us-west1-gcp"
 }
@@ -1159,8 +1160,10 @@ x = -1
 To transcribe audio files, we can perform speech transcription using `whisper`. The following example demonstrates how to transcribe an audio file and return the text:
 
 ```python
-expr = Expression()
-res = expr.speech('examples/audio.mp3')
+from symai.interfaces import Interface
+
+speech = Interface('whisper')
+res = speech('examples/audio.mp3')
 ```
 
 ```bash
@@ -1173,8 +1176,10 @@ I may have overslept.
 To extract text from images, we can perform optical character recognition (OCR) with `APILayer`. The following example demonstrates how to transcribe an image and return the text:
 
 ```python
-expr = Expression()
-res = expr.ocr('https://media-cdn.tripadvisor.com/media/photo-p/0f/da/22/3a/rechnung.jpg')
+from symai.interfaces import Interface
+
+ocr = Interface('ocr')
+res = ocr('https://media-cdn.tripadvisor.com/media/photo-p/0f/da/22/3a/rechnung.jpg')
 ```
 
 The OCR engine returns a dictionary with a key `all_text` where the full text is stored. For more details, refer to their documentation [here](https://apilayer.com/marketplace/image_to_text-api).
@@ -1190,8 +1195,10 @@ China Restaurant\nMaixim,s\nSegeberger Chaussee 273\n22851 Norderstedt\nTelefon 
 To obtain fact-based content, we can perform search queries via `SerpApi` with a `Google` backend. The following example demonstrates how to search for a query and return the results:
 
 ```python
-expr = Expression()
-res = expr.search('Birthday of Barack Obama')
+from symai.interfaces import Interface
+
+search = Interface('google')
+res = search('Birthday of Barack Obama')
 ```
 
 ```bash
@@ -1204,9 +1211,11 @@ August 4, 1961
 To access data from the web, we can use `Selenium`. The following example demonstrates how to crawl a website and return the results:
 
 ```python
-expr = Expression()
-res = expr.fetch(url="https://www.google.com/",
-                 pattern="google")
+from symai.interfaces import Interface
+
+fetch = Interface('selenium')
+res = fetch(url="https://www.google.com/",
+            pattern="google")
 ```
 The `pattern` property can be used to verify if the document has been loaded correctly. If the pattern is not found, the crawler will timeout and return an empty result.
 
@@ -1220,8 +1229,10 @@ GoogleKlicke hier, wenn du nach einigen Sekunden nicht automatisch weitergeleite
 To render images from text descriptions, we use `DALL·E 2`. The following example demonstrates how to draw a text description and return the image:
 
 ```python
-expr = Expression('a cat with a hat')
-res = expr.draw()
+from symai.interfaces import Interface
+
+dalle = Interface('dall_e')
+res = dalle('a cat with a hat')
 ```
 
 ```bash
@@ -1276,9 +1287,9 @@ To perform text-based image few-shot classification, we use `CLIP`. This impleme
 The following example demonstrates how to classify the image of our generated cat from above and return the results as an array of probabilities:
 
 ```python
-expr = Expression()
-res = expr.vision('https://oaidalleapiprodscus.blob.core.windows.net/private/org-l6FsXDfth6...',
-                  ['cat', 'dog', 'bird', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe'])
+vision = Interface('clip')
+res = vision('https://oaidalleapiprodscus.blob.core.windows.net/private/org-l6FsXDfth6...',
+              ['cat', 'dog', 'bird', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe'])
 ```
 
 ```bash

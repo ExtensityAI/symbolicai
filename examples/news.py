@@ -42,6 +42,7 @@ class News(Expression):
         """
         super().__init__()
         self.url = url
+        self.fetch = Interface('selenium')
         self.pattern = pattern
         self.render_ = render
         filters = filters if isinstance(filters, List) or isinstance(filters, tuple) else [filters]

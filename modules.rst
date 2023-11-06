@@ -71,7 +71,10 @@
 .. automodule:: symai.backend.engine_python
    :members:
 
-.. automodule:: symai.backend.engine_speech
+.. automodule:: symai.backend.engine_speech_to_text
+   :members:
+
+.. automodule:: symai.backend.engine_text_to_speech
    :members:
 
 .. automodule:: symai.backend.engine_userinput

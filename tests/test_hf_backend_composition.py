@@ -23,8 +23,8 @@ Expression.command(time_clock=True)
 class TestComposition(unittest.TestCase):
 
     def test_result_clean(self):
-        expr = Expression()
-        sym = expr.fetch(url='https://donate.wikimedia.org/w/index.php?title=Special:LandingPage&country=AT&uselang=en&utm_medium=sidebar&utm_source=donate&utm_campaign=C13_en.wikipedia.org')
+        fetch = Interface('selenium')
+        sym = fetch(url='https://donate.wikimedia.org/w/index.php?title=Special:LandingPage&country=AT&uselang=en&utm_medium=sidebar&utm_source=donate&utm_campaign=C13_en.wikipedia.org')
         self.assertIsNotNone(sym)
         res = sym.clean()
         self.assertIsNotNone(res)
@@ -435,8 +435,8 @@ modified:   tests/test_composition.py
         self.assertTrue('fruit' in res)
 
     def test_draw(self):
-        sym = Expression('a cat with a hat')
-        res = sym.draw()
+        dalle = Interface('dall_e')
+        res = dalle('a cat with a hat')
         self.assertIsNotNone('http' in res)
 
     def test_news_component(self):
@@ -537,30 +537,30 @@ modified:   tests/test_composition.py
         res.save(path, replace=False)
 
     def test_speech_decode(self):
-        expr = Expression()
-        res = expr.speech('examples/audio.mp3')
+        speech = Interface('whisper')
+        res = speech('examples/audio.mp3')
         self.assertTrue(res == 'I may have overslept.')
 
     def test_ocr(self):
-        expr = Expression()
-        res = expr.ocr('https://media-cdn.tripadvisor.com/media/photo-p/0f/da/22/3a/rechnung.jpg')
+        ocr = Interface('ocr')
+        res = ocr('https://media-cdn.tripadvisor.com/media/photo-p/0f/da/22/3a/rechnung.jpg')
         self.assertTrue('China' in res)
 
     def test_vision(self):
-        expr = Expression()
-        res = expr.vision('https://hips.hearstapps.com/hmg-prod.s3.amazonaws.com/images/cute-cat-photos-1593441022.jpg',
-                         ['cat', 'dog', 'bird', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe'])
+        vision = Interface('clip')
+        res = vision('https://hips.hearstapps.com/hmg-prod.s3.amazonaws.com/images/cute-cat-photos-1593441022.jpg',
+                     ['cat', 'dog', 'bird', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe'])
         res = res.argmax()
         self.assertTrue(0 == res)
 
     def test_search(self):
-        expr = Expression()
-        res = expr.search('Birthday of Barack Obama')
+        search = Interface('google')
+        res = search('Birthday of Barack Obama')
         self.assertTrue('August 4 1961' == res, res)
 
     def test_search_with_organic_results(self):
-        expr = Expression()
-        res = expr.search('How much is the square root of pi?')
+        search = Interface('google')
+        res = search('How much is the square root of pi?')
         self.assertTrue('1.7724538509055159' in res, res)
 
     def test_open(self):

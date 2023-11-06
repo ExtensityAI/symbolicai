@@ -10,6 +10,13 @@ from .settings import SYMAI_CONFIG
 from ..strategy import InvalidRequestErrorRemedyCompletionStrategy
 
 
+logging.getLogger("openai").setLevel(logging.ERROR)
+logging.getLogger("requests").setLevel(logging.ERROR)
+logging.getLogger("urllib").setLevel(logging.ERROR)
+logging.getLogger("httpx").setLevel(logging.ERROR)
+logging.getLogger("httpcore").setLevel(logging.ERROR)
+
+
 class GPTXCompletionEngine(Engine, OpenAIMixin):
     def __init__(self):
         super().__init__()
@@ -57,21 +64,21 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
         except_remedy       = kwargs['except_remedy'] if 'except_remedy' in kwargs else None
 
         try:
-            res = openai.Completion.create(model=model,
-                                           prompt=prompts_,
-                                           suffix=suffix,
-                                           max_tokens=max_tokens,
-                                           temperature=temperature,
-                                           frequency_penalty=frequency_penalty,
-                                           presence_penalty=presence_penalty,
-                                           top_p=top_p,
-                                           stop=stop,
-                                           n=1)
+            res = openai.completions.create(model=model,
+                                            prompt=prompts_,
+                                            suffix=suffix,
+                                            max_tokens=max_tokens,
+                                            temperature=temperature,
+                                            frequency_penalty=frequency_penalty,
+                                            presence_penalty=presence_penalty,
+                                            top_p=top_p,
+                                            stop=stop,
+                                            n=1)
             output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
             if output_handler:
                 output_handler(res)
         except Exception as e:
-            callback = openai.Completion.create
+            callback = openai.completions.create
             kwargs['model'] = kwargs['model'] if 'model' in kwargs else self.model
             if except_remedy is not None:
                 res = except_remedy(e, prompts_, callback, self, *args, **kwargs)
@@ -96,7 +103,7 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
             rsp = rsp.replace('\n\n---------USER REQUEST--------\n', '')
             return rsp
 
-        rsp    = [replace_verbose(r['text']) for r in res['choices']]
+        rsp    = [replace_verbose(r.text) for r in res.choices]
         output = rsp if isinstance(prompts, list) else rsp[0]
         return output, metadata
 

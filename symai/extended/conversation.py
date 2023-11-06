@@ -160,6 +160,7 @@ class Conversation(SlidingWindowStringConcatMemory):
 
     def forward(self, query: str, *args, **kwargs):
         query = self._to_symbol(query)
+        memory = None
         # get timestamp in string format
         timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S:%f")
         # append to string to memory
@@ -188,7 +189,11 @@ class Conversation(SlidingWindowStringConcatMemory):
             search_query = self.seo_opt(search_query)
             memory = self.index(search_query, *args, **kwargs)
 
-        res = self.recall(query, payload=str(memory)[:1500], *args, **kwargs)
+        if memory is not None:
+            res = self.recall(query, payload=str(memory)[:1500], *args, **kwargs)
+        else:
+            res = self.recall(query, *args, **kwargs)
+
         self.value = res.value # save last response
         val = str(f"[ASSISTANT::{timestamp}] <<<\n{str(res)}\n>>>\n")
         self.store(val, *args, **kwargs)

@@ -21,7 +21,8 @@ symbolic_engine        = None
 ocr_engine             = None
 vision_engine          = None
 index_engine           = None
-speech_engine          = None
+speech_to_text_engine  = None
+text_to_speech_engine  = None
 embedding_engine       = None
 userinput_engine       = None
 search_engine          = None
@@ -774,25 +775,64 @@ def index_func(wrp_self,
                           kwargs=kwargs)
 
 
-def check_or_init_speech_func(engine = None):
-    global speech_engine
+def check_or_init_speech_to_text_func(engine = None):
+    global speech_to_text_engine
     if engine is not None:
-        speech_engine = engine
-    elif speech_engine is None:
-        from .backend.engine_speech import WhisperEngine
-        speech_engine = WhisperEngine()
+        speech_to_text_engine = engine
+    elif speech_to_text_engine is None:
+        from .backend.engine_speech_to_text import WhisperEngine
+        speech_to_text_engine = WhisperEngine()
 
 
-def speech_func(wrp_self,
-                func: Callable,
-                trials: int = 1,
-                prompt='decode',
-                pre_processors: Optional[List[PreProcessor]] = None,
-                post_processors: Optional[List[PostProcessor]] = None,
-                wrp_args = [], wrp_kwargs = [],
-                args = [], kwargs = []):
-    check_or_init_speech_func()
-    return _process_query(engine=speech_engine,
+def check_or_init_text_to_speech_func(engine = None):
+    global text_to_speech_engine
+    if engine is not None:
+        text_to_speech_engine = engine
+    elif text_to_speech_engine is None:
+        from .backend.engine_text_to_speech import TTSEngine
+        text_to_speech_engine = TTSEngine()
+
+
+def speech_to_text_func(wrp_self,
+                        func: Callable,
+                        trials: int = 1,
+                        prompt='decode',
+                        pre_processors: Optional[List[PreProcessor]] = None,
+                        post_processors: Optional[List[PostProcessor]] = None,
+                        wrp_args = [], wrp_kwargs = [],
+                        args = [], kwargs = []):
+    check_or_init_speech_to_text_func()
+    return _process_query(engine=speech_to_text_engine,
+                          wrp_self=wrp_self,
+                          func=func,
+                          prompt=prompt,
+                          examples=None,
+                          constraints=[],
+                          default=None,
+                          limit=None,
+                          trials=trials,
+                          pre_processors=pre_processors,
+                          post_processors=post_processors,
+                          wrp_args=wrp_args,
+                          wrp_kwargs=wrp_kwargs,
+                          args=args,
+                          kwargs=kwargs)
+
+
+def text_to_speech_func(wrp_self,
+                        func: Callable,
+                        prompt: str,
+                        path: str,
+                        voice: str = 'Nova',
+                        trials: int = 1,
+                        pre_processors: Optional[List[PreProcessor]] = None,
+                        post_processors: Optional[List[PostProcessor]] = None,
+                        wrp_args = [], wrp_kwargs = [],
+                        args = [], kwargs = []):
+    check_or_init_text_to_speech_func()
+    wrp_kwargs['path'] = path
+    wrp_kwargs['voice'] = voice
+    return _process_query(engine=text_to_speech_engine,
                           wrp_self=wrp_self,
                           func=func,
                           prompt=prompt,
@@ -834,9 +874,12 @@ def command_func(wrp_self,
     if 'all' in engines or 'vision' in engines:
         check_or_init_vision_func()
         vision_engine.command(wrp_params)
-    if 'all' in engines or 'speech' in engines:
-        check_or_init_speech_func()
-        speech_engine.command(wrp_params)
+    if 'all' in engines or 'speech-to-text' in engines:
+        check_or_init_speech_to_text_func()
+        speech_to_text_engine.command(wrp_params)
+    if 'all' in engines or 'text-to-speech' in engines:
+        check_or_init_text_to_speech_func()
+        text_to_speech_engine.command(wrp_params)
     if 'all' in engines or 'embedding' in engines:
         check_or_init_embedding_func()
         embedding_engine.command(wrp_params)
@@ -957,12 +1000,19 @@ def bind_registry_func(
 
         return vision_engine.__dict__.get(property)
 
-    if engine == 'speech':
-        check_or_init_speech_func()
-        if property not in speech_engine.__dict__:
-            CustomUserWarning(f'Property "{property}" not found in speech engine, returning "None"')
+    if engine == 'speech-to-text':
+        check_or_init_speech_to_text_func()
+        if property not in speech_to_text_engine.__dict__:
+            CustomUserWarning(f'Property "{property}" not found in speech to text engine, returning "None"')
 
-        return speech_engine.__dict__.get(property)
+        return speech_to_text_engine.__dict__.get(property)
+
+    if engine == 'text-to-speech':
+        check_or_init_text_to_speech_func()
+        if property not in text_to_speech_engine.__dict__:
+            CustomUserWarning(f'Property "{property}" not found in text to speech engine, returning "None"')
+
+        return text_to_speech_engine.__dict__.get(property)
 
     if engine == 'embedding':
         check_or_init_embedding_func()

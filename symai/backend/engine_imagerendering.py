@@ -7,6 +7,13 @@ from .base import Engine
 from .settings import SYMAI_CONFIG
 
 
+logging.getLogger("openai").setLevel(logging.ERROR)
+logging.getLogger("requests").setLevel(logging.ERROR)
+logging.getLogger("urllib").setLevel(logging.ERROR)
+logging.getLogger("httpx").setLevel(logging.ERROR)
+logging.getLogger("httpcore").setLevel(logging.ERROR)
+
+
 class ImageRenderingEngine(Engine):
     def __init__(self, size: int = 512):
         super().__init__()
@@ -32,8 +39,8 @@ class ImageRenderingEngine(Engine):
                 if input_handler:
                     input_handler((prompt,))
 
-                callback = openai.Image.create
-                res = openai.Image.create(
+                callback = openai.images.generate
+                res = openai.images.generate(
                     prompt=prompt,
                     n=1,
                     size=size
@@ -46,8 +53,8 @@ class ImageRenderingEngine(Engine):
                 if input_handler:
                     input_handler((prompt, image_path))
 
-                callback = openai.Image.create_variation
-                res = openai.Image.create_variation(
+                callback = openai.images.create_variation
+                res = openai.images.create_variation(
                     image=open(image_path, "rb"),
                     n=1,
                     size=size
@@ -62,8 +69,8 @@ class ImageRenderingEngine(Engine):
                 if input_handler:
                     input_handler((prompt, image_path, mask_path))
 
-                callback = openai.Image.create_edit
-                res = openai.Image.create_edit(
+                callback = openai.images.edit
+                res = openai.images.edit(
                     image=open(image_path, "rb"),
                     mask=open(mask_path, "rb"),
                     prompt=prompt,
@@ -88,7 +95,7 @@ class ImageRenderingEngine(Engine):
             metadata['input']  = prompt
             metadata['output'] = res
 
-        rsp = res['data'][0]['url']
+        rsp = res.data[0].url
         return [rsp], metadata
 
     def prepare(self, args, kwargs, wrp_params):
