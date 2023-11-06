@@ -7,9 +7,11 @@ from pathlib import Path
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 logging.getLogger("requests").setLevel(logging.WARNING)
 logging.getLogger("tika").setLevel(logging.ERROR)
+logging.getLogger("httpx").setLevel(logging.ERROR)
+logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
-SYMAI_VERSION = "0.2.63"
+SYMAI_VERSION = "0.3.0"
 __version__   = SYMAI_VERSION
 __root_dir__  = Path.home() / '.symai'
 
@@ -66,7 +68,8 @@ def _start_symai():
                     "SEARCH_ENGINE_API_KEY":          "",
                     "SEARCH_ENGINE_MODEL":            "google",
                     "OCR_ENGINE_API_KEY":             "",
-                    "SPEECH_ENGINE_MODEL":            "base",
+                    "SPEECH_TO_TEXT_ENGINE_MODEL":    "base",
+                    "TEXT_TO_SPEECH_ENGINE_MODEL":    "tts-1",
                     "INDEXING_ENGINE_API_KEY":        "",
                     "INDEXING_ENGINE_ENVIRONMENT":    "us-west1-gcp",
                     "CAPTION_ENGINE_MODEL":           "base_coco"
@@ -77,6 +80,17 @@ def _start_symai():
         with open(_symai_config_path_, 'r') as f:
             _symai_config_ = json.load(f)
         _tmp_symai_config_ = _symai_config_.copy()
+
+        # MIGRATE THE ENVIRONMENT VARIABLES
+        # *==========================================================================================================*
+        if 'SPEECH_ENGINE_MODEL' in _symai_config_:
+            _symai_config_['SPEECH_TO_TEXT_ENGINE_MODEL'] = _symai_config_['SPEECH_ENGINE_MODEL']
+            del _symai_config_['SPEECH_ENGINE_MODEL']
+            # create missing environment variable
+            _symai_config_['TEXT_TO_SPEECH_ENGINE_MODEL'] = "tts-1"
+            # save the updated configuration file
+            with open(_symai_config_path_, 'w') as f:
+                json.dump(_symai_config_, f, indent=4)
 
         # LOAD THE ENVIRONMENT VARIABLES
         # *==========================================================================================================*
@@ -91,7 +105,9 @@ def _start_symai():
         _search_engine_api_key_         = os.environ.get('SEARCH_ENGINE_API_KEY', None)
         _search_engine_model_           = os.environ.get('SEARCH_ENGINE_MODEL', None)
         _ocr_engine_api_key_            = os.environ.get('OCR_ENGINE_API_KEY', None)
-        _speech_engine_model_           = os.environ.get('SPEECH_ENGINE_MODEL', None)
+        _speech_to_text_engine_model_   = os.environ.get('SPEECH_TO_TEXT_ENGINE_MODEL', None)
+        _text_to_speech_engine_model_   = os.environ.get('TEXT_TO_SPEECH_ENGINE_MODEL', None)
+        _text_to_speech_engine_voice_   = os.environ.get('TEXT_TO_SPEECH_ENGINE_VOICE', None)
         _indexing_engine_api_key_       = os.environ.get('INDEXING_ENGINE_API_KEY', None)
         _indexing_engine_environment_   = os.environ.get('INDEXING_ENGINE_ENVIRONMENT', None)
         _caption_engine_environment_    = os.environ.get('CAPTION_ENGINE_ENVIRONMENT', None)
@@ -117,7 +133,9 @@ def _start_symai():
         if _search_engine_api_key_:       _symai_config_['SEARCH_ENGINE_API_KEY']       = _search_engine_api_key_
         if _search_engine_model_:         _symai_config_['SEARCH_ENGINE_MODEL']         = _search_engine_model_
         if _ocr_engine_api_key_:          _symai_config_['OCR_ENGINE_API_KEY']          = _ocr_engine_api_key_
-        if _speech_engine_model_:         _symai_config_['SPEECH_ENGINE_MODEL']         = _speech_engine_model_
+        if _speech_to_text_engine_model_: _symai_config_['SPEECH_TO_TEXT_ENGINE_MODEL'] = _speech_to_text_engine_model_
+        if _text_to_speech_engine_model_: _symai_config_['TEXT_TO_SPEECH_ENGINE_MODEL'] = _text_to_speech_engine_model_
+        if _text_to_speech_engine_voice_: _symai_config_['TEXT_TO_SPEECH_ENGINE_VOICE'] = _text_to_speech_engine_voice_
         if _indexing_engine_api_key_:     _symai_config_['INDEXING_ENGINE_API_KEY']     = _indexing_engine_api_key_
         if _indexing_engine_environment_: _symai_config_['INDEXING_ENGINE_ENVIRONMENT'] = _indexing_engine_environment_
         if _caption_engine_environment_:  _symai_config_['CAPTION_ENGINE_ENVIRONMENT']  = _caption_engine_environment_

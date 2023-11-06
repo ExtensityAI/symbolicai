@@ -27,6 +27,12 @@ class OpenAIMixin:
                 'output': 0.12 / 1_000
             }
 
+        elif self.model == 'gpt-4-1106-preview' or self.model == 'gpt-4-1106-vision-preview':
+            return {
+                'input':  0.01 / 1_000,
+                'output': 0.03 / 1_000
+            }
+
         elif self.model == 'text-embedding-ada-002':
             return {
                 'usage': 0.0001 / 1_000
@@ -41,6 +47,9 @@ class OpenAIMixin:
 
         elif self.model == 'gpt-4' or self.model == 'gpt-4-0613':
             return 8_192
+
+        elif self.model == 'gpt-4-1106-preview' or self.model == 'gpt-4-vision-preview':
+            return 128_000
 
         elif self.model == 'gpt-4-32k' or self.model == 'gpt-4-32k-0613':
             return 32_768

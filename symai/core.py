@@ -7,7 +7,7 @@ from .functional import (bind_registry_func, cache_registry_func, command_func,
                          finetuning_func, imagecaptioning_func,
                          imagerendering_func, index_func, ocr_func, open_func,
                          output_func, retry_func, search_func, setup_func,
-                         speech_func, symbolic_func, userinput_func,
+                         text_to_speech_func, speech_to_text_func, symbolic_func, userinput_func,
                          vision_func)
 from .post_processors import *
 from .pre_processors import *
@@ -1658,11 +1658,11 @@ def ocr(image: str,
     return decorator
 
 
-def speech(prompt: str = 'decode',
-           pre_processors: Optional[List[PreProcessor]] = None,
-           post_processors: Optional[List[PostProcessor]] = None,
-           *wrp_args,
-           **wrp_kwargs):
+def speech_to_text(prompt: str = 'decode',
+                   pre_processors: Optional[List[PreProcessor]] = None,
+                   post_processors: Optional[List[PostProcessor]] = None,
+                   *wrp_args,
+                   **wrp_kwargs):
     """Decorates the given function for speech recognition.
 
     Args:
@@ -1678,14 +1678,49 @@ def speech(prompt: str = 'decode',
     def decorator(func):
         @functools.wraps(func)
         def wrapper(wrp_self, *args, **kwargs):
-            return speech_func(wrp_self,
-                               prompt=prompt,
-                               func=func,
-                               pre_processors=pre_processors,
-                               post_processors=post_processors,
-                               wrp_args=wrp_args,
-                               wrp_kwargs=wrp_kwargs,
-                               args=args, kwargs=kwargs)
+            return speech_to_text_func(wrp_self,
+                                       prompt=prompt,
+                                       func=func,
+                                       pre_processors=pre_processors,
+                                       post_processors=post_processors,
+                                       wrp_args=wrp_args,
+                                       wrp_kwargs=wrp_kwargs,
+                                       args=args, kwargs=kwargs)
+        return wrapper
+    return decorator
+
+
+def text_to_speech(prompt: str,
+                   path: str,
+                   voice: str = 'Nova',
+                   pre_processors: Optional[List[PreProcessor]] = None,
+                   post_processors: Optional[List[PostProcessor]] = None,
+                   *wrp_args,
+                   **wrp_kwargs):
+    """Decorates the given function for text to speech synthesis.
+
+    Args:
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to None.
+        *wrp_args: Additional arguments.
+        **wrp_kwargs: Additional keyword arguments.
+
+    Returns:
+        Callable: The decorated function.
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(wrp_self, *args, **kwargs):
+            return text_to_speech_func(wrp_self,
+                                       func=func,
+                                       prompt=prompt,
+                                       voice=voice,
+                                       path=path,
+                                       pre_processors=pre_processors,
+                                       post_processors=post_processors,
+                                       wrp_args=wrp_args,
+                                       wrp_kwargs=wrp_kwargs,
+                                       args=args, kwargs=kwargs)
         return wrapper
     return decorator
 

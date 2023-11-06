@@ -10,6 +10,13 @@ from .settings import SYMAI_CONFIG
 from ..strategy import InvalidRequestErrorRemedyChatStrategy
 
 
+logging.getLogger("openai").setLevel(logging.ERROR)
+logging.getLogger("requests").setLevel(logging.ERROR)
+logging.getLogger("urllib").setLevel(logging.ERROR)
+logging.getLogger("httpx").setLevel(logging.ERROR)
+logging.getLogger("httpcore").setLevel(logging.ERROR)
+
+
 class GPTXChatEngine(Engine, OpenAIMixin):
     def __init__(self):
         super().__init__()
@@ -59,20 +66,21 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         except_remedy       = kwargs['except_remedy'] if 'except_remedy' in kwargs else None
 
         try:
-            res = openai.ChatCompletion.create(model=model,
-                                               messages=prompts_,
-                                               max_tokens=max_tokens,
-                                               temperature=temperature,
-                                               frequency_penalty=frequency_penalty,
-                                               presence_penalty=presence_penalty,
-                                               top_p=top_p,
-                                               stop=stop,
-                                               n=1)
+            res = openai.chat.completions.create(model=model,
+                                                 messages=prompts_,
+                                                 max_tokens=max_tokens,
+                                                 temperature=temperature,
+                                                 frequency_penalty=frequency_penalty,
+                                                 presence_penalty=presence_penalty,
+                                                 top_p=top_p,
+                                                 stop=stop,
+                                                 n=1)
+
             output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
             if output_handler:
                 output_handler(res)
         except Exception as e:
-            callback = openai.ChatCompletion.create
+            callback = openai.chat.completions.create
             kwargs['model'] = kwargs['model'] if 'model' in kwargs else self.model
             if except_remedy is not None:
                 res = except_remedy(e, prompts_, callback, self, *args, **kwargs)
@@ -92,7 +100,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             metadata['input']  = prompts_
             metadata['output'] = res
 
-        rsp    = [r['message']['content'] for r in res['choices']]
+        rsp    = [r.message.content for r in res.choices]
         output = rsp if isinstance(prompts, list) else rsp[0]
         return output, metadata
 

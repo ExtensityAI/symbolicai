@@ -11,6 +11,7 @@ from .post_processors import ConsolePostProcessor, StripPostProcessor
 from .pre_processors import ConsoleInputPreProcessor
 from .prompts import MemoryCapabilities, SymbiaCapabilities
 from .symbol import Expression, Symbol
+import symai as ai
 
 logging.getLogger('charset_normalizer').setLevel(logging.ERROR)
 
@@ -24,6 +25,11 @@ class ChatBot(Expression):
         self.verbose: bool   = verbose
         self.name            = name
         self.last_user_input: str = ''
+        self.dalle   = ai.Interface('dall_e')
+        self.search  = ai.Interface('google')
+        self.fetch   = ai.Interface('selenium')
+        self.speech  = ai.Interface('whisper')
+        self.ocr     = ai.Interface('ocr')
 
         self.short_term_memory: Memory = SlidingWindowListMemory(window_size=10)
         self.long_term_memory:  Memory = VectorDatabaseMemory(enabled=settings.SYMAI_CONFIG['INDEXING_ENGINE_API_KEY'] is not None, top_k=10)
@@ -198,13 +204,12 @@ class SymbiaChat(ChatBot):
 
                     elif '[TEXT-TO-IMAGE]' in ctxt:
                         q            = usr.extract('text for image creation')
-                        q            = Expression(q)
-                        rsp          = q.draw()
+                        rsp          = self.dalle(q)
                         self.message = self.narrate('Symbia replies to the user and provides the image URL.', context=rsp)
 
                     elif '[OCR]' in ctxt:
                         url          = usr.extract('extract url')
-                        rsp          = Expression().ocr(url)
+                        rsp          = self.ocr(url)
                         self.message = self.narrate('Symbia replies to the user and provides OCR text from the image.', context=rsp)
 
                     elif '[RETRIEVAL]' in ctxt:

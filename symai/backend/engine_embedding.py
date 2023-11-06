@@ -8,6 +8,13 @@ from .mixin.openai import OpenAIMixin
 from .settings import SYMAI_CONFIG
 
 
+logging.getLogger("openai").setLevel(logging.ERROR)
+logging.getLogger("requests").setLevel(logging.ERROR)
+logging.getLogger("urllib").setLevel(logging.ERROR)
+logging.getLogger("httpx").setLevel(logging.ERROR)
+logging.getLogger("httpcore").setLevel(logging.ERROR)
+
+
 class EmbeddingEngine(Engine, OpenAIMixin):
     def __init__(self):
         super().__init__()
@@ -35,19 +42,18 @@ class EmbeddingEngine(Engine, OpenAIMixin):
             input_handler((prompts_,))
 
         try:
-            res = openai.Embedding.create(model=self.model,
-                                            input=prompts_)
+            res = openai.embeddings.create(model=self.model,
+                                           input=prompts_)
             output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
             if output_handler:
                 output_handler(res)
         except Exception as e:
             if except_remedy is None:
                 raise e
-            callback = openai.Embedding.create
+            callback = openai.embeddings.create
             res = except_remedy(e, prompts_, callback, self, *args, **kwargs)
 
-        rsp = [r['embedding'] for r in res['data']]
-
+        rsp = [r.embedding for r in res.data]
         metadata = {}
         if 'metadata' in kwargs and kwargs['metadata']:
             metadata['kwargs'] = kwargs

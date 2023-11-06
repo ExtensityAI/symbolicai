@@ -23,16 +23,16 @@ class WhisperEngine(Engine):
         super().__init__()
         config = SYMAI_CONFIG
         self.model = None # lazy loading
-        self.model_id = config['SPEECH_ENGINE_MODEL']
-        self.old_model_id = config['SPEECH_ENGINE_MODEL']
+        self.model_id = config['SPEECH_TO_TEXT_ENGINE_MODEL']
+        self.old_model_id = config['SPEECH_TO_TEXT_ENGINE_MODEL']
         self.tokens = []
         self.text = []
         self.formatter = WhisperTimestampsFormatter()
 
     def command(self, wrp_params):
         super().command(wrp_params)
-        if 'SPEECH_ENGINE_MODEL' in wrp_params:
-            self.model_id = wrp_params['SPEECH_ENGINE_MODEL']
+        if 'SPEECH_TO_TEXT_ENGINE_MODEL' in wrp_params:
+            self.model_id = wrp_params['SPEECH_TO_TEXT_ENGINE_MODEL']
 
     def forward(self, **kwargs) -> List[str]:
         assert whisper is not None, "Whisper is not installed. Please install it first."
