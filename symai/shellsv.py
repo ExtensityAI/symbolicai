@@ -133,6 +133,8 @@ class MergedCompleter(Completer):
             text.startswith('open ') or\
             text.startswith('rm ') or\
             text.startswith('git ') or\
+            text.startswith('vi ') or\
+            text.startswith('nano ') or\
             text.startswith('*') or\
             text.startswith(r'.\\') or\
             text.startswith(r'~\\') or\
@@ -559,7 +561,7 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
             cmd = cmd.replace('ll', 'dir')
             return run_shell_command(cmd, prev=res)
         else:
-            cmd = cmd.replace('ll', 'ls -l')
+            cmd = cmd.replace('ll', 'ls -la')
             return run_shell_command(cmd, prev=res)
 
     else:
