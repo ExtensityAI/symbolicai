@@ -1,6 +1,7 @@
 from typing import List
 from . import core
 from .symbol import Expression, Symbol
+from .components import Function
 
 
 class Memory(Expression):
@@ -74,9 +75,10 @@ class SlidingWindowStringConcatMemory(Memory):
         self._memory = str(sym - query)
 
     def recall(self, query: str, *args, **kwargs) -> Symbol:
-        val = self.history()
-        val = ''.join(val)
-        return Symbol(self._memory).query(query, *args, **kwargs)
+        val  = self.history()
+        val  = ''.join(val)
+        func = Function(query)
+        return func(val, *args, **kwargs)
 
 
 class VectorDatabaseMemory(Memory):

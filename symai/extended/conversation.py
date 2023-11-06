@@ -3,6 +3,7 @@ import pickle
 from datetime import datetime
 from typing import Any, Callable, Optional, List
 
+from .seo_query_optimizer import SEOQueryOptimizer
 from ..components import Indexer
 from ..memory import SlidingWindowStringConcatMemory
 from ..symbol import Symbol
@@ -27,6 +28,7 @@ class Conversation(SlidingWindowStringConcatMemory):
             file_link    = [file_link]
         self.file_link   = file_link
         self.index_name  = index_name
+        self.seo_opt     = SEOQueryOptimizer()
 
         if init is not None:
             self.store_system_message(init, *args, **kwargs)
@@ -52,7 +54,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         # Add back the attribute that were removed in __getstate__
         if self.index_name is not None:
             self.indexer = Indexer(index_name=self.index_name)
-            self.index  = self.indexer()
+            self.index  = self.indexer(raw_result=True)
 
     def store_system_message(self, message: str, *args, **kwargs):
         val = f"[SYSTEM::INSTRUCTION] <<<\n{str(message)}\n>>>\n"
@@ -109,8 +111,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         with open(path, 'wb') as handle:
             pickle.dump(conversation, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-    @staticmethod
-    def load_conversation_state(path: str) -> "Conversation":
+    def load_conversation_state(self, path: str) -> "Conversation":
         # Check if the file exists and it's not empty
         if os.path.exists(path):
             if os.path.getsize(path) <= 0:
@@ -123,8 +124,7 @@ class Conversation(SlidingWindowStringConcatMemory):
 
         # Create a new instance of the `Conversation` class and restore
         # the state from the saved conversation
-        conversation = Conversation()
-        return conversation.restore(conversation_state)
+        return self.restore(conversation_state)
 
     def restore(self, conversation_state: "Conversation") -> "Conversation":
         self._memory     = conversation_state._memory
@@ -134,7 +134,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         self.index_name  = conversation_state.index_name
         if self.index_name is not None:
             self.indexer = Indexer(index_name=self.index_name)
-            self.index   = self.indexer()
+            self.index   = self.indexer(raw_result=True)
         return self
 
     def commit(self, target_file: str = None, formatter: Optional[Callable] = None):
@@ -170,10 +170,25 @@ class Conversation(SlidingWindowStringConcatMemory):
             history =  f'{history}\n{kwargs["payload"]}'
             del kwargs['payload']
         if self.index is not None:
-            memory = self.index(query, payload=str(history), *args, **kwargs)
-            history = f'{history}\n[MEMORY] <<<\n{str(memory)[:1000]}\n>>>\n' # limit to 1000 characters
+            memory_split = self._memory.split(self.marker)
+            memory_shards = []
+            for ms in memory_split:
+                if ms.strip() == '':
+                    continue
+                memory_shards.append(ms)
 
-        res = self.recall(query, payload=history, *args, **kwargs)
+            length_memory_shards = len(memory_shards)
+            if length_memory_shards <= 3:
+                memory_shards = memory_shards
+            elif length_memory_shards <= 5:
+                memory_shards = memory_shards[:2] + memory_shards[-(length_memory_shards-2):]
+            else:
+                memory_shards = memory_shards[:2] + memory_shards[-3:]
+            search_query = '\n'.join(memory_shards) # join with newlines
+            search_query = self.seo_opt(search_query)
+            memory = self.index(search_query, *args, **kwargs)
+
+        res = self.recall(query, payload=str(memory)[:1500], *args, **kwargs)
         self.value = res.value # save last response
         val = str(f"[ASSISTANT::{timestamp}] <<<\n{str(res)}\n>>>\n")
         self.store(val, *args, **kwargs)
@@ -188,3 +203,19 @@ class Conversation(SlidingWindowStringConcatMemory):
                 str: The representation of the Symbol object.
             """
             return str(self.value)
+
+
+RETRIEVAL_CONTEXT = """[Description]
+This program is a retrieval augmented indexing program. It allows to index a directory or a git repository and retrieve files from it.
+The program uses a document retriever to index the files and a document reader to retrieve the files.
+The document retriever uses neural embeddings to vectorize the documents and a cosine similarity to retrieve the most similar documents.
+
+[Program Instructions]
+If the user requests functions or instructions, you will process the user queries based on the results of the retrieval augmented memory.
+"""
+
+
+class RetrievalAugmentedConversation(Conversation):
+    @property
+    def static_context(self) -> str:
+        return RETRIEVAL_CONTEXT

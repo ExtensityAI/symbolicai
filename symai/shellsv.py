@@ -1,6 +1,7 @@
 import glob
 import logging
 import os
+from pathlib import Path
 import sys
 import signal
 import subprocess
@@ -20,7 +21,7 @@ from pygments.lexers.shell import BashLexer
 
 from .backend.settings import SYMSH_CONFIG
 from .components import Function
-from .extended import Conversation
+from .extended import Conversation, RetrievalAugmentedConversation
 from .misc.console import ConsoleStyle
 from .misc.loader import Loader
 from .symbol import Symbol
@@ -29,6 +30,8 @@ from .interfaces import Interface
 
 
 logging.getLogger("prompt_toolkit").setLevel(logging.ERROR)
+logging.getLogger("asyncio").setLevel(logging.ERROR)
+logging.getLogger("multiprocessing").setLevel(logging.ERROR)
 
 
 print = print_formatted_text
@@ -40,7 +43,7 @@ It is a program that interacts with the users in the terminal emulation window.
 Shell commands are instructions that instruct the system to do some action.
 
 [Program Instructions]
-If user requests commands, you will only process user queries and return valid Linux/MacOS shell or Windows PowerShell commands and no other text.
+If the user requests commands, you will only process user queries and return valid Linux/MacOS shell or Windows PowerShell commands and no other text.
 If no further specified, use as default the Linux/MacOS shell commands.
 If additional instructions are provided the follow the user query to produce the requested output.
 A well related and helpful answer with suggested improvements is preferred over "I don't know" or "I don't understand" answers or stating the obvious.
@@ -289,13 +292,15 @@ def query_language_model(query: str, from_shell=True, res=None, *args, **kwargs)
     symai_path = os.path.join(home_path, '.symai', '.conversation_state')
     if (query.startswith('!"') or query.startswith("!'") or query.startswith('!`')):
         os.makedirs(os.path.dirname(symai_path), exist_ok=True)
-        Conversation.save_conversation_state(Conversation(auto_print=False), symai_path)
-        stateful_conversation = Conversation.load_conversation_state(symai_path)
+        stateful_conversation = Conversation(auto_print=False)
+        Conversation.save_conversation_state(stateful_conversation, symai_path)
     elif (query.startswith('."') or query.startswith(".'") or query.startswith('.`')) and stateful_conversation is None:
+        if stateful_conversation is None:
+            stateful_conversation = Conversation(auto_print=False)
         if not os.path.exists(symai_path):
             os.makedirs(os.path.dirname(symai_path), exist_ok=True)
-            Conversation.save_conversation_state(Conversation(auto_print=False), symai_path)
-        stateful_conversation = Conversation.load_conversation_state(symai_path)
+            Conversation.save_conversation_state(stateful_conversation, symai_path)
+        stateful_conversation = stateful_conversation.load_conversation_state(symai_path)
 
     if '|' in query and from_shell:
         cmds = query.split('|')
@@ -334,8 +339,14 @@ def retrieval_augmented_indexing(query: str, *args, **kwargs):
         overwrite = True
         path = path[1:]
 
+    parse_arxiv = False
+
+    # check if path contains arxiv flag
+    if path.startswith('arxiv:'):
+        parse_arxiv = True
+
     # check if path contains git flag
-    if path.startswith('git@') or path.startswith('git:'):
+    if path.startswith('git@'):
         repo_path = os.path.join(os.path.expanduser('~'), '.symai', 'temp')
         cloner = RepositoryCloner(repo_path=repo_path)
         url = path[4:]
@@ -351,10 +362,11 @@ def retrieval_augmented_indexing(query: str, *args, **kwargs):
     merger = FileMerger()
     file = merger(path)
     # check if file contains arxiv pdf file and parse it
-    arxiv = ArxivPdfParser()
-    pdf_file = arxiv(file)
-    if pdf_file is not None:
-        file = file @'\n'@ pdf_file
+    if parse_arxiv:
+        arxiv = ArxivPdfParser()
+        pdf_file = arxiv(file)
+        if pdf_file is not None:
+            file = file @'\n'@ pdf_file
 
     index_name = path.split(sep)[-1]
     print(f'Indexing {index_name} ...')
@@ -364,8 +376,8 @@ def retrieval_augmented_indexing(query: str, *args, **kwargs):
     home_path = os.path.expanduser('~')
     symai_path = os.path.join(home_path, '.symai', '.conversation_state')
     os.makedirs(os.path.dirname(symai_path), exist_ok=True)
-    Conversation.save_conversation_state(Conversation(auto_print=False, index_name=index_name), symai_path)
-    stateful_conversation = Conversation.load_conversation_state(symai_path)
+    stateful_conversation = RetrievalAugmentedConversation(auto_print=False, index_name=index_name)
+    Conversation.save_conversation_state(stateful_conversation, symai_path)
     message = f'Repository {url} cloned and ' if query.startswith('git@') or query.startswith('git:') else f'Directory {path} '
     msg = f'{message}successfully indexed: {index_name}'
     return msg
@@ -568,6 +580,12 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
         return run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
 
 
+def save_conversation():
+    home_path = os.path.expanduser('~')
+    symai_path = os.path.join(home_path, '.symai', '.conversation_state')
+    Conversation.save_conversation_state(stateful_conversation, symai_path)
+
+
 # Function to listen for user input and execute commands
 def listen(session: PromptSession, word_comp: WordCompleter, auto_query_on_error: bool=False):
     with patch_stdout():
@@ -602,9 +620,7 @@ def listen(session: PromptSession, word_comp: WordCompleter, auto_query_on_error
 
                 if cmd == 'quit' or cmd == 'exit' or cmd == 'q':
                     if stateful_conversation is not None:
-                        home_path = os.path.expanduser('~')
-                        symai_path = os.path.join(home_path, '.symai', '.conversation_state')
-                        Conversation.save_conversation_state(stateful_conversation, symai_path)
+                        save_conversation()
                     print('Goodbye!')
                     os._exit(0)
                 else:
