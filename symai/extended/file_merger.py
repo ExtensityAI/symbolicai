@@ -1,4 +1,5 @@
 import os
+from tqdm import tqdm
 from typing import List, Optional
 
 from .. import Expression, FileReader, Indexer, Symbol
@@ -27,7 +28,12 @@ class FileMerger(Expression):
         merged_file = ""
 
         # Implement recursive file search
-        for root, dirs, files in os.walk(root_path):
+        # use tqdm for progress bar and description
+        tqdm_desc = f"Reading file: ..."
+        # use os.walk to recursively search for files in the root path
+        progress = tqdm(os.walk(root_path), desc=tqdm_desc)
+
+        for root, dirs, files in progress:
             for file in files:
                 file_path = os.path.join(root, file)
                 # Exclude files with the specified names in the path
@@ -36,8 +42,6 @@ class FileMerger(Expression):
 
                 # Look only for files with the specified endings
                 if file.endswith(tuple(self.file_endings)):
-                    print(f"Reading file: {file_path}")
-
                     # Read in the file using the FileReader
                     file_content = self.reader(file_path, **kwargs).value
 
@@ -48,6 +52,10 @@ class FileMerger(Expression):
 
                     # Merge the file contents
                     merged_file += file_content
+
+                    # Update the progress bar description
+                    tqdm_desc = f"Reading file: {file_path}"
+                    progress.set_description(tqdm_desc)
 
         # Return the merged file as a Symbol
         return self._to_symbol(merged_file)
