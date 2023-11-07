@@ -58,7 +58,7 @@ def _start_symai():
             with open(_symai_config_path_, 'w') as f:
                 json.dump({
                     "NEUROSYMBOLIC_ENGINE_API_KEY":   "",
-                    "NEUROSYMBOLIC_ENGINE_MODEL":     "text-davinci-003",
+                    "NEUROSYMBOLIC_ENGINE_MODEL":     "gpt-4",
                     "SYMBOLIC_ENGINE_API_KEY":        "",
                     "SYMBOLIC_ENGINE":                "wolframalpha",
                     "EMBEDDING_ENGINE_API_KEY":       "",
