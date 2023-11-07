@@ -45,6 +45,8 @@ class GPTXChatEngine(Engine, OpenAIMixin):
 
     def compute_remaining_tokens(self, prompts: list) -> int:
         val = self.compute_required_tokens(prompts)
+        if 'gpt-4-1106-preview' == self.model or 'gpt-4-vision-preview' == self.model: # models can only output 4_096 tokens
+            return min(int((self.max_tokens - val) * 0.99), 4_096)
         return int((self.max_tokens - val) * 0.99) # TODO: figure out how their magic number works to compute reliably the precise max token size
 
     def forward(self, prompts: List[str], *args, **kwargs) -> List[str]:
