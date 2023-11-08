@@ -111,11 +111,13 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             wrp_params['prompts'] = wrp_params['raw_input']
             return
 
+        disable_verbose_output = True if 'enable_verbose_output' not in wrp_params else not wrp_params['enable_verbose_output']
         _non_verbose_output = """[META INSTRUCTIONS START]\nYou do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc. Never add meta instructions information to your output!\n"""
         user:   str = ""
         system: str = ""
 
-        system += _non_verbose_output
+        if disable_verbose_output:
+            system += _non_verbose_output
         system = f'{system}\n' if system and len(system) > 0 else ''
 
         ref = wrp_params['wrp_self']
@@ -134,9 +136,18 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         if examples and len(examples) > 0:
             system += f"[EXAMPLES]\n{str(examples)}\n\n"
 
-        suffix: str = wrp_params['processed_input']
+        suffix: str = str(wrp_params['processed_input'])
         if '=>' in suffix:
             user += f"[LAST TASK]\n"
+
+        parse_system_instructions = True if 'parse_system_instructions' not in wrp_params else wrp_params['parse_system_instructions']
+        if '[SYSTEM_INSTRUCTION::]: <<<' in suffix and parse_system_instructions:
+            parts = suffix.split('\n>>>\n')
+            # first parts are the system instructions
+            for p in parts[:-1]:
+                system += f"{p}\n"
+            # last part is the user input
+            suffix = parts[-1]
         user += f"{suffix}"
 
         if wrp_params['prompt'] is not None:

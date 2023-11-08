@@ -30,9 +30,9 @@ class Dialogue(Expression):
         # entangle the bots
         starting_bot.user_tag = responding_bot.bot_tag
         responding_bot.user_tag = starting_bot.bot_tag
-        val = f"[SYSTEM_INSTRUCTION::]: <<<\n{starting_bot.bot_tag} talks and references -> {responding_bot.bot_tag} | {responding_bot.bot_tag} talks and references -> {starting_bot.bot_tag}."
-        starting_bot.store_system_message(val)
-        responding_bot.store_system_message(val)
+        system_ = f"{starting_bot.bot_tag[:-2]} only names and references -> {responding_bot.bot_tag[:-2]}, and {responding_bot.bot_tag[:-2]} only names and references -> {starting_bot.bot_tag[:-2]}"
+        starting_bot.store_system_message(system_)
+        responding_bot.store_system_message(system_)
         # set the system instructions
         if len(system_instructions) == 1:
             starting_bot.store_system_message(system_instructions[0])
@@ -41,18 +41,18 @@ class Dialogue(Expression):
             starting_bot.store_system_message(system_instructions[0])
             responding_bot.store_system_message(system_instructions[1])
         # initialize the conversation
-        rsp1 = starting_bot.build_tag(starting_bot.bot_tag, initial_message)
-        starting_bot.store(rsp1)
-        self.print_response(starting_bot.bot_tag, initial_message)
-        rsp1 = initial_message
+        msg = starting_bot.build_tag(starting_bot.bot_tag, initial_message)
+        starting_bot.store(msg)
+        rsp = initial_message
+        self.print_response(starting_bot.bot_tag, rsp)
         # Run the conversation for n_turns
         for i in range(self.n_turns):
-            rsp2 = responding_bot(rsp1)
-            self.print_response(responding_bot.bot_tag, rsp2)
+            rsp = responding_bot.forward(rsp)
+            self.print_response(responding_bot.bot_tag, rsp)
             # In the subsequent turns, use the last response from the responding bot as the query for the starting bot
             if i < self.n_turns - 1:
-                rsp1 = starting_bot(rsp2)
-                self.print_response(starting_bot.bot_tag, rsp1)
+                rsp = starting_bot.forward(rsp)
+                self.print_response(starting_bot.bot_tag, rsp)
         return self.value
 
     def get(self, convo: Persona) -> List[Tuple[str, str]]:
