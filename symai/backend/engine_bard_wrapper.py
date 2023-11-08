@@ -111,7 +111,17 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
         suffix: str = wrp_params['processed_input']
         if '=>' in suffix:
             user += f"[LAST TASK]\n"
-        if wrp_params['prompt'] is not None:
+
+        parse_system_instructions = False if 'parse_system_instructions' not in wrp_params else wrp_params['parse_system_instructions']
+        if '[SYSTEM_INSTRUCTION::]: <<<' in suffix and parse_system_instructions:
+            parts = suffix.split('\n>>>\n')
+            # first parts are the system instructions
+            for p in parts[:-1]:
+                system += f"{p}\n"
+            # last part is the user input
+            suffix = parts[-1]
+
+        if wrp_params['prompt'] is not None and len(wrp_params['prompt']) > 0:
             user += f"[INSTRUCTION]\n{str(wrp_params['prompt'])}"
         user += f"{suffix}"
 
