@@ -140,17 +140,22 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         if '=>' in suffix:
             user += f"[LAST TASK]\n"
 
-        parse_system_instructions = True if 'parse_system_instructions' not in wrp_params else wrp_params['parse_system_instructions']
+        parse_system_instructions = False if 'parse_system_instructions' not in wrp_params else wrp_params['parse_system_instructions']
         if '[SYSTEM_INSTRUCTION::]: <<<' in suffix and parse_system_instructions:
             parts = suffix.split('\n>>>\n')
             # first parts are the system instructions
-            for p in parts[:-1]:
-                system += f"{p}\n"
+            c = 0
+            for i, p in enumerate(parts):
+                if 'SYSTEM_INSTRUCTION' in p:
+                    system += f"{p}\n"
+                    c += 1
+                else:
+                    break
             # last part is the user input
-            suffix = parts[-1]
+            suffix = '\n>>>\n'.join(parts[c:])
         user += f"{suffix}"
 
-        if wrp_params['prompt'] is not None:
+        if wrp_params['prompt'] is not None and len(wrp_params['prompt']) > 0:
             user += f"[INSTRUCTION]\n{str(wrp_params['prompt'])}"
 
         template_suffix = wrp_params['template_suffix'] if 'template_suffix' in wrp_params else None

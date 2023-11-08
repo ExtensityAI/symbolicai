@@ -25,34 +25,50 @@ class Dialogue(Expression):
         print(f'[{tag}]: {message}\n')
 
     def forward(self, initial_message: str, *system_instructions: List[str]):
-        starting_bot = self.bots[0]
-        responding_bot = self.bots[1]
-        # entangle the bots
-        starting_bot.user_tag = responding_bot.bot_tag
-        responding_bot.user_tag = starting_bot.bot_tag
-        system_ = f"{starting_bot.bot_tag[:-2]} only names and references -> {responding_bot.bot_tag[:-2]}, and {responding_bot.bot_tag[:-2]} only names and references -> {starting_bot.bot_tag[:-2]}"
-        starting_bot.store_system_message(system_)
-        responding_bot.store_system_message(system_)
-        # set the system instructions
+        # Assign the two Persona objects to variables for convenience
+        bot_1 = self.bots[0]
+        bot_2 = self.bots[1]
+        # Set the user_tag of each bot to the bot_tag of the other bot
+        bot_1.user_tag = bot_2.bot_tag
+        bot_2.user_tag = bot_1.bot_tag
+        # Generate the system message that instructs each bot on addressing the other
+        system_ = f"{bot_1.bot_tag[:-2]} only names and references -> {bot_2.bot_tag[:-2]}, " \
+                f"and {bot_2.bot_tag[:-2]} only names and references -> {bot_1.bot_tag[:-2]}"
+        # Store system instructions, if present
         if len(system_instructions) == 1:
-            starting_bot.store_system_message(system_instructions[0])
-            responding_bot.store_system_message(system_instructions[0])
+            bot_1.store_system_message(system_instructions[0])
+            bot_2.store_system_message(system_instructions[0])
         elif len(system_instructions) == 2:
-            starting_bot.store_system_message(system_instructions[0])
-            responding_bot.store_system_message(system_instructions[1])
-        # initialize the conversation
-        msg = starting_bot.build_tag(starting_bot.bot_tag, initial_message)
-        starting_bot.store(msg)
-        rsp = initial_message
-        self.print_response(starting_bot.bot_tag, rsp)
-        # Run the conversation for n_turns
-        for i in range(self.n_turns):
-            rsp = responding_bot.forward(rsp)
-            self.print_response(responding_bot.bot_tag, rsp)
-            # In the subsequent turns, use the last response from the responding bot as the query for the starting bot
-            if i < self.n_turns - 1:
-                rsp = starting_bot.forward(rsp)
-                self.print_response(starting_bot.bot_tag, rsp)
+            bot_1.store_system_message(system_instructions[0])
+            bot_2.store_system_message(system_instructions[1])
+        # Store the generated system message about naming and referencing
+        bot_1.store_system_message(system_)
+        bot_2.store_system_message(system_)
+        # Must manually initialize the conversation for the first bot since the initial_message is not self generated
+        tagged_message = bot_1.build_tag(bot_1.bot_tag, initial_message) # using helper function
+        bot_1.store(tagged_message) # add to bot's memory
+        # Print initial message
+        self.print_response(bot_1.bot_tag, initial_message)
+        conversation_history = [initial_message]  # Keep track of the full conversation history without tags
+        # Engage in the dialogue for the specified number of turns
+        for turn in range(self.n_turns):
+            starting_bot, responding_bot = bot_1, bot_2
+            # Get the last message from the conversation history for the starting bot to respond to
+            last_message = conversation_history[-1]
+            # Starting bot generates a response
+            response = responding_bot.forward(last_message)
+            # Save starting bot's response to conversation history
+            conversation_history.append(response)
+            # Print starting bot's response
+            self.print_response(responding_bot.bot_tag, response)
+            # Check if conversation should continue
+            if turn < self.n_turns - 1:
+                # Responding bot generates a response to the starting bot's message
+                response = starting_bot.forward(response)
+                # Save responding bot's response to conversation history
+                conversation_history.append(response)
+                # Print responding bot's response
+                self.print_response(starting_bot.bot_tag, response)
         return self.value
 
     def get(self, convo: Persona) -> List[Tuple[str, str]]:
