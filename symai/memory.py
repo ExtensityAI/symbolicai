@@ -41,7 +41,7 @@ class SlidingWindowListMemory(Memory):
 
 
 class SlidingWindowStringConcatMemory(Memory):
-    def __init__(self, token_ratio: float = 0.6):
+    def __init__(self, token_ratio: float = 0.6, *args, **kwargs):
         super().__init__()
         self._memory: str       = ''
         self.marker: str        = '[--++=|=++--]'

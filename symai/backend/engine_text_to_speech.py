@@ -31,9 +31,9 @@ class TTSEngine(Engine):
             self.model_id = wrp_params['TEXT_TO_SPEECH_ENGINE_MODEL']
 
     def forward(self, **kwargs) -> List[str]:
-        prompt = kwargs['prompt']
-        voice  = kwargs['voice']
-        path  = kwargs['path']
+        prompt = str(kwargs['prompt'])
+        voice  = str(kwargs['voice']).lower()
+        path  = str(kwargs['path'])
 
         input_handler   = kwargs.get("input_handler")
         if input_handler is not None:
