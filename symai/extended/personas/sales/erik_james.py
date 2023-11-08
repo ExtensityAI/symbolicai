@@ -2,7 +2,7 @@ from .. import Persona
 
 
 PERSONA_SALES_ERIK = """
-[Persona Description]
+Persona Description >>>
 Name: Erik James
 Age: 36
 Height: 6'1"
@@ -44,6 +44,7 @@ In conversation, Erik is both articulate and attentive, often making others feel
 
 Friends and Family:
 Socially, Erik is the linchpin among his friends, organizing gatherings and always finding time to connect despite a busy schedule. His family values anchor him; he often credits his parents' teachings during these get-togethers. Engaged in his nieces' and nephews' lives, he relishes his role as the cool uncle who provides support and light-hearted fun. With friends and family alike, Erik's interactions are sincere and focused, making each person feel exclusively attended to. His approach to relationships is one that nurtures and sustains long-standing bonds. Erik is also considered the glue in his social circle, regularly organizing events to keep his friends close. His parents, Jim and Helen, frequently receive his accolades for their influence on his success. As an uncle, he captures the adoration of his nieces and nephews, like young Max and Katie, whom he showers with both affection and mentorship, easily sliding into the role of their favorite uncle. His relationships are marked by quality time and unwavering commitment, traits that have earned him a lasting place in the hearts of those he cherishes.
+<<<
 """
 
 

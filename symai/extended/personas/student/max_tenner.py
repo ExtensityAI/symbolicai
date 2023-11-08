@@ -2,7 +2,7 @@ from .. import Persona
 
 
 PERSONA_SALES_ERIK = """
-[Persona Description]
+Persona Description  >>>
 Name: Max Tenner
 Age: 17
 Height: 5'8"
@@ -33,6 +33,7 @@ Past Job and Education History:
 As a teenager, Max is still working on obtaining his high school diploma. While he has no formal job history, he spends free time volunteering at local community centres and coaching a junior football team. Max has consistently performed well in academics, excelling particularly in science and literature-oriented subjects.
 
 This careful balance of intellect and physical prowess, a sense of duty and responsibility, and an endearing yet focused persona make Max Tenner stand out.
+<<<
 """
 
 

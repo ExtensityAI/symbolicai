@@ -1,6 +1,6 @@
 from ...components import Function
-from ...symbol import Expression
-from .base import Persona
+from ...symbol import Expression, Symbol
+from .base import Persona # keep this import for reflection to work
 
 
 PERSONA_BUILDER_DESCRIPTION = """[Task]
@@ -8,6 +8,45 @@ Create a detailed persona description about a character called {name}, which is 
 Be very detailed and specific about the persona, and include his visual appearance, character description, personality, background, quirks, and other relevant information. Add also past job and education history.
 Add also a description how the persona usually interacts with other people, and how he speaks and behaves in general.
 Include also friends and family and how the persona interacts with them. Provide at least two names of his family or close friends and a one sentence description of them. {relation_description}
+
+[Exemplary Output Structure] // add and vary the information or bullets if needed
+Persona Description >>>
+Name: ...
+Age: ...
+Height: ...
+Build: ...
+Hair Color: ...
+Eye Color: ...
+Fashion Sense: ...
+... # other relevant information
+
+Character Description:
+...
+
+Personality:
+...
+
+Background:
+...
+
+Education:
+...
+
+Quirks:
+...
+
+Interactions with Other People:
+...
+
+Friends and Family:
+...
+
+Past Job and Education History:
+...
+
+Additional Information:
+...
+<<<
 """
 
 
@@ -38,11 +77,15 @@ class PersonaBuilder(Expression):
         super().__init__()
         self.func = Function(PERSONA_BUILDER_DESCRIPTION)
 
-    def forward(self, name: str, description: str, relation: str = '', **kwargs) -> str:
+    def forward(self, name: str, description: str, relation: str = '', resume: Symbol = None, **kwargs) -> str:
         if relation:
             relation = f'The persona is related to {relation}.'
         self.func.format(name=name, description=description, relation_description=relation, **kwargs)
-        description = self.func()
+        if resume:
+            sym = '[PERSONA GENERATION GUIDANCE based on RESUME]\n' @ self._to_symbol(resume)
+            description = self.func(payload=sym)
+        else:
+            description = self.func()
         class_node = PERSONA_TEMPLATE.format(persona_description=description)
         # Create the class dynamically and return an instance.
         globals_ = globals().copy()

@@ -73,8 +73,12 @@ class Persona(Conversation):
     def bio(self) -> str:
         raise NotImplementedError()
 
-    def summary(self) -> str:
-        return self.func(self.bio())
+    def summarize(self, *args, **kwargs) -> str:
+        return self.func(self.bio(), *args, **kwargs)
+
+    def query(self, query, *args, **kwargs) -> str:
+        sym = self._to_symbol(self.bio())
+        return sym.query(query, *args, **kwargs)
 
     def extract_details(self, dialogue):
         # ensure to remove all `<<<` or `>>>` tags before returning the response
