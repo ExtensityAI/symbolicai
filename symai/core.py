@@ -1692,7 +1692,7 @@ def speech_to_text(prompt: str = 'decode',
 
 def text_to_speech(prompt: str,
                    path: str,
-                   voice: str = 'Nova',
+                   voice: str = 'nova',
                    pre_processors: Optional[List[PreProcessor]] = None,
                    post_processors: Optional[List[PostProcessor]] = None,
                    *wrp_args,

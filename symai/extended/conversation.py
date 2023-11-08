@@ -20,8 +20,9 @@ class Conversation(SlidingWindowStringConcatMemory):
                  file_link:      Optional[List[str]] = None,
                  index_name:     Optional[str] = None,
                  auto_print:     bool          = True,
-                 token_ratio:    float         = 0.6, *args, **kwargs):
-        super().__init__(token_ratio)
+                 token_ratio:    float         = 0.6,
+                 *args, **kwargs):
+        super().__init__(token_ratio, *args, **kwargs)
         self.token_ratio = token_ratio
         self.auto_print  = auto_print
         if file_link is not None and type(file_link) is str:
@@ -29,6 +30,8 @@ class Conversation(SlidingWindowStringConcatMemory):
         self.file_link   = file_link
         self.index_name  = index_name
         self.seo_opt     = SEOQueryOptimizer()
+        self.user_tag    = 'USER::'
+        self.bot_tag     = 'ASSISTANT::'
 
         if init is not None:
             self.store_system_message(init, *args, **kwargs)
@@ -57,7 +60,7 @@ class Conversation(SlidingWindowStringConcatMemory):
             self.index  = self.indexer(raw_result=True)
 
     def store_system_message(self, message: str, *args, **kwargs):
-        val = f"[SYSTEM::INSTRUCTION] <<<\n{str(message)}\n>>>\n"
+        val = f"[SYSTEM_INSTRUCTION::]: <<<\n{str(message)}\n>>>\n"
         self.store(val, *args, **kwargs)
 
     def store_file(self, file_path: str, *args, **kwargs):
@@ -102,7 +105,7 @@ class Conversation(SlidingWindowStringConcatMemory):
                 content = new_content
             content = ''.join(content)
 
-        val = f"[DATA::{file_path}] <<<\n{str(content)}\n>>>\n"
+        val = f"[DATA::{file_path}]: <<<\n{str(content)}\n>>>\n"
         self.store(val, *args, **kwargs)
 
     @staticmethod
@@ -158,18 +161,23 @@ class Conversation(SlidingWindowStringConcatMemory):
     def save(self, path: str, replace: bool = False) -> Symbol:
         return Symbol(self._memory).save(path, replace=replace)
 
+    def build_tag(self, tag: str, query: str) -> str:
+        # get timestamp in string format
+        timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S:%f")
+        return str(f"[{tag}{timestamp}]: <<<\n{str(query)}\n>>>\n")
+
     def forward(self, query: str, *args, **kwargs):
         query = self._to_symbol(query)
         memory = None
-        # get timestamp in string format
-        timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S:%f")
+
         # append to string to memory
-        val = str(f"[USER::{timestamp}] <<<\n{str(query)}\n>>>\n")
+        val = self.build_tag(self.user_tag, query)
         self.store(val, *args, **kwargs)
-        history = Symbol(f'[HISTORY] <<<\n{self._memory}\n>>>\n')
+        history = Symbol(f'[HISTORY::]: <<<\n{self._memory}\n>>>\n')
         if 'payload' in kwargs:
             history =  f'{history}\n{kwargs["payload"]}'
             del kwargs['payload']
+
         if self.index is not None:
             memory_split = self._memory.split(self.marker)
             memory_shards = []
@@ -195,8 +203,11 @@ class Conversation(SlidingWindowStringConcatMemory):
             res = self.recall(query, *args, **kwargs)
 
         self.value = res.value # save last response
-        val = str(f"[ASSISTANT::{timestamp}] <<<\n{str(res)}\n>>>\n")
+        val = self.build_tag(self.bot_tag, res)
         self.store(val, *args, **kwargs)
+
+        # WARN: DO NOT PROCESS THE RES BY REMOVING `<<<` AND `>>>` TAGS
+
         if self.auto_print:
             print(res)
         return res
