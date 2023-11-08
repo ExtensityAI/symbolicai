@@ -76,7 +76,7 @@ class SlidingWindowStringConcatMemory(Memory):
 
     def recall(self, query: str, *args, **kwargs) -> Symbol:
         val  = self.history()
-        val  = ''.join(val)
+        val  = '\n'.join(val)
         func = Function(query)
         return func(val, *args, **kwargs)
 
