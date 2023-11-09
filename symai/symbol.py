@@ -264,6 +264,7 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
         Returns:
             Symbol: A new Symbol object with the concatenated value.
         '''
+        other = self._to_symbol(other)
         return Symbol(str(other) + str(self))
 
     def __imatmul__(self, other: Any) -> 'Symbol':
@@ -668,7 +669,7 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
         @core.combine()
         def _func(_, a: str, b: str):
             pass
-
+        other = self._to_symbol(other)
         return Symbol(_func(other, self))
 
     def __iadd__(self, other: Any) -> 'Symbol':
@@ -682,6 +683,7 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
         Returns:
             Symbol: The updated Symbol with the added value.
         '''
+        other = self._to_symbol(other)
         self.value = self.__add__(other)
         return self
 
@@ -719,6 +721,7 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
         def _func(_, text: str, replace: str, value: str):
             pass
 
+        other = self._to_symbol(other)
         return Symbol(_func(other, self, ''))
 
     def __isub__(self, other: Any) -> 'Symbol':
