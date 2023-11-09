@@ -1,6 +1,6 @@
 from ...components import Function
 from ...symbol import Expression, Symbol
-from .base import Persona # keep this import for reflection to work
+from . import Persona # keep this import for reflection to work
 
 
 PERSONA_BUILDER_DESCRIPTION = """[Task]
@@ -63,7 +63,9 @@ def run():
 
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
-            self.sym_return_type = Persona
+            self.bot_tag         = f'{name}::'
+            self.user_tag        = 'Other Person::'
+            self.sym_return_type = PersonaClass
 
         def bio(self) -> str:
             return CURRENT_PERSONA_DESCRIPTION
@@ -86,7 +88,13 @@ class PersonaBuilder(Expression):
             description = self.func(payload=sym)
         else:
             description = self.func()
-        class_node = PERSONA_TEMPLATE.format(persona_description=description)
+        # extract full name
+        full_name = None
+        for line in description.split('\n'):
+            if 'Name:' in line:
+                full_name = line.split('Name:')[-1].strip()
+                break
+        class_node = PERSONA_TEMPLATE.format(persona_description=description, name=full_name)
         # Create the class dynamically and return an instance.
         globals_ = globals().copy()
         locals_ = {}
