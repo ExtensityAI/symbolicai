@@ -620,8 +620,19 @@ class TokenTracker(Expression):
 class Indexer(Expression):
     DEFAULT = 'data-index'
 
+    def replace_special_chars(self, index: str):
+        # replace special characters that are not for path
+        index = str(index)
+        index = index.replace('-', '')
+        index = index.replace('_', '')
+        index = index.replace(' ', '')
+        index = index.lower()
+        print(index)
+        return index
+
     def __init__(self, index_name: str = DEFAULT, top_k: int = 8, batch_size: int = 20, formatter: Callable = ParagraphFormatter(), auto_add=True):
         super().__init__()
+        index_name = self.replace_special_chars(index_name)
         self.index_name = index_name
         self.elements   = []
         self.batch_size = batch_size
