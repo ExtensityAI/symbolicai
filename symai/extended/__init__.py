@@ -9,3 +9,4 @@ from .packages import *
 from .repo_cloner import *
 from .solver import *
 from .summarizer import *
+from .personas import *
