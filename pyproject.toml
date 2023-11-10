@@ -30,11 +30,11 @@ dependencies = [
 blip2 = ["bitsandbytes>=0.39.1", "salesforce-lavis>=1.0.0"]
 wolframalpha = ["wolframalpha>=5.0.0"]
 whisper = ["openai-whisper"]
-selenium = ["selenium>=4.10.0", "webdriver-manager==3.8.6", "chromedriver-autoinstaller==0.4.0"]
+selenium = ["selenium>=4.10.0", "webdriver-manager>=4.0.1", "chromedriver-autoinstaller>=0.4.0"]
 google = ["google-search-results>=2.4.2"]
 pinecone = ["pinecone-client>=2.2.2"]
 bard = ["bardapi>=0.1.24"]
-all = ["wolframalpha>=5.0.0", "openai-whisper", "selenium>=4.10.0", "webdriver-manager==3.8.6", "chromedriver-autoinstaller==0.4.0", "google-search-results>=2.4.2", "pinecone-client>=2.2.2"]
+all = ["wolframalpha>=5.0.0", "openai-whisper", "selenium>=4.10.0", "webdriver-manager>=4.0.1", "chromedriver-autoinstaller>=0.4.0", "google-search-results>=2.4.2", "pinecone-client>=2.2.2"]
 
 [tool.setuptools.dynamic]
 version = {attr = "symai.SYMAI_VERSION"}

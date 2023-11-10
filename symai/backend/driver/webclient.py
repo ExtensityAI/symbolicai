@@ -16,15 +16,20 @@ from random import choice
 
 try:
     warnings.filterwarnings('ignore', module='chromedriver')
-    warnings.filterwarnings('ignore', module='chromedriver_autoinstaller')
     warnings.filterwarnings('ignore', module='selenium')
-    import chromedriver_autoinstaller
     from selenium import webdriver
-    from selenium.webdriver.chrome.options import Options as ChromeOptions
     from selenium.webdriver.common.by import By
     from selenium.webdriver.remote.remote_connection import LOGGER
+    from webdriver_manager.firefox import GeckoDriverManager
+    from selenium.webdriver.firefox.options import Options as FirefoxOptions
+    from selenium.webdriver.firefox.service import Service as FirefoxService
+    from webdriver_manager.chrome import ChromeDriverManager
+    from selenium.webdriver.chrome.options import Options as ChromeOptions
+    from selenium.webdriver.chrome.service import Service as ChromeService
+    from webdriver_manager.microsoft import EdgeChromiumDriverManager
+    from selenium.webdriver.edge.options import Options as EdgeOptions
+    from selenium.webdriver.edge.service import Service as EdgeService
 except:
-    chromedriver_autoinstaller = None
     webdriver = None
 
 from ... import __root_dir__
@@ -83,26 +88,38 @@ class page_loaded(object):
 def connect_chrome(debug, proxy=None):
     assert webdriver is not None, "selenium is not installed"
 
-    options = ChromeOptions()
-    if proxy: options.add_argument(f"--proxy-server=socks5://{proxy.host}:{proxy.port}")
-    options.add_argument('--ignore-certificate-errors')
-    options.add_argument('--incognito')
-    options.add_argument("--headless")
-    options.add_argument("--log-level=3")
-
-    driver_path = __root_dir__ / 'chromedriver'
-    if not os.path.exists(driver_path): os.makedirs(driver_path)
-
-    chromedriver_autoinstaller.install(path=driver_path)
     try:
-        driver = webdriver.Chrome(options=options)
+        options = ChromeOptions()
+        if proxy: options.add_argument(f"--proxy-server=socks5://{proxy.host}:{proxy.port}")
+        options.add_argument('--ignore-certificate-errors')
+        options.add_argument('--incognito')
+        options.add_argument("--headless")
+        options.add_argument("--log-level=3")
+        driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
     except Exception as e1:
         try:
             print(f"ERROR REMEDY: Trying to use Firefox as an alternative.")
-            driver = webdriver.Firefox(options=options)
+            options = FirefoxOptions()
+            if proxy: options.add_argument(f"--proxy-server=socks5://{proxy.host}:{proxy.port}")
+            options.add_argument('--ignore-certificate-errors')
+            options.add_argument('--incognito')
+            options.add_argument("--headless")
+            options.add_argument("--log-level=3")
+            driver = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()), options=options)
         except Exception as e2:
             print(f"Issue with finding an appropriate driver version. Your current browser might be newer than the driver. Please either downgrade Chrome or try to install a proper chromedriver manually.\nOriginal error: {e1}; Remedy attempt error: {e2}")
-            raise e2
+            try:
+                print(f"ERROR REMEDY: Trying to use Edge as an alternative.")
+                options = EdgeOptions()
+                if proxy: options.add_argument(f"--proxy-server=socks5://{proxy.host}:{proxy.port}")
+                options.add_argument('--ignore-certificate-errors')
+                options.add_argument('--incognito')
+                options.add_argument("--headless")
+                options.add_argument("--log-level=3")
+                driver = webdriver.Edge(service=EdgeService(EdgeChromiumDriverManager().install()), options=options)
+            except Exception as e3:
+                print(f"Issue with finding an appropriate driver version. Your current browser might be newer than the driver. Please either downgrade Chrome or try to install a proper chromedriver manually.\nOriginal error: {e1}; Remedy attempt error: {e2}; Second remedy attempt error: {e3}")
+                raise e3 from e2
     if debug: print("Chrome Headless Browser Invoked")
 
     return driver
