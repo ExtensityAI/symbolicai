@@ -3,6 +3,13 @@ import os
 import time
 from abc import ABC
 from typing import Any, List
+from ..symbol import Symbol
+
+
+class PreviewSymbol(Symbol):
+    def __init__(self, params: dict):
+        super().__init__(params['prompts'])
+        self.params = params
 
 
 class Engine(ABC):
@@ -48,7 +55,7 @@ class Engine(ABC):
         return res, metadata
 
     def preview(self, wrp_params):
-        return str(wrp_params['prompts']), {}
+        return PreviewSymbol(wrp_params), {}
 
     def forward(self, *args: Any, **kwds: Any) -> List[str]:
         raise NotADirectoryError()
