@@ -44,8 +44,13 @@ class PackageInitializer():
         if args is None:
             args = parser.parse_args(sys.argv[2:3])
         vals = args.package.split('/')
-        username = vals[0]
-        package_name = vals[1]
+        try:
+            username = vals[0]
+            package_name = vals[1]
+        except:
+            print('Invalid package name: {git_username}/{package_name}')
+            parser.print_help()
+            exit(1)
 
         package_path = os.path.join(self.package_dir, username, package_name)
         if os.path.exists(package_path):
