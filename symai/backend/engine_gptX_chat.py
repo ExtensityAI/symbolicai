@@ -136,6 +136,9 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         if examples and len(examples) > 0:
             system += f"[EXAMPLES]\n{str(examples)}\n\n"
 
+        if wrp_params['prompt'] is not None and len(wrp_params['prompt']) > 0:
+            user += f"[INSTRUCTION]\n{str(wrp_params['prompt'])}"
+
         suffix: str = str(wrp_params['processed_input'])
         if '=>' in suffix:
             user += f"[LAST TASK]\n"
@@ -154,9 +157,6 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             # last part is the user input
             suffix = '\n>>>\n'.join(parts[c:])
         user += f"{suffix}"
-
-        if wrp_params['prompt'] is not None and len(wrp_params['prompt']) > 0:
-            user += f"[INSTRUCTION]\n{str(wrp_params['prompt'])}"
 
         template_suffix = wrp_params['template_suffix'] if 'template_suffix' in wrp_params else None
         if template_suffix:
