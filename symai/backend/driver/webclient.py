@@ -29,12 +29,18 @@ try:
     from webdriver_manager.microsoft import EdgeChromiumDriverManager
     from selenium.webdriver.edge.options import Options as EdgeOptions
     from selenium.webdriver.edge.service import Service as EdgeService
-except:
+
+    LOGGER.setLevel(logging.ERROR)
+
+except Exception as e:
     webdriver = None
+    if "No module named 'selenium'" in str(e):
+        print(f"ERROR: {e}")
+        print(f"ERROR: Please install selenium with `pip install selenium`")
+    else:
+        print(f"ERROR: {e}")
 
 from ... import __root_dir__
-
-LOGGER.setLevel(logging.ERROR)
 
 
 class Proxy(object):
