@@ -194,8 +194,10 @@ class Conversation(SlidingWindowStringConcatMemory):
             else:
                 memory_shards = memory_shards[:2] + memory_shards[-3:]
             search_query = '\n'.join(memory_shards) # join with newlines
-            search_query = self.seo_opt(search_query)
+            search_query = self.seo_opt(f'[Query]:' @ query @ '\n' @ search_query)
             memory = self.index(search_query, *args, **kwargs)
+            if 'raw_result' in kwargs:
+                print(memory)
 
         if memory is not None:
             res = self.recall(query, payload=str(memory)[:1500], *args, **kwargs)
@@ -213,12 +215,12 @@ class Conversation(SlidingWindowStringConcatMemory):
         return res
 
     def __repr__(self):
-            """Get the representation of the Symbol object as a string.
+        """Get the representation of the Symbol object as a string.
 
-            Returns:
-                str: The representation of the Symbol object.
-            """
-            return str(self.value)
+        Returns:
+            str: The representation of the Symbol object.
+        """
+        return str(self.value)
 
 
 RETRIEVAL_CONTEXT = """[Description]

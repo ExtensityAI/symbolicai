@@ -620,6 +620,49 @@ class TokenTracker(Expression):
 class Indexer(Expression):
     DEFAULT = 'data-index'
 
+    class IndexResult(Expression):
+        def __init__(self, res, query: str):
+            self.query = query
+            self.raw   = res
+            self.value = [v['metadata']['text'] for v in res['matches']]
+
+        def _unpack_matches(self):
+            for i, match in enumerate(self.value):
+                match = match.strip()
+                if match.startswith('# ----[FILE_START]') and '# ----[FILE_END]' in match:
+                    m = match.split('[FILE_CONTENT]:')[-1].strip()
+                    content, file_name = m.split('# ----[FILE_END]')
+                    yield file_name.strip(), content.strip()
+                else:
+                    yield i+1, match
+
+        def __str__(self):
+            str_view = ''
+            for filename, content in self._unpack_matches():
+                # indent each line of the content
+                content = '\n'.join(['  ' + line for line in content.split('\n')])
+                str_view += f'* {filename}\n{content}\n\n'
+            return f'''
+[RESULT]
+{'-=-' * 13}
+
+Query: {self.query}
+
+{'-=-' * 13}
+
+Matches:
+
+{str_view}
+{'-=-' * 13}
+'''
+
+        def _repr_html_(self) -> str:
+            # return a nicely styled HTML list results based on retrieved documents
+            doc_str = ''
+            for filename, content in self._unpack_matches():
+                doc_str += f'<li><b>{filename}</b><br>{content}</li>\n'
+            return f'<ul>{doc_str}</ul>'
+
     def replace_special_chars(self, index: str):
         # replace special characters that are not for path
         index = str(index)
@@ -690,11 +733,12 @@ class Indexer(Expression):
             query_emb = Symbol(query).embed().value
             res = that.get(query_emb, index_top_k=that.top_k)
             res = res.ast()
+            if ('raw_result' in kwargs and kwargs['raw_result']) or raw_result:
+                that.retrieval = res
+                return that.IndexResult(res, query)
             res = [v['metadata']['text'] for v in res['matches']]
             that.retrieval = res
             sym = that._to_symbol(res)
-            if raw_result:
-                return sym
             rsp = sym.query(query, *args, **kwargs)
             return rsp
 

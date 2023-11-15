@@ -45,10 +45,13 @@ class FileMerger(Expression):
                     # Read in the file using the FileReader
                     file_content = self.reader(file_path, **kwargs).value
 
+                    # escape file name spaces
+                    file_path = file_path.replace(" ", "\\ ")
+
                     # Append start and end markers for each file
-                    file_content = f"# ----[FILE_START] {file_path}\n" + \
+                    file_content = f"# ----[FILE_START]<PART1/1>{file_path}[FILE_CONTENT]:\n" + \
                                    file_content + \
-                                   f"\n# ----[FILE_END] {file_path}\n"
+                                   f"\n# ----[FILE_END]{file_path}\n"
 
                     # Merge the file contents
                     merged_file += file_content
