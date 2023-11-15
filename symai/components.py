@@ -729,9 +729,15 @@ Matches:
                 that.add(val)
 
         def _func(query, *args, **kwargs):
-            query_emb = Symbol(query).embed().value
-            res = that.get(query_emb, index_top_k=that.top_k)
-            res = res.ast()
+            try:
+                query_emb = Symbol(query).embed().value
+                res = that.get(query_emb, index_top_k=that.top_k)
+                res = res.ast()
+            except Exception as e:
+                message = ['Sorry, failed to interact with index. Please check index name and try again later:', str(e)]
+                # package the message for the IndexResult class
+                res = {'matches': [{'metadata': {'text': '\n'.join(message)}}]}
+                return that.IndexResult(res, query)
             if ('raw_result' in kwargs and kwargs['raw_result']) or raw_result:
                 that.retrieval = res
                 return that.IndexResult(res, query)

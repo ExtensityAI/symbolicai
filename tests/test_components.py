@@ -77,7 +77,7 @@ class TestComponents(unittest.TestCase):
         self.assertTrue('[HELP]' in y.value, y)
 
     def test_indexer(self):
-        indexer = Indexer(index_name='data-index')
+        indexer = Indexer(index_name='dataindex')
         indexer('This is a test!')      # upsert
         index = indexer()
         rsp = index('Is there a test?') # retrieve
