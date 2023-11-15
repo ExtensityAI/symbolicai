@@ -356,39 +356,46 @@ def retrieval_augmented_indexing(query: str, *args, **kwargs):
         overwrite = True
         path = path[1:]
 
-    parse_arxiv = False
+    # check if request use of specific index
+    index_name = None
+    if path.startswith('index:'):
+        # continue conversation with specific index
+        index_name = path.split('index:')[-1].strip()
+    else:
+        parse_arxiv = False
 
-    # check if path contains arxiv flag
-    if path.startswith('arxiv:'):
-        parse_arxiv = True
+        # check if path contains arxiv flag
+        if path.startswith('arxiv:'):
+            parse_arxiv = True
 
-    # check if path contains git flag
-    if path.startswith('git@'):
-        repo_path = os.path.join(os.path.expanduser('~'), '.symai', 'temp')
-        cloner = RepositoryCloner(repo_path=repo_path)
-        url = path[4:]
-        if 'http' not in url:
-            url = 'https://' + url
-        url = url.replace('.com:', '.com/')
-        # if ends with '.git' then remove it
-        if url.endswith('.git'):
-            url = url[:-4]
-        path = cloner(url)
+        # check if path contains git flag
+        if path.startswith('git@'):
+            repo_path = os.path.join(os.path.expanduser('~'), '.symai', 'temp')
+            cloner = RepositoryCloner(repo_path=repo_path)
+            url = path[4:]
+            if 'http' not in url:
+                url = 'https://' + url
+            url = url.replace('.com:', '.com/')
+            # if ends with '.git' then remove it
+            if url.endswith('.git'):
+                url = url[:-4]
+            path = cloner(url)
 
-    # merge files
-    merger = FileMerger()
-    file = merger(path)
-    # check if file contains arxiv pdf file and parse it
-    if parse_arxiv:
-        arxiv = ArxivPdfParser()
-        pdf_file = arxiv(file)
-        if pdf_file is not None:
-            file = file @'\n'@ pdf_file
+        # merge files
+        merger = FileMerger()
+        file = merger(path)
+        # check if file contains arxiv pdf file and parse it
+        if parse_arxiv:
+            arxiv = ArxivPdfParser()
+            pdf_file = arxiv(file)
+            if pdf_file is not None:
+                file = file @'\n'@ pdf_file
 
-    index_name = path.split(sep)[-1]
-    print(f'Indexing {index_name} ...')
-    # creates index if not exists
-    DocumentRetriever(file=file, index_name=index_name, overwrite=overwrite)
+        index_name = path.split(sep)[-1]
+        print(f'Indexing {index_name} ...')
+
+        # creates index if not exists
+        DocumentRetriever(file=file, index_name=index_name, overwrite=overwrite)
 
     home_path = os.path.expanduser('~')
     symai_path = os.path.join(home_path, '.symai', '.conversation_state')
