@@ -660,7 +660,7 @@ Matches:
             # return a nicely styled HTML list results based on retrieved documents
             doc_str = ''
             for filename, content in self._unpack_matches():
-                doc_str += f'<li><b>{filename}</b><br>{content}</li>\n'
+                doc_str += f'<li><a href="{filename}"><b>{filename}</a></b><br>{content}</li>\n'
             return f'<ul>{doc_str}</ul>'
 
     def replace_special_chars(self, index: str):
@@ -683,15 +683,14 @@ Matches:
         self.formatter  = formatter
         self.sym_return_type = Expression
 
-        if index_name != Indexer.DEFAULT:
-            Expression.setup({'index': IndexEngine(index_name=index_name)})
-            # append index name to indices.txt in home directory .symai folder (default)
-            self.path = Path.home() / '.symai' / 'indices.txt'
-            if not self.path.exists():
-                self.path.parent.mkdir(parents=True, exist_ok=True)
-                self.path.touch()
-            if auto_add:
-                self.register()
+        Expression.setup({'index': IndexEngine(index_name=index_name)})
+        # append index name to indices.txt in home directory .symai folder (default)
+        self.path = Path.home() / '.symai' / 'indices.txt'
+        if not self.path.exists():
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            self.path.touch()
+        if auto_add:
+            self.register()
 
     def register(self):
         # check if index already exists in indices.txt and append if not
