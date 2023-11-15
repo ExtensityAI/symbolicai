@@ -25,7 +25,7 @@ def chunks(iterable, batch_size=100):
 class IndexEngine(Engine):
     _default_api_key         = SYMAI_CONFIG['INDEXING_ENGINE_API_KEY']
     _default_environment     = SYMAI_CONFIG['INDEXING_ENGINE_ENVIRONMENT']
-    _default_index_name      = 'data-index'
+    _default_index_name      = 'dataindex'
     _default_index_dims      = 1536
     _default_index_top_k     = 5
     _default_index_metric    = 'cosine'

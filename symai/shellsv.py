@@ -51,6 +51,7 @@ A well related and helpful answer with suggested improvements is preferred over 
 
 
 stateful_conversation = None
+previous_kwargs       = None
 
 
 def supports_ansi_escape():
@@ -287,7 +288,7 @@ def get_git_branch():
 
 # query language model
 def query_language_model(query: str, from_shell=True, res=None, *args, **kwargs):
-    global stateful_conversation
+    global stateful_conversation, previous_kwargs
     home_path = os.path.expanduser('~')
     symai_path = os.path.join(home_path, '.symai', '.conversation_state')
 
@@ -296,14 +297,21 @@ def query_language_model(query: str, from_shell=True, res=None, *args, **kwargs)
     if '--kwargs' in query or '-kw' in query:
         splitter = '--kwargs' if '--kwargs' in query else '-kw'
         # check if kwargs format is last in query otherwise raise error
-        splits = query.split(f'{splitter} ')
-        if '=' in splits[-1] and ',' in splits[-1]:
+        splits = query.split(f'{splitter}')
+        if previous_kwargs is None and '=' not in splits[-1] and ',' not in splits[-1]:
             raise ValueError('Kwargs format must be last in query.')
-        kwargs_str = splits[-1].strip()
-        # remove kwargs from query
-        query = splits[0].strip()
-        cmd_kwargs = dict([kw.split('=') for kw in kwargs_str.split(',')])
-        cmd_kwargs = {k.strip(): Symbol(v.strip()).ast() for k, v in cmd_kwargs.items()}
+        elif previous_kwargs is not None and '=' not in splits[-1] and ',' not in splits[-1]:
+            # use previous kwargs
+            cmd_kwargs = previous_kwargs
+        else:
+            # remove kwargs from query
+            query = splits[0].strip()
+            # extract kwargs
+            kwargs_str = splits[-1].strip()
+            cmd_kwargs = dict([kw.split('=') for kw in kwargs_str.split(',')])
+            cmd_kwargs = {k.strip(): Symbol(v.strip()).ast() for k, v in cmd_kwargs.items()}
+
+        previous_kwargs = cmd_kwargs
         # unpack cmd_kwargs to kwargs
         kwargs = {**kwargs, **cmd_kwargs}
 
@@ -357,10 +365,12 @@ def retrieval_augmented_indexing(query: str, *args, **kwargs):
         path = path[1:]
 
     # check if request use of specific index
-    index_name = None
+    index_name      = None
+    use_index_name  = False
     if path.startswith('index:'):
+        use_index_name = True
         # continue conversation with specific index
-        index_name = path.split('index:')[-1].strip()
+        index_name  = path.split('index:')[-1].strip()
     else:
         parse_arxiv = False
 
@@ -402,7 +412,10 @@ def retrieval_augmented_indexing(query: str, *args, **kwargs):
     os.makedirs(os.path.dirname(symai_path), exist_ok=True)
     stateful_conversation = RetrievalAugmentedConversation(auto_print=False, index_name=index_name)
     Conversation.save_conversation_state(stateful_conversation, symai_path)
-    message = f'Repository {url} cloned and ' if query.startswith('git@') or query.startswith('git:') else f'Directory {path} '
+    if use_index_name:
+        message = 'New session '
+    else:
+        message = f'Repository {url} cloned and ' if query.startswith('git@') or query.startswith('git:') else f'Directory {path} '
     msg = f'{message}successfully indexed: {index_name}'
     return msg
 
