@@ -88,6 +88,9 @@ class FileEngine(Engine):
                 print(f'Error reading file: {e} | {path}')
                 raise e
 
+        # ensure encoding is utf8
+        rsp = rsp.encode('utf8', 'ignore').decode('utf8', 'ignore')
+
         output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
         if output_handler:
             output_handler(rsp)

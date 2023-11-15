@@ -290,6 +290,23 @@ def query_language_model(query: str, from_shell=True, res=None, *args, **kwargs)
     global stateful_conversation
     home_path = os.path.expanduser('~')
     symai_path = os.path.join(home_path, '.symai', '.conversation_state')
+
+    # check and extract kwargs from query if any
+    # format --kwargs key1=value1,key2=value2,key3=value3,...keyN=valueN
+    if '--kwargs' in query or '-kw' in query:
+        splitter = '--kwargs' if '--kwargs' in query else '-kw'
+        # check if kwargs format is last in query otherwise raise error
+        splits = query.split(f'{splitter} ')
+        if '=' in splits[-1] and ',' in splits[-1]:
+            raise ValueError('Kwargs format must be last in query.')
+        kwargs_str = splits[-1].strip()
+        # remove kwargs from query
+        query = splits[0].strip()
+        cmd_kwargs = dict([kw.split('=') for kw in kwargs_str.split(',')])
+        cmd_kwargs = {k.strip(): Symbol(v.strip()).ast() for k, v in cmd_kwargs.items()}
+        # unpack cmd_kwargs to kwargs
+        kwargs = {**kwargs, **cmd_kwargs}
+
     if (query.startswith('!"') or query.startswith("!'") or query.startswith('!`')):
         os.makedirs(os.path.dirname(symai_path), exist_ok=True)
         stateful_conversation = Conversation(auto_print=False)
