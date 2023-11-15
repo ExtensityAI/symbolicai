@@ -670,7 +670,6 @@ Matches:
         index = index.replace('_', '')
         index = index.replace(' ', '')
         index = index.lower()
-        print(index)
         return index
 
     def __init__(self, index_name: str = DEFAULT, top_k: int = 8, batch_size: int = 20, formatter: Callable = ParagraphFormatter(), auto_add=True):
