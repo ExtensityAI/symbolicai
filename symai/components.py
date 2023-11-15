@@ -618,7 +618,7 @@ class TokenTracker(Expression):
 
 
 class Indexer(Expression):
-    DEFAULT = 'data-index'
+    DEFAULT = 'dataindex'
 
     class IndexResult(Expression):
         def __init__(self, res, query: str):
