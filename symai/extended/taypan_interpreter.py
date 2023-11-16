@@ -1,13 +1,17 @@
 from ..core import *
 from ..pre_processors import PreProcessor
 from ..symbol import Expression, Symbol
+import pathlib
 
 
-with open('symai/symbol.py', 'r') as f:
+package_path = pathlib.Path(__file__).parent.parent.absolute()
+
+
+with open(package_path / 'symbol.py', 'r') as f:
     SYMBOL_API = f.read()
 
 
-with open('symai/components.py', 'r') as f:
+with open(package_path / 'components.py', 'r') as f:
     COMPONENTS_API = f.read()
 
 
