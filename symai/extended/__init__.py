@@ -10,3 +10,6 @@ from .repo_cloner import *
 from .solver import *
 from .summarizer import *
 from .personas import *
+from .api_builder import APIBuilder, APIExecutor
+from .os_command import OSCommand
+from .taypan_interpreter import TaypanInterpreter

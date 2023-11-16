@@ -214,14 +214,6 @@ class Conversation(SlidingWindowStringConcatMemory):
             print(res)
         return res
 
-    def __repr__(self):
-        """Get the representation of the Symbol object as a string.
-
-        Returns:
-            str: The representation of the Symbol object.
-        """
-        return str(self.value)
-
 
 RETRIEVAL_CONTEXT = """[Description]
 This program is a retrieval augmented indexing program. It allows to index a directory or a git repository and retrieve files from it.
