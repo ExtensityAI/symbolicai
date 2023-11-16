@@ -1426,7 +1426,7 @@ def search(query: str,
            default: Optional[object] = None,
            limit: int = 1,
            pre_processors: Optional[List[PreProcessor]] = None,
-           post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+           post_processors: Optional[List[PostProcessor]] = None,
            *wrp_args,
            **wrp_kwargs):
     """Searches for a given query on the internet.
@@ -1437,7 +1437,7 @@ def search(query: str,
         default (object, optional): The default value to be returned if the task cannot be solved. Defaults to None.
         limit (int, optional): The maximum number of results to be returned. Defaults to 1.
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
-        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to None.
         *wrp_args: Additional arguments to be passed to the decorated function.
         **wrp_kwargs: Additional keyword arguments to be passed to the decorated function.
 

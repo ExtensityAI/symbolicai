@@ -388,6 +388,7 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
         return val
 
     def __str__(self) -> str:
+        print(type(self.value))
         '''
         Get the string representation of the Symbol's value.
 
