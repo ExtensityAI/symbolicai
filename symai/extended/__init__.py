@@ -13,3 +13,4 @@ from .personas import *
 from .api_builder import APIBuilder, APIExecutor
 from .os_command import OSCommand
 from .taypan_interpreter import TaypanInterpreter
+from .bibtex_parser import BibTexParser
