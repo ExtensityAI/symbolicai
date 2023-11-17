@@ -100,6 +100,15 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
         '''
         return f'\n[STATIC CONTEXT]\n{self._static_context}' if self._static_context else ''
 
+    @static_context.setter
+    def static_context(self, value: str):
+        '''
+        Set the static context of the symbol which is defined by the user when creating a symbol subclass.
+        '''
+        if '\n[STATIC CONTEXT]\n' in value:
+            value = value.replace('\n[STATIC CONTEXT]\n', '')
+        self._static_context = value
+
     @property
     def dynamic_context(self) -> str:
         '''

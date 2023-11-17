@@ -71,7 +71,8 @@ def process_query(args) -> None:
     query = args.query
     if query is None or len(query) == 0:
         print("Starting interactive shell ...")
-        shellsv_run()
+        shellsv_run(auto_query_on_error=args.auto,
+                    conversation_style=args.style if args.style is not None and args.style != '' else None)
         return
 
     shell = Shell(query)
@@ -120,6 +121,8 @@ def run() -> None:
                         help='execute command after creation (ATTENTION: Executing a generated command without verification may be risky!).')
     parser.add_argument('--auto', dest='auto', default=False, required=False, action=argparse.BooleanOptionalAction,
                         help='query the the LLM if a command resulted unsuccessfully.')
+    parser.add_argument('--style', dest='style', default=None, required=False, type=str,
+                        help='add speech style to the shell.')
 
     args = parser.parse_args()
     process_query(args)

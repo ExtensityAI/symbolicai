@@ -19,6 +19,7 @@ from prompt_toolkit.shortcuts import CompleteStyle, ProgressBar
 from prompt_toolkit.styles import Style
 from pygments.lexers.shell import BashLexer
 
+from .imports import Import
 from .backend.settings import SYMSH_CONFIG
 from .components import Function
 from .extended import Conversation, RetrievalAugmentedConversation
@@ -34,7 +35,11 @@ logging.getLogger("asyncio").setLevel(logging.ERROR)
 logging.getLogger("multiprocessing").setLevel(logging.ERROR)
 
 
-print = print_formatted_text
+print                     = print_formatted_text
+FunctionType              = Function
+ConversationType          = Conversation
+RetrievalConversationType = RetrievalAugmentedConversation
+use_styles                = False
 
 
 SHELL_CONTEXT = """[Description]
@@ -179,7 +184,7 @@ def get_conda_env():
 @bindings.add(Keys.ControlSpace)
 def _(event):
     current_user_input = event.current_buffer.document.text
-    func = Function(SHELL_CONTEXT)
+    func = FunctionType(SHELL_CONTEXT)
 
     bottom_toolbar = HTML(' <b>[f]</b> Print "f" <b>[x]</b> Abort.')
 
@@ -317,14 +322,14 @@ def query_language_model(query: str, from_shell=True, res=None, *args, **kwargs)
 
     if (query.startswith('!"') or query.startswith("!'") or query.startswith('!`')):
         os.makedirs(os.path.dirname(symai_path), exist_ok=True)
-        stateful_conversation = Conversation(auto_print=False)
-        Conversation.save_conversation_state(stateful_conversation, symai_path)
+        stateful_conversation = ConversationType(auto_print=False)
+        ConversationType.save_conversation_state(stateful_conversation, symai_path)
     elif (query.startswith('."') or query.startswith(".'") or query.startswith('.`')) and stateful_conversation is None:
         if stateful_conversation is None:
-            stateful_conversation = Conversation(auto_print=False)
+            stateful_conversation = ConversationType(auto_print=False)
         if not os.path.exists(symai_path):
             os.makedirs(os.path.dirname(symai_path), exist_ok=True)
-            Conversation.save_conversation_state(stateful_conversation, symai_path)
+            ConversationType.save_conversation_state(stateful_conversation, symai_path)
         stateful_conversation = stateful_conversation.load_conversation_state(symai_path)
 
     if '|' in query and from_shell:
@@ -337,13 +342,13 @@ def query_language_model(query: str, from_shell=True, res=None, *args, **kwargs)
             for fl in files:
                 func.store_file(fl)
         else:
-            func = Conversation(file_link=files, auto_print=False)
+            func = ConversationType(file_link=files, auto_print=False)
     else:
         if query.startswith('."') or query.startswith(".'") or query.startswith('.`') or\
             query.startswith('!"') or query.startswith("!'") or query.startswith('!`'):
             func = stateful_conversation
         else:
-            func = Function(SHELL_CONTEXT)
+            func = FunctionType(SHELL_CONTEXT)
 
     with Loader(desc="Inference ...", end=""):
         if res is None:
@@ -410,7 +415,7 @@ def retrieval_augmented_indexing(query: str, *args, **kwargs):
     home_path = os.path.expanduser('~')
     symai_path = os.path.join(home_path, '.symai', '.conversation_state')
     os.makedirs(os.path.dirname(symai_path), exist_ok=True)
-    stateful_conversation = RetrievalAugmentedConversation(auto_print=False, index_name=index_name)
+    stateful_conversation = RetrievalConversationType(auto_print=False, index_name=index_name)
     Conversation.save_conversation_state(stateful_conversation, symai_path)
     if use_index_name:
         message = 'New session '
@@ -426,7 +431,7 @@ def search_engine(query: str, res=None, *args, **kwargs):
         search_query = Symbol(query).extract('search engine optimized query')
         res = search(search_query)
     with Loader(desc="Inference ...", end=""):
-        func = Function(query)
+        func = FunctionType(query)
         msg = func(res, payload=res)
         # write a temp dump file with the query and results
         home_path = os.path.expanduser('~')
@@ -658,7 +663,11 @@ def listen(session: PromptSession, word_comp: WordCompleter, auto_query_on_error
                 if cmd == 'quit' or cmd == 'exit' or cmd == 'q':
                     if stateful_conversation is not None:
                         save_conversation()
-                    print('Goodbye!')
+                    if not use_styles:
+                        print('Goodbye!')
+                    else:
+                        func = FunctionType('Give short goodbye')
+                        print(func('bye'))
                     os._exit(0)
                 else:
                     msg = process_command(cmd, auto_query_on_error=auto_query_on_error)
@@ -706,7 +715,14 @@ def create_completer():
     return history, word_comp, merged_completer
 
 
-def run(auto_query_on_error=False):
+def run(auto_query_on_error=False, conversation_style=None):
+    global FunctionType, ConversationType, RetrievalConversationType, use_styles
+    if conversation_style is not None and conversation_style != '':
+        print('Loading style:', conversation_style)
+        styles_ = Import.load_module_class(conversation_style)
+        FunctionType, ConversationType, RetrievalConversationType = styles_
+        use_styles = True
+
     history, word_comp, merged_completer = create_completer()
     session = create_session(history, merged_completer)
     listen(session, word_comp, auto_query_on_error)

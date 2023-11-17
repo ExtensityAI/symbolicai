@@ -1,15 +1,51 @@
 from typing import List
-
 from IPython.utils import io
+from box import Box
+import json
 
 from .base import Engine
 from .settings import SYMAI_CONFIG
+from .. import Symbol
 
 try:
     from serpapi import GoogleSearch
 except:
     GoogleSearch = None
 
+
+
+class SearchResult(Symbol):
+    def __init__(self, value) -> None:
+        super().__init__(value)
+        self.raw = Box(value)
+        if 'answer_box' in value.keys() and 'answer' in value['answer_box'].keys():
+            self.value = value['answer_box']['answer']
+        elif 'answer_box' in value.keys() and 'snippet' in value['answer_box'].keys():
+            self.value = value['answer_box']['snippet']
+        elif 'answer_box' in value.keys() and 'snippet_highlighted_words' in value['answer_box'].keys():
+            self.value = value['answer_box']["snippet_highlighted_words"][0]
+        elif 'organic_results' in value and 'snippet' in value["organic_results"][0].keys():
+            self.value= value["organic_results"][0]['snippet']
+        else:
+            self.value = value
+
+        if 'organic_results' in value.keys():
+            self.results = value['organic_results']
+            if len(self.results) > 0:
+                self.links = [r['link'] for r in self.results]
+            else:
+                self.links = []
+        else:
+            self.results = []
+            self.links = []
+
+    def __str__(self) -> str:
+        json_str = json.dumps(self.raw.to_dict(), indent=2)
+        return json_str
+
+    def _repr_html_(self) -> str:
+        json_str = json.dumps(self.raw.to_dict(), indent=2)
+        return json_str
 
 
 class GoogleEngine(Engine):
@@ -49,17 +85,7 @@ class GoogleEngine(Engine):
                 search = GoogleSearch(query)
                 res = search.get_dict()
 
-            if 'answer_box' in res.keys() and 'answer' in res['answer_box'].keys():
-                toret = res['answer_box']['answer']
-            elif 'answer_box' in res.keys() and 'snippet' in res['answer_box'].keys():
-                toret = res['answer_box']['snippet']
-            elif 'answer_box' in res.keys() and 'snippet_highlighted_words' in res['answer_box'].keys():
-                toret = res['answer_box']["snippet_highlighted_words"][0]
-            elif 'organic_results' in res and 'snippet' in res["organic_results"][0].keys():
-                toret= res["organic_results"][0]['snippet']
-            else:
-                toret = res
-
+            toret = SearchResult(res)
             rsp.append(toret)
 
         output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
