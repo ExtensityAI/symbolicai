@@ -47,7 +47,7 @@ class Persona(Conversation):
         super().__init__(*args, **kwargs)
         self.sym_return_type = Persona
         self.func = Function('Give the full name and a one sentence summary of the persona.')
-        self.value = self.bio
+        self.value = self.bio()
 
     @property
     def static_context(self) -> str:
