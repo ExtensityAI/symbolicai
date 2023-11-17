@@ -350,7 +350,7 @@ class FileQuery(Expression):
 
 
 class Function(TrackerTraceable):
-    def __init__(self, prompt: str, static_context: str = "",
+    def __init__(self, prompt: str,
                  examples: Optional[str] = [],
                  pre_processors: Optional[List[PreProcessor]] = None,
                  post_processors: Optional[List[PostProcessor]] = None,
@@ -365,7 +365,6 @@ class Function(TrackerTraceable):
         self._promptTemplate = prompt
         self._promptFormatArgs = []
         self._promptFormatKwargs = {}
-        self._static_context = static_context
         self.examples = Prompt(examples)
         self.pre_processors = pre_processors
         self.post_processors = post_processors
@@ -403,6 +402,8 @@ class Function(TrackerTraceable):
             # constructor
             "forward": _func,
             "sym_return_type": Symbol,
+            "static_context": self.static_context,
+            "dynamic_context": self.dynamic_context,
         })
         obj = _type()
         obj.sym_return_type = _type
