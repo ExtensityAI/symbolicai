@@ -11,7 +11,7 @@ logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
-SYMAI_VERSION = "0.3.6"
+SYMAI_VERSION = "0.3.8"
 __version__   = SYMAI_VERSION
 __root_dir__  = Path.home() / '.symai'
 
@@ -31,16 +31,19 @@ def _start_symai():
     if not os.path.exists(_symsh_config_path_):
         with open(_symsh_config_path_, "w") as f:
             json.dump({
-                "completion-menu.completion.current": "bg:#323232 #212121",
-                "completion-menu.completion":         "bg:#800080 #212121",
-                "scrollbar.background":               "bg:#222222",
-                "scrollbar.button":                   "bg:#776677",
-                "history-completion":                 "bg:#212121 #f5f5f5",
-                "path-completion":                    "bg:#800080 #f5f5f5",
-                "file-completion":                    "bg:#9040b2 #f5f5f5",
-                "history-completion-selected":        "bg:#efefef #b3d7ff",
-                "path-completion-selected":           "bg:#efefef #b3d7ff",
-                "file-completion-selected":           "bg:#efefef #b3d7ff",
+                "colors": {
+                    "completion-menu.completion.current": "bg:#323232 #212121",
+                    "completion-menu.completion":         "bg:#800080 #212121",
+                    "scrollbar.background":               "bg:#222222",
+                    "scrollbar.button":                   "bg:#776677",
+                    "history-completion":                 "bg:#212121 #f5f5f5",
+                    "path-completion":                    "bg:#800080 #f5f5f5",
+                    "file-completion":                    "bg:#9040b2 #f5f5f5",
+                    "history-completion-selected":        "bg:#efefef #b3d7ff",
+                    "path-completion-selected":           "bg:#efefef #b3d7ff",
+                    "file-completion-selected":           "bg:#efefef #b3d7ff"
+                },
+                "map-nt-cmd":                         "true",
             }, f, indent=4)
 
     # CHECK IF THE USER HAS A CONFIGURATION FILE IN THE CURRENT WORKING DIRECTORY (DEBUGGING MODE)
