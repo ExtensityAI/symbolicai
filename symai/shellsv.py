@@ -539,7 +539,7 @@ def is_llm_request(cmd: str):
 
 
 def map_nt_cmd(cmd: str, map_nt_cmd_enabled: bool = True):
-    if os.name.lower() == 'nt' and map_nt_cmd_enabled:
+    if os.name.lower() == 'nt' and map_nt_cmd_enabled and not is_llm_request(cmd):
         # Mapping command replacements with regex for commands with variants
         cmd_mappings = {
             r'\bls\b(-[a-zA-Z]*)?'         : r'dir \1',            # Maps 'ls' with or without arguments
@@ -629,7 +629,7 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
         # get symsh path
         pkg_path = os.path.dirname(os.path.abspath(__file__))
         symsh_path = os.path.join(pkg_path, 'symsh.md')
-        with open(symsh_path, 'r') as f:
+        with open(symsh_path, 'r', encoding="utf8") as f:
             return f.read()
 
     elif cmd.startswith('conda activate'):
