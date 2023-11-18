@@ -2,7 +2,7 @@ from fastapi import FastAPI, Body
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional, Union
 
-from symbol import Symbol, Expression
+from .. import Symbol, Expression
 
 app = FastAPI(title="SymbolicAI API", version="1.0")
 
@@ -18,7 +18,7 @@ class CreateExpressionRequest(BaseModel):
 
 @app.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "Hello Symbols"}
 
 
 @app.post("/symbol/")
