@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Type, Union
 from fastapi import APIRouter, Body
 from pydantic import BaseModel, create_model
-from components import Symbol, Expression
+from .. import Symbol, Expression
 
 router = APIRouter()
 
