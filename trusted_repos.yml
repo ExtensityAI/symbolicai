@@ -1,6 +1,6 @@
 repositories:
   - repo:
-      name: "ExtensityAI/rickshell"
+      name: "ExtensityAI/fullmetalshell"
       desc: "Shell Style replies like the Drill Sergeant from Full Metal Jacket"
   - repo:
       name: "ExtensityAI/rickshell"
@@ -8,6 +8,9 @@ repositories:
   - repo:
       name: "ExtensityAI/llamaswithshell"
       desc: "Shell Style replies like in Llamas With Hats"
+  - repo:
+      name: "ExtensityAI/bigbangshell"
+      desc: "Get help from the most profound Shell-don AI out there"
   - repo:
       name: "ExtensityAI/symscribe"
       desc: "A repository for transcribing audio files using Whisper."
