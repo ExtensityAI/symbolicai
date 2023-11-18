@@ -1,12 +1,15 @@
 import glob
 import logging
 import os
-from pathlib import Path
+import re
 import sys
 import signal
 import subprocess
 import time
+import json
+import platform
 from typing import Iterable
+from pathlib import Path
 
 from prompt_toolkit import HTML, PromptSession, print_formatted_text
 from prompt_toolkit.completion import Completer, Completion, WordCompleter
@@ -35,11 +38,33 @@ logging.getLogger("asyncio").setLevel(logging.ERROR)
 logging.getLogger("multiprocessing").setLevel(logging.ERROR)
 
 
+# load json config from home directory root
+home_path = Path.home() / '.symai'
+config_path = os.path.join(home_path, 'symsh.config.json')
+# migrate config from old path
+if 'colors' not in SYMSH_CONFIG:
+    __new_config__ = {"colors": SYMSH_CONFIG}
+    # add command in config
+    SYMSH_CONFIG = __new_config__
+    # save config
+    with open(config_path, 'w') as f:
+        json.dump(__new_config__, f, indent=4)
+
+# make sure map-nt-cmd is in config
+if 'map-nt-cmd' not in SYMSH_CONFIG:
+    # add command in config
+    SYMSH_CONFIG['map-nt-cmd'] = True
+    # save config
+    with open(config_path, 'w') as f:
+        json.dump(SYMSH_CONFIG, f, indent=4)
+
+
 print                     = print_formatted_text
 FunctionType              = Function
 ConversationType          = Conversation
 RetrievalConversationType = RetrievalAugmentedConversation
 use_styles                = False
+map_nt_cmd_enabled        = SYMSH_CONFIG['map-nt-cmd']
 
 
 SHELL_CONTEXT = """[Description]
@@ -352,7 +377,7 @@ def query_language_model(query: str, from_shell=True, res=None, *args, **kwargs)
 
     with Loader(desc="Inference ...", end=""):
         if res is None:
-            query = f"[Context]\n{res}\n\n[Query]\n{query}"
+            query = f"[SystemInfo]\n{platform.uname()}\n\n[Context]\n{res}\n\n[Query]\n{query}"
         msg = func(query, *args, **kwargs)
 
     return msg
@@ -449,7 +474,6 @@ def run_shell_command(cmd: str, prev=None, auto_query_on_error: bool=False, stdo
     message = None
     # Execute the command
     try:
-        shell_true = not os.name == 'nt'
         stdout = subprocess.PIPE if auto_query_on_error else stdout
         stderr = subprocess.PIPE if auto_query_on_error else stderr
         conda_env = get_exec_prefix()
@@ -459,7 +483,7 @@ def run_shell_command(cmd: str, prev=None, auto_query_on_error: bool=False, stdo
             # remove current env from PATH
             new_env["PATH"] = new_env["PATH"].replace(sys.exec_prefix, conda_env)
         res = subprocess.run(cmd,
-                             shell=shell_true,
+                             shell=True,
                              stdout=stdout,
                              stderr=stderr,
                              env=new_env)
@@ -490,9 +514,8 @@ def run_shell_command(cmd: str, prev=None, auto_query_on_error: bool=False, stdo
                     try:
                         cmd = cmd.split('usage: ')[-1].split(' ')[0]
                         # get man page result for command
-                        shell_true = not os.name == 'nt'
                         res = subprocess.run('man -P cat %s' % cmd,
-                                             shell=shell_true,
+                                             shell=True,
                                              stdout=subprocess.PIPE)
                         stdout = res.stdout
                         if stdout:
@@ -515,8 +538,59 @@ def is_llm_request(cmd: str):
            cmd.startswith('`') or cmd.startswith('.`') or cmd.startswith('!`') or cmd.startswith('?`')
 
 
+def map_nt_cmd(cmd: str, map_nt_cmd_enabled: bool = True):
+    if os.name.lower() == 'nt' and map_nt_cmd_enabled:
+        # Mapping command replacements with regex for commands with variants
+        cmd_mappings = {
+            r'\bls\b(-[a-zA-Z]*)?'         : r'dir \1',            # Maps 'ls' with or without arguments
+            r'\bmv\b\s+(.*)'               : r'move \1',           # Maps 'mv' with any arguments
+            r'\bcp\b\s+(.*)'               : r'copy \1',           # Maps 'cp' with any arguments
+            r'\btouch\b\s+(.*)'            : r'type nul > \1',     # Maps 'touch filename' to 'type nul > filename'
+            r'\brm\b\s+(-rf)?'             : r'del \1',            # Maps 'rm' and 'rm -rf'
+            r'\bdiff\b\s+(.*)'             : r'fc \1',             # Maps 'diff' with any arguments
+            r'\bgrep\b\s+(.*)'             : r'find \1',           # Maps 'grep' with any arguments
+            r'\bpwd\b'                     : 'chdir',              # pwd has no arguments
+            r'\bdate\b'                    : 'time',               # date has no arguments
+            r'\bmkdir\b\s+(.*)'            : r'md \1',             # Maps 'mkdir' with any arguments
+            r'\b(vim|nano)\b\s+(.*)'       : r'notepad \2',        # Maps 'vim' or 'nano' with any arguments
+            r'\b(mke2fs|mformat)\b\s+(.*)' : r'format \2',         # Maps 'mke2fs' or 'mformat' with any arguments
+            r'\b(rm\s+-rf|rmdir)\b'        : 'rmdir /s /q',        # Matches 'rm -rf' or 'rmdir'
+            r'\bkill\b\s+(.*)'             : r'taskkill \1',       # Maps 'kill' with any arguments
+            r'\bps\b\s*(.*)?'              : r'tasklist \1',       # Maps 'ps' with any or no arguments
+            r'\bexport\b\s+(.*)'           : r'set \1',            # Maps 'export' with any arguments
+            r'\b(chown|chmod)\b\s+(.*)'    : r'attrib +r \2',      # Maps 'chown' or 'chmod' with any arguments
+            r'\btraceroute\b\s+(.*)'       : r'tracert \1',        # Maps 'traceroute' with any arguments
+            r'\bcron\b\s+(.*)'             : r'at \1',             # Maps 'cron' with any arguments
+            r'\bcat\b\s+(.*)'              : r'type \1',           # Maps 'cat' with any arguments
+            r'\bdu\s+-s\b'                 : 'chkdsk',             # du -s has no arguments, chkdsk is closest in functionality
+            r'\bls\s+-R\b'                 : 'tree',               # ls -R has no arguments
+        }
+
+        # Remove 1:1 mappings
+        direct_mappings = {
+            'clear': 'cls',
+            'man'  : 'help',
+            'mem'  : 'free',
+        }
+
+        cmd_mappings.update(direct_mappings)
+
+        # Iterate through mappings and replace commands
+        for linux_cmd, windows_cmd in cmd_mappings.items():
+            # copy original command
+            original_cmd = cmd
+            cmd = re.sub(linux_cmd, windows_cmd, cmd)
+            if cmd != original_cmd:
+                print(f'symsh >> command "{original_cmd}" mapped to "{cmd}"\n')
+
+    return cmd
+
 def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
     global exec_prefix, previous_prefix
+
+    # map commands to windows if needed
+    cmd = map_nt_cmd(cmd)
+
     sep = os.path.sep
     # check if commands are chained
     if '&&' in cmd:
@@ -688,8 +762,10 @@ def listen(session: PromptSession, word_comp: WordCompleter, auto_query_on_error
 
 
 def create_session(history, merged_completer):
+    colors = SYMSH_CONFIG['colors']
+
     # Load style
-    style = Style.from_dict(SYMSH_CONFIG)
+    style = Style.from_dict(colors)
 
     # Session for the auto-completion
     session = PromptSession(history=history,
