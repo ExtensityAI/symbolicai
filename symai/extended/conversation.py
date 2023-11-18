@@ -96,7 +96,7 @@ class Conversation(SlidingWindowStringConcatMemory):
             return
 
         # read in file content. if slices_ is not None, then read in only the slices_ of the file
-        with open(file_path, 'r') as file:
+        with open(file_path, 'r', encoding="utf8") as file:
             content = file.readlines()
             if slices_ is not None:
                 new_content = []
