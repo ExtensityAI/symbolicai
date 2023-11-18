@@ -28,6 +28,9 @@ class Import(Expression):
 
     @staticmethod
     def get_from_github(module):
+        # if base package does not exist, create it
+        if not os.path.exists(BASE_PACKAGE_PATH):
+            os.makedirs(BASE_PACKAGE_PATH)
         # Clone repository
         git_url = f'https://github.com/{module}'
         subprocess.check_call(['git', 'clone', git_url, f'{BASE_PACKAGE_PATH}/{module}'])
@@ -55,7 +58,7 @@ class Import(Expression):
             for expr in pkg['expressions']:
                 module_path = f'{BASE_PACKAGE_PATH}/{expr["module"].replace("/", ".")}'
                 # Determine relative path and adjust namespace
-                relative_module_path = module_path.replace(BASE_PACKAGE_PATH, '').replace(os.sep, '.').lstrip('.')
+                relative_module_path = module_path.replace(BASE_PACKAGE_PATH, '').replace('/', '.').lstrip('.')
                 # Replace with actual username and package_name values
                 relative_module_path = module.split('/')[0] + '.' + module.split('/')[1] + '.' + relative_module_path
                 module_class = getattr(importlib.import_module(relative_module_path), expr['type'])
@@ -72,7 +75,7 @@ class Import(Expression):
         expr = pkg['run']
         module_path = f'{expr["module"].replace("/", ".")}'
         # Determine relative path and adjust namespace
-        relative_module_path = module_path.replace(BASE_PACKAGE_PATH, '').replace(os.sep, '.').lstrip('.')
+        relative_module_path = module_path.replace(BASE_PACKAGE_PATH, '').replace('/', '.').lstrip('.')
         # Replace with actual username and package_name values
         relative_module_path = module.split('/')[0] + '.' + module.split('/')[1] + '.' + relative_module_path
         class_ = expr['type']
