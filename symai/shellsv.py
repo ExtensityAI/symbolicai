@@ -451,7 +451,7 @@ def retrieval_augmented_indexing(query: str, *args, **kwargs):
 
 
 def search_engine(query: str, res=None, *args, **kwargs):
-    search = Interface('google')
+    search = Interface('serpapi')
     with Loader(desc="Searching ...", end=""):
         search_query = Symbol(query).extract('search engine optimized query')
         res = search(search_query)

@@ -554,12 +554,12 @@ modified:   tests/test_composition.py
         self.assertTrue(0 == res)
 
     def test_search(self):
-        search = Interface('google')
+        search = Interface('serpapi')
         res = search('Birthday of Barack Obama')
         self.assertTrue('August 4 1961' == res, res)
 
     def test_search_with_organic_results(self):
-        search = Interface('google')
+        search = Interface('serpapi')
         res = search('How much is the square root of pi?')
         self.assertTrue('1.7724538509055159' in res, res)
 
