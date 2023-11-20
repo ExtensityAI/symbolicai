@@ -46,7 +46,6 @@ class MaxTenner(Persona):
         super().__init__(*args, **kwargs)
         self.bot_tag         = 'Max Tenner::'
         self.user_tag        = 'Other Person::'
-        self.sym_return_type = MaxTenner
 
     def bio(self) -> str:
         return PERSONA_SALES_ERIK
