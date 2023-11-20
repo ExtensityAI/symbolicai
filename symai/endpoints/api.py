@@ -32,7 +32,7 @@ T = TypeVar('T')
 
 class GenericRepository(Generic[T]):
     def __init__(self, redis_client: redis.Redis, id_key: str, use_redis: bool = True):
-        self.storage: Dict[int, T] = {}  # In-memory dictionary to mock Redis
+        self.storage: Dict[str, T] = {}  # In-memory dictionary to mock Redis
         self.use_redis     = use_redis
         self.id_key        = id_key  # Key used for storing the incremental ID counter
         self.redis_client  = redis_client
@@ -66,7 +66,7 @@ class GenericRepository(Generic[T]):
             return True
         return False
 
-    def _generate_id_memory(self) -> int:
+    def _generate_id_memory(self) -> str:
         id_ = len(self.storage) + 1
         return f'{self.id_key}:{id_}'
 
@@ -84,7 +84,7 @@ class GenericRepository(Generic[T]):
     def _delete_redis(self, item_id: str) -> bool:
         return self.redis_client.delete(item_id) == 1
 
-    def _generate_id_redis(self) -> int:
+    def _generate_id_redis(self) -> str:
         id_ = self.redis_client.incr(self.id_key)
         return f'{self.id_key}:{id_}'
 
@@ -139,9 +139,7 @@ def create_symbol(symbol_request: CreateSymbolRequest):
 
 @app.get("/symbol/{symbol_id}/")
 def get_symbol(symbol_id: str):
-    print(';entering')
     symbol = symbol_repository.get(symbol_id)
-    print(symbol)
     if symbol is None:
         raise HTTPException(status_code=404, detail="Symbol not found")
     return symbol.json()
