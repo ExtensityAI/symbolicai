@@ -183,17 +183,17 @@ $Env:INDEXING_ENGINE_API_KEY="<PINECONE_API_KEY>"
 To use the optional engines, install the respective extras:
 
 ```bash
-pip install symbolicai[wolframalpha]
-pip install symbolicai[whisper]
-pip install symbolicai[selenium]
-pip install symbolicai[serpapi]
-pip install symbolicai[pinecone]
+pip install "symbolicai[wolframalpha]"
+pip install "symbolicai[whisper]"
+pip install "symbolicai[selenium]"
+pip install "symbolicai[serpapi]"
+pip install "symbolicai[pinecone]"
 ```
 
 Or, install all optional dependencies at once:
 
 ```bash
-pip install symbolicai[all]
+pip install "symbolicai[all]"
 ```
 
 [Note] Additionally, you need to install the respective codecs.
