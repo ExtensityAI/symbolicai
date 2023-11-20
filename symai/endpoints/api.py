@@ -138,7 +138,7 @@ def create_symbol(symbol_request: CreateSymbolRequest):
 
 
 @app.get("/symbol/{symbol_id}/")
-def get_symbol(symbol_id: int):
+def get_symbol(symbol_id: str):
     print(';entering')
     symbol = symbol_repository.get(symbol_id)
     print(symbol)
@@ -148,7 +148,7 @@ def get_symbol(symbol_id: int):
 
 
 @app.patch("/symbol/{symbol_id}/")
-def update_symbol(symbol_id: int, update_request: UpdateSymbolRequest):
+def update_symbol(symbol_id: str, update_request: UpdateSymbolRequest):
     symbol = symbol_repository.get(symbol_id)
     if symbol is None:
         raise HTTPException(status_code=404, detail="Symbol not found")
@@ -159,7 +159,7 @@ def update_symbol(symbol_id: int, update_request: UpdateSymbolRequest):
 
 
 @app.delete("/symbol/{symbol_id}/")
-def delete_symbol(symbol_id: int):
+def delete_symbol(symbol_id: str):
     symbol = symbol_repository.delete(symbol_id)
     if symbol is None:
         raise HTTPException(status_code=404, detail="Symbol not found")
@@ -167,7 +167,7 @@ def delete_symbol(symbol_id: int):
 
 
 @app.post("/symbol/{symbol_id}/{method_name}/")
-def operate_on_symbol(symbol_id: int, method_name: str, method_request: SymbolMethodRequest):
+def operate_on_symbol(symbol_id: str, method_name: str, method_request: SymbolMethodRequest):
     symbol = symbol_repository.get(symbol_id)
     if symbol is None:
         raise HTTPException(status_code=404, detail="Symbol not found")
@@ -198,7 +198,7 @@ def create_expression(expression_request: CreateExpressionRequest):
 
 
 @app.get("/expression/{expression_id}/")
-def get_expression(expression_id: int):
+def get_expression(expression_id: str):
     expression = expression_repository.get(expression_id)
     if expression is None:
         raise HTTPException(status_code=404, detail="Expression not found")
@@ -206,7 +206,7 @@ def get_expression(expression_id: int):
 
 
 @app.post("/expression/{expression_id}/call/")
-def call_expression(expression_id: int, method_request: SymbolMethodRequest):
+def call_expression(expression_id: str, method_request: SymbolMethodRequest):
     # Retrieve the expression instance by ID
     expression = expression_repository.get(expression_id)
     if expression is None:
@@ -216,7 +216,7 @@ def call_expression(expression_id: int, method_request: SymbolMethodRequest):
 
 
 @app.post("/expression/{expression_id}/{method_name}/")
-def operate_on_expression(expression_id: int, method_name: str, method_request: SymbolMethodRequest):
+def operate_on_expression(expression_id: str, method_name: str, method_request: SymbolMethodRequest):
     expression = expression_repository.get(expression_id)
     if expression is None:
         raise HTTPException(status_code=404, detail="Expression not found")
@@ -228,7 +228,7 @@ def operate_on_expression(expression_id: int, method_name: str, method_request: 
 
 
 @app.patch("/expression/{expression_id}/")
-def update_expression(expression_id: int, update_request: UpdateExpressionRequest):
+def update_expression(expression_id: str, update_request: UpdateExpressionRequest):
     expression = expression_repository.get(expression_id)
     if expression is None:
         raise HTTPException(status_code=404, detail="Expression not found")
@@ -239,7 +239,7 @@ def update_expression(expression_id: int, update_request: UpdateExpressionReques
 
 
 @app.delete("/expression/{expression_id}/")
-def delete_expression(expression_id: int):
+def delete_expression(expression_id: str):
     expression = expression_repository.delete(expression_id)
     if expression is None:
         raise HTTPException(status_code=404, detail="Expression not found")
@@ -290,7 +290,7 @@ def create_component(request: CreateComponentGenericRequest):
 
 
 @app.get("/components/{instance_id}/")
-def get_component(instance_id: int):
+def get_component(instance_id: str):
     # Retrieve an instance by its ID from the repository
     instance = component_instance_repository.get(instance_id)
     if instance is None:
@@ -318,7 +318,7 @@ def generic_forward(request: GenericRequest):
 
 
 @app.patch("/components/{instance_id}/")
-def update_component(instance_id: int, update_request: UpdateComponentRequest):
+def update_component(instance_id: str, update_request: UpdateComponentRequest):
     instance = component_instance_repository.get(instance_id)
     if instance is None:
         raise HTTPException(status_code=404, detail="Component instance not found")
@@ -329,7 +329,7 @@ def update_component(instance_id: int, update_request: UpdateComponentRequest):
 
 
 @app.delete("/components/{instance_id}/")
-def delete_component(instance_id: int):
+def delete_component(instance_id: str):
     instance = component_instance_repository.delete(instance_id)
     if instance is None:
         raise HTTPException(status_code=404, detail="Component instance not found")
@@ -409,7 +409,7 @@ def extended_forward(request: GenericRequest):
 
 
 @app.get("/extended/{instance_id}/")
-def get_extended(instance_id: int):
+def get_extended(instance_id: str):
     # Retrieve an instance by its ID
     extended_instance = extended_instance_repository.get(instance_id)
     if extended_instance is None:
@@ -418,7 +418,7 @@ def get_extended(instance_id: int):
 
 
 @app.patch("/extended/{instance_id}/")
-def update_extended(instance_id: int, update_request: UpdateExtendedRequest):
+def update_extended(instance_id: str, update_request: UpdateExtendedRequest):
     # Retrieve the instance by its ID
     extended_instance = extended_instance_repository.get(instance_id)
     if extended_instance is None:
@@ -431,7 +431,7 @@ def update_extended(instance_id: int, update_request: UpdateExtendedRequest):
 
 
 @app.delete("/extended/{instance_id}/")
-def delete_extended(instance_id: int):
+def delete_extended(instance_id: str):
     # Attempt to delete the instance by its ID
     success = extended_instance_repository.delete(instance_id)
     if not success:
