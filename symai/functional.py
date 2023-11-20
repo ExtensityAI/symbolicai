@@ -922,8 +922,10 @@ def setup_func(wrp_self,
         check_or_init_ocr_func(engine=engines['ocr'])
     if 'vision' in engines:
         check_or_init_vision_func(engine=engines['vision'])
-    if 'speech' in engines:
-        check_or_init_speech_func(engine=engines['speech'])
+    if 'speech-to-text' in engines:
+        check_or_init_speech_to_text_func(engine=engines['speech'])
+    if 'text-to-speech' in engines:
+        check_or_init_text_to_speech_func(engine=engines['tts'])
     if 'embedding' in engines:
         check_or_init_embedding_func(engine=engines['embedding'])
     if 'userinput' in engines:
