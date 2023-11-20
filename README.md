@@ -186,7 +186,7 @@ To use the optional engines, install the respective extras:
 pip install symbolicai[wolframalpha]
 pip install symbolicai[whisper]
 pip install symbolicai[selenium]
-pip install symbolicai[google]
+pip install symbolicai[serpapi]
 pip install symbolicai[pinecone]
 ```
 
@@ -1197,7 +1197,7 @@ To obtain fact-based content, we can perform search queries via `SerpApi` with a
 ```python
 from symai.interfaces import Interface
 
-search = Interface('google')
+search = Interface('serpapi')
 res = search('Birthday of Barack Obama')
 ```
 
@@ -1370,7 +1370,7 @@ Here is the list of names of the engines that are currently supported:
 * `speech` - Whisper
 * `embedding` - OpenAI Embeddings API (`ada-002`)
 * `userinput` - User Command Line Input
-* `search` - SerpApi (Google search)
+* `serpapi` - SerpApi (Google search)
 * `crawler` - Selenium
 * `execute` - Python Interpreter
 * `index` - Pinecone

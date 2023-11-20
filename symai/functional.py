@@ -294,8 +294,8 @@ def check_or_init_search_func(engine = None):
     if engine is not None:
         search_engine = engine
     elif search_engine is None:
-        from .backend.engine_google import GoogleEngine
-        search_engine = GoogleEngine()
+        from .backend.engine_serpapi import SerpApiEngine
+        search_engine = SerpApiEngine()
 
 
 def search_func(wrp_self,

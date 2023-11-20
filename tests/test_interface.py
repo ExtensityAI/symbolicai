@@ -10,7 +10,7 @@ class TestInterface(unittest.TestCase):
         self.assertIsNotNone('http' in res)
 
     def test_google(self):
-        expr = Interface('google')
+        expr = Interface('serpapi')
         res = expr('Who is Barack Obama?')
         self.assertIsNotNone('president' in res)
 

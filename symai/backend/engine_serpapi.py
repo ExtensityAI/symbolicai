@@ -48,7 +48,7 @@ class SearchResult(Symbol):
         return json_str
 
 
-class GoogleEngine(Engine):
+class SerpApiEngine(Engine):
     def __init__(self):
         super().__init__()
         config = SYMAI_CONFIG
@@ -59,12 +59,13 @@ class GoogleEngine(Engine):
         super().command(wrp_params)
         if 'SEARCH_ENGINE_API_KEY' in wrp_params:
             self.api_key = wrp_params['SEARCH_ENGINE_API_KEY']
-        if 'SEARCH_ENGINE_API_KEY' in wrp_params:
-            self.engine = wrp_params['SEARCH_ENGINE_MODEL']
+        if 'SEARCH_ENGINE_MODEL' in wrp_params:
+            self.engine  = wrp_params['SEARCH_ENGINE_MODEL']
 
     def forward(self, queries: List[str], *args, **kwargs) -> List[str]:
         queries_ = queries if isinstance(queries, list) else [queries]
         rsp      = []
+        engine   = kwargs['engine'] if 'engine' in kwargs else self.engine
 
         input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
         if input_handler:
@@ -73,7 +74,7 @@ class GoogleEngine(Engine):
         for q in queries_:
             query = {
                 "api_key": self.api_key,
-                "engine": self.engine,
+                "engine": engine,
                 "q": q,
                 "google_domain": "google.com",
                 "gl": "us",
