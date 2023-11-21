@@ -22,7 +22,7 @@ Conceptually, SymbolicAI is a framework that leverages machine learning – spec
 
 | Date | Title    | Video |
 | ---- | ---- | ---- |
-| 21st Nov. 2023 | | [![Virtual Persona from Documents, Multi-Agent Chat, Text-to-Speech to hear your Personas](https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/vid5.png)](https://www.youtube.com/watch?v=-o2315T9348) |
+| 21st Nov. 2023 | Virtual Persona from Documents, Multi-Agent Chat, Text-to-Speech to hear your Personas | [![Virtual Persona from Documents, Multi-Agent Chat, Text-to-Speech to hear your Personas](https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/vid5.png)](https://www.youtube.com/watch?v=-o2315T9348) |
 | 1st Aug. 2023 | Automatic Retrieval Augmented Generation, Multimodal Inputs, User Packages | [![Automatic Retrieval Augmented Generation, Multimodal Inputs, User Packages](https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/vid4.png)](https://www.youtube.com/watch?v=0AqB6SEvRqo) |
 | 22nd July 2023 | ChatBot In-Depth Demonstration (Tool Use and Iterative Processing) | [![ChatBot In-Depth Demonstration (Tool Use and Iterative Processing)](https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/vid3.png)](https://www.youtube.com/watch?v=R46SskmmrCE) |
 | 1st July 2023 | Symbols, Operations, Expressions, LLM-based functions! | [![Symbols, Operations, Expressions, LLM-based functions!](https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/vid2.png)](https://www.youtube.com/watch?v=Ch9ygW62A34) |
