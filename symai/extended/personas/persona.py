@@ -86,8 +86,6 @@ class Persona(Conversation):
             query = query.split('>>>')[0].strip()
         if query == '':
             query = '...'
-        if ':' in query:
-            query = query.replace(':', '')
         query = query.strip()
         return str(f"[{tag}{timestamp}]: <<<\n{str(query)}\n>>>\n")
 

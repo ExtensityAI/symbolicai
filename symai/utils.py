@@ -1,9 +1,20 @@
+import base64
 import inspect
 import sys
 import warnings
 import functools
 import multiprocessing as mp
 from pathos.multiprocessing import ProcessingPool as PPool
+
+
+# Function to encode the image
+def encode_image(image_path):
+    with open(image_path, "rb") as image_file:
+        enc_ = base64.b64encode(image_file.read()).decode('utf-8')
+        ext  = image_path.split('.')[-1]
+        if ext == 'jpg':
+            ext = 'jpeg'
+        return enc_, ext
 
 
 def parallel(worker=mp.cpu_count()//2):

@@ -205,6 +205,11 @@ class Conversation(SlidingWindowStringConcatMemory):
         else:
             res = self.recall(query, *args, **kwargs)
 
+        if 'preview' in kwargs and kwargs['preview']:
+            if self.auto_print:
+                print(res)
+            return str(res)
+
         self.value = res.value # save last response
         val = self.build_tag(self.bot_tag, res)
         self.store(val, *args, **kwargs)

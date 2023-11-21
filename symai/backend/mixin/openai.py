@@ -27,7 +27,7 @@ class OpenAIMixin:
                 'output': 0.12 / 1_000
             }
 
-        elif self.model == 'gpt-4-1106-preview' or self.model == 'gpt-4-1106-vision-preview':
+        elif self.model == 'gpt-4-1106-preview' or self.model == 'gpt-4-vision-preview':
             return {
                 'input':  0.01 / 1_000,
                 'output': 0.03 / 1_000
