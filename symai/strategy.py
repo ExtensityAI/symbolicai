@@ -84,6 +84,15 @@ class InvalidRequestErrorRemedyChatStrategy:
         frequency_penalty   = kwargs['frequency_penalty'] if 'frequency_penalty' in kwargs else 0
         presence_penalty    = kwargs['presence_penalty'] if 'presence_penalty' in kwargs else 0
         top_p               = kwargs['top_p'] if 'top_p' in kwargs else 1
+        if stop is None:
+            return callback(model=model,
+                        messages=truncated_prompts_,
+                        max_tokens=max_tokens,
+                        temperature=temperature,
+                        frequency_penalty=frequency_penalty,
+                        presence_penalty=presence_penalty,
+                        top_p=top_p,
+                        n=1)
         return callback(model=model,
                         messages=truncated_prompts_,
                         max_tokens=max_tokens,

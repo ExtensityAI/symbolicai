@@ -1,6 +1,6 @@
 import logging
 from typing import List
-
+import re
 import openai
 import tiktoken
 
@@ -8,6 +8,7 @@ from .base import Engine
 from .mixin.openai import OpenAIMixin
 from .settings import SYMAI_CONFIG
 from ..strategy import InvalidRequestErrorRemedyChatStrategy
+from ..utils import encode_image
 
 
 logging.getLogger("openai").setLevel(logging.ERROR)
@@ -39,7 +40,18 @@ class GPTXChatEngine(Engine, OpenAIMixin):
     def compute_required_tokens(self, prompts: dict) -> int:
         # iterate over prompts and compute number of tokens
         prompts_ = [role['content'] for role in prompts]
-        prompt = ''.join(prompts_)
+        if self.model == 'gpt-4-vision-preview':
+            eval_prompt = ''
+            for p in prompts_:
+                if type(p) == str:
+                    eval_prompt += p
+                else:
+                    for p_ in p:
+                        if p_['type'] == 'text':
+                            eval_prompt += p_['text']
+            prompt = eval_prompt
+        else:
+            prompt = ''.join(prompts_)
         val = len(self.tokenizer.encode(prompt, disallowed_special=()))
         return val
 
@@ -68,15 +80,25 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         except_remedy       = kwargs['except_remedy'] if 'except_remedy' in kwargs else None
 
         try:
-            res = openai.chat.completions.create(model=model,
+            if stop is None:
+                res = openai.chat.completions.create(model=model,
                                                  messages=prompts_,
                                                  max_tokens=max_tokens,
                                                  temperature=temperature,
                                                  frequency_penalty=frequency_penalty,
                                                  presence_penalty=presence_penalty,
                                                  top_p=top_p,
-                                                 stop=stop,
                                                  n=1)
+            else:
+                res = openai.chat.completions.create(model=model,
+                                                    messages=prompts_,
+                                                    max_tokens=max_tokens,
+                                                    temperature=temperature,
+                                                    frequency_penalty=frequency_penalty,
+                                                    presence_penalty=presence_penalty,
+                                                    top_p=top_p,
+                                                    stop=stop,
+                                                    n=1)
 
             output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
             if output_handler:
@@ -128,7 +150,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         if len(dyn_ctxt) > 0:
             system += f"[DYNAMIC CONTEXT]\n{dyn_ctxt}\n\n"
 
-        payload = wrp_params['payload'] if 'payload' in wrp_params else None
+        payload = str(wrp_params['payload']) if 'payload' in wrp_params else None
         if payload is not None:
             system += f"[ADDITIONAL CONTEXT]\n{payload}\n\n"
 
@@ -136,10 +158,37 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         if examples and len(examples) > 0:
             system += f"[EXAMPLES]\n{str(examples)}\n\n"
 
-        if wrp_params['prompt'] is not None and len(wrp_params['prompt']) > 0:
-            user += f"[INSTRUCTION]\n{str(wrp_params['prompt'])}"
+        def extract_pattern(text):
+            pattern = r'<<img:(.*?):>>'
+            return re.findall(pattern, text)
+
+        def remove_pattern(text):
+            pattern = r'<<img:(.*?):>>'
+            return re.sub(pattern, '', text)
+
+        image_urls = []
+        # pre-process prompt if contains image url
+        if self.model == 'gpt-4-vision-preview' and '<<img:' in str(wrp_params['processed_input']):
+            parts = extract_pattern(str(wrp_params['processed_input']))
+            for p in parts:
+                img_ = p.strip()
+                if img_.startswith('http'):
+                    image_urls.append(img_)
+                elif img_.startswith('data:image'):
+                    image_urls.append(img_)
+                else:
+                    enc_, ext = encode_image(img_)
+                    image_urls.append(f"data:image/{ext};base64,{enc_}")
+
+        if str(wrp_params['prompt']) is not None and len(wrp_params['prompt']) > 0 and ']: <<<' not in str(wrp_params['prompt']): # TODO: fix chat hack
+            val = str(wrp_params['prompt'])
+            if len(image_urls) > 0:
+                val = remove_pattern(val)
+            user += f"[INSTRUCTION]\n{val}"
 
         suffix: str = str(wrp_params['processed_input'])
+        if len(image_urls) > 0:
+            suffix = remove_pattern(suffix)
         if '=>' in suffix:
             user += f"[LAST TASK]\n"
 
@@ -158,13 +207,22 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             suffix = '\n>>>\n'.join(parts[c:])
         user += f"{suffix}"
 
-        template_suffix = wrp_params['template_suffix'] if 'template_suffix' in wrp_params else None
+        template_suffix = str(wrp_params['template_suffix']) if 'template_suffix' in wrp_params else None
         if template_suffix:
             user += f"\n[[PLACEHOLDER]]\n{template_suffix}\n\n"
             user += f"Only generate content for the placeholder `[[PLACEHOLDER]]` following the instructions and context information. Do NOT write `[[PLACEHOLDER]]` or anything else in your output.\n\n"
 
+        images = [{ 'type': 'image', "image_url": { "url": url, "detail": "auto" }} for url in image_urls]
+        if self.model == 'gpt-4-vision-preview':
+            user_prompt = { "role": "user", "content": [
+                *images,
+                { 'type': 'text', 'text': user }
+            ]}
+        else:
+            user_prompt = { "role": "user", "content": user }
+
         wrp_params['prompts'] = [
             { "role": "system", "content": system },
-            { "role": "user", "content": user },
+            user_prompt,
         ]
 

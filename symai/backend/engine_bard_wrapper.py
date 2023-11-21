@@ -108,7 +108,7 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
         if examples and len(examples) > 0:
             system += f"[EXAMPLES]\n{str(examples)}\n\n"
 
-        if wrp_params['prompt'] is not None and len(wrp_params['prompt']) > 0:
+        if wrp_params['prompt'] is not None and len(wrp_params['prompt']) > 0 and ']: <<<' not in str(wrp_params['processed_input']): # TODO: fix chat hack
             user += f"[INSTRUCTION]\n{str(wrp_params['prompt'])}"
 
         suffix: str = wrp_params['processed_input']
