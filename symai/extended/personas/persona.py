@@ -45,9 +45,14 @@ class TagProcessor(PreProcessor):
 class Persona(Conversation):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.sym_return_type = Persona
         self.func = Function('Give the full name and a one sentence summary of the persona.')
         self.value = self.bio()
+
+    def __getstate__(self):
+        state = super().__getstate__()
+        # Remove the unpickleable entries such as the `indexer` attribute because it is not serializable
+        state.pop('func', None)
+        return state
 
     @property
     def static_context(self) -> str:
@@ -86,9 +91,8 @@ class Persona(Conversation):
         query = query.strip()
         return str(f"[{tag}{timestamp}]: <<<\n{str(query)}\n>>>\n")
 
-    @property
     def bio(self) -> str:
-        raise NotImplementedError()
+        return '<BIO>'
 
     def summarize(self, *args, **kwargs) -> str:
         return self.func(self.bio(), *args, **kwargs)

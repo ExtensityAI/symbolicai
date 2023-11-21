@@ -45,10 +45,11 @@ class Conversation(SlidingWindowStringConcatMemory):
             self.index   = self.indexer(raw_result=True)
 
     def __getstate__(self):
-        state = self.__dict__.copy()
+        state = super().__getstate__()
         # Remove the unpickleable entries such as the `indexer` attribute because it is not serializable
-        del state['indexer']
-        del state['index']
+        state.pop('seo_opt', None)
+        state.pop('indexer', None)
+        state.pop('index', None)
         return state
 
     def __setstate__(self, state):
