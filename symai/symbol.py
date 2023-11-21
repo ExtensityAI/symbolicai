@@ -1,3 +1,4 @@
+import json
 from abc import ABC
 from json import JSONEncoder
 from typing import Any, Dict, Iterator, List, Optional, Type, Union
@@ -126,6 +127,27 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
         val = '\n'.join(self._dynamic_context[type_])
 
         return f'\n[DYNAMIC CONTEXT]\n{val}' if val else ''
+
+    def json(self) -> Dict[str, Any]:
+        '''
+        Get the json-serializable dictionary representation of the Symbol instance.
+
+        Returns:
+            dict: The json-serializable dictionary representation of the Symbol instance.
+        '''
+        return self.__getstate__()
+
+    def serialize(self):
+        '''
+        Encode an Symbol instance into its dictionary representation.
+
+        Args:
+            obj (Symbol): The Expression instance to encode.
+
+        Returns:
+            dict: The dictionary representation of the Symbol instance.
+        '''
+        return json.dumps(self, cls=SymbolEncoder)
 
     def _to_symbol(self, value: Any) -> "Symbol":
         '''
@@ -817,6 +839,13 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
         return Symbol(str(self).split(str(other)))
 
 
+class ExpressionEncoder(JSONEncoder):
+    def default(self, o):
+        if isinstance(o, Expression):
+            return o.__getstate__()
+        return JSONEncoder.default(self, o)
+
+
 class Expression(Symbol):
 
     def __init__(self, value = None, *args, **kwargs):
@@ -844,6 +873,27 @@ class Expression(Symbol):
             Any: The result of the forward method.
         '''
         return self.forward(*args, **kwargs)
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state.pop('_sym_return_type', None)
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self._sym_return_type = type(self)
+
+    def serialize(self):
+        '''
+        Encode an Expression instance into its dictionary representation.
+
+        Args:
+            obj (Expression): The Expression instance to encode.
+
+        Returns:
+            dict: The dictionary representation of the Expression instance.
+        '''
+        return json.dumps(self, cls=ExpressionEncoder)
 
     @property
     def sym_return_type(self) -> Type:

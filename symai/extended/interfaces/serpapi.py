@@ -1,9 +1,9 @@
 from ... import core
 from ...symbol import Expression, Symbol
-from ...backend.engine_google import SearchResult
+from ...backend.engine_serpapi import SearchResult
 
 
-class google(Expression):
+class serpapi(Expression):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

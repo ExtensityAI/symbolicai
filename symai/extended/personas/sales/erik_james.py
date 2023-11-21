@@ -57,7 +57,6 @@ class ErikJames(Persona):
         super().__init__(*args, **kwargs)
         self.bot_tag         = 'Erik James::'
         self.user_tag        = 'Other Person::'
-        self.sym_return_type = ErikJames
 
     def bio(self) -> str:
         return PERSONA_SALES_ERIK

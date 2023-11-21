@@ -26,7 +26,7 @@ class ChatBot(Expression):
         self.name            = name
         self.last_user_input: str = ''
         self.dalle   = ai.Interface('dall_e')
-        self.search  = ai.Interface('google')
+        self.search  = ai.Interface('serpapi')
         self.fetch   = ai.Interface('selenium')
         self.speech  = ai.Interface('whisper')
         self.ocr     = ai.Interface('ocr')

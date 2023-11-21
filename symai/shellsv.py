@@ -451,7 +451,7 @@ def retrieval_augmented_indexing(query: str, *args, **kwargs):
 
 
 def search_engine(query: str, res=None, *args, **kwargs):
-    search = Interface('google')
+    search = Interface('serpapi')
     with Loader(desc="Searching ...", end=""):
         search_query = Symbol(query).extract('search engine optimized query')
         res = search(search_query)
@@ -552,6 +552,7 @@ def map_nt_cmd(cmd: str, map_nt_cmd_enabled: bool = True):
             r'\bpwd\b'                     : 'chdir',              # pwd has no arguments
             r'\bdate\b'                    : 'time',               # date has no arguments
             r'\bmkdir\b\s+(.*)'            : r'md \1',             # Maps 'mkdir' with any arguments
+            r'\bwhich\b\s+(.*)'            : r'where \1',          # Maps 'which' with any arguments
             r'\b(vim|nano)\b\s+(.*)'       : r'notepad \2',        # Maps 'vim' or 'nano' with any arguments
             r'\b(mke2fs|mformat)\b\s+(.*)' : r'format \2',         # Maps 'mke2fs' or 'mformat' with any arguments
             r'\b(rm\s+-rf|rmdir)\b'        : 'rmdir /s /q',        # Matches 'rm -rf' or 'rmdir'
@@ -635,7 +636,8 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
     elif cmd.startswith('conda activate'):
         # check conda execution prefix and verify if environment exists
         env = sys.exec_prefix
-        env_base = os.path.join(sep, *env.split(sep)[:-1])
+        path_ = sep.join(env.split(sep)[:-1])
+        env_base = os.path.join(sep, path_)
         req_env = cmd.split(' ')[2]
         # check if environment exists
         env_path = os.path.join(env_base, req_env)
