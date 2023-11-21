@@ -1,5 +1,5 @@
 # **SymbolicAI**
-<img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/symai_logo.png" width="200px">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/symai_logo.png" width="200px">
 
 ## **A Neuro-Symbolic Perspective on Large Language Models (LLMs)**
 
@@ -7,12 +7,12 @@
 
 Read further [**documentation here**](https://symbolicai.readthedocs.io/en/latest/README.html).
 
-[![PyPI version](https://badge.fury.io/py/symbolicai.svg)](https://badge.fury.io/py/symbolicai) [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause) [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/dinumariusc.svg?style=social&label=Follow%20%40DinuMariusC)](https://twitter.com/DinuMariusC) [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/symbolicapi.svg?style=social&label=Follow%20%40SymbolicAI)](https://twitter.com/SymbolicAPI) [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/Xpitfire/symbolicai/issues)
-[![Discord](https://img.shields.io/discord/768087161878085643?label=Discord&logo=Discord&logoColor=white)](https://discord.gg/QYMNnh9ra8) [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FXpitfire%2Fsymbolicai&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)](https://hits.seeyoufarm.com) [![GitHub forks](https://img.shields.io/github/forks/Xpitfire/symbolicai.svg?style=social&label=Fork&maxAge=2592000)](https://GitHub.com/Xpitfire/symbolicai) [![GitHub stars](https://img.shields.io/github/stars/Xpitfire/symbolicai.svg?style=social&label=Star&maxAge=2592000)](https://GitHub.com/Xpitfire/symbolicai/stargazers/)
+[![PyPI version](https://badge.fury.io/py/symbolicai.svg)](https://badge.fury.io/py/symbolicai) [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause) [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/dinumariusc.svg?style=social&label=Follow%20%40DinuMariusC)](https://twitter.com/DinuMariusC) [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/symbolicapi.svg?style=social&label=Follow%20%40SymbolicAI)](https://twitter.com/SymbolicAPI) [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/ExtensityAI/symbolicai/issues)
+[![Discord](https://img.shields.io/discord/768087161878085643?label=Discord&logo=Discord&logoColor=white)](https://discord.gg/QYMNnh9ra8) [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FExtensityAI%2Fsymbolicai&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)](https://hits.seeyoufarm.com) [![GitHub forks](https://img.shields.io/github/forks/ExtensityAI/symbolicai.svg?style=social&label=Fork&maxAge=2592000)](https://GitHub.com/ExtensityAI/symbolicai) [![GitHub stars](https://img.shields.io/github/stars/ExtensityAI/symbolicai.svg?style=social&label=Star&maxAge=2592000)](https://GitHub.com/ExtensityAI/symbolicai/stargazers/)
 
 
 
-<img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/preview.gif">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/preview.gif">
 
 ## Abstract
 
@@ -22,10 +22,11 @@ Conceptually, SymbolicAI is a framework that leverages machine learning – spec
 
 | Date | Title    | Video |
 | ---- | ---- | ---- |
-| 1st Aug. 2023 | Automatic Retrieval Augmented Generation, Multimodal Inputs, User Packages | [![Automatic Retrieval Augmented Generation, Multimodal Inputs, User Packages](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/vid4.png)](https://www.youtube.com/watch?v=0AqB6SEvRqo) |
-| 22nd July 2023 | ChatBot In-Depth Demonstration (Tool Use and Iterative Processing) | [![ChatBot In-Depth Demonstration (Tool Use and Iterative Processing)](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/vid3.png)](https://www.youtube.com/watch?v=R46SskmmrCE) |
-| 1st July 2023 | Symbols, Operations, Expressions, LLM-based functions! | [![Symbols, Operations, Expressions, LLM-based functions!](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/vid2.png)](https://www.youtube.com/watch?v=Ch9ygW62A34) |
-| 9th June 2023 | The future is neuro-symbolic: Expressiveness of ChatGPT and generalizability of symbols | [![The future is neuro-symbolic: Expressiveness of ChatGPT and generalizability of symbols](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/vid1.png)](https://www.youtube.com/watch?v=RW_7JdXvbRA) |
+| 21st Nov. 2023 | | [![Virtual Persona from Documents, Multi-Agent Chat, Text-to-Speech to hear your Personas](https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/vid5.png)](https://www.youtube.com/watch?v=-o2315T9348) |
+| 1st Aug. 2023 | Automatic Retrieval Augmented Generation, Multimodal Inputs, User Packages | [![Automatic Retrieval Augmented Generation, Multimodal Inputs, User Packages](https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/vid4.png)](https://www.youtube.com/watch?v=0AqB6SEvRqo) |
+| 22nd July 2023 | ChatBot In-Depth Demonstration (Tool Use and Iterative Processing) | [![ChatBot In-Depth Demonstration (Tool Use and Iterative Processing)](https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/vid3.png)](https://www.youtube.com/watch?v=R46SskmmrCE) |
+| 1st July 2023 | Symbols, Operations, Expressions, LLM-based functions! | [![Symbols, Operations, Expressions, LLM-based functions!](https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/vid2.png)](https://www.youtube.com/watch?v=Ch9ygW62A34) |
+| 9th June 2023 | The future is neuro-symbolic: Expressiveness of ChatGPT and generalizability of symbols | [![The future is neuro-symbolic: Expressiveness of ChatGPT and generalizability of symbols](https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/vid1.png)](https://www.youtube.com/watch?v=RW_7JdXvbRA) |
 
 ## 📖 Table of Contents
 
@@ -299,7 +300,7 @@ Within the interactive shell you can use your regular shell commands and additio
 `symsh` provides path auto-completion and history auto-completion enhanced by the neuro-symbolic engine. Start typing the path or command, and `symsh` will provide you with relevant suggestions based on your input and command history.
 To trigger a suggestion, press `Tab` or `Ctrl+Space`.
 
-![Demo usage of symsh](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/symsh.png)
+![Demo usage of symsh](https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/symsh.png)
 
 #### Query Neuro-Symbolic Model
 `symsh` can interact with a language model. By beginning a command with a special character (`"`, `'`, or `` ` ``), `symsh` will treat the command as a query for a language model.
@@ -487,7 +488,7 @@ This command removes the alias named `my_alias`.
 The Package Runner stores aliases in a JSON file named `aliases.json`. This file is located in the `.symai/packages/` directory in your home directory (`~/.symai/packages/`). You can view the contents of this file to see the existing aliases.
 
 Here is an example how to use the `sympkg` and `symrun` via shell:
-![Demo Usage of symask](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/screen1.jpeg)
+![Demo Usage of symask](https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/screen1.jpeg)
 
 #### Note
 
@@ -601,7 +602,7 @@ SymbolicAI aims to bridge the gap between classical programming, or Software 1.0
 
 By using SymbolicAI, you can traverse the spectrum between the classical programming realm and the data-driven programming realm, as illustrated in the following figure:
 
-<img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img5.png" width="720px">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img5.png" width="720px">
 
 We adopt a divide-and-conquer approach, breaking down complex problems into smaller, manageable tasks. We use the expressiveness and flexibility of LLMs to evaluate these sub-problems. By re-combining the results of these operations, we can solve the broader, more complex problem.
 
@@ -621,16 +622,16 @@ SymbolicAI is fundamentally inspired by the [`neuro-symbolic programming paradig
 
 **Embedded accelerators for LLMs** will likely be ubiquitous in future computation platforms, including wearables, smartphones, tablets, and notebooks. These devices will incorporate models similar to GPT-3, ChatGPT, OPT, or Bloom.
 
-<img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img1.png" width="720px">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img1.png" width="720px">
 
 LLMs are expected to perform a wide range of computations, like natural language understanding and decision-making. Additionally, neuro-symbolic computation engines will learn how to tackle unseen tasks and resolve complex problems by querying various data sources for solutions and executing logical statements on top.
 To ensure the content generated aligns with our objectives, it is crucial to develop methods for instructing, steering, and controlling the generative processes of machine learning models. As a result, our approach works to enable active and transparent flow control of these generative processes.
 
-<img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img7.png" width="720px">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img7.png" width="720px">
 
 The figure above depicts this generative process as shifting the probability mass of an input stream toward an output stream in a contextualized manner. With properly designed conditions and expressions, you can validate and guide the behavior towards a desired outcome or repeat expressions that fail to meet requirements. Our approach consists of defining a set of _fuzzy_ operations to manipulate the data stream and condition LLMs to align with our goals. We regard all data objects – such as strings, letters, integers, and arrays – as symbols and view natural language as the primary interface for interaction. See the following figure:
 
-<img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img10.png" width="720px">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img10.png" width="720px">
 
 As long as our goals can be expressed through natural language, LLMs can be used for neuro-symbolic computations.
 Consequently, we develop operations that manipulate these symbols to construct new symbols. Each symbol can be interpreted as a statement, and multiple statements can be combined to formulate a logical expression.
@@ -675,7 +676,7 @@ Evaluations are resolved in the language domain and by best effort. We showcase 
 
 In the example below, we can observe how operations on word embeddings (colored boxes) are performed. Words are tokenized and mapped to a vector space where semantic operations can be executed using vector arithmetic.
 
-<img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img3.png" width="450px">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img3.png" width="450px">
 
 Similar to word2vec, we aim to perform contextualized operations on different symbols. However, as opposed to operating in vector space, we work in the natural language domain. This provides us the ability to perform arithmetic on words, sentences, paragraphs, etc., and verify the results in a human-readable format.
 
@@ -825,7 +826,7 @@ class Demo(ai.Symbol):
         return _func(self, other)
 ```
 
-Basic operations in `Symbol` are implemented by defining local functions and decorating them with corresponding operation decorators from the `symai/core.py` file, a collection of predefined operation decorators that can be applied rapidly to any function. Using local functions instead of decorating main methods directly avoids unnecessary communication with the neural engine and allows for default behavior implementation. It also helps cast operation return types to symbols or derived classes, using the `self.sym_return_type(...)` method for contextualized behavior based on the determined return type. More details can be found in the [`Symbol` class](https://github.com/Xpitfire/symbolicai/blob/main/symai/symbol.py).
+Basic operations in `Symbol` are implemented by defining local functions and decorating them with corresponding operation decorators from the `symai/core.py` file, a collection of predefined operation decorators that can be applied rapidly to any function. Using local functions instead of decorating main methods directly avoids unnecessary communication with the neural engine and allows for default behavior implementation. It also helps cast operation return types to symbols or derived classes, using the `self.sym_return_type(...)` method for contextualized behavior based on the determined return type. More details can be found in the [`Symbol` class](https://github.com/ExtensityAI/symbolicai/blob/main/symai/symbol.py).
 
 The following section demonstrates that most operations in `symai/core.py` are derived from the more general `few_shot` decorator.
 
@@ -870,7 +871,7 @@ The `prompt` and `constraints` attributes behave similarly to those in the `zero
 
 To provide a more comprehensive understanding of our conceptual implementation, refer to the flow diagram below, containing the most important classes:
 
-<img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img9.png" width="600px">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img9.png" width="600px">
 
 The colors indicate logical groups of data processing steps. `Yellow` represents input and output data, `blue` shows places where one can customize or prepare the input of the engine, `green` indicates post-processing steps of the engine response, `red` displays the application of constraints (including attempted casting of the `return type signature` if specified in the decorated method), and `grey` denotes the custom method defining all properties, thus having access to all the previously mentioned objects.
 
@@ -925,7 +926,7 @@ True
 
 In general, the semantics of Symbol operations may vary depending on the context hierarchy of the expression class and the operations used. To better illustrate this, we display our conceptual prompt design in the following figure:
 
-<img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img4.png" width="350px">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img4.png" width="350px">
 
 The figure illustrates the hierarchical prompt design as a container for information provided to the neural computation engine to define a task-specific operation. The `yellow` and `green` highlighted boxes indicate mandatory string placements, dashed boxes represent optional placeholders, and the `red` box marks the starting point of model prediction.
 
@@ -964,7 +965,7 @@ Other important properties inherited from the Symbol class include `sym_return_t
 
 Expressions may have more complex structures and can be further sub-classed, as shown in the `Sequence` expression example in the following figure:
 
-<img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img2.png" width="720px">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img2.png" width="720px">
 
 A Sequence expression can hold multiple expressions evaluated at runtime.
 
@@ -1003,7 +1004,7 @@ The example above opens a stream, passes a `Sequence` object which cleans, trans
 
 This approach has the drawback of processing chunks independently, meaning there is no shared context or information among chunks. To address this issue, the `Cluster` expression can be used, where the independent chunks are merged based on their similarity, as illustrated in the following figure:
 
-<img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img6.png" width="720px">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img6.png" width="720px">
 
 In the illustrated example, all individual chunks are merged by clustering the information within each chunk. It consolidates contextually related information, merging them meaningfully. The clustered information can then be labeled by streaming through the content of each cluster and extracting the most relevant labels, providing interpretable node summaries.
 
@@ -1093,17 +1094,17 @@ res = expr()
 
 Here is the corresponding StackTrace of the model:
 
-<img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/img8.png" width="900px">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img8.png" width="900px">
 
-The above code creates a webpage with the crawled content from the original source. See the preview below, the entire [rendered webpage image here](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/examples/results/news.png), and the resulting [code of the webpage here](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/examples/results/news.html).
+The above code creates a webpage with the crawled content from the original source. See the preview below, the entire [rendered webpage image here](https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/examples/results/news.png), and the resulting [code of the webpage here](https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/examples/results/news.html).
 
-<img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/examples/results/news_prev.png" width="900px">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/examples/results/news_prev.png" width="900px">
 
 ## ▶️ Experiment with Our API
 
 Launch and explore the notebook here:
 
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Xpitfire/symbolicai/HEAD)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/ExtensityAI/symbolicai/HEAD)
 
 Find more examples in the [examples folder](examples/) and the [notebooks folder](notebooks/). You can also examine the test cases in the [tests folder](tests/).
 
@@ -1240,9 +1241,9 @@ res = dalle('a cat with a hat')
 https://oaidalleapiprodscus.blob.core.windows.net/private/org-l6FsXDfth6Uct ...
 ```
 
-Don't worry, we would never hide an image of a cat with a hat from you. Here is the image preview and [link](https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/cat.jpg):
+Don't worry, we would never hide an image of a cat with a hat from you. Here is the image preview and [link](https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/cat.jpg):
 
-<img src="https://raw.githubusercontent.com/Xpitfire/symbolicai/main/assets/images/cat.jpg" width="200px">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/cat.jpg" width="200px">
 
 
 ### File Engine
@@ -1482,7 +1483,7 @@ If you wish to contribute to this project, please read the [CONTRIBUTING.md](CON
   author = {Dinu, Marius-Constantin},
   editor = {Leoveanu-Condrei, Claudiu},
   title = {{SymbolicAI: A Neuro-Symbolic Perspective on Large Language Models (LLMs)}},
-  url = {https://github.com/Xpitfire/symbolicai},
+  url = {https://github.com/ExtensityAI/symbolicai},
   month = {11},
   year = {2022}
 }
