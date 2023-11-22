@@ -1,14 +1,14 @@
 import logging
 from typing import List
 import re
-import openai
 import tiktoken
+import openai
 
 from .base import Engine
 from .mixin.openai import OpenAIMixin
 from .settings import SYMAI_CONFIG
 from ..strategy import InvalidRequestErrorRemedyChatStrategy
-from ..utils import encode_image
+from ..utils import encode_frames_file
 
 
 logging.getLogger("openai").setLevel(logging.ERROR)
@@ -67,6 +67,8 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         if input_handler:
             input_handler((prompts_,))
 
+        openai_kwargs = {}
+
         # send prompt to GPT-X Chat-based
         stop                = kwargs['stop'] if 'stop' in kwargs else None
         model               = kwargs['model'] if 'model' in kwargs else self.model
@@ -78,27 +80,26 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         presence_penalty    = kwargs['presence_penalty'] if 'presence_penalty' in kwargs else 0
         top_p               = kwargs['top_p'] if 'top_p' in kwargs else 1
         except_remedy       = kwargs['except_remedy'] if 'except_remedy' in kwargs else None
+        functions           = kwargs['functions'] if 'functions' in kwargs else None
+        function_call       = "auto" if functions is not None else None
+
+        if stop is not None:
+            openai_kwargs['stop'] = stop
+        if functions is not None:
+            openai_kwargs['functions'] = functions
+        if function_call is not None:
+            openai_kwargs['function_call'] = function_call
 
         try:
-            if stop is None:
-                res = openai.chat.completions.create(model=model,
+            res = openai.chat.completions.create(model=model,
                                                  messages=prompts_,
                                                  max_tokens=max_tokens,
                                                  temperature=temperature,
                                                  frequency_penalty=frequency_penalty,
                                                  presence_penalty=presence_penalty,
                                                  top_p=top_p,
-                                                 n=1)
-            else:
-                res = openai.chat.completions.create(model=model,
-                                                    messages=prompts_,
-                                                    max_tokens=max_tokens,
-                                                    temperature=temperature,
-                                                    frequency_penalty=frequency_penalty,
-                                                    presence_penalty=presence_penalty,
-                                                    top_p=top_p,
-                                                    stop=stop,
-                                                    n=1)
+                                                 n=1,
+                                                 **openai_kwargs)
 
             output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
             if output_handler:
@@ -159,35 +160,53 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             system += f"[EXAMPLES]\n{str(examples)}\n\n"
 
         def extract_pattern(text):
-            pattern = r'<<img:(.*?):>>'
+            pattern = r'<<vision:(.*?):>>'
             return re.findall(pattern, text)
 
         def remove_pattern(text):
-            pattern = r'<<img:(.*?):>>'
+            pattern = r'<<vision:(.*?):>>'
             return re.sub(pattern, '', text)
 
-        image_urls = []
+        image_files = []
         # pre-process prompt if contains image url
-        if self.model == 'gpt-4-vision-preview' and '<<img:' in str(wrp_params['processed_input']):
+        if self.model == 'gpt-4-vision-preview' and '<<vision:' in str(wrp_params['processed_input']):
             parts = extract_pattern(str(wrp_params['processed_input']))
             for p in parts:
                 img_ = p.strip()
                 if img_.startswith('http'):
-                    image_urls.append(img_)
+                    image_files.append(img_)
                 elif img_.startswith('data:image'):
-                    image_urls.append(img_)
+                    image_files.append(img_)
                 else:
-                    enc_, ext = encode_image(img_)
-                    image_urls.append(f"data:image/{ext};base64,{enc_}")
+                    max_frames_spacing = 50
+                    max_used_frames = 10
+                    if img_.startswith('frames:'):
+                        img_ = img_.replace('frames:', '')
+                        max_used_frames, img_ = img_.split(':')
+                        max_used_frames = int(max_used_frames)
+                        if max_used_frames < 1 or max_used_frames > max_frames_spacing:
+                            raise ValueError(f"Invalid max_used_frames value: {max_used_frames}. Expected value between 1 and {max_frames_spacing}")
+                    buffer, ext = encode_frames_file(img_)
+                    if len(buffer) > 1:
+                        step = len(buffer) // max_frames_spacing # max frames spacing
+                        frames = []
+                        indices = list(range(0, len(buffer), step))[:max_used_frames]
+                        for i in indices:
+                            frames.append(f"data:image/{ext};base64,{buffer[i]}")
+                        image_files.extend(frames)
+                    elif len(buffer) == 1:
+                        image_files.append(f"data:image/{ext};base64,{buffer[0]}")
+                    else:
+                        print('No frames found or error in encoding frames')
 
         if str(wrp_params['prompt']) is not None and len(wrp_params['prompt']) > 0 and ']: <<<' not in str(wrp_params['prompt']): # TODO: fix chat hack
             val = str(wrp_params['prompt'])
-            if len(image_urls) > 0:
+            if len(image_files) > 0:
                 val = remove_pattern(val)
             user += f"[INSTRUCTION]\n{val}"
 
         suffix: str = str(wrp_params['processed_input'])
-        if len(image_urls) > 0:
+        if len(image_files) > 0:
             suffix = remove_pattern(suffix)
         if '=>' in suffix:
             user += f"[LAST TASK]\n"
@@ -212,7 +231,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             user += f"\n[[PLACEHOLDER]]\n{template_suffix}\n\n"
             user += f"Only generate content for the placeholder `[[PLACEHOLDER]]` following the instructions and context information. Do NOT write `[[PLACEHOLDER]]` or anything else in your output.\n\n"
 
-        images = [{ 'type': 'image', "image_url": { "url": url, "detail": "auto" }} for url in image_urls]
+        images = [{ 'type': 'image', "image_url": { "url": file, "detail": "auto" }} for file in image_files]
         if self.model == 'gpt-4-vision-preview':
             user_prompt = { "role": "user", "content": [
                 *images,
