@@ -31,6 +31,8 @@ class InvalidRequestErrorRemedyChatStrategy:
         super().__init__(*args, **kwargs)
 
     def __call__(self, error, prompts_, callback, instance, *args, **kwargs):
+        openai_kwargs = {}
+
         # send prompt to GPT-X Chat-based
         stop                = kwargs['stop'] if 'stop' in kwargs else None
         model               = kwargs['model'] if 'model' in kwargs else None
@@ -84,15 +86,16 @@ class InvalidRequestErrorRemedyChatStrategy:
         frequency_penalty   = kwargs['frequency_penalty'] if 'frequency_penalty' in kwargs else 0
         presence_penalty    = kwargs['presence_penalty'] if 'presence_penalty' in kwargs else 0
         top_p               = kwargs['top_p'] if 'top_p' in kwargs else 1
-        if stop is None:
-            return callback(model=model,
-                        messages=truncated_prompts_,
-                        max_tokens=max_tokens,
-                        temperature=temperature,
-                        frequency_penalty=frequency_penalty,
-                        presence_penalty=presence_penalty,
-                        top_p=top_p,
-                        n=1)
+        functions           = kwargs['functions'] if 'functions' in kwargs else None
+        function_call       = "auto" if functions is not None else None
+
+        if stop is not None:
+            openai_kwargs['stop'] = stop
+        if functions is not None:
+            openai_kwargs['functions'] = functions
+        if function_call is not None:
+            openai_kwargs['function_call'] = function_call
+
         return callback(model=model,
                         messages=truncated_prompts_,
                         max_tokens=max_tokens,
@@ -100,8 +103,8 @@ class InvalidRequestErrorRemedyChatStrategy:
                         frequency_penalty=frequency_penalty,
                         presence_penalty=presence_penalty,
                         top_p=top_p,
-                        stop=stop,
-                        n=1)
+                        n=1,
+                        **openai_kwargs)
 
 
 class InvalidRequestErrorRemedyCompletionStrategy:

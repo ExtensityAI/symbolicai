@@ -883,6 +883,15 @@ class Expression(Symbol):
         self.__dict__.update(state)
         self._sym_return_type = type(self)
 
+    def __json__(self):
+        '''
+        Get the json-serializable dictionary representation of the Expression instance.
+
+        Returns:
+            dict: The json-serializable dictionary representation of the Expression instance.
+        '''
+        return self.__getstate__()
+
     def serialize(self):
         '''
         Encode an Expression instance into its dictionary representation.
