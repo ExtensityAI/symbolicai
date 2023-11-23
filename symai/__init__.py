@@ -11,7 +11,7 @@ logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
-SYMAI_VERSION = "0.4.9"
+SYMAI_VERSION = "0.4.10"
 __version__   = SYMAI_VERSION
 __root_dir__  = Path.home() / '.symai'
 
@@ -82,7 +82,7 @@ def _start_symai():
                     "SUPPORT_COMMUNITY":              True,
                 }, f, indent=4)
 
-            logging.warn('Thank you for supporting the community. To update this feature got to your config or set the environment variable.')
+            logging.error('Thank you for supporting the community. To update the data collection option feature got to your symai config or set the environment variable in your home directory of the `SUPPORT_COMMUNITY` property to `False`.')
 
         # LOAD THE CONFIGURATION FILE
         # *==========================================================================================================*
@@ -108,6 +108,7 @@ def _start_symai():
             _symai_config_['COLLECTION_DB']      = "ExtensityAI"
             _symai_config_['COLLECTION_STORAGE'] = "SymbolicAI"
             _symai_config_['SUPPORT_COMMUNITY']  = True
+            logging.error('Thank you for supporting the community. To update the data collection option feature got to your symai config or set the environment variable in your home directory of the `SUPPORT_COMMUNITY` property to `False`.')
             # save the updated configuration file
             with open(_symai_config_path_, 'w') as f:
                 json.dump(_symai_config_, f, indent=4)
