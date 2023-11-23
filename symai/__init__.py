@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from .misc.console import ConsoleStyle
 from pathlib import Path
 
 # do not remove - hides the libraries' debug messages
@@ -11,7 +12,7 @@ logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
-SYMAI_VERSION = "0.4.10"
+SYMAI_VERSION = "0.4.14"
 __version__   = SYMAI_VERSION
 __root_dir__  = Path.home() / '.symai'
 
@@ -82,7 +83,9 @@ def _start_symai():
                     "SUPPORT_COMMUNITY":              True,
                 }, f, indent=4)
 
-            logging.error('Thank you for supporting the community. To update the data collection option feature got to your symai config or set the environment variable in your home directory of the `SUPPORT_COMMUNITY` property to `False`.')
+            with ConsoleStyle('info') as console:
+                msg = 'Currently you are sharing your user experience with us by uploading the data to our research server, and thereby helping us improve future models and the overall SymbolicAI experience. We thank you very much for supporting the research community! If you wish to disable the data collection option go to your .symai config situated in your home directory or set the environment variable `SUPPORT_COMMUNITY` to `False`.'
+                console.print(msg)
 
         # LOAD THE CONFIGURATION FILE
         # *==========================================================================================================*
@@ -108,7 +111,9 @@ def _start_symai():
             _symai_config_['COLLECTION_DB']      = "ExtensityAI"
             _symai_config_['COLLECTION_STORAGE'] = "SymbolicAI"
             _symai_config_['SUPPORT_COMMUNITY']  = True
-            logging.error('Thank you for supporting the community. To update the data collection option feature got to your symai config or set the environment variable in your home directory of the `SUPPORT_COMMUNITY` property to `False`.')
+            with ConsoleStyle('info') as console:
+                msg = 'Currently you are sharing your user experience with us by uploading the data to our research server, and thereby helping us improve future models and the overall SymbolicAI experience. We thank you very much for supporting the research community! If you wish to disable the data collection option go to your .symai config situated in your home directory or set the environment variable `SUPPORT_COMMUNITY` to `False`.'
+                console.print(msg)
             # save the updated configuration file
             with open(_symai_config_path_, 'w') as f:
                 json.dump(_symai_config_, f, indent=4)
@@ -192,7 +197,9 @@ def _start_symai():
     if 'custom' not in _symai_config_['NEUROSYMBOLIC_ENGINE_MODEL'].lower() and \
                       (_symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY'] is None or len(_symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY']) == 0):
 
-        logging.warn('The mandatory neuro-symbolic engine is not initialized. Please get a key from https://beta.openai.com/account/api-keys and set either a general environment variable OPENAI_API_KEY or a module specific environment variable NEUROSYMBOLIC_ENGINE_API_KEY.')
+        with ConsoleStyle('warn') as console:
+            msg = 'The mandatory neuro-symbolic engine is not initialized. Please get a key from https://beta.openai.com/account/api-keys and set either a general environment variable OPENAI_API_KEY or a module specific environment variable NEUROSYMBOLIC_ENGINE_API_KEY.'
+            console.print(msg)
 
     import symai.backend.settings as settings
     settings.SYMAI_CONFIG = _symai_config_
