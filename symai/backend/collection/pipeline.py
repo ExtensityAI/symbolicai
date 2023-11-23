@@ -73,7 +73,6 @@ class CollectionRepository:
             'created_at': datetime.now(),
             'updated_at': datetime.now()
         }
-        print('Example:', record)
         return self.collection.insert_one(record).inserted_id if self.collection else None
 
     def get(self, record_id: str) -> Optional[Dict[str, Any]]:
