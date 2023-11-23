@@ -208,32 +208,38 @@ class GPTXChatEngine(Engine, OpenAIMixin):
                     else:
                         print('No frames found or error in encoding frames')
 
-        if str(wrp_params['prompt']) is not None and len(wrp_params['prompt']) > 0 and ']: <<<' not in str(wrp_params['prompt']): # TODO: fix chat hack
-            val = str(wrp_params['prompt'])
-            if len(image_files) > 0:
-                val = remove_pattern(val)
-            user += f"[INSTRUCTION]\n{val}"
+        # _used = wrp_params['used'] if 'used' in wrp_params else False #@TODO: something like this
+        _used = True
+        if _used:
+            if str(wrp_params['prompt']) is not None and len(wrp_params['prompt']) > 0 and ']: <<<' not in str(wrp_params['prompt']): # TODO: fix chat hack
+                val = str(wrp_params['prompt'])
+                if len(image_files) > 0:
+                    val = remove_pattern(val)
+                user += f"[INSTRUCTION]\n{val}"
+                _used = not _used
 
+        #@NOTE: where is this, after the _used check or before? now is in the middle
         suffix: str = str(wrp_params['processed_input'])
         if len(image_files) > 0:
             suffix = remove_pattern(suffix)
         if '=>' in suffix:
             user += f"[LAST TASK]\n"
 
-        parse_system_instructions = False if 'parse_system_instructions' not in wrp_params else wrp_params['parse_system_instructions']
-        if '[SYSTEM_INSTRUCTION::]: <<<' in suffix and parse_system_instructions:
-            parts = suffix.split('\n>>>\n')
-            # first parts are the system instructions
-            c = 0
-            for i, p in enumerate(parts):
-                if 'SYSTEM_INSTRUCTION' in p:
-                    system += f"{p}\n"
-                    c += 1
-                else:
-                    break
-            # last part is the user input
-            suffix = '\n>>>\n'.join(parts[c:])
-        user += f"{suffix}"
+        if _used:
+            parse_system_instructions = False if 'parse_system_instructions' not in wrp_params else wrp_params['parse_system_instructions']
+            if '[SYSTEM_INSTRUCTION::]: <<<' in suffix and parse_system_instructions:
+                parts = suffix.split('\n>>>\n')
+                # first parts are the system instructions
+                c = 0
+                for i, p in enumerate(parts):
+                    if 'SYSTEM_INSTRUCTION' in p:
+                        system += f"{p}\n"
+                        c += 1
+                    else:
+                        break
+                # last part is the user input
+                suffix = '\n>>>\n'.join(parts[c:])
+            user += f"{suffix}"
 
         template_suffix = str(wrp_params['template_suffix']) if 'template_suffix' in wrp_params else None
         if template_suffix:
