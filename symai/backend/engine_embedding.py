@@ -59,6 +59,7 @@ class EmbeddingEngine(Engine, OpenAIMixin):
             metadata['kwargs'] = kwargs
             metadata['input']  = prompts_
             metadata['output'] = res
+            metadata['model']  = self.model
 
         return [rsp], metadata
 

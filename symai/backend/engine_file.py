@@ -100,6 +100,8 @@ class FileEngine(Engine):
             metadata['kwargs'] = kwargs
             metadata['input']  = path
             metadata['output'] = rsp
+            metadata['range']  = range_
+            metadata['fix_pdf'] = kwargs['fix_pdf'] if 'fix_pdf' in kwargs else False
 
         return [rsp], metadata
 

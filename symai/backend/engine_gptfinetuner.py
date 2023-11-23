@@ -125,6 +125,7 @@ class GPTFineTuner(Engine):
             metadata['kwargs'] = kwargs
             metadata['input']  = args
             metadata['output'] = rsp
+            metadata['model']  = self.base_model
 
         return [rsp], metadata
 

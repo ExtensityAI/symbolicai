@@ -1,8 +1,10 @@
 import logging
 import os
 import time
+import json
 from abc import ABC
 from typing import Any, List
+from .collection import CollectionRepository, rec_serialize
 from ..symbol import Symbol
 
 
@@ -19,15 +21,17 @@ class Engine(ABC):
         self.logging    = False
         self.log_level  = logging.DEBUG
         self.time_clock = False
+        self.collection = CollectionRepository()
+        self.collection.connect()
         # create formatter
         os.makedirs('outputs', exist_ok=True)
         logging.basicConfig(filename="outputs/engine.log", filemode="a", format='%(asctime)s %(name)s %(levelname)s %(message)s')
-        self.logger = logging.getLogger()
+        self.logger     = logging.getLogger()
         self.logger.setLevel(logging.DEBUG)
         # logging to console
-        stream = logging.StreamHandler()
+        stream          = logging.StreamHandler()
+        streamformat    = logging.Formatter("%(asctime)s %(message)s")
         stream.setLevel(logging.INFO)
-        streamformat = logging.Formatter("%(asctime)s %(message)s")
         stream.setFormatter(streamformat)
         self.logger.addHandler(stream)
 
@@ -39,6 +43,8 @@ class Engine(ABC):
                 **kwds
             }
         }
+        if 'metadata' not in kwds:
+            kwds['metadata'] = True
         start_time = time.time()
         res, metadata = self.forward(*args, **kwds)
         req_time = time.time() - start_time
@@ -52,6 +58,14 @@ class Engine(ABC):
             print(input_[:150], str(log['Output'])[:100])
         if self.logging:
             self.logger.log(self.log_level, log)
+        self.collection.add(
+            forward={'args': rec_serialize(args), 'kwds': rec_serialize(kwds)},
+            engine=str(self),
+            metadata={
+                'time': req_time,
+                'data': rec_serialize(metadata)
+            }
+        )
         return res, metadata
 
     def preview(self, wrp_params):
@@ -72,3 +86,10 @@ class Engine(ABC):
             self.log_level = wrp_params['log_level']
         if 'time_clock' in wrp_params:
             self.time_clock = wrp_params['time_clock']
+
+    def __str__(self) -> str:
+        return self.__class__.__name__
+
+    def __repr__(self) -> str:
+        return self.__str__()
+

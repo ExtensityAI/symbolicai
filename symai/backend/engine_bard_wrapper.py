@@ -78,6 +78,8 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
             metadata['kwargs'] = kwargs
             metadata['input']  = prompts_
             metadata['output'] = res
+            metadata['model']  = self.model
+            metadata['max_tokens'] = self.max_tokens
 
         rsp    = [res['content']]
         output = rsp if isinstance(prompts, list) else rsp[0]

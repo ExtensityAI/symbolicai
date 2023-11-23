@@ -98,6 +98,7 @@ class SerpApiEngine(Engine):
             metadata['kwargs'] = kwargs
             metadata['input']  = queries_
             metadata['output'] = rsp
+            metadata['model']  = self.engine
 
         output = rsp if isinstance(queries, list) else rsp[0]
         return output, metadata

@@ -71,5 +71,6 @@ class Blip2Engine(Engine):
             metadata['kwargs'] = kwargs
             metadata['input'] = (image, prompt)
             metadata['output'] = res
+            metadata['model'] = self.model_id
 
         return [res], metadata

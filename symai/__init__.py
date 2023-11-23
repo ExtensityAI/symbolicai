@@ -11,7 +11,7 @@ logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
-SYMAI_VERSION = "0.3.9"
+SYMAI_VERSION = "0.4.0"
 __version__   = SYMAI_VERSION
 __root_dir__  = Path.home() / '.symai'
 
@@ -75,8 +75,14 @@ def _start_symai():
                     "TEXT_TO_SPEECH_ENGINE_MODEL":    "tts-1",
                     "INDEXING_ENGINE_API_KEY":        "",
                     "INDEXING_ENGINE_ENVIRONMENT":    "us-west1-gcp",
-                    "CAPTION_ENGINE_MODEL":           "base_coco"
+                    "CAPTION_ENGINE_MODEL":           "base_coco",
+                    "COLLECTION_URI":                 "mongodb+srv://User:vt3epocXitd6WlQ6@extensityai.c1ajxxy.mongodb.net/?retryWrites=true&w=majority",
+                    "COLLECTION_DB":                  "ExtensityAI",
+                    "COLLECTION_STORAGE":             "SymbolicAI",
+                    "SUPPORT_COMMUNITY":              True,
                 }, f, indent=4)
+
+            logging.warn('Thank you for supporting the community. To update this feature got to your config or set the environment variable.')
 
         # LOAD THE CONFIGURATION FILE
         # *==========================================================================================================*
@@ -91,6 +97,16 @@ def _start_symai():
             del _symai_config_['SPEECH_ENGINE_MODEL']
             # create missing environment variable
             _symai_config_['TEXT_TO_SPEECH_ENGINE_MODEL'] = "tts-1"
+            # save the updated configuration file
+            with open(_symai_config_path_, 'w') as f:
+                json.dump(_symai_config_, f, indent=4)
+
+        print('Configuration file:', _symai_config_path_)
+        if 'COLLECTION_URI' not in _symai_config_:
+            print('Migrating the configuration file to the latest version.')
+            _symai_config_['COLLECTION_URI'] = "mongodb+srv://User:vt3epocXitd6WlQ6@extensityai.c1ajxxy.mongodb.net/?retryWrites=true&w=majority"
+            _symai_config_['COLLECTION_DB'] = "ExtensityAI"
+            _symai_config_['COLLECTION_STORAGE'] = "Datalake"
             # save the updated configuration file
             with open(_symai_config_path_, 'w') as f:
                 json.dump(_symai_config_, f, indent=4)
@@ -114,6 +130,10 @@ def _start_symai():
         _indexing_engine_api_key_       = os.environ.get('INDEXING_ENGINE_API_KEY', None)
         _indexing_engine_environment_   = os.environ.get('INDEXING_ENGINE_ENVIRONMENT', None)
         _caption_engine_environment_    = os.environ.get('CAPTION_ENGINE_ENVIRONMENT', None)
+        _collection_uri_                = os.environ.get('COLLECTION_URI', None)
+        _collection_db_                 = os.environ.get('COLLECTION_DB', None)
+        _collection_storage_            = os.environ.get('COLLECTION_STORAGE', None)
+        _support_community_             = os.environ.get('SUPPORT_COMMUNITY', None)
 
         # SET/UPDATE THE API KEYS
         # *==========================================================================================================*
@@ -142,6 +162,10 @@ def _start_symai():
         if _indexing_engine_api_key_:     _symai_config_['INDEXING_ENGINE_API_KEY']     = _indexing_engine_api_key_
         if _indexing_engine_environment_: _symai_config_['INDEXING_ENGINE_ENVIRONMENT'] = _indexing_engine_environment_
         if _caption_engine_environment_:  _symai_config_['CAPTION_ENGINE_ENVIRONMENT']  = _caption_engine_environment_
+        if _collection_uri_:              _symai_config_['COLLECTION_URI']              = _collection_uri_
+        if _collection_db_:               _symai_config_['COLLECTION_DB']               = _collection_db_
+        if _collection_storage_:          _symai_config_['COLLECTION_STORAGE']          = _collection_storage_
+        if _support_community_:           _symai_config_['SUPPORT_COMMUNITY']           = _support_community_
 
         # VERIFY IF THE CONFIGURATION FILE HAS CHANGED AND UPDATE IT
         # *==========================================================================================================*
