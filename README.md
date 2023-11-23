@@ -233,9 +233,12 @@ Alternatively, you can specify in your project path a `symai.config.json` file w
     "SPEECH_TO_TEXT_ENGINE_MODEL": "base",
     "TEXT_TO_SPEECH_ENGINE_MODEL": "tts-1",
     "INDEXING_ENGINE_API_KEY": "<PINECONE_API_KEY>",
-    "INDEXING_ENGINE_ENVIRONMENT": "us-west1-gcp"
+    "INDEXING_ENGINE_ENVIRONMENT": "us-west1-gcp",
+    ...
 }
 ```
+
+> [NOTE]: By default, the `symai.config.json` file is located in the `.symai` directory in your home directory (`~/.symai/symai.config.json`). Also, the community support feature is enabled by default.
 
 ## 🦖 Apps
 
@@ -283,7 +286,6 @@ $> symsh "Set-ItemProperty -Path '/Users/myuser' -Name Demo -Value SymbolicAI" -
 
 `symsh` is also a regular shell program that interacts with users in the terminal emulation window. It interprets Linux, MacOS, and Windows PowerShell shell commands, and supports ANSI escape sequences.
 
-> [NOTE]: Currently tested and supported for `bash` and `zsh` shells on MacOS.
 > [NOTE]: Because the colors for the default style is highly dependent on whether the theme is light or dark, they may not be displayed correctly in some terminals. You can change the default style to better fit your needs by modifying the `symsh.config.json` file in the `.symai` directory in your home directory (`~/.symai/symsh.config.json`).
 
 To enter an interactive shell, simply run without any additional parameters:
