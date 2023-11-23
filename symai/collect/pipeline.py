@@ -7,7 +7,7 @@ from pymongo.database import Database
 from pymongo.mongo_client import MongoClient
 from typing import Any, Dict, List, Optional
 
-from ..settings import SYMAI_CONFIG
+from ..backend.settings import SYMAI_CONFIG
 
 
 def rec_serialize(obj):
