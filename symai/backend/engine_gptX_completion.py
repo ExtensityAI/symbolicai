@@ -36,9 +36,9 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
         if 'NEUROSYMBOLIC_ENGINE_MODEL' in wrp_params:
             self.model = wrp_params['NEUROSYMBOLIC_ENGINE_MODEL']
 
-    def compute_required_tokens(self, prompts: list) -> int: #@TODO: legacy code, concatenate prompts and compute number of tokens
+    def compute_required_tokens(self, prompts: list) -> int:
        # iterate over prompts and compute number of tokens
-        prompt = prompts[0]
+        prompt = prompts[0] # index 0 is correct since we only have one prompt in legacy mode
         val = len(self.tokenizer.encode(prompt, disallowed_special=()))
         return val
 
