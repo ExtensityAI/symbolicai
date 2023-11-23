@@ -23,7 +23,7 @@ dependencies = [
     "scikit-learn>=1.2.2", "torch>=2.0.0", "torchaudio>=2.0.1", "torchvision>=0.15.0", "PyYAML>=6.0", "transformers>=4.30.2", "sympy>=1.12",
     "openai>=1.1.0", "PyPDF2>=3.0.1", "ipython>=8.14.0", "accelerate>=0.20.3", "sentencepiece>=0.1.99",
     "tiktoken>=0.3.3", "tika>=2.6.0", "beautifulsoup4>=4.12.2", "colorama>=0.4.6", "GitPython>=3.1.32", "pathos>=0.3.1", "prompt-toolkit>=3.0.39",
-    "pydub", "opencv-python"
+    "pydub", "opencv-python", "pymongo==3.12.3"
 ]
 
 [project.optional-dependencies]
@@ -34,8 +34,8 @@ selenium = ["selenium>=4.10.0", "webdriver-manager>=4.0.1", "chromedriver-autoin
 serpapi = ["google-search-results>=2.4.2"]
 pinecone = ["pinecone-client>=2.2.2"]
 bard = ["bardapi>=0.1.24"]
-services = ["fastapi>=0.104.1", "redis>=5.0.1", "uvicorn>=0.24.0.post1", "pymongo==3.12.3"]
-all = ["wolframalpha>=5.0.0", "openai-whisper", "selenium>=4.10.0", "webdriver-manager>=4.0.1", "chromedriver-autoinstaller>=0.4.0", "google-search-results>=2.4.2", "pinecone-client>=2.2.2", "fastapi>=0.104.1", "redis>=5.0.1", "uvicorn>=0.24.0.post1", "pymongo==3.12.3"]
+services = ["fastapi>=0.104.1", "redis>=5.0.1", "uvicorn>=0.24.0.post1"]
+all = ["wolframalpha>=5.0.0", "openai-whisper", "selenium>=4.10.0", "webdriver-manager>=4.0.1", "chromedriver-autoinstaller>=0.4.0", "google-search-results>=2.4.2", "pinecone-client>=2.2.2", "fastapi>=0.104.1", "redis>=5.0.1", "uvicorn>=0.24.0.post1"]
 
 [tool.setuptools.dynamic]
 version = {attr = "symai.SYMAI_VERSION"}
