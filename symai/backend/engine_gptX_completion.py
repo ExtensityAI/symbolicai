@@ -96,6 +96,15 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
             metadata['kwargs'] = kwargs
             metadata['input']  = prompts_
             metadata['output'] = res
+            metadata['model']  = model
+            metadata['max_tokens'] = max_tokens
+            metadata['temperature'] = temperature
+            metadata['frequency_penalty'] = frequency_penalty
+            metadata['presence_penalty'] = presence_penalty
+            metadata['top_p'] = top_p
+            metadata['except_remedy'] = except_remedy
+            metadata['stop'] = stop
+            metadata['suffix'] = suffix
 
         # TODO: remove system behavior and user request from output. consider post-processing
         def replace_verbose(rsp):

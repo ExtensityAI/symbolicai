@@ -37,7 +37,7 @@ class TTSEngine(Engine):
 
         input_handler   = kwargs.get("input_handler")
         if input_handler is not None:
-            input_handler((prompt, audio))
+            input_handler((prompt, voice, path))
 
         rsp = self.client.audio.speech.create(
             model=self.model_id,
@@ -52,8 +52,11 @@ class TTSEngine(Engine):
         metadata = {}
         if 'metadata' in kwargs and kwargs['metadata']:
             metadata['kwargs'] = kwargs
-            metadata['input']  = (prompt, audio)
+            metadata['input']  = (prompt, voice, path)
             metadata['output'] = rsp
+            metadata['model']  = self.model_id
+            metadata['voice']  = voice
+            metadata['path']   = path
 
         rsp.stream_to_file(path)
 

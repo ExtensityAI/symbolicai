@@ -119,9 +119,13 @@ class IndexEngine(Engine):
 
         metadata = {}
         if 'metadata' in kwargs and kwargs['metadata']:
-            metadata['kwargs'] = kwargs
-            metadata['input']  = (operation, query)
-            metadata['output'] = rsp
+            metadata['kwargs']         = kwargs
+            metadata['input']          = (operation, query)
+            metadata['output']         = rsp
+            metadata['model']          = self.index_name
+            metadata['index_top_k']    = self.index_top_k
+            metadata['index_values']   = self.index_values
+            metadata['index_metadata'] = self.index_metadata
 
         return [rsp], metadata
 

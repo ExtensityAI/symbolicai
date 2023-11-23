@@ -118,12 +118,21 @@ class GPTXChatEngine(Engine, OpenAIMixin):
                     ex = Exception(f'Failed to handle exception: {e}. Also failed implicit remedy strategy after retry: {e2}')
                     raise ex from e
 
-
         metadata = {}
         if 'metadata' in kwargs and kwargs['metadata']:
             metadata['kwargs'] = kwargs
             metadata['input']  = prompts_
             metadata['output'] = res
+            metadata['model']  = model
+            metadata['max_tokens'] = max_tokens
+            metadata['temperature'] = temperature
+            metadata['frequency_penalty'] = frequency_penalty
+            metadata['presence_penalty'] = presence_penalty
+            metadata['top_p'] = top_p
+            metadata['except_remedy'] = except_remedy
+            metadata['functions'] = functions
+            metadata['function_call'] = function_call
+            metadata['stop'] = stop
 
         rsp    = [r.message.content for r in res.choices]
         output = rsp if isinstance(prompts, list) else rsp[0]

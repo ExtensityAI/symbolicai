@@ -94,9 +94,13 @@ class WhisperEngine(Engine):
 
         metadata = {}
         if 'metadata' in kwargs and kwargs['metadata']:
-            metadata['kwargs'] = kwargs
-            metadata['input']  = (prompt, audio)
-            metadata['output'] = rsp
+            metadata['kwargs']          = kwargs
+            metadata['input']           = (prompt, audio)
+            metadata['output']          = rsp
+            metadata['model']           = self.model
+            metadata['language']        = language
+            metadata['temperature']     = temperature
+            metadata['word_timestamps'] = word_timestamps
 
         return [rsp], metadata
 

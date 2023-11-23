@@ -61,6 +61,7 @@ class CLIPEngine(Engine):
             metadata['kwargs'] = kwargs
             metadata['input']  = (image_url, text)
             metadata['output'] = rsp
+            metadata['model']  = self.model_id
 
         return [rsp], metadata
 

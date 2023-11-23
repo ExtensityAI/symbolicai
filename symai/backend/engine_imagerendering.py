@@ -94,6 +94,7 @@ class ImageRenderingEngine(Engine):
             metadata['kwargs'] = kwargs
             metadata['input']  = prompt
             metadata['output'] = res
+            metadata['size']   = size
 
         rsp = res.data[0].url
         return [rsp], metadata

@@ -52,6 +52,8 @@ class CrawlerEngine(Engine):
             metadata['kwargs'] = kwargs
             metadata['input']  = (urls, patterns)
             metadata['output'] = rsp
+            metadata['urls']   = urls
+            metadata['patterns'] = patterns
 
         return rsp, metadata
 
