@@ -208,7 +208,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         if 'preview' in kwargs and kwargs['preview']:
             if self.auto_print:
                 print(res)
-            return str(res)
+            return res
 
         self.value = res.value # save last response
         val = self.build_tag(self.bot_tag, res)
