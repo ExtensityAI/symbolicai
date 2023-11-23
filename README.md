@@ -234,11 +234,13 @@ Alternatively, you can specify in your project path a `symai.config.json` file w
     "TEXT_TO_SPEECH_ENGINE_MODEL": "tts-1",
     "INDEXING_ENGINE_API_KEY": "<PINECONE_API_KEY>",
     "INDEXING_ENGINE_ENVIRONMENT": "us-west1-gcp",
-    ...
+    "COLLECTION_DB": "ExtensityAI",
+    "COLLECTION_STORAGE": "SymbolicAI",
+    "SUPPORT_COMMUNITY": True
 }
 ```
 
-> [NOTE]: By default, the `symai.config.json` file is located in the `.symai` directory in your home directory (`~/.symai/symai.config.json`). Also, the community support feature is enabled by default.
+> [NOTE]: By default, the `symai.config.json` file is located in the `.symai` directory in your home directory (`~/.symai/symai.config.json`). The data collection community support feature is enabled by default. To turn it off, set SUPPORT_COMMUNITY to `False` via the `symai.config.json` file or the environment variable `SUPPORT_COMMUNITY`.
 
 ## 🦖 Apps
 
