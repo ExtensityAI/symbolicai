@@ -4,7 +4,7 @@ import time
 import json
 from abc import ABC
 from typing import Any, List
-from .collection import CollectionRepository, rec_serialize
+from ..collect import CollectionRepository, rec_serialize
 from ..symbol import Symbol
 
 
