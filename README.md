@@ -240,7 +240,7 @@ Alternatively, you can specify in your project path a `symai.config.json` file w
 }
 ```
 
-> [NOTE]: By default, the `symai.config.json` file is located in the `.symai` directory in your home directory (`~/.symai/symai.config.json`). The data collection community support feature is enabled by default. To turn it off, set SUPPORT_COMMUNITY to `False` via the `symai.config.json` file or the environment variable `SUPPORT_COMMUNITY`.
+> [NOTE]: By default, the data collection community support feature is enabled. To change this go to the `symai.config.json` file located in your home directory of your `.symai` folder (i.e., `~/.symai/symai.config.json`), and turn it off by setting the `SUPPORT_COMMUNITY` property to `False` via the config file or the respective environment variable.
 
 ## 🦖 Apps
 
