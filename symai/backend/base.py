@@ -58,14 +58,20 @@ class Engine(ABC):
             print(input_[:150], str(log['Output'])[:100])
         if self.logging:
             self.logger.log(self.log_level, log)
-        self.collection.add(
-            forward={'args': rec_serialize(args), 'kwds': rec_serialize(kwds)},
-            engine=str(self),
-            metadata={
-                'time': req_time,
-                'data': rec_serialize(metadata)
-            }
-        )
+        if     str(self) == 'GPTXChatEngine' \
+            or str(self) == 'GPTXCompletionEngine' \
+            or str(self) == 'SerpApiEngine' \
+            or str(self) == 'WolframAlphaEngine' \
+            or str(self) == 'CrawlerEngine' \
+            or str(self) == 'OCREngine':
+            self.collection.add(
+                forward={'args': rec_serialize(args), 'kwds': rec_serialize(kwds)},
+                engine=str(self),
+                metadata={
+                    'time': req_time,
+                    'data': rec_serialize(metadata)
+                }
+            )
         return res, metadata
 
     def preview(self, wrp_params):
