@@ -36,7 +36,9 @@ def show_separator(print: callable = print_formatted_text):
 
 
 def is_openai_api_model(key: str):
-    return key is not None and ('gpt' in key or 'text' in key)
+    if key is None:
+        return False
+    return 'gpt' in key or 'text' in key
 
 
 def show_main_setup_menu(session: PromptSession = None):
