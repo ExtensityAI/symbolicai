@@ -94,8 +94,7 @@ def show_main_setup_menu(session: PromptSession = None):
     # Ask for optional settings yes/no
     continue_optional_settings = yes_no_dialog(
         title="Optional Settings",
-        text="Do you want to configure optional settings?",
-        default=True
+        text="Do you want to configure optional settings?"
     ).run()
 
     if nesy_engine_model is None:
@@ -114,6 +113,7 @@ def show_main_setup_menu(session: PromptSession = None):
     indexing_engine_api_key         = ''
     indexing_engine_environment     = ''
     caption_engine_environment      = ''
+    text_to_speech_engine_api_key   = ''
 
     if continue_optional_settings:
         # Step 2.4: Enter Embedding Model
@@ -225,8 +225,7 @@ def show_main_setup_menu(session: PromptSession = None):
     # Step 3: Enable/Disable community support and data sharing
     support_community = yes_no_dialog(
         title="Community Support and Data Sharing",
-        text="Enable community support and data sharing?",
-        default=True
+        text="Enable community support and data sharing?"
     ).run()
     if not support_community:
         with ConsoleStyle('info') as console:
