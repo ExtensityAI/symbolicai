@@ -44,7 +44,7 @@ version = {attr = "symai.SYMAI_VERSION"}
 "*" = ["*.json"]
 
 [tool.setuptools.packages.find]
-include = ["symai"]
+include = ["symai", "TERMS_OF_SERVICE.md"]
 exclude = ["tests", "examples", "notebooks", "outputs", "assets"]
 
 [project.urls]
