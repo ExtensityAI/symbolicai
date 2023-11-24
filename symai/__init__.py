@@ -13,7 +13,7 @@ logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
-SYMAI_VERSION = "0.4.31"
+SYMAI_VERSION = "0.4.32"
 __version__   = SYMAI_VERSION
 __root_dir__  = Path.home() / '.symai'
 
@@ -69,7 +69,7 @@ def _start_symai():
 
         # LOAD THE CONFIGURATION FILE
         # *==========================================================================================================*
-        with open(_symai_config_path_, 'r') as f:
+        with open(_symai_config_path_, 'r', encoding="utf-8") as f:
             _symai_config_ = json.load(f)
         _tmp_symai_config_ = _symai_config_.copy()
 
@@ -182,12 +182,12 @@ def _start_symai():
 
     # CHECK IF MANADATORY API KEYS ARE SET
     # *==============================================================================================================*
-    with open(_symai_config_path_, 'r') as f:
+    with open(_symai_config_path_, 'r', encoding="utf-8") as f:
         _symai_config_ = json.load(f)
 
     # LOAD THE SHELL CONFIGURATION FILE
     # *==========================================================================================================*
-    with open(_symsh_config_path_, 'r') as f:
+    with open(_symsh_config_path_, 'r', encoding="utf-8") as f:
         _symsh_config_ = json.load(f)
 
     # MIGRATE THE SHELL SPLASH SCREEN CONFIGURATION
