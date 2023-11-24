@@ -53,14 +53,14 @@ def show_main_setup_menu(session: PromptSession = None):
         symai_config_path = root_dir / 'symai.config.json'
 
     if symai_config_path.exists():
-        with open(symai_config_path, 'r') as f:
+        with open(symai_config_path, 'r', encoding="utf-8") as f:
             SYMAI_CONFIG = json.load(f)
     else:
         SYMAI_CONFIG = {}
 
     root_package = Path(__file__).parent.parent
     terms_of_services = root_package / 'TERMS_OF_SERVICE.md'
-    with open(terms_of_services, 'r') as f:
+    with open(terms_of_services, 'r', encoding="utf-8") as f:
         TERMS_OF_SERVICES = f.read()
 
     # Step 1: Accept terms and services
