@@ -13,7 +13,7 @@ logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
-SYMAI_VERSION = "0.4.30"
+SYMAI_VERSION = "0.4.31"
 __version__   = SYMAI_VERSION
 __root_dir__  = Path.home() / '.symai'
 
@@ -76,10 +76,12 @@ def _start_symai():
         # MIGRATE THE ENVIRONMENT VARIABLES
         # *==========================================================================================================*
         if 'SPEECH_ENGINE_MODEL' in _symai_config_:
-            _symai_config_['SPEECH_TO_TEXT_ENGINE_MODEL'] = _symai_config_['SPEECH_ENGINE_MODEL']
+            _symai_config_['SPEECH_TO_TEXT_ENGINE_MODEL']     = _symai_config_['SPEECH_ENGINE_MODEL']
+            _tmp_symai_config_['SPEECH_TO_TEXT_ENGINE_MODEL'] = _symai_config_['SPEECH_ENGINE_MODEL']
             del _symai_config_['SPEECH_ENGINE_MODEL']
+            del _tmp_symai_config_['SPEECH_ENGINE_MODEL']
             # create missing environment variable
-            _symai_config_['TEXT_TO_SPEECH_ENGINE_MODEL'] = "tts-1"
+            _symai_config_['TEXT_TO_SPEECH_ENGINE_MODEL']     = "tts-1"
             # save the updated configuration file
             with open(_symai_config_path_, 'w') as f:
                 json.dump(_symai_config_, f, indent=4)
@@ -172,7 +174,8 @@ def _start_symai():
         # *==============================================================================================================*
         # CHECK IF THE USER HAS A TEXT TO SPEECH ENGINE API KEY
         if 'TEXT_TO_SPEECH_ENGINE_API_KEY' not in _symai_config_:
-            _symai_config_['TEXT_TO_SPEECH_ENGINE_API_KEY'] = _symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY'] if 'NEUROSYMBOLIC_ENGINE_API_KEY' in _symai_config_ else ''
+            _symai_config_['TEXT_TO_SPEECH_ENGINE_API_KEY']     = _symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY'] if 'NEUROSYMBOLIC_ENGINE_API_KEY' in _symai_config_ else ''
+            _tmp_symai_config_['TEXT_TO_SPEECH_ENGINE_API_KEY'] = _symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY'] if 'NEUROSYMBOLIC_ENGINE_API_KEY' in _symai_config_ else ''
             # save the updated configuration file
             with open(_symai_config_path_, 'w') as f:
                 json.dump(_symai_config_, f, indent=4)
