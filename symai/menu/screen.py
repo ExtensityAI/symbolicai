@@ -137,7 +137,7 @@ def show_main_setup_menu(session: PromptSession = None):
         # Step 2.4: Enter Embedding Model
         embedding_model = input_dialog(
             title="[Optional] Embedding Model",
-            text="Please enter a embedding model (https://huggingface.co/models?pipeline_tag=text2text-generation) if applicable:",
+            text="Please enter an embedding model if applicable. We currently support OpenAI's embedding models:",
             default="text-embedding-ada-002" if 'EMBEDDING_ENGINE_MODEL' not in SYMAI_CONFIG else SYMAI_CONFIG['EMBEDDING_ENGINE_MODEL'],
         ).run()
 
