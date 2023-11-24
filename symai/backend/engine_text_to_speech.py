@@ -17,7 +17,7 @@ class TTSEngine(Engine):
     def __init__(self):
         super().__init__()
         config = SYMAI_CONFIG
-        self.api_key  = config['NEUROSYMBOLIC_ENGINE_API_KEY']
+        self.api_key  = config['TEXT_TO_SPEECH_ENGINE_API_KEY']
         self.model_id = config['TEXT_TO_SPEECH_ENGINE_MODEL']
         self.tokens = []
         self.text = []
@@ -25,8 +25,8 @@ class TTSEngine(Engine):
 
     def command(self, wrp_params):
         super().command(wrp_params)
-        if 'NEUROSYMBOLIC_ENGINE_API_KEY' in wrp_params:
-            self.api_key = wrp_params['NEUROSYMBOLIC_ENGINE_API_KEY']
+        if 'TEXT_TO_SPEECH_ENGINE_API_KEY' in wrp_params:
+            self.api_key = wrp_params['TEXT_TO_SPEECH_ENGINE_API_KEY']
         if 'TEXT_TO_SPEECH_ENGINE_MODEL' in wrp_params:
             self.model_id = wrp_params['TEXT_TO_SPEECH_ENGINE_MODEL']
 
