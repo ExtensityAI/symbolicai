@@ -803,7 +803,8 @@ def run(auto_query_on_error=False, conversation_style=None):
 
     history, word_comp, merged_completer = create_completer()
     session = create_session(history, merged_completer)
-    show_intro_menu()
+    if SYMSH_CONFIG['show-splash-screen']:
+        show_intro_menu()
     listen(session, word_comp, auto_query_on_error)
 
 

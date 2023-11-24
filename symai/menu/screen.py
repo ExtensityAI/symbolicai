@@ -15,7 +15,7 @@ def show_splash_screen(print: callable = print_formatted_text):
       |     `  <   |     __/  |   | \__ \  |  |    |   |   ___ \    |
      _____| _/\_\ \__| \___| _|  _| ____/ _| \__| \__, | _/    _\ ___|
                                                   ____/
-    ''')
+    ''', escape=True)
     print('- '*17 + ' ExtensityAI ' + ' -'*18  + '\n')
 
 

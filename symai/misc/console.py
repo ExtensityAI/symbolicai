@@ -1,6 +1,6 @@
 import re
 import pygments
-from html import escape
+from html import escape as escape_html
 from pygments.lexers.python import PythonLexer
 from pygments.lexers.javascript import JavascriptLexer
 from pygments.lexers.c_cpp import CppLexer
@@ -41,9 +41,10 @@ class ConsoleStyle(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
 
-    def print(self, message):
+    def print(self, message, escape: bool = False):
         message = str(message)
-        message = escape(message)
+        if escape:
+            message = escape_html(message)
         style = self.style_types.get(self.style_type, self.style_types['default'])
 
         if style == self.style_types['code']:

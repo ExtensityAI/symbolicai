@@ -74,15 +74,6 @@ class SlidingWindowStringConcatMemory(Memory):
     def store(self, query: str, *args, **kwargs):
         # append to string to memory
         self._memory += f'{str(query)}{self.marker}'
-        sym = Symbol(self._memory)
-        tokens = len(sym)
-        # while memory larger than max_tokens * data_ratio remove a character from the front
-        while tokens > self.max_tokens() * self.token_ratio:
-            val = sym.value.strip()
-            val = val.split(' ')[1:]
-            self._memory = ' '.join(val)
-            sym = Symbol(self._memory)
-            tokens = len(sym)
 
     def forget(self, query: Symbol, *args, **kwargs):
         # remove substring from memory
