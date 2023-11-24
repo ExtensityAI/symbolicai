@@ -1,9 +1,10 @@
 import sys
+import json
 import webbrowser
+from pathlib import Path
 from prompt_toolkit import PromptSession, print_formatted_text
 from prompt_toolkit.shortcuts import yes_no_dialog, input_dialog, button_dialog
 from ..misc.console import ConsoleStyle
-from ..backend.settings import SYMAI_CONFIG
 
 
 def show_splash_screen(print: callable = print_formatted_text):
@@ -45,10 +46,26 @@ def show_main_setup_menu(session: PromptSession = None):
     if session is None:
         session = PromptSession()
 
+    # Step 0: Load config
+    symai_config_path = Path.cwd() / 'symai.config.json'
+    if not symai_config_path.exists():
+        root_dir  = Path.home() / '.symai'
+        symai_config_path = root_dir / 'symai.config.json'
+
+    if symai_config_path.exists():
+        with open(symai_config_path, 'r') as f:
+            SYMAI_CONFIG = json.load(f)
+    else:
+        SYMAI_CONFIG = {}
+
+    terms_of_services = root_dir / 'TERMS_OF_SERVICE.md'
+    with open(terms_of_services, 'r') as f:
+        TERMS_OF_SERVICES = f.read()
+
     # Step 1: Accept terms and services
     agreed = yes_no_dialog(
         title="Terms of Service",
-        text="Do you accept the terms of service and privacy policy?",
+        text="Do you accept the terms of service and privacy policy?\n\n{TERMS_OF_SERVICES}",
     ).run()
     if not agreed:
         with ConsoleStyle('error') as console:
