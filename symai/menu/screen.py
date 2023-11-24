@@ -58,14 +58,15 @@ def show_main_setup_menu(session: PromptSession = None):
     else:
         SYMAI_CONFIG = {}
 
-    terms_of_services = root_dir / 'TERMS_OF_SERVICE.md'
+    root_package = Path(__file__).parent.parent.parent
+    terms_of_services = root_package / 'TERMS_OF_SERVICE.md'
     with open(terms_of_services, 'r') as f:
         TERMS_OF_SERVICES = f.read()
 
     # Step 1: Accept terms and services
     agreed = yes_no_dialog(
         title="Terms of Service",
-        text="Do you accept the terms of service and privacy policy?\n\n{TERMS_OF_SERVICES}",
+        text=f"Do you accept the terms of service and privacy policy?\n\nFILE:{terms_of_services}\n{TERMS_OF_SERVICES}",
     ).run()
     if not agreed:
         with ConsoleStyle('error') as console:
