@@ -2,7 +2,6 @@ import sys
 import webbrowser
 from prompt_toolkit import PromptSession, print_formatted_text
 from prompt_toolkit.shortcuts import yes_no_dialog, input_dialog, button_dialog
-from prompt_toolkit.styles import Style
 from ..misc.console import ConsoleStyle
 
 
@@ -49,8 +48,9 @@ def show_main_setup_menu(session: PromptSession = None):
         text="Do you accept the terms of service and privacy policy?",
     ).run()
     if not agreed:
-        print_formatted_text("You need to accept the terms of services to continue.")
-        sys.exit(0)
+        with ConsoleStyle('error') as console:
+            console.print("You need to accept the terms of services to continue.")
+            sys.exit(0)
 
     # Step 2: Enter OpenAI Key
 
@@ -92,20 +92,20 @@ def show_main_setup_menu(session: PromptSession = None):
         text="Do you want to configure optional settings?",
     ).run()
 
-    embedding_model = ''
-    symbolic_engine_api_key = ''
-    symbolic_engine_model = ''
-    imagerendering_engine_api_key = ''
-    vision_engine_model = ''
-    search_engine_api_key = ''
-    search_engine_model = ''
-    ocr_engine_api_key = ''
-    speech_to_text_engine_model = ''
-    text_to_speech_engine_model = ''
-    text_to_speech_engine_voice = ''
-    indexing_engine_api_key = ''
-    indexing_engine_environment = ''
-    caption_engine_environment = ''
+    embedding_model                 = ''
+    symbolic_engine_api_key         = ''
+    symbolic_engine_model           = ''
+    imagerendering_engine_api_key   = ''
+    vision_engine_model             = ''
+    search_engine_api_key           = ''
+    search_engine_model             = ''
+    ocr_engine_api_key              = ''
+    speech_to_text_engine_model     = ''
+    text_to_speech_engine_model     = ''
+    text_to_speech_engine_voice     = ''
+    indexing_engine_api_key         = ''
+    indexing_engine_environment     = ''
+    caption_engine_environment      = ''
 
     if continue_optional_settings:
         # Step 2.4: Enter Embedding Model
@@ -118,37 +118,32 @@ def show_main_setup_menu(session: PromptSession = None):
         # Step 2.5: Symbolic Engine API Key
         symbolic_engine_api_key = input_dialog(
             title="[Optional] Symbolic Engine API Key",
-            text="Please enter your Symbolic Engine API Key if applicable:",
+            text="Please enter your Symbolic Engine API Key if applicable. We currently support Wolfram Alpha as an symbolic solver. Get a Key here https://products.wolframalpha.com/api:",
         ).run()
 
         if symbolic_engine_api_key:
             # Step 2.6: Symbolic Engine Model
-            symbolic_engine_model = input_dialog(
-                title="[Optional] Symbolic Engine Model",
-                text="Please enter your Symbolic Engine Model if applicable:",
-                default="wolframalpha"
-            ).run()
+            symbolic_engine_model = "wolframalpha"
 
         # Step 2.7: Enter Imagerendering engine api key
         if is_openai_api_model(nesy_engine_model):
-            imagerendering_engine_api_key = nesy_engine_api_key
-        else:
             imagerendering_engine_api_key = input_dialog(
                 title="[Optional] Image Rendering Engine API Key",
-                text="Please enter your Image Rendering Engine API Key if applicable:",
+                text="Please enter your Image Rendering Engine API Key if applicable. We currently support OpenAI's DALL-E model:",
+                default=nesy_engine_api_key
             ).run()
 
         # Step 2.8: Enter Vision Engine Model
         vision_engine_model = input_dialog(
             title="[Optional] Vision Engine Model",
-            text="Please enter your Vision Engine Model if applicable:",
+            text="Please enter your CLIP Engine Model based on HuggingFace https://huggingface.co/models?other=clip if applicable:",
             default="openai/clip-vit-base-patch32"
         ).run()
 
         # Step 2.9: Enter Search Engine API Key
         search_engine_api_key = input_dialog(
             title="[Optional] Search Engine API Key",
-            text="Please enter your Search Engine API Key if applicable:",
+            text="Please enter your Search Engine API Key if applicable. We currently support SerpApi https://serpapi.com/search-api:",
         ).run()
 
         if search_engine_api_key:
@@ -162,37 +157,43 @@ def show_main_setup_menu(session: PromptSession = None):
         # Step 2.11: Enter OCR Engine API Key
         ocr_engine_api_key = input_dialog(
             title="[Optional] OCR Engine API Key",
-            text="Please enter your OCR Engine API Key if applicable:",
+            text="Please enter your OCR Engine API Key if applicable. We currently support ApiLayer https://apilayer.com/marketplace/image_to_text-api:",
         ).run()
 
         # Step 2.12: Enter Speech-to-Text Engine Model
         speech_to_text_engine_model = input_dialog(
             title="[Optional] Speech-to-Text Engine Model",
-            text="Please enter your Speech-to-Text Engine Model if applicable:",
+            text="Please enter your Speech-to-Text Engine Model if applicable. We currently use whisper self-hosted models:",
             default="base"
         ).run()
 
-        # Step 2.13: Enter Text-to-Speech Engine Model
+        # Step 2.13: Enter Text-to-Speech Engine API Key
+        text_to_speech_engine_api_key = input_dialog(
+            title="[Optional] Text-to-Speech Engine API Key",
+            text="Please enter your Text-to-Speech Engine API Key if applicable. Currently this is based on OpenAI's tts models:",
+        ).run()
+
+        # Step 2.14: Enter Text-to-Speech Engine Model
         text_to_speech_engine_model = input_dialog(
             title="[Optional] Text-to-Speech Engine Model",
             text="Please enter your Text-to-Speech Engine Model if applicable:",
             default="tts-1"
         ).run()
 
-        # Step 2.14: Enter Text-to-Speech Engine Voice
+        # Step 2.15: Enter Text-to-Speech Engine Voice
         text_to_speech_engine_voice = input_dialog(
             title="[Optional] Text-to-Speech Engine Voice",
             text="Please enter your Text-to-Speech Engine Voice if applicable:",
             default="echo"
         ).run()
 
-        # Step 2.15: Enter Indexing Engine API Key
+        # Step 2.16: Enter Indexing Engine API Key
         indexing_engine_api_key = input_dialog(
             title="[Optional] Indexing Engine API Key",
-            text="Please enter your Indexing Engine API Key if applicable:",
+            text="Please enter your Indexing Engine API Key if applicable. Currently we support Pinecone https://www.pinecone.io/product/:",
         ).run()
 
-        # Step 2.16: Enter Indexing Engine Environment
+        # Step 2.17: Enter Indexing Engine Environment
         indexing_engine_environment = ''
         if indexing_engine_api_key:
             indexing_engine_environment = input_dialog(
@@ -201,10 +202,10 @@ def show_main_setup_menu(session: PromptSession = None):
                 default="us-west1-gcp"
             ).run()
 
-        # Step 2.17: Enter Caption Engine Environment
+        # Step 2.18: Enter Caption Engine Environment
         caption_engine_environment = input_dialog(
             title="[Optional] Caption Engine Environment",
-            text="Please enter your Caption Engine Environment if applicable:",
+            text="Please enter your Caption Engine Environment if applicable. The current implementation is based on HuggingFace https://huggingface.co/models?pipeline_tag=image-to-text:",
             default="blip2_opt/pretrain_opt2.7b"
         ).run()
 
@@ -241,26 +242,27 @@ def show_main_setup_menu(session: PromptSession = None):
 
     # Process the setup results
     settings = {
-        'terms_agreed': agreed,
-        'nesy_engine_model': nesy_engine_model if nesy_engine_model else '',
-        'nesy_engine_api_key': nesy_engine_api_key,
-        'symbolic_engine_api_key': symbolic_engine_api_key,
-        'symbolic_engine_model': symbolic_engine_model,
-        'support_community': support_community,
-        'donated': donation_result,
-        'embedding_engine_api_key': embedding_engine_api_key if embedding_engine_api_key else '',
-        'embedding_model': embedding_model,
-        'imagerendering_engine_api_key': imagerendering_engine_api_key if imagerendering_engine_api_key else '',
-        'vision_engine_model': vision_engine_model,
-        'search_engine_api_key': search_engine_api_key,
-        'search_engine_model': search_engine_model,
-        'ocr_engine_api_key': ocr_engine_api_key,
-        'speech_to_text_engine_model': speech_to_text_engine_model,
-        'text_to_speech_engine_model': text_to_speech_engine_model,
-        'text_to_speech_engine_voice': text_to_speech_engine_voice,
-        'indexing_engine_api_key': indexing_engine_api_key,
-        'indexing_engine_environment': indexing_engine_environment,
-        'caption_engine_environment': caption_engine_environment
+        'terms_agreed':                     agreed,
+        'nesy_engine_model':                nesy_engine_model if nesy_engine_model else '',
+        'nesy_engine_api_key':              nesy_engine_api_key,
+        'symbolic_engine_api_key':          symbolic_engine_api_key,
+        'symbolic_engine_model':            symbolic_engine_model,
+        'support_community':                support_community,
+        'donated':                          donation_result,
+        'embedding_engine_api_key':         embedding_engine_api_key if embedding_engine_api_key else '',
+        'embedding_model':                  embedding_model,
+        'imagerendering_engine_api_key':    imagerendering_engine_api_key if imagerendering_engine_api_key else '',
+        'vision_engine_model':              vision_engine_model,
+        'search_engine_api_key':            search_engine_api_key,
+        'search_engine_model':              search_engine_model,
+        'ocr_engine_api_key':               ocr_engine_api_key,
+        'text_to_speech_engine_api_key':    text_to_speech_engine_api_key,
+        'speech_to_text_engine_model':      speech_to_text_engine_model,
+        'text_to_speech_engine_model':      text_to_speech_engine_model,
+        'text_to_speech_engine_voice':      text_to_speech_engine_voice,
+        'indexing_engine_api_key':          indexing_engine_api_key,
+        'indexing_engine_environment':      indexing_engine_environment,
+        'caption_engine_environment':       caption_engine_environment
     }
 
     return settings

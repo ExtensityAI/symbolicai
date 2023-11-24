@@ -111,6 +111,7 @@ def _start_symai():
         _search_engine_model_           = os.environ.get('SEARCH_ENGINE_MODEL', None)
         _ocr_engine_api_key_            = os.environ.get('OCR_ENGINE_API_KEY', None)
         _speech_to_text_engine_model_   = os.environ.get('SPEECH_TO_TEXT_ENGINE_MODEL', None)
+        _text_to_speech_engine_api_key_ = os.environ.get('TEXT_TO_SPEECH_ENGINE_API_KEY', None)
         _text_to_speech_engine_model_   = os.environ.get('TEXT_TO_SPEECH_ENGINE_MODEL', None)
         _text_to_speech_engine_voice_   = os.environ.get('TEXT_TO_SPEECH_ENGINE_VOICE', None)
         _indexing_engine_api_key_       = os.environ.get('INDEXING_ENGINE_API_KEY', None)
@@ -127,31 +128,34 @@ def _start_symai():
         if _symbolic_engine_api_key_:       _symai_config_['SYMBOLIC_ENGINE_API_KEY']       = _symbolic_engine_api_key_
         if _embedding_engine_api_key_:      _symai_config_['EMBEDDING_ENGINE_API_KEY']      = _embedding_engine_api_key_
         if _imagerendering_engine_api_key_: _symai_config_['IMAGERENDERING_ENGINE_API_KEY'] = _imagerendering_engine_api_key_
+        if _text_to_speech_engine_api_key_: _symai_config_['TEXT_TO_SPEECH_ENGINE_API_KEY'] = _text_to_speech_engine_api_key_
 
         # USE ENVIRONMENT VARIABLES IF THE USER DID NOT SET THE API KEYS
         # *==========================================================================================================*
         if _openai_api_key_ and not _neurosymbolic_engine_api_key_:  _symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY']  = _openai_api_key_
         if _openai_api_key_ and not _embedding_engine_api_key_:      _symai_config_['EMBEDDING_ENGINE_API_KEY']      = _openai_api_key_
         if _openai_api_key_ and not _imagerendering_engine_api_key_: _symai_config_['IMAGERENDERING_ENGINE_API_KEY'] = _openai_api_key_
+        if _openai_api_key_ and not _text_to_speech_engine_api_key_: _symai_config_['TEXT_TO_SPEECH_ENGINE_API_KEY'] = _openai_api_key_
 
         # OPTIONAL MODULES
         # *==========================================================================================================*
-        if _neurosymbolic_engine_model_:  _symai_config_['NEUROSYMBOLIC_ENGINE_MODEL']  = _neurosymbolic_engine_model_
-        if _embedding_engine_model_:      _symai_config_['EMBEDDING_ENGINE_MODEL']      = _embedding_engine_model_
-        if _vision_engine_model_:         _symai_config_['VISION_ENGINE_MODEL']         = _vision_engine_model_
-        if _search_engine_api_key_:       _symai_config_['SEARCH_ENGINE_API_KEY']       = _search_engine_api_key_
-        if _search_engine_model_:         _symai_config_['SEARCH_ENGINE_MODEL']         = _search_engine_model_
-        if _ocr_engine_api_key_:          _symai_config_['OCR_ENGINE_API_KEY']          = _ocr_engine_api_key_
-        if _speech_to_text_engine_model_: _symai_config_['SPEECH_TO_TEXT_ENGINE_MODEL'] = _speech_to_text_engine_model_
-        if _text_to_speech_engine_model_: _symai_config_['TEXT_TO_SPEECH_ENGINE_MODEL'] = _text_to_speech_engine_model_
-        if _text_to_speech_engine_voice_: _symai_config_['TEXT_TO_SPEECH_ENGINE_VOICE'] = _text_to_speech_engine_voice_
-        if _indexing_engine_api_key_:     _symai_config_['INDEXING_ENGINE_API_KEY']     = _indexing_engine_api_key_
-        if _indexing_engine_environment_: _symai_config_['INDEXING_ENGINE_ENVIRONMENT'] = _indexing_engine_environment_
-        if _caption_engine_environment_:  _symai_config_['CAPTION_ENGINE_ENVIRONMENT']  = _caption_engine_environment_
-        if _collection_uri_:              _symai_config_['COLLECTION_URI']              = _collection_uri_
-        if _collection_db_:               _symai_config_['COLLECTION_DB']               = _collection_db_
-        if _collection_storage_:          _symai_config_['COLLECTION_STORAGE']          = _collection_storage_
-        if _support_community_:           _symai_config_['SUPPORT_COMMUNITY']           = _support_community_
+        if _neurosymbolic_engine_model_:    _symai_config_['NEUROSYMBOLIC_ENGINE_MODEL']    = _neurosymbolic_engine_model_
+        if _embedding_engine_model_:        _symai_config_['EMBEDDING_ENGINE_MODEL']        = _embedding_engine_model_
+        if _vision_engine_model_:           _symai_config_['VISION_ENGINE_MODEL']           = _vision_engine_model_
+        if _search_engine_api_key_:         _symai_config_['SEARCH_ENGINE_API_KEY']         = _search_engine_api_key_
+        if _search_engine_model_:           _symai_config_['SEARCH_ENGINE_MODEL']           = _search_engine_model_
+        if _ocr_engine_api_key_:            _symai_config_['OCR_ENGINE_API_KEY']            = _ocr_engine_api_key_
+        if _speech_to_text_engine_model_:   _symai_config_['SPEECH_TO_TEXT_ENGINE_MODEL']   = _speech_to_text_engine_model_
+        if _text_to_speech_engine_api_key_: _symai_config_['TEXT_TO_SPEECH_ENGINE_API_KEY'] = _text_to_speech_engine_api_key_
+        if _text_to_speech_engine_model_:   _symai_config_['TEXT_TO_SPEECH_ENGINE_MODEL']   = _text_to_speech_engine_model_
+        if _text_to_speech_engine_voice_:   _symai_config_['TEXT_TO_SPEECH_ENGINE_VOICE']   = _text_to_speech_engine_voice_
+        if _indexing_engine_api_key_:       _symai_config_['INDEXING_ENGINE_API_KEY']       = _indexing_engine_api_key_
+        if _indexing_engine_environment_:   _symai_config_['INDEXING_ENGINE_ENVIRONMENT']   = _indexing_engine_environment_
+        if _caption_engine_environment_:    _symai_config_['CAPTION_ENGINE_ENVIRONMENT']    = _caption_engine_environment_
+        if _collection_uri_:                _symai_config_['COLLECTION_URI']                = _collection_uri_
+        if _collection_db_:                 _symai_config_['COLLECTION_DB']                 = _collection_db_
+        if _collection_storage_:            _symai_config_['COLLECTION_STORAGE']            = _collection_storage_
+        if _support_community_:             _symai_config_['SUPPORT_COMMUNITY']             = _support_community_
 
         # VERIFY IF THE CONFIGURATION FILE HAS CHANGED AND UPDATE IT
         # *==========================================================================================================*
@@ -162,6 +166,15 @@ def _start_symai():
             # update the symai.config.json file
             with open(_symai_config_path_, 'w') as f:
                 json.dump(_symai_config_, f, indent=4)
+
+    # POST-MIGRATION CHECKS
+    # *==============================================================================================================*
+    # CHECK IF THE USER HAS A TEXT TO SPEECH ENGINE API KEY
+    if 'TEXT_TO_SPEECH_ENGINE_API_KEY' not in _symai_config_:
+        _symai_config_['TEXT_TO_SPEECH_ENGINE_API_KEY'] = _symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY'] if 'NEUROSYMBOLIC_ENGINE_API_KEY' in _symai_config_ else ''
+        # save the updated configuration file
+        with open(_symai_config_path_, 'w') as f:
+            json.dump(_symai_config_, f, indent=4)
 
     # CHECK IF MANADATORY API KEYS ARE SET
     # *==============================================================================================================*
@@ -203,6 +216,7 @@ def setup_wizard(_symai_config_path_):
     _search_engine_model            = _user_config_['search_engine_model']
     _ocr_engine_api_key             = _user_config_['ocr_engine_api_key']
     _speech_to_text_engine_model    = _user_config_['speech_to_text_engine_model']
+    _text_to_speech_engine_api_key  = _user_config_['text_to_speech_engine_api_key']
     _text_to_speech_engine_model    = _user_config_['text_to_speech_engine_model']
     _text_to_speech_engine_voice    = _user_config_['text_to_speech_engine_voice']
     _indexing_engine_api_key        = _user_config_['indexing_engine_api_key']
@@ -224,6 +238,7 @@ def setup_wizard(_symai_config_path_):
             "SEARCH_ENGINE_MODEL":            _search_engine_model,
             "OCR_ENGINE_API_KEY":             _ocr_engine_api_key,
             "SPEECH_TO_TEXT_ENGINE_MODEL":    _speech_to_text_engine_model,
+            "TEXT_TO_SPEECH_ENGINE_API_KEY":  _text_to_speech_engine_api_key,
             "TEXT_TO_SPEECH_ENGINE_MODEL":    _text_to_speech_engine_model,
             "TEXT_TO_SPEECH_ENGINE_VOICE":    _text_to_speech_engine_voice,
             "INDEXING_ENGINE_API_KEY":        _indexing_engine_api_key,
