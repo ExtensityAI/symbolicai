@@ -58,7 +58,7 @@ def show_main_setup_menu(session: PromptSession = None):
     else:
         SYMAI_CONFIG = {}
 
-    root_package = Path(__file__).parent.parent.parent
+    root_package = Path(__file__).parent.parent
     terms_of_services = root_package / 'TERMS_OF_SERVICE.md'
     with open(terms_of_services, 'r') as f:
         TERMS_OF_SERVICES = f.read()

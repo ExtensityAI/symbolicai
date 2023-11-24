@@ -13,7 +13,7 @@ logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
-SYMAI_VERSION = "0.4.25"
+SYMAI_VERSION = "0.4.26"
 __version__   = SYMAI_VERSION
 __root_dir__  = Path.home() / '.symai'
 
