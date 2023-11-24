@@ -1,4 +1,5 @@
 import json
+import logging
 
 from bson.objectid import ObjectId
 from datetime import datetime
@@ -8,6 +9,9 @@ from pymongo.mongo_client import MongoClient
 from typing import Any, Dict, List, Optional
 
 from ..backend.settings import SYMAI_CONFIG
+
+
+logger = logging.getLogger(__name__)
 
 
 def rec_serialize(obj):
@@ -73,7 +77,11 @@ class CollectionRepository:
             'created_at': datetime.now(),
             'updated_at': datetime.now()
         }
-        return self.collection.insert_one(record).inserted_id if self.collection else None
+        try: # assure that adding a record does never cause a system error
+            return self.collection.insert_one(record).inserted_id if self.collection else None
+        except Exception as e:
+            logger.debug(f"Error adding record: {e}")
+            return None
 
     def get(self, record_id: str) -> Optional[Dict[str, Any]]:
         if not self.support_community:
