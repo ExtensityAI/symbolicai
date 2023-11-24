@@ -22,6 +22,7 @@ from prompt_toolkit.shortcuts import CompleteStyle, ProgressBar
 from prompt_toolkit.styles import Style
 from pygments.lexers.shell import BashLexer
 
+from .menu.screen import show_intro_menu
 from .imports import Import
 from .backend.settings import SYMSH_CONFIG
 from .components import Function
@@ -466,7 +467,6 @@ def search_engine(query: str, res=None, *args, **kwargs):
             f.write(f'[SEARCH_QUERY]:\n{search_query}\n[RESULTS]\n{res}\n[MESSAGE]\n{msg}')
     return msg
 
-
 # run shell command
 def run_shell_command(cmd: str, prev=None, auto_query_on_error: bool=False, stdout=None, stderr=None):
     if prev is not None:
@@ -803,6 +803,7 @@ def run(auto_query_on_error=False, conversation_style=None):
 
     history, word_comp, merged_completer = create_completer()
     session = create_session(history, merged_completer)
+    show_intro_menu()
     listen(session, word_comp, auto_query_on_error)
 
 

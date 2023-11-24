@@ -1,5 +1,6 @@
 import re
 import pygments
+from html import escape
 from pygments.lexers.python import PythonLexer
 from pygments.lexers.javascript import JavascriptLexer
 from pygments.lexers.c_cpp import CppLexer
@@ -14,15 +15,17 @@ print = print_formatted_text
 
 class ConsoleStyle(object):
     style_types = {
-        'alert':   'ansired',
-        'error':   'ansired',
-        'warn':    'ansiyellow',
-        'info':    'ansiblue',
-        'success': 'ansigreen',
-        'debug':   'ansigray',
-        'custom':  'custom',
-        'code':    'code',
-        'default': '',
+        'alert':     'orange',
+        'error':     'ansired',
+        'warn':      'ansiyellow',
+        'info':      'ansiblue',
+        'success':   'ansigreen',
+        'extensity': '#009499',
+        'text':      'ansigray',
+        'debug':     'gray',
+        'custom':    'custom',
+        'code':      'code',
+        'default':   '',
     }
 
     def __init__(self, style_type = '', color = ''):
@@ -40,6 +43,7 @@ class ConsoleStyle(object):
 
     def print(self, message):
         message = str(message)
+        message = escape(message)
         style = self.style_types.get(self.style_type, self.style_types['default'])
 
         if style == self.style_types['code']:
@@ -69,7 +73,7 @@ class ConsoleStyle(object):
         elif style == self.style_types['default']:
             print(message)
         elif style == self.style_types['custom']:
-            print(HTML(f'<{self.color}>{message}</{self.color}>'))
+            print(HTML(f'<style fg="{self.color}">{message}</style>'))
         else:
-            print(HTML(f'<{style}>{message}</{style}>'))
+            print(HTML(f'<style fg="{style}">{message}</style>'))
 

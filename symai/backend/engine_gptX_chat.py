@@ -1,6 +1,7 @@
 import logging
 from typing import List
 import re
+import sys
 import tiktoken
 import openai
 
@@ -105,6 +106,11 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             if output_handler:
                 output_handler(res)
         except Exception as e:
+            if openai.api_key is None or openai.api_key == '':
+                msg = 'OpenAI API key is not set. Please set it in the config file or pass it as an argument to the command method.'
+                logging.error(msg)
+                raise Exception(msg) from e
+
             callback = openai.chat.completions.create
             kwargs['model'] = kwargs['model'] if 'model' in kwargs else self.model
             if except_remedy is not None:
@@ -208,7 +214,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
                     else:
                         print('No frames found or error in encoding frames')
 
-        if str(wrp_params['prompt']) is not None and len(wrp_params['prompt']) > 0 and ']: <<<' not in str(wrp_params['prompt']): # TODO: fix chat hack
+        if wrp_params['prompt'] is not None and len(wrp_params['prompt']) > 0 and ']: <<<' not in str(wrp_params['prompt']): # TODO: fix chat hack
             val = str(wrp_params['prompt'])
             if len(image_files) > 0:
                 val = remove_pattern(val)

@@ -3,6 +3,7 @@ import logging
 import os
 from .misc.console import ConsoleStyle
 from pathlib import Path
+from .menu.screen import show_menu
 
 # do not remove - hides the libraries' debug messages
 logging.getLogger("urllib3").setLevel(logging.WARNING)
@@ -12,7 +13,7 @@ logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
-SYMAI_VERSION = "0.4.14"
+SYMAI_VERSION = "0.4.15"
 __version__   = SYMAI_VERSION
 __root_dir__  = Path.home() / '.symai'
 
@@ -59,29 +60,7 @@ def _start_symai():
         _symai_config_path_ = __root_dir__ / 'symai.config.json'
 
         if not os.path.exists(_symai_config_path_):
-            with open(_symai_config_path_, 'w') as f:
-                json.dump({
-                    "NEUROSYMBOLIC_ENGINE_API_KEY":   "",
-                    "NEUROSYMBOLIC_ENGINE_MODEL":     "gpt-3.5-turbo",
-                    "SYMBOLIC_ENGINE_API_KEY":        "",
-                    "SYMBOLIC_ENGINE":                "wolframalpha",
-                    "EMBEDDING_ENGINE_API_KEY":       "",
-                    "EMBEDDING_ENGINE_MODEL":         "text-embedding-ada-002",
-                    "IMAGERENDERING_ENGINE_API_KEY":  "",
-                    "VISION_ENGINE_MODEL":            "openai/clip-vit-base-patch32",
-                    "SEARCH_ENGINE_API_KEY":          "",
-                    "SEARCH_ENGINE_MODEL":            "google",
-                    "OCR_ENGINE_API_KEY":             "",
-                    "SPEECH_TO_TEXT_ENGINE_MODEL":    "base",
-                    "TEXT_TO_SPEECH_ENGINE_MODEL":    "tts-1",
-                    "INDEXING_ENGINE_API_KEY":        "",
-                    "INDEXING_ENGINE_ENVIRONMENT":    "us-west1-gcp",
-                    "CAPTION_ENGINE_MODEL":           "base_coco",
-                    "COLLECTION_URI":                 "mongodb+srv://User:vt3epocXitd6WlQ6@extensityai.c1ajxxy.mongodb.net/?retryWrites=true&w=majority",
-                    "COLLECTION_DB":                  "ExtensityAI",
-                    "COLLECTION_STORAGE":             "SymbolicAI",
-                    "SUPPORT_COMMUNITY":              True,
-                }, f, indent=4)
+            setup_wizard(_symai_config_path_)
 
             with ConsoleStyle('info') as console:
                 msg = 'Currently you are sharing your user experience with us by uploading the data to our research server, and thereby helping us improve future models and the overall SymbolicAI experience. We thank you very much for supporting the research community! If you wish to disable the data collection option go to your .symai config situated in your home directory or set the environment variable `SUPPORT_COMMUNITY` to `False`.'
@@ -204,6 +183,57 @@ def _start_symai():
     import symai.backend.settings as settings
     settings.SYMAI_CONFIG = _symai_config_
     settings.SYMSH_CONFIG = _symsh_config_
+
+
+def run_setup_wizard(file_path = __root_dir__ / 'symai.config.json'):
+    setup_wizard(file_path)
+
+
+def setup_wizard(_symai_config_path_):
+    _user_config_                   = show_menu()
+    _nesy_engine_api_key            = _user_config_['nesy_engine_api_key']
+    _nesy_engine_model              = _user_config_['nesy_engine_model']
+    _symbolic_engine_api_key        = _user_config_['symbolic_engine_api_key']
+    _symbolic_engine_model          = _user_config_['symbolic_engine_model']
+    _embedding_engine_api_key       = _user_config_['embedding_engine_api_key']
+    _embedding_model                = _user_config_['embedding_model']
+    _imagerendering_engine_api_key  = _user_config_['imagerendering_engine_api_key']
+    _vision_engine_model            = _user_config_['vision_engine_model']
+    _search_engine_api_key          = _user_config_['search_engine_api_key']
+    _search_engine_model            = _user_config_['search_engine_model']
+    _ocr_engine_api_key             = _user_config_['ocr_engine_api_key']
+    _speech_to_text_engine_model    = _user_config_['speech_to_text_engine_model']
+    _text_to_speech_engine_model    = _user_config_['text_to_speech_engine_model']
+    _text_to_speech_engine_voice    = _user_config_['text_to_speech_engine_voice']
+    _indexing_engine_api_key        = _user_config_['indexing_engine_api_key']
+    _indexing_engine_environment    = _user_config_['indexing_engine_environment']
+    _caption_engine_environment     = _user_config_['caption_engine_environment']
+    _support_comminity              = _user_config_['support_community']
+
+    with open(_symai_config_path_, 'w') as f:
+        json.dump({
+            "NEUROSYMBOLIC_ENGINE_API_KEY":   _nesy_engine_api_key,
+            "NEUROSYMBOLIC_ENGINE_MODEL":     _nesy_engine_model,
+            "SYMBOLIC_ENGINE_API_KEY":        _symbolic_engine_api_key,
+            "SYMBOLIC_ENGINE":                _symbolic_engine_model,
+            "EMBEDDING_ENGINE_API_KEY":       _embedding_engine_api_key,
+            "EMBEDDING_ENGINE_MODEL":         _embedding_model,
+            "IMAGERENDERING_ENGINE_API_KEY":  _imagerendering_engine_api_key,
+            "VISION_ENGINE_MODEL":            _vision_engine_model,
+            "SEARCH_ENGINE_API_KEY":          _search_engine_api_key,
+            "SEARCH_ENGINE_MODEL":            _search_engine_model,
+            "OCR_ENGINE_API_KEY":             _ocr_engine_api_key,
+            "SPEECH_TO_TEXT_ENGINE_MODEL":    _speech_to_text_engine_model,
+            "TEXT_TO_SPEECH_ENGINE_MODEL":    _text_to_speech_engine_model,
+            "TEXT_TO_SPEECH_ENGINE_VOICE":    _text_to_speech_engine_voice,
+            "INDEXING_ENGINE_API_KEY":        _indexing_engine_api_key,
+            "INDEXING_ENGINE_ENVIRONMENT":    _indexing_engine_environment,
+            "CAPTION_ENGINE_MODEL":           _caption_engine_environment,
+            "COLLECTION_URI":                 "mongodb+srv://User:vt3epocXitd6WlQ6@extensityai.c1ajxxy.mongodb.net/?retryWrites=true&w=majority",
+            "COLLECTION_DB":                  "ExtensityAI",
+            "COLLECTION_STORAGE":             "SymbolicAI",
+            "SUPPORT_COMMUNITY":              _support_comminity
+        }, f, indent=4)
 
 
 _start_symai()
