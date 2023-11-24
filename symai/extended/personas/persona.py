@@ -137,4 +137,8 @@ class Persona(Conversation):
                    stop=['>>>'],
                    parse_system_instructions=True,
                    *args, **kwargs,)
+
+        if 'preview' in kwargs and kwargs['preview']:
+            return str(res)
+
         return res

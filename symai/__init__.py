@@ -13,7 +13,7 @@ logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
-SYMAI_VERSION = "0.4.15"
+SYMAI_VERSION = "0.4.16"
 __version__   = SYMAI_VERSION
 __root_dir__  = Path.home() / '.symai'
 
@@ -45,7 +45,8 @@ def _start_symai():
                     "path-completion-selected":           "bg:#efefef #b3d7ff",
                     "file-completion-selected":           "bg:#efefef #b3d7ff"
                 },
-                "map-nt-cmd":                         "true",
+                "map-nt-cmd":                             True,
+                "show-splash-screen":                     True,
             }, f, indent=4)
 
     # CHECK IF THE USER HAS A CONFIGURATION FILE IN THE CURRENT WORKING DIRECTORY (DEBUGGING MODE)
@@ -167,14 +168,14 @@ def _start_symai():
             with open(_symai_config_path_, 'w') as f:
                 json.dump(_symai_config_, f, indent=4)
 
-    # POST-MIGRATION CHECKS
-    # *==============================================================================================================*
-    # CHECK IF THE USER HAS A TEXT TO SPEECH ENGINE API KEY
-    if 'TEXT_TO_SPEECH_ENGINE_API_KEY' not in _symai_config_:
-        _symai_config_['TEXT_TO_SPEECH_ENGINE_API_KEY'] = _symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY'] if 'NEUROSYMBOLIC_ENGINE_API_KEY' in _symai_config_ else ''
-        # save the updated configuration file
-        with open(_symai_config_path_, 'w') as f:
-            json.dump(_symai_config_, f, indent=4)
+        # POST-MIGRATION CHECKS
+        # *==============================================================================================================*
+        # CHECK IF THE USER HAS A TEXT TO SPEECH ENGINE API KEY
+        if 'TEXT_TO_SPEECH_ENGINE_API_KEY' not in _symai_config_:
+            _symai_config_['TEXT_TO_SPEECH_ENGINE_API_KEY'] = _symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY'] if 'NEUROSYMBOLIC_ENGINE_API_KEY' in _symai_config_ else ''
+            # save the updated configuration file
+            with open(_symai_config_path_, 'w') as f:
+                json.dump(_symai_config_, f, indent=4)
 
     # CHECK IF MANADATORY API KEYS ARE SET
     # *==============================================================================================================*
@@ -186,6 +187,15 @@ def _start_symai():
     with open(_symsh_config_path_, 'r') as f:
         _symsh_config_ = json.load(f)
 
+    # MIGRATE THE SHELL SPLASH SCREEN CONFIGURATION
+    # *==============================================================================================================*
+    if 'show-splash-screen' not in _symsh_config_:
+        _symsh_config_['show-splash-screen'] = True
+        with open(_symsh_config_path_, 'w') as f:
+            json.dump(_symsh_config_, f, indent=4)
+
+    # CHECK IF THE USER HAS OPENAI API KEY
+    # *==============================================================================================================*
     if 'custom' not in _symai_config_['NEUROSYMBOLIC_ENGINE_MODEL'].lower() and \
                       (_symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY'] is None or len(_symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY']) == 0):
 

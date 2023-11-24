@@ -48,35 +48,47 @@ class InvalidRequestErrorRemedyChatStrategy:
             elif "is less than the minimum" in msg:
                 handle = 'type2'
                 # extract number until 'is'
-                msg_ = msg.split(' ')[0]
-                overflow_tokens = int(msg_) * (-1)
+                msg_ = msg.split("is less than the minimum")[0]
+                # remove until the first `-`
+                msg_ = msg_.split(': "-')[-1]
+                overflow_tokens = int(msg_)
             else:
-                raise Exception(msg)
+                raise Exception(msg) from error
         except Exception as e:
-            raise e
+            raise e from error
 
         prompts = [p for p in prompts_ if p['role'] == 'user']
         system_prompt = [p for p in prompts_ if p['role'] == 'system']
         if handle == 'type1':
             truncated_content_ = [p['content'][overflow_tokens:] for p in prompts]
-            removed_content_ = [p['content'][:overflow_tokens] for p in prompts]
             truncated_prompts_ = [{'role': p['role'], 'content': c} for p, c in zip(prompts, truncated_content_)]
             with ConsoleStyle('warn') as console:
                 console.print(f"WARNING: Overflow tokens detected. Reducing prompt size by {overflow_tokens} characters.")
         elif handle == 'type2':
             user_prompts = [p['content'] for p in prompts]
-            # truncate until tokens are less than max_tokens * 0.70
             new_prompt = [*system_prompt]
             new_prompt.extend([{'role': p['role'], 'content': c} for p, c in zip(prompts, user_prompts)])
-            while instance.compute_required_tokens(new_prompt) > instance.max_tokens * 0.70: # magic number
-                user_prompts = [c[overflow_tokens:] for c in user_prompts]
-                new_prompt = [*system_prompt]
-                new_prompt.extend([{'role': p['role'], 'content': c} for p, c in zip(prompts, user_prompts)])
-            with ConsoleStyle('warn') as console:
-                console.print(f"WARNING: Overflow tokens detected. Reducing prompt size to {70}% of max_tokens.")
-            truncated_prompts_ = [{'role': p['role'], 'content': c} for p, c in zip(prompts, user_prompts)]
+            overflow_tokens = instance.compute_required_tokens(new_prompt) - int(instance.max_tokens * 0.70)
+            if overflow_tokens > 0:
+                print('WARNING: Overflow tokens detected. Reducing prompt size to 70% of max_tokens.')
+                for i, content in enumerate(user_prompts):
+                    token_ids = instance.tokenizer.encode(content)
+                    if overflow_tokens >= len(token_ids):
+                        overflow_tokens -= len(token_ids)
+                        user_prompts[i] = ''
+                    else:
+                        user_prompts[i] = instance.tokenizer.decode(token_ids[overflow_tokens:])
+                        overflow_tokens = 0
+                        break
+
+            new_prompt = [*system_prompt]
+            new_prompt.extend([{'role': p['role'], 'content': c} for p, c in zip(prompts, user_prompts)])
+            assert instance.compute_required_tokens(new_prompt) <= int(instance.max_tokens * 0.70), \
+                f"Token overflow: prompts exceed {int(instance.max_tokens * 0.70)} tokens after truncation"
+
+            truncated_prompts_ = [{'role': p['role'], 'content': c.strip()} for p, c in zip(prompts, user_prompts) if c.strip()]
         else:
-            raise Exception('Invalid handle case for remedy strategy.')
+            raise Exception('Invalid handle case for remedy strategy.') from error
 
         truncated_prompts_ = [*system_prompt, *truncated_prompts_]
 
@@ -130,9 +142,9 @@ class InvalidRequestErrorRemedyCompletionStrategy:
                 msg_ = msg.split(' ')[0]
                 overflow_tokens = int(msg_) * (-1)
             else:
-                raise Exception(msg)
+                raise Exception(msg) from error
         except Exception as e:
-            raise e
+            raise e from error
 
         # unify the format to use same remedy strategy for both chat and completion
         values = prompts_[0].replace('---------SYSTEM BEHAVIOR--------\n', '').split('\n\n---------USER REQUEST--------\n')
@@ -173,7 +185,7 @@ class InvalidRequestErrorRemedyCompletionStrategy:
                 console.print(f"WARNING: Overflow tokens detected. Reducing prompt size to {70}% of max_tokens.")
             truncated_prompts_ = [{'role': p['role'], 'content': c} for p, c in zip(prompts, user_prompts)]
         else:
-            raise Exception('Invalid handle case for remedy strategy.')
+            raise Exception('Invalid handle case for remedy strategy.') from error
 
         truncated_prompts_ = [*system_prompt, *truncated_prompts_]
 

@@ -214,17 +214,15 @@ class GPTXChatEngine(Engine, OpenAIMixin):
                     else:
                         print('No frames found or error in encoding frames')
 
-        if wrp_params['prompt'] is not None and len(wrp_params['prompt']) > 0 and ']: <<<' not in str(wrp_params['prompt']): # TODO: fix chat hack
+        if wrp_params['prompt'] is not None and len(wrp_params['prompt']) > 0 and ']: <<<' not in str(wrp_params['prompt']):
             val = str(wrp_params['prompt'])
             if len(image_files) > 0:
                 val = remove_pattern(val)
-            user += f"[INSTRUCTION]\n{val}"
+            system += f"[INSTRUCTION]\n{val}"
 
         suffix: str = str(wrp_params['processed_input'])
         if len(image_files) > 0:
             suffix = remove_pattern(suffix)
-        if '=>' in suffix:
-            user += f"[LAST TASK]\n"
 
         parse_system_instructions = False if 'parse_system_instructions' not in wrp_params else wrp_params['parse_system_instructions']
         if '[SYSTEM_INSTRUCTION::]: <<<' in suffix and parse_system_instructions:
