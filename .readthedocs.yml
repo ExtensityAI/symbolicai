@@ -3,9 +3,9 @@ version: 2
 # Set the version of Python
 build:
   tools:
-    python: "3.8"
+    python: "3.9"
 
 python:
-  version: "3.8"
+  version: "3.9"
   install:
     - requirements: docs/requirements.txt
