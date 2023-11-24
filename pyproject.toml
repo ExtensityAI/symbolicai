@@ -41,10 +41,10 @@ all = ["wolframalpha>=5.0.0", "openai-whisper", "selenium>=4.10.0", "webdriver-m
 version = {attr = "symai.SYMAI_VERSION"}
 
 [tool.setuptools.package-data]
-"*" = ["*.json"]
+"*" = ["*.json", "*.md"]
 
 [tool.setuptools.packages.find]
-include = ["symai", "TERMS_OF_SERVICE.md"]
+include = ["symai"]
 exclude = ["tests", "examples", "notebooks", "outputs", "assets"]
 
 [project.urls]
