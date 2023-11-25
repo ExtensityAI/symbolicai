@@ -236,7 +236,7 @@ Alternatively, you can specify in your project path a `symai.config.json` file w
     "INDEXING_ENGINE_ENVIRONMENT": "us-west1-gcp",
     "COLLECTION_DB": "ExtensityAI",
     "COLLECTION_STORAGE": "SymbolicAI",
-    "SUPPORT_COMMUNITY": True
+    "SUPPORT_COMMUNITY": False
 }
 ```
 
