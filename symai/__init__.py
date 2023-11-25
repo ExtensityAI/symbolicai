@@ -13,7 +13,7 @@ logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
-SYMAI_VERSION = "0.4.33"
+SYMAI_VERSION = "0.4.34"
 __version__   = SYMAI_VERSION
 __root_dir__  = Path.home() / '.symai'
 
@@ -64,7 +64,7 @@ def _start_symai():
             setup_wizard(_symai_config_path_)
 
             with ConsoleStyle('info') as console:
-                msg = 'Currently you are sharing your user experience with us by uploading the data to our research server, and thereby helping us improve future models and the overall SymbolicAI experience. We thank you very much for supporting the research community! If you wish to disable the data collection option go to your .symai config situated in your home directory or set the environment variable `SUPPORT_COMMUNITY` to `False`.'
+                msg = 'Currently you are sharing your user experience with us by uploading the data to our research server, and thereby helping us improve future models and the overall SymbolicAI experience. We thank you very much for supporting the research community! If you wish to enable/disable the data collection option go to your .symai config situated in your home directory or set the environment variable `SUPPORT_COMMUNITY` to `True/False`.'
                 console.print(msg)
 
         # LOAD THE CONFIGURATION FILE
@@ -92,7 +92,7 @@ def _start_symai():
             _symai_config_['COLLECTION_URI']     = "mongodb+srv://User:vt3epocXitd6WlQ6@extensityai.c1ajxxy.mongodb.net/?retryWrites=true&w=majority"
             _symai_config_['COLLECTION_DB']      = "ExtensityAI"
             _symai_config_['COLLECTION_STORAGE'] = "SymbolicAI"
-            _symai_config_['SUPPORT_COMMUNITY']  = True
+            _symai_config_['SUPPORT_COMMUNITY']  = False
             with ConsoleStyle('info') as console:
                 msg = 'Currently you are sharing your user experience with us by uploading the data to our research server, and thereby helping us improve future models and the overall SymbolicAI experience. We thank you very much for supporting the research community! If you wish to disable the data collection option go to your .symai config situated in your home directory or set the environment variable `SUPPORT_COMMUNITY` to `False`.'
                 console.print(msg)
