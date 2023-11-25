@@ -240,7 +240,7 @@ Alternatively, you can specify in your project path a `symai.config.json` file w
 }
 ```
 
-> [NOTE]: By default, the data collection community support feature is enabled. To change this go to the `symai.config.json` file located in your home directory of your `.symai` folder (i.e., `~/.symai/symai.config.json`), and turn it off by setting the `SUPPORT_COMMUNITY` property to `False` via the config file or the respective environment variable.
+> [NOTE]: Our framework allows you to support us train models for local usage by enabling the data collection feature. On application startup we show the terms of services and you can activate or disable this community feature. We do not share or sell your data to 3rd parties and only use the data for research purposes and to improve your user experience. To change this setting you will be prompted with in our setup wizard to enable or disable community support or you can go to the `symai.config.json` file located in your home directory of your `.symai` folder (i.e., `~/.symai/symai.config.json`), and turn it on/off by setting the `SUPPORT_COMMUNITY` property to `True/False` via the config file or the respective environment variable.
 
 ## 🦖 Apps
 
