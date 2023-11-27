@@ -4,6 +4,7 @@ import os
 from .misc.console import ConsoleStyle
 from pathlib import Path
 from .menu.screen import show_menu
+from .backend import settings
 
 # do not remove - hides the libraries' debug messages
 logging.getLogger("urllib3").setLevel(logging.WARNING)
@@ -206,7 +207,6 @@ def _start_symai():
             msg = 'The mandatory neuro-symbolic engine is not initialized. Please get a key from https://beta.openai.com/account/api-keys and set either a general environment variable OPENAI_API_KEY or a module specific environment variable NEUROSYMBOLIC_ENGINE_API_KEY.'
             console.print(msg)
 
-    import symai.backend.settings as settings
     settings.SYMAI_CONFIG = _symai_config_
     settings.SYMSH_CONFIG = _symsh_config_
 
