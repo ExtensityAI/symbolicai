@@ -232,23 +232,32 @@ def cache_registry_func(
     return call
 
 
-class EngineRepository:
-    _engines: Dict[str, Engine] = {}
+class EngineRepository(object):
+    _instance = None
+
+    def __init__(self):
+        self._engines: Dict[str, Engine] = {}
+
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super(EngineRepository, cls).__new__(cls, *args, **kwargs)
+        return cls._instance
 
     @classmethod
     def register(cls, id: str, engine_instance: Engine, allow_engine_override: bool = False) -> None:
+        self = cls()
         # Check if the engine is already registered
-        if id in cls._engines and not allow_engine_override:
+        if id in self._engines.keys() and not allow_engine_override:
             raise ValueError(f"Engine {id} is already registered. Set allow_engine_override to True to override.")
-        elif id in cls._engines and allow_engine_override:
-            reg_eng = cls.get(id)
+        elif id in self._engines and allow_engine_override:
+            reg_eng = self.get(id)
             with ConsoleStyle('warn', logging=True) as console:
                 console.print(f"Engine {id} is already registered. Overriding engine: {reg_eng.__name__} with {str(str(engine_instance))}")
         else:
             with ConsoleStyle('debug', logging=False) as console:
-                console.print(f"Registering engine: {str(engine_instance)}")
+                console.print(f"Registering engine: {id} >> {str(engine_instance)}")
         # Create an instance of the engine class and store it
-        cls._engines[id] = engine_instance
+        self._engines[id] = engine_instance
 
     @classmethod
     def register_from_package(cls, package: ModuleType, allow_engine_override: bool = False, *args, **kwargs) -> None:
@@ -276,16 +285,18 @@ class EngineRepository:
 
     @classmethod
     def get(cls, engine_name: str, *args, **kwargs) -> Engine:
-        if engine_name not in cls._engines:
+        self = cls()
+        if engine_name not in self._engines:
             # initialize engine
             raise ValueError(f"No engine named {engine_name} is registered.")
-        return cls._engines.get(engine_name)
+        return self._engines.get(engine_name)
 
     @classmethod
     def execute_command(cls, engine_name: str, *args, **kwargs) -> Any:
+        self = cls()
         if engine_name == 'all':
             # Call the command function for all registered engines with provided arguments
-            return [engine.command(engine, *args, **kwargs) for engine_name, engine in cls._engines.items()]
+            return [engine.command(engine, *args, **kwargs) for engine_name, engine in self._engines.items()]
         engine = cls.get(engine_name)
         if engine:
             # Call the command function for the engine with provided arguments
