@@ -1,7 +1,7 @@
 from typing import Callable, List
 
-from .base import Engine
-from .driver.webclient import connect_browsers, dump_page_source, page_loaded
+from ..base import Engine
+from ..driver.webclient import connect_browsers, dump_page_source, page_loaded
 
 
 class SeleniumEngine(Engine):
@@ -25,6 +25,9 @@ class SeleniumEngine(Engine):
             if self.debug: dump_page_source(driver)
             if self.debug: print(ex)
             return None
+
+    def id(self) -> str:
+        return 'crawler'
 
     def forward(self, urls: List[str], patterns: List[str], *args, **kwargs) -> List[str]:
         urls     = urls if isinstance(urls, list) else [urls]

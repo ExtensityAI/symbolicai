@@ -1,5 +1,6 @@
 import re
 import pygments
+import logging
 from html import escape as escape_html
 from pygments.lexers.python import PythonLexer
 from pygments.lexers.javascript import JavascriptLexer
@@ -10,6 +11,7 @@ from prompt_toolkit import HTML
 from prompt_toolkit.formatted_text import PygmentsTokens
 
 
+logger = logging.getLogger(__name__)
 print = print_formatted_text
 
 
@@ -28,9 +30,10 @@ class ConsoleStyle(object):
         'default':   '',
     }
 
-    def __init__(self, style_type = '', color = ''):
+    def __init__(self, style_type = '', color = '', logging: bool = False):
         self.style_type = style_type
-        self.color = color
+        self.color      = color
+        self.logging    = logging
 
     def __call__(self, message):
         self.print(message)
@@ -43,6 +46,8 @@ class ConsoleStyle(object):
 
     def print(self, message, escape: bool = False):
         message = str(message)
+        if self.logging:
+            logger.debug(message)
         if escape:
             message = escape_html(message)
         style = self.style_types.get(self.style_type, self.style_types['default'])

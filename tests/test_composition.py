@@ -669,7 +669,7 @@ modified:   tests/test_composition.py
         self.assertTrue('Hallo Welt!' in res, res)
 
     def test_setup_engine(self):
-        from symai.backend.engine_gptX_completion import GPTXCompletionEngine
+        from symai.backend.engines.engine_gptX_completion import GPTXCompletionEngine
         class TestEngine(GPTXCompletionEngine):
             def prepare(self, args, kwargs, wrp_params):
                 wrp_params['prompts'] = ['Write about cats.']
@@ -680,7 +680,7 @@ modified:   tests/test_composition.py
         self.assertTrue('cat' in str(res).lower(), res)
 
     def test_huggingface_engine(self):
-        from symai.backend.engine_nesy_client import NeSyClientEngine
+        from symai.backend.engines.engine_nesy_client import NeSyClientEngine
         model = NeSyClientEngine()
         model.init_model('cuda:4')
         sym = Symbol('Write about dogs.')

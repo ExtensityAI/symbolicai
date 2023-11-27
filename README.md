@@ -1322,7 +1322,7 @@ symclient
 Then, use the following code once to set up the local engine:
 
 ```python
-from symai.backend.engine_nesy_client import NeSyClientEngine
+from symai.backend.engines.engine_nesy_client import NeSyClientEngine
 # setup local engine
 engine = NeSyClientEngine()
 Expression.setup(engines={'neurosymbolic': engine})
@@ -1343,7 +1343,7 @@ If you want to replace or extend the functionality of our framework, you can do 
 Here is an example of how to initialize your own engine. We will subclass the existing `GPTXCompletionEngine` and override the `prepare` method. This method is called before the neural computation and can be used to modify the input prompt's parameters that will be passed in for execution. In this example, we will replace the prompt with dummy text for illustration purposes:
 
 ```python
-from symai.backend.engine_gptX_completion import GPTXCompletionEngine
+from symai.backend.engines.engine_gptX_completion import GPTXCompletionEngine
 class DummyEngine(GPTXCompletionEngine):
     def prepare(self, args, kwargs, wrp_params):
         wrp_params['prompts'] = ['Go wild and generate something!']
@@ -1363,7 +1363,7 @@ res = sym.translate('German')
 
 ```bash
 :Output:
-<symai.backend.engine_gptX_completion.GPTXCompletionEngine object at 0, <function Symbol.translate.<locals>._func at 0x7fd68ba04820>, {'wrp_self': <class 'symai.symbol.S ['\n\nHallo Welt!']
+<symai.backend.engines.engine_gptX_completion.GPTXCompletionEngine object at 0, <function Symbol.translate.<locals>._func at 0x7fd68ba04820>, {'wrp_self': <class 'symai.symbol.S ['\n\nHallo Welt!']
 ```
 
 Here is the list of names of the engines that are currently supported:

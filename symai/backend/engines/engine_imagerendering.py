@@ -3,8 +3,8 @@ from typing import List
 
 import openai
 
-from .base import Engine
-from .settings import SYMAI_CONFIG
+from ..base import Engine
+from ..settings import SYMAI_CONFIG
 
 
 logging.getLogger("openai").setLevel(logging.ERROR)
@@ -17,11 +17,16 @@ logging.getLogger("httpcore").setLevel(logging.ERROR)
 class ImageRenderingEngine(Engine):
     def __init__(self, size: int = 512):
         super().__init__()
-        config = SYMAI_CONFIG
-        openai.api_key = config['IMAGERENDERING_ENGINE_API_KEY']
+        self.config = SYMAI_CONFIG
+        openai.api_key = self.config['IMAGERENDERING_ENGINE_API_KEY']
         logger = logging.getLogger('openai')
         logger.setLevel(logging.WARNING)
         self.size = size
+
+    def id(self) -> str:
+        if  self.config['IMAGERENDERING_ENGINE_API_KEY'] != '':
+            return 'imagerendering'
+        return super().id() # default to unregistered
 
     def command(self, wrp_params):
         super().command(wrp_params)

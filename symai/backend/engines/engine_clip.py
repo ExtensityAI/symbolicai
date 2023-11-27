@@ -4,8 +4,8 @@ import requests
 from PIL import Image
 from transformers import CLIPModel, CLIPProcessor
 
-from .base import Engine
-from .settings import SYMAI_CONFIG
+from ..base import Engine
+from ..settings import SYMAI_CONFIG
 
 
 class CLIPEngine(Engine):
@@ -14,9 +14,14 @@ class CLIPEngine(Engine):
         self.model =  None # lazy loading
         self.preprocessor = None # lazy loading
 
-        config = SYMAI_CONFIG
-        self.model_id = config['VISION_ENGINE_MODEL']
-        self.old_model_id = config['VISION_ENGINE_MODEL']
+        self.config       = SYMAI_CONFIG
+        self.model_id     = self.config['VISION_ENGINE_MODEL']
+        self.old_model_id = self.config['VISION_ENGINE_MODEL']
+
+    def id(self) -> str:
+        if  self.config['VISION_ENGINE_MODEL'] != '':
+            return 'vision'
+        return super().id() # default to unregistered
 
     def command(self, wrp_params):
         super().command(wrp_params)

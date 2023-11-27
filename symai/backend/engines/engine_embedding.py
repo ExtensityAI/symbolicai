@@ -3,9 +3,9 @@ from typing import List
 
 import openai
 
-from .base import Engine
-from .mixin.openai import OpenAIMixin
-from .settings import SYMAI_CONFIG
+from ..base import Engine
+from ..mixin.openai import OpenAIMixin
+from ..settings import SYMAI_CONFIG
 
 
 logging.getLogger("openai").setLevel(logging.ERROR)
@@ -20,11 +20,16 @@ class EmbeddingEngine(Engine, OpenAIMixin):
         super().__init__()
         logger = logging.getLogger('openai')
         logger.setLevel(logging.WARNING)
-        config                  = SYMAI_CONFIG
-        openai.api_key          = config['EMBEDDING_ENGINE_API_KEY']
-        self.model              = config['EMBEDDING_ENGINE_MODEL']
+        self.config             = SYMAI_CONFIG
+        openai.api_key          = self.config['EMBEDDING_ENGINE_API_KEY']
+        self.model              = self.config['EMBEDDING_ENGINE_MODEL']
         self.pricing            = self.api_pricing()
         self.max_tokens         = self.api_max_tokens()
+
+    def id(self) -> str:
+        if  self.config['EMBEDDING_ENGINE_API_KEY'] != '':
+            return 'embedding'
+        return super().id() # default to unregistered
 
     def command(self, wrp_params):
         super().command(wrp_params)

@@ -2,18 +2,10 @@ import functools
 from typing import Callable, Dict, List, Optional
 
 from . import __root_dir__
-from .functional import (bind_registry_func, cache_registry_func, command_func,
-                         crawler_func, embed_func, execute_func, few_shot_func,
-                         finetuning_func, imagecaptioning_func,
-                         imagerendering_func, index_func, ocr_func, open_func,
-                         output_func, retry_func, search_func, setup_func,
-                         text_to_speech_func, speech_to_text_func, symbolic_func, userinput_func,
-                         vision_func)
+from .functional import cache_registry_func, retry_func, EngineRepository
 from .post_processors import *
 from .pre_processors import *
 from .prompts import *
-
-_symbolic_expression_engine = None
 
 
 def few_shot(prompt: str = '',
@@ -44,17 +36,18 @@ def few_shot(prompt: str = '',
     def decorator(func):
         @functools.wraps(func)
         def wrapper(wrp_self, *args, **kwargs):
-            return few_shot_func(wrp_self,
-                                 func=func,
-                                 prompt=prompt,
-                                 examples=examples,
-                                 constraints=constraints,
-                                 default=default,
-                                 limit=limit,
-                                 pre_processors=pre_processors,
-                                 post_processors=post_processors,
-                                 wrp_kwargs=wrp_kwargs,
-                                 args=args, kwargs=kwargs)
+            return EngineRepository.process_query(wrp_self,
+                                engine='neurosymbolic',
+                                func=func,
+                                prompt=prompt,
+                                examples=examples,
+                                constraints=constraints,
+                                default=default,
+                                limit=limit,
+                                pre_processors=pre_processors,
+                                post_processors=post_processors,
+                                wrp_kwargs=wrp_kwargs,
+                                args=args, kwargs=kwargs)
         return wrapper
     return decorator
 
@@ -948,9 +941,8 @@ def expression(prompt: str = "Evaluate the symbolic expressions:\n",
                default: Optional[str] = None,
                examples: Prompt = SimpleSymbolicExpression(),
                constraints: List[Callable] = [],
-               pre_processors: Optional[List[PreProcessor]] = [SimpleSymbolicExpressionPreProcessor()],
-               post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
-               eval_engine: Optional[str] = None,
+               pre_processors: Optional[List[PreProcessor]] = [WolframAlphaPreProcessor()],
+               post_processors: Optional[List[PostProcessor]] = [WolframAlphaPostProcessor()],
                **wrp_kwargs):
     """Evaluates the symbolic expressions.
 
@@ -961,40 +953,27 @@ def expression(prompt: str = "Evaluate the symbolic expressions:\n",
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [SimpleSymbolicExpressionPreProcessor()].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
-        eval_engine (str, optional): The symbolic engine to be used. Defaults to None. Alternatively, one can set the symbolic engine using the command(expression_engine='wolframalpha').
 
     Returns:
         str: The result of the evaluated expression.
     """
-    # either symbolic_engine is set or symbolic_expression_engine is set
-    if eval_engine is not None and 'wolframalpha' in eval_engine \
-        or _symbolic_expression_engine is not None and 'wolframalpha' in _symbolic_expression_engine:
-        # send the expression to wolframalpha
-        def decorator(func):
-            @functools.wraps(func)
-            def wrapper(wrp_self, *args, **kwargs):
-                return symbolic_func(wrp_self,
-                                     func=func,
-                                     prompt=prompt,
-                                     default=default,
-                                     limit=1,
-                                     examples=examples,
-                                     pre_processors=[WolframAlphaPreProcessor()], # no need for pre-processing since the expression is sent to wolframalpha
-                                     post_processors=[WolframAlphaPostProcessor()],
-                                     wrp_kwargs=wrp_kwargs,
-                                     args=args, kwargs=kwargs)
-            return wrapper
-        return decorator
-    # otherwise, use the default symbolic expression engine
-    return few_shot(prompt=prompt,
-                    examples=examples,
-                    constraints=constraints,
-                    default=default,
-                    limit=1,
-                    stop=['\n'],
-                    pre_processors=pre_processors,
-                    post_processors=post_processors,
-                    **wrp_kwargs)
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(wrp_self, *args, **kwargs):
+            return EngineRepository.process_query(wrp_self,
+                                engine='symbolic',
+                                func=func,
+                                prompt=prompt,
+                                default=default,
+                                limit=1,
+                                examples=examples,
+                                constraints=constraints,
+                                pre_processors=pre_processors,
+                                post_processors=post_processors,
+                                wrp_kwargs=wrp_kwargs,
+                                args=args, kwargs=kwargs)
+        return wrapper
+    return decorator
 
 
 def logic(prompt: str = "Evaluate the logic expressions:\n",
@@ -1447,17 +1426,18 @@ def search(query: str,
     def decorator(func):
         @functools.wraps(func)
         def wrapper(wrp_self, *args, **kwargs):
-            return search_func(wrp_self,
-                               func=func,
-                               query=query,
-                               constraints=constraints,
-                               default=default,
-                               limit=limit,
-                               pre_processors=pre_processors,
-                               post_processors=post_processors,
-                               wrp_args=wrp_args,
-                               wrp_kwargs=wrp_kwargs,
-                               args=args, kwargs=kwargs)
+            return EngineRepository.process_query(wrp_self,
+                                engine='search',
+                                func=func,
+                                query=query,
+                                constraints=constraints,
+                                default=default,
+                                limit=limit,
+                                pre_processors=pre_processors,
+                                post_processors=post_processors,
+                                wrp_args=wrp_args,
+                                wrp_kwargs=wrp_kwargs,
+                                args=args, kwargs=kwargs)
         return wrapper
     return decorator
 
@@ -1488,17 +1468,18 @@ def opening(path: str,
     def decorator(func):
         @functools.wraps(func)
         def wrapper(wrp_self, *args, **kwargs):
-            return open_func(wrp_self,
-                             func=func,
-                             path=path,
-                             constraints=constraints,
-                             default=default,
-                             limit=limit,
-                             pre_processors=pre_processors,
-                             post_processors=post_processors,
-                             wrp_args=wrp_args,
-                             wrp_kwargs=wrp_kwargs,
-                             args=args, kwargs=kwargs)
+            return EngineRepository.process_query(wrp_self,
+                                engine='files',
+                                func=func,
+                                path=path,
+                                constraints=constraints,
+                                default=default,
+                                limit=limit,
+                                pre_processors=pre_processors,
+                                post_processors=post_processors,
+                                wrp_args=wrp_args,
+                                wrp_kwargs=wrp_kwargs,
+                                args=args, kwargs=kwargs)
         return wrapper
     return decorator
 
@@ -1523,14 +1504,15 @@ def embed(entries: List[str],
     def decorator(func):
         @functools.wraps(func)
         def wrapper(wrp_self, *args, **kwargs):
-            return embed_func(wrp_self,
-                              entries=entries,
-                              func=func,
-                              pre_processors=pre_processors,
-                              post_processors=post_processors,
-                              wrp_args=wrp_args,
-                              wrp_kwargs=wrp_kwargs,
-                              args=args, kwargs=kwargs)
+            return EngineRepository.process_query(wrp_self,
+                                engine='embedding',
+                                entries=entries,
+                                func=func,
+                                pre_processors=pre_processors,
+                                post_processors=post_processors,
+                                wrp_args=wrp_args,
+                                wrp_kwargs=wrp_kwargs,
+                                args=args, kwargs=kwargs)
         return wrapper
     return decorator
 
@@ -1578,15 +1560,16 @@ def draw(operation: str = 'create',
     def decorator(func):
         @functools.wraps(func)
         def wrapper(wrp_self, *args, **kwargs):
-            return imagerendering_func(wrp_self,
-                                       operation=operation,
-                                       prompt=prompt,
-                                       func=func,
-                                       pre_processors=pre_processors,
-                                       post_processors=post_processors,
-                                       wrp_args=wrp_args,
-                                       wrp_kwargs=wrp_kwargs,
-                                       args=args, kwargs=kwargs)
+            return EngineRepository.process_query(wrp_self,
+                                engine='imagerendering',
+                                operation=operation,
+                                prompt=prompt,
+                                func=func,
+                                pre_processors=pre_processors,
+                                post_processors=post_processors,
+                                wrp_args=wrp_args,
+                                wrp_kwargs=wrp_kwargs,
+                                args=args, kwargs=kwargs)
         return wrapper
     return decorator
 
@@ -1613,15 +1596,16 @@ def vision(image: Optional[str] = None,
     def decorator(func):
         @functools.wraps(func)
         def wrapper(wrp_self, *args, **kwargs):
-            return vision_func(wrp_self,
-                               image=image,
-                               prompt=text,
-                               func=func,
-                               pre_processors=pre_processors,
-                               post_processors=post_processors,
-                               wrp_args=wrp_args,
-                               wrp_kwargs=wrp_kwargs,
-                               args=args, kwargs=kwargs)
+            return EngineRepository.process_query(wrp_self,
+                                engine='vision',
+                                image=image,
+                                prompt=text,
+                                func=func,
+                                pre_processors=pre_processors,
+                                post_processors=post_processors,
+                                wrp_args=wrp_args,
+                                wrp_kwargs=wrp_kwargs,
+                                args=args, kwargs=kwargs)
         return wrapper
     return decorator
 
@@ -1646,14 +1630,15 @@ def ocr(image: str,
     def decorator(func):
         @functools.wraps(func)
         def wrapper(wrp_self, *args, **kwargs):
-            return ocr_func(wrp_self,
-                            image=image,
-                            func=func,
-                            pre_processors=pre_processors,
-                            post_processors=post_processors,
-                            wrp_args=wrp_args,
-                            wrp_kwargs=wrp_kwargs,
-                            args=args, kwargs=kwargs)
+            return EngineRepository.process_query(wrp_self,
+                                engine='ocr',
+                                image=image,
+                                func=func,
+                                pre_processors=pre_processors,
+                                post_processors=post_processors,
+                                wrp_args=wrp_args,
+                                wrp_kwargs=wrp_kwargs,
+                                args=args, kwargs=kwargs)
         return wrapper
     return decorator
 
@@ -1678,14 +1663,15 @@ def speech_to_text(prompt: str = 'decode',
     def decorator(func):
         @functools.wraps(func)
         def wrapper(wrp_self, *args, **kwargs):
-            return speech_to_text_func(wrp_self,
-                                       prompt=prompt,
-                                       func=func,
-                                       pre_processors=pre_processors,
-                                       post_processors=post_processors,
-                                       wrp_args=wrp_args,
-                                       wrp_kwargs=wrp_kwargs,
-                                       args=args, kwargs=kwargs)
+            return EngineRepository.process_query(wrp_self,
+                                engine='speech-to-text',
+                                prompt=prompt,
+                                func=func,
+                                pre_processors=pre_processors,
+                                post_processors=post_processors,
+                                wrp_args=wrp_args,
+                                wrp_kwargs=wrp_kwargs,
+                                args=args, kwargs=kwargs)
         return wrapper
     return decorator
 
@@ -1711,16 +1697,17 @@ def text_to_speech(prompt: str,
     def decorator(func):
         @functools.wraps(func)
         def wrapper(wrp_self, *args, **kwargs):
-            return text_to_speech_func(wrp_self,
-                                       func=func,
-                                       prompt=prompt,
-                                       voice=voice,
-                                       path=path,
-                                       pre_processors=pre_processors,
-                                       post_processors=post_processors,
-                                       wrp_args=wrp_args,
-                                       wrp_kwargs=wrp_kwargs,
-                                       args=args, kwargs=kwargs)
+            return EngineRepository.process_query(wrp_self,
+                                engine='text-to-speech',
+                                func=func,
+                                prompt=prompt,
+                                voice=voice,
+                                path=path,
+                                pre_processors=pre_processors,
+                                post_processors=post_processors,
+                                wrp_args=wrp_args,
+                                wrp_kwargs=wrp_kwargs,
+                                args=args, kwargs=kwargs)
         return wrapper
     return decorator
 
@@ -1747,15 +1734,16 @@ def output(constraints: List[Callable] = [],
     def decorator(func):
         @functools.wraps(func)
         def wrapper(wrp_self, *args, **kwargs):
-            return output_func(wrp_self,
-                               func=func,
-                               constraints=constraints,
-                               default=default,
-                               pre_processors=pre_processors,
-                               post_processors=post_processors,
-                               wrp_args=wrp_args,
-                               wrp_kwargs=wrp_kwargs,
-                               args=args, kwargs=kwargs)
+            return EngineRepository.process_query(wrp_self,
+                                engine='output',
+                                func=func,
+                                constraints=constraints,
+                                default=default,
+                                pre_processors=pre_processors,
+                                post_processors=post_processors,
+                                wrp_args=wrp_args,
+                                wrp_kwargs=wrp_kwargs,
+                                args=args, kwargs=kwargs)
         return wrapper
     return decorator
 
@@ -1788,7 +1776,8 @@ def fetch(url: str,
     def decorator(func):
         @functools.wraps(func)
         def wrapper(wrp_self, *args, **kwargs):
-            return crawler_func(wrp_self,
+            return EngineRepository.process_query(wrp_self,
+                                engine='crawler',
                                 func=func,
                                 url=url,
                                 pattern=pattern,
@@ -1827,15 +1816,16 @@ def userinput(constraints: List[Callable] = [],
     def decorator(func):
         @functools.wraps(func)
         def wrapper(wrp_self, *args, **kwargs):
-            return userinput_func(wrp_self,
-                                  func=func,
-                                  constraints=constraints,
-                                  default=default,
-                                  pre_processors=pre_processors,
-                                  post_processors=post_processors,
-                                  wrp_args=wrp_args,
-                                  wrp_kwargs=wrp_kwargs,
-                                  args=args, kwargs=kwargs)
+            return EngineRepository.process_query(wrp_self,
+                                engine='userinput',
+                                func=func,
+                                constraints=constraints,
+                                default=default,
+                                pre_processors=pre_processors,
+                                post_processors=post_processors,
+                                wrp_args=wrp_args,
+                                wrp_kwargs=wrp_kwargs,
+                                args=args, kwargs=kwargs)
         return wrapper
     return decorator
 
@@ -1862,7 +1852,8 @@ def execute(default: Optional[str] = None,
     def decorator(func):
         @functools.wraps(func)
         def wrapper(wrp_self, *args, **kwargs):
-            return execute_func(wrp_self,
+            return EngineRepository.process_query(wrp_self,
+                                engine='execute',
                                 func=func,
                                 code=str(wrp_self),
                                 constraints=constraints,
@@ -1874,7 +1865,6 @@ def execute(default: Optional[str] = None,
                                 args=args, kwargs=kwargs)
         return wrapper
     return decorator
-
 
 
 def index(prompt: Any,
@@ -1903,17 +1893,18 @@ def index(prompt: Any,
     def decorator(func):
         @functools.wraps(func)
         def wrapper(wrp_self, *args, **kwargs):
-            return index_func(wrp_self,
-                              func=func,
-                              prompt=prompt,
-                              operation=operation,
-                              constraints=constraints,
-                              default=default,
-                              pre_processors=pre_processors,
-                              post_processors=post_processors,
-                              wrp_args=wrp_args,
-                              wrp_kwargs=wrp_kwargs,
-                              args=args, kwargs=kwargs)
+            return EngineRepository.process_query(wrp_self,
+                                engine='index',
+                                func=func,
+                                prompt=prompt,
+                                operation=operation,
+                                constraints=constraints,
+                                default=default,
+                                pre_processors=pre_processors,
+                                post_processors=post_processors,
+                                wrp_args=wrp_args,
+                                wrp_kwargs=wrp_kwargs,
+                                args=args, kwargs=kwargs)
         return wrapper
     return decorator
 
@@ -1932,14 +1923,13 @@ def command(engines: List[str] = ['all'],
     def decorator(func):
         @functools.wraps(func)
         def wrapper(wrp_self, **kwargs):
-            global _symbolic_expression_engine
-            if 'symbolic' in engines and 'expression_engine' in wrp_kwargs:
-                _symbolic_expression_engine = wrp_kwargs['expression_engine']
-            return command_func(wrp_self,
-                                func=func,
-                                engines=engines,
-                                wrp_kwargs=wrp_kwargs,
-                                kwargs=kwargs)
+            return EngineRepository.execute_command(
+                    wrp_self,
+                    func=func,
+                    engines=engines,
+                    wrp_kwargs=wrp_kwargs,
+                    kwargs=kwargs
+                )
         return wrapper
     return decorator
 
@@ -1958,11 +1948,13 @@ def setup(engines: Dict[str, Any],
     def decorator(func):
         @functools.wraps(func)
         def wrapper(wrp_self, **kwargs):
-            return setup_func(wrp_self,
-                              func=func,
-                              engines=engines,
-                              wrp_kwargs=wrp_kwargs,
-                              kwargs=kwargs)
+            return EngineRepository.register(
+                    wrp_self,
+                    func=func,
+                    engines=engines,
+                    wrp_kwargs=wrp_kwargs,
+                    kwargs=kwargs
+                )
         return wrapper
     return decorator
 
@@ -1994,7 +1986,7 @@ def bind(engine: str, property: str):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            return bind_registry_func(
+            return EngineRepository.bind_property(
                     engine=engine,
                     property=property
                 )
@@ -2061,13 +2053,14 @@ def tune(operation: str = 'create',
         @functools.wraps(func)
         def wrapper(wrp_self, *args, **kwargs):
             kwargs['__cmd__'] = operation
-            return finetuning_func(wrp_self,
-                                   func=func,
-                                   pre_processors=pre_processors,
-                                   post_processors=post_processors,
-                                   wrp_args=wrp_args,
-                                   wrp_kwargs=wrp_kwargs,
-                                   args=args, kwargs=kwargs)
+            return EngineRepository.process_query(wrp_self,
+                                engine='finetune',
+                                func=func,
+                                pre_processors=pre_processors,
+                                post_processors=post_processors,
+                                wrp_args=wrp_args,
+                                wrp_kwargs=wrp_kwargs,
+                                args=args, kwargs=kwargs)
         return wrapper
     return decorator
 
@@ -2094,14 +2087,15 @@ def caption(image: str,
     def decorator(func):
         @functools.wraps(func)
         def wrapper(wrp_self, *args, **kwargs):
-            return imagecaptioning_func(wrp_self,
-                                        prompt=prompt,
-                                        image=image,
-                                        func=func,
-                                        pre_processors=pre_processors,
-                                        post_processors=post_processors,
-                                        wrp_args=wrp_args,
-                                        wrp_kwargs=wrp_kwargs,
-                                        args=args, kwargs=kwargs)
+            return EngineRepository.process_query(wrp_self,
+                                engine='imagecaptioning',
+                                prompt=prompt,
+                                image=image,
+                                func=func,
+                                pre_processors=pre_processors,
+                                post_processors=post_processors,
+                                wrp_args=wrp_args,
+                                wrp_kwargs=wrp_kwargs,
+                                args=args, kwargs=kwargs)
         return wrapper
     return decorator

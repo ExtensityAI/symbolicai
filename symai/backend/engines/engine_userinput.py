@@ -1,11 +1,14 @@
 from typing import List
 
-from .base import Engine
+from ..base import Engine
 
 
 class UserInputEngine(Engine):
     def __init__(self):
         super().__init__()
+
+    def id(self) -> str:
+        return 'userinput'
 
     def forward(self, *args, **kwargs) -> List[str]:
         msg           = kwargs['prompt']

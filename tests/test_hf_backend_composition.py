@@ -7,7 +7,7 @@ from examples.news import News
 from examples.paper import Paper
 from symai import *
 # test with huggingface backend
-from symai.backend.engine_nesy_client import NeSyClientEngine
+from symai.backend.engines.engine_nesy_client import NeSyClientEngine
 from symai.chat import SymbiaChat
 
 # for debugging

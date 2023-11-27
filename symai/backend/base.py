@@ -1,17 +1,19 @@
 import logging
 import os
 import time
-import json
 from abc import ABC
 from typing import Any, List
+
 from ..collect import CollectionRepository, rec_serialize
-from ..symbol import Symbol
 
 
-class PreviewSymbol(Symbol):
+class PreviewSymbol(ABC):
     def __init__(self, params: dict):
         super().__init__(params['prompts'])
         self.params = params
+
+
+ENGINE_UNREGISTERED = '<UNREGISTERED/>'
 
 
 class Engine(ABC):
@@ -73,6 +75,9 @@ class Engine(ABC):
                 }
             )
         return res, metadata
+
+    def id(self) -> str:
+        return ENGINE_UNREGISTERED
 
     def preview(self, wrp_params):
         return PreviewSymbol(wrp_params), {}

@@ -1,6 +1,6 @@
 from typing import List
 
-from .base import Engine
+from ..base import Engine
 
 
 def full_stack():
@@ -61,6 +61,9 @@ class PythonEngine(Engine):
 
     def __init__(self):
         super().__init__()
+
+    def id(self) -> str:
+        return 'execute'
 
     def forward(self, *args, **kwargs) -> List[str]:
         code = kwargs['prompt']

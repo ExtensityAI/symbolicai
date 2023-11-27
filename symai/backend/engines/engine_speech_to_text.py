@@ -1,12 +1,65 @@
 import logging
+import torch
+from itertools import takewhile
+from tqdm import tqdm
+from abc import ABC
 from typing import Iterable, List
 
-import torch
-from tqdm import tqdm
+from ..base import Engine
+from ..settings import SYMAI_CONFIG
 
-from ..formatter import WhisperTimestampsFormatter
-from .base import Engine
-from .settings import SYMAI_CONFIG
+
+class WhisperTimestampsFormatter(ABC):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, response: List[str]) -> str:
+        result = []
+        for i, interval in enumerate(response):
+            interval = self._filter_empty_string(interval)
+            prev_end = 0.0
+            prev_start = 0.0
+            for head, tail in zip(interval[::2], interval[1::2]):
+                start = self._get_timestamp(head)
+                end = self._get_timestamp(tail)
+                if start >= prev_end:
+                    start = prev_end
+                    prev_end = end
+                    prev_start = start
+                    result.append(f"{self._format_to_hours(start + (i*30))} {self._get_sentence(head)}")
+                    continue
+                if start < prev_start:
+                    continue
+                delta = end - start
+                if start + prev_end > 30:
+                    start = prev_end
+                else:
+                    start += prev_end
+                if start + delta > 30:
+                    end = 30
+                else:
+                    end = start + delta
+                prev_end = end
+                result.append(f"{self._format_to_hours(start + (i*30))} {self._get_sentence(head)}")
+        return "\n".join(result)
+
+    def _filter_empty_string(self, s: str) -> List[str]:
+        return list(filter(lambda x: x, s.split("<|")))
+
+    def _get_timestamp(self, s: str) -> float:
+        return float("".join(list(takewhile(lambda x: x != "|", s))))
+
+    def _get_sentence(self, s: str) -> str:
+        return s.split("|>")[-1]
+
+    def _format_to_hours(self, seconds: float) -> str:
+        hours = int(seconds // 3600)
+        seconds %= 3600
+        minutes = int(seconds // 60)
+        seconds %= 60
+        formatted_time = "{:02d}:{:02d}:{:02d}".format(hours, minutes, int(seconds))
+        return formatted_time
+
 
 try:
     import whisper
@@ -16,19 +69,25 @@ try:
 except ImportError:
     whisper = None
     N_SAMPLES = 16_000 * 30
-    print("Whisper is not installed. Please install it with `pip install symbolicai[whisper]`")
 
 
 class WhisperEngine(Engine):
     def __init__(self):
         super().__init__()
-        config = SYMAI_CONFIG
-        self.model = None # lazy loading
-        self.model_id = config['SPEECH_TO_TEXT_ENGINE_MODEL']
-        self.old_model_id = config['SPEECH_TO_TEXT_ENGINE_MODEL']
-        self.tokens = []
-        self.text = []
-        self.formatter = WhisperTimestampsFormatter()
+        self.config       = SYMAI_CONFIG
+        self.model        = None # lazy loading
+        self.model_id     = self.config['SPEECH_TO_TEXT_ENGINE_MODEL']
+        self.old_model_id = self.config['SPEECH_TO_TEXT_ENGINE_MODEL']
+        self.tokens       = []
+        self.text         = []
+        self.formatter    = WhisperTimestampsFormatter()
+
+    def id(self) -> str:
+        if  self.config['SPEECH_TO_TEXT_ENGINE_MODEL'] != '':
+            if whisper is None:
+                print("Whisper is not installed. Please install it with `pip install symbolicai[whisper]`")
+            return 'speech-to-text'
+        return super().id() # default to unregistered
 
     def command(self, wrp_params):
         super().command(wrp_params)

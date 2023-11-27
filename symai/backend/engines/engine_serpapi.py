@@ -1,21 +1,20 @@
+import json
+
 from typing import List
 from IPython.utils import io
 from box import Box
-import json
+from abc import ABC
 
-from .base import Engine
-from .settings import SYMAI_CONFIG
-from .. import Symbol
+from ..base import Engine
+from ..settings import SYMAI_CONFIG
 
 try:
     from serpapi import GoogleSearch
 except:
     GoogleSearch = None
-    print('SerpApi is not installed. Please install it with `pip install symbolicai[serpapi]`')
 
 
-
-class SearchResult(Symbol):
+class SearchResult(ABC):
     def __init__(self, value) -> None:
         super().__init__(value)
         self.raw = Box(value)
@@ -52,9 +51,16 @@ class SearchResult(Symbol):
 class SerpApiEngine(Engine):
     def __init__(self):
         super().__init__()
-        config = SYMAI_CONFIG
-        self.api_key = config['SEARCH_ENGINE_API_KEY']
-        self.engine = config['SEARCH_ENGINE_MODEL']
+        self.config = SYMAI_CONFIG
+        self.api_key = self.config['SEARCH_ENGINE_API_KEY']
+        self.engine = self.config['SEARCH_ENGINE_MODEL']
+
+    def id(self) -> str:
+        if  self.config['SEARCH_ENGINE_API_KEY'] != '':
+            if GoogleSearch is None:
+                print('SerpApi is not installed. Please install it with `pip install symbolicai[serpapi]`')
+            return 'search'
+        return super().id() # default to unregistered
 
     def command(self, wrp_params):
         super().command(wrp_params)

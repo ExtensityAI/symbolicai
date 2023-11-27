@@ -1,21 +1,15 @@
 import inspect
-import sys
 from pathlib import Path
 from random import sample
 from string import ascii_lowercase, ascii_uppercase
 from typing import Callable, Iterator, List, Optional, Type
-
 from tqdm import tqdm
 
-from .backend.engine_embedding import EmbeddingEngine
-from .backend.engine_gptX_chat import GPTXChatEngine
-from .backend.engine_pinecone import IndexEngine
-from .backend.mixin.openai import SUPPORTED_MODELS
 from .constraints import DictFormatConstraint
-from .core import *
 from .formatter import ParagraphFormatter
 from .symbol import Expression, Symbol
 from .utils import CustomUserWarning
+from . import core
 
 
 class TrackerTraceable(Expression):
@@ -352,8 +346,8 @@ class FileQuery(Expression):
 class Function(TrackerTraceable):
     def __init__(self, prompt: str,
                  examples: Optional[str] = [],
-                 pre_processors: Optional[List[PreProcessor]] = None,
-                 post_processors: Optional[List[PostProcessor]] = None,
+                 pre_processors: Optional[List[core.PreProcessor]] = None,
+                 post_processors: Optional[List[core.PostProcessor]] = None,
                  default: Optional[object] = None,
                  constraints: List[Callable] = [],
                  return_type: Optional[Type] = str, *args, **kwargs):
@@ -365,7 +359,7 @@ class Function(TrackerTraceable):
         self._promptTemplate = prompt
         self._promptFormatArgs = []
         self._promptFormatKwargs = {}
-        self.examples = Prompt(examples)
+        self.examples = core.Prompt(examples)
         self.pre_processors = pre_processors
         self.post_processors = post_processors
         self.constraints = constraints
@@ -389,7 +383,7 @@ class Function(TrackerTraceable):
         if 'fn' in kwargs:
             self.prompt = kwargs['fn']
             del kwargs['fn']
-        @few_shot(prompt=self.prompt,
+        @core.few_shot(prompt=self.prompt,
                   examples=self.examples,
                   pre_processors=self.pre_processors,
                   post_processors=self.post_processors,
@@ -414,10 +408,10 @@ class Function(TrackerTraceable):
 class JsonParser(Expression):
     def __init__(self, query: str, json_: dict):
         super().__init__()
-        func = Function(prompt=JsonPromptTemplate(query, json_),
+        func = Function(prompt=core.JsonPromptTemplate(query, json_),
                         constraints=[DictFormatConstraint(json_)],
-                        pre_processors=[JsonPreProcessor()],
-                        post_processors=[JsonTruncatePostProcessor()])
+                        pre_processors=[core.JsonPreProcessor()],
+                        post_processors=[core.JsonTruncatePostProcessor()])
         self.fn = Try(func, retries=1)
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
@@ -446,7 +440,7 @@ class SimilarityClassification(Expression):
         return Symbol(similarities[0][0])
 
     def _dynamic_cache(self):
-        @cache(in_memory=self.in_memory)
+        @core.cache(in_memory=self.in_memory)
         def embed_classes(self):
             opts = map(Symbol, self.classes)
             embeddings = [opt.embed() for opt in opts]
@@ -457,12 +451,12 @@ class SimilarityClassification(Expression):
 
 
 class InContextClassification(Expression):
-    def __init__(self, blueprint: Prompt):
+    def __init__(self, blueprint: core.Prompt):
         super().__init__()
         self.blueprint = blueprint
 
     def forward(self, x: Symbol, **kwargs) -> Symbol:
-        @few_shot(
+        @core.few_shot(
             prompt=x,
             examples=self.blueprint,
             **kwargs
@@ -473,131 +467,13 @@ class InContextClassification(Expression):
         return Symbol(_func(self))
 
 
-class OpenAICostTracker:
-    _supported_models = SUPPORTED_MODELS
-
-    def __init__(self):
-        self._inputs     = []
-        self._outputs    = []
-        self._embeddings = []
-        self._zero_shots = 0
-        self._few_shots  = 0
-
-    def __enter__(self):
-        if self._neurosymbolic_model() not in self._supported_models:
-            CustomUserWarning(f'We are currently supporting only the following models for the {self.__class__.__name__} feature: {self._supported_models}. Any other model will simply be ignored.')
-        sys.settrace(self._trace_call)
-
-        return self
-
-    def __exit__(self, *args):
-        sys.settrace(None)
-
-    def __repr__(self):
-        return f'''
-[BREAKDOWN]
-{'-=-' * 13}
-
-{self._neurosymbolic_model()} usage:
-    ${self._compute_io_costs():.3f} for {sum(self._inputs)} input tokens and {sum(self._outputs)} output tokens
-
-{self._embedding_model()} usage:
-    ${self._compute_embedding_costs():.3f} for {sum(self._embeddings)} tokens
-
-Total:
-    ${self._compute_io_costs() + self._compute_embedding_costs():.3f}
-
-{'-=-' * 13}
-
-Zero-shot calls: {self._zero_shots}
-
-{'-=-' * 13}
-
-Few-shot calls: {self._few_shots}
-
-{'-=-' * 13}
-'''
-
-    def _trace_call(self, frame, event, arg):
-        if event != 'call': return
-
-        code      = frame.f_code
-        func_name = code.co_name
-
-        if func_name != '_execute_query':
-            if    func_name == 'zero_shot': self._zero_shots += 1
-            elif  func_name == 'few_shot': self._few_shots += 1
-            else: return
-
-        engine = frame.f_locals.get('engine')
-
-        if isinstance(engine, GPTXChatEngine):
-            if self._neurosymbolic_model() not in self._supported_models: return
-
-            inp      = ''
-            prompt   = frame.f_locals['wrp_params'].get('prompt')
-            examples = frame.f_locals['wrp_params'].get('examples')
-
-            if prompt is not None:
-                if isinstance(prompt, str): inp += prompt + '\n'
-
-            if examples is not None:
-                if    isinstance(examples, str): inp += examples
-                elif  isinstance(examples, list): inp += '\n'.join(examples)
-                elif  isinstance(examples, Prompt): inp += examples.__repr__()
-
-            self._inputs.append(len(Symbol(inp).tokens))
-
-        elif isinstance(engine, EmbeddingEngine):
-            if self._embedding_model() not in self._supported_models: return
-
-            text = frame.f_locals.get('wrp_self')
-
-            if text is not None:
-                if   isinstance(text, str): self._embeddings.append(len(Symbol(text).tokens))
-                elif isinstance(text, list): self._embeddings.append(len(Symbol(text[0]).tokens))
-                elif isinstance(text, Symbol): self._embeddings.append(len(text.tokens))
-
-        return self._trace_return
-
-    def _trace_return(self, frame, event, arg):
-        if event != 'return': return
-
-        engine = frame.f_locals.get('engine')
-
-        if isinstance(engine, GPTXChatEngine):
-            self._outputs.append(len(Symbol(arg).tokens))
-
-    def _compute_io_costs(self):
-        if self._neurosymbolic_model() not in self._supported_models: return 0
-
-        return (sum(self._inputs) * self._neurosymbolic_pricing()['input']) + (sum(self._outputs) * self._neurosymbolic_pricing()['output'])
-
-    def _compute_embedding_costs(self):
-        if self._embedding_model() not in self._supported_models: return 0
-
-        return sum(self._embeddings) * self._embedding_pricing()['usage']
-
-    @bind(engine='neurosymbolic', property='model')
-    def _neurosymbolic_model(self): pass
-
-    @bind(engine='neurosymbolic', property='pricing')
-    def _neurosymbolic_pricing(self): pass
-
-    @bind(engine='embedding', property='model')
-    def _embedding_model(self): pass
-
-    @bind(engine='embedding', property='pricing')
-    def _embedding_pricing(self): pass
-
-
 class TokenTracker(Expression):
     def __init__(self):
         super().__init__()
         self._trace: bool    = False
         self._previous_frame = None
 
-    @bind(engine='neurosymbolic', property='max_tokens')
+    @core.bind(engine='neurosymbolic', property='max_tokens')
     def max_tokens(self): pass
 
     def __enter__(self):
@@ -684,7 +560,6 @@ Matches:
         self.formatter  = formatter
         self.sym_return_type = Expression
 
-        Expression.setup({'index': IndexEngine(index_name=index_name)})
         # append index name to indices.txt in home directory .symai folder (default)
         self.path = Path.home() / '.symai' / 'indices.txt'
         if not self.path.exists():

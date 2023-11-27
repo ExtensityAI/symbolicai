@@ -1,11 +1,14 @@
 from typing import List
 
-from .base import Engine
+from ..base import Engine
 
 
 class OutputEngine(Engine):
     def __init__(self):
         super().__init__()
+
+    def id(self) -> str:
+        return 'output'
 
     def forward(self, *args, **kwargs) -> List[str]:
         expr = kwargs['expr'] if 'expr' in kwargs else None
