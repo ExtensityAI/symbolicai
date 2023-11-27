@@ -1,6 +1,4 @@
-from typing import List, Optional
-
-import numpy as np
+from typing import List
 
 from ... import core
 from ...symbol import Expression

@@ -16,6 +16,7 @@ try:
 except ImportError:
     whisper = None
     N_SAMPLES = 16_000 * 30
+    print("Whisper is not installed. Please install it with `pip install symbolicai[whisper]`")
 
 
 class WhisperEngine(Engine):

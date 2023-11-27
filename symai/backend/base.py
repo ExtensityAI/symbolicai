@@ -62,7 +62,7 @@ class Engine(ABC):
             or str(self) == 'GPTXCompletionEngine' \
             or str(self) == 'SerpApiEngine' \
             or str(self) == 'WolframAlphaEngine' \
-            or str(self) == 'CrawlerEngine' \
+            or str(self) == 'SeleniumEngine' \
             or str(self) == 'OCREngine':
             self.collection.add(
                 forward={'args': rec_serialize(args), 'kwds': rec_serialize(kwds)},

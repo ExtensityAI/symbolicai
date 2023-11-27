@@ -4,7 +4,7 @@ from .base import Engine
 from .driver.webclient import connect_browsers, dump_page_source, page_loaded
 
 
-class CrawlerEngine(Engine):
+class SeleniumEngine(Engine):
     def __init__(self, debug: bool = False):
         super().__init__()
         self.debug = debug

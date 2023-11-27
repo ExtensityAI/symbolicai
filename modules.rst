@@ -35,7 +35,7 @@
 .. automodule:: symai.backend.engine_clip
    :members:
 
-.. automodule:: symai.backend.engine_crawler
+.. automodule:: symai.backend.engine_selenium
    :members:
 
 .. automodule:: symai.backend.engine_embedding
