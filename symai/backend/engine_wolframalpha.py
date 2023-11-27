@@ -7,6 +7,7 @@ try:
     import wolframalpha as wa
 except:
     wa = None
+    print('WolframAlpha is not installed. Please install it with `pip install symbolicai[wolframalpha]`')
 
 
 class WolframAlphaEngine(Engine):

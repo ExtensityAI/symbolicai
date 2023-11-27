@@ -408,8 +408,8 @@ def check_or_init_crawler_func(engine = None):
     if engine is not None:
         crawler_engine = engine
     elif crawler_engine is None:
-        from .backend.engine_crawler import CrawlerEngine
-        crawler_engine = CrawlerEngine()
+        from .backend.engine_selenium import SeleniumEngine
+        crawler_engine = SeleniumEngine()
 
 
 def crawler_func(wrp_self,

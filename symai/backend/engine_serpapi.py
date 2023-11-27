@@ -11,6 +11,7 @@ try:
     from serpapi import GoogleSearch
 except:
     GoogleSearch = None
+    print('SerpApi is not installed. Please install it with `pip install symbolicai[serpapi]`')
 
 
 
