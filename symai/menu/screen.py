@@ -25,7 +25,7 @@ def show_info_message(print: callable = print_formatted_text):
     print('Welcome to SymbolicAI!' + '\n')
     print('SymbolicAI is an open-source Python project for building AI-powered applications\nand assistants.')
     print('We utilize the power of large language models and the latest research in AI.' + '\n')
-    print('SymbolicAI is backed by ExtensityAI, an open-source non-profit organization. We are\ncommitted to open research, the democratization of AI tools and much more ...' + '\n')
+    print('SymbolicAI is backed by ExtensityAI. We are committed to open research,\nthe democratization of AI tools and much more ...' + '\n')
 
     print('... and we also like peanut butter and jelly sandwiches, and cookies.' + '\n\n')
     print('If you like what we are doing please help us achieve our mission!')
@@ -267,7 +267,7 @@ def show_main_setup_menu(session: PromptSession = None):
             console.print(msg)
     else:
         with ConsoleStyle('alert') as console:
-            msg = 'Being an open-source non-profit organization we rely on donations to keep our servers running and to support our researchers. If you wish that we can thrive together please consider donating to our open collective. Without your support we cannot continue our mission, since also peanuts and jelly sandwiches are not free, or even cookies for that matter. You can donate at https://opencollective.com/symbolicai and keep track of our expenses and donations. We thank you very much for your support!'
+            msg = 'We rely on donations to keep our servers running and to support our researchers. If you wish that we can thrive together please consider donating to our open collective. Without your support we cannot continue our mission, since also peanuts and jelly sandwiches are not free, or even cookies for that matter. You can donate at https://opencollective.com/symbolicai and keep track of our expenses and donations. We thank you very much for your support!'
             console.print(msg)
 
 
