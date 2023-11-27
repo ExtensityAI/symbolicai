@@ -25,7 +25,7 @@ def show_info_message(print: callable = print_formatted_text):
     print('Welcome to SymbolicAI!' + '\n')
     print('SymbolicAI is an open-source Python project for building AI-powered applications\nand assistants.')
     print('We utilize the power of large language models and the latest research in AI.' + '\n')
-    print('SymbolicAI is backed by ExtensityAI. We are\ncommitted to open research, the democratization of AI tools and much more ...' + '\n')
+    print('SymbolicAI is backed by ExtensityAI. We are committed to open research,\nthe democratization of AI tools and much more ...' + '\n')
 
     print('... and we also like peanut butter and jelly sandwiches, and cookies.' + '\n\n')
     print('If you like what we are doing please help us achieve our mission!')
