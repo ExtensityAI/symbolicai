@@ -5,7 +5,7 @@ import pandas as pd
 
 import symai as ai
 from symai import Expression, Symbol
-from symai.backend.engine_nesy_client import NeSyClientEngine
+from symai.backend.engines.engine_nesy_client import NeSyClientEngine
 from symai.extended import Solver
 
 

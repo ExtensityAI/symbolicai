@@ -3,7 +3,9 @@ from typing import List
 
 import rpyc
 
-from .base import Engine
+from ..base import Engine
+from ..settings import SYMAI_CONFIG
+
 
 rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True
 
@@ -13,10 +15,16 @@ class NeSyClientEngine(Engine):
         super().__init__()
         logger = logging.getLogger('nesy_client')
         logger.setLevel(logging.WARNING)
+        self. config    = SYMAI_CONFIG
         self.host       = host
         self.port       = port
         self.timeout    = timeout
         self.connection = None
+
+    def id(self) -> str:
+        if  self.config['NEUROSYMBOLIC_ENGINE_MODEL'] == 'localhost':
+            return 'neurosymbolic'
+        return super().id() # default to unregistered
 
     @property
     def max_tokens(self):

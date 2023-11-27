@@ -5,13 +5,12 @@ from typing import Any, Optional
 from .backend import settings as settings
 from .components import (IncludeFilter, InContextClassification,
                          OpenAICostTracker, Outline, Output, Sequence)
-from .core import *
 from .memory import Memory, SlidingWindowListMemory, VectorDatabaseMemory
 from .post_processors import ConsolePostProcessor, StripPostProcessor
 from .pre_processors import ConsoleInputPreProcessor
 from .prompts import MemoryCapabilities, SymbiaCapabilities
 from .symbol import Expression, Symbol
-import symai as ai
+from . import Interface, core
 
 logging.getLogger('charset_normalizer').setLevel(logging.ERROR)
 
@@ -25,11 +24,11 @@ class ChatBot(Expression):
         self.verbose: bool   = verbose
         self.name            = name
         self.last_user_input: str = ''
-        self.dalle   = ai.Interface('dall_e')
-        self.search  = ai.Interface('serpapi')
-        self.fetch   = ai.Interface('selenium')
-        self.speech  = ai.Interface('whisper')
-        self.ocr     = ai.Interface('ocr')
+        self.dalle   = Interface('dall_e')
+        self.search  = Interface('serpapi')
+        self.fetch   = Interface('selenium')
+        self.speech  = Interface('whisper')
+        self.ocr     = Interface('ocr')
 
         self.short_term_memory: Memory = SlidingWindowListMemory(window_size=10)
         self.long_term_memory:  Memory = VectorDatabaseMemory(enabled=settings.SYMAI_CONFIG['INDEXING_ENGINE_API_KEY'] is not None, top_k=10)
@@ -90,7 +89,7 @@ class ChatBot(Expression):
         return Symbol(reply)
 
     def input(self, message: str = "Please add more information", **kwargs) -> Symbol:
-        @userinput(
+        @core.userinput(
             pre_processors=[self._preprocessor()],
             post_processors=[StripPostProcessor(),
                             self._postprocessor()],
@@ -293,7 +292,7 @@ Reflection: {self._extract_reflection(context)}
 The chatbot always reply in the following format
 {self.name}: <reply>
 '''
-        @zero_shot(prompt=prompt, **kwargs)
+        @core.zero_shot(prompt=prompt, **kwargs)
         def _func(_) -> str:
             pass
         if self.verbose: logging.debug(f'Narration:\n{prompt}\n')

@@ -2,18 +2,23 @@ from typing import List
 
 import requests
 
-from .base import Engine
-from .settings import SYMAI_CONFIG
+from ..base import Engine
+from ..settings import SYMAI_CONFIG
 
 
 class OCREngine(Engine):
     def __init__(self):
         super().__init__()
         # Opening JSON file
-        config = SYMAI_CONFIG
+        self.config = SYMAI_CONFIG
         self.headers = {
-            "apikey": config['OCR_ENGINE_API_KEY']
+            "apikey": self.config['OCR_ENGINE_API_KEY']
         }
+
+    def id(self) -> str:
+        if  self.config['OCR_ENGINE_API_KEY'] != '':
+            return 'ocr'
+        return super().id() # default to unregistered
 
     def command(self, wrp_params):
         super().command(wrp_params)

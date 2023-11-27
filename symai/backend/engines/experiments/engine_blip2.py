@@ -2,14 +2,17 @@ from typing import List
 
 import requests
 import torch
-from accelerate import init_empty_weights
-from lavis.models import load_model, load_model_and_preprocess, load_preprocess
-from lavis.models.blip2_models.blip2_opt import Blip2OPT
-from lavis.processors import load_processor
+
+try:
+    from lavis.models import load_model_and_preprocess
+except ImportError:
+    load_model_and_preprocess = None
+    print('Blip2 is not installed. Please install it with `pip install symbolicai[blip2]`')
+
 from PIL import Image
 
-from .base import Engine
-from .settings import SYMAI_CONFIG
+from ...base import Engine
+from ...settings import SYMAI_CONFIG
 
 
 class Blip2Engine(Engine):

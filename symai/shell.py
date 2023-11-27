@@ -2,7 +2,7 @@ import argparse
 import os
 
 from .components import Lambda, Try
-from .core import *
+from .core import few_shot
 from .misc.console import ConsoleStyle
 from .misc.loader import Loader
 from .post_processors import StripPostProcessor

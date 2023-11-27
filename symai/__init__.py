@@ -269,18 +269,7 @@ _start_symai()
 
 from .backend.base import Engine
 from .chat import ChatBot, SymbiaChat
-from .components import *
-from .constraints import *
-from .core import *
-from .exceptions import *
-from .formatter import *
-from .imports import *
-from .interfaces import *
-from .memory import *
-from .post_processors import *
-from .pre_processors import *
 from .prompts import Prompt
 from .shell import Shell
-from .strategy import *
-from .symbol import *
-from .utils import parallel
+from .strategy import Strategy
+from .symbol import Symbol, Expression

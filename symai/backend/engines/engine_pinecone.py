@@ -8,9 +8,9 @@ try:
 except:
     pinecone = None
 
-from ..core import retry
-from .base import Engine
-from .settings import SYMAI_CONFIG
+from ..base import Engine
+from ..settings import SYMAI_CONFIG
+from ... import core
 
 
 def chunks(iterable, batch_size=100):
@@ -68,6 +68,13 @@ class IndexEngine(Engine):
         self.backoff        = backoff
         self.jitter         = jitter
         self.index          = None
+
+    def id(self) -> str:
+        if  SYMAI_CONFIG['INDEXING_ENGINE_API_KEY'] != '':
+            if pinecone is None:
+                print('Pinecone is not installed. Please install it with `pip install symbolicai[pinecone]`.')
+            return 'index'
+        return super().id() # default to unregistered
 
     def command(self, wrp_params):
         super().command(wrp_params)
@@ -141,14 +148,14 @@ class IndexEngine(Engine):
         self.index = pinecone.Index(index_name=self.index_name)
 
     def _upsert(self, vectors):
-        @retry(tries=self.tries, delay=self.delay, max_delay=self.max_delay, backoff=self.backoff, jitter=self.jitter)
+        @core.retry(tries=self.tries, delay=self.delay, max_delay=self.max_delay, backoff=self.backoff, jitter=self.jitter)
         def _func():
             return self.index.upsert(vectors=vectors)
 
         return _func()
 
     def _query(self, query, index_top_k, index_values, index_metadata):
-        @retry(tries=self.tries, delay=self.delay, max_delay=self.max_delay, backoff=self.backoff, jitter=self.jitter)
+        @core.retry(tries=self.tries, delay=self.delay, max_delay=self.max_delay, backoff=self.backoff, jitter=self.jitter)
         def _func():
             return self.index.query(vector=query, top_k=index_top_k, include_values=index_values, include_metadata=index_metadata)
 

@@ -7,7 +7,6 @@ import numpy as np
 
 from . import core
 from .ops import SYMBOL_PRIMITIVES
-from .utils import deprecated
 
 
 class SymbolEncoder(JSONEncoder):

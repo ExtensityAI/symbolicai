@@ -1,21 +1,27 @@
 from typing import List
 
-from .base import Engine
-from .settings import SYMAI_CONFIG
+from ..base import Engine
+from ..settings import SYMAI_CONFIG
 
 try:
     import wolframalpha as wa
 except:
     wa = None
-    print('WolframAlpha is not installed. Please install it with `pip install symbolicai[wolframalpha]`')
 
 
 class WolframAlphaEngine(Engine):
     def __init__(self):
         super().__init__()
-        config       = SYMAI_CONFIG
-        self.api_key = config['SYMBOLIC_ENGINE_API_KEY']
+        self.config  = SYMAI_CONFIG
+        self.api_key = self.config['SYMBOLIC_ENGINE_API_KEY']
         self.client  = None
+
+    def id(self) -> str:
+        if  self.config['SYMBOLIC_ENGINE_API_KEY'] != '':
+            if wa is None:
+                print('WolframAlpha is not installed. Please install it with `pip install symbolicai[wolframalpha]`')
+            return 'symbolic'
+        return super().id() # default to unregistered
 
     def command(self, wrp_params):
         super().command(wrp_params)

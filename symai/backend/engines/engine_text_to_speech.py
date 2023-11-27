@@ -1,27 +1,25 @@
-import logging
-from typing import Iterable, List
+from typing import List
 
-import torch
-import openai
-from tqdm import tqdm
+from ..base import Engine
+from ..settings import SYMAI_CONFIG
 
-from ..formatter import WhisperTimestampsFormatter
-from .base import Engine
-from .settings import SYMAI_CONFIG
-
-from pathlib import Path
 from openai import OpenAI
 
 
 class TTSEngine(Engine):
     def __init__(self):
         super().__init__()
-        config = SYMAI_CONFIG
-        self.api_key  = config['TEXT_TO_SPEECH_ENGINE_API_KEY']
-        self.model_id = config['TEXT_TO_SPEECH_ENGINE_MODEL']
-        self.tokens = []
-        self.text = []
-        self.client = OpenAI(api_key=self.api_key)
+        self.config   = SYMAI_CONFIG
+        self.api_key  = self.config['TEXT_TO_SPEECH_ENGINE_API_KEY']
+        self.model_id = self.config['TEXT_TO_SPEECH_ENGINE_MODEL']
+        self.tokens   = []
+        self.text     = []
+        self.client   = OpenAI(api_key=self.api_key)
+
+    def id(self) -> str:
+        if  self.config['TEXT_TO_SPEECH_ENGINE_API_KEY'] != '':
+            return 'text-to-speech'
+        return super().id() # default to unregistered
 
     def command(self, wrp_params):
         super().command(wrp_params)

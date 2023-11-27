@@ -32,53 +32,53 @@
 .. automodule:: symai.backend.base
    :members:
 
-.. automodule:: symai.backend.engine_clip
+.. automodule:: symai.backend.engines.engine_clip
    :members:
 
-.. automodule:: symai.backend.engine_selenium
+.. automodule:: symai.backend.engines.engine_selenium
    :members:
 
-.. automodule:: symai.backend.engine_embedding
+.. automodule:: symai.backend.engines.engine_embedding
    :members:
 
-.. automodule:: symai.backend.engine_file
+.. automodule:: symai.backend.engines.engine_file
    :members:
 
-.. automodule:: symai.backend.engine_google
+.. automodule:: symai.backend.engines.engine_google
    :members:
 
-.. automodule:: symai.backend.engine_gptX_chat
+.. automodule:: symai.backend.engines.engine_gptX_chat
    :members:
 
-.. automodule:: symai.backend.engine_gptX_completion
+.. automodule:: symai.backend.engines.engine_gptX_completion
    :members:
 
-.. automodule:: symai.backend.engine_imagerendering
+.. automodule:: symai.backend.engines.engine_imagerendering
    :members:
 
-.. automodule:: symai.backend.engine_pinecone
+.. automodule:: symai.backend.engines.engine_pinecone
    :members:
 
-.. automodule:: symai.backend.engine_nesy_client
+.. automodule:: symai.backend.engines.engine_nesy_client
    :members:
 
-.. automodule:: symai.backend.engine_ocr
+.. automodule:: symai.backend.engines.engine_ocr
    :members:
 
-.. automodule:: symai.backend.engine_output
+.. automodule:: symai.backend.engines.engine_output
    :members:
 
-.. automodule:: symai.backend.engine_python
+.. automodule:: symai.backend.engines.engine_python
    :members:
 
-.. automodule:: symai.backend.engine_speech_to_text
+.. automodule:: symai.backend.engines.engine_speech_to_text
    :members:
 
-.. automodule:: symai.backend.engine_text_to_speech
+.. automodule:: symai.backend.engines.engine_text_to_speech
    :members:
 
-.. automodule:: symai.backend.engine_userinput
+.. automodule:: symai.backend.engines.engine_userinput
    :members:
 
-.. automodule:: symai.backend.engine_wolframalpha
+.. automodule:: symai.backend.engines.engine_wolframalpha
    :members:

@@ -3,12 +3,15 @@ from typing import List
 import PyPDF2
 from tika import unpack
 
-from .base import Engine
+from ..base import Engine
 
 
 class FileEngine(Engine):
     def __init__(self):
         super().__init__()
+
+    def id(self) -> str:
+        return 'files'
 
     def reset_eof_of_pdf_return_stream(self, pdf_stream_in: list):
         actual_line = len(pdf_stream_in)  # Predefined value in case EOF not found
