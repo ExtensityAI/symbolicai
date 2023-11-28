@@ -6,6 +6,7 @@ import numpy as np
 from examples.news import News
 from examples.paper import Paper
 from symai import *
+from symai.components import *
 # test with huggingface backend
 from symai.backend.engines.engine_nesy_client import NeSyClientEngine
 from symai.chat import SymbiaChat

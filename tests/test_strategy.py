@@ -1,7 +1,7 @@
 import unittest
 
-from symai import Function, Interface, Strategy
-
+from symai import Interface, Strategy
+from symai.components import Function
 
 class TestStrategy(unittest.TestCase):
     def test_long_text_strategy(self):

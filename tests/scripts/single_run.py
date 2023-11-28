@@ -1,10 +1,6 @@
 import argparse
-from pathlib import Path
 
-import pandas as pd
-
-import symai as ai
-from symai import Expression, Symbol
+from symai import Expression
 from symai.backend.engines.engine_nesy_client import NeSyClientEngine
 from symai.extended import Solver
 
