@@ -1035,8 +1035,7 @@ def expression(prompt: str = "Evaluate the symbolic expressions:\n",
                                 constraints=constraints,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                decorator_kwargs=decorator_kwargs,
-                                argment=argument)
+                                argument=argument)
         return wrapper
     return decorator
 
@@ -1495,7 +1494,7 @@ def search(query: str,
                                 engine='search',
                                 instance=instance,
                                 func=func,
-                                query=query,
+                                prompt=query,
                                 constraints=constraints,
                                 default=default,
                                 limit=limit,
@@ -1531,12 +1530,12 @@ def opening(path: str,
         @functools.wraps(func)
         def wrapper(instance, *signature_args, **signature_kwargs):
             # Construct container object for the arguments and kwargs
+            decorator_kwargs['path'] = path
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
             return EngineRepository().process_query(
                                 engine='files',
                                 instance=instance,
                                 func=func,
-                                path=path,
                                 constraints=constraints,
                                 default=default,
                                 limit=limit,
@@ -1566,11 +1565,11 @@ def embed(entries: List[str],
         @functools.wraps(func)
         def wrapper(instance, *signature_args, **signature_kwargs):
             # Construct container object for the arguments and kwargs
+            decorator_kwargs['entries'] = entries
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
             return EngineRepository().process_query(
                                 engine='embedding',
                                 instance=instance,
-                                entries=entries,
                                 func=func,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
@@ -1621,11 +1620,11 @@ def draw(operation: str = 'create',
         @functools.wraps(func)
         def wrapper(instance, *signature_args, **signature_kwargs):
             # Construct container object for the arguments and kwargs
+            decorator_kwargs['operation'] = operation
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
             return EngineRepository().process_query(
                                 engine='imagerendering',
                                 instance=instance,
-                                operation=operation,
                                 prompt=prompt,
                                 func=func,
                                 pre_processors=pre_processors,
@@ -1656,11 +1655,11 @@ def vision(image: Optional[str] = None,
         @functools.wraps(func)
         def wrapper(instance, *signature_args, **signature_kwargs):
             # Construct container object for the arguments and kwargs
+            decorator_kwargs['image'] = image
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
             return EngineRepository().process_query(
                                 engine='vision',
                                 instance=instance,
-                                image=image,
                                 prompt=text,
                                 func=func,
                                 pre_processors=pre_processors,
@@ -1689,11 +1688,11 @@ def ocr(image: str,
         @functools.wraps(func)
         def wrapper(instance, *signature_args, **signature_kwargs):
             # Construct container object for the arguments and kwargs
+            decorator_kwargs['image'] = image
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
             return EngineRepository().process_query(
                                 engine='ocr',
                                 instance=instance,
-                                image=image,
                                 func=func,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
@@ -1754,14 +1753,14 @@ def text_to_speech(prompt: str,
         @functools.wraps(func)
         def wrapper(instance, *signature_args, **signature_kwargs):
             # Construct container object for the arguments and kwargs
+            decorator_kwargs['path']  = path
+            decorator_kwargs['voice'] = voice
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
             return EngineRepository().process_query(
                                 engine='text-to-speech',
                                 instance=instance,
                                 func=func,
                                 prompt=prompt,
-                                voice=voice,
-                                path=path,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
                                 argument=argument)
@@ -1830,13 +1829,13 @@ def fetch(url: str,
         @functools.wraps(func)
         def wrapper(instance, *signature_args, **signature_kwargs):
             # Construct container object for the arguments and kwargs
+            decorator_kwargs['url'] = url
+            decorator_kwargs['pattern'] = pattern
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
             return EngineRepository().process_query(
                                 engine='crawler',
                                 instance=instance,
                                 func=func,
-                                url=url,
-                                pattern=pattern,
                                 constraints=constraints,
                                 default=default,
                                 limit=limit,
@@ -1904,12 +1903,12 @@ def execute(default: Optional[str] = None,
         @functools.wraps(func)
         def wrapper(instance, *signature_args, **signature_kwargs):
             # Construct container object for the arguments and kwargs
+            decorator_kwargs['code'] = str(instance)
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
             return EngineRepository().process_query(
                                 engine='execute',
                                 instance=instance,
                                 func=func,
-                                code=str(instance),
                                 constraints=constraints,
                                 default=default,
                                 pre_processors=pre_processors,
@@ -1944,13 +1943,13 @@ def index(prompt: Any,
         @functools.wraps(func)
         def wrapper(instance, *signature_args, **signature_kwargs):
             # Construct container object for the arguments and kwargs
+            decorator_kwargs['operation'] = operation
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
             return EngineRepository().process_query(
                                 engine='index',
                                 instance=instance,
                                 func=func,
                                 prompt=prompt,
-                                operation=operation,
                                 constraints=constraints,
                                 default=default,
                                 pre_processors=pre_processors,
@@ -1960,38 +1959,32 @@ def index(prompt: Any,
     return decorator
 
 
-def command(engines: List[str] = ['all'],
-            **decorator_kwargs):
+def command(engines: List[str] = ['all']):
     """Decorates a function to forward commands to the engine backends.
 
     Args:
         engines (List[str], optional): A list of engines to forward the command to. Defaults to ['all'].
-        decorator_kwargs (dict): A dictionary of keyword arguments to the command function.
 
     Returns:
         Callable: The decorated function.
     """
     def decorator(func):
         @functools.wraps(func)
-        def wrapper(instance, **kwargs):
+        def wrapper(instance):
             return EngineRepository().execute_command(
                     engines=engines,
                     instance=instance,
-                    func=func,
-                    decorator_kwargs=decorator_kwargs,
-                    kwargs=kwargs
+                    func=func
                 )
         return wrapper
     return decorator
 
 
-def register(engines: Dict[str, Any],
-          **decorator_kwargs):
+def register(engines: Dict[str, Any]):
     """Decorates a function to initialize custom engines as backends.
 
     Args:
         engines (Dict[str], optional): A dictionary of engines to initialize a custom setup.
-        decorator_kwargs (dict): A dictionary of keyword arguments to the command function.
 
     Returns:
         Callable: The decorated function.
@@ -2002,9 +1995,7 @@ def register(engines: Dict[str, Any],
             return EngineRepository().register(
                     engines=engines,
                     instance=instance,
-                    func=func,
-                    decorator_kwargs=decorator_kwargs,
-                    kwargs=kwargs
+                    func=func
                 )
         return wrapper
     return decorator
@@ -2028,7 +2019,7 @@ def tune(operation: str = 'create',
     def decorator(func):
         @functools.wraps(func)
         def wrapper(instance, *signature_args, **signature_kwargs):
-            signature_kwargs['__cmd__'] = operation #TODO: update engine
+            decorator_kwargs['__cmd__'] = operation #TODO: update engine
             # Construct container object for the arguments and kwargs
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
             return EngineRepository().process_query(
@@ -2063,12 +2054,12 @@ def caption(image: str,
         @functools.wraps(func)
         def wrapper(instance, *signature_args, **signature_kwargs):
             # Construct container object for the arguments and kwargs
+            decorator_kwargs['image'] = image
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
             return EngineRepository().process_query(
                                 engine='imagecaptioning',
                                 instance=instance,
                                 prompt=prompt,
-                                image=image,
                                 func=func,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
