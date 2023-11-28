@@ -1,6 +1,7 @@
 import unittest
 
-from symai import Expression, Symbol, Template
+from symai import Expression, Symbol
+from symai.components import Template
 
 Expression.command(time_clock=True)
 

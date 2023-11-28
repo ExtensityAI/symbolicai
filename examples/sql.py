@@ -3,6 +3,7 @@ from symai.post_processors import StripPostProcessor
 from symai.pre_processors import PreProcessor
 from symai.symbol import Expression, Symbol
 
+
 SQL_CONTEXT = """[Description]
 The following statements describe the Structured Query Language (SQL):
 

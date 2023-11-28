@@ -3,13 +3,14 @@ import unittest
 
 import numpy as np
 
-# from examples.news import News
-# from examples.paper import Paper
-# from examples.sql import SQL
+from examples.news import News
+from examples.paper import Paper
+from examples.sql import SQL
 from symai import *
 from symai.chat import SymbiaChat
 from symai.extended import *
-from symai import FileReader, JsonParser
+from symai import FileReader
+from symai.components import *
 
 # for debugging
 # attention this constantly overwrites the keys config file
@@ -756,7 +757,7 @@ modified:   tests/test_composition.py
         self.assertTrue(is_sql == 'no')
 
     def test_new_function(self):
-        llm_fn = ai.Function('This function transform natural language text to python code.')
+        llm_fn = Function('This function transform natural language text to python code.')
         res = llm_fn('marius is equal to five plus leo')
         self.assertTrue('hello' in res)
 

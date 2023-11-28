@@ -274,3 +274,9 @@ from .prompts import Prompt
 from .shell import Shell
 from .strategy import Strategy
 from .symbol import Symbol, Expression
+from .interfaces import Interface
+from .imports import Import
+from .components import Function
+from .pre_processors import PreProcessor
+from .post_processors import PostProcessor
+from .core import few_shot, zero_shot

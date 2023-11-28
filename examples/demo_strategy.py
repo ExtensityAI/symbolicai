@@ -1,7 +1,7 @@
 import logging
 from pydoc import locate
 
-from .symbol import Expression
+from symai import Expression
 
 
 class Strategy(Expression):

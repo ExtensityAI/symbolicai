@@ -1,6 +1,6 @@
 import unittest
 
-from symai import Expression, Import
+from symai import Import
 
 
 class TestImport(unittest.TestCase):

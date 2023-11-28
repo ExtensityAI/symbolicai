@@ -1,6 +1,6 @@
 from typing import List
 
-import symai as ai
+import symai.core as ai
 
 
 class Demo(ai.Symbol):
