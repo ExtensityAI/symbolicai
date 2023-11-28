@@ -1,10 +1,12 @@
-from ...symbol import Symbol, Expression
-from ...interfaces import Interface
-from . import Persona
-from typing import List, Tuple
 import os
 import logging
+
+from typing import List, Tuple
 from pydub import AudioSegment
+
+from ...symbol import Expression
+from ...interfaces import Interface
+from . import Persona
 
 
 logger = logging.getLogger('pydub').setLevel(logging.WARNING)

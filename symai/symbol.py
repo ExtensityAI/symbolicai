@@ -1,9 +1,9 @@
 import json
+import numpy as np
+
 from abc import ABC
 from json import JSONEncoder
 from typing import Any, Dict, Iterator, List, Optional, Type, Union
-
-import numpy as np
 
 from . import core
 from .ops import SYMBOL_PRIMITIVES

@@ -1,6 +1,6 @@
 from ...components import Function
 from ...symbol import Expression, Symbol
-from . import Persona # keep this import for reflection to work
+from .persona import Persona # keep this import for reflection to work
 
 
 PERSONA_BUILDER_DESCRIPTION = """[Task]

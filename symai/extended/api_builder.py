@@ -1,10 +1,8 @@
-from ..core import *
-from ..formatter import SentenceFormatter
-from ..post_processors import StripPostProcessor
+from .. import core
 from ..pre_processors import PreProcessor
-from ..prompts import Prompt
+from ..post_processors import CodeExtractPostProcessor
 from ..symbol import Expression, Symbol
-from ..components import Execute, Try
+from ..components import Execute
 
 
 API_BUILDER_DESCRIPTION = """[Description]
@@ -80,7 +78,7 @@ class APIBuilder(Expression):
         self.sym_return_type = APIBuilder
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
-        @zero_shot(prompt="Build the API call code:\n",
+        @core.zero_shot(prompt="Build the API call code:\n",
                    pre_processors=[APIBuilderPreProcessor()],
                    post_processors=[CodeExtractPostProcessor()], **kwargs)
         def _func(_, text) -> str:

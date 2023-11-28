@@ -1,15 +1,15 @@
 import logging
 import torch
+
 from itertools import takewhile
 from tqdm import tqdm
-from abc import ABC
 from typing import Iterable, List
 
 from ..base import Engine
 from ..settings import SYMAI_CONFIG
+from ...symbol import Expression
 
-
-class WhisperTimestampsFormatter(ABC):
+class WhisperTimestampsFormatter(Expression):
     def __init__(self):
         super().__init__()
 

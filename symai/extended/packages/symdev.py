@@ -1,7 +1,8 @@
-import argparse
 import json
 import os
 import sys
+import argparse
+
 from pathlib import Path
 
 

@@ -1,14 +1,9 @@
 import ast
 import inspect
-import os
-import pickle
-import random
-import time
 import traceback
 import importlib
 import pkgutil
 
-from pathlib import Path
 from typing import Callable, Dict, List, Optional
 from types import ModuleType
 from typing import Dict, Any, Tuple
@@ -178,58 +173,6 @@ def _process_query(engine,
         rsp = tuple(list(rsp)[:limit_])
 
     return rsp
-
-
-def retry_func(
-    func: callable,
-    exceptions: Exception,
-    tries: int,
-    delay: int,
-    max_delay: int,
-    backoff=int,
-    jitter=int
-):
-    _tries, _delay = tries, delay
-    while _tries:
-        try:
-            return func()
-        except exceptions as e:
-            _tries -= 1
-            if not _tries:
-                raise
-
-            time.sleep(_delay)
-            _delay *= backoff
-
-            if isinstance(jitter, tuple):
-                _delay += random.uniform(*jitter)
-            else:
-                _delay += jitter
-
-            if max_delay >= 0:
-                _delay = min(_delay, max_delay)
-
-
-def cache_registry_func(
-        in_memory: bool,
-        cache_path: str,
-        func: Callable,
-        *args, **kwargs
-    ):
-
-    if not os.path.exists(cache_path): os.makedirs(cache_path)
-
-    if in_memory and os.path.exists(Path(cache_path) / func.__qualname__):
-        with open(Path(cache_path) / func.__qualname__, 'rb') as f:
-            call = pickle.load(f)
-
-        return call
-
-    call = func(*args, **kwargs)
-    with open(Path(cache_path) / func.__qualname__, 'wb') as f:
-        pickle.dump(call , f)
-
-    return call
 
 
 class EngineRepository(object):

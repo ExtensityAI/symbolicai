@@ -1,7 +1,7 @@
-from json import JSONEncoder
-import json
 from typing import List
+
 from . import core
+from . import decorator
 from .symbol import Expression, Symbol
 from .components import Function
 
@@ -49,7 +49,7 @@ class SlidingWindowStringConcatMemory(Memory):
         self.marker: str        = '[--++=|=++--]'
         self.token_ratio: float  = token_ratio
 
-    @core.bind(engine='neurosymbolic', property='max_tokens')
+    @decorator.bind(engine='neurosymbolic', property='max_tokens')
     def max_tokens(self): pass
 
     def __getstate__(self):
@@ -61,7 +61,7 @@ class SlidingWindowStringConcatMemory(Memory):
     def __setstate__(self, state):
         self.__dict__.update(state)
         # Initialize _max_tokens as None, it should be set again after deserialization
-        @core.bind(engine='neurosymbolic', property='max_tokens')
+        @decorator.bind(engine='neurosymbolic', property='max_tokens')
         def _max_tokens(self): pass
         self.max_tokens = _max_tokens
 

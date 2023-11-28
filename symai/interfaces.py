@@ -1,10 +1,10 @@
 import logging
 from pydoc import locate
 
-import symai as ai
+from .symbol import Expression
 
 
-class Interface(ai.Expression):
+class Interface(Expression):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.logger = logging.getLogger(__name__)

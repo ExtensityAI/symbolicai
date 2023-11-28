@@ -1,8 +1,8 @@
 import platform
 import subprocess
-from typing import Callable, Dict, Iterator, List, Optional, Type
 
-from ..components import Function
+from typing import Dict, List
+
 from ..post_processors import CodeExtractPostProcessor
 from ..symbol import Expression, Symbol
 

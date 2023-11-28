@@ -1,6 +1,6 @@
-from typing import List
-
 import requests
+
+from typing import List
 from PIL import Image
 from transformers import CLIPModel, CLIPProcessor
 

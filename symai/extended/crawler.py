@@ -2,7 +2,7 @@ from typing import List
 
 from ..components import Clean, Sequence, Stream
 from ..symbol import Expression, Symbol
-from symai.interfaces import Interface
+from ..interfaces import Interface
 
 
 class Crawler(Expression):

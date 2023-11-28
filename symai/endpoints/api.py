@@ -2,11 +2,13 @@ import importlib
 import inspect
 import pickle
 import redis
+
 from redis.exceptions import ConnectionError
 from fastapi import FastAPI, APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Any, Generic, TypeVar, Dict, List, Optional, Type, Union
-from .. import Symbol, Expression
+from typing import Any, Generic, TypeVar, Dict, List, Optional, Union
+
+from ..symbol import Symbol, Expression
 
 
 # Configure Redis server connection parameters and executable path

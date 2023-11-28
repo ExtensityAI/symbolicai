@@ -1,6 +1,7 @@
 import re
 import pygments
 import logging
+
 from html import escape as escape_html
 from pygments.lexers.python import PythonLexer
 from pygments.lexers.javascript import JavascriptLexer

@@ -1,9 +1,10 @@
-import argparse
 import os
 import sys
+import argparse
+
 from pathlib import Path
 
-from ... import Import
+from ...imports import Import
 
 
 class PackageHandler():

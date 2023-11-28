@@ -1,15 +1,20 @@
 import inspect
+
 from pathlib import Path
 from random import sample
 from string import ascii_lowercase, ascii_uppercase
 from typing import Callable, Iterator, List, Optional, Type
 from tqdm import tqdm
 
+from . import core
+from . import decorator
 from .constraints import DictFormatConstraint
 from .formatter import ParagraphFormatter
 from .symbol import Expression, Symbol
 from .utils import CustomUserWarning
-from . import core
+from .prompts import Prompt, JsonPromptTemplate
+from .pre_processors import PreProcessor, JsonPreProcessor
+from .post_processors import PostProcessor, JsonTruncatePostProcessor
 
 
 class TrackerTraceable(Expression):
@@ -346,8 +351,8 @@ class FileQuery(Expression):
 class Function(TrackerTraceable):
     def __init__(self, prompt: str,
                  examples: Optional[str] = [],
-                 pre_processors: Optional[List[core.PreProcessor]] = None,
-                 post_processors: Optional[List[core.PostProcessor]] = None,
+                 pre_processors: Optional[List[PreProcessor]] = None,
+                 post_processors: Optional[List[PostProcessor]] = None,
                  default: Optional[object] = None,
                  constraints: List[Callable] = [],
                  return_type: Optional[Type] = str, *args, **kwargs):
@@ -359,7 +364,7 @@ class Function(TrackerTraceable):
         self._promptTemplate = prompt
         self._promptFormatArgs = []
         self._promptFormatKwargs = {}
-        self.examples = core.Prompt(examples)
+        self.examples = Prompt(examples)
         self.pre_processors = pre_processors
         self.post_processors = post_processors
         self.constraints = constraints
@@ -408,10 +413,10 @@ class Function(TrackerTraceable):
 class JsonParser(Expression):
     def __init__(self, query: str, json_: dict):
         super().__init__()
-        func = Function(prompt=core.JsonPromptTemplate(query, json_),
+        func = Function(prompt=JsonPromptTemplate(query, json_),
                         constraints=[DictFormatConstraint(json_)],
-                        pre_processors=[core.JsonPreProcessor()],
-                        post_processors=[core.JsonTruncatePostProcessor()])
+                        pre_processors=[JsonPreProcessor()],
+                        post_processors=[JsonTruncatePostProcessor()])
         self.fn = Try(func, retries=1)
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
@@ -440,7 +445,7 @@ class SimilarityClassification(Expression):
         return Symbol(similarities[0][0])
 
     def _dynamic_cache(self):
-        @core.cache(in_memory=self.in_memory)
+        @decorator.cache(in_memory=self.in_memory)
         def embed_classes(self):
             opts = map(Symbol, self.classes)
             embeddings = [opt.embed() for opt in opts]
@@ -451,7 +456,7 @@ class SimilarityClassification(Expression):
 
 
 class InContextClassification(Expression):
-    def __init__(self, blueprint: core.Prompt):
+    def __init__(self, blueprint: Prompt):
         super().__init__()
         self.blueprint = blueprint
 
@@ -473,7 +478,7 @@ class TokenTracker(Expression):
         self._trace: bool    = False
         self._previous_frame = None
 
-    @core.bind(engine='neurosymbolic', property='max_tokens')
+    @decorator.bind(engine='neurosymbolic', property='max_tokens')
     def max_tokens(self): pass
 
     def __enter__(self):

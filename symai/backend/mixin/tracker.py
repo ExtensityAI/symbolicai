@@ -1,11 +1,12 @@
 import sys
 
+from ... import core
+from ... import decorator
 from ..engines.engine_embedding import EmbeddingEngine
 from ..engines.engine_gptX_chat import GPTXChatEngine
 from ..mixin.openai import SUPPORTED_MODELS
-from ... import Symbol
+from ...symbol import Symbol
 from ...utils import CustomUserWarning
-from ... import core
 
 
 class OpenAICostTracker:
@@ -113,14 +114,14 @@ Few-shot calls: {self._few_shots}
 
         return sum(self._embeddings) * self._embedding_pricing()['usage']
 
-    @core.bind(engine='neurosymbolic', property='model')
+    @decorator.bind(engine='neurosymbolic', property='model')
     def _neurosymbolic_model(self): pass
 
-    @core.bind(engine='neurosymbolic', property='pricing')
+    @decorator.bind(engine='neurosymbolic', property='pricing')
     def _neurosymbolic_pricing(self): pass
 
-    @core.bind(engine='embedding', property='model')
+    @decorator.bind(engine='embedding', property='model')
     def _embedding_model(self): pass
 
-    @core.bind(engine='embedding', property='pricing')
+    @decorator.bind(engine='embedding', property='pricing')
     def _embedding_pricing(self): pass

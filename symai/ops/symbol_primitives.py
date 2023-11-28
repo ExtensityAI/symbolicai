@@ -2,12 +2,13 @@ import ast
 import os
 import pickle
 import uuid
+import numpy as np
+
 from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple,
                     Type, Union)
 
-import numpy as np
-
 from .. import core
+from .. import decorator
 from ..prompts import Prompt
 
 if TYPE_CHECKING:
@@ -64,18 +65,18 @@ class ValueHandlingPrimitives:
     def tokens(self) -> int:
         '''
         Tokenize the Symbol's value using the tokenizer method.
-        The tokenizer method is bound to the 'neurosymbolic' engine using the @core.bind() decorator.
+        The tokenizer method is bound to the 'neurosymbolic' engine using the @decorator.bind() decorator.
 
         Returns:
             int: The tokenized value of the Symbol.
         '''
         return self.tokenizer().encode(str(self))
 
-    @core.bind(engine='neurosymbolic', property='tokenizer')
+    @decorator.bind(engine='neurosymbolic', property='tokenizer')
     def tokenizer(self) -> Callable:
         '''
         The tokenizer method.
-        This method is bound to the 'neurosymbolic' engine using the @core.bind() decorator.
+        This method is bound to the 'neurosymbolic' engine using the @decorator.bind() decorator.
 
         Returns:
             Callable: The tokenizer.
@@ -686,7 +687,7 @@ class ExecutionControlPrimitives:
         Raises:
             ValueError: If the Expression object exceeds the maximum allowed tokens.
         '''
-        @core.bind(engine='neurosymbolic', property='max_tokens')
+        @decorator.bind(engine='neurosymbolic', property='max_tokens')
         def _max_tokens(_): pass
 
         max_ctxt_tokens = int(_max_tokens(self) * token_ratio)

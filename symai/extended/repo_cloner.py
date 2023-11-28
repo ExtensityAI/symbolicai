@@ -1,9 +1,8 @@
 from pathlib import Path
 from typing import Optional
-
 from git import Repo
 
-from .. import Expression
+from ..symbol import Expression
 
 
 class RepositoryCloner(Expression):

@@ -1,11 +1,11 @@
 import os
 import re
 import shutil
-from concurrent.futures import ThreadPoolExecutor, as_completed
-
 import requests
 
-from .. import Expression, Symbol
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+from ..symbol import Expression, Symbol
 from .file_merger import FileMerger
 
 

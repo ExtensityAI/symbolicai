@@ -12,6 +12,7 @@ import sys
 import time
 import urllib.request
 import warnings
+
 from random import choice
 
 try:
@@ -153,12 +154,6 @@ def contains_text(check_pattern, search_pattern, link, driver_handler, script=No
         if script is not None: script(driver, args)
     rsp = re.search(search_pattern, driver.page_source)
     return True if rsp else False
-
-
-def test_amazon_click_actions(driver, args):
-    with page_loaded(driver, "Sony PlayStation 5"):
-        button = driver.find_element(By.XPATH, "//button[@id='a-autoid-16-announce']")
-        driver.execute_script("arguments[0].click()", button)
 
 
 def download_images(driver, args):

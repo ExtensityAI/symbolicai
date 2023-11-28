@@ -1,8 +1,8 @@
 import logging
-from typing import List
-
 import openai
 import tiktoken
+
+from typing import List
 
 from ..base import Engine
 from ..mixin.openai import OpenAIMixin

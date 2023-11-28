@@ -1,4 +1,4 @@
-from .. import Persona
+from ..persona import Persona
 
 
 PERSONA_SALES_YANN = """

@@ -1,6 +1,6 @@
 import argparse
 
-from ..core import *
+from .. import core
 from ..post_processors import StripPostProcessor
 from ..pre_processors import PreProcessor
 from ..prompts import Prompt
@@ -67,7 +67,7 @@ class ProblemClassifier(Expression):
         return PROBLEM_CATEGORY_CONTEXT
 
     def __eq__(self, other, **kwargs) -> bool:
-        @few_shot(prompt="Verify equality of the following categories. Ignore typos, upper / lower case or singular / plural differences:\n",
+        @core.few_shot(prompt="Verify equality of the following categories. Ignore typos, upper / lower case or singular / plural differences:\n",
                      examples=Prompt([
                          '$> :Arithmetic formula: == :Arithmetics formula: =>True EOF',
                          '$> :arithmetic formula: == :Arithmetic formula: =>True EOF',
@@ -88,7 +88,7 @@ class ProblemClassifier(Expression):
         return _func(self, other)
 
     def forward(self, **kwargs) -> str:
-        @few_shot(prompt="Classify the user query to the mathematical classes:\n",
+        @core.few_shot(prompt="Classify the user query to the mathematical classes:\n",
                      examples=[],
                      pre_processors=[ProblemClassifierPreProcessor()],
                      post_processors=[StripPostProcessor()],
@@ -107,7 +107,7 @@ class FormulaCheckerPreProcessor(PreProcessor):
 
 class FormulaChecker(Expression):
     def forward(self, **kwargs) -> bool:
-        @few_shot(prompt="Is the following statement in an explicit formula form without natural language text?:\n",
+        @core.few_shot(prompt="Is the following statement in an explicit formula form without natural language text?:\n",
                      examples=Prompt([
                          '$> 2 + 2 * 2 =>True EOF',
                          '$> x + 2 = 3 =>True EOF',
@@ -148,7 +148,7 @@ class FormulaWriterPreProcessor(PreProcessor):
 
 class FormulaWriter(Expression):
     def forward(self, **kwargs) -> str:
-        @few_shot(prompt="Rewrite the following natural language statement in a mathematical formula or higher-order logic statement to be solved by Mathematica:\n",
+        @core.few_shot(prompt="Rewrite the following natural language statement in a mathematical formula or higher-order logic statement to be solved by Mathematica:\n",
                      examples=Prompt([
                          '$> Add 5 plus 3 =>5 + 3 EOF',
                          '$> Seventy plus twenty =>70 + 20 EOF',

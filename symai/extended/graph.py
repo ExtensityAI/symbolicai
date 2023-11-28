@@ -1,6 +1,7 @@
 from multiprocessing import Pool
+from typing import Callable
 
-from ..core import *
+from .. import core
 from ..formatter import SentenceFormatter
 from ..post_processors import StripPostProcessor
 from ..pre_processors import PreProcessor
@@ -36,7 +37,7 @@ class Graph(Expression):
     def process_symbol(self, s, *args, **kwargs):
         res = ''
 
-        @few_shot(prompt="Extract relationships between entities:\n",
+        @core.few_shot(prompt="Extract relationships between entities:\n",
                   examples=Prompt([
                         '$> John has a dog. =>John, dog, 1 EOF',
                         '$> Karl has two sons. =>Karl, sons, 2 EOF',

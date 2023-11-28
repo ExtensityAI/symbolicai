@@ -1,14 +1,11 @@
-import io
 import cv2
 import base64
 import inspect
 import sys
 import warnings
-import functools
 import numpy as np
-import multiprocessing as mp
+
 from PIL import Image
-from pathos.multiprocessing import ProcessingPool as PPool
 
 
 def encode_frames_file(file_path):
@@ -52,17 +49,6 @@ def encode_image(image_path):
         if ext.lower() == 'jpg':
             ext = 'jpeg'
     return [enc_], ext # return list of base64 encoded images
-
-
-def parallel(worker=mp.cpu_count()//2):
-    def dec(function):
-        @functools.wraps(function)
-        def _dec(*args, **kwargs):
-            with PPool(worker) as pool:
-                map_obj = pool.map(function, *args, **kwargs)
-            return map_obj
-        return _dec
-    return dec
 
 
 def ignore_exception(exception=Exception, default=None):

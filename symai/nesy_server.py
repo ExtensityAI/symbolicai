@@ -1,7 +1,7 @@
 import json
 import os
-from pathlib import Path
 
+from pathlib import Path
 from box import Box
 from rpyc.utils.server import ThreadedServer
 
