@@ -1,8 +1,10 @@
 import os
-from tqdm import tqdm
-from typing import List, Optional
 
-from .. import Expression, FileReader, Indexer, Symbol
+from tqdm import tqdm
+from typing import List
+
+from ..symbol import Expression, Symbol
+from ..components import FileReader, Indexer
 
 
 class FileMerger(Expression):

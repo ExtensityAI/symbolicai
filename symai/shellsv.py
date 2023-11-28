@@ -1,16 +1,16 @@
-import glob
 import logging
+import glob
+import subprocess
 import os
 import re
 import sys
 import signal
-import subprocess
 import time
 import json
 import platform
+
 from typing import Iterable
 from pathlib import Path
-
 from prompt_toolkit import HTML, PromptSession, print_formatted_text
 from prompt_toolkit.completion import Completer, Completion, WordCompleter
 from prompt_toolkit.history import History
@@ -36,7 +36,7 @@ from .interfaces import Interface
 
 logging.getLogger("prompt_toolkit").setLevel(logging.ERROR)
 logging.getLogger("asyncio").setLevel(logging.ERROR)
-logging.getLogger("multiprocessing").setLevel(logging.ERROR)
+logging.getLogger("subprocess").setLevel(logging.ERROR)
 
 
 # load json config from home directory root

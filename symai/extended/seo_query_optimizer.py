@@ -1,4 +1,6 @@
-from ..core import *
+from typing import Callable
+
+from .. import core
 from ..formatter import SentenceFormatter
 from ..post_processors import StripPostProcessor
 from ..pre_processors import PreProcessor
@@ -33,7 +35,7 @@ class SEOQueryOptimizer(Expression):
         self.sym_return_type = SEOQueryOptimizer
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
-        @few_shot(prompt="Extract relationships between entities:\n",
+        @core.few_shot(prompt="Extract relationships between entities:\n",
                   examples=Prompt([
                         '$> John has a dog. =>John dog EOF',
                         '$> How can i find on wikipedia an article about programming? Preferably about python programming. =>Wikipedia python programming tutorial EOF',

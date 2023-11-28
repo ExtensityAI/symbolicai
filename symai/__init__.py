@@ -1,8 +1,10 @@
 import json
 import logging
 import os
-from .misc.console import ConsoleStyle
+
 from pathlib import Path
+
+from .misc.console import ConsoleStyle
 from .menu.screen import show_menu
 from .backend import settings
 
@@ -268,7 +270,6 @@ _start_symai()
 
 
 from .backend.base import Engine
-from .chat import ChatBot, SymbiaChat
 from .prompts import Prompt
 from .shell import Shell
 from .strategy import Strategy

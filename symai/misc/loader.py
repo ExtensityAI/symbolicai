@@ -4,9 +4,9 @@ from itertools import cycle
 from shutil import get_terminal_size
 from threading import Thread
 from time import sleep
+from prompt_toolkit import print_formatted_text
 
 from .console import ConsoleStyle
-from prompt_toolkit import print_formatted_text
 
 print = print_formatted_text
 

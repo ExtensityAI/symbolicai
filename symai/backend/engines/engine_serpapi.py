@@ -3,10 +3,10 @@ import json
 from typing import List
 from IPython.utils import io
 from box import Box
-from abc import ABC
 
 from ..base import Engine
 from ..settings import SYMAI_CONFIG
+from ...symbol import Symbol
 
 try:
     from serpapi import GoogleSearch
@@ -14,7 +14,7 @@ except:
     GoogleSearch = None
 
 
-class SearchResult(ABC):
+class SearchResult(Symbol):
     def __init__(self, value) -> None:
         super().__init__(value)
         self.raw = Box(value)

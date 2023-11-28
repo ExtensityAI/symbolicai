@@ -1,11 +1,11 @@
 import functools
-from typing import Callable, Dict, List, Optional
 
-from . import __root_dir__
-from .functional import cache_registry_func, retry_func, EngineRepository
-from .post_processors import *
-from .pre_processors import *
-from .prompts import *
+from typing import Callable, Dict, List, Optional, Any
+
+from . import post_processors as post
+from . import pre_processors as pre
+from . import prompts as prm
+from .functional import EngineRepository
 
 
 def few_shot(prompt: str = '',
@@ -13,8 +13,8 @@ def few_shot(prompt: str = '',
              constraints: List[Callable] = [],
              default: Optional[object] = None,
              limit: int = 1,
-             pre_processors: Optional[List[PreProcessor]] = None,
-             post_processors: Optional[List[PostProcessor]] = None,
+             pre_processors: Optional[List[pre.PreProcessor]] = None,
+             post_processors: Optional[List[post.PostProcessor]] = None,
              **wrp_kwargs):
     """"General decorator for the neural processing engine.
     This method is used to decorate functions which can build any expression in a examples-based way.
@@ -56,8 +56,8 @@ def zero_shot(prompt: str = '',
               constraints: List[Callable] = [],
               default: Optional[object] = None,
               limit: int = 1,
-              pre_processors: Optional[List[PreProcessor]] = None,
-              post_processors: Optional[List[PostProcessor]] = None,
+              pre_processors: Optional[List[pre.PreProcessor]] = None,
+              post_processors: Optional[List[post.PostProcessor]] = None,
               **wrp_kwargs):
     """"General decorator for the neural processing engine.
     This method is used to decorate functions which can build any expression without examples.
@@ -89,8 +89,8 @@ def summarize(prompt: str = 'Summarize the content of the following text:\n',
               context: Optional[str] = None,
               constraints: List[Callable] = [],
               default: Optional[object] = None,
-              pre_processors: Optional[List[PreProcessor]] = [SummaryPreProcessing()],
-              post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+              pre_processors: Optional[List[pre.PreProcessor]] = [pre.SummaryPreProcessing()],
+              post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
               **wrp_kwargs):
     """Summarizes the content of a text.
 
@@ -119,10 +119,10 @@ def summarize(prompt: str = 'Summarize the content of the following text:\n',
 def equals(context: str = 'contextually',
            default: bool = False,
            prompt: str = "Make a fuzzy equals comparison. Are the following objects {} the same?\n",
-           examples: Prompt = FuzzyEquals(),
+           examples: prm.Prompt = prm.FuzzyEquals(),
            constraints: List[Callable] = [],
-           pre_processors: Optional[List[PreProcessor]] = [EqualsPreProcessor()],
-           post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+           pre_processors: Optional[List[pre.PreProcessor]] = [pre.EqualsPreProcessor()],
+           post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
            **wrp_kwargs):
     """Equality function for two objects.
 
@@ -153,10 +153,10 @@ def equals(context: str = 'contextually',
 def sufficient(query: str,
                prompt: str = "Consider if there is sufficient information to answer the query\n",
                default: bool = False,
-               examples: Prompt = SufficientInformation(),
+               examples: prm.Prompt = prm.SufficientInformation(),
                constraints: List[Callable] = [],
-               pre_processors: Optional[List[PreProcessor]] = [SufficientInformationPreProcessor()],
-               post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+               pre_processors: Optional[List[pre.PreProcessor]] = [pre.SufficientInformationPreProcessor()],
+               post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
                **wrp_kwargs) -> bool:
     """Determines if there is sufficient information to answer the given query.
 
@@ -187,10 +187,10 @@ def sufficient(query: str,
 
 def delitem(default: Optional[str] = None,
             prompt: str = "Delete the items at the index position\n",
-            examples: Prompt = RemoveIndex(),
+            examples: prm.Prompt = prm.RemoveIndex(),
             constraints: List[Callable] = [],
-            pre_processors: Optional[List[PreProcessor]] = [DeleteIndexPreProcessor()],
-            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+            pre_processors: Optional[List[pre.PreProcessor]] = [pre.DeleteIndexPreProcessor()],
+            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
             **wrp_kwargs):
     """Deletes the items at the specified index position.
 
@@ -218,10 +218,10 @@ def delitem(default: Optional[str] = None,
 
 def setitem(default: Optional[str] = None,
             prompt: str = "Set item at index position\n",
-            examples: Prompt = SetIndex(),
+            examples: prm.Prompt = prm.SetIndex(),
             constraints: List[Callable] = [],
-            pre_processors: Optional[List[PreProcessor]] = [SetIndexPreProcessor()],
-            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+            pre_processors: Optional[List[pre.PreProcessor]] = [pre.SetIndexPreProcessor()],
+            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
             **wrp_kwargs):
     """Sets an item at a given index position in a sequence.
 
@@ -249,10 +249,10 @@ def setitem(default: Optional[str] = None,
 
 def getitem(default: Optional[str] = None,
             prompt: str = "Get item at index position\n",
-            examples: Prompt = Index(),
+            examples: prm.Prompt = prm.Index(),
             constraints: List[Callable] = [],
-            pre_processors: Optional[List[PreProcessor]] = [IndexPreProcessor()],
-            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+            pre_processors: Optional[List[pre.PreProcessor]] = [pre.IndexPreProcessor()],
+            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
             **wrp_kwargs):
     """Retrieves the item at the given index position.
 
@@ -281,10 +281,10 @@ def getitem(default: Optional[str] = None,
 def modify(changes: str,
            default: Optional[str] = None,
            prompt: str = "Modify the text to match the criteria:\n",
-           examples: Prompt = Modify(),
+           examples: prm.Prompt = prm.Modify(),
            constraints: List[Callable] = [],
-           pre_processors: Optional[List[PreProcessor]] = [ModifyPreProcessor()],
-           post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+           pre_processors: Optional[List[pre.PreProcessor]] = [pre.ModifyPreProcessor()],
+           post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
            **wrp_kwargs):
     """A function to modify a text based on a set of criteria.
 
@@ -315,10 +315,10 @@ def filtering(criteria: str,
               include: bool = False,
               default: Optional[str] = None,
               prompt: str = "Filter the information from the text based on the filter criteria. Leave sentences unchanged if they are unrelated to the filter criteria:\n",
-              examples: Prompt = Filter(),
+              examples: prm.Prompt = prm.Filter(),
               constraints: List[Callable] = [],
-              pre_processors: Optional[List[PreProcessor]] = [FilterPreProcessor()],
-              post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+              pre_processors: Optional[List[pre.PreProcessor]] = [pre.FilterPreProcessor()],
+              post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
               **wrp_kwargs):
     """Filter information from a text based on a set of criteria.
 
@@ -350,10 +350,10 @@ def filtering(criteria: str,
 def notify(subscriber: Dict[str, Callable],
            default: Optional[object] = None,
            prompt: str = "List the semantically related topics:\n",
-           examples: Prompt = SemanticMapping(),
+           examples: prm.Prompt = prm.SemanticMapping(),
            constraints: List[Callable] = [],
-           pre_processors: Optional[List[PreProcessor]] = [SemanticMappingPreProcessor()],
-           post_processors: Optional[List[PostProcessor]] = [SplitPipePostProcessor(), NotifySubscriberPostProcessor()],
+           pre_processors: Optional[List[pre.PreProcessor]] = [pre.SemanticMappingPreProcessor()],
+           post_processors: Optional[List[post.PostProcessor]] = [post.SplitPipePostProcessor(), post.NotifySubscriberPostProcessor()],
            **wrp_kwargs):
     """Notify subscribers based on a set of topics if detected in the input text and matching the key of the subscriber.
 
@@ -383,10 +383,10 @@ def notify(subscriber: Dict[str, Callable],
 def compare(default: bool = False,
             operator: str = '>',
             prompt: str = "Compare number 'A' to 'B':\n",
-            examples: Prompt = CompareValues(),
+            examples: prm.Prompt = prm.CompareValues(),
             constraints: List[Callable] = [],
-            pre_processors: Optional[List[PreProcessor]] = [ComparePreProcessor()],
-            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+            pre_processors: Optional[List[pre.PreProcessor]] = [pre.ComparePreProcessor()],
+            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
             **wrp_kwargs):
     """Compare two objects based on the specified operator.
 
@@ -418,10 +418,10 @@ def compare(default: bool = False,
 def convert(format: str,
             default: Optional[str] = None,
             prompt: str = "Translate the following text into {} format.\n",
-            examples: Prompt = Format(),
+            examples: prm.Prompt = prm.Format(),
             constraints: List[Callable] = [],
-            pre_processors: Optional[List[PreProcessor]] = [TextFormatPreProcessor()],
-            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+            pre_processors: Optional[List[pre.PreProcessor]] = [pre.TextFormatPreProcessor()],
+            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
             **wrp_kwargs):
     """Transformation operation from one format to another.
 
@@ -451,10 +451,10 @@ def convert(format: str,
 def transcribe(modify: str,
                default: Optional[str] = None,
                prompt: str = "Transcribe the following text by only modifying the text by the provided instruction.\n",
-               examples: Prompt = Transcription(),
+               examples: prm.Prompt = prm.Transcription(),
                constraints: List[Callable] = [],
-               pre_processors: Optional[List[PreProcessor]] = [TranscriptionPreProcessor()],
-               post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+               pre_processors: Optional[List[pre.PreProcessor]] = [pre.TranscriptionPreProcessor()],
+               post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
                **wrp_kwargs):
     """Transcription operation of a text to another styled text.
 
@@ -486,8 +486,8 @@ def style(description: str,
           default: Optional[str] = None,
           prompt: str = "Style the [DATA] based on best practices and the descriptions in [...] brackets. Do not remove content from the data! Do not add libraries or other descriptions. \n",
           constraints: List[Callable] = [],
-          pre_processors: Optional[List[PreProcessor]] = [StylePreProcessor()],
-          post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+          pre_processors: Optional[List[pre.PreProcessor]] = [pre.StylePreProcessor()],
+          post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
           **wrp_kwargs):
     """Styles a given text based on best practices and a given description.
 
@@ -519,10 +519,10 @@ def analyze(query: str,
             exception: Exception,
             default: Optional[str] = None,
             prompt: str = "Only analyze the error message and suggest a potential correction, however, do NOT provide the code!\n",
-            examples: Prompt = ExceptionMapping(),
+            examples: prm.Prompt = prm.ExceptionMapping(),
             constraints: List[Callable] = [],
-            pre_processors: Optional[List[PreProcessor]] = [ExceptionPreProcessor()],
-            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+            pre_processors: Optional[List[pre.PreProcessor]] = [pre.ExceptionPreProcessor()],
+            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
             **wrp_kwargs):
     """Analyses an Exception and proposes a correction.
 
@@ -555,10 +555,10 @@ def correct(context: str,
             exception: Exception,
             default: Optional[str] = None,
             prompt: str = "Correct the code according to the context description.\n",
-            examples: Prompt = None,
+            examples: Optional[prm.Prompt] = None,
             constraints: List[Callable] = [],
-            pre_processors: Optional[List[PreProcessor]] = [CorrectionPreProcessor()],
-            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor(), CodeExtractPostProcessor()],
+            pre_processors: Optional[List[pre.PreProcessor]] = [pre.CorrectionPreProcessor()],
+            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor(), post.ConfirmToBoolPostProcessor()],
             **wrp_kwargs):
     """Analyses an Exception and proposes a correction.
 
@@ -590,10 +590,10 @@ def correct(context: str,
 def translate(language: str = 'English',
               default: str = "Sorry, I do not understand the given language.",
               prompt: str = "Translate the following text into {}:\n",
-              examples: Optional[Prompt] = None,
+              examples: Optional[prm.Prompt] = None,
               constraints: List[Callable] = [],
-              pre_processors: Optional[List[PreProcessor]] = [LanguagePreProcessor()],
-              post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+              pre_processors: Optional[List[pre.PreProcessor]] = [pre.LanguagePreProcessor()],
+              post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
               **wrp_kwargs):
     """Translates a given text into a specified language.
 
@@ -623,10 +623,10 @@ def translate(language: str = 'English',
 def rank(default: Optional[object] = None,
          order: str = 'desc',
          prompt: str = "Order the list of objects based on their quality measure and oder literal:\n",
-         examples: Prompt = RankList(),
+         examples: prm.Prompt = prm.RankList(),
          constraints: List[Callable] = [],
-         pre_processors: Optional[List[PreProcessor]] = [RankPreProcessor()],
-         post_processors: Optional[List[PostProcessor]] = [ASTPostProcessor()],
+         pre_processors: Optional[List[pre.PreProcessor]] = [pre.RankPreProcessor()],
+         post_processors: Optional[List[post.PostProcessor]] = [post.ASTPostProcessor()],
          **wrp_kwargs):
     """Ranks a list of objects based on their quality measure and order literal.
 
@@ -656,10 +656,10 @@ def rank(default: Optional[object] = None,
 
 def replace(prompt: str = "Replace text parts by string pattern.\n",
             default: Optional[str] = None,
-            examples: Prompt = ReplaceText(),
+            examples: prm.Prompt = prm.ReplaceText(),
             constraints: List[Callable] = [],
-            pre_processors: Optional[List[PreProcessor]] = [ReplacePreProcessor()],
-            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+            pre_processors: Optional[List[pre.PreProcessor]] = [pre.ReplacePreProcessor()],
+            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
             **wrp_kwargs):
     """Replaces text parts by a given string pattern.
 
@@ -686,10 +686,10 @@ def replace(prompt: str = "Replace text parts by string pattern.\n",
 
 def include(prompt: str = "Include information based on description.\n",
             default: Optional[str] = None,
-            examples: Prompt = IncludeText(),
+            examples: prm.Prompt = prm.IncludeText(),
             constraints: List[Callable] = [],
-            pre_processors: Optional[List[PreProcessor]] = [IncludePreProcessor()],
-            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+            pre_processors: Optional[List[pre.PreProcessor]] = [pre.IncludePreProcessor()],
+            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
             **wrp_kwargs):
     """Include information from a description.
 
@@ -716,10 +716,10 @@ def include(prompt: str = "Include information based on description.\n",
 
 def combine(prompt: str = "Add the two data types in a logical way:\n",
             default: Optional[str] = None,
-            examples: Prompt = CombineText(),
+            examples: prm.Prompt = prm.CombineText(),
             constraints: List[Callable] = [],
-            pre_processors: Optional[List[PreProcessor]] = [CombinePreProcessor()],
-            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+            pre_processors: Optional[List[pre.PreProcessor]] = [pre.CombinePreProcessor()],
+            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
             **wrp_kwargs):
     """Combines two data types in a logical way.
 
@@ -748,10 +748,10 @@ def template(template: str,
              prompt: str = 'Insert the data into the template in the best suitable format (header, tables, paragraphs, buttons, etc.):\n',
              placeholder: str = '{{placeholder}}',
              default: Optional[str] = None,
-             examples: Optional[Prompt] = None,
+             examples: Optional[prm.Prompt] = None,
              constraints: List[Callable] = [],
-             pre_processors: Optional[List[PreProcessor]] = [DataTemplatePreProcessor(), TemplatePreProcessor()],
-             post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+             pre_processors: Optional[List[pre.PreProcessor]] = [pre.DataTemplatePreProcessor(), pre.TemplatePreProcessor()],
+             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
              **wrp_kwargs):
     """Fills in a template with the given data.
 
@@ -782,10 +782,10 @@ def template(template: str,
 
 def negate(prompt: str = "Negate the following statement:\n",
            default: Optional[str] = None,
-           examples: Prompt = NegateStatement(),
+           examples: prm.Prompt = prm.NegateStatement(),
            constraints: List[Callable] = [],
-           pre_processors: Optional[List[PreProcessor]] = [NegatePreProcessor()],
-           post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+           pre_processors: Optional[List[pre.PreProcessor]] = [pre.NegatePreProcessor()],
+           post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
            **wrp_kwargs):
     """Negates a given statement.
 
@@ -812,10 +812,10 @@ def negate(prompt: str = "Negate the following statement:\n",
 
 def contains(default: bool = False,
              prompt: str = "Is information 'A' contained in 'B'?\n",
-             examples: Prompt = ContainsValue(),
+             examples: prm.Prompt = prm.ContainsValue(),
              constraints: List[Callable] = [],
-             pre_processors: Optional[List[PreProcessor]] = [ContainsPreProcessor()],
-             post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+             pre_processors: Optional[List[pre.PreProcessor]] = [pre.ContainsPreProcessor()],
+             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
              **wrp_kwargs):
     """Determines whether a given string contains another string.
 
@@ -844,10 +844,10 @@ def contains(default: bool = False,
 
 def isinstanceof(default: bool = False,
                  prompt: str = "Detect if 'A' isinstanceof 'B':\n",
-                 examples: Prompt = IsInstanceOf(),
+                 examples: prm.Prompt = prm.IsInstanceOf(),
                  constraints: List[Callable] = [],
-                 pre_processors: Optional[List[PreProcessor]] = [IsInstanceOfPreProcessor()],
-                 post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+                 pre_processors: Optional[List[pre.PreProcessor]] = [pre.IsInstanceOfPreProcessor()],
+                 post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
                  **wrp_kwargs):
     """Detects if one object is an instance of another.
 
@@ -877,10 +877,10 @@ def isinstanceof(default: bool = False,
 def case(enum: List[str],
          default: str,
          prompt: str = "Classify the text according to one of the following categories: ",
-         examples: Optional[Prompt] = None,
+         examples: Optional[prm.Prompt] = None,
          stop: List[str] = ['\n'],
-         pre_processors: Optional[List[PreProcessor]] = [EnumPreProcessor(), TextMessagePreProcessor(), PredictionMessagePreProcessor()],
-         post_processors: Optional[List[PostProcessor]] = [StripPostProcessor(), CaseInsensitivePostProcessor()],
+         pre_processors: Optional[List[pre.PreProcessor]] = [pre.EnumPreProcessor(), pre.TextMessagePreProcessor(), pre.PredictionMessagePreProcessor()],
+         post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor(), post.CaseInsensitivePostProcessor()],
          **wrp_kwargs):
     """Classifies a text according to one of the given categories.
 
@@ -909,10 +909,10 @@ def case(enum: List[str],
 
 def extract(prompt: str = "Extract a pattern from text:\n",
             default: Optional[str] = None,
-            examples: Prompt = ExtractPattern(),
+            examples: prm.Prompt = prm.ExtractPattern(),
             constraints: List[Callable] = [],
-            pre_processors: Optional[List[PreProcessor]] = [ExtractPatternPreProcessor()],
-            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+            pre_processors: Optional[List[pre.PreProcessor]] = [pre.ExtractPatternPreProcessor()],
+            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
             **wrp_kwargs):
     """Extracts a pattern from text.
 
@@ -939,10 +939,10 @@ def extract(prompt: str = "Extract a pattern from text:\n",
 
 def expression(prompt: str = "Evaluate the symbolic expressions:\n",
                default: Optional[str] = None,
-               examples: Prompt = SimpleSymbolicExpression(),
+               examples: prm.Prompt = prm.SimpleSymbolicExpression(),
                constraints: List[Callable] = [],
-               pre_processors: Optional[List[PreProcessor]] = [WolframAlphaPreProcessor()],
-               post_processors: Optional[List[PostProcessor]] = [WolframAlphaPostProcessor()],
+               pre_processors: Optional[List[pre.PreProcessor]] = [pre.WolframAlphaPreProcessor()],
+               post_processors: Optional[List[post.PostProcessor]] = [post.WolframAlphaPostProcessor()],
                **wrp_kwargs):
     """Evaluates the symbolic expressions.
 
@@ -979,10 +979,10 @@ def expression(prompt: str = "Evaluate the symbolic expressions:\n",
 def logic(prompt: str = "Evaluate the logic expressions:\n",
           operator: str = 'and',
           default: Optional[str] = None,
-          examples: Prompt = LogicExpression(),
+          examples: prm.Prompt = prm.LogicExpression(),
           constraints: List[Callable] = [],
-          pre_processors: Optional[List[PreProcessor]] = [LogicExpressionPreProcessor()],
-          post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+          pre_processors: Optional[List[pre.PreProcessor]] = [pre.LogicExpressionPreProcessor()],
+          post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
           **wrp_kwargs):
     """Evaluates a logic expression.
 
@@ -1012,10 +1012,10 @@ def logic(prompt: str = "Evaluate the logic expressions:\n",
 
 def invert(prompt: str = "Invert the logic of the content:\n",
            default: Optional[str] = None,
-           examples: Prompt = InvertExpression(),
+           examples: prm.Prompt = prm.InvertExpression(),
            constraints: List[Callable] = [],
-           pre_processors: Optional[List[PreProcessor]] = [ArrowMessagePreProcessor()],
-           post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+           pre_processors: Optional[List[pre.PreProcessor]] = [pre.ArrowMessagePreProcessor()],
+           post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
            **wrp_kwargs):
     """Inverts the logic of a statement.
 
@@ -1044,10 +1044,10 @@ def invert(prompt: str = "Invert the logic of the content:\n",
 def simulate(prompt: str = "Simulate the following code:\n",
              default: Optional[str] = None,
              limit: int = None,
-             examples: Prompt = SimulateCode(),
+             examples: prm.Prompt = prm.SimulateCode(),
              constraints: List[Callable] = [],
-             pre_processors: Optional[List[PreProcessor]] = [SimulateCodePreProcessor()],
-             post_processors: Optional[List[PostProcessor]] = [SplitPipePostProcessor(), TakeLastPostProcessor()],
+             pre_processors: Optional[List[pre.PreProcessor]] = [pre.SimulateCodePreProcessor()],
+             post_processors: Optional[List[post.PostProcessor]] = [post.SplitPipePostProcessor(), post.TakeLastPostProcessor()],
              **wrp_kwargs):
     """Simulates code and returns the result.
 
@@ -1076,10 +1076,10 @@ def simulate(prompt: str = "Simulate the following code:\n",
 def code(prompt: str = "Generate code that solves the following problems:\n",
          default: Optional[str] = None,
          limit: int = None,
-         examples: Prompt = GenerateCode(),
+         examples: prm.Prompt = prm.GenerateCode(),
          constraints: List[Callable] = [],
-         pre_processors: Optional[List[PreProcessor]] = [GenerateCodePreProcessor()],
-         post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+         pre_processors: Optional[List[pre.PreProcessor]] = [pre.GenerateCodePreProcessor()],
+         post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
          **wrp_kwargs):
     """Generates code that solves a given problem.
 
@@ -1108,10 +1108,10 @@ def code(prompt: str = "Generate code that solves the following problems:\n",
 def outline(prompt: str = "Outline only the essential content as a short list of bullets. Each bullet is in a new line:\n",
             default: List[str] = None,
             limit: int = None,
-            examples: Prompt = TextToOutline(),
+            examples: prm.Prompt = prm.TextToOutline(),
             constraints: List[Callable] = [],
-            pre_processors: Optional[List[PreProcessor]] = [TextToOutlinePreProcessor()],
-            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor(), SplitNewLinePostProcessor()],
+            pre_processors: Optional[List[pre.PreProcessor]] = [pre.TextToOutlinePreProcessor()],
+            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor(), post.SplitNewLinePostProcessor()],
             **wrp_kwargs):
     """Outlines the essential content as a short list of bullets.
 
@@ -1141,10 +1141,10 @@ def unique(prompt: str = "Create a short unique key that captures the essential 
            keys: List[str] = None,
            default: List[str] = None,
            limit: int = None,
-           examples: Prompt = UniqueKey(),
+           examples: prm.Prompt = prm.UniqueKey(),
            constraints: List[Callable] = [],
-           pre_processors: Optional[List[PreProcessor]] = [UniquePreProcessor()],
-           post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+           pre_processors: Optional[List[pre.PreProcessor]] = [pre.UniquePreProcessor()],
+           post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
            **wrp_kwargs):
     """Creates a short, unique key that captures the essential topic from the given statements and does not collide with the list of keys.
 
@@ -1175,10 +1175,10 @@ def unique(prompt: str = "Create a short unique key that captures the essential 
 def clean(prompt: str = "Clean up the text from special characters or escape sequences. DO NOT change any words or sentences! Keep original semantics:\n",
           default: List[str] = None,
           limit: int = None,
-          examples: Prompt = CleanText(),
+          examples: prm.Prompt = prm.CleanText(),
           constraints: List[Callable] = [],
-          pre_processors: Optional[List[PreProcessor]] = [CleanTextMessagePreProcessor()],
-          post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+          pre_processors: Optional[List[pre.PreProcessor]] = [pre.CleanTextMessagePreProcessor()],
+          post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
           **wrp_kwargs):
     """Cleans up a text from special characters and escape sequences.
 
@@ -1206,10 +1206,10 @@ def clean(prompt: str = "Clean up the text from special characters or escape seq
 
 def compose(prompt: str = "Create a coherent text based on the facts listed in the outline:\n",
             default: Optional[str] = None,
-            examples: Optional[Prompt] = None,
+            examples: Optional[prm.Prompt] = None,
             constraints: List[Callable] = [],
-            pre_processors: Optional[List[PreProcessor]] = [GenerateTextPreProcessor()],
-            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+            pre_processors: Optional[List[pre.PreProcessor]] = [pre.GenerateTextPreProcessor()],
+            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
             **wrp_kwargs):
     """Compose a coherent text based on an outline.
 
@@ -1238,10 +1238,10 @@ def foreach(condition: str,
             apply: str,
             prompt: str = "Iterate over each element and apply operation based on condition:\n",
             default: Optional[str] = None,
-            examples: Prompt = ForEach(),
+            examples: prm.Prompt = prm.ForEach(),
             constraints: List[Callable] = [],
-            pre_processors: Optional[List[PreProcessor]] = [ForEachPreProcessor()],
-            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+            pre_processors: Optional[List[pre.PreProcessor]] = [pre.ForEachPreProcessor()],
+            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
             **wrp_kwargs):
     """Applies an operation based on a given condition to each element in a list.
 
@@ -1273,10 +1273,10 @@ def foreach(condition: str,
 def dictionary(context: str,
                prompt: str = "Map related content together under a common abstract topic. Do not remove content:\n",
                default: Optional[str] = None,
-               examples: Prompt = MapContent(),
+               examples: prm.Prompt = prm.MapContent(),
                constraints: List[Callable] = [],
-               pre_processors: Optional[List[PreProcessor]] = [MapPreProcessor()],
-               post_processors: Optional[List[PostProcessor]] = [StripPostProcessor(), ASTPostProcessor()],
+               pre_processors: Optional[List[pre.PreProcessor]] = [pre.MapPreProcessor()],
+               post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor(), post.ASTPostProcessor()],
                **wrp_kwargs):
     """Maps related content together under a common abstract topic.
 
@@ -1306,10 +1306,10 @@ def dictionary(context: str,
 def listing(condition: str,
             prompt: str = "List each element contained in the text or list based on condition:\n",
             default: Optional[str] = None,
-            examples: Prompt = ListObjects(),
+            examples: prm.Prompt = prm.ListObjects(),
              constraints: List[Callable] = [],
-            pre_processors: Optional[List[PreProcessor]] = [ListPreProcessor()],
-            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+            pre_processors: Optional[List[pre.PreProcessor]] = [pre.ListPreProcessor()],
+            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
             **wrp_kwargs):
     """Lists each element contained in the text or list based on the given condition.
 
@@ -1338,11 +1338,11 @@ def listing(condition: str,
 
 def query(context: str,
           prompt: Optional[str] = None,
-          examples: Optional[Prompt] = None,
+          examples: Optional[prm.Prompt] = None,
           constraints: List[Callable] = [],
           default: Optional[object] = None,
-          pre_processors: Optional[List[PreProcessor]] = [QueryPreProcessor()],
-          post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+          pre_processors: Optional[List[pre.PreProcessor]] = [pre.QueryPreProcessor()],
+          post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
           **wrp_kwargs):
     """Performs a query given a context.
 
@@ -1370,11 +1370,11 @@ def query(context: str,
 
 
 def expand(prompt: Optional[str] = 'Write a self-contained function (with all imports) to solve a specific user problem task. Label the function with a name that describes the task.',
-           examples: Optional[Prompt] = ExpandFunction(),
+           examples: Optional[prm.Prompt] = prm.ExpandFunction(),
            constraints: List[Callable] = [],
            default: Optional[object] = None,
-           pre_processors: Optional[List[PreProcessor]] = ExpandFunctionPreProcessor(),
-           post_processors: Optional[List[PostProcessor]] = [StripPostProcessor(), ExpandFunctionPostProcessor()],
+           pre_processors: Optional[List[pre.PreProcessor]] = pre.ExpandFunctionPreProcessor(),
+           post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor(), post.ExpandFunctionPostProcessor()],
            **wrp_kwargs):
     """Performs a expand command given a context to generate new prompts.
 
@@ -1394,7 +1394,7 @@ def expand(prompt: Optional[str] = 'Write a self-contained function (with all im
                     constraints=constraints,
                     default=default,
                     limit=1,
-                    stop=[Prompt.stop_token],
+                    stop=[prm.Prompt.stop_token],
                     pre_processors=pre_processors,
                     post_processors=post_processors,
                     wrp_kwargs=wrp_kwargs)
@@ -1404,8 +1404,8 @@ def search(query: str,
            constraints: List[Callable] = [],
            default: Optional[object] = None,
            limit: int = 1,
-           pre_processors: Optional[List[PreProcessor]] = None,
-           post_processors: Optional[List[PostProcessor]] = None,
+           pre_processors: Optional[List[pre.PreProcessor]] = None,
+           post_processors: Optional[List[post.PostProcessor]] = None,
            *wrp_args,
            **wrp_kwargs):
     """Searches for a given query on the internet.
@@ -1446,8 +1446,8 @@ def opening(path: str,
             constraints: List[Callable] = [],
             default: Optional[object] = None,
             limit: int = None,
-            pre_processors: Optional[List[PreProcessor]] = None,
-            post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+            pre_processors: Optional[List[pre.PreProcessor]] = None,
+            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
             *wrp_args,
             **wrp_kwargs):
     """Opens a file and applies a given function to it.
@@ -1485,8 +1485,8 @@ def opening(path: str,
 
 
 def embed(entries: List[str],
-          pre_processors: Optional[List[PreProcessor]] = [UnwrapListSymbolsPreProcessor()],
-          post_processors: Optional[List[PostProcessor]] = None,
+          pre_processors: Optional[List[pre.PreProcessor]] = [pre.UnwrapListSymbolsPreProcessor()],
+          post_processors: Optional[List[post.PostProcessor]] = None,
           *wrp_args,
           **wrp_kwargs):
     """Embeds the entries provided in a decorated function.
@@ -1518,8 +1518,8 @@ def embed(entries: List[str],
 
 
 def cluster(entries: List[str],
-            pre_processors: Optional[List[PreProcessor]] = [UnwrapListSymbolsPreProcessor()],
-            post_processors: Optional[List[PostProcessor]] = [ClusterPostProcessor()],
+            pre_processors: Optional[List[pre.PreProcessor]] = [pre.UnwrapListSymbolsPreProcessor()],
+            post_processors: Optional[List[post.PostProcessor]] = [post.ClusterPostProcessor()],
             **wrp_kwargs):
     """Embeds and clusters the input entries.
 
@@ -1540,8 +1540,8 @@ def cluster(entries: List[str],
 
 def draw(operation: str = 'create',
          prompt: str = '',
-         pre_processors: Optional[List[PreProcessor]] = [ValuePreProcessor()],
-         post_processors: Optional[List[PostProcessor]] = None,
+         pre_processors: Optional[List[pre.PreProcessor]] = [pre.ValuePreProcessor()],
+         post_processors: Optional[List[post.PostProcessor]] = None,
          *wrp_args,
          **wrp_kwargs):
     """Draws an image provided in a decorated function.
@@ -1576,8 +1576,8 @@ def draw(operation: str = 'create',
 
 def vision(image: Optional[str] = None,
            text: List[str] = None,
-           pre_processors: Optional[List[PreProcessor]] = None,
-           post_processors: Optional[List[PostProcessor]] = None,
+           pre_processors: Optional[List[pre.PreProcessor]] = None,
+           post_processors: Optional[List[post.PostProcessor]] = None,
            *wrp_args,
            **wrp_kwargs):
     """Performs vision-related associative tasks. Currently limited to CLIP model embeddings.
@@ -1611,8 +1611,8 @@ def vision(image: Optional[str] = None,
 
 
 def ocr(image: str,
-        pre_processors: Optional[List[PreProcessor]] = None,
-        post_processors: Optional[List[PostProcessor]] = None,
+        pre_processors: Optional[List[pre.PreProcessor]] = None,
+        post_processors: Optional[List[post.PostProcessor]] = None,
         *wrp_args,
         **wrp_kwargs):
     """Performs Optical Character Recognition (OCR) on an image.
@@ -1644,8 +1644,8 @@ def ocr(image: str,
 
 
 def speech_to_text(prompt: str = 'decode',
-                   pre_processors: Optional[List[PreProcessor]] = None,
-                   post_processors: Optional[List[PostProcessor]] = None,
+                   pre_processors: Optional[List[pre.PreProcessor]] = None,
+                   post_processors: Optional[List[post.PostProcessor]] = None,
                    *wrp_args,
                    **wrp_kwargs):
     """Decorates the given function for speech recognition.
@@ -1679,8 +1679,8 @@ def speech_to_text(prompt: str = 'decode',
 def text_to_speech(prompt: str,
                    path: str,
                    voice: str = 'nova',
-                   pre_processors: Optional[List[PreProcessor]] = None,
-                   post_processors: Optional[List[PostProcessor]] = None,
+                   pre_processors: Optional[List[pre.PreProcessor]] = None,
+                   post_processors: Optional[List[post.PostProcessor]] = None,
                    *wrp_args,
                    **wrp_kwargs):
     """Decorates the given function for text to speech synthesis.
@@ -1714,8 +1714,8 @@ def text_to_speech(prompt: str,
 
 def output(constraints: List[Callable] = [],
            default: Optional[object] = None,
-           pre_processors: Optional[List[PreProcessor]] = [ConsolePreProcessor()],
-           post_processors: Optional[List[PostProcessor]] = [ConsolePostProcessor()],
+           pre_processors: Optional[List[pre.PreProcessor]] = [pre.ConsolePreProcessor()],
+           post_processors: Optional[List[post.PostProcessor]] = [post.ConsolePostProcessor()],
            *wrp_args,
            **wrp_kwargs):
     """Offers an output stream for writing results.
@@ -1753,8 +1753,8 @@ def fetch(url: str,
           constraints: List[Callable] = [],
           default: Optional[object] = None,
           limit: int = 1,
-          pre_processors: Optional[List[PreProcessor]] = [CrawlPatternPreProcessor()],
-          post_processors: Optional[List[PostProcessor]] = [HtmlGetTextPostProcessor()],
+          pre_processors: Optional[List[pre.PreProcessor]] = [pre.CrawlPatternPreProcessor()],
+          post_processors: Optional[List[post.PostProcessor]] = [post.HtmlGetTextPostProcessor()],
           *wrp_args,
           **wrp_kwargs):
     """Fetches data from a given URL and applies the provided post-processors.
@@ -1795,8 +1795,8 @@ def fetch(url: str,
 
 def userinput(constraints: List[Callable] = [],
               default: Optional[object] = None,
-              pre_processors: Optional[List[PreProcessor]] = [ConsoleInputPreProcessor()],
-              post_processors: Optional[List[PostProcessor]] = [StripPostProcessor()],
+              pre_processors: Optional[List[pre.PreProcessor]] = [pre.ConsoleInputPreProcessor()],
+              post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
               *wrp_args,
               **wrp_kwargs):
     """Prompts for user input and returns the user response through a decorator.
@@ -1832,8 +1832,8 @@ def userinput(constraints: List[Callable] = [],
 
 def execute(default: Optional[str] = None,
             constraints: List[Callable] = [],
-            pre_processors: Optional[List[PreProcessor]] = [],
-            post_processors: Optional[List[PostProcessor]] = [],
+            pre_processors: List[pre.PreProcessor] = [],
+            post_processors: List[post.PostProcessor] = [],
             *wrp_args,
             **wrp_kwargs):
     """Executes a given function after applying constraints, pre-processing and post-processing.
@@ -1871,8 +1871,8 @@ def index(prompt: Any,
           operation: str = 'search', # | add | config
           default: Optional[str] = None,
           constraints: List[Callable] = [],
-          pre_processors: Optional[List[PreProcessor]] = [],
-          post_processors: Optional[List[PostProcessor]] = [],
+          pre_processors: List[pre.PreProcessor] = [],
+          post_processors: List[post.PostProcessor] = [],
           *wrp_args,
           **wrp_kwargs):
     """Query for a given index and returns the result through a decorator.
@@ -1959,82 +1959,9 @@ def setup(engines: Dict[str, Any],
     return decorator
 
 
-def cache(
-    in_memory:  bool,
-    cache_path: str = __root_dir__ / 'cache'
-):
-    '''
-    Cache the result of a *any* function call. This is very useful in cost optimization (e.g. computing embeddings).
-    '''
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(wrp_self):
-            return cache_registry_func(
-                    in_memory,
-                    cache_path,
-                    func,
-                    wrp_self
-                )
-        return wrapper
-    return decorator
-
-
-def bind(engine: str, property: str):
-    '''
-    Bind to an engine and retrieve one of its properties.
-    '''
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            return EngineRepository.bind_property(
-                    engine=engine,
-                    property=property
-                )
-        return wrapper
-    return decorator
-
-
-def retry(
-    exceptions=Exception,
-    tries=-1,
-    delay=0,
-    max_delay=-1,
-    backoff=1,
-    jitter=0
-):
-    '''
-    Returns a retry decorator.
-
-    :param exceptions: an exception or a tuple of exceptions to catch. default: Exception.
-    :param tries:      the maximum number of attempts. default: -1 (infinite).
-    :param delay:      initial delay between attempts. default: 0.
-    :param max_delay:  the maximum value of delay. default: -1 (no limit).
-    :param backoff:    multiplier applied to delay between attempts. default: 1 (no backoff).
-    :param jitter:     extra seconds added to delay between attempts. default: 0.
-                       fixed if a number, random if a range tuple (min, max)
-
-    Credits to invlpg (https://pypi.org/project/retry)
-    '''
-
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            return retry_func(
-                    functools.partial(func, *args, **kwargs),
-                    exceptions=exceptions,
-                    tries=tries,
-                    delay=delay,
-                    max_delay=max_delay,
-                    backoff=backoff,
-                    jitter=jitter
-                )
-        return wrapper
-    return decorator
-
-
 def tune(operation: str = 'create',
-         pre_processors: Optional[List[PreProcessor]] = None,
-         post_processors: Optional[List[PostProcessor]] = None,
+         pre_processors: Optional[List[pre.PreProcessor]] = None,
+         post_processors: Optional[List[post.PostProcessor]] = None,
          *wrp_args,
          **wrp_kwargs):
     """Fine tune a LLM.
@@ -2067,8 +1994,8 @@ def tune(operation: str = 'create',
 
 def caption(image: str,
             prompt: str,
-            pre_processors: Optional[List[PreProcessor]] = [ValuePreProcessor()],
-            post_processors: Optional[List[PostProcessor]] = None,
+            pre_processors: Optional[List[pre.PreProcessor]] = [pre.ValuePreProcessor()],
+            post_processors: Optional[List[post.PostProcessor]] = None,
             *wrp_args,
             **wrp_kwargs):
     """Caption the content of an image.

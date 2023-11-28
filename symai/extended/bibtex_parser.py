@@ -1,6 +1,7 @@
-from ..core import *
+from .. import core
 from ..pre_processors import PreProcessor
 from ..symbol import Expression, Symbol
+from ..post_processors import CodeExtractPostProcessor
 
 
 BIB_DESCRIPTION = """[Description]
@@ -82,7 +83,7 @@ class BibTexParser(Expression):
         self.sym_return_type = BibTexParser
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
-        @zero_shot(prompt="Create bibtex entries:\n",
+        @core.zero_shot(prompt="Create bibtex entries:\n",
                    pre_processors=[BibTexPreProcessor()],
                    post_processors=[CodeExtractPostProcessor()], **kwargs)
         def _func(_, text) -> str:

@@ -1,12 +1,12 @@
 import json
 import logging
 import os
+import rpyc
+import torch
+
 from abc import ABC
 from pathlib import Path
 from typing import List
-
-import rpyc
-import torch
 from box import Box
 from rpyc.utils.server import ThreadedServer
 

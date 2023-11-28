@@ -1,10 +1,12 @@
+import re
+
+from datetime import datetime
+
 from ..conversation import Conversation
-from ...symbol import Symbol, Expression
+from ...symbol import Symbol
 from ...components import Function
 from ...pre_processors import PreProcessor
 from ...post_processors import StripPostProcessor
-import re
-from datetime import datetime
 
 
 PERSONA_DESCRIPTION = """[Description]

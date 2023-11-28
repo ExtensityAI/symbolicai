@@ -1,11 +1,12 @@
-import argparse
 import json
 import os
 import sys
+import argparse
+
 from pathlib import Path
 from typing import Optional
 
-from ... import Import
+from ...imports import Import
 from ...misc.console import ConsoleStyle
 from ...misc.loader import Loader
 

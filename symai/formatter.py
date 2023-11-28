@@ -1,8 +1,8 @@
 import re
 from typing import List, Dict
 
-from . import core
-from . import Symbol, Expression
+from . import decorator
+from .symbol import Symbol, Expression
 
 
 class ParagraphFormatter(Expression):
@@ -83,7 +83,7 @@ class ParagraphFormatter(Expression):
                 paragraphs.append(text)
         return paragraphs
 
-    @core.bind(engine='embedding', property='max_tokens')
+    @decorator.bind(engine='embedding', property='max_tokens')
     def _max_tokens(self): pass
 
     def split_max_tokens_exceeded(self, input_text: List[str], token_ratio=0.5):

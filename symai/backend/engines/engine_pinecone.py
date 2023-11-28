@@ -1,5 +1,6 @@
 import itertools
 import warnings
+
 from typing import List
 
 warnings.filterwarnings('ignore', module='pinecone')

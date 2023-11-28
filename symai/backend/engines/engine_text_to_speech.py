@@ -1,9 +1,8 @@
 from typing import List
+from openai import OpenAI
 
 from ..base import Engine
 from ..settings import SYMAI_CONFIG
-
-from openai import OpenAI
 
 
 class TTSEngine(Engine):

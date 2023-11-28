@@ -1,7 +1,8 @@
+import pathlib
+
 from ..core import *
 from ..pre_processors import PreProcessor
 from ..symbol import Expression, Symbol
-import pathlib
 
 
 package_path = pathlib.Path(__file__).parent.parent.absolute()

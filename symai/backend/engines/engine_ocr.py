@@ -1,6 +1,6 @@
-from typing import List
-
 import requests
+
+from typing import List
 
 from ..base import Engine
 from ..settings import SYMAI_CONFIG

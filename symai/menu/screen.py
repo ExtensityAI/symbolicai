@@ -1,9 +1,11 @@
 import sys
 import json
 import webbrowser
+
 from pathlib import Path
 from prompt_toolkit import PromptSession, print_formatted_text
 from prompt_toolkit.shortcuts import yes_no_dialog, input_dialog, button_dialog
+
 from ..misc.console import ConsoleStyle
 
 
