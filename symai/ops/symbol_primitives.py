@@ -176,14 +176,13 @@ class ExpressionHandlingPrimitives:
     This mixin consists of functions that handle symbolic expressions - evaluations, parsing, computation and more.
     Future functionalities in this mixin might include operations to manipulate expressions, more complex evaluation techniques, etc.
     '''
-    def expression(self, expr: Optional[str] = None, expression_engine: str = None, **kwargs) -> 'Symbol':
+    def expression(self, expr: Optional[str] = None, **kwargs) -> 'Symbol':
         '''
         Evaluates a symbolic expression using the provided engine.
         Uses the core.expression decorator to create a _func method that evaluates the given expression.
 
         Args:
             expr (Optional[str]): The expression to evaluate. Defaults to the symbol value.
-            expression_engine (Optional[str]): The expression engine to use for evaluation. Defaults to None.
 
         Returns:
             Symbol: A new symbol with the result of the expression evaluation.
@@ -191,7 +190,7 @@ class ExpressionHandlingPrimitives:
         if expr is None:
             expr = self.value
 
-        @core.expression(expression_engine=expression_engine, **kwargs)
+        @core.expression(**kwargs)
         def _func(_, expr: str):
             pass
 

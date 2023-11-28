@@ -3,8 +3,9 @@ import inspect
 import traceback
 import importlib
 import pkgutil
+import logging
 
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Union
 from types import ModuleType
 from typing import Dict, Any, Tuple
 
@@ -46,7 +47,7 @@ def _execute_query(engine, post_processors, wrp_self, wrp_params, return_constra
         try:
             res = ast.literal_eval(rsp)
         except Exception as e:
-            print('functional parsing failed', e, rsp)
+            logging.warn(f"Failed to cast return type to {return_constraint} for {str(rsp)}")
             res = rsp
         assert res is not None, "Return type cast failed! Check if the return type is correct or post_processors output matches desired format: " + str(rsp)
         rsp = res
@@ -130,7 +131,7 @@ def _process_query(engine,
             if 'preview' in wrp_params and wrp_params['preview']:
                 return rsp
         except Exception as e:
-            print(f'ERROR: {str(e)}')
+            logging.error(f"Failed to execute query: {str(e)}")
             traceback.print_exc()
             if try_cnt < trials:
                 continue # repeat if query unsuccessful
@@ -179,16 +180,17 @@ class EngineRepository(object):
     _instance = None
 
     def __init__(self):
-        self._engines: Dict[str, Engine] = {}
+        if '_engines' not in self.__dict__:  # ensures _engines is only set once
+            self._engines: Dict[str, Engine] = {}
 
     def __new__(cls, *args, **kwargs):
-        if not cls._instance:
+        if cls._instance is None:
             cls._instance = super(EngineRepository, cls).__new__(cls, *args, **kwargs)
+            cls._instance.__init__()  # Explicitly call __init__
+            cls._instance.register_from_package(engines)
         return cls._instance
 
-    @classmethod
-    def register(cls, id: str, engine_instance: Engine, allow_engine_override: bool = False) -> None:
-        self = cls()
+    def register(self, id: str, engine_instance: Engine, allow_engine_override: bool = False) -> None:
         # Check if the engine is already registered
         if id in self._engines.keys() and not allow_engine_override:
             raise ValueError(f"Engine {id} is already registered. Set allow_engine_override to True to override.")
@@ -202,8 +204,7 @@ class EngineRepository(object):
         # Create an instance of the engine class and store it
         self._engines[id] = engine_instance
 
-    @classmethod
-    def register_from_package(cls, package: ModuleType, allow_engine_override: bool = False, *args, **kwargs) -> None:
+    def register_from_package(self, package: ModuleType, allow_engine_override: bool = False, *args, **kwargs) -> None:
         # Iterate over all modules in the given package and import them
         for _, module_name, _ in pkgutil.iter_modules(package.__path__, package.__name__ + '.'):
             module = importlib.import_module(module_name)
@@ -224,42 +225,40 @@ class EngineRepository(object):
                     # only registered configured engine
                     if id_ != ENGINE_UNREGISTERED:
                         # register new engine
-                        cls.register(id_, instance, allow_engine_override=allow_engine_override)
+                        self.register(id_, instance, allow_engine_override=allow_engine_override)
 
-    @classmethod
-    def get(cls, engine_name: str, *args, **kwargs) -> Engine:
-        self = cls()
-        if engine_name not in self._engines:
+    def get(self, engine_name: str, *args, **kwargs) -> Engine:
+        if engine_name not in self._engines.keys():
             # initialize engine
             raise ValueError(f"No engine named {engine_name} is registered.")
         return self._engines.get(engine_name)
 
-    @classmethod
-    def execute_command(cls, engine_name: str, *args, **kwargs) -> Any:
-        self = cls()
-        if engine_name == 'all':
+    def list(self, *args, **kwargs) -> List[str]:
+        return list(self._engines.keys())
+
+    def execute_command(self, engines: Union[str, List[str]], *args, **kwargs) -> Any:
+        if isinstance(engines, str):
+            engines = [engines]
+        if 'all' in engines:
             # Call the command function for all registered engines with provided arguments
-            return [engine.command(engine, *args, **kwargs) for engine_name, engine in self._engines.items()]
-        engine = cls.get(engine_name)
-        if engine:
-            # Call the command function for the engine with provided arguments
-            return engine.command(engine, *args, **kwargs)
+            return [engine.command(engine, *args, **kwargs) for name, engine in self._engines.items()]
+        # Call the command function for the engine with provided arguments
+        for engine_name in engines:
+            engine = self.get(engine_name)
+            if engine:
+                # Call the command function for the engine with provided arguments
+                return engine.command(engine, *args, **kwargs)
         raise ValueError(f"No engine named <{engine_name}> is registered.")
 
-    @classmethod
-    def process_query(cls, engine: str, *args, **kwargs) -> Tuple:
-        engine = cls.get(engine)
+    def process_query(self, engine: str, *args, **kwargs) -> Tuple:
+        engine = self.get(engine)
         if engine:
-            return _process_query(*args, **kwargs)
+            return _process_query(engine, *args, **kwargs)
         raise ValueError(f"No engine named {engine} is registered.")
 
-    @classmethod
-    def bind_property(cls, engine_name: str, property_name: str, *args, **kwargs):
+    def bind_property(self, engine_name: str, property_name: str, *args, **kwargs):
         """Bind a property to a specific engine."""
-        engine = cls.get(engine_name)
+        engine = self.get(engine_name)
         if engine:
             return getattr(engine, property_name, None)
         raise ValueError(f"No engine named {engine_name} is registered.")
-
-
-EngineRepository.register_from_package(engines)
