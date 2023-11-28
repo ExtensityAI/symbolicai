@@ -5,11 +5,11 @@ import openai
 
 from typing import List
 
-from ..base import Engine
-from ..mixin.openai import OpenAIMixin
-from ..settings import SYMAI_CONFIG
-from ...utils import encode_frames_file
-from ...misc.console import ConsoleStyle
+from ...base import Engine
+from ...mixin.openai import OpenAIMixin
+from ...settings import SYMAI_CONFIG
+from ....utils import encode_frames_file
+from ....misc.console import ConsoleStyle
 
 
 logging.getLogger("openai").setLevel(logging.ERROR)
@@ -161,8 +161,10 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             return min(int((self.max_tokens - val) * 0.99), 4_096)
         return int((self.max_tokens - val) * 0.99) # TODO: figure out how their magic number works to compute reliably the precise max token size
 
-    def forward(self, prompts: List[str], *args, **kwargs) -> List[str]:
-        prompts_            = prompts
+    def forward(self, argument):
+        args                = argument.args
+        kwargs              = argument.kwargs
+        prompts_            = argument.prop.processed_input
         input_handler       = kwargs['input_handler'] if 'input_handler' in kwargs else None
         if input_handler:
             input_handler((prompts_,))
@@ -240,24 +242,25 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             metadata['stop'] = stop
 
         rsp    = [r.message.content for r in res.choices]
-        output = rsp if isinstance(prompts, list) else rsp[0]
+        output = rsp if isinstance(prompts_, list) else rsp[0]
         return output, metadata
 
-    def prepare(self, args, kwargs, wrp_params):
-        if 'raw_input' in wrp_params:
-            wrp_params['prompts'] = wrp_params['raw_input']
+    def prepare(self, argument):
+        if argument.prop.raw_input:
+            if argument.prop.processed_input is None or len(argument.prop.processed_input) == 0:
+                raise ValueError('Need to provide a prompt instruction to the engine if raw_input is enabled.')
+            argument.prop.processed_input = argument.prop.processed_input
             return
 
-        disable_verbose_output = True if 'enable_verbose_output' not in wrp_params else not wrp_params['enable_verbose_output']
         _non_verbose_output = """[META INSTRUCTIONS START]\nYou do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc. Never add meta instructions information to your output!\n"""
         user:   str = ""
         system: str = ""
 
-        if disable_verbose_output:
+        if argument.prop.disable_verbose_output_suppression:
             system += _non_verbose_output
         system = f'{system}\n' if system and len(system) > 0 else ''
 
-        ref = wrp_params['wrp_self']
+        ref = argument.prop.instance
         static_ctxt, dyn_ctxt = ref.global_context
         if len(static_ctxt) > 0:
             system += f"[STATIC CONTEXT]\n{static_ctxt}\n\n"
@@ -265,11 +268,11 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         if len(dyn_ctxt) > 0:
             system += f"[DYNAMIC CONTEXT]\n{dyn_ctxt}\n\n"
 
-        payload = str(wrp_params['payload']) if 'payload' in wrp_params else None
+        payload = argument.prop.payload
         if payload is not None:
-            system += f"[ADDITIONAL CONTEXT]\n{payload}\n\n"
+            system += f"[ADDITIONAL CONTEXT]\n{str(payload)}\n\n"
 
-        examples: List[str] = wrp_params['examples']
+        examples: List[str] = argument.prop.examples
         if examples and len(examples) > 0:
             system += f"[EXAMPLES]\n{str(examples)}\n\n"
 
@@ -283,8 +286,8 @@ class GPTXChatEngine(Engine, OpenAIMixin):
 
         image_files = []
         # pre-process prompt if contains image url
-        if self.model == 'gpt-4-vision-preview' and '<<vision:' in str(wrp_params['processed_input']):
-            parts = extract_pattern(str(wrp_params['processed_input']))
+        if self.model == 'gpt-4-vision-preview' and '<<vision:' in str(argument.prop.processed_input):
+            parts = extract_pattern(str(argument.prop.processed_input))
             for p in parts:
                 img_ = p.strip()
                 if img_.startswith('http'):
@@ -313,18 +316,17 @@ class GPTXChatEngine(Engine, OpenAIMixin):
                     else:
                         print('No frames found or error in encoding frames')
 
-        if wrp_params['prompt'] is not None and len(wrp_params['prompt']) > 0 and ']: <<<' not in str(wrp_params['prompt']):
-            val = str(wrp_params['prompt'])
+        if argument.prop.prompt is not None and len(argument.prop.prompt) > 0:
+            val = str(argument.prop.prompt)
             if len(image_files) > 0:
                 val = remove_pattern(val)
             system += f"[INSTRUCTION]\n{val}"
 
-        suffix: str = str(wrp_params['processed_input'])
+        suffix: str = str(argument.prop.processed_input)
         if len(image_files) > 0:
             suffix = remove_pattern(suffix)
 
-        parse_system_instructions = False if 'parse_system_instructions' not in wrp_params else wrp_params['parse_system_instructions']
-        if '[SYSTEM_INSTRUCTION::]: <<<' in suffix and parse_system_instructions:
+        if '[SYSTEM_INSTRUCTION::]: <<<' in suffix and argument.prop.parse_system_instructions:
             parts = suffix.split('\n>>>\n')
             # first parts are the system instructions
             c = 0
@@ -338,9 +340,8 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             suffix = '\n>>>\n'.join(parts[c:])
         user += f"{suffix}"
 
-        template_suffix = str(wrp_params['template_suffix']) if 'template_suffix' in wrp_params else None
-        if template_suffix:
-            user += f"\n[[PLACEHOLDER]]\n{template_suffix}\n\n"
+        if argument.prop.template_suffix is not None:
+            user += f"\n[[PLACEHOLDER]]\n{str(argument.prop.template_suffix)}\n\n"
             user += f"Only generate content for the placeholder `[[PLACEHOLDER]]` following the instructions and context information. Do NOT write `[[PLACEHOLDER]]` or anything else in your output.\n\n"
 
         images = [{ 'type': 'image', "image_url": { "url": file, "detail": "auto" }} for file in image_files]
@@ -352,8 +353,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         else:
             user_prompt = { "role": "user", "content": user }
 
-        wrp_params['prompts'] = [
+        argument.prop.processed_input = [
             { "role": "system", "content": system },
             user_prompt,
         ]
-

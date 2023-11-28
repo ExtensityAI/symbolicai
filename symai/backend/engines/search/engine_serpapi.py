@@ -4,9 +4,9 @@ from typing import List
 from IPython.utils import io
 from box import Box
 
-from ..base import Engine
-from ..settings import SYMAI_CONFIG
-from ...symbol import Symbol
+from ...base import Engine
+from ...settings import SYMAI_CONFIG
+from ....symbol import Symbol
 
 try:
     from serpapi import GoogleSearch

@@ -3,8 +3,8 @@ import rpyc
 
 from typing import List
 
-from ..base import Engine
-from ..settings import SYMAI_CONFIG
+from ...base import Engine
+from ...settings import SYMAI_CONFIG
 
 
 rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True

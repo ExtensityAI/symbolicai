@@ -1,7 +1,7 @@
 from typing import Callable, List
 
-from ..base import Engine
-from ..driver.webclient import connect_browsers, dump_page_source, page_loaded
+from ...base import Engine
+from ...driver.webclient import connect_browsers, dump_page_source, page_loaded
 
 
 class SeleniumEngine(Engine):

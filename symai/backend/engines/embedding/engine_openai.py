@@ -3,9 +3,9 @@ import openai
 
 from typing import List
 
-from ..base import Engine
-from ..mixin.openai import OpenAIMixin
-from ..settings import SYMAI_CONFIG
+from ...base import Engine
+from ...mixin.openai import OpenAIMixin
+from ...settings import SYMAI_CONFIG
 
 
 logging.getLogger("openai").setLevel(logging.ERROR)
@@ -38,17 +38,21 @@ class EmbeddingEngine(Engine, OpenAIMixin):
         if 'EMBEDDING_ENGINE_MODEL' in wrp_params:
             self.model = wrp_params['EMBEDDING_ENGINE_MODEL']
 
-    def forward(self, prompts: List[str], *args, **kwargs) -> List[str]:
-        prompts_      = prompts if isinstance(prompts, list) else [prompts]
-        except_remedy = kwargs['except_remedy'] if 'except_remedy' in kwargs else None
-        input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
+    def forward(self, argument):
+        processed_input = argument.prop.processed_input
+        args            = argument.args
+        kwargs          = argument.kwargs
+
+        input_          = processed_input if isinstance(processed_input, list) else [processed_input]
+        except_remedy   = kwargs['except_remedy'] if 'except_remedy' in kwargs else None
+        input_handler   = kwargs['input_handler'] if 'input_handler' in kwargs else None
 
         if input_handler:
-            input_handler((prompts_,))
+            input_handler((input_,))
 
         try:
             res = openai.embeddings.create(model=self.model,
-                                           input=prompts_)
+                                           input=input_)
             output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
             if output_handler:
                 output_handler(res)
@@ -56,17 +60,17 @@ class EmbeddingEngine(Engine, OpenAIMixin):
             if except_remedy is None:
                 raise e
             callback = openai.embeddings.create
-            res = except_remedy(e, prompts_, callback, self, *args, **kwargs)
+            res = except_remedy(e, input_, callback, self, *args, **kwargs)
 
         rsp = [r.embedding for r in res.data]
         metadata = {}
         if 'metadata' in kwargs and kwargs['metadata']:
             metadata['kwargs'] = kwargs
-            metadata['input']  = prompts_
+            metadata['input']  = input_
             metadata['output'] = res
             metadata['model']  = self.model
 
         return [rsp], metadata
 
-    def prepare(self, args, kwargs, wrp_params):
-        wrp_params['prompts'] = wrp_params['entries']
+    def prepare(self, argument):
+        argument.prop.processed_input = argument.kwargs['entries']

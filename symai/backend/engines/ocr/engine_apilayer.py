@@ -2,8 +2,8 @@ import requests
 
 from typing import List
 
-from ..base import Engine
-from ..settings import SYMAI_CONFIG
+from ...base import Engine
+from ...settings import SYMAI_CONFIG
 
 
 class OCREngine(Engine):

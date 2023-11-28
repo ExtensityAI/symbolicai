@@ -16,6 +16,29 @@ class Argument:
         self.decorator_kwargs = decorator_kwargs
         self.kwargs           = self._construct_kwargs(self.signature_kwargs, self.decorator_kwargs)
         self.prop             = Box(self.kwargs)
+        # Set default values if not specified for backend processing
+        if not hasattr(self.prop, 'preview'):
+            self.prop.preview           = False
+        if not hasattr(self.prop, 'raw_input'):
+            self.prop.raw_input         = False
+        if not hasattr(self.prop, 'logging'):
+            self.prop.logging           = False
+        if not hasattr(self.prop, 'verbose'):
+            self.prop.verbose           = False
+        if not hasattr(self.prop, 'log_level'):
+            self.prop.log_level         = None
+        if not hasattr(self.prop, 'time_clock'):
+            self.prop.time_clock        = None
+        if not hasattr(self.prop, 'payload'):
+            self.prop.payload           = None
+        if not hasattr(self.prop, 'processed_input'):
+            self.prop.processed_input   = None
+        if not hasattr(self.prop, 'template_suffix'):
+            self.prop.template_suffix   = None
+        if not hasattr(self.prop, 'disable_verbose_output_suppression'):
+            self.prop.disable_verbose_output_suppression = False
+        if not hasattr(self.prop, 'parse_system_instructions'):
+            self.prop.parse_system_instructions          = False
 
     def _construct_kwargs(self, sig_kwargs, dec_kwargs):
         '''

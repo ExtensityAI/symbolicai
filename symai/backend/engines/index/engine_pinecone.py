@@ -9,9 +9,9 @@ try:
 except:
     pinecone = None
 
-from ..base import Engine
-from ..settings import SYMAI_CONFIG
-from ... import core
+from ...base import Engine
+from ...settings import SYMAI_CONFIG
+from .... import core
 
 
 def chunks(iterable, batch_size=100):

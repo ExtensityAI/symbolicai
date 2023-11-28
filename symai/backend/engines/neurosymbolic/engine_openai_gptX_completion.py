@@ -4,10 +4,10 @@ import tiktoken
 
 from typing import List
 
-from ..base import Engine
-from ..mixin.openai import OpenAIMixin
-from ..settings import SYMAI_CONFIG
-from ...misc.console import ConsoleStyle
+from ...base import Engine
+from ...mixin.openai import OpenAIMixin
+from ...settings import SYMAI_CONFIG
+from ....misc.console import ConsoleStyle
 
 
 logging.getLogger("openai").setLevel(logging.ERROR)

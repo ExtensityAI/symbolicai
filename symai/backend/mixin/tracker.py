@@ -2,8 +2,8 @@ import sys
 
 from ... import core
 from ... import decorator
-from ..engines.engine_embedding import EmbeddingEngine
-from ..engines.engine_gptX_chat import GPTXChatEngine
+from ..engines.embedding.engine_openai import EmbeddingEngine
+from ..engines.neurosymbolic.engine_openai_gptX_chat import GPTXChatEngine
 from ..mixin.openai import SUPPORTED_MODELS
 from ...symbol import Symbol
 from ...utils import CustomUserWarning

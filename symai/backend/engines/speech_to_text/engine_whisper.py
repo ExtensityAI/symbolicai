@@ -5,9 +5,9 @@ from itertools import takewhile
 from tqdm import tqdm
 from typing import Iterable, List
 
-from ..base import Engine
-from ..settings import SYMAI_CONFIG
-from ...symbol import Expression
+from ...base import Engine
+from ...settings import SYMAI_CONFIG
+from ....symbol import Expression
 
 class WhisperTimestampsFormatter(Expression):
     def __init__(self):
