@@ -8,13 +8,16 @@ from typing import Any, List
 from ..collect import CollectionRepository, rec_serialize
 
 
+ENGINE_UNREGISTERED = '<UNREGISTERED/>'
+
+
 class PreviewSymbol(ABC):
+    '''
+    A Symbol subclass that can be used to create new Symbol subclasses to store metadata.
+    '''
     def __init__(self, params: dict):
         super().__init__(params['prompts'])
         self.params = params
-
-
-ENGINE_UNREGISTERED = '<UNREGISTERED/>'
 
 
 class Engine(ABC):

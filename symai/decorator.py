@@ -36,7 +36,7 @@ def bind(engine: str, property: str):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            return EngineRepository.bind_property(
+            return EngineRepository().bind_property(
                     engine=engine,
                     property=property
                 )

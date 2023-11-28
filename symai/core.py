@@ -8,6 +8,32 @@ from . import prompts as prm
 from .functional import EngineRepository
 
 
+class Argument:
+    def __init__(self, args, signature_kwargs, decorator_kwargs):
+        self.args = args
+        self.signature_kwargs = signature_kwargs
+        self.decorator_kwargs = decorator_kwargs
+        self.kwargs = self._construct_kwargs(self.signature_kwargs, self.decorator_kwargs)
+
+    def _construct_kwargs(self, sig_kwargs, dec_kwargs):
+        '''
+        Combines and overrides the decorator args and kwargs with the runtime signature args and kwargs.
+
+        Args:
+            sig_kwargs (Dict): The signature kwargs.
+            dec_kwargs (Dict): The decorator kwargs.
+
+        Returns:
+            Dict: The combined and overridden kwargs.
+        '''
+        kwargs = {}
+        # Initialize with the decorator kwargs
+        kwargs.update(dec_kwargs)
+        # Override the decorator kwargs with the signature kwargs
+        kwargs.update(sig_kwargs)
+        return kwargs
+
+
 def few_shot(prompt: str = '',
              examples: Any = [],
              constraints: List[Callable] = [],
@@ -15,7 +41,7 @@ def few_shot(prompt: str = '',
              limit: int = 1,
              pre_processors: Optional[List[pre.PreProcessor]] = None,
              post_processors: Optional[List[post.PostProcessor]] = None,
-             **wrp_kwargs):
+             **decorator_kwargs):
     """"General decorator for the neural processing engine.
     This method is used to decorate functions which can build any expression in a examples-based way.
 
@@ -28,16 +54,19 @@ def few_shot(prompt: str = '',
         default (object, optional): Default value if prediction fails. Defaults to None.
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model to match the format of the examples. Defaults to None.
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
-        **wrp_kwargs: Additional arguments as key-value pairs passed to the decorated function, which can later accessed in pre_processors and post_processors via the wrp_params['key'] dictionary.
+        **decorator_kwargs: Additional arguments as key-value pairs passed to the decorated function, which can later accessed in pre_processors and post_processors via the wrp_params['key'] dictionary.
 
     Returns:
         object: The prediction of the model based on the return type of the decorated function. Defaults to object, if not specified or to str if cast was not possible.
     """
     def decorator(func):
         @functools.wraps(func)
-        def wrapper(wrp_self, *args, **kwargs):
-            return EngineRepository.process_query(wrp_self,
+        def wrapper(instance, *signature_args, **signature_kwargs):
+            # Construct container object for the arguments and kwargs
+            argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
+            return EngineRepository().process_query(
                                 engine='neurosymbolic',
+                                instance=instance,
                                 func=func,
                                 prompt=prompt,
                                 examples=examples,
@@ -46,8 +75,8 @@ def few_shot(prompt: str = '',
                                 limit=limit,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                wrp_kwargs=wrp_kwargs,
-                                args=args, kwargs=kwargs)
+                                argument=argument,
+                                **argument.kwargs)
         return wrapper
     return decorator
 
@@ -58,7 +87,7 @@ def zero_shot(prompt: str = '',
               limit: int = 1,
               pre_processors: Optional[List[pre.PreProcessor]] = None,
               post_processors: Optional[List[post.PostProcessor]] = None,
-              **wrp_kwargs):
+              **decorator_kwargs):
     """"General decorator for the neural processing engine.
     This method is used to decorate functions which can build any expression without examples.
 
@@ -70,7 +99,7 @@ def zero_shot(prompt: str = '',
         default (object, optional): Default value if prediction fails. Defaults to None.
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
-        **wrp_kwargs: Additional arguments as key-value pairs passed to the decorated function, which can later accessed in pre_processors and post_processors via the wrp_params['key'] dictionary.
+        **decorator_kwargs: Additional arguments as key-value pairs passed to the decorated function, which can later accessed in pre_processors and post_processors via the wrp_params['key'] dictionary.
 
     Returns:
         object: The prediction of the model based on the return type of the decorated function. Defaults to object, if not specified or to str if cast was not possible.
@@ -82,7 +111,7 @@ def zero_shot(prompt: str = '',
                     limit=limit,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    wrp_kwargs=wrp_kwargs)
+                    decorator_kwargs=decorator_kwargs)
 
 
 def summarize(prompt: str = 'Summarize the content of the following text:\n',
@@ -91,7 +120,7 @@ def summarize(prompt: str = 'Summarize the content of the following text:\n',
               default: Optional[object] = None,
               pre_processors: Optional[List[pre.PreProcessor]] = [pre.SummaryPreProcessing()],
               post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-              **wrp_kwargs):
+              **decorator_kwargs):
     """Summarizes the content of a text.
 
     Args:
@@ -113,7 +142,7 @@ def summarize(prompt: str = 'Summarize the content of the following text:\n',
                     limit=1,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def equals(context: str = 'contextually',
@@ -123,7 +152,7 @@ def equals(context: str = 'contextually',
            constraints: List[Callable] = [],
            pre_processors: Optional[List[pre.PreProcessor]] = [pre.EqualsPreProcessor()],
            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-           **wrp_kwargs):
+           **decorator_kwargs):
     """Equality function for two objects.
 
     Args:
@@ -147,7 +176,7 @@ def equals(context: str = 'contextually',
                     max_tokens=10,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def sufficient(query: str,
@@ -157,7 +186,7 @@ def sufficient(query: str,
                constraints: List[Callable] = [],
                pre_processors: Optional[List[pre.PreProcessor]] = [pre.SufficientInformationPreProcessor()],
                post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-               **wrp_kwargs) -> bool:
+               **decorator_kwargs) -> bool:
     """Determines if there is sufficient information to answer the given query.
 
     Args:
@@ -182,7 +211,7 @@ def sufficient(query: str,
                     max_tokens=10,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def delitem(default: Optional[str] = None,
@@ -191,7 +220,7 @@ def delitem(default: Optional[str] = None,
             constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.DeleteIndexPreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-            **wrp_kwargs):
+            **decorator_kwargs):
     """Deletes the items at the specified index position.
 
     Args:
@@ -213,7 +242,7 @@ def delitem(default: Optional[str] = None,
                     stop=['\n'],
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def setitem(default: Optional[str] = None,
@@ -222,7 +251,7 @@ def setitem(default: Optional[str] = None,
             constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.SetIndexPreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-            **wrp_kwargs):
+            **decorator_kwargs):
     """Sets an item at a given index position in a sequence.
 
     Args:
@@ -244,7 +273,7 @@ def setitem(default: Optional[str] = None,
                     stop=['\n'],
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def getitem(default: Optional[str] = None,
@@ -253,7 +282,7 @@ def getitem(default: Optional[str] = None,
             constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.IndexPreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-            **wrp_kwargs):
+            **decorator_kwargs):
     """Retrieves the item at the given index position.
 
     Args:
@@ -275,7 +304,7 @@ def getitem(default: Optional[str] = None,
                     stop=['\n'],
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def modify(changes: str,
@@ -285,7 +314,7 @@ def modify(changes: str,
            constraints: List[Callable] = [],
            pre_processors: Optional[List[pre.PreProcessor]] = [pre.ModifyPreProcessor()],
            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-           **wrp_kwargs):
+           **decorator_kwargs):
     """A function to modify a text based on a set of criteria.
 
     Args:
@@ -308,7 +337,7 @@ def modify(changes: str,
                     limit=1,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def filtering(criteria: str,
@@ -319,7 +348,7 @@ def filtering(criteria: str,
               constraints: List[Callable] = [],
               pre_processors: Optional[List[pre.PreProcessor]] = [pre.FilterPreProcessor()],
               post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-              **wrp_kwargs):
+              **decorator_kwargs):
     """Filter information from a text based on a set of criteria.
 
     Args:
@@ -344,7 +373,7 @@ def filtering(criteria: str,
                     limit=1,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def notify(subscriber: Dict[str, Callable],
@@ -354,7 +383,7 @@ def notify(subscriber: Dict[str, Callable],
            constraints: List[Callable] = [],
            pre_processors: Optional[List[pre.PreProcessor]] = [pre.SemanticMappingPreProcessor()],
            post_processors: Optional[List[post.PostProcessor]] = [post.SplitPipePostProcessor(), post.NotifySubscriberPostProcessor()],
-           **wrp_kwargs):
+           **decorator_kwargs):
     """Notify subscribers based on a set of topics if detected in the input text and matching the key of the subscriber.
 
     Args:
@@ -377,7 +406,7 @@ def notify(subscriber: Dict[str, Callable],
                     limit=1,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def compare(default: bool = False,
@@ -387,7 +416,7 @@ def compare(default: bool = False,
             constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.ComparePreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-            **wrp_kwargs):
+            **decorator_kwargs):
     """Compare two objects based on the specified operator.
 
     Args:
@@ -412,7 +441,7 @@ def compare(default: bool = False,
                     operator=operator,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def convert(format: str,
@@ -422,7 +451,7 @@ def convert(format: str,
             constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.TextFormatPreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-            **wrp_kwargs):
+            **decorator_kwargs):
     """Transformation operation from one format to another.
 
     Args:
@@ -445,7 +474,7 @@ def convert(format: str,
                     format=format,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def transcribe(modify: str,
@@ -455,7 +484,7 @@ def transcribe(modify: str,
                constraints: List[Callable] = [],
                pre_processors: Optional[List[pre.PreProcessor]] = [pre.TranscriptionPreProcessor()],
                post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-               **wrp_kwargs):
+               **decorator_kwargs):
     """Transcription operation of a text to another styled text.
 
     Args:
@@ -478,7 +507,7 @@ def transcribe(modify: str,
                     modify=modify,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def style(description: str,
@@ -488,7 +517,7 @@ def style(description: str,
           constraints: List[Callable] = [],
           pre_processors: Optional[List[pre.PreProcessor]] = [pre.StylePreProcessor()],
           post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-          **wrp_kwargs):
+          **decorator_kwargs):
     """Styles a given text based on best practices and a given description.
 
     Args:
@@ -512,7 +541,7 @@ def style(description: str,
                     description=description,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def analyze(query: str,
@@ -523,7 +552,7 @@ def analyze(query: str,
             constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.ExceptionPreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-            **wrp_kwargs):
+            **decorator_kwargs):
     """Analyses an Exception and proposes a correction.
 
     Args:
@@ -548,7 +577,7 @@ def analyze(query: str,
                     limit=1,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def correct(context: str,
@@ -559,7 +588,7 @@ def correct(context: str,
             constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.CorrectionPreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor(), post.ConfirmToBoolPostProcessor()],
-            **wrp_kwargs):
+            **decorator_kwargs):
     """Analyses an Exception and proposes a correction.
 
     Args:
@@ -584,7 +613,7 @@ def correct(context: str,
                     limit=1,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def translate(language: str = 'English',
@@ -594,7 +623,7 @@ def translate(language: str = 'English',
               constraints: List[Callable] = [],
               pre_processors: Optional[List[pre.PreProcessor]] = [pre.LanguagePreProcessor()],
               post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-              **wrp_kwargs):
+              **decorator_kwargs):
     """Translates a given text into a specified language.
 
     Args:
@@ -617,7 +646,7 @@ def translate(language: str = 'English',
                     language=language,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def rank(default: Optional[object] = None,
@@ -627,7 +656,7 @@ def rank(default: Optional[object] = None,
          constraints: List[Callable] = [],
          pre_processors: Optional[List[pre.PreProcessor]] = [pre.RankPreProcessor()],
          post_processors: Optional[List[post.PostProcessor]] = [post.ASTPostProcessor()],
-         **wrp_kwargs):
+         **decorator_kwargs):
     """Ranks a list of objects based on their quality measure and order literal.
 
     Args:
@@ -651,7 +680,7 @@ def rank(default: Optional[object] = None,
                     order=order,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def replace(prompt: str = "Replace text parts by string pattern.\n",
@@ -660,7 +689,7 @@ def replace(prompt: str = "Replace text parts by string pattern.\n",
             constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.ReplacePreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-            **wrp_kwargs):
+            **decorator_kwargs):
     """Replaces text parts by a given string pattern.
 
     Args:
@@ -681,7 +710,7 @@ def replace(prompt: str = "Replace text parts by string pattern.\n",
                     limit=1,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def include(prompt: str = "Include information based on description.\n",
@@ -690,7 +719,7 @@ def include(prompt: str = "Include information based on description.\n",
             constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.IncludePreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-            **wrp_kwargs):
+            **decorator_kwargs):
     """Include information from a description.
 
     Args:
@@ -711,7 +740,7 @@ def include(prompt: str = "Include information based on description.\n",
                     limit=1,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def combine(prompt: str = "Add the two data types in a logical way:\n",
@@ -720,7 +749,7 @@ def combine(prompt: str = "Add the two data types in a logical way:\n",
             constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.CombinePreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-            **wrp_kwargs):
+            **decorator_kwargs):
     """Combines two data types in a logical way.
 
     Args:
@@ -741,7 +770,7 @@ def combine(prompt: str = "Add the two data types in a logical way:\n",
                     limit=1,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def template(template: str,
@@ -752,7 +781,7 @@ def template(template: str,
              constraints: List[Callable] = [],
              pre_processors: Optional[List[pre.PreProcessor]] = [pre.DataTemplatePreProcessor(), pre.TemplatePreProcessor()],
              post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-             **wrp_kwargs):
+             **decorator_kwargs):
     """Fills in a template with the given data.
 
     Args:
@@ -777,7 +806,7 @@ def template(template: str,
                     limit=1,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def negate(prompt: str = "Negate the following statement:\n",
@@ -786,7 +815,7 @@ def negate(prompt: str = "Negate the following statement:\n",
            constraints: List[Callable] = [],
            pre_processors: Optional[List[pre.PreProcessor]] = [pre.NegatePreProcessor()],
            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-           **wrp_kwargs):
+           **decorator_kwargs):
     """Negates a given statement.
 
     Args:
@@ -807,7 +836,7 @@ def negate(prompt: str = "Negate the following statement:\n",
                     limit=1,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def contains(default: bool = False,
@@ -816,7 +845,7 @@ def contains(default: bool = False,
              constraints: List[Callable] = [],
              pre_processors: Optional[List[pre.PreProcessor]] = [pre.ContainsPreProcessor()],
              post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-             **wrp_kwargs):
+             **decorator_kwargs):
     """Determines whether a given string contains another string.
 
     Args:
@@ -839,7 +868,7 @@ def contains(default: bool = False,
                     max_tokens=10,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def isinstanceof(default: bool = False,
@@ -848,7 +877,7 @@ def isinstanceof(default: bool = False,
                  constraints: List[Callable] = [],
                  pre_processors: Optional[List[pre.PreProcessor]] = [pre.IsInstanceOfPreProcessor()],
                  post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-                 **wrp_kwargs):
+                 **decorator_kwargs):
     """Detects if one object is an instance of another.
 
     Args:
@@ -871,7 +900,7 @@ def isinstanceof(default: bool = False,
                     max_tokens=10,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def case(enum: List[str],
@@ -881,7 +910,7 @@ def case(enum: List[str],
          stop: List[str] = ['\n'],
          pre_processors: Optional[List[pre.PreProcessor]] = [pre.EnumPreProcessor(), pre.TextMessagePreProcessor(), pre.PredictionMessagePreProcessor()],
          post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor(), post.CaseInsensitivePostProcessor()],
-         **wrp_kwargs):
+         **decorator_kwargs):
     """Classifies a text according to one of the given categories.
 
     Args:
@@ -904,7 +933,7 @@ def case(enum: List[str],
                     pre_processors=pre_processors,
                     post_processors=post_processors,
                     enum=enum,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def extract(prompt: str = "Extract a pattern from text:\n",
@@ -913,7 +942,7 @@ def extract(prompt: str = "Extract a pattern from text:\n",
             constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.ExtractPatternPreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-            **wrp_kwargs):
+            **decorator_kwargs):
     """Extracts a pattern from text.
 
     Args:
@@ -934,7 +963,7 @@ def extract(prompt: str = "Extract a pattern from text:\n",
                     limit=1,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def expression(prompt: str = "Evaluate the symbolic expressions:\n",
@@ -943,7 +972,7 @@ def expression(prompt: str = "Evaluate the symbolic expressions:\n",
                constraints: List[Callable] = [],
                pre_processors: Optional[List[pre.PreProcessor]] = [pre.WolframAlphaPreProcessor()],
                post_processors: Optional[List[post.PostProcessor]] = [post.WolframAlphaPostProcessor()],
-               **wrp_kwargs):
+               **decorator_kwargs):
     """Evaluates the symbolic expressions.
 
     Args:
@@ -959,9 +988,12 @@ def expression(prompt: str = "Evaluate the symbolic expressions:\n",
     """
     def decorator(func):
         @functools.wraps(func)
-        def wrapper(wrp_self, *args, **kwargs):
-            return EngineRepository.process_query(wrp_self,
+        def wrapper(instance, *signature_args, **signature_kwargs):
+            # Construct container object for the arguments and kwargs
+            argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
+            return EngineRepository().process_query(
                                 engine='symbolic',
+                                instance=instance,
                                 func=func,
                                 prompt=prompt,
                                 default=default,
@@ -970,8 +1002,9 @@ def expression(prompt: str = "Evaluate the symbolic expressions:\n",
                                 constraints=constraints,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                wrp_kwargs=wrp_kwargs,
-                                args=args, kwargs=kwargs)
+                                decorator_kwargs=decorator_kwargs,
+                                argment=argument,
+                                **argument.kwargs)
         return wrapper
     return decorator
 
@@ -983,7 +1016,7 @@ def logic(prompt: str = "Evaluate the logic expressions:\n",
           constraints: List[Callable] = [],
           pre_processors: Optional[List[pre.PreProcessor]] = [pre.LogicExpressionPreProcessor()],
           post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-          **wrp_kwargs):
+          **decorator_kwargs):
     """Evaluates a logic expression.
 
     Args:
@@ -1007,7 +1040,7 @@ def logic(prompt: str = "Evaluate the logic expressions:\n",
                     stop=['\n'],
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def invert(prompt: str = "Invert the logic of the content:\n",
@@ -1016,7 +1049,7 @@ def invert(prompt: str = "Invert the logic of the content:\n",
            constraints: List[Callable] = [],
            pre_processors: Optional[List[pre.PreProcessor]] = [pre.ArrowMessagePreProcessor()],
            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-           **wrp_kwargs):
+           **decorator_kwargs):
     """Inverts the logic of a statement.
 
     Args:
@@ -1038,7 +1071,7 @@ def invert(prompt: str = "Invert the logic of the content:\n",
                     stop=['\n'],
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def simulate(prompt: str = "Simulate the following code:\n",
@@ -1048,7 +1081,7 @@ def simulate(prompt: str = "Simulate the following code:\n",
              constraints: List[Callable] = [],
              pre_processors: Optional[List[pre.PreProcessor]] = [pre.SimulateCodePreProcessor()],
              post_processors: Optional[List[post.PostProcessor]] = [post.SplitPipePostProcessor(), post.TakeLastPostProcessor()],
-             **wrp_kwargs):
+             **decorator_kwargs):
     """Simulates code and returns the result.
 
     Args:
@@ -1070,7 +1103,7 @@ def simulate(prompt: str = "Simulate the following code:\n",
                     limit=limit,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def code(prompt: str = "Generate code that solves the following problems:\n",
@@ -1080,7 +1113,7 @@ def code(prompt: str = "Generate code that solves the following problems:\n",
          constraints: List[Callable] = [],
          pre_processors: Optional[List[pre.PreProcessor]] = [pre.GenerateCodePreProcessor()],
          post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-         **wrp_kwargs):
+         **decorator_kwargs):
     """Generates code that solves a given problem.
 
     Args:
@@ -1102,7 +1135,7 @@ def code(prompt: str = "Generate code that solves the following problems:\n",
                     limit=limit,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **decorator_kwargs)
 
 
 def outline(prompt: str = "Outline only the essential content as a short list of bullets. Each bullet is in a new line:\n",
@@ -1112,7 +1145,7 @@ def outline(prompt: str = "Outline only the essential content as a short list of
             constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.TextToOutlinePreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor(), post.SplitNewLinePostProcessor()],
-            **wrp_kwargs):
+            **decorator_kwargs):
     """Outlines the essential content as a short list of bullets.
 
     Args:
@@ -1134,7 +1167,7 @@ def outline(prompt: str = "Outline only the essential content as a short list of
                     limit=limit,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    wrp_kwargs=wrp_kwargs)
+                    decorator_kwargs=decorator_kwargs)
 
 
 def unique(prompt: str = "Create a short unique key that captures the essential topic from the following statements and does not collide with the list of keys:\n",
@@ -1145,7 +1178,7 @@ def unique(prompt: str = "Create a short unique key that captures the essential 
            constraints: List[Callable] = [],
            pre_processors: Optional[List[pre.PreProcessor]] = [pre.UniquePreProcessor()],
            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-           **wrp_kwargs):
+           **decorator_kwargs):
     """Creates a short, unique key that captures the essential topic from the given statements and does not collide with the list of keys.
 
     Args:
@@ -1169,7 +1202,7 @@ def unique(prompt: str = "Create a short unique key that captures the essential 
                     limit=limit,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    wrp_kwargs=wrp_kwargs)
+                    decorator_kwargs=decorator_kwargs)
 
 
 def clean(prompt: str = "Clean up the text from special characters or escape sequences. DO NOT change any words or sentences! Keep original semantics:\n",
@@ -1179,7 +1212,7 @@ def clean(prompt: str = "Clean up the text from special characters or escape seq
           constraints: List[Callable] = [],
           pre_processors: Optional[List[pre.PreProcessor]] = [pre.CleanTextMessagePreProcessor()],
           post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-          **wrp_kwargs):
+          **decorator_kwargs):
     """Cleans up a text from special characters and escape sequences.
 
     Args:
@@ -1201,7 +1234,7 @@ def clean(prompt: str = "Clean up the text from special characters or escape seq
                     limit=limit,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    wrp_kwargs=wrp_kwargs)
+                    decorator_kwargs=decorator_kwargs)
 
 
 def compose(prompt: str = "Create a coherent text based on the facts listed in the outline:\n",
@@ -1210,7 +1243,7 @@ def compose(prompt: str = "Create a coherent text based on the facts listed in t
             constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.GenerateTextPreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-            **wrp_kwargs):
+            **decorator_kwargs):
     """Compose a coherent text based on an outline.
 
     Args:
@@ -1231,7 +1264,7 @@ def compose(prompt: str = "Create a coherent text based on the facts listed in t
                     limit=1,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    wrp_kwargs=wrp_kwargs)
+                    decorator_kwargs=decorator_kwargs)
 
 
 def foreach(condition: str,
@@ -1242,7 +1275,7 @@ def foreach(condition: str,
             constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.ForEachPreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-            **wrp_kwargs):
+            **decorator_kwargs):
     """Applies an operation based on a given condition to each element in a list.
 
     Args:
@@ -1267,7 +1300,7 @@ def foreach(condition: str,
                     limit=1,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    wrp_kwargs=wrp_kwargs)
+                    decorator_kwargs=decorator_kwargs)
 
 
 def dictionary(context: str,
@@ -1277,7 +1310,7 @@ def dictionary(context: str,
                constraints: List[Callable] = [],
                pre_processors: Optional[List[pre.PreProcessor]] = [pre.MapPreProcessor()],
                post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor(), post.ASTPostProcessor()],
-               **wrp_kwargs):
+               **decorator_kwargs):
     """Maps related content together under a common abstract topic.
 
     Args:
@@ -1300,7 +1333,7 @@ def dictionary(context: str,
                     limit=1,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    wrp_kwargs=wrp_kwargs)
+                    decorator_kwargs=decorator_kwargs)
 
 
 def listing(condition: str,
@@ -1310,7 +1343,7 @@ def listing(condition: str,
              constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.ListPreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-            **wrp_kwargs):
+            **decorator_kwargs):
     """Lists each element contained in the text or list based on the given condition.
 
     Args:
@@ -1333,7 +1366,7 @@ def listing(condition: str,
                     limit=1,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    wrp_kwargs=wrp_kwargs)
+                    decorator_kwargs=decorator_kwargs)
 
 
 def query(context: str,
@@ -1343,7 +1376,7 @@ def query(context: str,
           default: Optional[object] = None,
           pre_processors: Optional[List[pre.PreProcessor]] = [pre.QueryPreProcessor()],
           post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-          **wrp_kwargs):
+          **decorator_kwargs):
     """Performs a query given a context.
 
     Args:
@@ -1366,7 +1399,7 @@ def query(context: str,
                     limit=1,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    wrp_kwargs=wrp_kwargs)
+                    decorator_kwargs=decorator_kwargs)
 
 
 def expand(prompt: Optional[str] = 'Write a self-contained function (with all imports) to solve a specific user problem task. Label the function with a name that describes the task.',
@@ -1375,7 +1408,7 @@ def expand(prompt: Optional[str] = 'Write a self-contained function (with all im
            default: Optional[object] = None,
            pre_processors: Optional[List[pre.PreProcessor]] = pre.ExpandFunctionPreProcessor(),
            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor(), post.ExpandFunctionPostProcessor()],
-           **wrp_kwargs):
+           **decorator_kwargs):
     """Performs a expand command given a context to generate new prompts.
 
     Args:
@@ -1397,7 +1430,7 @@ def expand(prompt: Optional[str] = 'Write a self-contained function (with all im
                     stop=[prm.Prompt.stop_token],
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    wrp_kwargs=wrp_kwargs)
+                    decorator_kwargs=decorator_kwargs)
 
 
 def search(query: str,
@@ -1406,8 +1439,7 @@ def search(query: str,
            limit: int = 1,
            pre_processors: Optional[List[pre.PreProcessor]] = None,
            post_processors: Optional[List[post.PostProcessor]] = None,
-           *wrp_args,
-           **wrp_kwargs):
+           **decorator_kwargs):
     """Searches for a given query on the internet.
 
     Args:
@@ -1417,17 +1449,19 @@ def search(query: str,
         limit (int, optional): The maximum number of results to be returned. Defaults to 1.
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to None.
-        *wrp_args: Additional arguments to be passed to the decorated function.
-        **wrp_kwargs: Additional keyword arguments to be passed to the decorated function.
+        **decorator_kwargs: Additional keyword arguments to be passed to the decorated function.
 
     Returns:
         object: The search results based on the query.
     """
     def decorator(func):
         @functools.wraps(func)
-        def wrapper(wrp_self, *args, **kwargs):
-            return EngineRepository.process_query(wrp_self,
+        def wrapper(instance, *signature_args, **signature_kwargs):
+            # Construct container object for the arguments and kwargs
+            argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
+            return EngineRepository().process_query(
                                 engine='search',
+                                instance=instance,
                                 func=func,
                                 query=query,
                                 constraints=constraints,
@@ -1435,9 +1469,8 @@ def search(query: str,
                                 limit=limit,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                wrp_args=wrp_args,
-                                wrp_kwargs=wrp_kwargs,
-                                args=args, kwargs=kwargs)
+                                argument=argument,
+                                **argument.kwargs)
         return wrapper
     return decorator
 
@@ -1448,8 +1481,7 @@ def opening(path: str,
             limit: int = None,
             pre_processors: Optional[List[pre.PreProcessor]] = None,
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-            *wrp_args,
-            **wrp_kwargs):
+            **decorator_kwargs):
     """Opens a file and applies a given function to it.
 
     Args:
@@ -1459,17 +1491,19 @@ def opening(path: str,
         limit (int, optional): The maximum number of results to be returned. Defaults to None.
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
-        *wrp_args: Variable length argument list to be passed to the function.
-        **wrp_kwargs: Arbitrary keyword arguments to be passed to the function.
+        **decorator_kwargs: Arbitrary keyword arguments to be passed to the function.
 
     Returns:
         object: The result of applying the given function to the opened file.
     """
     def decorator(func):
         @functools.wraps(func)
-        def wrapper(wrp_self, *args, **kwargs):
-            return EngineRepository.process_query(wrp_self,
+        def wrapper(instance, *signature_args, **signature_kwargs):
+            # Construct container object for the arguments and kwargs
+            argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
+            return EngineRepository().process_query(
                                 engine='files',
+                                instance=instance,
                                 func=func,
                                 path=path,
                                 constraints=constraints,
@@ -1477,9 +1511,8 @@ def opening(path: str,
                                 limit=limit,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                wrp_args=wrp_args,
-                                wrp_kwargs=wrp_kwargs,
-                                args=args, kwargs=kwargs)
+                                argument=argument,
+                                **argument.kwargs)
         return wrapper
     return decorator
 
@@ -1487,32 +1520,32 @@ def opening(path: str,
 def embed(entries: List[str],
           pre_processors: Optional[List[pre.PreProcessor]] = [pre.UnwrapListSymbolsPreProcessor()],
           post_processors: Optional[List[post.PostProcessor]] = None,
-          *wrp_args,
-          **wrp_kwargs):
+          **decorator_kwargs):
     """Embeds the entries provided in a decorated function.
 
     Args:
         entries (List[str]): A list of entries that will be embedded in the decorated function.
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the entries. Defaults to None.
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the entries. Defaults to None.
-        *wrp_args: Additional positional arguments to be passed to the decorated function.
-        **wrp_kwargs: Additional keyword arguments to be passed to the decorated function.
+        **decorator_kwargs: Additional keyword arguments to be passed to the decorated function.
 
     Returns:
         function: A function with the entries embedded.
     """
     def decorator(func):
         @functools.wraps(func)
-        def wrapper(wrp_self, *args, **kwargs):
-            return EngineRepository.process_query(wrp_self,
+        def wrapper(instance, *signature_args, **signature_kwargs):
+            # Construct container object for the arguments and kwargs
+            argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
+            return EngineRepository().process_query(
                                 engine='embedding',
+                                instance=instance,
                                 entries=entries,
                                 func=func,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                wrp_args=wrp_args,
-                                wrp_kwargs=wrp_kwargs,
-                                args=args, kwargs=kwargs)
+                                argument=argument,
+                                **argument.kwargs)
         return wrapper
     return decorator
 
@@ -1520,14 +1553,14 @@ def embed(entries: List[str],
 def cluster(entries: List[str],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.UnwrapListSymbolsPreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.ClusterPostProcessor()],
-            **wrp_kwargs):
+            **decorator_kwargs):
     """Embeds and clusters the input entries.
 
     Args:
         entries (List[str]): The list of entries to be clustered.
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [ClusterPostProcessor()].
-        **wrp_kwargs (optional): Additional keyword arguments to be passed to the underlying embedding model.
+        **decorator_kwargs (optional): Additional keyword arguments to be passed to the underlying embedding model.
 
     Returns:
         List[List[str]]: The list of clustered entries.
@@ -1535,15 +1568,14 @@ def cluster(entries: List[str],
     return embed(entries=entries,
                  pre_processors=pre_processors,
                  post_processors=post_processors,
-                 wrp_kwargs=wrp_kwargs)
+                 decorator_kwargs=decorator_kwargs)
 
 
 def draw(operation: str = 'create',
          prompt: str = '',
          pre_processors: Optional[List[pre.PreProcessor]] = [pre.ValuePreProcessor()],
          post_processors: Optional[List[post.PostProcessor]] = None,
-         *wrp_args,
-         **wrp_kwargs):
+         **decorator_kwargs):
     """Draws an image provided in a decorated function.
 
     Args:
@@ -1551,25 +1583,26 @@ def draw(operation: str = 'create',
         prompt (str, optional): The prompt describing context of the image generation process.
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the entries. Defaults to None.
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the entries. Defaults to None.
-        *wrp_args: Additional positional arguments to be passed to the decorated function.
-        **wrp_kwargs: Additional keyword arguments to be passed to the decorated function.
+        **decorator_kwargs: Additional keyword arguments to be passed to the decorated function.
 
     Returns:
         function: A function with the entries embedded.
     """
     def decorator(func):
         @functools.wraps(func)
-        def wrapper(wrp_self, *args, **kwargs):
-            return EngineRepository.process_query(wrp_self,
+        def wrapper(instance, *signature_args, **signature_kwargs):
+            # Construct container object for the arguments and kwargs
+            argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
+            return EngineRepository().process_query(
                                 engine='imagerendering',
+                                instance=instance,
                                 operation=operation,
                                 prompt=prompt,
                                 func=func,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                wrp_args=wrp_args,
-                                wrp_kwargs=wrp_kwargs,
-                                args=args, kwargs=kwargs)
+                                argument=argument,
+                                **argument.kwargs)
         return wrapper
     return decorator
 
@@ -1578,8 +1611,7 @@ def vision(image: Optional[str] = None,
            text: List[str] = None,
            pre_processors: Optional[List[pre.PreProcessor]] = None,
            post_processors: Optional[List[post.PostProcessor]] = None,
-           *wrp_args,
-           **wrp_kwargs):
+           **decorator_kwargs):
     """Performs vision-related associative tasks. Currently limited to CLIP model embeddings.
 
     Args:
@@ -1587,25 +1619,26 @@ def vision(image: Optional[str] = None,
         text (List[str], optional): The text describing the task. Defaults to None.
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to None.
-        *wrp_args: Additional positional arguments for the decorated method.
-        **wrp_kwargs: Additional keyword arguments for the decorated method.
+        **decorator_kwargs: Additional keyword arguments for the decorated method.
 
     Returns:
         object: The result of the performed task.
     """
     def decorator(func):
         @functools.wraps(func)
-        def wrapper(wrp_self, *args, **kwargs):
-            return EngineRepository.process_query(wrp_self,
+        def wrapper(instance, *signature_args, **signature_kwargs):
+            # Construct container object for the arguments and kwargs
+            argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
+            return EngineRepository().process_query(
                                 engine='vision',
+                                instance=instance,
                                 image=image,
                                 prompt=text,
                                 func=func,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                wrp_args=wrp_args,
-                                wrp_kwargs=wrp_kwargs,
-                                args=args, kwargs=kwargs)
+                                argument=argument,
+                                **argument.kwargs)
         return wrapper
     return decorator
 
@@ -1613,32 +1646,32 @@ def vision(image: Optional[str] = None,
 def ocr(image: str,
         pre_processors: Optional[List[pre.PreProcessor]] = None,
         post_processors: Optional[List[post.PostProcessor]] = None,
-        *wrp_args,
-        **wrp_kwargs):
+        **decorator_kwargs):
     """Performs Optical Character Recognition (OCR) on an image.
 
     Args:
         image (str): The filepath of the image containing the text to be recognized.
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the image before performing OCR. Defaults to None.
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the output of the OCR before returning the result. Defaults to None.
-        *wrp_args: Additional arguments to pass to the decorated function.
-        **wrp_kwargs: Additional keyword arguments to pass to the decorated function.
+        **decorator_kwargs: Additional keyword arguments to pass to the decorated function.
 
     Returns:
         str: The text recognized by the OCR.
     """
     def decorator(func):
         @functools.wraps(func)
-        def wrapper(wrp_self, *args, **kwargs):
-            return EngineRepository.process_query(wrp_self,
+        def wrapper(instance, *signature_args, **signature_kwargs):
+            # Construct container object for the arguments and kwargs
+            argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
+            return EngineRepository().process_query(
                                 engine='ocr',
+                                instance=instance,
                                 image=image,
                                 func=func,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                wrp_args=wrp_args,
-                                wrp_kwargs=wrp_kwargs,
-                                args=args, kwargs=kwargs)
+                                argument=argument,
+                                **argument.kwargs)
         return wrapper
     return decorator
 
@@ -1646,32 +1679,32 @@ def ocr(image: str,
 def speech_to_text(prompt: str = 'decode',
                    pre_processors: Optional[List[pre.PreProcessor]] = None,
                    post_processors: Optional[List[post.PostProcessor]] = None,
-                   *wrp_args,
-                   **wrp_kwargs):
+                   **decorator_kwargs):
     """Decorates the given function for speech recognition.
 
     Args:
         prompt (str, optional): The prompt describing the task. Defaults to 'decode'.
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to None.
-        *wrp_args: Additional arguments.
-        **wrp_kwargs: Additional keyword arguments.
+        **decorator_kwargs: Additional keyword arguments.
 
     Returns:
         Callable: The decorated function.
     """
     def decorator(func):
         @functools.wraps(func)
-        def wrapper(wrp_self, *args, **kwargs):
-            return EngineRepository.process_query(wrp_self,
+        def wrapper(instance, *signature_args, **signature_kwargs):
+            # Construct container object for the arguments and kwargs
+            argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
+            return EngineRepository().process_query(
                                 engine='speech-to-text',
+                                instance=instance,
                                 prompt=prompt,
                                 func=func,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                wrp_args=wrp_args,
-                                wrp_kwargs=wrp_kwargs,
-                                args=args, kwargs=kwargs)
+                                argument=argument,
+                                **argument.kwargs)
         return wrapper
     return decorator
 
@@ -1681,33 +1714,33 @@ def text_to_speech(prompt: str,
                    voice: str = 'nova',
                    pre_processors: Optional[List[pre.PreProcessor]] = None,
                    post_processors: Optional[List[post.PostProcessor]] = None,
-                   *wrp_args,
-                   **wrp_kwargs):
+                   **decorator_kwargs):
     """Decorates the given function for text to speech synthesis.
 
     Args:
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to None.
-        *wrp_args: Additional arguments.
-        **wrp_kwargs: Additional keyword arguments.
+        **decorator_kwargs: Additional keyword arguments.
 
     Returns:
         Callable: The decorated function.
     """
     def decorator(func):
         @functools.wraps(func)
-        def wrapper(wrp_self, *args, **kwargs):
-            return EngineRepository.process_query(wrp_self,
+        def wrapper(instance, *signature_args, **signature_kwargs):
+            # Construct container object for the arguments and kwargs
+            argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
+            return EngineRepository().process_query(
                                 engine='text-to-speech',
+                                instance=instance,
                                 func=func,
                                 prompt=prompt,
                                 voice=voice,
                                 path=path,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                wrp_args=wrp_args,
-                                wrp_kwargs=wrp_kwargs,
-                                args=args, kwargs=kwargs)
+                                argument=argument,
+                                **argument.kwargs)
         return wrapper
     return decorator
 
@@ -1716,8 +1749,7 @@ def output(constraints: List[Callable] = [],
            default: Optional[object] = None,
            pre_processors: Optional[List[pre.PreProcessor]] = [pre.ConsolePreProcessor()],
            post_processors: Optional[List[post.PostProcessor]] = [post.ConsolePostProcessor()],
-           *wrp_args,
-           **wrp_kwargs):
+           **decorator_kwargs):
     """Offers an output stream for writing results.
 
     Args:
@@ -1725,25 +1757,25 @@ def output(constraints: List[Callable] = [],
         default (object, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [ConsolePreProcessor()].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [ConsolePostProcessor()].
-        wrp_args (tuple, optional): Arguments to be passed to the wrapped function.
-        wrp_kwargs (dict, optional): Keyword arguments to be passed to the wrapped function.
+        decorator_kwargs (dict, optional): Keyword arguments to be passed to the wrapped function.
 
     Returns:
         function: The decorated function.
     """
     def decorator(func):
         @functools.wraps(func)
-        def wrapper(wrp_self, *args, **kwargs):
-            return EngineRepository.process_query(wrp_self,
-                                engine='output',
+        def wrapper(instance, *signature_args, **signature_kwargs):
+            # Construct container object for the arguments and kwargs
+            argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
+            return EngineRepository().process_query(engine='output',
+                                instance=instance,
                                 func=func,
                                 constraints=constraints,
                                 default=default,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                wrp_args=wrp_args,
-                                wrp_kwargs=wrp_kwargs,
-                                args=args, kwargs=kwargs)
+                                argument=argument,
+                                **argument.kwargs)
         return wrapper
     return decorator
 
@@ -1755,8 +1787,7 @@ def fetch(url: str,
           limit: int = 1,
           pre_processors: Optional[List[pre.PreProcessor]] = [pre.CrawlPatternPreProcessor()],
           post_processors: Optional[List[post.PostProcessor]] = [post.HtmlGetTextPostProcessor()],
-          *wrp_args,
-          **wrp_kwargs):
+          **decorator_kwargs):
     """Fetches data from a given URL and applies the provided post-processors.
 
     Args:
@@ -1767,17 +1798,19 @@ def fetch(url: str,
         limit (int, optional): The maximum number of matching items to return. Defaults to 1.
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [CrawlPatternPreProcessor()].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [HtmlGetTextPostProcessor()].
-        wrp_args (tuple, optional): Additional arguments to pass to the decorated function. Defaults to ().
-        wrp_kwargs (dict, optional): Additional keyword arguments to pass to the decorated function. Defaults to {}.
+        decorator_kwargs (dict, optional): Additional keyword arguments to pass to the decorated function. Defaults to {}.
 
     Returns:
         object: The matched data.
     """
     def decorator(func):
         @functools.wraps(func)
-        def wrapper(wrp_self, *args, **kwargs):
-            return EngineRepository.process_query(wrp_self,
+        def wrapper(instance, *signature_args, **signature_kwargs):
+            # Construct container object for the arguments and kwargs
+            argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
+            return EngineRepository().process_query(
                                 engine='crawler',
+                                instance=instance,
                                 func=func,
                                 url=url,
                                 pattern=pattern,
@@ -1786,9 +1819,8 @@ def fetch(url: str,
                                 limit=limit,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                wrp_args=wrp_args,
-                                wrp_kwargs=wrp_kwargs,
-                                args=args, kwargs=kwargs)
+                                argument=argument,
+                                **argument.kwargs)
         return wrapper
     return decorator
 
@@ -1797,8 +1829,7 @@ def userinput(constraints: List[Callable] = [],
               default: Optional[object] = None,
               pre_processors: Optional[List[pre.PreProcessor]] = [pre.ConsoleInputPreProcessor()],
               post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-              *wrp_args,
-              **wrp_kwargs):
+              **decorator_kwargs):
     """Prompts for user input and returns the user response through a decorator.
 
     Args:
@@ -1807,25 +1838,26 @@ def userinput(constraints: List[Callable] = [],
         default (object, optional): The default value to be returned if the user input does not pass the constraints. Defaults to None.
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the desired form. Defaults to [ConsolePreProcessor()].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
-        *wrp_args (tuple): Additional arguments to be passed to the decorated function.
-        **wrp_kwargs (dict): Additional keyword arguments to be passed to the decorated function.
+        **decorator_kwargs (dict): Additional keyword arguments to be passed to the decorated function.
 
     Returns:
         callable: The decorator function that can be used to prompt for user input.
     """
     def decorator(func):
         @functools.wraps(func)
-        def wrapper(wrp_self, *args, **kwargs):
-            return EngineRepository.process_query(wrp_self,
+        def wrapper(instance, *signature_args, **signature_kwargs):
+            # Construct container object for the arguments and kwargs
+            argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
+            return EngineRepository().process_query(
                                 engine='userinput',
+                                instance=instance,
                                 func=func,
                                 constraints=constraints,
                                 default=default,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                wrp_args=wrp_args,
-                                wrp_kwargs=wrp_kwargs,
-                                args=args, kwargs=kwargs)
+                                argument=argument,
+                                **argument.kwargs)
         return wrapper
     return decorator
 
@@ -1834,8 +1866,7 @@ def execute(default: Optional[str] = None,
             constraints: List[Callable] = [],
             pre_processors: List[pre.PreProcessor] = [],
             post_processors: List[post.PostProcessor] = [],
-            *wrp_args,
-            **wrp_kwargs):
+            **decorator_kwargs):
     """Executes a given function after applying constraints, pre-processing and post-processing.
 
     Args:
@@ -1843,26 +1874,27 @@ def execute(default: Optional[str] = None,
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [].
-        *wrp_args (optional): The additional arguments to be passed to the decorated function.
-        **wrp_kwargs (optional): The additional keyword arguments to be passed to the decorated function.
+        **decorator_kwargs (optional): The additional keyword arguments to be passed to the decorated function.
 
     Returns:
         Callable: The decorated function that executes the given function after applying constraints, pre-processing and post-processing.
     """
     def decorator(func):
         @functools.wraps(func)
-        def wrapper(wrp_self, *args, **kwargs):
-            return EngineRepository.process_query(wrp_self,
+        def wrapper(instance, *signature_args, **signature_kwargs):
+            # Construct container object for the arguments and kwargs
+            argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
+            return EngineRepository().process_query(
                                 engine='execute',
+                                instance=instance,
                                 func=func,
-                                code=str(wrp_self),
+                                code=str(instance),
                                 constraints=constraints,
                                 default=default,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                wrp_args=wrp_args,
-                                wrp_kwargs=wrp_kwargs,
-                                args=args, kwargs=kwargs)
+                                argument=argument,
+                                **argument.kwargs)
         return wrapper
     return decorator
 
@@ -1873,8 +1905,7 @@ def index(prompt: Any,
           constraints: List[Callable] = [],
           pre_processors: List[pre.PreProcessor] = [],
           post_processors: List[post.PostProcessor] = [],
-          *wrp_args,
-          **wrp_kwargs):
+          **decorator_kwargs):
     """Query for a given index and returns the result through a decorator.
 
     Args:
@@ -1884,17 +1915,19 @@ def index(prompt: Any,
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [].
-        *wrp_args (optional): The additional arguments to be passed to the decorated function.
-        **wrp_kwargs (optional): The additional keyword arguments to be passed to the decorated function.
+        **decorator_kwargs (optional): The additional keyword arguments to be passed to the decorated function.
 
     Returns:
         Callable: The decorated function that returns the indexed object after applying constraints, pre-processing and post-processing.
     """
     def decorator(func):
         @functools.wraps(func)
-        def wrapper(wrp_self, *args, **kwargs):
-            return EngineRepository.process_query(wrp_self,
+        def wrapper(instance, *signature_args, **signature_kwargs):
+            # Construct container object for the arguments and kwargs
+            argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
+            return EngineRepository().process_query(
                                 engine='index',
+                                instance=instance,
                                 func=func,
                                 prompt=prompt,
                                 operation=operation,
@@ -1902,57 +1935,56 @@ def index(prompt: Any,
                                 default=default,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                wrp_args=wrp_args,
-                                wrp_kwargs=wrp_kwargs,
-                                args=args, kwargs=kwargs)
+                                argument=argument,
+                                **argument.kwargs)
         return wrapper
     return decorator
 
 
 def command(engines: List[str] = ['all'],
-            **wrp_kwargs):
+            **decorator_kwargs):
     """Decorates a function to forward commands to the engine backends.
 
     Args:
         engines (List[str], optional): A list of engines to forward the command to. Defaults to ['all'].
-        wrp_kwargs (dict): A dictionary of keyword arguments to the command function.
+        decorator_kwargs (dict): A dictionary of keyword arguments to the command function.
 
     Returns:
         Callable: The decorated function.
     """
     def decorator(func):
         @functools.wraps(func)
-        def wrapper(wrp_self, **kwargs):
-            return EngineRepository.execute_command(
-                    wrp_self,
-                    func=func,
+        def wrapper(instance, **kwargs):
+            return EngineRepository().execute_command(
                     engines=engines,
-                    wrp_kwargs=wrp_kwargs,
+                    instance=instance,
+                    func=func,
+                    decorator_kwargs=decorator_kwargs,
                     kwargs=kwargs
                 )
         return wrapper
     return decorator
 
 
-def setup(engines: Dict[str, Any],
-          **wrp_kwargs):
+def register(engines: Dict[str, Any],
+          **decorator_kwargs):
     """Decorates a function to initialize custom engines as backends.
 
     Args:
         engines (Dict[str], optional): A dictionary of engines to initialize a custom setup.
-        wrp_kwargs (dict): A dictionary of keyword arguments to the command function.
+        decorator_kwargs (dict): A dictionary of keyword arguments to the command function.
 
     Returns:
         Callable: The decorated function.
     """
     def decorator(func):
         @functools.wraps(func)
-        def wrapper(wrp_self, **kwargs):
-            return EngineRepository.register(
-                    wrp_self,
-                    func=func,
+        def wrapper(instance, **kwargs):
+            return EngineRepository().register(
                     engines=engines,
-                    wrp_kwargs=wrp_kwargs,
+                    instance=instance,
+                    func=func,
+                    decorator_kwargs=decorator_kwargs,
                     kwargs=kwargs
                 )
         return wrapper
@@ -1962,32 +1994,32 @@ def setup(engines: Dict[str, Any],
 def tune(operation: str = 'create',
          pre_processors: Optional[List[pre.PreProcessor]] = None,
          post_processors: Optional[List[post.PostProcessor]] = None,
-         *wrp_args,
-         **wrp_kwargs):
+         **decorator_kwargs):
     """Fine tune a LLM.
 
     Args:
         operation (str, optional): The specific operation to be performed. Defaults to 'create'.
         pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the entries. Defaults to None.
         post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the entries. Defaults to None.
-        *wrp_args: Additional positional arguments to be passed to the decorated function.
-        **wrp_kwargs: Additional keyword arguments to be passed to the decorated function.
+        **decorator_kwargs: Additional keyword arguments to be passed to the decorated function.
 
     Returns:
         function: A function with the entries embedded.
     """
     def decorator(func):
         @functools.wraps(func)
-        def wrapper(wrp_self, *args, **kwargs):
-            kwargs['__cmd__'] = operation
-            return EngineRepository.process_query(wrp_self,
+        def wrapper(instance, *signature_args, **signature_kwargs):
+            signature_kwargs['__cmd__'] = operation #TODO: update engine
+            # Construct container object for the arguments and kwargs
+            argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
+            return EngineRepository().process_query(
                                 engine='finetune',
+                                instance=instance,
                                 func=func,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                wrp_args=wrp_args,
-                                wrp_kwargs=wrp_kwargs,
-                                args=args, kwargs=kwargs)
+                                argument=argument,
+                                **argument.kwargs)
         return wrapper
     return decorator
 
@@ -1996,8 +2028,7 @@ def caption(image: str,
             prompt: str,
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.ValuePreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = None,
-            *wrp_args,
-            **wrp_kwargs):
+            **decorator_kwargs):
     """Caption the content of an image.
 
     Args:
@@ -2005,24 +2036,25 @@ def caption(image: str,
         prompt (str, optional): The prompt describing context of the image generation process.
         pre_processor (List[PreProcessor], optional): A list of pre-processors to be applied to the entries. Defaults to None.
         post_processor (List[PostProcessor], optional): A list of post-processors to be applied to the entries. Defaults to None.
-        *wrp_args: Additional positional arguments to be passed to the decorated function.
-        **wrp_kwargs: Additional keyword arguments to be passed to the decorated function.
+        **decorator_kwargs: Additional keyword arguments to be passed to the decorated function.
 
     Returns:
         function: A function with the entries embedded.
     """
     def decorator(func):
         @functools.wraps(func)
-        def wrapper(wrp_self, *args, **kwargs):
-            return EngineRepository.process_query(wrp_self,
+        def wrapper(instance, *signature_args, **signature_kwargs):
+            # Construct container object for the arguments and kwargs
+            argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
+            return EngineRepository().process_query(
                                 engine='imagecaptioning',
+                                instance=instance,
                                 prompt=prompt,
                                 image=image,
                                 func=func,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                wrp_args=wrp_args,
-                                wrp_kwargs=wrp_kwargs,
-                                args=args, kwargs=kwargs)
+                                argument=argument,
+                                **argument.kwargs)
         return wrapper
     return decorator

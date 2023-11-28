@@ -953,7 +953,6 @@ class Expression(Symbol):
         '''
         raise NotImplementedError()
 
-    # TODO: consider if this should be deprecated and moved only as an Interface
     def input(self, message: str = 'Please add more information', **kwargs) -> 'Symbol':
         '''
         Request user input and return a Symbol containing the user input.
@@ -970,7 +969,6 @@ class Expression(Symbol):
             pass
         return self.sym_return_type(_func(self, message))
 
-    # TODO: consider if this should be deprecated and moved only as an Interface
     def open(self, path: str, **kwargs) -> 'Symbol':
         '''
         Open a file and store its content in an Expression object as a string.
@@ -987,7 +985,6 @@ class Expression(Symbol):
             pass
         return self.sym_return_type(_func(self))
 
-    # TODO: consider if this should be deprecated and moved only as an Interface
     def index(self, path: str, **kwargs) -> 'Symbol':
         '''
         Execute a configuration operation on the index.
@@ -1004,7 +1001,6 @@ class Expression(Symbol):
             pass
         return self.sym_return_type(_func(self))
 
-    # TODO: consider if this should be deprecated and moved only as an Interface
     def add(self, query: List[str], **kwargs) -> 'Symbol':
         '''
         Add an entry to the existing index.
@@ -1021,7 +1017,6 @@ class Expression(Symbol):
             pass
         return self.sym_return_type(_func(self))
 
-    # TODO: consider if this should be deprecated and moved only as an Interface
     def get(self, query: List[int], **kwargs) -> 'Symbol':
         '''
         Search the index based on the provided query.
@@ -1056,18 +1051,18 @@ class Expression(Symbol):
         return Expression(_func(Expression()))
 
     @staticmethod
-    def setup(engines: Dict[str, Any], **kwargs) -> 'Symbol':
+    def register(engines: Dict[str, Any], **kwargs) -> 'Symbol':
         '''
         Configure multiple engines.
 
         Args:
             engines (Dict[str, Any]): A dictionary containing engine names as keys and their configurations as values.
-            **kwargs: Arbitrary keyword arguments to be used by the core.setup decorator.
+            **kwargs: Arbitrary keyword arguments to be used by the core.register decorator.
 
         Returns:
-            Symbol: An Expression object representing the setup result.
+            Symbol: An Expression object representing the register result.
         '''
-        @core.setup(engines=engines, **kwargs)
+        @core.register(engines=engines, **kwargs)
         def _func(_):
             pass
         return Expression(_func(Expression()))

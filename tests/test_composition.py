@@ -676,7 +676,7 @@ modified:   tests/test_composition.py
                 wrp_params['prompts'] = ['Write about cats.']
         custom_engine = TestEngine()
         sym = Symbol('Write about dogs.')
-        Expression.setup(engines={'neurosymbolic': custom_engine})
+        Expression.register(engines={'neurosymbolic': custom_engine})
         res = sym.compose()
         self.assertTrue('cat' in str(res).lower(), res)
 
@@ -685,7 +685,7 @@ modified:   tests/test_composition.py
         model = NeSyClientEngine()
         model.init_model('cuda:4')
         sym = Symbol('Write about dogs.')
-        Expression.setup(engines={'neurosymbolic': model})
+        Expression.register(engines={'neurosymbolic': model})
         res = sym.compose()
         self.assertTrue('dog' in str(res).lower(), res)
 

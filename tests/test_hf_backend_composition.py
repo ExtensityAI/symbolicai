@@ -17,7 +17,7 @@ from symai.chat import SymbiaChat
 
 
 engine = NeSyClientEngine()
-Expression.setup(engines={'neurosymbolic': engine})
+Expression.register(engines={'neurosymbolic': engine})
 Expression.command(time_clock=True)
 
 

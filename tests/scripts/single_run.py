@@ -8,7 +8,7 @@ from symai.extended import Solver
 def setup_engine():
     print("Initializing engine...")
     engine = NeSyClientEngine()
-    Expression.setup(engines={'neurosymbolic': engine})
+    Expression.register(engines={'neurosymbolic': engine})
     return engine
 
 

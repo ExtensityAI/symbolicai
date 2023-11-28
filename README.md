@@ -1325,7 +1325,7 @@ Then, use the following code once to set up the local engine:
 from symai.backend.engines.engine_nesy_client import NeSyClientEngine
 # setup local engine
 engine = NeSyClientEngine()
-Expression.setup(engines={'neurosymbolic': engine})
+Expression.register(engines={'neurosymbolic': engine})
 ```
 
 Now you can use the local engine to perform symbolic computation:
@@ -1349,7 +1349,7 @@ class DummyEngine(GPTXCompletionEngine):
         wrp_params['prompts'] = ['Go wild and generate something!']
 custom_engine = DummyEngine()
 sym = Symbol()
-Expression.setup(engines={'neurosymbolic': custom_engine})
+Expression.register(engines={'neurosymbolic': custom_engine})
 res = sym.compose()
 ```
 
