@@ -1,6 +1,7 @@
 import functools
 
 from typing import Callable, Dict, List, Optional, Any
+from box import Box
 
 from . import post_processors as post
 from . import pre_processors as pre
@@ -10,10 +11,11 @@ from .functional import EngineRepository
 
 class Argument:
     def __init__(self, args, signature_kwargs, decorator_kwargs):
-        self.args = args
+        self.args             = args # there is only signature args
         self.signature_kwargs = signature_kwargs
         self.decorator_kwargs = decorator_kwargs
-        self.kwargs = self._construct_kwargs(self.signature_kwargs, self.decorator_kwargs)
+        self.kwargs           = self._construct_kwargs(self.signature_kwargs, self.decorator_kwargs)
+        self.prop             = Box(self.kwargs)
 
     def _construct_kwargs(self, sig_kwargs, dec_kwargs):
         '''
@@ -75,8 +77,7 @@ def few_shot(prompt: str = '',
                                 limit=limit,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                argument=argument,
-                                **argument.kwargs)
+                                argument=argument)
         return wrapper
     return decorator
 
@@ -1003,8 +1004,7 @@ def expression(prompt: str = "Evaluate the symbolic expressions:\n",
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
                                 decorator_kwargs=decorator_kwargs,
-                                argment=argument,
-                                **argument.kwargs)
+                                argment=argument)
         return wrapper
     return decorator
 
@@ -1469,8 +1469,7 @@ def search(query: str,
                                 limit=limit,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                argument=argument,
-                                **argument.kwargs)
+                                argument=argument)
         return wrapper
     return decorator
 
@@ -1511,8 +1510,7 @@ def opening(path: str,
                                 limit=limit,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                argument=argument,
-                                **argument.kwargs)
+                                argument=argument)
         return wrapper
     return decorator
 
@@ -1544,8 +1542,7 @@ def embed(entries: List[str],
                                 func=func,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                argument=argument,
-                                **argument.kwargs)
+                                argument=argument)
         return wrapper
     return decorator
 
@@ -1601,8 +1598,7 @@ def draw(operation: str = 'create',
                                 func=func,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                argument=argument,
-                                **argument.kwargs)
+                                argument=argument)
         return wrapper
     return decorator
 
@@ -1637,8 +1633,7 @@ def vision(image: Optional[str] = None,
                                 func=func,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                argument=argument,
-                                **argument.kwargs)
+                                argument=argument)
         return wrapper
     return decorator
 
@@ -1670,8 +1665,7 @@ def ocr(image: str,
                                 func=func,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                argument=argument,
-                                **argument.kwargs)
+                                argument=argument)
         return wrapper
     return decorator
 
@@ -1703,8 +1697,7 @@ def speech_to_text(prompt: str = 'decode',
                                 func=func,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                argument=argument,
-                                **argument.kwargs)
+                                argument=argument)
         return wrapper
     return decorator
 
@@ -1739,8 +1732,7 @@ def text_to_speech(prompt: str,
                                 path=path,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                argument=argument,
-                                **argument.kwargs)
+                                argument=argument)
         return wrapper
     return decorator
 
@@ -1774,8 +1766,7 @@ def output(constraints: List[Callable] = [],
                                 default=default,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                argument=argument,
-                                **argument.kwargs)
+                                argument=argument)
         return wrapper
     return decorator
 
@@ -1819,8 +1810,7 @@ def fetch(url: str,
                                 limit=limit,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                argument=argument,
-                                **argument.kwargs)
+                                argument=argument)
         return wrapper
     return decorator
 
@@ -1856,8 +1846,7 @@ def userinput(constraints: List[Callable] = [],
                                 default=default,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                argument=argument,
-                                **argument.kwargs)
+                                argument=argument)
         return wrapper
     return decorator
 
@@ -1893,8 +1882,7 @@ def execute(default: Optional[str] = None,
                                 default=default,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                argument=argument,
-                                **argument.kwargs)
+                                argument=argument)
         return wrapper
     return decorator
 
@@ -1935,8 +1923,7 @@ def index(prompt: Any,
                                 default=default,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                argument=argument,
-                                **argument.kwargs)
+                                argument=argument)
         return wrapper
     return decorator
 
@@ -2018,8 +2005,7 @@ def tune(operation: str = 'create',
                                 func=func,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                argument=argument,
-                                **argument.kwargs)
+                                argument=argument)
         return wrapper
     return decorator
 
@@ -2054,7 +2040,6 @@ def caption(image: str,
                                 func=func,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
-                                argument=argument,
-                                **argument.kwargs)
+                                argument=argument)
         return wrapper
     return decorator
