@@ -69,7 +69,9 @@ class SerpApiEngine(Engine):
         if 'SEARCH_ENGINE_MODEL' in wrp_params:
             self.engine  = wrp_params['SEARCH_ENGINE_MODEL']
 
-    def forward(self, queries: List[str], *args, **kwargs) -> List[str]:
+    def forward(self, argument):
+        queries  = argument.prop.processed_input
+        kwargs   = argument.kwargs
         queries_ = queries if isinstance(queries, list) else [queries]
         rsp      = []
         engine   = kwargs['engine'] if 'engine' in kwargs else self.engine
@@ -110,5 +112,5 @@ class SerpApiEngine(Engine):
         output = rsp if isinstance(queries, list) else rsp[0]
         return output, metadata
 
-    def prepare(self, args, kwargs, wrp_params):
-        wrp_params['queries'] = [str(wrp_params['query'])]
+    def prepare(self, argument):
+        argument.prop.processed_input = [str(argument.prop.prompt)]

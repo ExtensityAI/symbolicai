@@ -90,14 +90,17 @@ class CodeExtractPostProcessor(PostProcessor):
 class WolframAlphaPostProcessor(PostProcessor):
     def __call__(self, response, argument) -> Any:
         try:
-            return next(response.results).text
+            res = next(response.value.results).text
+            response._value = res
+            return response
         except StopIteration:
             vals = ''
-            for pod in response.pods:
+            for pod in response.value.pods:
                 for sub in pod.subpods:
                     vals += f'{sub.plaintext}\n'
             if len(vals) > 0:
-                return vals
+                response._value = vals
+                return response
             return response
 
 
