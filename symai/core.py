@@ -7,55 +7,64 @@ from . import post_processors as post
 from . import pre_processors as pre
 from . import prompts as prm
 from .functional import EngineRepository
+from .symbol import Symbol
 
 
-class Argument:
+
+class Argument(Symbol):
     def __init__(self, args, signature_kwargs, decorator_kwargs):
+        super().__init__()
         self.args             = args # there is only signature args
-        self.signature_kwargs = signature_kwargs
-        self.decorator_kwargs = decorator_kwargs
-        self.kwargs           = self._construct_kwargs(self.signature_kwargs, self.decorator_kwargs)
+        self.signature_kwargs = signature_kwargs.copy()
+        self.decorator_kwargs = decorator_kwargs.copy()
+        self.kwargs           = self._construct_kwargs(signature_kwargs=signature_kwargs,
+                                                       decorator_kwargs=decorator_kwargs)
         self.prop             = Box(self.kwargs)
         # Set default values if not specified for backend processing
-        if not hasattr(self.prop, 'preview'):
+        # Reserved keywords
+        if 'preview' not in self.kwargs:
             self.prop.preview           = False
-        if not hasattr(self.prop, 'raw_input'):
+        if 'raw_input' not in self.kwargs:
             self.prop.raw_input         = False
-        if not hasattr(self.prop, 'logging'):
+        if 'logging' not in self.kwargs:
             self.prop.logging           = False
-        if not hasattr(self.prop, 'verbose'):
+        if 'verbose' not in self.kwargs:
             self.prop.verbose           = False
-        if not hasattr(self.prop, 'log_level'):
+        if 'log_level' not in self.kwargs:
             self.prop.log_level         = None
-        if not hasattr(self.prop, 'time_clock'):
+        if 'time_clock' not in self.kwargs:
             self.prop.time_clock        = None
-        if not hasattr(self.prop, 'payload'):
+        if 'payload' not in self.kwargs:
             self.prop.payload           = None
-        if not hasattr(self.prop, 'processed_input'):
+        if 'processed_input' not in self.kwargs:
             self.prop.processed_input   = None
-        if not hasattr(self.prop, 'template_suffix'):
+        if 'template_suffix' not in self.kwargs:
             self.prop.template_suffix   = None
-        if not hasattr(self.prop, 'disable_verbose_output_suppression'):
+        if 'disable_verbose_output_suppression' not in self.kwargs:
             self.prop.disable_verbose_output_suppression = False
-        if not hasattr(self.prop, 'parse_system_instructions'):
+        if 'parse_system_instructions' not in self.kwargs:
             self.prop.parse_system_instructions          = False
 
-    def _construct_kwargs(self, sig_kwargs, dec_kwargs):
+    @property
+    def value(self):
+        return self.prop.processed_input
+
+    def _construct_kwargs(self, signature_kwargs, decorator_kwargs):
         '''
         Combines and overrides the decorator args and kwargs with the runtime signature args and kwargs.
 
         Args:
-            sig_kwargs (Dict): The signature kwargs.
-            dec_kwargs (Dict): The decorator kwargs.
+            signature_kwargs (Dict): The signature kwargs.
+            decorator_kwargs (Dict): The decorator kwargs.
 
         Returns:
             Dict: The combined and overridden kwargs.
         '''
-        kwargs = {}
         # Initialize with the decorator kwargs
-        kwargs.update(dec_kwargs)
+        kwargs = {**decorator_kwargs}
         # Override the decorator kwargs with the signature kwargs
-        kwargs.update(sig_kwargs)
+        for key, value in signature_kwargs.items():
+            kwargs[key] = value
         return kwargs
 
 
@@ -135,7 +144,7 @@ def zero_shot(prompt: str = '',
                     limit=limit,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    decorator_kwargs=decorator_kwargs)
+                    **decorator_kwargs)
 
 
 def summarize(prompt: str = 'Summarize the content of the following text:\n',
@@ -1190,7 +1199,7 @@ def outline(prompt: str = "Outline only the essential content as a short list of
                     limit=limit,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    decorator_kwargs=decorator_kwargs)
+                    **decorator_kwargs)
 
 
 def unique(prompt: str = "Create a short unique key that captures the essential topic from the following statements and does not collide with the list of keys:\n",
@@ -1225,7 +1234,7 @@ def unique(prompt: str = "Create a short unique key that captures the essential 
                     limit=limit,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    decorator_kwargs=decorator_kwargs)
+                    **decorator_kwargs)
 
 
 def clean(prompt: str = "Clean up the text from special characters or escape sequences. DO NOT change any words or sentences! Keep original semantics:\n",
@@ -1257,7 +1266,7 @@ def clean(prompt: str = "Clean up the text from special characters or escape seq
                     limit=limit,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    decorator_kwargs=decorator_kwargs)
+                    **decorator_kwargs)
 
 
 def compose(prompt: str = "Create a coherent text based on the facts listed in the outline:\n",
@@ -1287,7 +1296,7 @@ def compose(prompt: str = "Create a coherent text based on the facts listed in t
                     limit=1,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    decorator_kwargs=decorator_kwargs)
+                    **decorator_kwargs)
 
 
 def foreach(condition: str,
@@ -1323,7 +1332,7 @@ def foreach(condition: str,
                     limit=1,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    decorator_kwargs=decorator_kwargs)
+                    **decorator_kwargs)
 
 
 def dictionary(context: str,
@@ -1356,7 +1365,7 @@ def dictionary(context: str,
                     limit=1,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    decorator_kwargs=decorator_kwargs)
+                    **decorator_kwargs)
 
 
 def listing(condition: str,
@@ -1389,7 +1398,7 @@ def listing(condition: str,
                     limit=1,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    decorator_kwargs=decorator_kwargs)
+                    **decorator_kwargs)
 
 
 def query(context: str,
@@ -1422,7 +1431,7 @@ def query(context: str,
                     limit=1,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    decorator_kwargs=decorator_kwargs)
+                    **decorator_kwargs)
 
 
 def expand(prompt: Optional[str] = 'Write a self-contained function (with all imports) to solve a specific user problem task. Label the function with a name that describes the task.',
@@ -1453,7 +1462,7 @@ def expand(prompt: Optional[str] = 'Write a self-contained function (with all im
                     stop=[prm.Prompt.stop_token],
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    decorator_kwargs=decorator_kwargs)
+                    **decorator_kwargs)
 
 
 def search(query: str,
@@ -1588,7 +1597,7 @@ def cluster(entries: List[str],
     return embed(entries=entries,
                  pre_processors=pre_processors,
                  post_processors=post_processors,
-                 decorator_kwargs=decorator_kwargs)
+                 **decorator_kwargs)
 
 
 def draw(operation: str = 'create',

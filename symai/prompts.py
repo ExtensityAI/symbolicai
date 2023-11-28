@@ -10,25 +10,29 @@ class Prompt(ABC):
     def __init__(self, value, **format_kwargs):
         super().__init__()
         if isinstance(value, str):
-            self.value = [value]
+            self._value = [value]
         elif isinstance(value, list):
-            self.value = []
+            self._value = []
             for v in value:
                 if isinstance(v, str):
-                    self.value.append(v)
+                    self._value.append(v)
                 elif isinstance(v, Prompt):
-                    self.value += v.value
+                    self._value += v.value
                 else:
                     raise ValueError(f"List of values must be strings or Prompts, not {type(v)}")
         elif isinstance(value, Prompt):
-            self.value += value.value
+            self._value += value.value
         elif isinstance(value, Callable):
             res = value()
-            self.value += res.value
+            self._value += res.value
         else:
             raise TypeError(f"Prompt value must be of type str, List[str], Prompt, or List[Prompt], not {type(value)}")
         self.dynamic_value = []
         self.format_kwargs = format_kwargs
+
+    @property
+    def value(self) -> List[str]:
+        return self._value
 
     def __call__(self, *args: Any, **kwds: Any) -> List["Prompt"]:
         return self.value

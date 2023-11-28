@@ -184,7 +184,7 @@ class EngineRepository(object):
             cls._instance.__init__()  # Explicitly call __init__
         return cls._instance
 
-    def register(self, id: str, engine_instance: Engine, allow_engine_override: bool = False) -> None:
+    def register(self, id: str, engine_instance: Engine, allow_engine_override: bool = False, *args, **kwargs) -> None:
         # Check if the engine is already registered
         if id in self._engines.keys() and not allow_engine_override:
             raise ValueError(f"Engine {id} is already registered. Set allow_engine_override to True to override.")

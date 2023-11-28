@@ -19,11 +19,11 @@ class Dialogue(Expression):
         for bot in bots:
             bot.auto_print = False
         self.n_turns = n_turns
-        self.value = []
+        self._value = []
         self.tts = Interface('tts')
 
     def print_response(self, tag: str, message: str):
-        self.value.append((tag, message))
+        self._value.append((tag, message))
         print(f'[{tag}]: {message}\n')
 
     def forward(self, initial_message: str, *system_instructions: List[str]):

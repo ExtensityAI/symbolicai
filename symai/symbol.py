@@ -39,7 +39,7 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
             metadata (Optional[Dict[str, Any]]): The metadata associated with the symbol.
         '''
         super().__init__()
-        self.value    = None
+        self._value    = None
         self.metadata = None
         self.parent   = None #@TODO: to enable graph construction
         self.children = None #@TODO: to enable graph construction
@@ -50,7 +50,7 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
             value = value[0]
 
             if isinstance(value, Symbol):
-                self.value    = value.value
+                self._value    = value.value
                 self.parent   = value.parent
                 self.children = value.children
                 self.metadata = value.metadata
@@ -72,13 +72,23 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
                 elif isinstance(value, tuple):
                     value = tuple([v.value if isinstance(v, Symbol) else v for v in value])
 
-                self.value = value
+                self._value = value
 
             else:
-                self.value = value
+                self._value = value
 
         elif len(value) > 1:
-            self.value = [v.value if isinstance(v, Symbol) else v for v in value]
+            self._value = [v.value if isinstance(v, Symbol) else v for v in value]
+
+    @property
+    def value(self) -> Any:
+        '''
+        Get the value of the symbol.
+
+        Returns:
+            Any: The value of the symbol.
+        '''
+        return self._value
 
     @property
     def global_context(self) -> str:
@@ -196,29 +206,6 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
         '''
         vars(self).update(state)
 
-    def __getattr__(self, key) -> Any:
-        '''
-        Get an attribute from the symbol if it exists. Otherwise, attempt to get the attribute from the symbol's value.
-        If the attribute does not exist in the symbol or its value, raise an AttributeError with a cascading error message.
-
-        Args:
-            key (str): The name of the attribute.
-
-        Returns:
-            Any: The attribute value if the attribute exists.
-
-        Raises:
-            AttributeError: If the attribute does not exist.
-        '''
-        if not self.__dict__.__contains__(key):
-            try:
-                att = getattr(self.value, key)
-            except AttributeError as e:
-                raise AttributeError(f"Cascading call failed, since object has no attribute '{key}'. Original error message: {e}")
-            return att
-
-        return self.__dict__[key]
-
     def __contains__(self, other: Any) -> bool:
         '''
         Check if a Symbol object is present in another Symbol object.
@@ -308,7 +295,7 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
         Returns:
             Symbol: The current Symbol object with the concatenated value.
         '''
-        self.value =  Symbol(str(self) + str(other))
+        self._value =  Symbol(str(self) + str(other))
         return self
 
     def __ne__(self, other: Any) -> bool:
@@ -546,7 +533,7 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
         def _func(_, index: str, value: str):
             pass
 
-        self.value = Symbol(_func(self, key, value)).value
+        self._value = Symbol(_func(self, key, value)).value
 
     def __delitem__(self, key: Union[str, int]) -> None:
         '''
@@ -571,7 +558,7 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
         def _func(_, index: str):
             pass
 
-        self.value = Symbol(_func(self, key)).value
+        self._value = Symbol(_func(self, key)).value
 
     def __neg__(self) -> 'Symbol':
         '''
@@ -714,7 +701,7 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
             Symbol: The updated Symbol with the added value.
         '''
         other = self._to_symbol(other)
-        self.value = self.__add__(other)
+        self._value = self.__add__(other)
         return self
 
     def __sub__(self, other: Any) -> 'Symbol':
@@ -766,7 +753,7 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
             Symbol: The current symbol with the updated value.
         '''
         val = self.__sub__(other)
-        self.value = val.value
+        self._value = val.value
 
         return self
 

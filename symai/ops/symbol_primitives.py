@@ -908,7 +908,7 @@ class DataClusteringPrimitives:
             Symbol: A Symbol object with its value embedded.
         '''
         if not isinstance(self.value, list):
-            self.value = [self.value]
+            self._value = [self.value]
 
         @core.embed(entries=self.value, **kwargs)
         def _func(_) -> list:
@@ -963,7 +963,7 @@ class DataClusteringPrimitives:
             ValueError: If the Symbol's value is not a string or list of strings.
         '''
         if isinstance(self.value, str):
-            self.value = [self.value]
+            self._value = [self.value]
         elif isinstance(self.value, list):
             pass
         else:

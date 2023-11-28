@@ -506,7 +506,7 @@ class Indexer(Expression):
         def __init__(self, res, query: str):
             self.query = query
             self.raw   = res
-            self.value = [v['metadata']['text'] for v in res['matches']]
+            self._value = [v['metadata']['text'] for v in res['matches']]
 
         def _unpack_matches(self):
             for i, match in enumerate(self.value):
