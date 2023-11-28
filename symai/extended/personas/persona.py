@@ -47,8 +47,8 @@ class TagProcessor(PreProcessor):
 class Persona(Conversation):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.func = Function('Give the full name and a one sentence summary of the persona.')
-        self.value = self.bio()
+        self.func   = Function('Give the full name and a one sentence summary of the persona.')
+        self._value = self.bio()
 
     def __getstate__(self):
         state = super().__getstate__()

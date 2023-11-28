@@ -19,15 +19,15 @@ class SearchResult(Symbol):
         super().__init__(value)
         self.raw = Box(value)
         if 'answer_box' in value.keys() and 'answer' in value['answer_box'].keys():
-            self.value = value['answer_box']['answer']
+            self._value = value['answer_box']['answer']
         elif 'answer_box' in value.keys() and 'snippet' in value['answer_box'].keys():
-            self.value = value['answer_box']['snippet']
+            self._value = value['answer_box']['snippet']
         elif 'answer_box' in value.keys() and 'snippet_highlighted_words' in value['answer_box'].keys():
-            self.value = value['answer_box']["snippet_highlighted_words"][0]
+            self._value = value['answer_box']["snippet_highlighted_words"][0]
         elif 'organic_results' in value and 'snippet' in value["organic_results"][0].keys():
-            self.value= value["organic_results"][0]['snippet']
+            self._value = value["organic_results"][0]['snippet']
         else:
-            self.value = value
+            self._value = value
 
         if 'organic_results' in value.keys():
             self.results = value['organic_results']

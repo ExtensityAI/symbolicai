@@ -211,7 +211,7 @@ class Conversation(SlidingWindowStringConcatMemory):
                 print(res)
             return res
 
-        self.value = res.value # save last response
+        self._value = res.value # save last response
         val = self.build_tag(self.bot_tag, res)
         self.store(val, *args, **kwargs)
 

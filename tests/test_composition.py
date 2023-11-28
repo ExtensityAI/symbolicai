@@ -244,13 +244,13 @@ Traceback (most recent call last):
     res = parser(code)
           ^^^^^^^^^^^^
   File "/Users/xpitfire/workspace/symbolicai/symai/symbol.py", line 1640, in __call__
-    self.value = self.forward(*args, **kwargs)
+    self._value = self.forward(*args, **kwargs)
                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/Users/xpitfire/workspace/symbolicai/symai/components.py", line 413, in forward
     res = self.fn(sym, **kwargs)
           ^^^^^^^^^^^^^^^^^^^^^^
   File "/Users/xpitfire/workspace/symbolicai/symai/symbol.py", line 1640, in __call__
-    self.value = self.forward(*args, **kwargs)
+    self._value = self.forward(*args, **kwargs)
                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/Users/xpitfire/workspace/symbolicai/symai/components.py", line 51, in forward
     return sym.ftry(self.expr, retries=self.retries, **kwargs)

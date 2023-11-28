@@ -11,15 +11,6 @@ from ..collect import CollectionRepository, rec_serialize
 ENGINE_UNREGISTERED = '<UNREGISTERED/>'
 
 
-class PreviewSymbol(ABC):
-    '''
-    A Symbol subclass that can be used to create new Symbol subclasses to store metadata.
-    '''
-    def __init__(self, params: dict):
-        super().__init__(params['prompts'])
-        self.params = params
-
-
 class Engine(ABC):
     def __init__(self) -> None:
         super().__init__()
@@ -83,7 +74,7 @@ class Engine(ABC):
         return ENGINE_UNREGISTERED
 
     def preview(self, argument):
-        return PreviewSymbol(argument), {}
+        return argument, {}
 
     def forward(self, *args: Any, **kwds: Any) -> List[str]:
         raise NotADirectoryError()

@@ -131,10 +131,10 @@ class APIExecutor(Expression):
         self._request = self._to_symbol(request)
         if self._verbose: print('[REQUEST]', self._request)
         # Generate the code to implement the API call
-        self._code = self.builder(self._request)
+        self._code    = self.builder(self._request)
         if self._verbose: print('[GENERATED_CODE]', self._code)
         # Execute the code to define the 'run' function
-        self._result = self.executor(self._code, request=self._request)
+        self._result  = self.executor(self._code, request=self._request)
         if self._verbose: print('[RESULT]:', self._result)
-        self.value = self._result
+        self._value   = self._result
         return self
