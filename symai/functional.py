@@ -21,29 +21,32 @@ class ConstraintViolationException(Exception):
     pass
 
 
-def _execute_query(engine, post_processors, wrp_self, wrp_params, return_constraint, args, kwargs) -> List[object]:
+def _execute_query(engine, post_processors, return_constraint, argument) -> List[object]:
     # build prompt and query engine
-    engine.prepare(args, kwargs, wrp_params)
+    engine.prepare(argument)
 
     # return preview of the command if preview is set
-    if 'preview' in wrp_params and wrp_params['preview']:
-        return engine.preview(wrp_params)
+    if argument.prop.preview:
+        return engine.preview(argument)
 
-    outputs  = engine(**wrp_params) # currently only support single query
-    rsp      = outputs[0][0]
-    metadata = outputs[1]
+    outputs                 = engine(argument) # currently only support single query
+    rsp                     = outputs[0][0] # unpack first query TODO: support multiple queries
+    metadata                = outputs[1]
+
+    argument.prop.outputs   = outputs
+    argument.prop.metadata  = metadata
 
     if post_processors:
         for pp in post_processors:
-            rsp = pp(wrp_self, wrp_params, rsp, *args, **kwargs)
+            rsp             = pp(rsp, argument)
 
     # check if return type cast
-    if return_constraint == type(rsp):
+    if   return_constraint == type(rsp):
         pass
     elif return_constraint == list or \
-        return_constraint == tuple or \
-            return_constraint == set or \
-                return_constraint == dict:
+         return_constraint == tuple or \
+         return_constraint == set or \
+         return_constraint == dict:
         try:
             res = ast.literal_eval(rsp)
         except Exception as e:
@@ -63,7 +66,7 @@ def _execute_query(engine, post_processors, wrp_self, wrp_params, return_constra
         rsp = return_constraint(rsp)
 
     # check if satisfies constraints
-    for constraint in wrp_params['constraints']:
+    for constraint in argument.prop.constraints:
         if not constraint(rsp):
             raise ConstraintViolationException("Constraint not satisfied:", rsp, constraint)
 
@@ -81,54 +84,50 @@ def _process_query(engine,
                    trials:              int                             = 1,
                    pre_processors:      Optional[List[PreProcessor]]    = None,
                    post_processors:     Optional[List[PostProcessor]]   = None,
-                   *args, **kwargs):
+                   argument                                             = None, # Argument container from core
+                   ):
 
     if pre_processors and not isinstance(pre_processors, list):
-        pre_processors = [pre_processors]
+        pre_processors              = [pre_processors]
     if post_processors and not isinstance(post_processors, list):
-        post_processors = [post_processors]
+        post_processors             = [post_processors]
 
     # check signature for return type
-    sig = inspect.signature(func)
-    return_constraint = sig._return_annotation
+    sig                             = inspect.signature(func)
+    return_constraint               = sig._return_annotation
     assert 'typing' not in str(return_constraint), "Return type must be of base type not generic Typing object, e.g. int, str, list, etc."
 
-    # prepare wrapper parameters
-    wrp_params = {
-        'wrp_self': instance,
-        'func': func,
-        'prompt': prompt,
-        'examples': examples,
-        'constraints': constraints,
-        'default': default,
-        'limit': limit,
-        'signature': sig,
-        **kwargs
-    }
+    # prepare argument container
+    argument.prop.engine            = engine
+    argument.prop.instance          = instance
+    argument.prop.signature         = sig
+    argument.prop.func              = func
+    argument.prop.prompt            = prompt
+    argument.prop.examples          = examples
+    argument.prop.constraints       = constraints
+    argument.prop.return_constraint = return_constraint
+    argument.prop.default           = default
+    argument.prop.limit             = limit
+    argument.prop.trials            = trials
+    argument.prop.pre_processors    = pre_processors
+    argument.prop.post_processors   = post_processors
 
     # pre-process text
-    suffix = ''
-    if pre_processors and 'raw_input' not in wrp_params:
+    processed_input = ''
+    if pre_processors and not argument.prop.raw_input:
         for pp in pre_processors:
-            t = pp(instance, wrp_params, *args, **kwargs)
-            suffix += t if t is not None else ''
-    else:
-        if args and len(args) > 0:
-            suffix += ' '.join([str(a) for a in args])
-            suffix += '\n'
-        if kwargs and len(kwargs) > 0:
-            suffix += ' '.join([f'{k}: {v}' for k, v in kwargs.items()])
-            suffix += '\n'
-    wrp_params['processed_input'] = suffix
+            t = pp(argument)
+            processed_input += t if t is not None else ''
+    argument.prop.processed_input = processed_input
 
     # try run the function
     try_cnt  = 0
     while try_cnt < trials:
         try_cnt += 1
         try:
-            rsp, metadata = _execute_query(engine, post_processors, instance, wrp_params, return_constraint, args, kwargs)
+            rsp, metadata = _execute_query(engine, post_processors, return_constraint, argument)
             # return preview of the command if preview is set
-            if 'preview' in wrp_params and wrp_params['preview']:
+            if argument.prop.preview:
                 return rsp
         except Exception as e:
             logging.error(f"Failed to execute query: {str(e)}")
@@ -137,26 +136,17 @@ def _process_query(engine,
                 continue # repeat if query unsuccessful
             # if max retries reached, return default or raise exception
             # execute default function implementation as fallback
-            f_kwargs = {}
-            f_sig_params = list(sig.parameters)
-            # handle self and kwargs to match function signature
-            if  f_sig_params[0] == 'self':
-                f_sig_params = f_sig_params[1:]
-            # allow for args to be passed in as kwargs
-            if len(kwargs) == 0 and len(args) > 0:
-                for i, arg in enumerate(args):
-                    f_kwargs[f_sig_params[i]] = arg
             # execute function or method based on self presence
-            rsp = func(instance, *args, **kwargs)
+            rsp = func(instance, *argument.args, **argument.signature_kwargs)
             # if there is also no default implementation, raise exception
-            if rsp is None and wrp_params['default'] is None:
+            if rsp is None and not argument.prop.default:
                 raise e # raise exception if no default and no function implementation
             elif rsp is None: # return default if there is one
-                rsp = wrp_params['default']
+                rsp = argument.prop.default
 
     # return based on return type
     try:
-        limit_ = wrp_params['limit'] if wrp_params['limit'] is not None else len(rsp)
+        limit_ = argument.prop.limit if argument.prop.limit else len(rsp)
     except:
         limit_ = None
 

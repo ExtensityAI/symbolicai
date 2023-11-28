@@ -9,12 +9,12 @@ from sklearn.cluster import AffinityPropagation
 
 
 class PostProcessor:
-    def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
+    def __call__(self, response, argument) -> Any:
         raise NotImplementedError()
 
 
 class StripPostProcessor(PostProcessor):
-    def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
+    def __call__(self, response, argument) -> Any:
         if response is None:
             return None
         if not isinstance(response, str):
@@ -27,33 +27,33 @@ class StripPostProcessor(PostProcessor):
 
 
 class ClusterPostProcessor(PostProcessor):
-    def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
+    def __call__(self, response, argument) -> Any:
         clustering = AffinityPropagation().fit(response)
         ids = np.unique(clustering.labels_)
         map_ = {}
         for id_ in ids:
             indices = np.where(clustering.labels_ == id_)[0]
-            map_[id_] = [wrp_self.value[i] for i in indices]
+            map_[id_] = [argument.prop.instance.value[i] for i in indices]
         return map_
 
 
 class TemplatePostProcessor(PostProcessor):
-    def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
-        template = wrp_params['template']
-        placeholder = wrp_params['placeholder']
-        template = wrp_params['template']
+    def __call__(self, response, argument) -> Any:
+        template = argument.kwargs['template']
+        placeholder = argument.kwargs['placeholder']
+        template = argument.kwargs['template']
         parts = str(template).split(placeholder)
         return f'{parts[0]}{response}{parts[1]}'
 
 
 class SplitNewLinePostProcessor(PostProcessor):
-    def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
+    def __call__(self, response, argument) -> Any:
         tmp = response.split('\n')
         return [t.strip() for t in tmp if len(t.strip()) > 0]
 
 
 class JsonTruncatePostProcessor(PostProcessor):
-    def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
+    def __call__(self, response, argument) -> Any:
         count_b = response.count('[JSON_BEGIN]')
         count_e = response.count('[JSON_END]')
         if count_b > 1 or count_e > 1:
@@ -74,7 +74,7 @@ class JsonTruncatePostProcessor(PostProcessor):
 
 
 class CodeExtractPostProcessor(PostProcessor):
-    def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
+    def __call__(self, response, argument) -> Any:
         if '```' not in response:
             return response
         matches = []
@@ -88,7 +88,7 @@ class CodeExtractPostProcessor(PostProcessor):
 
 
 class WolframAlphaPostProcessor(PostProcessor):
-    def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
+    def __call__(self, response, argument) -> Any:
         try:
             return next(response.results).text
         except StopIteration:
@@ -102,7 +102,7 @@ class WolframAlphaPostProcessor(PostProcessor):
 
 
 class SplitPipePostProcessor(PostProcessor):
-    def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
+    def __call__(self, response, argument) -> Any:
         tmp = response if isinstance(response, list) else [response]
         tmp = [r.split('|') for r in tmp if len(r.strip()) > 0]
         tmp = sum(tmp, [])
@@ -110,16 +110,16 @@ class SplitPipePostProcessor(PostProcessor):
 
 
 class NotifySubscriberPostProcessor(PostProcessor):
-    def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
-        for k, v in wrp_params['subscriber'].items():
+    def __call__(self, response, argument) -> Any:
+        for k, v in argument.kwargs['subscriber'].items():
             if k in response:
                 Event = namedtuple('Event', ['args', 'kwargs', 'response'])
-                v(Event(args, kwds, response))
+                v(Event(argument.args, argument.kwargs, response))
         return response
 
 
 class ASTPostProcessor(PostProcessor):
-    def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
+    def __call__(self, response, argument) -> Any:
         try:
             val = ast.literal_eval(response.strip())
             return val
@@ -128,7 +128,7 @@ class ASTPostProcessor(PostProcessor):
 
 
 class ConsolePostProcessor(PostProcessor):
-    def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
+    def __call__(self, response, argument) -> Any:
         verbose = response['verbose'] if 'verbose' in response else False
         input_ = response['input'] if 'input' in response else None
         if verbose: print(f"Input: {input_}")
@@ -144,22 +144,22 @@ class ConsolePostProcessor(PostProcessor):
 
 
 class TakeLastPostProcessor(PostProcessor):
-    def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
+    def __call__(self, response, argument) -> Any:
         return response[-1]
 
 
 class ExpandFunctionPostProcessor(PostProcessor):
-    def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
+    def __call__(self, response, argument) -> Any:
         return 'def ' + response
 
 
 class CaseInsensitivePostProcessor(PostProcessor):
-    def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
+    def __call__(self, response, argument) -> Any:
         return response.lower()
 
 
 class HtmlGetTextPostProcessor(PostProcessor):
-    def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> Any:
+    def __call__(self, response, argument) -> Any:
         tmp = response if isinstance(response, list) else [response]
         res = []
         for r in tmp:
@@ -172,7 +172,7 @@ class HtmlGetTextPostProcessor(PostProcessor):
         return res
 
 class ConfirmToBoolPostProcessor(PostProcessor):
-    def __call__(self, wrp_self, wrp_params, response, *args: Any, **kwds: Any) -> bool:
+    def __call__(self, response, argument) -> Any:
         if response is None:
             return False
         rsp = response.strip()
