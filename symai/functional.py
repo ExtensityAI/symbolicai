@@ -9,8 +9,8 @@ from typing import Callable, Dict, List, Optional, Union
 from types import ModuleType
 from typing import Dict, Any, Tuple
 
-from .post_processors import *
-from .pre_processors import *
+from .post_processors import PostProcessor
+from .pre_processors import PreProcessor
 from .prompts import Prompt
 from .misc.console import ConsoleStyle
 from .backend.base import Engine, ENGINE_UNREGISTERED
@@ -112,12 +112,17 @@ def _process_query(engine,
     argument.prop.pre_processors    = pre_processors
     argument.prop.post_processors   = post_processors
 
-    # pre-process text
-    processed_input = ''
+    # pre-process input with pre-processors
+    processed_input               = ''
     if pre_processors and not argument.prop.raw_input:
         for pp in pre_processors:
-            t = pp(argument)
-            processed_input += t if t is not None else ''
+            t                     = pp(argument)
+            processed_input      += t if t is not None else ''
+    # if raw input, do not pre-process
+    else:
+        if argument.args and len(argument.args) > 0:
+            processed_input      += '\n'.join([str(a) for a in argument.args])
+            processed_input      += '\n'
     argument.prop.processed_input = processed_input
 
     # try run the function
@@ -177,7 +182,6 @@ class EngineRepository(object):
         if cls._instance is None:
             cls._instance = super(EngineRepository, cls).__new__(cls, *args, **kwargs)
             cls._instance.__init__()  # Explicitly call __init__
-            cls._instance.register_from_package(engines)
         return cls._instance
 
     def register(self, id: str, engine_instance: Engine, allow_engine_override: bool = False) -> None:
@@ -188,9 +192,10 @@ class EngineRepository(object):
             reg_eng = self.get(id)
             with ConsoleStyle('warn', logging=True) as console:
                 console.print(f"Engine {id} is already registered. Overriding engine: {reg_eng.__name__} with {str(str(engine_instance))}")
-        else:
-            with ConsoleStyle('debug', logging=False) as console:
-                console.print(f"Registering engine: {id} >> {str(engine_instance)}")
+        # debug
+        # else:
+        #     with ConsoleStyle('debug', logging=False) as console:
+        #         console.print(f"Registering engine: {id} >> {str(engine_instance)}")
         # Create an instance of the engine class and store it
         self._engines[id] = engine_instance
 
@@ -218,10 +223,21 @@ class EngineRepository(object):
                         self.register(id_, instance, allow_engine_override=allow_engine_override)
 
     def get(self, engine_name: str, *args, **kwargs) -> Engine:
+        # try first time load of engine
         if engine_name not in self._engines.keys():
-            # initialize engine
-            raise ValueError(f"No engine named {engine_name} is registered.")
-        return self._engines.get(engine_name)
+            # get subpackage name from engine name
+            subpackage_name = engine_name.replace('-', '_')
+            # get subpackage
+            subpackage = subpackage = importlib.import_module(f"{engines.__package__}.{subpackage_name}", None)
+            # raise exception if subpackage is not found
+            if subpackage is None:
+                raise ValueError(f"The symbolicai library does not contain the engine named {engine_name}. Verify your configuration or if you have initialized the respective engine.")
+            self._instance.register_from_package(subpackage)
+        engine = self._engines.get(engine_name, None)
+        # raise exception if engine is not registered
+        if engine is None:
+            raise ValueError(f"No engine named {engine_name} is registered. Verify your configuration or if you have initialized the respective engine.")
+        return engine
 
     def list(self, *args, **kwargs) -> List[str]:
         return list(self._engines.keys())

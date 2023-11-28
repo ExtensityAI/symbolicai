@@ -3,7 +3,7 @@ import os
 import time
 
 from abc import ABC
-from typing import Any, List
+from typing import Any, List, Tuple
 
 from ..collect import CollectionRepository, rec_serialize
 
@@ -41,22 +41,20 @@ class Engine(ABC):
         stream.setFormatter(streamformat)
         self.logger.addHandler(stream)
 
-    def __call__(self, *args: Any, **kwds: Any) -> List[str]:
+    def __call__(self, argument: Any) -> Tuple[List[str], dict]:
         log = {
             'Input': {
                 'self': self,
-                'args': args,
-                **kwds
+                'args': argument.args,
+                **argument.kwargs
             }
         }
-        if 'metadata' not in kwds:
-            kwds['metadata'] = True
         start_time = time.time()
-        res, metadata = self.forward(*args, **kwds)
+        res, metadata = self.forward(argument)
         req_time = time.time() - start_time
         metadata['time'] = req_time
         if self.time_clock:
-            print(f"{kwds['func']}: {req_time} sec")
+            print(f"{argument.prop.func}: {req_time} sec")
         log['Output'] = res
         if self.verbose:
             view   = {k: v for k, v in list(log['Input'].items()) if k != 'self' and k != 'func' and k != 'args'}
@@ -71,11 +69,12 @@ class Engine(ABC):
             or str(self) == 'SeleniumEngine' \
             or str(self) == 'OCREngine':
             self.collection.add(
-                forward={'args': rec_serialize(args), 'kwds': rec_serialize(kwds)},
+                forward={'args': rec_serialize(argument.args), 'kwds': rec_serialize(argument.kwargs)},
                 engine=str(self),
                 metadata={
                     'time': req_time,
-                    'data': rec_serialize(metadata)
+                    'data': rec_serialize(metadata),
+                    'argument': rec_serialize(argument)
                 }
             )
         return res, metadata
@@ -83,24 +82,24 @@ class Engine(ABC):
     def id(self) -> str:
         return ENGINE_UNREGISTERED
 
-    def preview(self, wrp_params):
-        return PreviewSymbol(wrp_params), {}
+    def preview(self, argument):
+        return PreviewSymbol(argument), {}
 
     def forward(self, *args: Any, **kwds: Any) -> List[str]:
         raise NotADirectoryError()
 
-    def prepare(self, args, kwargs, wrp_params):
+    def prepare(self, argument):
         raise NotImplementedError()
 
-    def command(self, wrp_params):
-        if 'verbose' in wrp_params:
-            self.verbose = wrp_params['verbose']
-        if 'logging' in wrp_params:
-            self.logging = wrp_params['logging']
-        if 'log_level' in wrp_params:
-            self.log_level = wrp_params['log_level']
-        if 'time_clock' in wrp_params:
-            self.time_clock = wrp_params['time_clock']
+    def command(self, argument):
+        if argument.prop.verbose:
+            self.verbose = argument.prop.verbose
+        if argument.prop.logging:
+            self.logging = argument.prop.logging
+        if argument.prop.log_level:
+            self.log_level = argument.prop.log_level
+        if argument.prop.time_clock:
+            self.time_clock = argument.prop.time_clock
 
     def __str__(self) -> str:
         return self.__class__.__name__

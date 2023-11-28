@@ -16,7 +16,7 @@ import pandas as pd
 from pathlib import Path
 
 from symai import Expression, Symbol
-from symai.backend.engines.engine_nesy_client import NeSyClientEngine
+from symai.backend.engines.neurosymbolic.engine_nesy_client import NeSyClientEngine
 
 
 def setup_engine():

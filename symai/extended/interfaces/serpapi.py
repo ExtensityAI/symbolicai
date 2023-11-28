@@ -1,6 +1,6 @@
 from ... import core
 from ...symbol import Expression, Symbol
-from ...backend.engines.engine_serpapi import SearchResult
+from ...backend.engines.search.engine_serpapi import SearchResult
 
 
 class serpapi(Expression):

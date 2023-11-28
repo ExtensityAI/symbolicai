@@ -1,7 +1,7 @@
 import argparse
 
 from symai import Expression
-from symai.backend.engines.engine_nesy_client import NeSyClientEngine
+from symai.backend.engines.neurosymbolic.engine_nesy_client import NeSyClientEngine
 from symai.extended import Solver
 
 

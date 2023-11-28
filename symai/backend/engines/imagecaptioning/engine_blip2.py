@@ -27,6 +27,9 @@ class Blip2Engine(Engine):
         self.txt_processors = None  # lazy loading
         self.device         = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+    def id(self) -> str:
+        return 'imagecaptioning'
+
     def command(self, wrp_params):
         super().command(wrp_params)
         if 'CAPTION_ENGINE_MODEL' in wrp_params:
