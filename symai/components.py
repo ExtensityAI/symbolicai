@@ -502,49 +502,6 @@ class TokenTracker(Expression):
 class Indexer(Expression):
     DEFAULT = 'dataindex'
 
-    class IndexResult(Expression):
-        def __init__(self, res, query: str):
-            self.query = query
-            self.raw   = res
-            self._value = [v['metadata']['text'] for v in res['matches']]
-
-        def _unpack_matches(self):
-            for i, match in enumerate(self.value):
-                match = match.strip()
-                if match.startswith('# ----[FILE_START]') and '# ----[FILE_END]' in match:
-                    m = match.split('[FILE_CONTENT]:')[-1].strip()
-                    content, file_name = m.split('# ----[FILE_END]')
-                    yield file_name.strip(), content.strip()
-                else:
-                    yield i+1, match
-
-        def __str__(self):
-            str_view = ''
-            for filename, content in self._unpack_matches():
-                # indent each line of the content
-                content = '\n'.join(['  ' + line for line in content.split('\n')])
-                str_view += f'* {filename}\n{content}\n\n'
-            return f'''
-[RESULT]
-{'-=-' * 13}
-
-Query: {self.query}
-
-{'-=-' * 13}
-
-Matches:
-
-{str_view}
-{'-=-' * 13}
-'''
-
-        def _repr_html_(self) -> str:
-            # return a nicely styled HTML list results based on retrieved documents
-            doc_str = ''
-            for filename, content in self._unpack_matches():
-                doc_str += f'<li><a href="{filename}"><b>{filename}</a></b><br>{content}</li>\n'
-            return f'<ul>{doc_str}</ul>'
-
     def replace_special_chars(self, index: str):
         # replace special characters that are not for path
         index = str(index)
@@ -554,7 +511,7 @@ Matches:
         index = index.lower()
         return index
 
-    def __init__(self, index_name: str = DEFAULT, top_k: int = 8, batch_size: int = 20, formatter: Callable = ParagraphFormatter(), auto_add=True):
+    def __init__(self, index_name: str = DEFAULT, top_k: int = 8, batch_size: int = 20, formatter: Callable = ParagraphFormatter(), auto_add=False, raw_result=True):
         super().__init__()
         index_name = self.replace_special_chars(index_name)
         self.index_name = index_name
@@ -563,6 +520,7 @@ Matches:
         self.top_k      = top_k
         self.retrieval  = None
         self.formatter  = formatter
+        self.raw_result = raw_result
         self.sym_return_type = Expression
 
         # append index name to indices.txt in home directory .symai folder (default)
@@ -609,22 +567,12 @@ Matches:
                 that.add(val)
 
         def _func(query, *args, **kwargs):
-            try:
-                query_emb = Symbol(query).embed().value
-                res = that.get(query_emb, index_top_k=that.top_k)
-                res = res.ast()
-            except Exception as e:
-                message = ['Sorry, failed to interact with index. Please check index name and try again later:', str(e)]
-                # package the message for the IndexResult class
-                res = {'matches': [{'metadata': {'text': '\n'.join(message)}}]}
-                return that.IndexResult(res, query)
-            if ('raw_result' in kwargs and kwargs['raw_result']) or raw_result:
-                that.retrieval = res
-                return that.IndexResult(res, query)
-            res = [v['metadata']['text'] for v in res['matches']]
+            query_emb = Symbol(query).embed().value
+            res = that.get(query_emb, index_name=that.index_name, index_top_k=that.top_k, ori_query=query, **kwargs)
             that.retrieval = res
-            sym = that._to_symbol(res)
-            rsp = sym.query(query, *args, **kwargs)
+            if that.raw_result or raw_result or ('raw_result' in kwargs and kwargs['raw_result']):
+                return res
+            rsp = res.query(query, *args, **kwargs)
             return rsp
 
         return _func

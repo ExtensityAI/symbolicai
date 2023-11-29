@@ -4,7 +4,6 @@ import numpy as np
 
 from collections import namedtuple
 from typing import Any
-from bs4 import BeautifulSoup
 from sklearn.cluster import AffinityPropagation
 
 
@@ -159,20 +158,6 @@ class ExpandFunctionPostProcessor(PostProcessor):
 class CaseInsensitivePostProcessor(PostProcessor):
     def __call__(self, response, argument) -> Any:
         return response.lower()
-
-
-class HtmlGetTextPostProcessor(PostProcessor):
-    def __call__(self, response, argument) -> Any:
-        tmp = response if isinstance(response, list) else [response]
-        res = []
-        for r in tmp:
-            if r is None:
-                continue
-            soup = BeautifulSoup(r, 'html.parser')
-            text = soup.getText()
-            res.append(text)
-        res = None if len(res) == 0 else '\n'.join(res)
-        return res
 
 class ConfirmToBoolPostProcessor(PostProcessor):
     def __call__(self, response, argument) -> Any:

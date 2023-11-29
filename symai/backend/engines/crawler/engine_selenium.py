@@ -1,7 +1,28 @@
-from typing import Callable, List
+from typing import Callable
+from bs4 import BeautifulSoup
 
 from ...base import Engine
 from ...driver.webclient import connect_browsers, dump_page_source, page_loaded
+from ....symbol import Result
+
+
+class SeleniumResult(Result):
+    def __init__(self, value) -> None:
+        super().__init__(value)
+        if value is not None:
+            self._value = self.extract()
+
+    def extract(self):
+        tmp = self.value if isinstance(self.value, list) else [self.value]
+        res = []
+        for r in tmp:
+            if r is None:
+                continue
+            soup = BeautifulSoup(r, 'html.parser')
+            text = soup.getText()
+            res.append(text)
+        res = None if len(res) == 0 else '\n'.join(res)
+        return res
 
 
 class SeleniumEngine(Engine):
@@ -29,8 +50,15 @@ class SeleniumEngine(Engine):
     def id(self) -> str:
         return 'crawler'
 
-    def forward(self, urls: List[str], patterns: List[str], *args, **kwargs) -> List[str]:
+    def forward(self, argument):
+        kwargs   = argument.kwargs
+        urls     = argument.prop.urls
+        patterns = argument.prop.patterns
         urls     = urls if isinstance(urls, list) else [urls]
+
+        # check if all urls start with https:// otherwise add it
+        urls = [url if url.startswith('http://') or url.startswith('file://') else 'https://' + url for url in urls]
+
         patterns = patterns if isinstance(patterns, list) else [patterns]
         assert len(urls) == len(patterns)
         rsp = []
@@ -58,25 +86,25 @@ class SeleniumEngine(Engine):
             metadata['urls']   = urls
             metadata['patterns'] = patterns
 
+        rsp = SeleniumResult(rsp)
         return rsp, metadata
 
-    def prepare(self, args, kwargs, wrp_params):
-        if 'url' in wrp_params and 'pattern' in wrp_params:
-            wrp_params['urls'] = [str(wrp_params['url'])]
-            wrp_params['patterns'] = [wrp_params['pattern']]
-        else:
-            assert len(kwargs) >= 1 or len(args) >= 1
+    def prepare(self, argument):
+        urls     = argument.prop.urls
+        patterns = argument.prop.patterns
 
         # be tolerant to kwarg or arg and assign values of urls and patterns
         # assign urls
-        if len(args) >= 1:
-            wrp_params['urls'] = args[0]
-        elif len(kwargs) >= 1:
-            keys = list(kwargs.keys())
-            wrp_params['urls'] = kwargs[keys[0]]
+        if len(argument.args) >= 1:
+            urls = argument.args[0]
+        elif len(argument.kwargs) >= 1:
+            keys = list(argument.kwargs.keys())
+            urls = argument.kwargs[keys[0]]
         # assign patterns
-        if len(args) >= 2:
-            wrp_params['patterns'] = args[1]
-        elif len(kwargs) >= 2:
-            keys = list(kwargs.keys())
-            wrp_params['patterns'] = kwargs[keys[1]]
+        if len(argument.args) >= 2:
+            patterns = argument.args[1]
+        elif len(argument.kwargs) >= 2:
+            keys = list(argument.kwargs.keys())
+            patterns = argument.kwargs[keys[1]]
+
+        argument.prop.processed_input = (urls, patterns)

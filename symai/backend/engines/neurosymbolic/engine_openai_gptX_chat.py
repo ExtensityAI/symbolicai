@@ -23,8 +23,11 @@ class InvalidRequestErrorRemedyChatStrategy:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def __call__(self, error, prompts_, callback, instance, *args, **kwargs):
+    def __call__(self, error, callback, argument):
         openai_kwargs = {}
+        kwargs              = argument.kwargs
+        instance            = argument.prop.instance
+        prompts_            = argument.prop.processed_input
 
         # send prompt to GPT-X Chat-based
         stop                = kwargs['stop'] if 'stop' in kwargs else None
@@ -125,8 +128,9 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         self.max_tokens = self.api_max_tokens() - 100 # TODO: account for tolerance. figure out how their magic number works to compute reliably the precise max token size
 
     def id(self) -> str:
-        if  self.config['NEUROSYMBOLIC_ENGINE_MODEL'].startswith('gpt-3.5') or \
-            self.config['NEUROSYMBOLIC_ENGINE_MODEL'].startswith('gpt-4'):
+        if   self.config['NEUROSYMBOLIC_ENGINE_MODEL'] and \
+            (self.config['NEUROSYMBOLIC_ENGINE_MODEL'].startswith('gpt-3.5') or \
+             self.config['NEUROSYMBOLIC_ENGINE_MODEL'].startswith('gpt-4')):
             return 'neurosymbolic'
         return super().id() # default to unregistered
 
@@ -215,12 +219,12 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             callback = openai.chat.completions.create
             kwargs['model'] = kwargs['model'] if 'model' in kwargs else self.model
             if except_remedy is not None:
-                res = except_remedy(e, prompts_, callback, self, *args, **kwargs)
+                res = except_remedy(e, callback, argument)
             else:
                 try:
                     # implicit remedy strategy
                     except_remedy = InvalidRequestErrorRemedyChatStrategy()
-                    res = except_remedy(e, prompts_, callback, self, *args, **kwargs)
+                    res = except_remedy(e, callback, argument)
                 except Exception as e2:
                     ex = Exception(f'Failed to handle exception: {e}. Also failed implicit remedy strategy after retry: {e2}')
                     raise ex from e

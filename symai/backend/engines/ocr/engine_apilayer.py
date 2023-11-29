@@ -16,7 +16,7 @@ class OCREngine(Engine):
         }
 
     def id(self) -> str:
-        if  self.config['OCR_ENGINE_API_KEY'] != '':
+        if self.config['OCR_ENGINE_API_KEY']:
             return 'ocr'
         return super().id() # default to unregistered
 
@@ -24,12 +24,12 @@ class OCREngine(Engine):
         super().command(wrp_params)
         if 'OCR_ENGINE_API_KEY' in wrp_params:
             self.headers = {
-                "apikey": wrp_params['INDEXING_ENGINE_API_KEY']
+                "apikey": wrp_params['OCR_ENGINE_API_KEY']
             }
 
-    def forward(self, *args, **kwargs) -> List[str]:
-        assert 'image' in kwargs, "APILayer requires image input."
-        image_url = kwargs['image']
+    def forward(self, argument):
+        kwargs    = argument.kwargs
+        image_url = argument.prop.image
         url       = f"https://api.apilayer.com/image_to_text/url?url={image_url}"
         payload   = {}
 
@@ -55,6 +55,6 @@ class OCREngine(Engine):
 
         return [rsp], metadata
 
-    def prepare(self, args, kwargs, wrp_params):
-        pass
+    def prepare(self, argument):
+        argument.prop.processed_input = argument.prop.image
 

@@ -19,7 +19,7 @@ class CLIPEngine(Engine):
         self.old_model_id = self.config['VISION_ENGINE_MODEL']
 
     def id(self) -> str:
-        if  self.config['VISION_ENGINE_MODEL'] != '':
+        if self.config['VISION_ENGINE_MODEL']:
             return 'vision'
         return super().id() # default to unregistered
 

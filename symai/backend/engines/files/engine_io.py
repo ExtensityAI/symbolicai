@@ -1,7 +1,6 @@
 import PyPDF2
 
 from tika import unpack
-from typing import List
 
 from ...base import Engine
 
@@ -57,6 +56,7 @@ class FileEngine(Engine):
     def forward(self, argument):
         kwargs        = argument.kwargs
         path          = argument.prop.processed_input
+        print('test', path)
         input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
         if input_handler:
             input_handler((path,))
@@ -110,4 +110,4 @@ class FileEngine(Engine):
         return [rsp], metadata
 
     def prepare(self, argument):
-        argument.prop.processed_input = argument.kwargs['prompt']
+        argument.prop.processed_input = argument.prop.path

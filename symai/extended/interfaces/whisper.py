@@ -1,13 +1,14 @@
 from ... import core
 from ...symbol import Expression
+from ...backend.engines.speech_to_text.engine_whisper import WhisperResult
 
 
 class whisper(Expression):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def __call__(self, audio_path: str, operation: str = 'decode', **kwargs) -> "whisper":
+    def __call__(self, audio_path: str, operation: str = 'decode', **kwargs) -> WhisperResult:
         @core.speech_to_text(audio=audio_path, prompt=operation, **kwargs)
-        def _func(_) -> str:
+        def _func(_) -> WhisperResult:
             pass
-        return self.sym_return_type(_func(self))
+        return _func(self)

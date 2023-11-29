@@ -1,8 +1,6 @@
 import json
 
-from typing import List
 from IPython.utils import io
-from box import Box
 
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
@@ -17,7 +15,6 @@ except:
 class SearchResult(Symbol):
     def __init__(self, value) -> None:
         super().__init__(value)
-        self.raw = Box(value)
         if 'answer_box' in value.keys() and 'answer' in value['answer_box'].keys():
             self._value = value['answer_box']['answer']
         elif 'answer_box' in value.keys() and 'snippet' in value['answer_box'].keys():
@@ -56,7 +53,7 @@ class SerpApiEngine(Engine):
         self.engine = self.config['SEARCH_ENGINE_MODEL']
 
     def id(self) -> str:
-        if  self.config['SEARCH_ENGINE_API_KEY'] != '':
+        if self.config['SEARCH_ENGINE_API_KEY']:
             if GoogleSearch is None:
                 print('SerpApi is not installed. Please install it with `pip install symbolicai[serpapi]`')
             return 'search'

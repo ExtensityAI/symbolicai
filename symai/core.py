@@ -1808,7 +1808,7 @@ def fetch(url: str,
           default: Optional[object] = None,
           limit: int = 1,
           pre_processors: Optional[List[pre.PreProcessor]] = [pre.CrawlPatternPreProcessor()],
-          post_processors: Optional[List[post.PostProcessor]] = [post.HtmlGetTextPostProcessor()],
+          post_processors: Optional[List[post.PostProcessor]] = [],
           **decorator_kwargs):
     """Fetches data from a given URL and applies the provided post-processors.
 
@@ -1819,7 +1819,7 @@ def fetch(url: str,
         default (object, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         limit (int, optional): The maximum number of matching items to return. Defaults to 1.
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [CrawlPatternPreProcessor()].
-        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [HtmlGetTextPostProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [].
         decorator_kwargs (dict, optional): Additional keyword arguments to pass to the decorated function. Defaults to {}.
 
     Returns:
@@ -1829,8 +1829,8 @@ def fetch(url: str,
         @functools.wraps(func)
         def wrapper(instance, *signature_args, **signature_kwargs):
             # Construct container object for the arguments and kwargs
-            decorator_kwargs['url'] = url
-            decorator_kwargs['pattern'] = pattern
+            decorator_kwargs['urls'] = url
+            decorator_kwargs['patterns'] = pattern
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
             return EngineRepository().process_query(
                                 engine='crawler',

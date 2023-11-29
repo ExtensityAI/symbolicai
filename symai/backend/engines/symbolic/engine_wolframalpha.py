@@ -27,7 +27,7 @@ class WolframAlphaEngine(Engine):
         self.client  = None
 
     def id(self) -> str:
-        if  self.config['SYMBOLIC_ENGINE_API_KEY'] != '':
+        if self.config['SYMBOLIC_ENGINE_API_KEY']:
             if wa is None:
                 print('WolframAlpha is not installed. Please install it with `pip install symbolicai[wolframalpha]`')
             return 'symbolic'
