@@ -1,5 +1,3 @@
-from typing import List
-
 from ...base import Engine
 
 
@@ -10,9 +8,10 @@ class OutputEngine(Engine):
     def id(self) -> str:
         return 'output'
 
-    def forward(self, *args, **kwargs) -> List[str]:
-        expr = kwargs['expr'] if 'expr' in kwargs else None
-        res  = None
+    def forward(self, argument):
+        kwargs  = argument.kwargs
+        expr    = kwargs['expr'] if 'expr' in kwargs else None
+        res     = None
         if expr:
             def input_handler(vals):
                 kwargs['input'] = vals
@@ -32,5 +31,5 @@ class OutputEngine(Engine):
 
         return [kwargs], metadata
 
-    def prepare(self, args, kwargs, wrp_params):
+    def prepare(self, argument):
         pass

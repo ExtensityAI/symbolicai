@@ -50,15 +50,13 @@ $> Max is 2 years older than his brother. In 5 years, Max will be 3 times as old
 """
 
 class ProblemClassifierPreProcessor(PreProcessor):
-    def __call__(self, wrp_self, wrp_params, *args, **kwds):
-        super().override_reserved_signature_keys(wrp_params, *args, **kwds)
-        return '$> {}\n//'.format(str(wrp_self))
+    def __call__(self, argument):
+        return '$> {}\n//'.format(str(argument.prop.instance))
 
 
 class OptionsPreProcessor(PreProcessor):
-    def __call__(self, wrp_self, wrp_params, *args, **kwds):
-        super().override_reserved_signature_keys(wrp_params, *args, **kwds)
-        return '$> :{}: == :{}: =>'.format(str(wrp_self), str(args[0]))
+    def __call__(self, argument):
+        return '$> :{}: == :{}: =>'.format(str(argument.prop.instance), str(argument.args[0]))
 
 
 class ProblemClassifier(Expression):
@@ -100,9 +98,8 @@ class ProblemClassifier(Expression):
 
 
 class FormulaCheckerPreProcessor(PreProcessor):
-    def __call__(self, wrp_self, wrp_params, *args, **kwds):
-        super().override_reserved_signature_keys(wrp_params, *args, **kwds)
-        return '$> {} =>'.format(str(wrp_self))
+    def __call__(self, argument):
+        return '$> {} =>'.format(str(argument.prop.instance))
 
 
 class FormulaChecker(Expression):
@@ -141,9 +138,8 @@ class FormulaChecker(Expression):
 
 
 class FormulaWriterPreProcessor(PreProcessor):
-    def __call__(self, wrp_self, wrp_params, *args, **kwds):
-        super().override_reserved_signature_keys(wrp_params, *args, **kwds)
-        return '$> {} =>'.format(str(wrp_self))
+    def __call__(self, argument):
+        return '$> {} =>'.format(str(argument.prop.instance))
 
 
 class FormulaWriter(Expression):

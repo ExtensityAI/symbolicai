@@ -262,7 +262,7 @@ Traceback (most recent call last):
     return self.sym_return_type(_func(self))
                                  ^^^^^^^^^^^
   File "/Users/xpitfire/workspace/symbolicai/symai/core.py", line 46, in wrapper
-    return few_shot_func(wrp_self,
+    return few_shot_func(instance,
            ^^^^^^^^^^^^^^^^^^^^^^^
   File "/Users/xpitfire/workspace/symbolicai/symai/functional.py", line 232, in few_shot_func
     return _process_query(engine=neurosymbolic_engine,
@@ -271,7 +271,7 @@ Traceback (most recent call last):
     raise e # raise exception if no default and no function implementation
     ^^^^^^^
   File "/Users/xpitfire/workspace/symbolicai/symai/functional.py", line 149, in _process_query
-    rsp, metadata = _execute_query(engine, post_processors, wrp_self, wrp_params, return_constraint, args, kwargs)
+    rsp, metadata = _execute_query(engine, argument)
                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/Users/xpitfire/workspace/symbolicai/symai/functional.py", line 81, in _execute_query
     if not constraint(rsp):
@@ -636,9 +636,9 @@ modified:   tests/test_composition.py
         res = ocr('https://media-cdn.tripadvisor.com/media/photo-p/0f/da/22/3a/rechnung.jpg')
         self.assertTrue('China' in res)
 
-    def test_vision(self):
-        vision = Interface('clip')
-        res = vision('https://hips.hearstapps.com/hmg-prod.s3.amazonaws.com/images/cute-cat-photos-1593441022.jpg',
+    def test_text_vision(self):
+        clip = Interface('clip')
+        res = clip('https://hips.hearstapps.com/hmg-prod.s3.amazonaws.com/images/cute-cat-photos-1593441022.jpg',
                       ['cat', 'dog', 'bird', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe'])
         res = res.argmax()
         self.assertTrue(0 == res)
@@ -672,8 +672,8 @@ modified:   tests/test_composition.py
     def test_setup_engine(self):
         from symai.backend.engines.neurosymbolic.engine_openai_gptX_completion import GPTXCompletionEngine
         class TestEngine(GPTXCompletionEngine):
-            def prepare(self, args, kwargs, wrp_params):
-                wrp_params['prompts'] = ['Write about cats.']
+            def prepare(self, argument):
+                argument.prop.processed_input = ['Write about cats.']
         custom_engine = TestEngine()
         sym = Symbol('Write about dogs.')
         Expression.register(engines={'neurosymbolic': custom_engine})

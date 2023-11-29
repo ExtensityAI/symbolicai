@@ -10,8 +10,9 @@ class UserInputEngine(Engine):
     def id(self) -> str:
         return 'userinput'
 
-    def forward(self, *args, **kwargs) -> List[str]:
-        msg           = kwargs['prompt']
+    def forward(self, argument):
+        msg           = argument.prop.processed_input
+        kwargs        = argument.kwargs
         input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
         if input_handler:
             input_handler((msg,))
@@ -35,5 +36,5 @@ class UserInputEngine(Engine):
 
         return [rsp], metadata
 
-    def prepare(self, args, kwargs, wrp_params):
-        wrp_params['prompt'] = wrp_params['processed_input']
+    def prepare(self, argument):
+        argument.prop.processed_input = argument.kwargs['prompt']

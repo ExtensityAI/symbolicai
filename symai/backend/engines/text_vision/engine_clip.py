@@ -1,6 +1,6 @@
+import logging
 import requests
 
-from typing import List
 from PIL import Image
 from transformers import CLIPModel, CLIPProcessor
 
@@ -8,10 +8,14 @@ from ...base import Engine
 from ...settings import SYMAI_CONFIG
 
 
+# supress warnings
+logging.getLogger("PIL").setLevel(logging.WARNING)
+
+
 class CLIPEngine(Engine):
     def __init__(self):
         super().__init__()
-        self.model =  None # lazy loading
+        self.model        =  None # lazy loading
         self.preprocessor = None # lazy loading
 
         self.config       = SYMAI_CONFIG
@@ -20,13 +24,13 @@ class CLIPEngine(Engine):
 
     def id(self) -> str:
         if self.config['VISION_ENGINE_MODEL']:
-            return 'vision'
+            return 'text_vision'
         return super().id() # default to unregistered
 
-    def command(self, wrp_params):
-        super().command(wrp_params)
-        if 'VISION_ENGINE_MODEL' in wrp_params:
-            self.model_id     = wrp_params['VISION_ENGINE_MODEL']
+    def command(self, argument):
+        super().command(argument.kwargs)
+        if 'VISION_ENGINE_MODEL' in argument.kwargs:
+            self.model_id     = argument.kwargs['VISION_ENGINE_MODEL']
 
     def forward(self, argument):
         image_url, text       = argument.prop.processed_input
@@ -72,7 +76,7 @@ class CLIPEngine(Engine):
 
     def prepare(self, argument):
         kwargs     = argument.kwargs
-        image_url  = kwargs['image'] if 'image' in kwargs else None
-        text       = argument.kwargs['prompt']
+        image_url  = argument.kwargs['image'] if 'image' in kwargs else None
+        text       = argument.kwargs['text']  if 'text'  in kwargs else None
         argument.prop.processed_input = (image_url, text)
 

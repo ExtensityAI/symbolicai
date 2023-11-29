@@ -88,7 +88,7 @@ def few_shot(prompt: str = '',
         default (object, optional): Default value if prediction fails. Defaults to None.
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model to match the format of the examples. Defaults to None.
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
-        **decorator_kwargs: Additional arguments as key-value pairs passed to the decorated function, which can later accessed in pre_processors and post_processors via the wrp_params['key'] dictionary.
+        **decorator_kwargs: Additional arguments as key-value pairs passed to the decorated function, which can later accessed in pre_processors and post_processors via the argument.kwargs['key'] dictionary.
 
     Returns:
         object: The prediction of the model based on the return type of the decorated function. Defaults to object, if not specified or to str if cast was not possible.
@@ -132,7 +132,7 @@ def zero_shot(prompt: str = '',
         default (object, optional): Default value if prediction fails. Defaults to None.
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
-        **decorator_kwargs: Additional arguments as key-value pairs passed to the decorated function, which can later accessed in pre_processors and post_processors via the wrp_params['key'] dictionary.
+        **decorator_kwargs: Additional arguments as key-value pairs passed to the decorated function, which can later accessed in pre_processors and post_processors via the argument.kwargs['key'] dictionary.
 
     Returns:
         object: The prediction of the model based on the return type of the decorated function. Defaults to object, if not specified or to str if cast was not possible.
@@ -1634,11 +1634,11 @@ def draw(operation: str = 'create',
     return decorator
 
 
-def vision(image: Optional[str] = None,
-           text: List[str] = None,
-           pre_processors: Optional[List[pre.PreProcessor]] = None,
-           post_processors: Optional[List[post.PostProcessor]] = None,
-           **decorator_kwargs):
+def text_vision(image: Optional[str] = None,
+                text: List[str] = None,
+                pre_processors: Optional[List[pre.PreProcessor]] = None,
+                post_processors: Optional[List[post.PostProcessor]] = None,
+                **decorator_kwargs):
     """Performs vision-related associative tasks. Currently limited to CLIP model embeddings.
 
     Args:
@@ -1656,9 +1656,10 @@ def vision(image: Optional[str] = None,
         def wrapper(instance, *signature_args, **signature_kwargs):
             # Construct container object for the arguments and kwargs
             decorator_kwargs['image'] = image
+            decorator_kwargs['text']  = text
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
             return EngineRepository().process_query(
-                                engine='vision',
+                                engine='text_vision',
                                 instance=instance,
                                 prompt=text,
                                 func=func,

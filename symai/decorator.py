@@ -121,12 +121,12 @@ def cache(
     '''
     def decorator(func):
         @functools.wraps(func)
-        def wrapper(wrp_self):
+        def wrapper(instance):
             return _cache_registry_func(
                     in_memory,
                     cache_path,
                     func,
-                    wrp_self
+                    instance
                 )
         return wrapper
     return decorator

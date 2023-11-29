@@ -68,9 +68,8 @@ Multimodal Few-Shot Learning with Frozen Language Models Maria Tsimpoukelli
 
 
 class BibTexPreProcessor(PreProcessor):
-    def __call__(self, wrp_self, wrp_params, *args, **kwds):
-        super().override_reserved_signature_keys(wrp_params, *args, **kwds)
-        return '>>>\n{}\n\n<<<\n'.format(str(args[0]))
+    def __call__(self, argument):
+        return '>>>\n{}\n\n<<<\n'.format(str(argument.args[0]))
 
 
 class BibTexParser(Expression):

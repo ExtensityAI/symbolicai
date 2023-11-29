@@ -134,12 +134,12 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             return 'neurosymbolic'
         return super().id() # default to unregistered
 
-    def command(self, wrp_params):
-        super().command(wrp_params)
-        if 'NEUROSYMBOLIC_ENGINE_API_KEY' in wrp_params:
-            openai.api_key = wrp_params['NEUROSYMBOLIC_ENGINE_API_KEY']
-        if 'NEUROSYMBOLIC_ENGINE_MODEL' in wrp_params:
-            self.model = wrp_params['NEUROSYMBOLIC_ENGINE_MODEL']
+    def command(self, argument):
+        super().command(argument.kwargs)
+        if 'NEUROSYMBOLIC_ENGINE_API_KEY' in argument.kwargs):
+            openai.api_key = argument.kwargs)['NEUROSYMBOLIC_ENGINE_API_KEY']
+        if 'NEUROSYMBOLIC_ENGINE_MODEL' in argument.kwargs):
+            self.model = argument.kwargs)['NEUROSYMBOLIC_ENGINE_MODEL']
 
     def compute_required_tokens(self, prompts: dict) -> int:
         # iterate over prompts and compute number of tokens

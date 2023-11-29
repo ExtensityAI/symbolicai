@@ -1135,7 +1135,7 @@ Since we used verbose, the console print of the `Output` expression is also visi
 Input: (['Translate the following text into German:\n\nHello World!'],)
 Expression: <bound method Symbol.translate of <class 'symai.symbol.Symbol'>(value=Hello World!)>
 args: ('German',) kwargs: {'input_handler': <function OutputEngine.forward.<locals>.input_handler at ...
-Dictionary: {'wrp_self': <class 'symai.components.Output'>(value=None), 'func': <function Symbol.output.<locals>._func at ...
+Dictionary: {'instance': <class 'symai.components.Output'>(value=None), 'func': <function Symbol.output.<locals>._func at ...
 Output: Hallo Welt!
 ```
 
@@ -1292,8 +1292,8 @@ To perform text-based image few-shot classification, we use `CLIP`. This impleme
 The following example demonstrates how to classify the image of our generated cat from above and return the results as an array of probabilities:
 
 ```python
-vision = Interface('clip')
-res = vision('https://oaidalleapiprodscus.blob.core.windows.net/private/org-l6FsXDfth6...',
+clip = Interface('clip')
+res = clip('https://oaidalleapiprodscus.blob.core.windows.net/private/org-l6FsXDfth6...',
               ['cat', 'dog', 'bird', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe'])
 ```
 
@@ -1345,8 +1345,8 @@ Here is an example of how to initialize your own engine. We will subclass the ex
 ```python
 from symai.backend.engines.engine_gptX_completion import GPTXCompletionEngine
 class DummyEngine(GPTXCompletionEngine):
-    def prepare(self, args, kwargs, wrp_params):
-        wrp_params['prompts'] = ['Go wild and generate something!']
+    def prepare(self, argument):
+        argument.prop.processed_input = ['Go wild and generate something!']
 custom_engine = DummyEngine()
 sym = Symbol()
 Expression.register(engines={'neurosymbolic': custom_engine})
@@ -1363,7 +1363,7 @@ res = sym.translate('German')
 
 ```bash
 :Output:
-<symai.backend.engines.engine_gptX_completion.GPTXCompletionEngine object at 0, <function Symbol.translate.<locals>._func at 0x7fd68ba04820>, {'wrp_self': <class 'symai.symbol.S ['\n\nHallo Welt!']
+<symai.backend.engines.engine_gptX_completion.GPTXCompletionEngine object at 0, <function Symbol.translate.<locals>._func at 0x7fd68ba04820>, {'instance': <class 'symai.symbol.S ['\n\nHallo Welt!']
 ```
 
 Here is the list of names of the engines that are currently supported:

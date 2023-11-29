@@ -17,9 +17,8 @@ If more than one entity pair is extracted from the same sentence, then the CSV f
 
 
 class GraphPreProcessor(PreProcessor):
-    def __call__(self, wrp_self, wrp_params, *args, **kwds):
-        super().override_reserved_signature_keys(wrp_params, *args, **kwds)
-        return '$> {} =>'.format(str(args[0]))
+    def __call__(self, argument):
+        return '$> {} =>'.format(str(argument.args[0]))
 
 
 class Graph(Expression):

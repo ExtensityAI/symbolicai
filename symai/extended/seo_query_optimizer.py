@@ -19,9 +19,8 @@ The number of resulting queries should be between 1 and 8 statements separated b
 
 
 class SEOQueryOptimizerPreProcessor(PreProcessor):
-    def __call__(self, wrp_self, wrp_params, *args, **kwds):
-        super().override_reserved_signature_keys(wrp_params, *args, **kwds)
-        return '$> {} =>'.format(str(args[0]))
+    def __call__(self, argument):
+        return '$> {} =>'.format(str(argument.args[0]))
 
 
 class SEOQueryOptimizer(Expression):

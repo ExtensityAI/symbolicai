@@ -40,9 +40,8 @@ SQL: DELETE FROM Employees WHERE last_name='Smithee';
 
 
 class SQLPreProcessor(PreProcessor):
-    def __call__(self, wrp_self, wrp_params, *args, **kwds):
-        super().override_reserved_signature_keys(wrp_params, *args, **kwds)
-        return '// {} SQL:'.format(str(wrp_self))
+    def __call__(self, argument):
+        return '// {} SQL:'.format(str(argument.prop.instance))
 
 
 class SQL(Expression):

@@ -35,13 +35,13 @@ Always generate only human-like conversation text.
 
 
 class TagProcessor(PreProcessor):
-    def __call__(self, wrp_self, wrp_params, *args, **kwds):
-        super().override_reserved_signature_keys(wrp_params, *args, **kwds)
-        assert 'tag' in wrp_params, 'TagProcessor requires a `tag` parameter.'
-        thoughts = '' if 'thoughts' not in wrp_params else f"{wrp_params['thoughts']}"
+    def __call__(self, argument):
+        kwargs   = argument.kwargs
+        assert 'tag' in kwargs, 'TagProcessor requires a `tag` parameter.'
+        thoughts = '' if 'thoughts' not in kwargs else f"{kwargs['thoughts']}"
         timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S:%f")
-        wrp_params['prompt'] = ''
-        return str(args[0]) + '[{tag}{timestamp}]:{thoughts} <<<\n'.format(tag=wrp_params['tag'], timestamp=timestamp, thoughts=thoughts)
+        kwargs['prompt'] = ''
+        return str(argument.args[0]) + '[{tag}{timestamp}]:{thoughts} <<<\n'.format(tag=kwargs['tag'], timestamp=timestamp, thoughts=thoughts)
 
 
 class Persona(Conversation):
