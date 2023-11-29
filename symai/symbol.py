@@ -2,6 +2,7 @@ import json
 import numpy as np
 
 from abc import ABC
+from box import Box
 from json import JSONEncoder
 from typing import Any, Dict, Iterator, List, Optional, Type, Union
 
@@ -825,6 +826,47 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
         return Symbol(str(self).split(str(other)))
 
 
+class Result(Symbol):
+    def __init__(self, value = None, *args, **kwargs):
+        '''
+        Create a Result object that stores the results operations, including the raw result, value and metadata, if any.
+
+        Args:
+            value (Any, optional): The value to be stored in the Expression object. Usually not provided as the value
+                                   is computed using the forward method when called. Defaults to None.
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+        '''
+        super().__init__(value) # value is the same as raw when initialized, however, it can be changed later
+        self._sym_return_type = type(self)
+        try:
+            # try to make the values easily accessible
+            self.raw              = Box(value)
+        except:
+            # otherwise, store the unprocessed view
+            self.raw              = value
+
+    @property
+    def value(self) -> Any:
+        '''
+        Get the value of the symbol.
+
+        Returns:
+            Any: The value of the symbol.
+        '''
+        return self._value
+
+    @value.setter
+    def value(self, value: Any) -> None:
+        '''
+        Set the value of the Result object.
+
+        Args:
+            value (Any): The value to set the Result object to.
+        '''
+        self._value = value
+
+
 class ExpressionEncoder(JSONEncoder):
     def default(self, o):
         if isinstance(o, Expression):
@@ -986,7 +1028,7 @@ class Expression(Symbol):
         @core.index(prompt=path, operation='config', **kwargs)
         def _func(_):
             pass
-        return self.sym_return_type(_func(self))
+        return _func(self)
 
     def add(self, query: List[str], **kwargs) -> 'Symbol':
         '''
@@ -1002,7 +1044,7 @@ class Expression(Symbol):
         @core.index(prompt=query, operation='add', **kwargs)
         def _func(_):
             pass
-        return self.sym_return_type(_func(self))
+        return _func(self)
 
     def get(self, query: List[int], **kwargs) -> 'Symbol':
         '''
@@ -1018,7 +1060,7 @@ class Expression(Symbol):
         @core.index(prompt=query, operation='search', **kwargs)
         def _func(_):
             pass
-        return self.sym_return_type(_func(self))
+        return _func(self)
 
     @staticmethod
     def command(engines: List[str] = ['all'], **kwargs) -> 'Symbol':

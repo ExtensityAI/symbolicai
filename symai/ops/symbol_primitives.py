@@ -12,7 +12,7 @@ from .. import decorator
 from ..prompts import Prompt
 
 if TYPE_CHECKING:
-    from ..symbol import Expression, Symbol
+    from ..symbol import Expression, Symbol, Result
 
 
 class ContextualPrimitives:

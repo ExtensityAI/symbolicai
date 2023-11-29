@@ -1,10 +1,11 @@
 import logging
 import openai
-
-from typing import List
+import requests
+import tempfile
 
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
+from ....symbol import Result
 
 
 logging.getLogger("openai").setLevel(logging.ERROR)
@@ -12,6 +13,28 @@ logging.getLogger("requests").setLevel(logging.ERROR)
 logging.getLogger("urllib").setLevel(logging.ERROR)
 logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
+
+
+class DalleResult(Result):
+    def __init__(self, value) -> None:
+        super().__init__(value)
+        # unpack the result
+        if hasattr(value, 'data') and len(value.data) > 0:
+            self._value = value.data[0].url
+
+    # use tempfile to download the image
+    def download_images(self):
+        if not hasattr(self.value, 'data') or len(self.value.data) <= 0:
+            return None
+        files = []
+        # download the images
+        for url in enumerate(self.value.data):
+            path = tempfile.NamedTemporaryFile(suffix='.png').name
+            r = requests.get(url, allow_redirects=True)
+            with open(path, 'wb') as f:
+                f.write(r.content)
+            files.append(path)
+        return files
 
 
 class ImageRenderingEngine(Engine):
@@ -24,16 +47,18 @@ class ImageRenderingEngine(Engine):
         self.size = size
 
     def id(self) -> str:
-        if  self.config['IMAGERENDERING_ENGINE_API_KEY'] != '':
+        if  self.config['IMAGERENDERING_ENGINE_API_KEY']:
             return 'imagerendering'
         return super().id() # default to unregistered
 
-    def command(self, wrp_params):
-        super().command(wrp_params)
-        if 'IMAGERENDERING_ENGINE_API_KEY' in wrp_params:
-            openai.api_key = wrp_params['IMAGERENDERING_ENGINE_API_KEY']
+    def command(self, argument):
+        super().command(argument.kwargs)
+        if 'IMAGERENDERING_ENGINE_API_KEY' in argument.kwargs:
+            openai.api_key = argument.kwargs['IMAGERENDERING_ENGINE_API_KEY']
 
-    def forward(self, prompt: str, *args, **kwargs) -> List[str]:
+    def forward(self, argument):
+        prompt        = argument.prop.processed_input
+        kwargs        = argument.kwargs
         size          = f"{kwargs['image_size']}x{kwargs['image_size']}" if 'image_size' in kwargs else f"{self.size}x{self.size}"
         except_remedy = kwargs['except_remedy'] if 'except_remedy' in kwargs else None
 
@@ -92,7 +117,7 @@ class ImageRenderingEngine(Engine):
         except Exception as e:
             if except_remedy is None:
                 raise e
-            res = except_remedy(e, prompt, callback, *args, **kwargs)
+            res = except_remedy(e, callback, argument)
 
         metadata = {}
         if 'metadata' in kwargs and kwargs['metadata']:
@@ -101,10 +126,8 @@ class ImageRenderingEngine(Engine):
             metadata['output'] = res
             metadata['size']   = size
 
-        rsp = res.data[0].url
+        rsp = DalleResult(res)
         return [rsp], metadata
 
-    def prepare(self, args, kwargs, wrp_params):
-        prompt = str(wrp_params['prompt'])
-        prompt += wrp_params['processed_input']
-        wrp_params['prompt'] = prompt
+    def prepare(self, argument):
+        pass # no preprocessing needed, processed_input are the args

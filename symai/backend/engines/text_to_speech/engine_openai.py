@@ -16,7 +16,7 @@ class TTSEngine(Engine):
         self.client   = OpenAI(api_key=self.api_key)
 
     def id(self) -> str:
-        if  self.config['TEXT_TO_SPEECH_ENGINE_API_KEY'] != '':
+        if self.config['TEXT_TO_SPEECH_ENGINE_API_KEY']:
             return 'text-to-speech'
         return super().id() # default to unregistered
 

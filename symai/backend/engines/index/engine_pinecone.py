@@ -1,8 +1,6 @@
 import itertools
 import warnings
 
-from typing import List
-
 warnings.filterwarnings('ignore', module='pinecone')
 try:
     import pinecone
@@ -11,7 +9,8 @@ except:
 
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
-from .... import core
+from .... import decorator
+from ....symbol import Result
 
 
 def chunks(iterable, batch_size=100):
@@ -21,6 +20,61 @@ def chunks(iterable, batch_size=100):
     while chunk:
         yield chunk
         chunk = list(itertools.islice(it, batch_size))
+
+
+class PineconeResult(Result):
+    def __init__(self, res, query: str, embedding: list):
+        super().__init__(res)
+        self.query      = query
+        self.embedding  = embedding
+        self.raw        = res
+        self._value     = self._process(res)
+
+    def _process(self, res):
+        try:
+            res = self._to_symbol(res).ast()
+        except Exception as e:
+            message = ['Sorry, failed to interact with index. Please check index name and try again later:', str(e)]
+            # package the message for the IndexResult class
+            res = {'matches': [{'metadata': {'text': '\n'.join(message)}}]}
+        return [v['metadata']['text'] for v in res['matches']]
+
+    def _unpack_matches(self):
+        for i, match in enumerate(self.value):
+            match = match.strip()
+            if match.startswith('# ----[FILE_START]') and '# ----[FILE_END]' in match:
+                m = match.split('[FILE_CONTENT]:')[-1].strip()
+                content, file_name = m.split('# ----[FILE_END]')
+                yield file_name.strip(), content.strip()
+            else:
+                yield i+1, match
+
+    def __str__(self):
+        str_view = ''
+        for filename, content in self._unpack_matches():
+            # indent each line of the content
+            content = '\n'.join(['  ' + line for line in content.split('\n')])
+            str_view += f'* {filename}\n{content}\n\n'
+        return f'''
+[RESULT]
+{'-=-' * 13}
+
+Query: {self.query}
+
+{'-=-' * 13}
+
+Matches:
+
+{str_view}
+{'-=-' * 13}
+'''
+
+    def _repr_html_(self) -> str:
+        # return a nicely styled HTML list results based on retrieved documents
+        doc_str = ''
+        for filename, content in self._unpack_matches():
+            doc_str += f'<li><a href="{filename}"><b>{filename}</a></b><br>{content}</li>\n'
+        return f'<ul>{doc_str}</ul>'
 
 
 class IndexEngine(Engine):
@@ -71,52 +125,68 @@ class IndexEngine(Engine):
         self.index          = None
 
     def id(self) -> str:
-        if  SYMAI_CONFIG['INDEXING_ENGINE_API_KEY'] != '':
+        if SYMAI_CONFIG['INDEXING_ENGINE_API_KEY']:
             if pinecone is None:
                 print('Pinecone is not installed. Please install it with `pip install symbolicai[pinecone]`.')
             return 'index'
         return super().id() # default to unregistered
 
-    def command(self, wrp_params):
-        super().command(wrp_params)
-        if 'INDEXING_ENGINE_API_KEY' in wrp_params:
-            self.api_key = wrp_params['INDEXING_ENGINE_API_KEY']
-        if 'INDEXING_ENGINE_ENVIRONMENT' in wrp_params:
-            self.environment = wrp_params['INDEXING_ENGINE_ENVIRONMENT']
+    def command(self, argument):
+        super().command(argument.kwargs)
+        if 'INDEXING_ENGINE_API_KEY' in argument.kwargs:
+            self.api_key = argument.kwargs['INDEXING_ENGINE_API_KEY']
+        if 'INDEXING_ENGINE_ENVIRONMENT' in argument.kwargs:
+            self.environment = argument.kwargs['INDEXING_ENGINE_ENVIRONMENT']
 
-    def forward(self, *args, **kwargs) -> List[str]:
-        operation     = kwargs['operation']
-        query         = kwargs['prompt']
+    def _configure_index(self, **kwargs):
+        index_name = kwargs['index_name'] if 'index_name' in kwargs else self.index_name
+
+        del_ = kwargs['index_del'] if 'index_del' in kwargs else False
+        if self.index is not None and del_:
+            pinecone.delete_index(index_name)
+
+        get_ = kwargs['index_get'] if 'index_get' in kwargs else False
+        if self.index is not None and get_:
+            self.index = pinecone.Index(index_name=index_name)
+
+    def forward(self, argument):
+        assert self.api_key,        'Please set the API key for Pinecone indexing engine.'
+        assert self.environment,    'Please set the environment for Pinecone indexing engine.'
+        assert self.index_name,     'Please set the index name for Pinecone indexing engine.'
+
+        kwargs        = argument.kwargs
+        embedding     = argument.prop.processed_input
+        query         = argument.prop.ori_query
+        operation     = argument.prop.operation
+        index_name    = argument.prop.index_name if argument.prop.index_name else self.index_name
         input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
         rsp           = None
 
         if self.index is None:
             self._init_index_engine()
 
+        if index_name != self.index_name:
+            assert index_name, 'Please set a valid index name for Pinecone indexing engine.'
+            # switch index
+            self.index_name     = index_name
+            kwargs['index_get'] = True
+            self._configure_index(**kwargs)
+
         if input_handler:
-            input_handler((query, ))
+            input_handler((embedding, ))
 
         if operation == 'search':
             index_top_k    = kwargs['index_top_k'] if 'index_top_k' in kwargs else self.index_top_k
             index_values   = kwargs['index_values'] if 'index_values' in kwargs else self.index_values
             index_metadata = kwargs['index_metadata'] if 'index_metadata' in kwargs else self.index_metadata
-
-            rsp = self._query(query, index_top_k, index_values, index_metadata)
+            rsp = self._query(embedding, index_top_k, index_values, index_metadata)
 
         elif operation == 'add':
-            for ids_vectors_chunk in chunks(query, batch_size=100):
+            for ids_vectors_chunk in chunks(embedding, batch_size=100):
                 self._upsert(ids_vectors_chunk)
 
         elif operation == 'config':
-            index_name = kwargs['index_name'] if 'index_name' in kwargs else self.index_name
-
-            del_ = kwargs['index_del'] if 'index_del' in kwargs else False
-            if self.index is not None and del_:
-                pinecone.delete_index(index_name)
-
-            get_ = kwargs['index_get'] if 'index_get' in kwargs else False
-            if self.index is not None and get_:
-                self.index = pinecone.Index(index_name=index_name)
+            self._configure_index(**kwargs)
 
         else:
             raise ValueError('Invalid operation')
@@ -128,17 +198,18 @@ class IndexEngine(Engine):
         metadata = {}
         if 'metadata' in kwargs and kwargs['metadata']:
             metadata['kwargs']         = kwargs
-            metadata['input']          = (operation, query)
+            metadata['input']          = (operation, embedding)
             metadata['output']         = rsp
             metadata['model']          = self.index_name
             metadata['index_top_k']    = self.index_top_k
             metadata['index_values']   = self.index_values
             metadata['index_metadata'] = self.index_metadata
 
+        rsp = PineconeResult(rsp, query, embedding)
         return [rsp], metadata
 
-    def prepare(self, args, kwargs, wrp_params):
-        wrp_params['prompt'] = wrp_params['prompt']
+    def prepare(self, argument):
+        argument.prop.processed_input = argument.prop.prompt.to_list()
 
     def _init_index_engine(self):
         pinecone.init(api_key=self.api_key, environment=self.environment)
@@ -149,14 +220,15 @@ class IndexEngine(Engine):
         self.index = pinecone.Index(index_name=self.index_name)
 
     def _upsert(self, vectors):
-        @core.retry(tries=self.tries, delay=self.delay, max_delay=self.max_delay, backoff=self.backoff, jitter=self.jitter)
+        @decorator.retry(tries=self.tries, delay=self.delay, max_delay=self.max_delay, backoff=self.backoff, jitter=self.jitter)
         def _func():
             return self.index.upsert(vectors=vectors)
 
         return _func()
 
     def _query(self, query, index_top_k, index_values, index_metadata):
-        @core.retry(tries=self.tries, delay=self.delay, max_delay=self.max_delay, backoff=self.backoff, jitter=self.jitter)
+        breakpoint()
+        @decorator.retry(tries=self.tries, delay=self.delay, max_delay=self.max_delay, backoff=self.backoff, jitter=self.jitter)
         def _func():
             return self.index.query(vector=query, top_k=index_top_k, include_values=index_values, include_metadata=index_metadata)
 

@@ -1,8 +1,6 @@
 import logging
 import openai
 
-from typing import List
-
 from ...base import Engine
 from ...mixin.openai import OpenAIMixin
 from ...settings import SYMAI_CONFIG
@@ -27,16 +25,16 @@ class EmbeddingEngine(Engine, OpenAIMixin):
         self.max_tokens         = self.api_max_tokens()
 
     def id(self) -> str:
-        if  self.config['EMBEDDING_ENGINE_API_KEY'] != '':
+        if  self.config['EMBEDDING_ENGINE_API_KEY']:
             return 'embedding'
         return super().id() # default to unregistered
 
-    def command(self, wrp_params):
-        super().command(wrp_params)
-        if 'EMBEDDING_ENGINE_API_KEY' in wrp_params:
-            openai.api_key = wrp_params['EMBEDDING_ENGINE_API_KEY']
-        if 'EMBEDDING_ENGINE_MODEL' in wrp_params:
-            self.model = wrp_params['EMBEDDING_ENGINE_MODEL']
+    def command(self, argument):
+        super().command(argument.kwargs)
+        if 'EMBEDDING_ENGINE_API_KEY' in argument.kwargs:
+            openai.api_key = argument.kwargs['EMBEDDING_ENGINE_API_KEY']
+        if 'EMBEDDING_ENGINE_MODEL' in argument.kwargs:
+            self.model = argument.kwargs['EMBEDDING_ENGINE_MODEL']
 
     def forward(self, argument):
         processed_input = argument.prop.processed_input
@@ -73,4 +71,4 @@ class EmbeddingEngine(Engine, OpenAIMixin):
         return [rsp], metadata
 
     def prepare(self, argument):
-        argument.prop.processed_input = argument.kwargs['entries']
+        argument.prop.processed_input = argument.prop.entries

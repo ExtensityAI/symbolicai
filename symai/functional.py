@@ -76,7 +76,7 @@ def _execute_query(engine, post_processors, return_constraint, argument) -> List
 def _process_query(engine,
                    instance,
                    func:                Callable,
-                   prompt:              str,
+                   prompt:              str                             = '',
                    examples:            Optional[Prompt]                = None,
                    constraints:         List[Callable]                  = [],
                    default:             Optional[object]                = None,
@@ -262,9 +262,9 @@ class EngineRepository(object):
             return _process_query(engine, *args, **kwargs)
         raise ValueError(f"No engine named {engine} is registered.")
 
-    def bind_property(self, engine_name: str, property_name: str, *args, **kwargs):
+    def bind_property(self, engine: str, property: str, *args, **kwargs):
         """Bind a property to a specific engine."""
-        engine = self.get(engine_name)
+        engine = self.get(engine)
         if engine:
-            return getattr(engine, property_name, None)
-        raise ValueError(f"No engine named {engine_name} is registered.")
+            return getattr(engine, property, None)
+        raise ValueError(f"No engine named {engine} is registered.")

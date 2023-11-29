@@ -30,22 +30,23 @@ class Blip2Engine(Engine):
     def id(self) -> str:
         return 'imagecaptioning'
 
-    def command(self, wrp_params):
-        super().command(wrp_params)
-        if 'CAPTION_ENGINE_MODEL' in wrp_params:
-            self.model_id = wrp_params['CAPTION_ENGINE_MODEL']
+    def command(self, argument):
+        super().command(argument.kwargs)
+        if 'CAPTION_ENGINE_MODEL' in argument.kwargs:
+            self.model_id = argument.kwargs['CAPTION_ENGINE_MODEL']
 
-    def prepare(self, args, kwargs, wrp_params):
-        pass
+    def prepare(self, argument):
+        argument.prop.processed_input = (argument.prop.image, argument.prop.prompt)
 
-    def forward(self, *args, **kwargs) -> List[str]:
+    def forward(self, argument):
         if self.model is None:
             self.model, self.vis_processors, self.txt_processors  = load_model_and_preprocess(name       = self.name_id,
                                                                                               model_type = self.model_id,
                                                                                               is_eval    = True,
                                                                                               device     = self.device)
 
-        image, prompt = kwargs['image'], kwargs['prompt']
+        image, prompt = argument.prop.processed_input
+        kwargs        = argument.kwargs
         except_remedy = kwargs['except_remedy'] if 'except_remedy' in kwargs else None
         input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
 
@@ -66,7 +67,7 @@ class Blip2Engine(Engine):
             if except_remedy is None:
                 raise e
             callback = self.model.generate
-            res = except_remedy(e, prompt, callback, *args, **kwargs)
+            res = except_remedy(e, callback, argument)
 
         output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
         if output_handler:

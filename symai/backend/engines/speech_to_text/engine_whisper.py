@@ -1,4 +1,5 @@
 import logging
+from box import Box
 import torch
 
 from itertools import takewhile
@@ -7,7 +8,8 @@ from typing import Iterable, List
 
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
-from ....symbol import Expression
+from ....symbol import Expression, Symbol
+
 
 class WhisperTimestampsFormatter(Expression):
     def __init__(self):
@@ -53,12 +55,18 @@ class WhisperTimestampsFormatter(Expression):
         return s.split("|>")[-1]
 
     def _format_to_hours(self, seconds: float) -> str:
-        hours = int(seconds // 3600)
+        hours    = int(seconds // 3600)
         seconds %= 3600
-        minutes = int(seconds // 60)
+        minutes  = int(seconds // 60)
         seconds %= 60
         formatted_time = "{:02d}:{:02d}:{:02d}".format(hours, minutes, int(seconds))
         return formatted_time
+
+
+class WhisperResult(Symbol):
+    def __init__(self, value) -> None:
+        super().__init__(value)
+        self.raw = None
 
 
 try:
@@ -67,7 +75,7 @@ try:
         N_SAMPLES  # @NOTE: sample_rate (16_000) * chunk_length (30) = 480_000
     from whisper.tokenizer import get_tokenizer
 except ImportError:
-    whisper = None
+    whisper   = None
     N_SAMPLES = 16_000 * 30
 
 
@@ -83,19 +91,23 @@ class WhisperEngine(Engine):
         self.formatter    = WhisperTimestampsFormatter()
 
     def id(self) -> str:
-        if  self.config['SPEECH_TO_TEXT_ENGINE_MODEL'] != '':
+        if self.config['SPEECH_TO_TEXT_ENGINE_MODEL']:
             if whisper is None:
                 print("Whisper is not installed. Please install it with `pip install symbolicai[whisper]`")
             return 'speech-to-text'
         return super().id() # default to unregistered
 
-    def command(self, wrp_params):
-        super().command(wrp_params)
-        if 'SPEECH_TO_TEXT_ENGINE_MODEL' in wrp_params:
-            self.model_id = wrp_params['SPEECH_TO_TEXT_ENGINE_MODEL']
+    def command(self, argument):
+        super().command(argument.kwargs)
+        if 'SPEECH_TO_TEXT_ENGINE_MODEL' in argument.kwargs:
+            self.model_id = argument.kwargs['SPEECH_TO_TEXT_ENGINE_MODEL']
 
-    def forward(self, **kwargs) -> List[str]:
+    def forward(self, argument):
         assert whisper is not None, "Whisper is not installed. Please install it first."
+        kwargs     = argument.kwargs
+        (_, audio) = argument.prop.processed_input
+        prompt     = argument.prop.prompt
+
         if self.model is None or self.model_id != self.old_model_id:
             device_fallback = 'cpu'
             device = "cuda" if torch.cuda.is_available() else device_fallback
@@ -108,8 +120,6 @@ class WhisperEngine(Engine):
             self.old_model_id = self.model_id
 
         self._try_compile()
-        prompt = kwargs['prompt']
-        audio  = kwargs['audio']
         disable_pbar    = kwargs.get("disable_pbar", False)
         language        = kwargs.get("language", "en")
         temperature     = kwargs.get("temperature", (0.0, 0.2, 0.4, 0.6, 0.8, 1.0))
@@ -118,6 +128,7 @@ class WhisperEngine(Engine):
         if input_handler is not None:
             input_handler((prompt, audio))
 
+        raw_result = []
         if prompt == 'detect_language':
             #@NOTE: the accuracy of mel spectrogram is not good enough; don't use it to transcribe
             mel = whisper.log_mel_spectrogram(audio).to(self.model.device)
@@ -133,6 +144,7 @@ class WhisperEngine(Engine):
                     temperature=temperature,
                     fp16=False,
                 )
+                raw_result.append(result)
                 self.text.append(result["text"])
                 self.tokens.append([
                     token
@@ -162,13 +174,16 @@ class WhisperEngine(Engine):
             metadata['temperature']     = temperature
             metadata['word_timestamps'] = word_timestamps
 
+        rsp = WhisperResult(rsp)
+        if raw_result:
+            rsp.raw = raw_result
         return [rsp], metadata
 
-    def prepare(self, args, kwargs, wrp_params):
-        assert 'audio' in wrp_params, "Whisper requires audio input."
-        audio_file = str(wrp_params['audio'])
+    def prepare(self, argument):
+        assert argument.prop.audio, "Whisper requires audio input."
+        audio_file = str(argument.prop.audio)
         audio = whisper.load_audio(audio_file)
-        wrp_params['audio'] = audio
+        argument.prop.processed_input = (audio_file, audio)
 
     def _get_chunks(self, it: Iterable, batch: int = N_SAMPLES) -> torch.Tensor:
         """

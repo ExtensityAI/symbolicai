@@ -22,7 +22,8 @@ class NeSyClientEngine(Engine):
         self.connection = None
 
     def id(self) -> str:
-        if  self.config['NEUROSYMBOLIC_ENGINE_MODEL'] == 'localhost':
+        if  self.config['NEUROSYMBOLIC_ENGINE_MODEL'] and \
+            self.config['NEUROSYMBOLIC_ENGINE_MODEL'] == 'localhost':
             return 'neurosymbolic'
         return super().id() # default to unregistered
 
@@ -30,10 +31,13 @@ class NeSyClientEngine(Engine):
     def max_tokens(self):
         return self.connection.root.max_tokens()
 
-    def forward(self, prompts: List[str], *args, **kwargs) -> List[str]:
+    def forward(self, argument):
         if self.connection is None:
             self.connection = rpyc.connect(self.host, self.port)
             self.connection._config['sync_request_timeout'] = self.timeout
+
+        prompts       = argument.prop.processed_input
+        kwargs        = argument.kwargs
 
         prompts_      = prompts if isinstance(prompts, list) else [prompts]
         input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
@@ -75,7 +79,7 @@ class NeSyClientEngine(Engine):
             if except_remedy is None:
                 raise e
             callback = self.connection.root.predict
-            res = except_remedy(e, prompts_, callback, self, *args, **kwargs)
+            res = except_remedy(e, callback, argument)
 
         metadata = {}
         if 'metadata' in kwargs and kwargs['metadata']:
@@ -87,16 +91,18 @@ class NeSyClientEngine(Engine):
         output = rsp if isinstance(prompts, list) else rsp[0]
         return output, metadata
 
-    def prepare(self, args, kwargs, wrp_params):
-        if 'raw_input' in wrp_params:
-            wrp_params['prompts'] = wrp_params['raw_input']
+    def prepare(self, argument):
+        if argument.prop.raw_input:
+            if argument.prop.processed_input is None or len(argument.prop.processed_input) == 0:
+                raise ValueError('Need to provide a prompt instruction to the engine if raw_input is enabled.')
+            argument.prop.processed_input = argument.prop.processed_input
             return
 
         user:   str = ""
         system: str = ""
         system      = f'{system}\n' if system and len(system) > 0 else ''
 
-        ref = wrp_params['wrp_self']
+        ref = argument.prop.instance
         static_ctxt, dyn_ctxt = ref.global_context
         if len(static_ctxt) > 0:
             system += f"[STATIC CONTEXT]\n{static_ctxt}\n\n"
@@ -104,23 +110,23 @@ class NeSyClientEngine(Engine):
         if len(dyn_ctxt) > 0:
             system += f"[DYNAMIC CONTEXT]\n{dyn_ctxt}\n\n"
 
-        payload = wrp_params['payload'] if 'payload' in wrp_params else None
+        payload = argument.prop.payload
         if payload is not None:
-            system += f"[ADDITIONAL CONTEXT]\n{payload}\n\n"
+            system += f"[ADDITIONAL CONTEXT]\n{str(payload)}\n\n"
 
-        examples: List[str] = wrp_params['examples']
+        examples: List[str] = argument.prop.examples
         if examples and len(examples) > 0:
             system += f"[EXAMPLES]\n{str(examples)}\n\n"
 
-        if wrp_params['prompt'] is not None and len(wrp_params['prompt']) > 0 and ']: <<<' not in str(wrp_params['processed_input']): # TODO: fix chat hack
-            user += f"[INSTRUCTION]\n{str(wrp_params['prompt'])}"
+        if argument.prop.prompt is not None and len(argument.prop.prompt) > 0:
+            val = str(argument.prop.prompt)
+            system += f"[INSTRUCTION]\n{val}"
 
-        suffix: str = wrp_params['processed_input']
+        suffix: str = str(argument.prop.processed_input)
         if '=>' in suffix:
             user += f"[LAST TASK]\n"
 
-        parse_system_instructions = False if 'parse_system_instructions' not in wrp_params else wrp_params['parse_system_instructions']
-        if '[SYSTEM_INSTRUCTION::]: <<<' in suffix and parse_system_instructions:
+        if '[SYSTEM_INSTRUCTION::]: <<<' in suffix and argument.prop.parse_system_instructions:
             parts = suffix.split('\n>>>\n')
             # first parts are the system instructions
             for p in parts[:-1]:
@@ -129,9 +135,8 @@ class NeSyClientEngine(Engine):
             suffix = parts[-1]
         user += f"{suffix}"
 
-        template_suffix = wrp_params['template_suffix'] if 'template_suffix' in wrp_params else None
-        if template_suffix:
-            user += f"\n[[PLACEHOLDER]]\n{template_suffix}\n\n"
+        if argument.prop.template_suffix is not None:
+            user += f"\n[[PLACEHOLDER]]\n{str(argument.prop.template_suffix)}\n\n"
             user += f"Only generate content for the placeholder `[[PLACEHOLDER]]` following the instructions and context information. Do NOT write `[[PLACEHOLDER]]` or anything else in your output.\n\n"
 
-        wrp_params['prompts'] = [f'---------SYSTEM BEHAVIOR--------\n{system}\n\n---------USER REQUEST--------\n{user}']
+        argument.prop.processed_input = [f'---------SYSTEM BEHAVIOR--------\n{system}\n\n---------USER REQUEST--------\n{user}']

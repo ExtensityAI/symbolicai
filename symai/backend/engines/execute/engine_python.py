@@ -1,6 +1,5 @@
-from typing import List
-
 from ...base import Engine
+from ....symbol import Result
 
 
 def full_stack():
@@ -65,8 +64,9 @@ class PythonEngine(Engine):
     def id(self) -> str:
         return 'execute'
 
-    def forward(self, *args, **kwargs) -> List[str]:
-        code = kwargs['prompt']
+    def forward(self, argument):
+        code          = argument.prop.processed_input
+        kwargs        = argument.kwargs
 
         globals_      = kwargs['globals'] if 'globals' in kwargs else {}
         locals_       = kwargs['locals']  if 'locals'  in kwargs else {}
@@ -83,6 +83,7 @@ class PythonEngine(Engine):
                 rsp['locals_res'] = locals_['res']
             if 'res' in globals_:
                 rsp['globals_res'] = globals_['res']
+            rsp = Result(rsp)
         except Exception as e:
             err = e
             raise e
@@ -103,5 +104,5 @@ class PythonEngine(Engine):
 
         return [rsp], metadata
 
-    def prepare(self, args, kwargs, wrp_params):
-        pass
+    def prepare(self, argument):
+        argument.prop.processed_input = argument.prop.code
