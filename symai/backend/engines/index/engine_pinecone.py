@@ -9,7 +9,7 @@ except:
 
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
-from .... import decorator
+from .... import core_ext
 from ....symbol import Result
 
 
@@ -220,7 +220,7 @@ class IndexEngine(Engine):
         self.index = pinecone.Index(index_name=self.index_name)
 
     def _upsert(self, vectors):
-        @decorator.retry(tries=self.tries, delay=self.delay, max_delay=self.max_delay, backoff=self.backoff, jitter=self.jitter)
+        @core_ext.retry(tries=self.tries, delay=self.delay, max_delay=self.max_delay, backoff=self.backoff, jitter=self.jitter)
         def _func():
             return self.index.upsert(vectors=vectors)
 
@@ -228,7 +228,7 @@ class IndexEngine(Engine):
 
     def _query(self, query, index_top_k, index_values, index_metadata):
         breakpoint()
-        @decorator.retry(tries=self.tries, delay=self.delay, max_delay=self.max_delay, backoff=self.backoff, jitter=self.jitter)
+        @core_ext.retry(tries=self.tries, delay=self.delay, max_delay=self.max_delay, backoff=self.backoff, jitter=self.jitter)
         def _func():
             return self.index.query(vector=query, top_k=index_top_k, include_values=index_values, include_metadata=index_metadata)
 

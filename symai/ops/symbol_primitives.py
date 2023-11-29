@@ -8,7 +8,7 @@ from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple,
                     Type, Union)
 
 from .. import core
-from .. import decorator
+from .. import core_ext
 from ..prompts import Prompt
 
 if TYPE_CHECKING:
@@ -72,7 +72,7 @@ class ValueHandlingPrimitives:
         '''
         return self.tokenizer().encode(str(self))
 
-    @decorator.bind(engine='neurosymbolic', property='tokenizer')
+    @core_ext.bind(engine='neurosymbolic', property='tokenizer')
     def tokenizer(self) -> Callable:
         '''
         The tokenizer method.
@@ -686,7 +686,7 @@ class ExecutionControlPrimitives:
         Raises:
             ValueError: If the Expression object exceeds the maximum allowed tokens.
         '''
-        @decorator.bind(engine='neurosymbolic', property='max_tokens')
+        @core_ext.bind(engine='neurosymbolic', property='max_tokens')
         def _max_tokens(_): pass
 
         max_ctxt_tokens = int(_max_tokens(self) * token_ratio)
