@@ -71,8 +71,8 @@ Few-shot calls: {self._few_shots}
             if self._neurosymbolic_model() not in self._supported_models: return
 
             inp      = ''
-            prompt   = frame.f_locals['wrp_params'].get('prompt')
-            examples = frame.f_locals['wrp_params'].get('examples')
+            prompt   = frame.f_locals['argument.kwargs'].get('prompt')
+            examples = frame.f_locals['argument.kwargs'].get('examples')
 
             if prompt is not None:
                 if isinstance(prompt, str): inp += prompt + '\n'
@@ -87,7 +87,7 @@ Few-shot calls: {self._few_shots}
         elif isinstance(engine, EmbeddingEngine):
             if self._embedding_model() not in self._supported_models: return
 
-            text = frame.f_locals.get('wrp_self')
+            text = frame.f_locals.get('argument.prop.instance')
 
             if text is not None:
                 if   isinstance(text, str): self._embeddings.append(len(Symbol(text).tokens))

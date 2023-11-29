@@ -50,9 +50,8 @@ DOC_CONTEXT = '''General Python Template example:
 
 
 class DocsPreProcessor(PreProcessor):
-    def __call__(self, wrp_self, wrp_params, *args, **kwds):
-        super().override_reserved_signature_keys(wrp_params, *args, **kwds)
-        return 'Method Signature:\n{}\nDocumentation Text:'.format(str(wrp_self))
+    def __call__(self, argument):
+        return 'Method Signature:\n{}\nDocumentation Text:'.format(str(argument.prop.instance))
 
 
 class Docs(Expression):

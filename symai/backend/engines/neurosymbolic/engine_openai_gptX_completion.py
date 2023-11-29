@@ -141,12 +141,12 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
             return 'neurosymbolic'
         return super().id() # default to unregistered
 
-    def command(self, wrp_params):
-        super().command(wrp_params)
-        if 'NEUROSYMBOLIC_ENGINE_API_KEY' in wrp_params:
-            openai.api_key = wrp_params['NEUROSYMBOLIC_ENGINE_API_KEY']
-        if 'NEUROSYMBOLIC_ENGINE_MODEL' in wrp_params:
-            self.model = wrp_params['NEUROSYMBOLIC_ENGINE_MODEL']
+    def command(self, argument):
+        super().command(argument.kwargs)
+        if 'NEUROSYMBOLIC_ENGINE_API_KEY' in argument.kwargs:
+            openai.api_key = argument.kwargs['NEUROSYMBOLIC_ENGINE_API_KEY']
+        if 'NEUROSYMBOLIC_ENGINE_MODEL' in argument.kwargs:
+            self.model     = argument.kwargs['NEUROSYMBOLIC_ENGINE_MODEL']
 
     def compute_required_tokens(self, prompts: list) -> int:
        # iterate over prompts and compute number of tokens
@@ -159,7 +159,6 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
         return int((self.max_tokens - val) * 0.99) # TODO: figure out how their magic number works to compute reliably the precise max token size
 
     def forward(self, argument):
-        args                = argument.args
         kwargs              = argument.kwargs
         prompts_            = argument.prop.processed_input
         input_handler       = kwargs['input_handler'] if 'input_handler' in kwargs else None

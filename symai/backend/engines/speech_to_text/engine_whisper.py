@@ -1,14 +1,12 @@
 import logging
-from box import Box
 import torch
 
 from itertools import takewhile
-from tqdm import tqdm
 from typing import Iterable, List
 
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
-from ....symbol import Expression, Symbol
+from ....symbol import Expression, Result
 
 
 class WhisperTimestampsFormatter(Expression):
@@ -63,7 +61,7 @@ class WhisperTimestampsFormatter(Expression):
         return formatted_time
 
 
-class WhisperResult(Symbol):
+class WhisperResult(Result):
     def __init__(self, value) -> None:
         super().__init__(value)
         self.raw = None
@@ -120,7 +118,7 @@ class WhisperEngine(Engine):
             self.old_model_id = self.model_id
 
         self._try_compile()
-        disable_pbar    = kwargs.get("disable_pbar", False)
+        show_pbar       = kwargs.get("progress", False)
         language        = kwargs.get("language", "en")
         temperature     = kwargs.get("temperature", (0.0, 0.2, 0.4, 0.6, 0.8, 1.0))
         word_timestamps = kwargs.get("word_timestamps", False)
@@ -135,7 +133,12 @@ class WhisperEngine(Engine):
             _, probs = self.model.detect_language(mel)
             rsp = max(probs, key=probs.get)
         elif prompt == 'decode':
-            pbar = tqdm(self._get_chunks(audio), disable=disable_pbar)
+            if show_pbar:
+                # supress tqdm warning
+                from tqdm import tqdm
+                pbar = tqdm(self._get_chunks(audio))
+            else:
+                pbar = self._get_chunks(audio)
             for chunk in pbar:
                 result = self.model.transcribe(
                     chunk,

@@ -15,7 +15,8 @@ class GPTFineTuner(Engine):
         openai.api_key  = config['NEUROSYMBOLIC_ENGINE_API_KEY']
         self.base_model = "babbage"
 
-    def forward(self, *args, **kwargs) -> List[str]:
+    def forward(self, argument):
+        kwargs = argument.kwargs
         assert '__cmd__' in kwargs, "Missing __cmd__ argument"
         rsp = None
 
@@ -32,5 +33,5 @@ class GPTFineTuner(Engine):
 
         return [rsp], metadata
 
-    def prepare(self, args, kwargs, wrp_params):
+    def prepare(self, argument):
         pass

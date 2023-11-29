@@ -43,16 +43,19 @@ class LLaMACppCompletionEngine(Engine):
 
         self.client = LLaMACppCompletionClient() # Initialize LLaMACpp client here
 
-    def command(self, wrp_params):
-        super().command(wrp_params)
-        if 'NEUROSYMBOLIC_ENGINE_MODEL' in wrp_params:
-            self.model = wrp_params['NEUROSYMBOLIC_ENGINE_MODEL']
+    def command(self, argument):
+        super().command(argument.kwargs)
+        if 'NEUROSYMBOLIC_ENGINE_MODEL' in argument.kwargs:
+            self.model = argument.kwargs['NEUROSYMBOLIC_ENGINE_MODEL']
 
-    def forward(self, prompts: List[str], *args, **kwargs) -> List[str]:
-        prompts_            = prompts if isinstance(prompts, list) else [prompts]
+    def forward(self, argument):
+        prompts_            = argument.prop.processed_input
+        prompts_            = prompts_ if isinstance(prompts_, list) else [prompts_]
+        kwargs              = argument.kwargs
         max_tokens          = kwargs['max_tokens'] if 'max_tokens' in kwargs else 4096
         temperature         = kwargs['temperature'] if 'temperature' in kwargs else 0.7
         top_p               = kwargs['top_p'] if 'top_p' in kwargs else 1
+        except_remedy       = kwargs['except_remedy'] if 'except_remedy' in kwargs else None
 
         completion_request = {
             "prompt": prompts_,
@@ -73,11 +76,11 @@ class LLaMACppCompletionEngine(Engine):
             if output_handler:
                 output_handler(res)
         except Exception as e:
-
-            if kwargs.get('except_remedy'):
-                res = kwargs['except_remedy'](e, prompts_, self.client.create_completion, self, *args, **kwargs)
-            else:
+            if except_remedy is None:
                 raise e
+            callback = self.connection.root.predict
+            res = except_remedy(e, callback, argument)
+
 
         metadata = {}
         if 'metadata' in kwargs and kwargs['metadata']:
@@ -90,19 +93,21 @@ class LLaMACppCompletionEngine(Engine):
             metadata['top_p']       = top_p
 
         rsp    = [r['text'] for r in res['choices']]
-        output = rsp if isinstance(prompts, list) else rsp[0]
+        output = rsp if isinstance(prompts_, list) else rsp[0]
         return output, metadata
 
-    def prepare(self, args, kwargs, wrp_params):
-        if 'raw_input' in wrp_params:
-            wrp_params['prompts'] = wrp_params['raw_input']
+    def prepare(self, argument):
+        if argument.prop.raw_input:
+            if argument.prop.processed_input is None or len(argument.prop.processed_input) == 0:
+                raise ValueError('Need to provide a prompt instruction to the engine if raw_input is enabled.')
+            argument.prop.processed_input = argument.prop.processed_input
             return
 
         user:   str = ""
         system: str = ""
         system      = f'{system}\n' if system and len(system) > 0 else ''
 
-        ref = wrp_params['wrp_self']
+        ref = argument.prop.instance
         static_ctxt, dyn_ctxt = ref.global_context
         if len(static_ctxt) > 0:
             system += f"[STATIC CONTEXT]\n{static_ctxt}\n\n"
@@ -110,23 +115,23 @@ class LLaMACppCompletionEngine(Engine):
         if len(dyn_ctxt) > 0:
             system += f"[DYNAMIC CONTEXT]\n{dyn_ctxt}\n\n"
 
-        payload = wrp_params['payload'] if 'payload' in wrp_params else None
+        payload = argument.prop.payload
         if payload is not None:
-            system += f"[ADDITIONAL CONTEXT]\n{payload}\n\n"
+            system += f"[ADDITIONAL CONTEXT]\n{str(payload)}\n\n"
 
-        examples: List[str] = wrp_params['examples']
+        examples: List[str] = argument.prop.examples
         if examples and len(examples) > 0:
             system += f"[EXAMPLES]\n{str(examples)}\n\n"
 
-        if wrp_params['prompt'] is not None and len(wrp_params['prompt']) > 0 and ']: <<<' not in str(wrp_params['processed_input']): # TODO: fix chat hack
-            user += f"[INSTRUCTION]\n{str(wrp_params['prompt'])}"
+        if argument.prop.prompt is not None and len(argument.prop.prompt) > 0:
+            val = str(argument.prop.prompt)
+            system += f"[INSTRUCTION]\n{val}"
 
-        suffix: str = wrp_params['processed_input']
+        suffix: str = str(argument.prop.processed_input)
         if '=>' in suffix:
             user += f"[LAST TASK]\n"
 
-        parse_system_instructions = False if 'parse_system_instructions' not in wrp_params else wrp_params['parse_system_instructions']
-        if '[SYSTEM_INSTRUCTION::]: <<<' in suffix and parse_system_instructions:
+        if '[SYSTEM_INSTRUCTION::]: <<<' in suffix and argument.prop.parse_system_instructions:
             parts = suffix.split('\n>>>\n')
             # first parts are the system instructions
             for p in parts[:-1]:
@@ -135,12 +140,11 @@ class LLaMACppCompletionEngine(Engine):
             suffix = parts[-1]
         user += f"{suffix}"
 
-        template_suffix = wrp_params['template_suffix'] if 'template_suffix' in wrp_params else None
-        if template_suffix:
-            user += f"\n[[PLACEHOLDER]]\n{template_suffix}\n\n"
+        if argument.prop.template_suffix is not None:
+            user += f"\n[[PLACEHOLDER]]\n{str(argument.prop.template_suffix)}\n\n"
             user += f"Only generate content for the placeholder `[[PLACEHOLDER]]` following the instructions and context information. Do NOT write `[[PLACEHOLDER]]` or anything else in your output.\n\n"
 
-        wrp_params['prompts'] = [f'---------SYSTEM BEHAVIOR--------\n{system}\n\n---------USER REQUEST--------\n{user}\n\n[RESPONSE]\n]']
+        argument.prop.processed_input = [f'---------SYSTEM BEHAVIOR--------\n{system}\n\n---------USER REQUEST--------\n{user}']
 
 
 if __name__ == '__main__':

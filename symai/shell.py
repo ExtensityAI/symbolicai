@@ -45,9 +45,8 @@ $> New-Item -ItemType Directory -Path <path> EOF
 """
 
 class ShellPreProcessor(PreProcessor):
-    def __call__(self, wrp_self, wrp_params, *args, **kwds):
-        super().override_reserved_signature_keys(wrp_params, *args, **kwds)
-        return '// {}\n$>'.format(str(wrp_self))
+    def __call__(self, argument):
+        return '// {}\n$>'.format(str(argument.prop.instance))
 
 
 class Shell(Expression):

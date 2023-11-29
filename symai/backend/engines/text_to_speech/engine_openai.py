@@ -1,8 +1,12 @@
-from typing import List
+import logging
 from openai import OpenAI
+
+# suppress openai logging
+logging.getLogger("openai").setLevel(logging.WARNING)
 
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
+from ....symbol import Result
 
 
 class TTSEngine(Engine):
@@ -20,19 +24,18 @@ class TTSEngine(Engine):
             return 'text-to-speech'
         return super().id() # default to unregistered
 
-    def command(self, wrp_params):
-        super().command(wrp_params)
-        if 'TEXT_TO_SPEECH_ENGINE_API_KEY' in wrp_params:
-            self.api_key = wrp_params['TEXT_TO_SPEECH_ENGINE_API_KEY']
-        if 'TEXT_TO_SPEECH_ENGINE_MODEL' in wrp_params:
-            self.model_id = wrp_params['TEXT_TO_SPEECH_ENGINE_MODEL']
+    def command(self, argument):
+        super().command(argument.kwargs)
+        if 'TEXT_TO_SPEECH_ENGINE_API_KEY' in argument.kwargs:
+            self.api_key = argument.kwargs['TEXT_TO_SPEECH_ENGINE_API_KEY']
+        if 'TEXT_TO_SPEECH_ENGINE_MODEL' in argument.kwargs:
+            self.model_id = argument.kwargs['TEXT_TO_SPEECH_ENGINE_MODEL']
 
-    def forward(self, **kwargs) -> List[str]:
-        prompt = str(kwargs['prompt'])
-        voice  = str(kwargs['voice']).lower()
-        path  = str(kwargs['path'])
+    def forward(self, argument):
+        kwargs              = argument.kwargs
+        voice, path, prompt = argument.prop.processed_input
 
-        input_handler   = kwargs.get("input_handler")
+        input_handler       = kwargs.get("input_handler")
         if input_handler is not None:
             input_handler((prompt, voice, path))
 
@@ -57,12 +60,13 @@ class TTSEngine(Engine):
 
         rsp.stream_to_file(path)
 
+        rsp = Result(rsp)
         return [rsp], metadata
 
-    def prepare(self, args, kwargs, wrp_params):
-        assert 'voice' in wrp_params, "TTS requires voice selection."
-        assert 'path' in wrp_params, "TTS requires path selection."
-        voice = str(wrp_params['voice'])
-        audio_file = str(wrp_params['path'])
-        wrp_params['voice'] = voice
-        wrp_params['path'] = audio_file
+    def prepare(self, argument):
+        assert 'voice' in argument.kwargs, "TTS requires voice selection."
+        assert 'path' in argument.kwargs, "TTS requires path selection."
+        voice       = str(argument.kwargs['voice']).lower()
+        audio_file  = str(argument.kwargs['path'])
+        prompt      = str(argument.prop.prompt)
+        argument.prop.processed_input = (voice, audio_file, prompt)

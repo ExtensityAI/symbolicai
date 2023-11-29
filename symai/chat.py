@@ -110,10 +110,8 @@ class ChatBot(Expression):
     @staticmethod
     def _init_custom_input_preprocessor(name, that):
         class CustomInputPreProcessor(ConsoleInputPreProcessor):
-            def __call__(self, wrp_self, wrp_params, *args: Any, **kwargs: Any) -> Any:
-                super().override_reserved_signature_keys(wrp_params, *args, **kwargs)
-
-                msg     = re.sub(f'{name}:\s*', '', str(args[0]))
+            def __call__(self, argument):
+                msg     = re.sub(f'{name}:\s*', '', str(argument.args[0]))
                 console = f'\n{name}: {msg}\n$> '
 
                 if len(msg) > 0:
@@ -126,7 +124,7 @@ class ChatBot(Expression):
     @staticmethod
     def _init_custom_input_postprocessor(that):
         class CustomInputPostProcessor(ConsolePostProcessor):
-            def __call__(self, wrp_self, wrp_params, rsp, *args, **kwargs):
+            def __call__(self, rsp, argument):
                 that.short_term_memory.store(f'User: {str(rsp)}')
 
                 return rsp

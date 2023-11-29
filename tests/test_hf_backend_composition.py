@@ -547,9 +547,9 @@ modified:   tests/test_composition.py
         res = ocr('https://media-cdn.tripadvisor.com/media/photo-p/0f/da/22/3a/rechnung.jpg')
         self.assertTrue('China' in res)
 
-    def test_vision(self):
-        vision = Interface('clip')
-        res = vision('https://hips.hearstapps.com/hmg-prod.s3.amazonaws.com/images/cute-cat-photos-1593441022.jpg',
+    def test_text_vision(self):
+        clip = Interface('clip')
+        res = clip('https://hips.hearstapps.com/hmg-prod.s3.amazonaws.com/images/cute-cat-photos-1593441022.jpg',
                      ['cat', 'dog', 'bird', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe'])
         res = res.argmax()
         self.assertTrue(0 == res)

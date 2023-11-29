@@ -110,9 +110,8 @@ def func1(*args, **kwargs) -> str: # [MANAGED] entry point cannot be changed
 
 
 class TaypanPreProcessor(PreProcessor):
-    def __call__(self, wrp_self, wrp_params, *args, **kwds):
-        super().override_reserved_signature_keys(wrp_params, *args, **kwds)
-        return '```taypan\n{}\n =>'.format(str(args[0]))
+    def __call__(self, argument):
+        return '```taypan\n{}\n =>'.format(str(argument.args[0]))
 
 
 class TaypanInterpreter(Expression):
