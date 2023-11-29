@@ -1,7 +1,7 @@
 import sys
 
 from ... import core
-from ... import decorator
+from ... import core_ext
 from ..engines.embedding.engine_openai import EmbeddingEngine
 from ..engines.neurosymbolic.engine_openai_gptX_chat import GPTXChatEngine
 from ..mixin.openai import SUPPORTED_MODELS
@@ -114,14 +114,14 @@ Few-shot calls: {self._few_shots}
 
         return sum(self._embeddings) * self._embedding_pricing()['usage']
 
-    @decorator.bind(engine='neurosymbolic', property='model')
+    @core_ext.bind(engine='neurosymbolic', property='model')
     def _neurosymbolic_model(self): pass
 
-    @decorator.bind(engine='neurosymbolic', property='pricing')
+    @core_ext.bind(engine='neurosymbolic', property='pricing')
     def _neurosymbolic_pricing(self): pass
 
-    @decorator.bind(engine='embedding', property='model')
+    @core_ext.bind(engine='embedding', property='model')
     def _embedding_model(self): pass
 
-    @decorator.bind(engine='embedding', property='pricing')
+    @core_ext.bind(engine='embedding', property='pricing')
     def _embedding_pricing(self): pass

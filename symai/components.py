@@ -7,7 +7,7 @@ from typing import Callable, Iterator, List, Optional, Type
 from tqdm import tqdm
 
 from . import core
-from . import decorator
+from . import core_ext
 from .constraints import DictFormatConstraint
 from .formatter import ParagraphFormatter
 from .symbol import Expression, Symbol
@@ -445,7 +445,7 @@ class SimilarityClassification(Expression):
         return Symbol(similarities[0][0])
 
     def _dynamic_cache(self):
-        @decorator.cache(in_memory=self.in_memory)
+        @core_ext.cache(in_memory=self.in_memory)
         def embed_classes(self):
             opts = map(Symbol, self.classes)
             embeddings = [opt.embed() for opt in opts]
@@ -478,7 +478,7 @@ class TokenTracker(Expression):
         self._trace: bool    = False
         self._previous_frame = None
 
-    @decorator.bind(engine='neurosymbolic', property='max_tokens')
+    @core_ext.bind(engine='neurosymbolic', property='max_tokens')
     def max_tokens(self): pass
 
     def __enter__(self):
