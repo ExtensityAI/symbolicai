@@ -35,9 +35,6 @@ class Blip2Engine(Engine):
         if 'CAPTION_ENGINE_MODEL' in argument.kwargs:
             self.model_id = argument.kwargs['CAPTION_ENGINE_MODEL']
 
-    def prepare(self, argument):
-        argument.prop.processed_input = (argument.prop.image, argument.prop.prompt)
-
     def forward(self, argument):
         if self.model is None:
             self.model, self.vis_processors, self.txt_processors  = load_model_and_preprocess(name       = self.name_id,
@@ -45,7 +42,7 @@ class Blip2Engine(Engine):
                                                                                               is_eval    = True,
                                                                                               device     = self.device)
 
-        image, prompt = argument.prop.processed_input
+        image, prompt = argument.prop.prepared_input
         kwargs        = argument.kwargs
         except_remedy = kwargs['except_remedy'] if 'except_remedy' in kwargs else None
 
@@ -72,3 +69,7 @@ class Blip2Engine(Engine):
             metadata['model'] = self.model_id
 
         return [res], metadata
+
+    def prepare(self, argument):
+        assert not argument.prop.processed_input, "Blip2Engine does not support processed_input."
+        argument.prop.prepared_input = (argument.prop.image, argument.prop.prompt)

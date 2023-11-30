@@ -103,7 +103,7 @@ class WhisperEngine(Engine):
     def forward(self, argument):
         assert whisper is not None, "Whisper is not installed. Please install it first."
         kwargs     = argument.kwargs
-        (_, audio) = argument.prop.processed_input
+        (_, audio) = argument.prop.prepared_input
         prompt     = argument.prop.prompt
 
         if self.model is None or self.model_id != self.old_model_id:
@@ -176,10 +176,11 @@ class WhisperEngine(Engine):
         return [rsp], metadata
 
     def prepare(self, argument):
+        assert not argument.prop.processed_input, "Whisper does not support processed_input."
         assert argument.prop.audio, "Whisper requires audio input."
-        audio_file = str(argument.prop.audio)
-        audio = whisper.load_audio(audio_file)
-        argument.prop.processed_input = (audio_file, audio)
+        audio_file  = str(argument.prop.audio)
+        audio       = whisper.load_audio(audio_file)
+        argument.prop.prepared_input = (audio_file, audio)
 
     def _get_chunks(self, it: Iterable, batch: int = N_SAMPLES) -> torch.Tensor:
         """

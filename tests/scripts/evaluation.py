@@ -15,7 +15,7 @@ import pandas as pd
 
 from pathlib import Path
 
-from symai import Expression, Symbol
+from symai import Expression, Symbol, Interface
 from symai.backend.engines.neurosymbolic.engine_nesy_client import NeSyClientEngine
 
 
@@ -87,9 +87,10 @@ class Evaluation:
 
     def evaluate_expression_tests(self):
         eval_dict = []
+        expression = Interface('wolframalpha')
         tests = [
-            {"res": Symbol(1).expression('self + 2'), "expected": 3},
-            {"res": Symbol(2).expression('2 ^ self'), "expected": 4}
+            {"res": expression('1 + 2'), "expected": 3},
+            {"res": expression('2 ^ 3'), "expected": 4}
         ]
         for test in tests:
             eval_dict.append({

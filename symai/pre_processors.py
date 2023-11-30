@@ -34,7 +34,7 @@ class EqualsPreProcessor(PreProcessor):
         return f'{a} == {b} =>'
 
 
-class WolframAlphaPreProcessor(PreProcessor):
+class InterpretExpressionPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
         assert len(argument.args) >= 1
         val = str(argument.args[0])

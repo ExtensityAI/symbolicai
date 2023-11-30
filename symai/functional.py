@@ -11,7 +11,6 @@ from typing import Dict, Any, Tuple
 
 from .post_processors import PostProcessor
 from .pre_processors import PreProcessor
-from .prompts import Prompt
 from .misc.console import ConsoleStyle
 from .backend.base import Engine, ENGINE_UNREGISTERED
 from .backend import engines
@@ -117,8 +116,7 @@ def _process_query(engine,
     # if raw input, do not pre-process
     else:
         if argument.args and len(argument.args) > 0:
-            processed_input      += '\n'.join([str(a) for a in argument.args])
-            processed_input      += '\n'
+            processed_input      += ' '.join([str(a) for a in argument.args])
     argument.prop.processed_input = processed_input
 
     # try run the function

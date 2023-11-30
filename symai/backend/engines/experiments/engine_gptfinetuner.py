@@ -34,4 +34,4 @@ class GPTFineTuner(Engine):
         return [rsp], metadata
 
     def prepare(self, argument):
-        pass
+        assert not argument.prop.processed_input, "GPTFineTuner does not support processed_input."

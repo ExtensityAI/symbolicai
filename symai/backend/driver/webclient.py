@@ -19,7 +19,6 @@ try:
     warnings.filterwarnings('ignore', module='chromedriver')
     warnings.filterwarnings('ignore', module='selenium')
     from selenium import webdriver
-    from selenium.webdriver.common.by import By
     from selenium.webdriver.remote.remote_connection import LOGGER
     from webdriver_manager.firefox import GeckoDriverManager
     from selenium.webdriver.firefox.options import Options as FirefoxOptions
@@ -30,6 +29,7 @@ try:
     from webdriver_manager.microsoft import EdgeChromiumDriverManager
     from selenium.webdriver.edge.options import Options as EdgeOptions
     from selenium.webdriver.edge.service import Service as EdgeService
+    from selenium.common.exceptions import WebDriverException
 
     LOGGER.setLevel(logging.ERROR)
 
@@ -92,26 +92,26 @@ class page_loaded(object):
         wait_for(self.page_has_loaded, timeout=self.timeout)
 
 
-def connect_chrome(debug, proxy=None):
+def add_options(options, proxy):
+    if proxy: options.add_argument(f"--proxy-server=socks5://{proxy.host}:{proxy.port}")
+    options.add_argument('--ignore-certificate-errors')
+    options.add_argument('--incognito')
+    options.add_argument("--headless")
+    options.add_argument("--log-level=3")
+
+
+def _connect_brower(debug, proxy=None):
     assert webdriver is not None, "selenium is not installed"
 
     try:
         options = ChromeOptions()
-        if proxy: options.add_argument(f"--proxy-server=socks5://{proxy.host}:{proxy.port}")
-        options.add_argument('--ignore-certificate-errors')
-        options.add_argument('--incognito')
-        options.add_argument("--headless")
-        options.add_argument("--log-level=3")
+        add_options(options, proxy)
         driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
     except Exception as e1:
         try:
-            print(f"ERROR REMEDY: Trying to use Firefox as an alternative.")
+            print(f"ERROR REMEDY: Trying to use Chrome as an alternative.")
             options = FirefoxOptions()
-            if proxy: options.add_argument(f"--proxy-server=socks5://{proxy.host}:{proxy.port}")
-            options.add_argument('--ignore-certificate-errors')
-            options.add_argument('--incognito')
-            options.add_argument("--headless")
-            options.add_argument("--log-level=3")
+            add_options(options, proxy)
             driver = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()), options=options)
         except Exception as e2:
             print(f"Issue with finding an appropriate driver version. Your current browser might be newer than the driver. Please either downgrade Chrome or try to install a proper chromedriver manually.\nOriginal error: {e1}; Remedy attempt error: {e2}")
@@ -119,10 +119,7 @@ def connect_chrome(debug, proxy=None):
                 print(f"ERROR REMEDY: Trying to use Edge as an alternative.")
                 options = EdgeOptions()
                 if proxy: options.add_argument(f"--proxy-server=socks5://{proxy.host}:{proxy.port}")
-                options.add_argument('--ignore-certificate-errors')
-                options.add_argument('--incognito')
-                options.add_argument("--headless")
-                options.add_argument("--log-level=3")
+                add_options(options, proxy)
                 driver = webdriver.Edge(service=EdgeService(EdgeChromiumDriverManager().install()), options=options)
             except Exception as e3:
                 print(f"Issue with finding an appropriate driver version. Your current browser might be newer than the driver. Please either downgrade Chrome or try to install a proper chromedriver manually.\nOriginal error: {e1}; Remedy attempt error: {e2}; Second remedy attempt error: {e3}")
@@ -136,7 +133,7 @@ def connect_browsers(debug, proxy):
     assert webdriver is not None, "selenium is not installed"
     class BrowserHandler(object):
         def __init__(self, debug):
-            self.browsers = [connect_chrome(debug, proxy=proxy)]
+            self.browsers = [_connect_brower(debug, proxy=proxy)]
         def __call__(self):
             return choice(self.browsers)
     return BrowserHandler(debug)
@@ -147,9 +144,15 @@ def dump_page_source(driver, file_path="dump.log"):
         err_file.write(driver.page_source.encode("utf-8"))
 
 
+
 def contains_text(check_pattern, search_pattern, link, driver_handler, script=None, debug=False, args=None):
     driver = driver_handler()
-    driver.get(link)
+    try:
+        driver.get(link)
+    except WebDriverException as e:
+        print(f"ERROR: {e}")
+        print(f"ERROR: Please install a proper driver for your browser. You can find the appropriate driver here: https://selenium-python.readthedocs.io/installation.html#drivers")
+        return False
     with page_loaded(driver, check_pattern, debug=debug):
         if script is not None: script(driver, args)
     rsp = re.search(search_pattern, driver.page_source)

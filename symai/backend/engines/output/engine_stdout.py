@@ -24,4 +24,4 @@ class OutputEngine(Engine):
         return [kwargs], metadata
 
     def prepare(self, argument):
-        pass
+        assert not argument.prop.processed_input, "OutputEngine does not support processed_input."

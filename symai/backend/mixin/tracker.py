@@ -1,6 +1,6 @@
 import sys
 
-from ... import core
+from ... import prompts as prm
 from ... import core_ext
 from ..engines.embedding.engine_openai import EmbeddingEngine
 from ..engines.neurosymbolic.engine_openai_gptX_chat import GPTXChatEngine
@@ -69,10 +69,9 @@ Few-shot calls: {self._few_shots}
 
         if isinstance(engine, GPTXChatEngine):
             if self._neurosymbolic_model() not in self._supported_models: return
-
             inp      = ''
-            prompt   = frame.f_locals['argument.kwargs'].get('prompt')
-            examples = frame.f_locals['argument.kwargs'].get('examples')
+            prompt   = frame.f_locals.get('argument').prop.prompt
+            examples = frame.f_locals.get('argument').prop.examples
 
             if prompt is not None:
                 if isinstance(prompt, str): inp += prompt + '\n'
@@ -80,14 +79,14 @@ Few-shot calls: {self._few_shots}
             if examples is not None:
                 if    isinstance(examples, str): inp += examples
                 elif  isinstance(examples, list): inp += '\n'.join(examples)
-                elif  isinstance(examples, core.Prompt): inp += examples.__repr__()
+                elif  isinstance(examples, prm.Prompt): inp += examples.__repr__()
 
             self._inputs.append(len(Symbol(inp).tokens))
 
         elif isinstance(engine, EmbeddingEngine):
             if self._embedding_model() not in self._supported_models: return
 
-            text = frame.f_locals.get('argument.prop.instance')
+            text = frame.f_locals.get('argument').prop.instance.value
 
             if text is not None:
                 if   isinstance(text, str): self._embeddings.append(len(Symbol(text).tokens))

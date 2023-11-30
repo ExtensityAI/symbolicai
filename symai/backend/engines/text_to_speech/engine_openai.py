@@ -33,7 +33,7 @@ class TTSEngine(Engine):
 
     def forward(self, argument):
         kwargs              = argument.kwargs
-        voice, path, prompt = argument.prop.processed_input
+        voice, path, prompt = argument.prop.prepared_input
 
         rsp = self.client.audio.speech.create(
             model=self.model_id,
@@ -56,9 +56,10 @@ class TTSEngine(Engine):
         return [rsp], metadata
 
     def prepare(self, argument):
+        assert not argument.prop.processed_input, "TTSEngine does not support processed_input."
         assert 'voice' in argument.kwargs, "TTS requires voice selection."
         assert 'path' in argument.kwargs, "TTS requires path selection."
         voice       = str(argument.kwargs['voice']).lower()
         audio_file  = str(argument.kwargs['path'])
         prompt      = str(argument.prop.prompt)
-        argument.prop.processed_input = (voice, audio_file, prompt)
+        argument.prop.prepared_input = (voice, audio_file, prompt)

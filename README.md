@@ -757,7 +757,7 @@ class ComplexExpression(ai.Expression): # more on the Expression class in later 
 # instantiate an object of the class
 expr = ComplexExpression(val)
 # set WolframAlpha as the main expression engine to use
-Expression.command(engines=['symbolic'], expression_engine='wolframalpha')
+wolfram = ai.Interface('wolframalpha')
 # evaluate the expression
 res = expr.causal_expression()
 ```
@@ -777,10 +777,10 @@ def causal_expression(self):
             req = question.extract('what is requested?')
             x = self.extract('coordinate point (.,.)') # get the coordinate point / could also ask for other points
             query = formula @ f', point x = {x}' @ f', solve {req}' # concatenate the question and formula
-            res = query.expression(query) # send the prepared query to WolframAlpha
+            res = wolfram(query) # send the prepared query to WolframAlpha
 
         elif formula.isinstanceof('number comparison'):
-            res = formula.expression() # send directly to WolframAlpha
+            res = wolfram(formula) # send directly to WolframAlpha
 
         ... # more cases
 
@@ -1148,11 +1148,12 @@ Furthermore, we interpret all objects as symbols with different encodings and ha
 
 ### Symbolic Engine
 
-Although our work primarily emphasizes how LLMs can assess symbolic expressions, many formal statements have already been efficiently implemented in existing symbolic engines, such as WolframAlpha. Therefore, with an API KEY from WolframAlpha, we can use their engine by setting the `expression_engine` attribute. This avoids error-prone evaluations from neuro-symbolic engines for mathematical operations. The following example demonstrates how to use WolframAlpha to compute the result of the variable `x`:
+Although our work primarily emphasizes how LLMs can assess symbolic expressions, many formal statements have already been efficiently implemented in existing symbolic engines, such as WolframAlpha. Therefore, with an API KEY from WolframAlpha, we can use their engine by using the `Interface('wolframalpha')`. This avoids error-prone evaluations from neuro-symbolic engines for mathematical operations. The following example demonstrates how to use WolframAlpha to compute the result of the variable `x`:
 
 ```python
-Expression.command(engines=['symbolic'], expression_engine='wolframalpha')
-res = expr.expression('x^2 + 2x + 1')
+from symai import Interface
+expression = Interface('wolframalpha')
+res = expression('x^2 + 2x + 1')
 ```
 
 ```bash
@@ -1218,9 +1219,9 @@ To access data from the web, we can use `Selenium`. The following example demons
 ```python
 from symai.interfaces import Interface
 
-fetch = Interface('selenium')
-res = fetch(url="https://www.google.com/",
-            pattern="google")
+crawler = Interface('selenium')
+res = crawler(url="https://www.google.com/",
+              pattern="google")
 ```
 The `pattern` property can be used to verify if the document has been loaded correctly. If the pattern is not found, the crawler will timeout and return an empty result.
 
@@ -1346,7 +1347,7 @@ Here is an example of how to initialize your own engine. We will subclass the ex
 from symai.backend.engines.engine_gptX_completion import GPTXCompletionEngine
 class DummyEngine(GPTXCompletionEngine):
     def prepare(self, argument):
-        argument.prop.processed_input = ['Go wild and generate something!']
+        argument.prop.prepared_input = ['Go wild and generate something!']
 custom_engine = DummyEngine()
 sym = Symbol()
 Expression.register(engines={'neurosymbolic': custom_engine})

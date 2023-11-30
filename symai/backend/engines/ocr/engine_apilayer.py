@@ -56,5 +56,7 @@ class OCREngine(Engine):
         return [rsp], metadata
 
     def prepare(self, argument):
-        argument.prop.processed_input = argument.prop.image
+        assert not argument.prop.processed_input, "OCREngine does not support processed_input."
+        image  = str(argument.prop.image)
+        argument.prop.prepared_input = image
 

@@ -1010,7 +1010,7 @@ def extract(prompt: str = "Extract a pattern from text:\n",
 def expression(prompt: str = "Evaluate the symbolic expressions:\n",
                default: Optional[str] = None,
                constraints: List[Callable] = [],
-               pre_processors: Optional[List[pre.PreProcessor]] = [pre.WolframAlphaPreProcessor()],
+               pre_processors: Optional[List[pre.PreProcessor]] = [],
                post_processors: Optional[List[post.PostProcessor]] = [post.WolframAlphaPostProcessor()],
                **decorator_kwargs):
     """Evaluates the symbolic expressions.
@@ -1043,6 +1043,35 @@ def expression(prompt: str = "Evaluate the symbolic expressions:\n",
                                 argument=argument)
         return wrapper
     return decorator
+
+
+def interpret(prompt: str = "Evaluate the symbolic expressions:\n",
+              default: Optional[str] = None,
+              examples: prm.Prompt = prm.SimpleSymbolicExpression(),
+              constraints: List[Callable] = [],
+              pre_processors: Optional[List[pre.PreProcessor]] = [pre.InterpretExpressionPreProcessor()],
+              post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+              **decorator_kwargs):
+    """Evaluates the symbolic expressions by interpreting the semantic meaning.
+
+    Args:
+        prompt (str, optional): The prompt describing the task. Defaults to 'Evaluate the symbolic expressions:'.
+        default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
+        constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
+        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [SimpleSymbolicExpressionPreProcessor()].
+        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
+
+    Returns:
+        str: The result of the evaluated expression.
+    """
+    return few_shot(prompt=prompt,
+                    examples=examples,
+                    constraints=constraints,
+                    default=default,
+                    limit=1,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
+                    **decorator_kwargs)
 
 
 def logic(prompt: str = "Evaluate the logic expressions:\n",
@@ -1494,12 +1523,12 @@ def search(query: str,
         @functools.wraps(func)
         def wrapper(instance, *signature_args, **signature_kwargs):
             # Construct container object for the arguments and kwargs
+            decorator_kwargs['query'] = query
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
             return EngineRepository().process_query(
                                 engine='search',
                                 instance=instance,
                                 func=func,
-                                prompt=query,
                                 constraints=constraints,
                                 default=default,
                                 limit=limit,
@@ -1666,7 +1695,6 @@ def text_vision(image: Optional[str] = None,
             return EngineRepository().process_query(
                                 engine='text_vision',
                                 instance=instance,
-                                prompt=text,
                                 func=func,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
@@ -1809,7 +1837,7 @@ def output(constraints: List[Callable] = [],
 
 
 def fetch(url: str,
-          pattern: str = '',
+          pattern: str = ' ',
           constraints: List[Callable] = [],
           default: Optional[object] = None,
           limit: int = 1,
@@ -1909,7 +1937,6 @@ def execute(default: Optional[str] = None,
         @functools.wraps(func)
         def wrapper(instance, *signature_args, **signature_kwargs):
             # Construct container object for the arguments and kwargs
-            decorator_kwargs['code'] = str(instance)
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
             return EngineRepository().process_query(
                                 engine='execute',

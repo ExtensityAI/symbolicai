@@ -155,7 +155,7 @@ class IndexEngine(Engine):
         assert self.index_name,     'Please set the index name for Pinecone indexing engine.'
 
         kwargs        = argument.kwargs
-        embedding     = argument.prop.processed_input
+        embedding     = argument.prop.prepared_input
         query         = argument.prop.ori_query
         operation     = argument.prop.operation
         index_name    = argument.prop.index_name if argument.prop.index_name else self.index_name
@@ -201,7 +201,8 @@ class IndexEngine(Engine):
         return [rsp], metadata
 
     def prepare(self, argument):
-        argument.prop.processed_input = argument.prop.prompt
+        assert not argument.prop.processed_input, 'Pinecone indexing engine does not support processed_input.'
+        argument.prop.prepared_input = argument.prop.prompt
 
     def _init_index_engine(self):
         pinecone.init(api_key=self.api_key, environment=self.environment)
