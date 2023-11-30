@@ -43,13 +43,12 @@ class Engine(ABC):
         start_time = time.time()
 
         # check for global object based input handler
-        input_handler = None
-        if hasattr(argument.prop, '_metadata') and hasattr(argument.prop._metadata, 'input_handler'):
-            input_handler   = argument.prop.instance._metadata.input_handler if hasattr(argument.prop.instance._metadata, 'input_handler') else None
-        if input_handler:
-            input_handler((argument.prop.processed_input, argument))
+        if hasattr(argument.prop.instance, '_metadata') and hasattr(argument.prop.instance._metadata, 'input_handler'):
+            input_handler = argument.prop.instance._metadata.input_handler if hasattr(argument.prop.instance._metadata, 'input_handler') else None
+            if input_handler is not None:
+                input_handler((argument.prop.processed_input, argument))
         # check for kwargs based input handler
-        if argument.prop.input_handler:
+        if argument.prop.input_handler is not None:
             argument.prop.input_handler((argument.prop.processed_input, argument))
 
         # execute the engine
@@ -86,11 +85,10 @@ class Engine(ABC):
             )
 
         # check for global object based output handler
-        output_handler = None
-        if hasattr(argument.prop, '_metadata') and hasattr(argument.prop._metadata, 'output_handler'):
+        if hasattr(argument.prop.instance, '_metadata') and hasattr(argument.prop.instance._metadata, 'output_handler'):
             output_handler = argument.prop.instance._metadata.output_handler if hasattr(argument.prop.instance._metadata, 'output_handler') else None
-        if output_handler:
-            output_handler(res)
+            if output_handler:
+                output_handler(res)
         # check for kwargs based output handler
         if argument.prop.output_handler:
             argument.prop.output_handler((res, metadata))
