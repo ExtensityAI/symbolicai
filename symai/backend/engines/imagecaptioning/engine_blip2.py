@@ -59,7 +59,6 @@ class Blip2Engine(Engine):
             image = Image.open(image).convert('RGB')
 
         try:
-            breakpoint()
             image   = self.vis_processors['eval'](image).unsqueeze(0).to(self.device)
             prompt  = self.txt_processors['eval'](prompt)
             res     = self.model.generate(samples={"image": image, "prompt": prompt}, use_nucleus_sampling=True, num_captions=3)

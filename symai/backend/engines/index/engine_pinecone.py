@@ -227,7 +227,6 @@ class IndexEngine(Engine):
         return _func()
 
     def _query(self, query, index_top_k, index_values, index_metadata):
-        breakpoint()
         @core_ext.retry(tries=self.tries, delay=self.delay, max_delay=self.max_delay, backoff=self.backoff, jitter=self.jitter)
         def _func():
             return self.index.query(vector=query, top_k=index_top_k, include_values=index_values, include_metadata=index_metadata)
