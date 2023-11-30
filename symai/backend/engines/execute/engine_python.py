@@ -65,7 +65,7 @@ class PythonEngine(Engine):
         return 'execute'
 
     def forward(self, argument):
-        code          = argument.prop.processed_input
+        code          = argument.prop.prepared_input
         kwargs        = argument.kwargs
 
         globals_      = kwargs['globals'] if 'globals' in kwargs else {}
@@ -98,4 +98,4 @@ class PythonEngine(Engine):
         return [rsp], metadata
 
     def prepare(self, argument):
-        argument.prop.processed_input = argument.prop.code
+        argument.prop.prepared_input = str(argument.prop.processed_input)

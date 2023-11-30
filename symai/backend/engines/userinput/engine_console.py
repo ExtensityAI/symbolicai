@@ -11,7 +11,7 @@ class UserInputEngine(Engine):
         return 'userinput'
 
     def forward(self, argument):
-        msg           = argument.prop.processed_input
+        msg           = argument.prop.prepared_input
         kwargs        = argument.kwargs
 
         mock = kwargs['mock'] if 'mock' in kwargs else False
@@ -30,4 +30,5 @@ class UserInputEngine(Engine):
         return [rsp], metadata
 
     def prepare(self, argument):
-        argument.prop.processed_input = argument.prop.prompt
+        # here the prompt marks the user input message
+        argument.prop.prepared_input  = str(argument.prop.processed_input)

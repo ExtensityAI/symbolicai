@@ -11,7 +11,7 @@ from .ops import SYMBOL_PRIMITIVES
 
 
 class SymbolEncoder(JSONEncoder):
-    def default(self, sym):
+    def default(self, o):
         '''
         Encode a Symbol instance into its dictionary representation.
 
@@ -21,7 +21,9 @@ class SymbolEncoder(JSONEncoder):
         Returns:
             dict: The dictionary representation of the Symbol instance.
         '''
-        return sym.__dict__
+        if isinstance(o, Symbol):
+            return o.__getstate__()
+        return JSONEncoder.default(self, o)
 
 
 class Metadata(object):
@@ -53,7 +55,7 @@ class Metadata(object):
 
 
 class Symbol(ABC, *SYMBOL_PRIMITIVES):
-    _metadata                              = Metadata()
+    _metadata = Metadata()
     _dynamic_context: Dict[str, List[str]] = {}
 
     def __init__(self, *value, static_context: Optional[str] = '') -> None:
@@ -69,8 +71,8 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
             metadata (Optional[Dict[str, Any]]): The metadata associated with the symbol.
         '''
         super().__init__()
-        self._value    = None
-        self._metadata = self._metadata # use global metadata by default
+        self._value     = None
+        self._metadata  = self._metadata # use global metadata by default
         self._parent    = None #@TODO: to enable graph construction
         self._children  = None #@TODO: to enable graph construction
         self._static_context = static_context
@@ -80,8 +82,8 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
             value = value[0]
 
             if isinstance(value, Symbol):
-                self._value    = value._value
-                self._metadata = value._metadata
+                self._value     = value._value
+                self._metadata  = value._metadata
                 self._parent    = value._parent
                 self._children  = value._children
 
@@ -225,7 +227,11 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
         Returns:
             dict: The state of the symbol.
         '''
-        return vars(self)
+        state = self.__dict__.copy()
+        state.pop('_metadata', None)
+        state.pop('_parent', None)
+        state.pop('_children', None)
+        return state
 
     def __setstate__(self, state) -> None:
         '''
@@ -459,7 +465,10 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
         Returns:
             str: The representation of the Symbol object.
         '''
-        return f'{type(self)}(value={str(self.value)})'
+        # class with full path
+        class_ = self.__class__.__module__ + '.' + self.__class__.__name__
+        hex_ = hex(id(self))
+        return f'<class {class_} at {hex_}>(value={str(self.value)})'
 
     def _repr_html_(self) -> str:
         '''

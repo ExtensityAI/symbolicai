@@ -40,7 +40,7 @@ class WolframAlphaEngine(Engine):
             self.client  = wa.Client(self.api_key) if len(self.api_key) > 0 else None
 
     def forward(self, argument):
-        queries = argument.prop.processed_input
+        queries = argument.prop.prepared_input
 
         if self.client is None:
             self.client = wa.Client(self.api_key) if len(self.api_key) > 0 else None
@@ -48,7 +48,7 @@ class WolframAlphaEngine(Engine):
         queries_ = queries if isinstance(queries, list) else [queries]
         rsp = []
 
-        rsp = self.client.query(str(queries[0]))
+        rsp = self.client.query(queries)
         rsp = WolframResult(rsp)
 
         metadata = {}
@@ -60,4 +60,4 @@ class WolframAlphaEngine(Engine):
         return [rsp], metadata
 
     def prepare(self, argument):
-        argument.prop.processed_input = [argument.args[0]]
+        argument.prop.prepared_input = str(argument.prop.processed_input)

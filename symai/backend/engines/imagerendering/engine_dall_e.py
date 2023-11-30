@@ -57,7 +57,7 @@ class ImageRenderingEngine(Engine):
             openai.api_key = argument.kwargs['IMAGERENDERING_ENGINE_API_KEY']
 
     def forward(self, argument):
-        prompt        = argument.prop.processed_input
+        prompt        = argument.prop.prepared_input
         kwargs        = argument.kwargs
         size          = f"{kwargs['image_size']}x{kwargs['image_size']}" if 'image_size' in kwargs else f"{self.size}x{self.size}"
         except_remedy = kwargs['except_remedy'] if 'except_remedy' in kwargs else None
@@ -115,4 +115,4 @@ class ImageRenderingEngine(Engine):
         return [rsp], metadata
 
     def prepare(self, argument):
-        pass # no preprocessing needed, processed_input are the args
+        argument.prop.prepared_input = str(argument.prop.processed_input)

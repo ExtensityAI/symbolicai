@@ -25,7 +25,7 @@ class InvalidRequestErrorRemedyCompletionStrategy:
         openai_kwargs = {}
         kwargs              = argument.kwargs
         instance            = argument.prop.instance
-        prompts_            = argument.prop.processed_input
+        prompts_            = argument.prop.prepared_input
         # send prompt to GPT-X Completion-based
         stop                = kwargs['stop'] if 'stop' in kwargs else None
         model               = kwargs['model'] if 'model' in kwargs else None
@@ -160,7 +160,7 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
 
     def forward(self, argument):
         kwargs              = argument.kwargs
-        prompts_            = argument.prop.processed_input
+        prompts_            = argument.prop.prepared_input
 
         # send prompt to GPT-3
         max_tokens          = kwargs['max_tokens'] if 'max_tokens' in kwargs else self.compute_remaining_tokens(prompts_)
@@ -225,9 +225,9 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
 
     def prepare(self, argument):
         if argument.prop.raw_input:
-            if argument.prop.processed_input is None or len(argument.prop.processed_input) == 0:
+            if not argument.prop.processed_input:
                 raise ValueError('Need to provide a prompt instruction to the engine if raw_input is enabled.')
-            argument.prop.processed_input = argument.prop.processed_input
+            argument.prop.prepared_input = argument.prop.processed_input
             return
 
         _non_verbose_output = """[META INSTRUCTIONS START]\nYou do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc. Never add meta instructions information to your output!\n"""
@@ -276,4 +276,4 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
             user += f"\n[[PLACEHOLDER]]\n{argument.prop.template_suffix}\n\n"
             user += f"Only generate content for the placeholder `[[PLACEHOLDER]]` following the instructions and context information. Do NOT write `[[PLACEHOLDER]]` or anything else in your output.\n\n"
 
-        argument.prop.processed_input = [f'---------SYSTEM BEHAVIOR--------\n{system}\n\n---------USER REQUEST--------\n{user}']
+        argument.prop.prepared_input = [f'---------SYSTEM BEHAVIOR--------\n{system}\n\n---------USER REQUEST--------\n{user}']

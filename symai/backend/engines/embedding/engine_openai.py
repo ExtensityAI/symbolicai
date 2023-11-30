@@ -37,11 +37,11 @@ class EmbeddingEngine(Engine, OpenAIMixin):
             self.model = argument.kwargs['EMBEDDING_ENGINE_MODEL']
 
     def forward(self, argument):
-        processed_input = argument.prop.processed_input
+        prepared_input = argument.prop.prepared_input
         args            = argument.args
         kwargs          = argument.kwargs
 
-        input_          = processed_input if isinstance(processed_input, list) else [processed_input]
+        input_          = prepared_input if isinstance(prepared_input, list) else [prepared_input]
         except_remedy   = kwargs['except_remedy'] if 'except_remedy' in kwargs else None
 
         try:
@@ -64,4 +64,5 @@ class EmbeddingEngine(Engine, OpenAIMixin):
         return [rsp], metadata
 
     def prepare(self, argument):
-        argument.prop.processed_input = argument.prop.entries
+        assert not argument.prop.processed_input, "EmbeddingEngine does not support processed_input."
+        argument.prop.prepared_input = argument.prop.entries

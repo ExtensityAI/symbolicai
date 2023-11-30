@@ -15,6 +15,7 @@ except:
 class SearchResult(Symbol):
     def __init__(self, value) -> None:
         super().__init__(value)
+        self.raw = value
         if 'answer_box' in value.keys() and 'answer' in value['answer_box'].keys():
             self._value = value['answer_box']['answer']
         elif 'answer_box' in value.keys() and 'snippet' in value['answer_box'].keys():
@@ -37,11 +38,11 @@ class SearchResult(Symbol):
             self.links = []
 
     def __str__(self) -> str:
-        json_str = json.dumps(self.raw.to_dict(), indent=2)
+        json_str = json.dumps(self.raw, indent=2)
         return json_str
 
     def _repr_html_(self) -> str:
-        json_str = json.dumps(self.raw.to_dict(), indent=2)
+        json_str = json.dumps(self.raw, indent=2)
         return json_str
 
 
@@ -67,7 +68,7 @@ class SerpApiEngine(Engine):
             self.engine  = argument.kwargs['SEARCH_ENGINE_MODEL']
 
     def forward(self, argument):
-        queries  = argument.prop.processed_input
+        queries  = argument.prop.prepared_input
         kwargs   = argument.kwargs
         queries_ = queries if isinstance(queries, list) else [queries]
         rsp      = []
@@ -99,7 +100,11 @@ class SerpApiEngine(Engine):
             metadata['model']  = self.engine
 
         output = rsp if isinstance(queries, list) else rsp[0]
+        output = [output]
         return output, metadata
 
     def prepare(self, argument):
-        argument.prop.processed_input = [str(argument.prop.prompt)]
+        res  = ''
+        res += str(argument.prop.query)
+        res += str(argument.prop.processed_input)
+        argument.prop.prepared_input = res

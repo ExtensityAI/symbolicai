@@ -26,7 +26,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         super().__init__(token_ratio, *args, **kwargs)
         self.token_ratio = token_ratio
         self.auto_print  = auto_print
-        if file_link is not None and type(file_link) is str:
+        if file_link and isinstance(file_link, str):
             file_link    = [file_link]
         self.file_link   = file_link
         self.index_name  = index_name
@@ -67,6 +67,8 @@ class Conversation(SlidingWindowStringConcatMemory):
         self.store(val, *args, **kwargs)
 
     def store_file(self, file_path: str, *args, **kwargs):
+        if not os.path.exists(file_path):
+            return
         content = self.reader(file_path)
         val = f"[DATA::{file_path}]: <<<\n{str(content)}\n>>>\n"
         self.store(val, *args, **kwargs)
@@ -104,16 +106,23 @@ class Conversation(SlidingWindowStringConcatMemory):
         return self
 
     def commit(self, target_file: str = None, formatter: Optional[Callable] = None):
-        if target_file is not None and type(target_file) is str:
+        if target_file and isinstance(target_file, str):
             file_link = target_file
         else:
-            file_link = self.file_link if self.file_link is not None and type(self.file_link) is str else None
-        if file_link is not None:
+            file_link = self.file_link if self.file_link else None
+            if isinstance(file_link, str):
+                file_link = [file_link]
+            elif isinstance(file_link, list) and len(file_link) == 1:
+                file_link = file_link[0]
+            else:
+                file_link = None # cannot commit to multiple files
+                raise Exception('Cannot commit to multiple files.')
+        if file_link:
             # if file extension is .py, then format code
             format_ = formatter
             formatter = CodeFormatter() if format_ is None and file_link.endswith('.py') else formatter
             val = self.value
-            if formatter is not None:
+            if formatter:
                 val = formatter(val)
             # if file does not exist, create it
             with open(file_link, 'w') as file:

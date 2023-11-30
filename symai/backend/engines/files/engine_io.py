@@ -118,7 +118,7 @@ class FileEngine(Engine):
 
     def forward(self, argument):
         kwargs        = argument.kwargs
-        path          = argument.prop.processed_input
+        path          = argument.prop.prepared_input
 
         if '.pdf' in path:
             range_ = None
@@ -163,4 +163,5 @@ class FileEngine(Engine):
         return [rsp], metadata
 
     def prepare(self, argument):
-        argument.prop.processed_input = argument.prop.path
+        assert not argument.prop.processed_input, "FileEngine does not support processed_input."
+        argument.prop.prepared_input = argument.prop.path

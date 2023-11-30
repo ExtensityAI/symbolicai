@@ -49,7 +49,7 @@ class LLaMACppCompletionEngine(Engine):
             self.model = argument.kwargs['NEUROSYMBOLIC_ENGINE_MODEL']
 
     def forward(self, argument):
-        prompts_            = argument.prop.processed_input
+        prompts_            = argument.prop.prepared_input
         prompts_            = prompts_ if isinstance(prompts_, list) else [prompts_]
         kwargs              = argument.kwargs
         max_tokens          = kwargs['max_tokens'] if 'max_tokens' in kwargs else 4096
@@ -95,9 +95,9 @@ class LLaMACppCompletionEngine(Engine):
 
     def prepare(self, argument):
         if argument.prop.raw_input:
-            if argument.prop.processed_input is None or len(argument.prop.processed_input) == 0:
+            if not argument.prop.processed_input:
                 raise ValueError('Need to provide a prompt instruction to the engine if raw_input is enabled.')
-            argument.prop.processed_input = argument.prop.processed_input
+            argument.prop.prepared_input = argument.prop.processed_input
             return
 
         user:   str = ""
@@ -141,7 +141,7 @@ class LLaMACppCompletionEngine(Engine):
             user += f"\n[[PLACEHOLDER]]\n{str(argument.prop.template_suffix)}\n\n"
             user += f"Only generate content for the placeholder `[[PLACEHOLDER]]` following the instructions and context information. Do NOT write `[[PLACEHOLDER]]` or anything else in your output.\n\n"
 
-        argument.prop.processed_input = [f'---------SYSTEM BEHAVIOR--------\n{system}\n\n---------USER REQUEST--------\n{user}']
+        argument.prop.prepared_input = [f'---------SYSTEM BEHAVIOR--------\n{system}\n\n---------USER REQUEST--------\n{user}']
 
 
 if __name__ == '__main__':

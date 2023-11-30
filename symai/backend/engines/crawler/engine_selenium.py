@@ -37,33 +37,31 @@ class SeleniumEngine(Engine):
     def get_page_source(self, url: str, pattern: str, script: Callable = None) -> str:
         # deprecated
         driver = self.driver_handler()
-        driver.get(url)
         try:
+            driver.get(url)
             with page_loaded(driver, pattern, debug=self.debug):
-                if script is not None: script(driver)
+                if script: driver.execute_script(script)
             return driver.page_source
         except Exception as ex:
             if self.debug: dump_page_source(driver)
             if self.debug: print(ex)
-            return None
+            return f"Sorry, I cannot find the page you are looking for: {ex}"
 
     def id(self) -> str:
         return 'crawler'
 
     def forward(self, argument):
         kwargs          = argument.kwargs
-        urls, patterns  = argument.prop.processed_input
-        urls            = urls if isinstance(urls, list) else [urls]
-
+        urls, patterns  = argument.prop.prepared_input
+        urls     = urls if isinstance(urls, list) else [urls]
         # check if all urls start with https:// otherwise add it
-        urls = [url if url.startswith('http://') or url.startswith('file://') else 'https://' + url for url in urls]
+        urls = [url if url.startswith('http') or url.startswith('file://') else 'https://' + url for url in urls]
 
         patterns = patterns if isinstance(patterns, list) else [patterns]
         assert len(urls) == len(patterns)
         rsp = []
 
-        if self.driver_handler is None:
-            self._init_crawler_engine()
+        self._init_crawler_engine()
 
         for url, p in zip(urls, patterns):
             page = self.get_page_source(url=url, pattern=p)
@@ -81,21 +79,24 @@ class SeleniumEngine(Engine):
         return rsp, metadata
 
     def prepare(self, argument):
-        urls     = argument.prop.urls
-        patterns = argument.prop.patterns
+        assert not argument.prop.processed_input, "CrawlerEngine does not support processed_input."
+        assert argument.prop.urls, "CrawlerEngine requires urls."
+
+        argument.prop.urls      = [str(argument.prop.url)]
+        argument.prop.patterns  = [str(argument.prop.pattern)]
 
         # be tolerant to kwarg or arg and assign values of urls and patterns
         # assign urls
         if len(argument.args) >= 1:
-            urls = argument.args[0]
+            argument.prop.urls = argument.args[0]
         elif len(argument.kwargs) >= 1:
             keys = list(argument.kwargs.keys())
-            urls = argument.kwargs[keys[0]]
+            argument.prop.urls = argument.kwargs[keys[0]]
         # assign patterns
         if len(argument.args) >= 2:
-            patterns = argument.args[1]
+            argument.prop.patterns = argument.args[1]
         elif len(argument.kwargs) >= 2:
             keys = list(argument.kwargs.keys())
-            patterns = argument.kwargs[keys[1]]
+            argument.prop.patterns = argument.kwargs[keys[1]]
 
-        argument.prop.processed_input = (urls, patterns)
+        argument.prop.prepared_input = (argument.prop.urls, argument.prop.patterns)

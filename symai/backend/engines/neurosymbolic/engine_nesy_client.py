@@ -36,7 +36,7 @@ class NeSyClientEngine(Engine):
             self.connection = rpyc.connect(self.host, self.port)
             self.connection._config['sync_request_timeout'] = self.timeout
 
-        prompts       = argument.prop.processed_input
+        prompts       = argument.prop.prepared_input
         kwargs        = argument.kwargs
         prompts_      = prompts if isinstance(prompts, list) else [prompts]
 
@@ -86,9 +86,9 @@ class NeSyClientEngine(Engine):
 
     def prepare(self, argument):
         if argument.prop.raw_input:
-            if argument.prop.processed_input is None or len(argument.prop.processed_input) == 0:
+            if not argument.prop.processed_input:
                 raise ValueError('Need to provide a prompt instruction to the engine if raw_input is enabled.')
-            argument.prop.processed_input = argument.prop.processed_input
+            argument.prop.prepared_input = argument.prop.processed_input
             return
 
         user:   str = ""
@@ -132,4 +132,4 @@ class NeSyClientEngine(Engine):
             user += f"\n[[PLACEHOLDER]]\n{str(argument.prop.template_suffix)}\n\n"
             user += f"Only generate content for the placeholder `[[PLACEHOLDER]]` following the instructions and context information. Do NOT write `[[PLACEHOLDER]]` or anything else in your output.\n\n"
 
-        argument.prop.processed_input = [f'---------SYSTEM BEHAVIOR--------\n{system}\n\n---------USER REQUEST--------\n{user}']
+        argument.prop.prepared_input = [f'---------SYSTEM BEHAVIOR--------\n{system}\n\n---------USER REQUEST--------\n{user}']

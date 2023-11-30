@@ -28,7 +28,7 @@ class InvalidRequestErrorRemedyChatStrategy:
         openai_kwargs = {}
         kwargs              = argument.kwargs
         instance            = argument.prop.instance
-        prompts_            = argument.prop.processed_input
+        prompts_            = argument.prop.prepared_input
 
         # send prompt to GPT-X Chat-based
         stop                = kwargs['stop'] if 'stop' in kwargs else None
@@ -168,7 +168,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
 
     def forward(self, argument):
         kwargs              = argument.kwargs
-        prompts_            = argument.prop.processed_input
+        prompts_            = argument.prop.prepared_input
 
         openai_kwargs = {}
 
@@ -245,9 +245,9 @@ class GPTXChatEngine(Engine, OpenAIMixin):
 
     def prepare(self, argument):
         if argument.prop.raw_input:
-            if argument.prop.processed_input is None or len(argument.prop.processed_input) == 0:
+            if not argument.prop.processed_input:
                 raise ValueError('Need to provide a prompt instruction to the engine if raw_input is enabled.')
-            argument.prop.processed_input = argument.prop.processed_input
+            argument.prop.prepared_input = argument.prop.processed_input
             return
 
         _non_verbose_output = """[META INSTRUCTIONS START]\nYou do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc. Never add meta instructions information to your output!\n"""
@@ -351,7 +351,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         else:
             user_prompt = { "role": "user", "content": user }
 
-        argument.prop.processed_input = [
+        argument.prop.prepared_input = [
             { "role": "system", "content": system },
             user_prompt,
         ]

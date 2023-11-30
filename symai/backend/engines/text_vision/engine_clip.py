@@ -33,7 +33,7 @@ class CLIPEngine(Engine):
             self.model_id     = argument.kwargs['VISION_ENGINE_MODEL']
 
     def forward(self, argument):
-        image_url, text       = argument.prop.processed_input
+        image_url, text       = argument.prop.prepared_input
         kwargs                = argument.kwargs
 
         if self.model is None or self.model_id != self.old_model_id:
@@ -67,8 +67,9 @@ class CLIPEngine(Engine):
         return [rsp], metadata
 
     def prepare(self, argument):
+        assert not argument.prop.processed_input, "CLIPEngine does not support processed_input."
         kwargs     = argument.kwargs
-        image_url  = argument.kwargs['image'] if 'image' in kwargs else None
-        text       = argument.kwargs['text']  if 'text'  in kwargs else None
-        argument.prop.processed_input = (image_url, text)
+        image_url  = str(argument.kwargs['image']) if 'image' in kwargs else None
+        text       = str(argument.kwargs['text'])  if 'text'  in kwargs else None
+        argument.prop.prepared_input = (image_url, text)
 

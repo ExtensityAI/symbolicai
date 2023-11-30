@@ -29,7 +29,7 @@ class ChatBot(Expression):
         self.last_user_input: str = ''
         self.dalle   = Interface('dall_e')
         self.search  = Interface('serpapi')
-        self.fetch   = Interface('selenium')
+        self.crawler = Interface('selenium')
         self.speech  = Interface('whisper')
         self.ocr     = Interface('ocr')
 
@@ -42,12 +42,12 @@ class ChatBot(Expression):
         self.detect_capability   = InContextClassification(SymbiaCapabilities())
         self.detect_memory_usage = InContextClassification(MemoryCapabilities())
 
-        Expression.command(engines=['symbolic'], expression_engine='wolframalpha')
+        self.expression = Interface('wolframalpha')
 
     def repeat(self, query, **kwargs):
         return self.narrate('Symbia does not understand and asks to repeat and give more context.', prompt=query)
 
-    def narrate(self, message: str, context: str, category: str = None, end: bool = False, **kwargs) -> Symbol:
+    def narrate(self, message: str, context: str = None, category: str = None, end: bool = False, **kwargs) -> Symbol:
         reflection = context if context is not None else ''
         ltmem_recall = 'No memories retrieved.'
         stmem_recall = '\n'.join(self.short_term_memory.recall())
@@ -131,6 +131,42 @@ class ChatBot(Expression):
 
         return CustomInputPostProcessor
 
+
+    def _narration(self, msg: str, query: str, reflection: str, ltmem_recall: str, stmem_recall: str, **kwargs):
+        prompt = f'''
+{self._symai_chat.format(self.name)}
+
+    [NARRATION](
+{msg}
+)
+
+    [LONG-TERM MEMORY RECALL](
+{ltmem_recall}
+)
+
+    [SHORT-TERM MEMORY RECALL](
+{stmem_recall}
+)
+
+    [USER](
+{query}
+)
+
+    [REFLECTION](
+{reflection}
+)
+
+The chatbot always reply in the following format
+{self.name}: <reply>
+'''
+        @core.zero_shot(prompt=prompt, **kwargs)
+        def _func(_) -> str:
+            pass
+        if self.verbose: logging.debug(f'Narration:\n{prompt}\n')
+        res = _func(self)
+        res = res.replace(f'{self.name}: ', '').strip()
+        return res
+
 class SymbiaChat(ChatBot):
     def __init__(self, name: str = 'Symbia', verbose: bool = False):
         super().__init__(name=name, verbose=verbose)
@@ -182,7 +218,7 @@ class SymbiaChat(ChatBot):
                 try:
                     if '[SYMBOLIC]' in ctxt:
                         q            = usr.extract("mathematical formula that WolframAlpha can solve")
-                        rsp          = q.expression()
+                        rsp          = self.expression(q)
                         self.message = self.narrate(f'{self.name} replies to the user and provides the solution of the math problem.', context=rsp)
 
                     elif '[SEARCH]' in ctxt:
@@ -193,7 +229,7 @@ class SymbiaChat(ChatBot):
                     elif '[CRAWLER]' in ctxt:
                         q    = usr.extract('URL from text')
                         q    = q.convert('proper URL, example: https://www.google.com')
-                        site = self.fetch(q)
+                        site = self.crawler(q)
                         site.save('tmp.html')
                         self.message = self.narrate(f'{self.name} explains that the website is downloaded to the `tmp.html` file.')
 
@@ -265,41 +301,6 @@ Reflection: {self._extract_reflection(context)}
 '''
 
         return scratchpad
-
-    def _narration(self, msg: str, query: str, reflection: str, ltmem_recall: str, stmem_recall: str, **kwargs):
-        prompt = f'''
-{self._symai_chat.format(self.name)}
-
-    [NARRATION](
-{msg}
-)
-
-    [LONG-TERM MEMORY RECALL](
-{ltmem_recall}
-)
-
-    [SHORT-TERM MEMORY RECALL](
-{stmem_recall}
-)
-
-    [USER](
-{query}
-)
-
-    [REFLECTION](
-{reflection}
-)
-
-The chatbot always reply in the following format
-{self.name}: <reply>
-'''
-        @core.zero_shot(prompt=prompt, **kwargs)
-        def _func(_) -> str:
-            pass
-        if self.verbose: logging.debug(f'Narration:\n{prompt}\n')
-        res = _func(self)
-        res = res.replace(f'{self.name}: ', '').strip()
-        return res
 
 def run() -> None:
     with OpenAICostTracker() as tracker:

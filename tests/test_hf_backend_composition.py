@@ -3,8 +3,8 @@ import unittest
 
 import numpy as np
 
-from examples.news import News
-from examples.paper import Paper
+from notebooks.examples.news import News
+from notebooks.examples.paper import Paper
 from symai import *
 from symai.components import *
 # test with huggingface backend
@@ -24,8 +24,8 @@ Expression.command(time_clock=True)
 class TestComposition(unittest.TestCase):
 
     def test_result_clean(self):
-        fetch = Interface('selenium')
-        sym = fetch(url='https://donate.wikimedia.org/w/index.php?title=Special:LandingPage&country=AT&uselang=en&utm_medium=sidebar&utm_source=donate&utm_campaign=C13_en.wikipedia.org')
+        crawler = Interface('selenium')
+        sym = crawler(url='https://donate.wikimedia.org/w/index.php?title=Special:LandingPage&country=AT&uselang=en&utm_medium=sidebar&utm_source=donate&utm_campaign=C13_en.wikipedia.org')
         self.assertIsNotNone(sym)
         res = sym.clean()
         self.assertIsNotNone(res)
@@ -195,21 +195,20 @@ In the _init_ function, the custom model takes in a configuration object (config
         self.assertTrue(sym == np.pi)
 
     def test_expression(self):
-        sym = Symbol(1)
-        res = sym.expression('self + 2')
+        expression = Interface('wolframalpha')
+
+        res = expression('1 + 2')
         self.assertTrue(res == 3)
 
-        sym = Symbol(2)
-        res = sym.expression('2 ^ self')
+        res = expression('2 ^ 2')
         self.assertTrue(res == 4)
 
     def test_wolframalpha_expression(self):
-        expr = Expression()
-        Expression.command(engines=['symbolic'], expression_engine='wolframalpha')
-        res = expr.expression('x^2 + 2x + 1, x = 4')
+        expr = Interface('wolframalpha')
+        res = expr('x^2 + 2x + 1, x = 4')
         self.assertTrue(res == 25, res)
 
-        res = expr.expression('How is the weather today in L.A.?')
+        res = expr('How is the weather today in L.A.?')
         self.assertIsNotNone(res, res)
 
     def test_analyze(self):
@@ -601,6 +600,7 @@ modified:   tests/test_composition.py
         #val = "A line parallel to y = 4x + 6 passes through (5, 10). What is the y-coordinate of the point where this line crosses the y-axis?"
         #val = "Bob has two sons, John and Jay. Jay has one brother and father. The father has two sons. Jay's brother has a brother and a father. Who is Jay's brother."
         val = "is 1000 bigger than 1063.472?"
+        expression = Interface('wolframalpha')
 
         class ComplexExpression(Expression):
             def causal_expression(self):
@@ -614,10 +614,10 @@ modified:   tests/test_composition.py
                         req = question.extract('what is requested?')
                         x = self.extract('coordinate point (.,.)') # get coordinate point / could also ask for other points
                         query = formula @ f', point x = {x}' @ f', solve {req}' # concatenate to the question and formula
-                        res = query.expression(query) # TODO: wolframalpha python api does not give answer but on website this works -> triggered pull request
+                        res = expression(query) # TODO: wolframalpha python api does not give answer but on website this works -> triggered pull request
 
                     elif formula.isinstanceof('number comparison'):
-                        res = formula.expression() # send directly to wolframalpha
+                        res = expression(formula) # send directly to wolframalpha
 
                     else:
                         pass # TODO: do something else
@@ -640,7 +640,6 @@ modified:   tests/test_composition.py
                 return res
 
         expr = ComplexExpression(val)
-        Expression.command(engines=['symbolic'], expression_engine='wolframalpha')
         res = expr.causal_expression()
         self.assertIsNotNone(res, res)
 
