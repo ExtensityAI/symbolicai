@@ -23,7 +23,7 @@ DOC_CONTEXT = '''General Python Template example:
               default: object = None,
               pre_processors: List[PreProcessor] = [TextMessagePreProcessor()],
               post_processors: List[PostProcessor] = [StripPostProcessor()],
-              **wrp_kwargs):
+              **kwargs):
     return few_shot(prompt,
                     examples=[],
                     constraints=constraints,
@@ -31,7 +31,7 @@ DOC_CONTEXT = '''General Python Template example:
                     limit=1,
                     pre_processors=pre_processors,
                     post_processors=post_processors,
-                    **wrp_kwargs)
+                    **kwargs)
 
     Documentation Example Text:
     """Summarizes the content of a text.
