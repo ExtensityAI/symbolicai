@@ -161,9 +161,6 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
     def forward(self, argument):
         kwargs              = argument.kwargs
         prompts_            = argument.prop.processed_input
-        input_handler       = kwargs['input_handler'] if 'input_handler' in kwargs else None
-        if input_handler:
-            input_handler((prompts_,))
 
         # send prompt to GPT-3
         max_tokens          = kwargs['max_tokens'] if 'max_tokens' in kwargs else self.compute_remaining_tokens(prompts_)
@@ -187,9 +184,6 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
                                             top_p=top_p,
                                             stop=stop,
                                             n=1)
-            output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
-            if output_handler:
-                output_handler(res)
         except Exception as e:
             callback = openai.completions.create
             kwargs['model'] = kwargs['model'] if 'model' in kwargs else self.model

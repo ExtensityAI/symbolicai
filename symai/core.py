@@ -44,6 +44,10 @@ class Argument(Symbol):
             self.prop.disable_verbose_output_suppression = False
         if 'parse_system_instructions' not in self.kwargs:
             self.prop.parse_system_instructions          = False
+        if 'input_handler' not in self.kwargs:
+            self.prop.input_handler    = None
+        if 'output_handler' not in self.kwargs:
+            self.prop.output_handler   = None
 
     def _set_all_kwargs_as_properties(self):
         for key, value in self.kwargs.items():

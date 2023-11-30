@@ -41,10 +41,6 @@ class CLIPEngine(Engine):
             self.processor    = CLIPProcessor.from_pretrained(self.model_id)
             self.old_model_id = self.model_id
 
-        input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
-        if input_handler:
-            input_handler((image_url, text))
-
         if text is None:
             image             = Image.open(requests.get(image_url, stream=True).raw)
             inputs            = self.processor(images=image, return_tensors="pt")
@@ -58,10 +54,6 @@ class CLIPEngine(Engine):
             outputs           = self.model(**inputs)
             logits_per_image  = outputs.logits_per_image  # this is the image-text similarity score
             rsp               = logits_per_image.softmax(dim=1)  # we can take the softmax to get the label probabilities
-
-        output_handler        = kwargs['output_handler'] if 'output_handler' in kwargs else None
-        if output_handler:
-            output_handler(rsp)
 
         rsp = rsp.detach().cpu().numpy()
 

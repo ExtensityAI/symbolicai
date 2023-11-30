@@ -51,10 +51,9 @@ class SeleniumEngine(Engine):
         return 'crawler'
 
     def forward(self, argument):
-        kwargs   = argument.kwargs
-        urls     = argument.prop.urls
-        patterns = argument.prop.patterns
-        urls     = urls if isinstance(urls, list) else [urls]
+        kwargs          = argument.kwargs
+        urls, patterns  = argument.prop.processed_input
+        urls            = urls if isinstance(urls, list) else [urls]
 
         # check if all urls start with https:// otherwise add it
         urls = [url if url.startswith('http://') or url.startswith('file://') else 'https://' + url for url in urls]
@@ -66,17 +65,9 @@ class SeleniumEngine(Engine):
         if self.driver_handler is None:
             self._init_crawler_engine()
 
-        input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
-        if input_handler:
-            input_handler((urls, patterns))
-
         for url, p in zip(urls, patterns):
             page = self.get_page_source(url=url, pattern=p)
             rsp.append(page)
-
-        output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
-        if output_handler:
-            output_handler(rsp)
 
         metadata = {}
         if 'metadata' in kwargs and kwargs['metadata']:

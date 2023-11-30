@@ -72,9 +72,6 @@ class LLaMACppCompletionEngine(Engine):
         try:
             print(completion_request)
             res = self.client.create_completion(completion_request)
-            output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
-            if output_handler:
-                output_handler(res)
         except Exception as e:
             if except_remedy is None:
                 raise e

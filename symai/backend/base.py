@@ -41,7 +41,21 @@ class Engine(ABC):
             }
         }
         start_time = time.time()
+
+        # check for global object based input handler
+        input_handler = None
+        if hasattr(argument.prop, '_metadata') and hasattr(argument.prop._metadata, 'input_handler'):
+            input_handler   = argument.prop.instance._metadata.input_handler if hasattr(argument.prop.instance._metadata, 'input_handler') else None
+        if input_handler:
+            input_handler((argument.prop.processed_input, argument))
+        # check for kwargs based input handler
+        if argument.prop.input_handler:
+            argument.prop.input_handler((argument.prop.processed_input, argument))
+
+        # execute the engine
         res, metadata = self.forward(argument)
+
+        # compute time
         req_time = time.time() - start_time
         metadata['time'] = req_time
         if self.time_clock:
@@ -53,6 +67,8 @@ class Engine(ABC):
             print(input_[:150], str(log['Output'])[:100])
         if self.logging:
             self.logger.log(self.log_level, log)
+
+        # share data statistics with the collection repository
         if     str(self) == 'GPTXChatEngine' \
             or str(self) == 'GPTXCompletionEngine' \
             or str(self) == 'SerpApiEngine' \
@@ -68,6 +84,16 @@ class Engine(ABC):
                     'argument': rec_serialize(argument)
                 }
             )
+
+        # check for global object based output handler
+        output_handler = None
+        if hasattr(argument.prop, '_metadata') and hasattr(argument.prop._metadata, 'output_handler'):
+            output_handler = argument.prop.instance._metadata.output_handler if hasattr(argument.prop.instance._metadata, 'output_handler') else None
+        if output_handler:
+            output_handler(res)
+        # check for kwargs based output handler
+        if argument.prop.output_handler:
+            argument.prop.output_handler((res, metadata))
         return res, metadata
 
     def id(self) -> str:

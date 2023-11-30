@@ -159,7 +159,6 @@ class IndexEngine(Engine):
         query         = argument.prop.ori_query
         operation     = argument.prop.operation
         index_name    = argument.prop.index_name if argument.prop.index_name else self.index_name
-        input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
         rsp           = None
 
         if self.index is None:
@@ -171,9 +170,6 @@ class IndexEngine(Engine):
             self.index_name     = index_name
             kwargs['index_get'] = True
             self._configure_index(**kwargs)
-
-        if input_handler:
-            input_handler((embedding, ))
 
         if operation == 'search':
             index_top_k    = kwargs['index_top_k'] if 'index_top_k' in kwargs else self.index_top_k
@@ -190,10 +186,6 @@ class IndexEngine(Engine):
 
         else:
             raise ValueError('Invalid operation')
-
-        output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
-        if output_handler:
-            output_handler(rsp)
 
         metadata = {}
         if 'metadata' in kwargs and kwargs['metadata']:

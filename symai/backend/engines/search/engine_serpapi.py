@@ -73,10 +73,6 @@ class SerpApiEngine(Engine):
         rsp      = []
         engine   = kwargs['engine'] if 'engine' in kwargs else self.engine
 
-        input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
-        if input_handler:
-            input_handler((queries_,))
-
         for q in queries_:
             query = {
                 "api_key": self.api_key,
@@ -94,10 +90,6 @@ class SerpApiEngine(Engine):
 
             toret = SearchResult(res)
             rsp.append(toret)
-
-        output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
-        if output_handler:
-            output_handler(rsp)
 
         metadata = {}
         if 'metadata' in kwargs and kwargs['metadata']:

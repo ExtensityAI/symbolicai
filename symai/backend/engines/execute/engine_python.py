@@ -87,20 +87,13 @@ class PythonEngine(Engine):
         except Exception as e:
             err = e
             raise e
-        finally:
-            output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
-            if output_handler:
-                if err:
-                    stack = full_stack()
-                    output_handler(stack)
-                else:
-                    output_handler(rsp)
 
         metadata = {}
         if 'metadata' in kwargs and kwargs['metadata']:
             metadata['kwargs'] = kwargs
             metadata['input']  = code
             metadata['output'] = rsp
+            metadata['error']  = None if not err else full_stack()
 
         return [rsp], metadata
 

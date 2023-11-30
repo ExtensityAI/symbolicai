@@ -122,9 +122,6 @@ class WhisperEngine(Engine):
         language        = kwargs.get("language", "en")
         temperature     = kwargs.get("temperature", (0.0, 0.2, 0.4, 0.6, 0.8, 1.0))
         word_timestamps = kwargs.get("word_timestamps", False)
-        input_handler   = kwargs.get("input_handler")
-        if input_handler is not None:
-            input_handler((prompt, audio))
 
         raw_result = []
         if prompt == 'detect_language':
@@ -162,10 +159,6 @@ class WhisperEngine(Engine):
                 rsp = " ".join(self.text)
         else:
             raise Exception(f"Unknown whisper command prompt: {prompt}")
-
-        output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
-        if output_handler:
-            output_handler(rsp)
 
         metadata = {}
         if 'metadata' in kwargs and kwargs['metadata']:
