@@ -13,9 +13,6 @@ class UserInputEngine(Engine):
     def forward(self, argument):
         msg           = argument.prop.processed_input
         kwargs        = argument.kwargs
-        input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
-        if input_handler:
-            input_handler((msg,))
 
         mock = kwargs['mock'] if 'mock' in kwargs else False
         if mock: # mock user input
@@ -23,10 +20,6 @@ class UserInputEngine(Engine):
             rsp = mock
         else:
             rsp = input(msg)
-
-        output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
-        if output_handler:
-            output_handler(rsp)
 
         metadata = {}
         if 'metadata' in kwargs and kwargs['metadata']:

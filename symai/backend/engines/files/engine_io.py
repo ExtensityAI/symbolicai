@@ -120,11 +120,6 @@ class FileEngine(Engine):
         kwargs        = argument.kwargs
         path          = argument.prop.processed_input
 
-        input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
-        if input_handler:
-            input_handler((path,))
-
-
         if '.pdf' in path:
             range_ = None
             if 'slice' in kwargs:
@@ -157,10 +152,6 @@ class FileEngine(Engine):
 
         # ensure encoding is utf8
         rsp = rsp.encode('utf8', 'ignore').decode('utf8', 'ignore')
-
-        output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
-        if output_handler:
-            output_handler(rsp)
 
         metadata = {}
         if 'metadata' in kwargs and kwargs['metadata']:

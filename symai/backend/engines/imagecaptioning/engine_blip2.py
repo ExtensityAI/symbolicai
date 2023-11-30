@@ -48,10 +48,6 @@ class Blip2Engine(Engine):
         image, prompt = argument.prop.processed_input
         kwargs        = argument.kwargs
         except_remedy = kwargs['except_remedy'] if 'except_remedy' in kwargs else None
-        input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
-
-        if input_handler:
-            input_handler((image, prompt))
 
         if 'http' in image:
             image = Image.open(requests.get(image, stream=True).raw).convert('RGB')
@@ -67,10 +63,6 @@ class Blip2Engine(Engine):
                 raise e
             callback = self.model.generate
             res = except_remedy(e, callback, argument)
-
-        output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
-        if output_handler:
-            output_handler(res)
 
         metadata = {}
         if 'metadata' in kwargs and kwargs['metadata']:

@@ -65,17 +65,10 @@ class BardEngine(Engine, OpenAIMixin):
         kwargs              = argument.kwargs
         prompts_            = argument.prop.processed_input
         prompts_            = prompts_ if isinstance(prompts_, list) else [prompts_]
-        input_handler       = kwargs['input_handler'] if 'input_handler' in kwargs else None
-        if input_handler:
-            input_handler((prompts_,))
-
         except_remedy       = kwargs['except_remedy'] if 'except_remedy' in kwargs else None
 
         try:
             res = self.bard.get_answer(prompts_[0])
-            output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
-            if output_handler:
-                output_handler(res)
         except Exception as e:
             if except_remedy is None:
                 raise e

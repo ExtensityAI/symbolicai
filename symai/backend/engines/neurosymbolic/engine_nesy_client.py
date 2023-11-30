@@ -38,11 +38,7 @@ class NeSyClientEngine(Engine):
 
         prompts       = argument.prop.processed_input
         kwargs        = argument.kwargs
-
         prompts_      = prompts if isinstance(prompts, list) else [prompts]
-        input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
-        if input_handler:
-            input_handler((prompts_,))
 
         # send prompt to Model
         stop          = kwargs['stop'] if 'stop' in kwargs else None
@@ -72,9 +68,6 @@ class NeSyClientEngine(Engine):
         try:
             # use RPyC to send prompt to Model
             res = self.connection.root.predict(prompts_[0], **config)
-            output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
-            if output_handler:
-                output_handler(res)
         except Exception as e:
             if except_remedy is None:
                 raise e

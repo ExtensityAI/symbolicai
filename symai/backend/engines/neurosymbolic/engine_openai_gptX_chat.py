@@ -169,15 +169,6 @@ class GPTXChatEngine(Engine, OpenAIMixin):
     def forward(self, argument):
         kwargs              = argument.kwargs
         prompts_            = argument.prop.processed_input
-        # check for global object based input handler
-        if isinstance(argument.prop.instance, Symbol):
-            input_handler   = argument.prop.instance._metadata.input_handler if hasattr(argument.prop.instance._metadata, 'input_handler') else None
-        if input_handler:
-            input_handler((prompts_,))
-        # check for kwargs based input handler
-        input_handler       = kwargs['input_handler'] if 'input_handler' in kwargs else None
-        if input_handler:
-            input_handler((prompts_,))
 
         openai_kwargs = {}
 
@@ -213,15 +204,6 @@ class GPTXChatEngine(Engine, OpenAIMixin):
                                                  n=1,
                                                  **openai_kwargs)
 
-            # check for global object based output handler
-            if isinstance(argument.prop.instance, Symbol):
-                output_handler = argument.prop.instance._metadata.output_handler if hasattr(argument.prop.instance._metadata, 'output_handler') else None
-            if output_handler:
-                output_handler(res)
-            # check for kwargs based output handler
-            output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
-            if output_handler:
-                output_handler(res)
         except Exception as e:
             if openai.api_key is None or openai.api_key == '':
                 msg = 'OpenAI API key is not set. Please set it in the config file or pass it as an argument to the command method.'

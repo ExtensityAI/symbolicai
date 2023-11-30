@@ -42,17 +42,9 @@ class OCREngine(Engine):
         image_url = argument.prop.image
         url       = f"https://api.apilayer.com/image_to_text/url?url={image_url}"
         payload   = {}
-
-        input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
-        if input_handler:
-            input_handler((url, payload))
-
         response    = requests.request("GET", url, headers=self.headers, data = payload)
         status_code = response.status_code
         rsp         = response.text
-        output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
-        if output_handler:
-            output_handler(rsp)
 
         metadata  = {}
         if 'metadata' in kwargs and kwargs['metadata']:

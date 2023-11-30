@@ -43,17 +43,10 @@ class EmbeddingEngine(Engine, OpenAIMixin):
 
         input_          = processed_input if isinstance(processed_input, list) else [processed_input]
         except_remedy   = kwargs['except_remedy'] if 'except_remedy' in kwargs else None
-        input_handler   = kwargs['input_handler'] if 'input_handler' in kwargs else None
-
-        if input_handler:
-            input_handler((input_,))
 
         try:
             res = openai.embeddings.create(model=self.model,
                                            input=input_)
-            output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
-            if output_handler:
-                output_handler(res)
         except Exception as e:
             if except_remedy is None:
                 raise e

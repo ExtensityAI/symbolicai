@@ -48,16 +48,8 @@ class WolframAlphaEngine(Engine):
         queries_ = queries if isinstance(queries, list) else [queries]
         rsp = []
 
-        input_handler = argument.kwargs['input_handler'] if 'input_handler' in argument.kwargs else None
-        if input_handler:
-            input_handler((queries_,))
-
         rsp = self.client.query(str(queries[0]))
         rsp = WolframResult(rsp)
-
-        output_handler = argument.kwargs['output_handler'] if 'output_handler' in argument.kwargs else None
-        if output_handler:
-            output_handler(rsp)
 
         metadata = {}
         if 'metadata' in argument.kwargs and argument.kwargs['metadata']:

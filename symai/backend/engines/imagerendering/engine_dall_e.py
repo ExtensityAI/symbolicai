@@ -65,9 +65,6 @@ class ImageRenderingEngine(Engine):
         callback = None
         try:
             if kwargs['operation'] == 'create':
-                input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
-                if input_handler:
-                    input_handler((prompt,))
 
                 callback = openai.images.generate
                 res = openai.images.generate(
@@ -78,10 +75,6 @@ class ImageRenderingEngine(Engine):
             elif kwargs['operation'] == 'variation':
                 assert 'image_path' in kwargs
                 image_path = kwargs['image_path']
-
-                input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
-                if input_handler:
-                    input_handler((prompt, image_path))
 
                 callback = openai.images.create_variation
                 res = openai.images.create_variation(
@@ -95,10 +88,6 @@ class ImageRenderingEngine(Engine):
                 mask_path = kwargs['mask_path']
                 image_path = kwargs['image_path']
 
-                input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
-                if input_handler:
-                    input_handler((prompt, image_path, mask_path))
-
                 callback = openai.images.edit
                 res = openai.images.edit(
                     image=open(image_path, "rb"),
@@ -109,10 +98,6 @@ class ImageRenderingEngine(Engine):
                 )
             else:
                 raise Exception(f"Unknown operation: {kwargs['operation']}")
-
-            output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
-            if output_handler:
-                output_handler(res)
 
         except Exception as e:
             if except_remedy is None:
