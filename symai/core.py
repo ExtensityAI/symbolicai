@@ -1,13 +1,12 @@
 import functools
 
 from typing import Callable, Dict, List, Optional, Any
-from box import Box
 
 from . import post_processors as post
 from . import pre_processors as pre
 from . import prompts as prm
 from .functional import EngineRepository
-from .symbol import Symbol
+from .symbol import Symbol, Metadata
 
 
 
@@ -19,7 +18,8 @@ class Argument(Symbol):
         self.decorator_kwargs = decorator_kwargs.copy()
         self.kwargs           = self._construct_kwargs(signature_kwargs=signature_kwargs,
                                                        decorator_kwargs=decorator_kwargs)
-        self.prop             = Box(self.kwargs)
+        self.prop             = Metadata()
+        self._set_all_kwargs_as_properties()
         # Set default values if not specified for backend processing
         # Reserved keywords
         if 'preview' not in self.kwargs:
@@ -44,6 +44,10 @@ class Argument(Symbol):
             self.prop.disable_verbose_output_suppression = False
         if 'parse_system_instructions' not in self.kwargs:
             self.prop.parse_system_instructions          = False
+
+    def _set_all_kwargs_as_properties(self):
+        for key, value in self.kwargs.items():
+            setattr(self.prop, key, value)
 
     @property
     def value(self):
@@ -97,13 +101,13 @@ def few_shot(prompt: str = '',
         @functools.wraps(func)
         def wrapper(instance, *signature_args, **signature_kwargs):
             # Construct container object for the arguments and kwargs
+            decorator_kwargs['prompt']   = prompt
+            decorator_kwargs['examples'] = examples
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
             return EngineRepository().process_query(
                                 engine='neurosymbolic',
                                 instance=instance,
                                 func=func,
-                                prompt=prompt,
-                                examples=examples,
                                 constraints=constraints,
                                 default=default,
                                 limit=limit,
@@ -1001,7 +1005,6 @@ def extract(prompt: str = "Extract a pattern from text:\n",
 
 def expression(prompt: str = "Evaluate the symbolic expressions:\n",
                default: Optional[str] = None,
-               examples: prm.Prompt = prm.SimpleSymbolicExpression(),
                constraints: List[Callable] = [],
                pre_processors: Optional[List[pre.PreProcessor]] = [pre.WolframAlphaPreProcessor()],
                post_processors: Optional[List[post.PostProcessor]] = [post.WolframAlphaPostProcessor()],
@@ -1011,7 +1014,6 @@ def expression(prompt: str = "Evaluate the symbolic expressions:\n",
     Args:
         prompt (str, optional): The prompt describing the task. Defaults to 'Evaluate the symbolic expressions:'.
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
-        examples (Prompt, optional): A list of examples used to train the model. Defaults to SimpleSymbolicExpression().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [SimpleSymbolicExpressionPreProcessor()].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -1023,15 +1025,14 @@ def expression(prompt: str = "Evaluate the symbolic expressions:\n",
         @functools.wraps(func)
         def wrapper(instance, *signature_args, **signature_kwargs):
             # Construct container object for the arguments and kwargs
+            decorator_kwargs['prompt'] = prompt
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
             return EngineRepository().process_query(
                                 engine='symbolic',
                                 instance=instance,
                                 func=func,
-                                prompt=prompt,
                                 default=default,
                                 limit=1,
-                                examples=examples,
                                 constraints=constraints,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
@@ -1621,11 +1622,11 @@ def draw(operation: str = 'create',
         def wrapper(instance, *signature_args, **signature_kwargs):
             # Construct container object for the arguments and kwargs
             decorator_kwargs['operation'] = operation
+            decorator_kwargs['prompt']    = prompt
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
             return EngineRepository().process_query(
                                 engine='imagerendering',
                                 instance=instance,
-                                prompt=prompt,
                                 func=func,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
@@ -1721,11 +1722,11 @@ def speech_to_text(prompt: str = 'decode',
         @functools.wraps(func)
         def wrapper(instance, *signature_args, **signature_kwargs):
             # Construct container object for the arguments and kwargs
+            decorator_kwargs['prompt'] = prompt
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
             return EngineRepository().process_query(
                                 engine='speech-to-text',
                                 instance=instance,
-                                prompt=prompt,
                                 func=func,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
@@ -1754,14 +1755,14 @@ def text_to_speech(prompt: str,
         @functools.wraps(func)
         def wrapper(instance, *signature_args, **signature_kwargs):
             # Construct container object for the arguments and kwargs
-            decorator_kwargs['path']  = path
-            decorator_kwargs['voice'] = voice
+            decorator_kwargs['path']   = path
+            decorator_kwargs['voice']  = voice
+            decorator_kwargs['prompt'] = prompt
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
             return EngineRepository().process_query(
                                 engine='text-to-speech',
                                 instance=instance,
                                 func=func,
-                                prompt=prompt,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
                                 argument=argument)
@@ -1945,12 +1946,12 @@ def index(prompt: Any,
         def wrapper(instance, *signature_args, **signature_kwargs):
             # Construct container object for the arguments and kwargs
             decorator_kwargs['operation'] = operation
+            decorator_kwargs['prompt']    = prompt
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
             return EngineRepository().process_query(
                                 engine='index',
                                 instance=instance,
                                 func=func,
-                                prompt=prompt,
                                 constraints=constraints,
                                 default=default,
                                 pre_processors=pre_processors,
@@ -2055,12 +2056,12 @@ def caption(image: str,
         @functools.wraps(func)
         def wrapper(instance, *signature_args, **signature_kwargs):
             # Construct container object for the arguments and kwargs
-            decorator_kwargs['image'] = image
+            decorator_kwargs['image']  = image
+            decorator_kwargs['prompt'] = prompt
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
             return EngineRepository().process_query(
                                 engine='imagecaptioning',
                                 instance=instance,
-                                prompt=prompt,
                                 func=func,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,

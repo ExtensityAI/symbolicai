@@ -358,6 +358,8 @@ def query_language_model(query: str, from_shell=True, res=None, *args, **kwargs)
             ConversationType.save_conversation_state(stateful_conversation, symai_path)
         stateful_conversation = stateful_conversation.load_conversation_state(symai_path)
 
+    has_followup_cmd = False
+    cmd              = None
     if '|' in query and from_shell:
         cmds = query.split('|')
         query = cmds[0]
@@ -366,9 +368,19 @@ def query_language_model(query: str, from_shell=True, res=None, *args, **kwargs)
             query.startswith('!"') or query.startswith("!'") or query.startswith('!`'):
             func = stateful_conversation
             for fl in files:
-                func.store_file(fl)
+                if fl.strip() == '':
+                    continue
+                if os.path.exists(fl) and os.path.isfile(fl):
+                    func.store_file(fl)
+                else:
+                    # interpret as follow up command
+                    has_followup_cmd = True
         else:
             func = ConversationType(file_link=files, auto_print=False)
+
+        if has_followup_cmd:
+            cmd = '|'.join(cmds[1:])
+
     else:
         if query.startswith('."') or query.startswith(".'") or query.startswith('.`') or\
             query.startswith('!"') or query.startswith("!'") or query.startswith('!`'):
@@ -381,6 +393,13 @@ def query_language_model(query: str, from_shell=True, res=None, *args, **kwargs)
             query = f"[SystemInfo]\n{platform.uname()}\n\n[Context]\n{res}\n\n[Query]\n{query}"
         msg = func(query, *args, **kwargs)
 
+    if has_followup_cmd:
+        if '$1' in cmd:
+            # replace newlines with spaces
+            msg = str(msg).replace('\n', r'\\n')
+            cmd = cmd.replace('$1', '"%s"' % msg)
+            msg = None
+        msg = run_shell_command(cmd, prev=msg)
     return msg
 
 
@@ -467,26 +486,59 @@ def search_engine(query: str, res=None, *args, **kwargs):
             f.write(f'[SEARCH_QUERY]:\n{search_query}\n[RESULTS]\n{res}\n[MESSAGE]\n{msg}')
     return msg
 
+
+def handle_error(cmd, res, message, auto_query_on_error):
+    msg = Symbol(cmd) @ f'\n{str(res)}'
+    if 'command not found' in str(res) or 'not recognized as an internal or external command' in str(res):
+        return res.stderr.decode('utf-8')
+    else:
+        stderr = res.stderr
+        if stderr and auto_query_on_error:
+            rsp = stderr.decode('utf-8')
+            print(rsp)
+            msg = msg @ f"\n{rsp}"
+            if 'usage:' in rsp:
+                try:
+                    cmd = cmd.split('usage: ')[-1].split(' ')[0]
+                    # get man page result for command
+                    res = subprocess.run('man -P cat %s' % cmd,
+                                            shell=True,
+                                            stdout=subprocess.PIPE)
+                    stdout = res.stdout
+                    if stdout:
+                        rsp = stdout.decode('utf-8')[:500]
+                        msg = msg @ f"\n{rsp}"
+                except Exception:
+                    pass
+
+            return query_language_model(msg, from_shell=False)
+        else:
+            stdout = res.stdout
+            if stdout:
+                message = stderr.decode('utf-8')
+            return message
+
+
 # run shell command
 def run_shell_command(cmd: str, prev=None, auto_query_on_error: bool=False, stdout=None, stderr=None):
     if prev is not None:
         cmd = prev + ' && ' + cmd
     message = None
+    conda_env = get_exec_prefix()
+    # copy default_env
+    new_env = default_env.copy()
+    if exec_prefix != 'default':
+        # remove current env from PATH
+        new_env["PATH"] = new_env["PATH"].replace(sys.exec_prefix, conda_env)
     # Execute the command
     try:
         stdout = subprocess.PIPE if auto_query_on_error else stdout
         stderr = subprocess.PIPE if auto_query_on_error else stderr
-        conda_env = get_exec_prefix()
-        # copy default_env
-        new_env = default_env.copy()
-        if exec_prefix != 'default':
-            # remove current env from PATH
-            new_env["PATH"] = new_env["PATH"].replace(sys.exec_prefix, conda_env)
         res = subprocess.run(cmd,
-                             shell=True,
-                             stdout=stdout,
-                             stderr=stderr,
-                             env=new_env)
+                            shell=True,
+                            stdout=stdout,
+                            stderr=stderr,
+                            env=new_env)
         if res and stdout and res.stdout:
             message = res.stdout.decode('utf-8')
         if res and stderr and res.stderr:
@@ -501,35 +553,8 @@ def run_shell_command(cmd: str, prev=None, auto_query_on_error: bool=False, stdo
         return message
     # If command not found, then try to query language model
     else:
-        msg = Symbol(cmd) @ f'\n{str(res)}'
-        if 'command not found' in str(res) or 'not recognized as an internal or external command' in str(res):
-            print(res.stderr.decode('utf-8'))
-        else:
-            stderr = res.stderr
-            if stderr and auto_query_on_error:
-                rsp = stderr.decode('utf-8')
-                print(rsp)
-                msg = msg @ f"\n{rsp}"
-                if 'usage:' in rsp:
-                    try:
-                        cmd = cmd.split('usage: ')[-1].split(' ')[0]
-                        # get man page result for command
-                        res = subprocess.run('man -P cat %s' % cmd,
-                                             shell=True,
-                                             stdout=subprocess.PIPE)
-                        stdout = res.stdout
-                        if stdout:
-                            rsp = stdout.decode('utf-8')[:500]
-                            msg = msg @ f"\n{rsp}"
-                    except Exception:
-                        pass
+        return handle_error(cmd, res, message, auto_query_on_error)
 
-                return query_language_model(msg, from_shell=False)
-            else:
-                stdout = res.stdout
-                if stdout:
-                    message = stderr.decode('utf-8')
-                return message
 
 
 def is_llm_request(cmd: str):
@@ -593,24 +618,23 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
     cmd = map_nt_cmd(cmd)
 
     sep = os.path.sep
-    # check if commands are chained
-    if '&&' in cmd:
-        cmds = cmd.split('&&')
-        for c in cmds:
-            res = process_command(c.strip(), res=res)
-        return res
-
-    # check if the entire command is a language model request
-    if not is_llm_request(cmd) and '|' in cmd:
-        cmds = cmd.split('|')
-        res = None
-        for c in cmds:
-            c = c.strip()
-            # check if the part of the command is a language model request
-            if not is_llm_request(c):
-                res = run_shell_command(c, prev=res, auto_query_on_error=auto_query_on_error, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            else:
-                res = process_command(c, res=res, auto_query_on_error=auto_query_on_error)
+    # check for '&&' to also preserve pipes '|' in normal shell commands
+    if '" && ' in cmd or "' && " in cmd or '` && ' in cmd:
+        if is_llm_request(cmd):
+            # Process each command (the ones involving the LLM) separately
+            cmds = cmd.split(' && ')
+            if not is_llm_request(cmds[0]):
+                return ValueError('The first command must be a LLM request.')
+            # Process the first command as an LLM request
+            res = query_language_model(cmds[0], res=res)
+            rest = ' && '.join(cmds[1:])
+            if '$1' in cmds[1]:
+                res  = str(res).replace('\n', r'\\n')
+                rest = rest.replace('$1', '"%s"' % res)
+                res  = None
+            cmd = rest
+        # If it's a normal shell command with pipes or &&, pass it whole
+        res = run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
         return res
 
     # check command type
@@ -805,6 +829,12 @@ def run(auto_query_on_error=False, conversation_style=None):
     session = create_session(history, merged_completer)
     if SYMSH_CONFIG['show-splash-screen']:
         show_intro_menu()
+        # set show splash screen to false
+        SYMSH_CONFIG['show-splash-screen'] = False
+        # save config
+        _config_path =  Path.home() / '.symai' / 'symsh.config.json'
+        with open(_config_path, 'w') as f:
+            json.dump(SYMSH_CONFIG, f, indent=4)
     listen(session, word_comp, auto_query_on_error)
 
 

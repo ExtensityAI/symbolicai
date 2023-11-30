@@ -69,14 +69,7 @@ class DeleteIndexPreProcessor(PreProcessor):
 
 class PromptPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
-        argument.kwargs['prompt'] = f"{argument.kwargs['prompt']} $>"
-        return f"{argument.kwargs['prompt']} $>"
-
-
-class FlattenListExamplesPreProcessor(PreProcessor):
-    def __call__(self, argument) -> Any:
-        vals = ', '.join(argument.kwargs['examples'])
-        return f'{vals}, '
+        return f"{argument.prop.prompt} $>"
 
 
 class ComparePreProcessor(PreProcessor):
@@ -104,13 +97,13 @@ class RankPreProcessor(PreProcessor):
 class ReplacePreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
         assert len(argument.args) == 2
-        return f"text '{argument.kwargs}' replace '{str(argument.args[0])}' with '{str(argument.args[1])}'=>"
+        return f"text '{argument.prop.instance}' replace '{str(argument.args[0])}' with '{str(argument.args[1])}'=>"
 
 
 class IncludePreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
         assert len(argument.args) == 1
-        return f"text '{argument.kwargs}' include '{str(argument.args[0])}' =>"
+        return f"text '{argument.prop.instance}' include '{str(argument.args[0])}' =>"
 
 
 class CombinePreProcessor(PreProcessor):
@@ -172,14 +165,14 @@ class LogicExpressionPreProcessor(PreProcessor):
         assert len(argument.args) >= 1
         a = prep_as_str(argument.prop.instance)
         b = prep_as_str(argument.args[0])
-        operator = argument.kwargs['operator']
+        operator = argument.prop.operator
         return f"expr :{a}: {operator} :{b}: =>"
 
 
 class SemanticMappingPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
         assert len(argument.args) >= 1
-        topics = list(argument.kwargs['subscriber'].keys())
+        topics = list(argument.prop.subscriber.keys())
         assert len(topics) > 0
         return f"topics {str(topics)} in\ntext: '{str(argument.args[0])}' =>"
 
@@ -214,42 +207,42 @@ class GenerateTextPreProcessor(PreProcessor):
 
 class ClusterPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
-        assert isinstance(argument.prop.instancevalue, list), "ClusterPreProcessor can only be applied to a list"
-        return argument.prop.instancevalue
+        assert isinstance(argument.prop.instance.value, list), "ClusterPreProcessor can only be applied to a list"
+        return argument.prop.instance.value
 
 
 class ForEachPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
-        val = prep_as_str(argument.prop.instance)
-        cond = argument.kwargs['condition']
+        val   = prep_as_str(argument.prop.instance)
+        cond  = argument.kwargs['condition']
         apply = argument.kwargs['apply']
         return f"{val} foreach '{cond}' apply '{apply}' =>"
 
 
 class MapPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
-        val = prep_as_str(argument.prop.instance)
+        val     = prep_as_str(argument.prop.instance)
         context = argument.kwargs['context']
         return f"{val} map '{str(context)}' =>"
 
 
 class ListPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
-        val = prep_as_str(argument.prop.instance)
+        val  = prep_as_str(argument.prop.instance)
         cond = argument.kwargs['condition']
         return f"{val} list '{cond}' =>"
 
 
 class QueryPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
-        val = f'Data:\n{str(argument.prop.instance)}\n'
+        val   = f'Data:\n{str(argument.prop.instance)}\n'
         query = f"Context: {argument.kwargs['context']}\n"
         return f"{val}{query}Answer:"
 
 
 class SufficientInformationPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
-        val = prep_as_str(argument.prop.instance)
+        val   = prep_as_str(argument.prop.instance)
         query = prep_as_str(argument.kwargs['query'])
         return f'query {query} content {val} =>'
 
@@ -348,14 +341,14 @@ class ConsolePreProcessor(PreProcessor):
 class LanguagePreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
         language = argument.kwargs['language']
-        argument.kwargs['prompt'] = argument.kwargs['prompt'].format(language)
+        argument.prop.prompt = argument.prop.prompt.format(language)
         return f"{str(argument.prop.instance)}"
 
 
 class TextFormatPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
-        format_ = argument.kwargs['format']
-        argument.kwargs['prompt'] = argument.kwargs['prompt'].format(format_)
+        format_ = argument.prop.format
+        argument.prop.prompt = argument.prop.prompt.format(format_)
         val = prep_as_str(argument.prop.instance)
         return f"text {val} format '{format_}' =>"
 

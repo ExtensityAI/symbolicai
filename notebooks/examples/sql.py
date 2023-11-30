@@ -1,5 +1,5 @@
 import symai as ai
-from symai.post_processors import StripPostProcessor
+from symai.post_processors import StripPostProcessor, CodeExtractPostProcessor
 from symai.pre_processors import PreProcessor
 from symai.symbol import Expression, Symbol
 
@@ -34,6 +34,13 @@ SQL: CREATE TABLE Employees (
 // All records of employees with the last name Smithee are deleted:
 SQL: DELETE FROM Employees WHERE last_name='Smithee';
 
+[IMPORTANT]
+ALWAYS RETURN ONLY THE ENTIRE SQL STATEMENTS, NOT PARTIAL RESULT LIKE {} ... OR OTHER PLACEHOLDER!
+NOT VALID:
+{} limit 1
+VALID:
+SELECT * FROM table limit 1
+
 [Last Example]
 --------------
 """
@@ -53,7 +60,7 @@ class SQL(Expression):
         @ai.few_shot(prompt="Generate queries based on the SQL domain specific language description\n",
                      examples=[],
                      pre_processors=[SQLPreProcessor()],
-                     post_processors=[StripPostProcessor()],
+                     post_processors=[StripPostProcessor(), CodeExtractPostProcessor()],
                      stop=[';'], **kwargs)
         def _func(_) -> str:
             pass

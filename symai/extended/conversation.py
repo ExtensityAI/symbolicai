@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any, Callable, Optional, List
 
 from .seo_query_optimizer import SEOQueryOptimizer
-from ..components import Indexer
+from ..components import Indexer, FileReader
 from ..memory import SlidingWindowStringConcatMemory
 from ..symbol import Symbol
 
@@ -31,6 +31,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         self.file_link   = file_link
         self.index_name  = index_name
         self.seo_opt     = SEOQueryOptimizer()
+        self.reader      = FileReader()
         self.user_tag    = 'USER::'
         self.bot_tag     = 'ASSISTANT::'
 
@@ -66,47 +67,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         self.store(val, *args, **kwargs)
 
     def store_file(self, file_path: str, *args, **kwargs):
-        # check if file is empty
-        if file_path is None or file_path.strip() == '':
-            return
-
-        slices_ = None
-        if '[' in file_path and ']' in file_path:
-            file_parts = file_path.split('[')
-            file_path = file_parts[0]
-            # remove string up to '[' and after ']'
-            slices_s = file_parts[1].split(']')[0].split(',')
-            slices_ = []
-            for s in slices_s:
-                if s == '':
-                    continue
-                elif ':' in s:
-                    s_split = s.split(':')
-                    if len(s_split) == 2:
-                        start_slice = int(s_split[0]) if s_split[0] != '' else None
-                        end_slice = int(s_split[1]) if s_split[1] != '' else None
-                        slices_.append(slice(start_slice, end_slice, None))
-                    elif len(s_split) == 3:
-                        start_slice = int(s_split[0]) if s_split[0] != '' else None
-                        end_slice = int(s_split[1]) if s_split[1] != '' else None
-                        step_slice = int(s_split[2]) if s_split[2] != '' else None
-                        slices_.append(slice(start_slice, end_slice, step_slice))
-                else:
-                    slices_.append(int(s))
-
-        if not os.path.exists(file_path):
-            return
-
-        # read in file content. if slices_ is not None, then read in only the slices_ of the file
-        with open(file_path, 'r', encoding="utf8") as file:
-            content = file.readlines()
-            if slices_ is not None:
-                new_content = []
-                for s in slices_:
-                    new_content.extend(content[s])
-                content = new_content
-            content = ''.join(content)
-
+        content = self.reader(file_path)
         val = f"[DATA::{file_path}]: <<<\n{str(content)}\n>>>\n"
         self.store(val, *args, **kwargs)
 

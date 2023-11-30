@@ -532,7 +532,7 @@ modified:   tests/test_composition.py
             Translate(),
             Outline(),
         ))
-        sym = Symbol(list(stream(file_open('examples/paper.pdf', range=(1, 1)))))
+        sym = Symbol(list(stream(file_open('examples/paper.pdf', slice=(1, 1)))))
         cluster = Cluster()
         res = cluster(sym)
         mapper = Map()
@@ -562,7 +562,7 @@ modified:   tests/test_composition.py
     def test_paper_component(self):
         paper = Paper(path='examples/paper.pdf')
         expr = Log(Trace(paper))
-        res = expr(range=(1, 1))
+        res = expr(slice=(1, 1))
         os.makedirs('results', exist_ok=True)
         path = os.path.abspath('results/news.html')
         res.save(path, replace=False)

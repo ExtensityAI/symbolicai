@@ -209,7 +209,7 @@ class IndexEngine(Engine):
         return [rsp], metadata
 
     def prepare(self, argument):
-        argument.prop.processed_input = argument.prop.prompt.to_list()
+        argument.prop.processed_input = argument.prop.prompt
 
     def _init_index_engine(self):
         pinecone.init(api_key=self.api_key, environment=self.environment)

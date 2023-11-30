@@ -76,8 +76,6 @@ def _execute_query(engine, post_processors, return_constraint, argument) -> List
 def _process_query(engine,
                    instance,
                    func:                Callable,
-                   prompt:              str                             = '',
-                   examples:            Optional[Prompt]                = None,
                    constraints:         List[Callable]                  = [],
                    default:             Optional[object]                = None,
                    limit:               int                             = 1,
@@ -102,8 +100,6 @@ def _process_query(engine,
     argument.prop.instance          = instance
     argument.prop.signature         = sig
     argument.prop.func              = func
-    argument.prop.prompt            = prompt
-    argument.prop.examples          = examples
     argument.prop.constraints       = constraints
     argument.prop.return_constraint = return_constraint
     argument.prop.default           = default

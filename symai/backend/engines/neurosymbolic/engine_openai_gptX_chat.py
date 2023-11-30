@@ -10,6 +10,7 @@ from ...mixin.openai import OpenAIMixin
 from ...settings import SYMAI_CONFIG
 from ....utils import encode_frames_file
 from ....misc.console import ConsoleStyle
+from ....symbol import Symbol
 
 
 logging.getLogger("openai").setLevel(logging.ERROR)
@@ -166,9 +167,14 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         return int((self.max_tokens - val) * 0.99) # TODO: figure out how their magic number works to compute reliably the precise max token size
 
     def forward(self, argument):
-        args                = argument.args
         kwargs              = argument.kwargs
         prompts_            = argument.prop.processed_input
+        # check for global object based input handler
+        if isinstance(argument.prop.instance, Symbol):
+            input_handler   = argument.prop.instance._metadata.input_handler if hasattr(argument.prop.instance._metadata, 'input_handler') else None
+        if input_handler:
+            input_handler((prompts_,))
+        # check for kwargs based input handler
         input_handler       = kwargs['input_handler'] if 'input_handler' in kwargs else None
         if input_handler:
             input_handler((prompts_,))
@@ -207,6 +213,12 @@ class GPTXChatEngine(Engine, OpenAIMixin):
                                                  n=1,
                                                  **openai_kwargs)
 
+            # check for global object based output handler
+            if isinstance(argument.prop.instance, Symbol):
+                output_handler = argument.prop.instance._metadata.output_handler if hasattr(argument.prop.instance._metadata, 'output_handler') else None
+            if output_handler:
+                output_handler(res)
+            # check for kwargs based output handler
             output_handler = kwargs['output_handler'] if 'output_handler' in kwargs else None
             if output_handler:
                 output_handler(res)
