@@ -40,7 +40,7 @@ class TagProcessor(PreProcessor):
         assert 'tag' in kwargs, 'TagProcessor requires a `tag` parameter.'
         thoughts = '' if 'thoughts' not in kwargs else f"{kwargs['thoughts']}"
         timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S:%f")
-        kwargs['prompt'] = ''
+        argument.prop.prompt = ''
         return str(argument.args[0]) + '[{tag}{timestamp}]:{thoughts} <<<\n'.format(tag=kwargs['tag'], timestamp=timestamp, thoughts=thoughts)
 
 

@@ -24,7 +24,36 @@ class SymbolEncoder(JSONEncoder):
         return sym.__dict__
 
 
+class Metadata(object):
+    # create a method that allow to dynamically assign a attribute if not in __dict__
+    # example: metadata = Metadata()
+    # metadata.some_new_attribute = 'some_value'
+    # metadata.some_new_attribute
+    def __getattr__(self, name):
+        '''
+        Get a metadata attribute by name.
+
+        Args:
+            name (str): The name of the metadata attribute to get.
+
+        Returns:
+            Any: The value of the metadata attribute.
+        '''
+        return self.__dict__.get(name)
+
+    def __setattr__(self, name, value):
+        '''
+        Set a metadata attribute by name.
+
+        Args:
+            name (str): The name of the metadata attribute to set.
+            value (Any): The value of the metadata attribute.
+        '''
+        self.__dict__[name] = value
+
+
 class Symbol(ABC, *SYMBOL_PRIMITIVES):
+    _metadata                              = Metadata()
     _dynamic_context: Dict[str, List[str]] = {}
 
     def __init__(self, *value, static_context: Optional[str] = '') -> None:
@@ -41,9 +70,9 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
         '''
         super().__init__()
         self._value    = None
-        self.metadata = None
-        self.parent   = None #@TODO: to enable graph construction
-        self.children = None #@TODO: to enable graph construction
+        self._metadata = self._metadata # use global metadata by default
+        self._parent    = None #@TODO: to enable graph construction
+        self._children  = None #@TODO: to enable graph construction
         self._static_context = static_context
 
         if len(value) == 1:
@@ -51,10 +80,10 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
             value = value[0]
 
             if isinstance(value, Symbol):
-                self._value    = value.value
-                self.parent   = value.parent
-                self.children = value.children
-                self.metadata = value.metadata
+                self._value    = value._value
+                self._metadata = value._metadata
+                self._parent    = value._parent
+                self._children  = value._children
 
             elif isinstance(value, list) or isinstance(value, dict) or \
                     isinstance(value, set) or isinstance(value, tuple) or \

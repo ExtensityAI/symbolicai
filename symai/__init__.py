@@ -279,4 +279,5 @@ from .imports import Import
 from .components import Function
 from .pre_processors import PreProcessor
 from .post_processors import PostProcessor
+from .extended import Conversation
 from .core import few_shot, zero_shot

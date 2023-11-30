@@ -37,4 +37,4 @@ class UserInputEngine(Engine):
         return [rsp], metadata
 
     def prepare(self, argument):
-        argument.prop.processed_input = argument.kwargs['prompt']
+        argument.prop.processed_input = argument.prop.prompt

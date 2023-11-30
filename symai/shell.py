@@ -69,7 +69,7 @@ class Shell(Expression):
 def process_query(args) -> None:
     query = args.query
     if query is None or len(query) == 0:
-        print("Starting interactive shell ...")
+        print("Starting ExtensityAI: Symbolic Shell ...")
         shellsv_run(auto_query_on_error=args.auto,
                     conversation_style=args.style if args.style is not None and args.style != '' else None)
         return
