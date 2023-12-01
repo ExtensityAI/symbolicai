@@ -51,7 +51,7 @@ class Persona(Conversation):
         self._value = self.bio()
 
     def __getstate__(self):
-        state = super().__getstate__()
+        state = super().__getstate__().copy()
         # Remove the unpickleable entries such as the `indexer` attribute because it is not serializable
         state.pop('func', None)
         return state
