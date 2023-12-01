@@ -9,19 +9,17 @@ class OutputEngine(Engine):
         return 'output'
 
     def forward(self, argument):
-        kwargs  = argument.kwargs
-        expr    = kwargs['expr'] if 'expr' in kwargs else None
-        res     = None
+        expr, processed, args, kwargs  = argument.prop.prepared_input
+        res = None
         if expr:
-            res = expr(*kwargs['args'], **kwargs['kwargs'])
+            if processed:
+                res = expr(processed)
+            else:
+                res = expr(*args, **kwargs)
 
         metadata = {}
-        if 'metadata' in kwargs and kwargs['metadata']:
-            metadata['kwargs'] = kwargs
-            metadata['input']  = expr
-            metadata['output'] = res
 
         return [kwargs], metadata
 
     def prepare(self, argument):
-        assert not argument.prop.processed_input, "OutputEngine does not support processed_input."
+        argument.prop.prepared_input = argument.prop.expr, argument.prop.processed_input, argument.prop.args, argument.prop.kwargs

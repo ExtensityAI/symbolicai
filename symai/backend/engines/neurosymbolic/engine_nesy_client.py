@@ -75,10 +75,6 @@ class NeSyClientEngine(Engine):
             res = except_remedy(e, callback, argument)
 
         metadata = {}
-        if 'metadata' in kwargs and kwargs['metadata']:
-            metadata['kwargs'] = kwargs
-            metadata['input']  = prompts_
-            metadata['output'] = res
 
         rsp    = [res]
         output = rsp if isinstance(prompts, list) else rsp[0]

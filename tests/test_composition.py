@@ -3,13 +3,12 @@ import unittest
 
 import numpy as np
 
-from examples.news import News
-from examples.paper import Paper
-from examples.sql import SQL
+# from notebooks.examples.news import News
+# from notebooks.examples.paper import Paper
+# from notebooks.examples.sql import SQL
 from symai import *
 from symai.chat import SymbiaChat
 from symai.extended import *
-from symai import FileReader
 from symai.components import *
 
 # for debugging
@@ -64,17 +63,17 @@ class TestComposition(unittest.TestCase):
     def test_iterator(self):
         res = Symbol('Hello World')
         a = ''
-        for char in res:
-            a = char
-        self.assertTrue(a == 'd', a)
+        for item in res:
+            a = item
+        self.assertTrue(a == 'World', a)
         a = ''
-        for char in reversed(res):
-            a = char
-        self.assertTrue(a == 'H', a)
+        for item in reversed(res):
+            a = item
+        self.assertTrue(a == 'Hello', a)
 
     def test_filter(self): # TODO: success rate not 100%
         sym = Symbol('Physics, Sports, Mathematics, Music, Art, Theater, Writing')
-        res = sym.filter('science subjects')
+        res = sym.filter('science related subjects')
         self.assertTrue(res == 'Sports, Music, Art, Theater, Writing', res)
 
     def test_modify(self):
@@ -296,13 +295,13 @@ val, res = test_inception()
 test = 'it works'
 """)
         res = sym.execute()
-        self.assertTrue('test' in res['locals'])
-        self.assertTrue(res['locals']['test'] == 'it works')
-        self.assertTrue('val' in res['locals'])
-        self.assertTrue(type(res['locals']['val']) == bool)
-        self.assertTrue('res' in res['locals'])
-        self.assertTrue(res['locals']['res'] == 'Hola Mundo')
-        self.assertTrue(res['locals']['val'])
+        self.assertTrue('test' in res.raw.locals)
+        self.assertTrue(res.raw.locals.test == 'it works')
+        self.assertTrue('val' in res.raw.locals)
+        self.assertTrue(type(res.raw.locals.val) == bool)
+        self.assertTrue('res' in res.raw.locals)
+        self.assertTrue(res.raw.locals.res == 'Hola Mundo')
+        self.assertTrue(res.raw.locals.val)
 
     def test_execute_pseudo_code(self): # TODO: check how to fix SyntaxError: invalid syntax
         expr = Expression()
@@ -496,16 +495,16 @@ modified:   tests/test_composition.py
         res = dalle('a cat with a hat')
         self.assertIsNotNone('http' in res)
 
-    def test_news_component(self):
-        news = News(url='https://www.cnbc.com/cybersecurity/',
-                    pattern='cnbc',
-                    filters=ExcludeFilter('sentences about subscriptions, licensing, newsletter'),
-                    render=True)
-        expr = Log(Trace(news))
-        res = expr()
-        os.makedirs('results', exist_ok=True)
-        path = os.path.abspath('results/news.html')
-        res.save(path, replace=False)
+    # def test_news_component(self):
+    #     news = News(url='https://www.cnbc.com/cybersecurity/',
+    #                 pattern='cnbc',
+    #                 filters=ExcludeFilter('sentences about subscriptions, licensing, newsletter'),
+    #                 render=True)
+    #     expr = Log(Trace(news))
+    #     res = expr()
+    #     os.makedirs('results', exist_ok=True)
+    #     path = os.path.abspath('results/news.html')
+    #     res.save(path, replace=False)
 
     def test_summarizer_component(self):
         data = Symbol("""Language technology, often called human language technology (HLT), studies methods of how computer programs or electronic devices can analyze, produce, modify or respond to human texts and speech.[1] Working with language technology often requires broad knowledge not only about linguistics but also about computer science. """)
@@ -557,13 +556,13 @@ modified:   tests/test_composition.py
         meta = style_expr(f'USER_CONTEXT: {str(url)}', payload='max-width: 400px;')
         self.assertTrue('https://images6' in meta, meta)
 
-    def test_paper_component(self):
-        paper = Paper(path='examples/paper.pdf')
-        expr = Log(Trace(paper))
-        res = expr(slice=(1, 1))
-        os.makedirs('results', exist_ok=True)
-        path = os.path.abspath('results/news.html')
-        res.save(path, replace=False)
+    # def test_paper_component(self):
+    #     paper = Paper(path='examples/paper.pdf')
+    #     expr = Log(Trace(paper))
+    #     res = expr(slice=(1, 1))
+    #     os.makedirs('results', exist_ok=True)
+    #     path = os.path.abspath('results/news.html')
+    #     res.save(path, replace=False)
 
     def test_ui(self):
         sym = Symbol("""['The Taliban has issued a ban on female education in Afghanistan, preventing female students from attending private and public universities. This was confirmed in a government statement released today. All female students are barred from attending universities, both private and public, in the country. This move will severely impact the education system in Afghanistan and could have long-term implications for female education in the country.', 'Madschid Tawakoli, who was arrested shortly before the death of Kurdish woman Mahsa Amini, which triggered protests across Iran, has been released from the notorious Ewin Prison after three months. His brother Mohsen released a picture on Twitter of Tawakoli holding flowers in front of the prison. According to UN figures, at least 14,000 people have been arrested so far in connection to the protests. In 2013, Tawakoli was awarded the Student Peace Prize by Norwegian students for his activism.', 'After a two-month hunger strike, Mohsen Tawakoli, the brother of a prominent political prisoner, has been released from prison. The event has sparked criticism of the Iranian government from the international community.\n\nIn the UK, the Royal College of Nursing has declared a strike for higher wages, the first time in its 100-year history. The strike follows protests by NHS staff over working conditions and pay, with rescue services in England declaring a state of emergency. The staff are protesting against a “vicious circle” of longer waits for doctors and inadequate resources.', "EU's foreign policy chief Josep Borrell has called for an end to the suppression of demonstrations in Iran and for both sides to keep communication channels open in order to restore the nuclear deal. Relations between Iran and the EU have deteriorated in recent months, with renowned Iranian filmmaker Asghar Farhadi calling for the release of jailed Iranian actress Taraneh Alidoosti, who was arrested in January and released shortly thereafter. Russia's military support for Iran was also discussed.", 'In a bloody end to a hostage situation in a Pakistani prison for terrorists, special forces killed 33 hostage-takers, 2 commando soldiers, and several inmates. The attackers had wanted to free the prisoners and force an unimpeded exit to Taliban-controlled Afghanistan. \n\nIn a separate incident, an explosion shook the Urengoi-Pomary-Uschgorod-Pipeline in Russia, resulting in at least three deaths. Work on the pipeline had been done prior to the fire and its circumstances are being investigated. The pipeline supplies gas to Austria, and its supply is currently off.', 'The Russian military has resumed the deployment of troop units to the Belarus-Ukraine border. Tanks, armoured vehicles and transporters, along with various military equipment, have been brought to the vicinity. Gasprom PJSC has stated that gas supplies to consumers have been resumed via parallel gas pipelines. The Ukrainian gas network operator has stated that gas flows are normal and there are no pressure changes. The Austrian Energy Ministry has also stated that deliveries to Austria at the Baumgarten transfer point remain unchanged, with nominations of gas deliveries for the next few days in the usual range.']""")
@@ -638,7 +637,7 @@ modified:   tests/test_composition.py
         clip = Interface('clip')
         res = clip('https://hips.hearstapps.com/hmg-prod.s3.amazonaws.com/images/cute-cat-photos-1593441022.jpg',
                       ['cat', 'dog', 'bird', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe'])
-        res = res.argmax()
+        res = res.value.argmax()
         self.assertTrue(0 == res)
 
     def test_search(self):

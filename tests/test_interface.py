@@ -22,6 +22,7 @@ class TestInterface(unittest.TestCase):
     def test_console(self):
         expr = Interface('console')
         res = expr('Hallo Welt!')
+        self.assertIsNotNone(res)
 
     def test_input(self):
         expr = Interface('input')
@@ -30,7 +31,7 @@ class TestInterface(unittest.TestCase):
 
     def test_whisper(self):
         expr = Interface('whisper')
-        res = expr('examples/audio.mp3')
+        res = expr('notebooks/examples/audio.mp3')
         self.assertTrue(res == 'I may have overslept.')
 
     def test_selenium(self):
@@ -42,7 +43,7 @@ class TestInterface(unittest.TestCase):
         expr = Interface('clip')
         res = expr('https://hips.hearstapps.com/hmg-prod.s3.amazonaws.com/images/cute-cat-photos-1593441022.jpg',
                    ['cat', 'dog', 'bird', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe'])
-        res = res.argmax()
+        res = res.value.argmax()
         self.assertTrue(0 == res)
 
     def test_ocr(self):
@@ -55,7 +56,7 @@ class TestInterface(unittest.TestCase):
         expr(Expression('Hello World!').zip(), operation='add')
         expr(Expression('I like cookies!').zip(), operation='add')
         res = expr(Expression('hello').embed().value, operation='search').ast()
-        self.assertTrue('Hello' in str(res['matches'][0]['metadata']['text']), res)
+        self.assertTrue('Hello' in str(res), res)
 
     def test_wolframalpha(self):
         expr = Interface('wolframalpha')

@@ -80,14 +80,6 @@ class LLaMACppCompletionEngine(Engine):
 
 
         metadata = {}
-        if 'metadata' in kwargs and kwargs['metadata']:
-            metadata['kwargs']      = kwargs
-            metadata['input']       = prompts_
-            metadata['output']      = res
-            metadata['model']       = self.model
-            metadata['max_tokens']  = max_tokens
-            metadata['temperature'] = temperature
-            metadata['top_p']       = top_p
 
         rsp    = [r['text'] for r in res['choices']]
         output = rsp if isinstance(prompts_, list) else rsp[0]

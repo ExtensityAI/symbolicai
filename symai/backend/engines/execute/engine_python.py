@@ -89,13 +89,10 @@ class PythonEngine(Engine):
             raise e
 
         metadata = {}
-        if 'metadata' in kwargs and kwargs['metadata']:
-            metadata['kwargs'] = kwargs
-            metadata['input']  = code
-            metadata['output'] = rsp
-            metadata['error']  = None if not err else full_stack()
+        metadata['error']  = None if not err else full_stack()
 
         return [rsp], metadata
 
     def prepare(self, argument):
-        argument.prop.prepared_input = str(argument.prop.processed_input)
+        assert not argument.prop.processed_input, "PythonEngine does not support processed_input."
+        argument.prop.prepared_input = str(argument.prop.instance)

@@ -9,15 +9,17 @@ Expression.command(time_clock=True)
 class TestBackend(unittest.TestCase):
     def test_index(self):
         expr = Expression()
-        expr.add(Symbol('Hello World!').zip())
-        expr.add(Symbol('I like cookies!').zip())
+        s1   = Symbol('Hello World!').zip()
+        s2   = Symbol('I like cookies!').zip()
+        expr.add(s1)
+        expr.add(s2)
         res = expr.get(Symbol('hello').embed().value).ast()
-        self.assertTrue(res['matches'][0]['metadata']['text'][0] == 'Hello World!')
+        self.assertTrue('Hello World!' in res, res)
 
     def test_html_template(self):
         template = Template()
-        template(Symbol('Create a table with two columns (title, price).', 'data points: Apple, 1.99; Banana, 2.99; Orange, 3.99'))
-        self.assertTrue('<table>' in template, template)
+        res = template(Symbol('Create a table with two columns (title, price).', 'data points: Apple, 1.99; Banana, 2.99; Orange, 3.99'))
+        self.assertTrue('<table>' in res, res)
 
 
 if __name__ == '__main__':

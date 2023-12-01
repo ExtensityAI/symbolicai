@@ -54,13 +54,8 @@ class EmbeddingEngine(Engine, OpenAIMixin):
             res = except_remedy(e, input_, callback, self, *args, **kwargs)
 
         rsp = [r.embedding for r in res.data]
-        metadata = {}
-        if 'metadata' in kwargs and kwargs['metadata']:
-            metadata['kwargs'] = kwargs
-            metadata['input']  = input_
-            metadata['output'] = res
-            metadata['model']  = self.model
 
+        metadata = {}
         return [rsp], metadata
 
     def prepare(self, argument):

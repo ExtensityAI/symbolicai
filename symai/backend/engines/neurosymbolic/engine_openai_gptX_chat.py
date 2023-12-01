@@ -224,20 +224,6 @@ class GPTXChatEngine(Engine, OpenAIMixin):
                     raise ex from e
 
         metadata = {}
-        if 'metadata' in kwargs and kwargs['metadata']:
-            metadata['kwargs'] = kwargs
-            metadata['input']  = prompts_
-            metadata['output'] = res
-            metadata['model']  = model
-            metadata['max_tokens'] = max_tokens
-            metadata['temperature'] = temperature
-            metadata['frequency_penalty'] = frequency_penalty
-            metadata['presence_penalty'] = presence_penalty
-            metadata['top_p'] = top_p
-            metadata['except_remedy'] = except_remedy
-            metadata['functions'] = functions
-            metadata['function_call'] = function_call
-            metadata['stop'] = stop
 
         rsp    = [r.message.content for r in res.choices]
         output = rsp if isinstance(prompts_, list) else rsp[0]
@@ -338,7 +324,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             suffix = '\n>>>\n'.join(parts[c:])
         user += f"{suffix}"
 
-        if argument.prop.template_suffix is not None:
+        if argument.prop.template_suffix:
             user += f"\n[[PLACEHOLDER]]\n{str(argument.prop.template_suffix)}\n\n"
             user += f"Only generate content for the placeholder `[[PLACEHOLDER]]` following the instructions and context information. Do NOT write `[[PLACEHOLDER]]` or anything else in your output.\n\n"
 
