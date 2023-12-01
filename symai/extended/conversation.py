@@ -59,7 +59,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         # Restore instance attributes
         self.__dict__.update(state)
         # Add back the attribute that were removed in __getstate__
-        if self.index_name is not None:
+        if self.index_name:
             self.indexer = Indexer(index_name=self.index_name)
             self.index   = self.indexer(raw_result=True)
         self.seo_opt = SEOQueryOptimizer()
@@ -109,6 +109,8 @@ class Conversation(SlidingWindowStringConcatMemory):
         if self.index_name is not None:
             self.indexer = Indexer(index_name=self.index_name)
             self.index   = self.indexer(raw_result=True)
+        self.seo_opt     = SEOQueryOptimizer()
+        self.reader      = FileReader()
         return self
 
     def commit(self, target_file: str = None, formatter: Optional[Callable] = None):
@@ -177,7 +179,7 @@ class Conversation(SlidingWindowStringConcatMemory):
             if 'raw_result' in kwargs:
                 print(memory)
 
-        if memory is not None:
+        if memory:
             res = self.recall(query, payload=str(memory)[:1500], *args, **kwargs)
         else:
             res = self.recall(query, *args, **kwargs)
