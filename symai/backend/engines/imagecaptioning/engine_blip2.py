@@ -62,11 +62,6 @@ class Blip2Engine(Engine):
             res = except_remedy(e, callback, argument)
 
         metadata = {}
-        if 'metadata' in kwargs and kwargs['metadata']:
-            metadata['kwargs'] = kwargs
-            metadata['input'] = (image, prompt)
-            metadata['output'] = res
-            metadata['model'] = self.model_id
 
         return [res], metadata
 

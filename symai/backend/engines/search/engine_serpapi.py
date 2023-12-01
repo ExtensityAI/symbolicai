@@ -93,11 +93,6 @@ class SerpApiEngine(Engine):
             rsp.append(toret)
 
         metadata = {}
-        if 'metadata' in kwargs and kwargs['metadata']:
-            metadata['kwargs'] = kwargs
-            metadata['input']  = queries_
-            metadata['output'] = rsp
-            metadata['model']  = self.engine
 
         output = rsp if isinstance(queries, list) else rsp[0]
         output = [output]

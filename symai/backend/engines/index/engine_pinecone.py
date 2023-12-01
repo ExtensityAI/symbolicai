@@ -31,6 +31,8 @@ class PineconeResult(Result):
         self._value     = self._process(res)
 
     def _process(self, res):
+        if not res:
+            return None
         try:
             res = self._to_symbol(res).ast()
         except Exception as e:
@@ -188,14 +190,6 @@ class IndexEngine(Engine):
             raise ValueError('Invalid operation')
 
         metadata = {}
-        if 'metadata' in kwargs and kwargs['metadata']:
-            metadata['kwargs']         = kwargs
-            metadata['input']          = (operation, embedding)
-            metadata['output']         = rsp
-            metadata['model']          = self.index_name
-            metadata['index_top_k']    = self.index_top_k
-            metadata['index_values']   = self.index_values
-            metadata['index_metadata'] = self.index_metadata
 
         rsp = PineconeResult(rsp, query, embedding)
         return [rsp], metadata

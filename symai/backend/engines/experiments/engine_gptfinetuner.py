@@ -25,11 +25,6 @@ class GPTFineTuner(Engine):
         del kwargs['__cmd__']
 
         metadata = {}
-        if 'metadata' in kwargs and kwargs['metadata']:
-            metadata['kwargs'] = kwargs
-            metadata['input']  = args
-            metadata['output'] = rsp
-            metadata['model']  = self.base_model
 
         return [rsp], metadata
 

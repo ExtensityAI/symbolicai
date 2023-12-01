@@ -8,6 +8,7 @@ SYMBOL_PRIMITIVES = [
     DataHandlingPrimitives,
     UniquenessPrimitives,
     PatternMatchingPrimitives,
+    DictHandlingPrimitives,
     QueryHandlingPrimitives,
     ExecutionControlPrimitives,
     TemplateStylingPrimitives,

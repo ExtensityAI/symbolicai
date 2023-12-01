@@ -38,9 +38,9 @@ class ClusterPostProcessor(PostProcessor):
 
 class TemplatePostProcessor(PostProcessor):
     def __call__(self, response, argument) -> Any:
-        template = argument.kwargs['template']
-        placeholder = argument.kwargs['placeholder']
-        template = argument.kwargs['template']
+        template    = argument.prop.template
+        placeholder = argument.prop.placeholder
+        template    = argument.prop.template
         parts = str(template).split(placeholder)
         return f'{parts[0]}{response}{parts[1]}'
 
@@ -131,18 +131,9 @@ class ASTPostProcessor(PostProcessor):
 
 class ConsolePostProcessor(PostProcessor):
     def __call__(self, response, argument) -> Any:
-        verbose = response['verbose'] if 'verbose' in response else False
-        input_ = response['input'] if 'input' in response else None
-        if verbose: print(f"Input: {input_}")
-        expr_ = response['expr'] if 'expr' in response else None
-        if verbose: print(f"Expression: {expr_}")
-        args_kwargs = (response['args'], response['kwargs'])
-        if verbose: print(f"args: {args_kwargs[0]} kwargs: {args_kwargs[1]}")
-        rsp = f"Dictionary: {response}"
-        if verbose: print(rsp)
-        output = f"Output: {response['output']}"
-        if verbose: print(output)
-        return response['output']
+        verbose = argument.prop.verbose
+        if verbose: print(f"Argument: {argument}")
+        return response
 
 
 class TakeLastPostProcessor(PostProcessor):

@@ -1,7 +1,6 @@
-import os
 import unittest
 
-from examples.demo import Demo
+from notebooks.examples.demo import Demo
 from symai.symbol import Symbol
 
 # for debugging

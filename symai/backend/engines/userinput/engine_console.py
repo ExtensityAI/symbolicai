@@ -22,10 +22,6 @@ class UserInputEngine(Engine):
             rsp = input(msg)
 
         metadata = {}
-        if 'metadata' in kwargs and kwargs['metadata']:
-            metadata['kwargs'] = kwargs
-            metadata['input']  = msg
-            metadata['output'] = None
 
         return [rsp], metadata
 

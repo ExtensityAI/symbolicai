@@ -5,16 +5,14 @@ from symai import Import
 
 class TestImport(unittest.TestCase):
     def test_helloworld(self):
-        expr = Import('Xpitfire/symhello')
+        expr = Import('ExtensityAI/rickshell')
         res = expr('Test')
-        self.assertIsNotNone('Hello' in res)
+        self.assertIsNotNone(res)
 
     def test_operational_commands(self):
-        Import.install('Xpitfire/symhello')
-        self.assertIn('Xpitfire/symhello', Import.list_installed())
-        Import.update('Xpitfire/symhello')
-        #Import.remove('Xpitfire/symhello')
-        #self.assertNotIn('Xpitfire/symhello', Import.list_installed())
+        Import.install('ExtensityAI/symask')
+        self.assertIn('ExtensityAI/symask', Import.list_installed())
+        Import.update('ExtensityAI/symask')
 
 
 if __name__ == '__main__':

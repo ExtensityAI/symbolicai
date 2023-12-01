@@ -68,13 +68,6 @@ class SeleniumEngine(Engine):
             rsp.append(page)
 
         metadata = {}
-        if 'metadata' in kwargs and kwargs['metadata']:
-            metadata['kwargs'] = kwargs
-            metadata['input']  = (urls, patterns)
-            metadata['output'] = rsp
-            metadata['urls']   = urls
-            metadata['patterns'] = patterns
-
         rsp = SeleniumResult(rsp)
         return rsp, metadata
 

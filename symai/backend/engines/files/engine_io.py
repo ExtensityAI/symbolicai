@@ -154,11 +154,6 @@ class FileEngine(Engine):
         rsp = rsp.encode('utf8', 'ignore').decode('utf8', 'ignore')
 
         metadata = {}
-        if 'metadata' in kwargs and kwargs['metadata']:
-            metadata['kwargs']  = kwargs
-            metadata['input']   = path
-            metadata['output']  = rsp
-            metadata['fix_pdf'] = kwargs['fix_pdf'] if 'fix_pdf' in kwargs else False
 
         return [rsp], metadata
 

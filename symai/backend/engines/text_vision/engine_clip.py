@@ -58,11 +58,6 @@ class CLIPEngine(Engine):
         rsp = rsp.detach().cpu().numpy()
 
         metadata = {}
-        if 'metadata' in kwargs and kwargs['metadata']:
-            metadata['kwargs'] = kwargs
-            metadata['input']  = (image_url, text)
-            metadata['output'] = rsp
-            metadata['model']  = self.model_id
 
         return [rsp], metadata
 

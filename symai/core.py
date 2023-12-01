@@ -881,7 +881,7 @@ def negate(prompt: str = "Negate the following statement:\n",
 
 
 def contains(default: bool = False,
-             prompt: str = "Is information 'A' contained in 'B'?\n",
+             prompt: str = "Is semantically the information of 'A' contained in 'B'?\n",
              examples: prm.Prompt = prm.ContainsValue(),
              constraints: List[Callable] = [],
              pre_processors: Optional[List[pre.PreProcessor]] = [pre.ContainsPreProcessor()],
@@ -1992,11 +1992,12 @@ def index(prompt: Any,
     return decorator
 
 
-def command(engines: List[str] = ['all']):
+def command(engines: List[str] = ['all'], **decorator_kwargs):
     """Decorates a function to forward commands to the engine backends.
 
     Args:
         engines (List[str], optional): A list of engines to forward the command to. Defaults to ['all'].
+        **decorator_kwargs: Additional keyword arguments to be passed to the decorated function.
 
     Returns:
         Callable: The decorated function.
@@ -2007,7 +2008,8 @@ def command(engines: List[str] = ['all']):
             return EngineRepository().execute_command(
                     engines=engines,
                     instance=instance,
-                    func=func
+                    func=func,
+                    **decorator_kwargs
                 )
         return wrapper
     return decorator

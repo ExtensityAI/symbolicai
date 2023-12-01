@@ -115,6 +115,8 @@ class FuzzyEquals(Prompt):
             "'!ola mundo;' == 'ola mundo' =>True",
             "'long.' == ' long' =>True",
             "'eleven' == 'Elf' =>True",
+            "'eleven' <= 8 =>False",
+            "'eleven' <= 11 =>True",
             "'Hello World!' == 'Hello World' =>True",
             "'Hello World' == 'HelloWorld' =>True",
             "'helloworld' == 'Hello World' =>True",

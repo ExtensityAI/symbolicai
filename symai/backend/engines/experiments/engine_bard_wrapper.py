@@ -76,12 +76,6 @@ class BardEngine(Engine, OpenAIMixin):
             res = except_remedy(e, callback, argument)
 
         metadata = {}
-        if 'metadata' in kwargs and kwargs['metadata']:
-            metadata['kwargs'] = kwargs
-            metadata['input']  = prompts_
-            metadata['output'] = res
-            metadata['model']  = self.model
-            metadata['max_tokens'] = self.max_tokens
 
         rsp    = [res['content']]
         output = rsp if isinstance(prompts_, list) else rsp[0]

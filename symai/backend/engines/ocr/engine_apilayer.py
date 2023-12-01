@@ -47,10 +47,6 @@ class OCREngine(Engine):
         rsp         = response.text
 
         metadata  = {}
-        if 'metadata' in kwargs and kwargs['metadata']:
-            metadata['kwargs'] = kwargs
-            metadata['input']  = (image_url, url)
-            metadata['output'] = response
 
         rsp       = ApiLayerResult(response.text, status_code)
         return [rsp], metadata

@@ -105,11 +105,6 @@ class ImageRenderingEngine(Engine):
             res = except_remedy(e, callback, argument)
 
         metadata = {}
-        if 'metadata' in kwargs and kwargs['metadata']:
-            metadata['kwargs'] = kwargs
-            metadata['input']  = prompt
-            metadata['output'] = res
-            metadata['size']   = size
 
         rsp = DalleResult(res)
         return [rsp], metadata
