@@ -227,7 +227,7 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
         Returns:
             dict: The state of the symbol.
         '''
-        state = self.__dict__.copy()
+        state = vars(self).copy()
         state.pop('_metadata', None)
         state.pop('_parent', None)
         state.pop('_children', None)
@@ -941,7 +941,7 @@ class Expression(Symbol):
         return self.forward(*args, **kwargs)
 
     def __getstate__(self):
-        state = self.__dict__.copy()
+        state = super().__getstate__().copy()
         state.pop('_sym_return_type', None)
         return state
 

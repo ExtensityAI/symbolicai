@@ -47,11 +47,12 @@ class Conversation(SlidingWindowStringConcatMemory):
             self.index   = self.indexer(raw_result=True)
 
     def __getstate__(self):
-        state = super().__getstate__()
+        state = super().__getstate__().copy()
         # Remove the unpickleable entries such as the `indexer` attribute because it is not serializable
         state.pop('seo_opt', None)
         state.pop('indexer', None)
         state.pop('index', None)
+        state.pop('reader', None)
         return state
 
     def __setstate__(self, state):
@@ -60,7 +61,9 @@ class Conversation(SlidingWindowStringConcatMemory):
         # Add back the attribute that were removed in __getstate__
         if self.index_name is not None:
             self.indexer = Indexer(index_name=self.index_name)
-            self.index  = self.indexer(raw_result=True)
+            self.index   = self.indexer(raw_result=True)
+        self.seo_opt = SEOQueryOptimizer()
+        self.reader  = FileReader()
 
     def store_system_message(self, message: str, *args, **kwargs):
         val = f"[SYSTEM_INSTRUCTION::]: <<<\n{str(message)}\n>>>\n"
@@ -74,9 +77,12 @@ class Conversation(SlidingWindowStringConcatMemory):
         self.store(val, *args, **kwargs)
 
     @staticmethod
-    def save_conversation_state(conversation: "Conversation", path: str) -> None:
+    def save_conversation_state(conversation: "Conversation", file_path: str) -> None:
+        # Check if path exists and create it if it doesn't
+        dir_path = os.path.dirname(file_path)
+        os.makedirs(dir_path, exist_ok=True)
         # Save the conversation object as a pickle file
-        with open(path, 'wb') as handle:
+        with open(file_path, 'wb') as handle:
             pickle.dump(conversation, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     def load_conversation_state(self, path: str) -> "Conversation":

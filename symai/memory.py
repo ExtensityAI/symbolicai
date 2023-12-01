@@ -53,7 +53,7 @@ class SlidingWindowStringConcatMemory(Memory):
     def max_tokens(self): pass
 
     def __getstate__(self):
-        state = super().__getstate__()
+        state = super().__getstate__().copy()
         # Exclude the max_tokens property from being serialized
         state.pop('_max_tokens', None)
         return state
