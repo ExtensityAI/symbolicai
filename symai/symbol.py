@@ -241,6 +241,9 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
             state (dict): The state to set the symbol to.
         '''
         vars(self).update(state)
+        self._metadata = self._metadata
+        self._parent   = None
+        self._children = None
 
     def __contains__(self, other: Any) -> bool:
         '''
