@@ -370,7 +370,11 @@ def query_language_model(query: str, from_shell=True, res=None, *args, **kwargs)
             for fl in files:
                 if fl.strip() == '':
                     continue
-                if os.path.exists(fl) and os.path.isfile(fl):
+                # remove slicing if any
+                _tmp = fl
+                if '[' in _tmp:
+                    _tmp = _tmp.split('[')[0]
+                if os.path.exists(_tmp) and os.path.isfile(_tmp):
                     func.store_file(fl)
                 else:
                     # interpret as follow up command
@@ -390,7 +394,7 @@ def query_language_model(query: str, from_shell=True, res=None, *args, **kwargs)
 
     with Loader(desc="Inference ...", end=""):
         if res is None:
-            query = f"[SystemInfo]\n{platform.uname()}\n\n[Context]\n{res}\n\n[Query]\n{query}"
+            query = f"[Context]\n{res}\n\n[Query]\n{query}"
         msg = func(query, *args, **kwargs)
 
     if has_followup_cmd:

@@ -90,3 +90,8 @@ class OpenAIMixin:
 
         elif self.model == 'text-embedding-ada-002':
             return 8_191
+
+        else:
+            # default to similar as in gpt-3.5-turbo
+            print(f'WARNING: Model <{self.model}> not supported, defaulting to 4.096 tokens. May result in unexpected behavior.')
+            return 4_096

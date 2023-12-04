@@ -831,7 +831,7 @@ class TemplateStylingPrimitives:
     This mixin includes functionalities for stylizing symbols and applying templates.
     Future functionalities might include a variety of new stylizing methods, application of more complex templates, etc.
     '''
-    def template(self, template: str, placeholder: Optional[str] = '{{placeholder}}', **kwargs) -> 'Symbol':
+    def template(that, template: str, placeholder: Optional[str] = '{{placeholder}}', **kwargs) -> 'Symbol':
         '''
         Applies a template to the Symbol.
         This method uses the @core.template decorator to apply the given template and placeholder to the Symbol.
@@ -845,11 +845,11 @@ class TemplateStylingPrimitives:
         Returns:
             Symbol: A Symbol object with a template applied.
         '''
-        @core.template(template=template, placeholder=placeholder, **kwargs)
-        def _func(_):
-            pass
+        def _func(self):
+            res = template.replace(placeholder, str(self))
+            return that._to_symbol(res)
 
-        return self._to_symbol(_func(self))
+        return _func(that)
 
     def style(self, description: str, libraries: Optional[List] = [], **kwargs) -> 'Symbol':
         '''

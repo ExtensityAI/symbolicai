@@ -113,6 +113,16 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
             self._value = [v.value if isinstance(v, Symbol) else v for v in value]
 
     @property
+    def metadata(self) -> Dict[str, Any]:
+        '''
+        Get the metadata associated with the symbol.
+
+        Returns:
+            Dict[str, Any]: The metadata associated with the symbol.
+        '''
+        return self._metadata
+
+    @property
     def value(self) -> Any:
         '''
         Get the value of the symbol.

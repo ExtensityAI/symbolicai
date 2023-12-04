@@ -814,42 +814,6 @@ def combine(prompt: str = "Add the two data types in a logical way:\n",
                     **decorator_kwargs)
 
 
-def template(template: str,
-             prompt: str = 'Insert the data into the template in the best suitable format (header, tables, paragraphs, buttons, etc.):\n',
-             placeholder: str = '{{placeholder}}',
-             default: Optional[str] = None,
-             examples: Optional[prm.Prompt] = None,
-             constraints: List[Callable] = [],
-             pre_processors: Optional[List[pre.PreProcessor]] = [pre.DataTemplatePreProcessor(), pre.TemplatePreProcessor()],
-             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
-             **decorator_kwargs):
-    """Fills in a template with the given data.
-
-    Args:
-        template (str): The template string.
-        prompt (str, optional): The prompt describing the task. Defaults to 'Insert the data into the template in the best suitable format (header, tables, paragraphs, buttons, etc.):'.
-        placeholder (str, optional): The placeholder string. Defaults to '{{placeholder}}'.
-        default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
-        examples (Prompt, optional): A list of examples to train the model. Defaults to [].
-        constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
-        pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [DataTemplatePreProcessor(), TemplatePreProcessor()].
-        post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
-
-    Returns:
-        str: The filled template.
-    """
-    return few_shot(prompt=prompt,
-                    template=template,
-                    placeholder=placeholder,
-                    examples=examples,
-                    constraints=constraints,
-                    default=default,
-                    limit=1,
-                    pre_processors=pre_processors,
-                    post_processors=post_processors,
-                    **decorator_kwargs)
-
-
 def negate(prompt: str = "Negate the following statement:\n",
            default: Optional[str] = None,
            examples: prm.Prompt = prm.NegateStatement(),
