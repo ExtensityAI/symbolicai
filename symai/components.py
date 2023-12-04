@@ -1,4 +1,5 @@
 import inspect
+import numpy as np
 
 from pathlib import Path
 from random import sample
@@ -225,6 +226,30 @@ class Template(Expression):
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
         sym = self._to_symbol(sym)
         return sym.template(template=self.template_, placeholder=self.placeholder, **kwargs)
+
+
+class Metric(Expression):
+    def __init__(self, normalize: bool = False, eps: float = 1e-8):
+        super().__init__()
+        self.normalize  = normalize
+        self.eps        = eps
+
+    def forward(self, sym: Symbol, **kwargs) -> Symbol:
+        sym = self._to_symbol(sym)
+        assert sym.type() == np.ndarray or sym.type() == list, 'Metric can only be applied to numpy arrays or lists.'
+        if sym.type() == list:
+            sym._value = np.array(sym.value)
+        # compute normalization between 0 and 1
+        if self.normalize:
+            if len(sym.value.shape) == 1:
+                sym._value = sym.value[None, :]
+            elif len(sym.value.shape) == 2:
+                pass
+            else:
+                raise ValueError(f'Invalid shape: {sym.value.shape}')
+            # normalize between 0 and 1 and sum to 1
+            sym._value = np.exp(sym.value) / (np.exp(sym.value).sum() + self.eps)
+        return sym
 
 
 class Style(Expression):
