@@ -916,7 +916,7 @@ class DataClusteringPrimitives:
 
         return self._to_symbol(_func(self))
 
-    def similarity(self, other: Union['Symbol', np.ndarray], metric: Optional[str] = 'cosine') -> float:
+    def similarity(self, other: Union['Symbol', np.ndarray], metric: Union['cosine', 'product', 'manhattan', 'euclidean', 'minkowski', 'jaccard'] = 'cosine', eps: float = 1e-8, **kwargs) -> float:
         '''
         Calculates the similarity between two Symbol objects using a specified metric.
         This method compares the values of two Symbol objects and calculates their similarity according to the specified metric.
@@ -925,6 +925,8 @@ class DataClusteringPrimitives:
         Args:
             other (Symbol): The other Symbol object to calculate the similarity with.
             metric (Optional[str]): The metric to use for calculating the similarity. Defaults to 'cosine'.
+            eps (float): A small value to avoid division by zero.
+            **kwargs: Additional keyword arguments for the @core.similarity decorator.
 
         Returns:
             float: The similarity value between the two Symbol objects.
@@ -944,9 +946,22 @@ class DataClusteringPrimitives:
         o = _ensure_format(other)
 
         if metric == 'cosine':
-            return (v.T@o / (v.T@v)**.5 * (o.T@o)**.5).item()
+            val = (v.T@o / (np.sqrt(v.T@v) * np.sqrt(o.T@o) + eps)).item()
+        elif metric == 'product':
+            val = (v.T@o / (v.shape[0] + eps)).item()
+        elif metric == 'manhattan':
+            val = (np.abs(v - o).sum(axis=0) / (v.shape[0] + eps)).item()
+        elif metric == 'euclidean':
+            val = (np.sqrt(np.sum((v - o)**2, axis=0)) / (v.shape[0] + eps)).item()
+        elif metric == 'minkowski':
+            p = kwargs.get('p', 3)
+            val = (np.sum(np.abs(v - o)**p, axis=0)**(1/p) / (v.shape[0] + eps)).item()
+        elif metric == 'jaccard':
+            val = (np.sum(np.minimum(v, o)) / np.sum(np.maximum(v, o) + eps)).item()
         else:
             raise NotImplementedError(f"Similarity metric {metric} not implemented. Available metrics: 'cosine'")
+
+        return val
 
     def zip(self, **kwargs) -> List[Tuple[str, List, Dict]]:
         '''
