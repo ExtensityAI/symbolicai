@@ -10,7 +10,7 @@ from . import core
 from . import core_ext
 from .constraints import DictFormatConstraint
 from .formatter import ParagraphFormatter
-from .symbol import Expression, Symbol
+from .symbol import Expression, Symbol, Metadata
 from .utils import CustomUserWarning
 from .prompts import Prompt, JsonPromptTemplate
 from .pre_processors import PreProcessor, JsonPreProcessor
@@ -96,8 +96,13 @@ class Sequence(TrackerTraceable):
 
     def forward(self, *args, **kwargs) -> Symbol:
         sym = self.expr[0](*args, **kwargs)
+        metadata = Metadata()
+        metadata.results = []
+        metadata.results.append(sym)
         for e in self.expr[1:]:
             sym = e(sym, **kwargs)
+            metadata.results.append(sym)
+        sym._metadata = metadata
         return sym
 
 
@@ -219,7 +224,7 @@ class Template(Expression):
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
         sym = self._to_symbol(sym)
-        return sym.template(self.template_, self.placeholder, **kwargs)
+        return sym.template(template=self.template_, placeholder=self.placeholder, **kwargs)
 
 
 class Style(Expression):
