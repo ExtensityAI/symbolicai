@@ -70,8 +70,6 @@ class Conversation(SlidingWindowStringConcatMemory):
         self.store(val, *args, **kwargs)
 
     def store_file(self, file_path: str, *args, **kwargs):
-        if not os.path.exists(file_path):
-            return
         content = self.reader(file_path)
         val = f"[DATA::{file_path}]: <<<\n{str(content)}\n>>>\n"
         self.store(val, *args, **kwargs)

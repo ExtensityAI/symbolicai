@@ -7,7 +7,6 @@ import sys
 import signal
 import time
 import json
-import platform
 
 from typing import Iterable
 from pathlib import Path
@@ -25,7 +24,7 @@ from pygments.lexers.shell import BashLexer
 from .menu.screen import show_intro_menu
 from .imports import Import
 from .backend.settings import SYMSH_CONFIG
-from .components import Function
+from .components import Function, FileReader
 from .extended import Conversation, RetrievalAugmentedConversation
 from .misc.console import ConsoleStyle
 from .misc.loader import Loader
@@ -98,7 +97,7 @@ class PathCompleter(Completer):
         complete_word = document.get_word_before_cursor(WORD=True)
         sep = os.path.sep
         if complete_word.startswith(f'~{sep}'):
-            complete_word = complete_word.replace(f'~', os.path.expanduser('~'))
+            complete_word = FileReader.expand_user_path(complete_word)
 
         # list all files and directories in current directory
         files = list(glob.glob(complete_word + '*'))
@@ -129,15 +128,14 @@ class PathCompleter(Completer):
 
         for d in dirs_:
             # if starts with home directory, then replace it with ~
-            if d != os.path.expanduser('~'):
-                d = d.replace(os.path.expanduser('~'), '~')
+            d = FileReader.expand_user_path(d)
             yield Completion(d, start_position=-start_position,
                              style='class:path-completion',
                              selected_style='class:path-completion-selected')
 
         for f in files_:
             # if starts with home directory, then replace it with ~
-            f = f.replace(os.path.expanduser('~'), '~')
+            f = FileReader.expand_user_path(f)
             yield Completion(f, start_position=-start_position,
                              style='class:file-completion',
                              selected_style='class:file-completion-selected')
@@ -318,7 +316,7 @@ def get_git_branch():
 
 
 # query language model
-def query_language_model(query: str, from_shell=True, res=None, *args, **kwargs):
+def query_language_model(query: str, res=None, *args, **kwargs):
     global stateful_conversation, previous_kwargs
     home_path = os.path.expanduser('~')
     symai_path = os.path.join(home_path, '.symai', '.conversation_state')
@@ -360,21 +358,30 @@ def query_language_model(query: str, from_shell=True, res=None, *args, **kwargs)
 
     has_followup_cmd = False
     cmd              = None
-    if '|' in query and from_shell:
+    if '|' in query:
         cmds = query.split('|')
         query = cmds[0]
         files = ' '.join(cmds[1:]).split(' ')
-        if query.startswith('."') or query.startswith(".'") or query.startswith('.`') or\
+        # remove empty strings
+        files = [fl for fl in files if fl.strip() != '']
+        # expand user path
+        for i, fl in enumerate(files):
+            files[i] = FileReader.expand_user_path(fl)
+
+        if  query.startswith('."') or query.startswith(".'") or query.startswith('.`') or\
             query.startswith('!"') or query.startswith("!'") or query.startswith('!`'):
             func = stateful_conversation
+
             for fl in files:
-                if fl.strip() == '':
-                    continue
                 # remove slicing if any
-                _tmp = fl
+                _tmp     = fl
+                _splits  = _tmp.split('[')
                 if '[' in _tmp:
-                    _tmp = _tmp.split('[')[0]
+                    _tmp = _splits[0]
+                assert len(_splits) == 1 or len(_splits) == 2, 'Invalid file link format.'
+                # check if file exists and is a file
                 if os.path.exists(_tmp) and os.path.isfile(_tmp):
+                    # store fl (slicing supported by FileReader)
                     func.store_file(fl)
                 else:
                     # interpret as follow up command
@@ -386,7 +393,7 @@ def query_language_model(query: str, from_shell=True, res=None, *args, **kwargs)
             cmd = '|'.join(cmds[1:])
 
     else:
-        if query.startswith('."') or query.startswith(".'") or query.startswith('.`') or\
+        if  query.startswith('."') or query.startswith(".'") or query.startswith('.`') or\
             query.startswith('!"') or query.startswith("!'") or query.startswith('!`'):
             func = stateful_conversation
         else:
@@ -515,7 +522,7 @@ def handle_error(cmd, res, message, auto_query_on_error):
                 except Exception:
                     pass
 
-            return query_language_model(msg, from_shell=False)
+            return query_language_model(msg)
         else:
             stdout = res.stdout
             if stdout:
@@ -691,7 +698,7 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
     elif cmd.startswith('cd'):
         try:
             # replace ~ with home directory
-            cmd = cmd.replace('~', os.path.expanduser('~'))
+            cmd = FileReader.expand_user_path(cmd)
             # Change directory
             path = ' '.join(cmd.split(' ')[1:])
             if path.endswith(sep):
@@ -705,7 +712,7 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
     elif os.path.isdir(cmd):
         try:
             # replace ~ with home directory
-            cmd = cmd.replace('~', os.path.expanduser('~'))
+            cmd = FileReader.expand_user_path(cmd)
             # Change directory
             os.chdir(cmd)
         except FileNotFoundError as e:
@@ -743,7 +750,7 @@ def listen(session: PromptSession, word_comp: WordCompleter, auto_query_on_error
                 cur_working_dir = os.getcwd()
                 sep = os.path.sep
                 if cur_working_dir.startswith(sep):
-                    cur_working_dir = cur_working_dir.replace(os.path.expanduser('~'), '~')
+                    cur_working_dir = FileReader.expand_user_path(cur_working_dir)
                 paths = cur_working_dir.split(sep)
                 prev_paths = sep.join(paths[:-1])
                 last_path = paths[-1]

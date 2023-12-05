@@ -1,4 +1,5 @@
 import inspect
+import os
 import numpy as np
 
 from pathlib import Path
@@ -358,6 +359,25 @@ class ExcludeFilter(Expression):
 
 
 class FileReader(Expression):
+    @classmethod
+    def exists(cls, path: str) -> bool:
+        # remove slicing if any
+        _tmp     = path
+        _splits  = _tmp.split('[')
+        if '[' in _tmp:
+            _tmp = _splits[0]
+        assert len(_splits) == 1 or len(_splits) == 2, 'Invalid file link format.'
+        # check if file exists and is a file
+        if os.path.exists(_tmp) and os.path.isfile(_tmp):
+            return True
+        return False
+
+    @classmethod
+    def expand_user_path(cls, path: str) -> str:
+        if path.startswith('~'):
+            path = path.replace('~', os.path.expanduser('~'))
+        return path
+
     def forward(self, path: str, **kwargs) -> Expression:
         return self.open(path, **kwargs)
 
