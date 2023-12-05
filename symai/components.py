@@ -374,9 +374,7 @@ class FileReader(Expression):
 
     @classmethod
     def expand_user_path(cls, path: str) -> str:
-        # specifically select the home directory which is assumed to be the first
-        # element of the split path
-        return path.replace(' ~', os.path.expanduser(' ~'))
+        return path.replace('~', os.path.expanduser('~'))
 
     def forward(self, path: str, **kwargs) -> Expression:
         return self.open(path, **kwargs)
