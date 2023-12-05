@@ -1,12 +1,15 @@
 import os
 import logging
 import PyPDF2
+import tika
 
 from tika import unpack
 
 from ...base import Engine
 
 
+# initialize tika server
+tika.initVM()
 # suppress tika logging
 logging.getLogger('tika').setLevel(logging.CRITICAL)
 
