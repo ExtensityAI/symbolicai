@@ -374,9 +374,7 @@ class FileReader(Expression):
 
     @classmethod
     def expand_user_path(cls, path: str) -> str:
-        if path.startswith('~'):
-            path = path.replace('~', os.path.expanduser('~'))
-        return path
+        return path.replace('~', os.path.expanduser('~'))
 
     def forward(self, path: str, **kwargs) -> Expression:
         return self.open(path, **kwargs)
