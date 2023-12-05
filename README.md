@@ -979,7 +979,7 @@ Here is an example of defining a Sequence expression:
 
 ```python
 # First import all expressions
-from symai import *
+from symai.components import *
 # Define a sequence of expressions
 Sequence(
     Clean(),
