@@ -10,6 +10,7 @@ class SeleniumResult(Result):
     def __init__(self, value) -> None:
         super().__init__(value)
         if value is not None:
+            self.raw    = value
             self._value = self.extract()
 
     def extract(self):
@@ -69,7 +70,7 @@ class SeleniumEngine(Engine):
 
         metadata = {}
         rsp = SeleniumResult(rsp)
-        return rsp, metadata
+        return [rsp], metadata
 
     def prepare(self, argument):
         assert not argument.prop.processed_input, "CrawlerEngine does not support processed_input."

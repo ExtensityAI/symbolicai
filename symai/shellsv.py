@@ -361,26 +361,22 @@ def query_language_model(query: str, res=None, *args, **kwargs):
     if '|' in query:
         cmds = query.split('|')
         query = cmds[0]
-        files = ' '.join(cmds[1:]).split(' ')
-        # remove empty strings
-        files = [fl for fl in files if fl.strip() != '']
-        # expand user path
-        for i, fl in enumerate(files):
-            files[i] = FileReader.expand_user_path(fl)
+
+        # Join the remaining commands after the first split
+        joined_cmds = '|'.join(cmds[1:])
+
+        # Extract files from the remaining commands
+        files = FileReader.extract_files(joined_cmds)
+
+        # Remove empty strings
+        files = [FileReader.expand_user_path(fl) for fl in files if fl.strip() != '']
 
         if  query.startswith('."') or query.startswith(".'") or query.startswith('.`') or\
             query.startswith('!"') or query.startswith("!'") or query.startswith('!`'):
             func = stateful_conversation
 
             for fl in files:
-                # remove slicing if any
-                _tmp     = fl
-                _splits  = _tmp.split('[')
-                if '[' in _tmp:
-                    _tmp = _splits[0]
-                assert len(_splits) == 1 or len(_splits) == 2, 'Invalid file link format.'
-                # check if file exists and is a file
-                if os.path.exists(_tmp) and os.path.isfile(_tmp):
+                if FileReader.exists(fl):
                     # store fl (slicing supported by FileReader)
                     func.store_file(fl)
                 else:

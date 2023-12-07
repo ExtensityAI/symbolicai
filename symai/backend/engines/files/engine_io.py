@@ -26,14 +26,6 @@ class FileEngine(Engine):
         if file_path is None or file_path.strip() == '':
             return None
 
-        # verify if file has content
-        if not os.path.exists(file_path):
-            return None
-
-        # verify if file is empty
-        if os.path.getsize(file_path) <= 0:
-            return None
-
         # check if file slice is used
         slices_ = None
         if '[' in file_path and ']' in file_path:
@@ -58,6 +50,13 @@ class FileEngine(Engine):
                         slices_.append(slice(start_slice, end_slice, step_slice))
                 else:
                     slices_.append(int(s))
+
+        # check if file exists
+        assert os.path.exists(file_path), f'File does not exist: {file_path}'
+
+        # verify if file is empty
+        if os.path.getsize(file_path) <= 0:
+            return ''
 
         file_ = unpack.from_file(str(file_path))
         if 'content' in file_:
