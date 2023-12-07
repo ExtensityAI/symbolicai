@@ -1,5 +1,6 @@
 import inspect
 import os
+import re
 import numpy as np
 
 from pathlib import Path
@@ -367,10 +368,46 @@ class FileReader(Expression):
         if '[' in _tmp:
             _tmp = _splits[0]
         assert len(_splits) == 1 or len(_splits) == 2, 'Invalid file link format.'
+        _tmp     = Path(_tmp)
         # check if file exists and is a file
         if os.path.exists(_tmp) and os.path.isfile(_tmp):
             return True
         return False
+
+    @classmethod
+    def extract_files(cls, cmds: str) -> List[str]:
+        # Use the updated regular expression to match quoted and non-quoted paths
+        pattern = r'''(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)'|`((?:\\.|[^`\\])*)`|((?:\\ |[^ ])+))'''
+
+        # Use the updated regular expression to split and handle quoted and non-quoted paths
+        matches = re.findall(pattern, cmds)
+
+        # Process the matches to handle quoted paths and normal paths
+        files = []
+        for match in matches:
+            # Each match will have 4 groups due to the pattern, only one will be non-empty
+            quoted_double, quoted_single, quoted_backtick, non_quoted = match
+            if quoted_double:
+                # Remove backslashes used for escaping inside double quotes
+                path = re.sub(r'\\(.)', r'\1', quoted_double)
+                file = FileReader.expand_user_path(path)
+                file = file.replace(' ', '\\ ')
+                files.append(file)
+            elif quoted_single:
+                # Remove backslashes used for escaping inside single quotes
+                path = re.sub(r'\\(.)', r'\1', quoted_single)
+                file = FileReader.expand_user_path(path)
+                file = file.replace(' ', '\\ ')
+                files.append(file)
+            elif quoted_backtick:
+                # Remove backslashes used for escaping inside backticks
+                path = re.sub(r'\\(.)', r'\1', quoted_backtick)
+                files.append(FileReader.expand_user_path(path))
+            elif non_quoted:
+                # For non-quoted paths, we simply add them to the list after expanding
+                files.append(FileReader.expand_user_path(non_quoted))
+
+        return files
 
     @classmethod
     def expand_user_path(cls, path: str) -> str:
