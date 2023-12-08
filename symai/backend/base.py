@@ -4,6 +4,7 @@ import time
 
 from abc import ABC
 from typing import Any, List, Tuple
+from pathlib import Path
 
 from ..collect import CollectionRepository, rec_serialize
 
@@ -21,8 +22,10 @@ class Engine(ABC):
         self.collection = CollectionRepository()
         self.collection.connect()
         # create formatter
-        os.makedirs('outputs', exist_ok=True)
-        logging.basicConfig(filename="outputs/engine.log", filemode="a", format='%(asctime)s %(name)s %(levelname)s %(message)s')
+        __root_dir__  = Path.home() / '.symai'
+        os.makedirs(__root_dir__, exist_ok=True)
+        __file_path__ = __root_dir__ / "engine.log"
+        logging.basicConfig(filename=__file_path__, filemode="a", format='%(asctime)s %(name)s %(levelname)s %(message)s')
         self.logger     = logging.getLogger()
         self.logger.setLevel(logging.DEBUG)
         # logging to console
