@@ -1324,11 +1324,13 @@ symclient
 Then, use the following code once to set up the local engine:
 
 ```python
-from symai.backend.engines.engine_nesy_client import NeSyClientEngine
+from symai.backend.engines.neurosymbolic.engine_nesy_client import NeSyClientEngine
+from symai.functional import EngineRepository
 # setup local engine
 engine = NeSyClientEngine()
-Expression.register(engines={'neurosymbolic': engine})
+EngineRepository().register('neurosymbolic', engine)
 ```
+
 
 Now you can use the local engine to perform symbolic computation:
 ```python
@@ -1340,18 +1342,19 @@ res = sym.compose()
 
 ### Custom Engine
 
-If you want to replace or extend the functionality of our framework, you can do so by customizing the existing engines or creating new engines. The `Expression` class provides helper methods for this functionality, such as `command` and `setup`. The `command` method can pass on configurations (as `**kwargs`) to the engines and change functionalities or parameters. The `setup` method can be used to re-initialize an engine with your custom engine implementation, which must subclass the `Engine` class. Both methods can be specified to address one, more, or all engines.
+If you want to replace or extend the functionality of our framework, you can do so by customizing the existing engines or creating new engines. The `Expression` class provides helper methods for this functionality, such as `command`. The `command` method can pass on configurations (as `**kwargs`) to the engines and change functionalities or parameters. To re-initialize an engine with your custom engine implementation, which must subclass the `Engine` class you can use the `EngineRpository` in `functional.py`.
 
 Here is an example of how to initialize your own engine. We will subclass the existing `GPTXCompletionEngine` and override the `prepare` method. This method is called before the neural computation and can be used to modify the input prompt's parameters that will be passed in for execution. In this example, we will replace the prompt with dummy text for illustration purposes:
 
 ```python
-from symai.backend.engines.engine_gptX_completion import GPTXCompletionEngine
+from symai.backend.engines.neurosymbolic.engine_gptX_completion import GPTXCompletionEngine
+from symai.functional import EngineRepository
 class DummyEngine(GPTXCompletionEngine):
     def prepare(self, argument):
         argument.prop.prepared_input = ['Go wild and generate something!']
 custom_engine = DummyEngine()
 sym = Symbol()
-Expression.register(engines={'neurosymbolic': custom_engine})
+EngineRepository().register('neurosymbolic', custom_engine)
 res = sym.compose()
 ```
 
@@ -1373,8 +1376,9 @@ Here is the list of names of the engines that are currently supported:
 * `neurosymbolic` - GPT-3, ChatGPT, GPT-4
 * `symbolic` - WolframAlpha
 * `ocr` - Optical Character Recognition
-* `vision` - CLIP
-* `speech` - Whisper
+* `text_vision` - CLIP
+* `text-to-speech` - TTS-1 OpenAI
+* `speech-to-text` - Whisper
 * `embedding` - OpenAI Embeddings API (`ada-002`)
 * `userinput` - User Command Line Input
 * `serpapi` - SerpApi (Google search)
