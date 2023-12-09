@@ -21,10 +21,9 @@ class InvalidRequestErrorRemedyCompletionStrategy:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def __call__(self, error, callback, argument):
+    def __call__(self, engine, error, callback, argument):
         openai_kwargs = {}
         kwargs              = argument.kwargs
-        instance            = argument.prop.instance
         prompts_            = argument.prop.prepared_input
         # send prompt to GPT-X Completion-based
         stop                = kwargs['stop'] if 'stop' in kwargs else None
@@ -35,14 +34,16 @@ class InvalidRequestErrorRemedyCompletionStrategy:
         try:
             if "This model's maximum context length is" in msg:
                 handle = 'type1'
-                max_ = instance.max_tokens
+                max_ = engine.max_tokens
                 usr = msg.split('tokens. ')[1].split(' ')[-1]
                 overflow_tokens = int(usr) - int(max_)
             elif "is less than the minimum" in msg:
                 handle = 'type2'
                 # extract number until 'is'
-                msg_ = msg.split(' ')[0]
-                overflow_tokens = int(msg_) * (-1)
+                msg_ = msg.split("is less than the minimum")[0]
+                # remove until the first `-`
+                msg_ = msg_.split(': "-')[-1]
+                overflow_tokens = int(msg_)
             else:
                 raise Exception(msg) from error
         except Exception as e:
@@ -59,33 +60,42 @@ class InvalidRequestErrorRemedyCompletionStrategy:
             # iterate over prompts and compute number of tokens
             prompts_ = [role['content'] for role in prompts]
             prompt = ''.join(prompts_)
-            val = len(instance.tokenizer.encode(prompt, disallowed_special=()))
+            val = len(engine.tokenizer.encode(prompt, disallowed_special=()))
             return val
 
         def compute_remaining_tokens(prompts: list) -> int:
             val = compute_required_tokens(prompts)
-            return int((instance.max_tokens - val) * 0.99)
+            return int((engine.max_tokens - val) * 0.99)
 
         if handle == 'type1':
             truncated_content_ = [p['content'][overflow_tokens:] for p in prompts]
-            removed_content_ = [p['content'][:overflow_tokens] for p in prompts]
             truncated_prompts_ = [{'role': p['role'], 'content': c} for p, c in zip(prompts, truncated_content_)]
             with ConsoleStyle('warn') as console:
                 console.print(f"WARNING: Overflow tokens detected. Reducing prompt size by {overflow_tokens} characters.")
         elif handle == 'type2':
             user_prompts = [p['content'] for p in prompts]
-            # truncate until tokens are less than max_tokens * 0.70
+            new_prompt   = [*system_prompt]
+            new_prompt.extend([{'role': p['role'], 'content': c} for p, c in zip(prompts, user_prompts)])
+            overflow_tokens = compute_required_tokens(new_prompt) - int(engine.max_tokens * 0.70)
+            if overflow_tokens > 0:
+                print('WARNING: Overflow tokens detected. Reducing prompt size to 70% of max_tokens.')
+                for i, content in enumerate(user_prompts):
+                    token_ids = engine.tokenizer.encode(content)
+                    if overflow_tokens >= len(token_ids):
+                        overflow_tokens -= len(token_ids)
+                        user_prompts[i] = ''
+                    else:
+                        new_content = engine.tokenizer.decode(token_ids[:-overflow_tokens])
+                        user_prompts[i] = new_content
+                        overflow_tokens = 0
+                        break
+
             new_prompt = [*system_prompt]
             new_prompt.extend([{'role': p['role'], 'content': c} for p, c in zip(prompts, user_prompts)])
+            assert compute_required_tokens(new_prompt) <= engine.max_tokens, \
+                f"Token overflow: prompts exceed {engine.max_tokens} tokens after truncation"
 
-            while compute_required_tokens(new_prompt) > instance.max_tokens * 0.70: # magic number
-                user_prompts = [c[overflow_tokens:] for c in user_prompts]
-                new_prompt = [*system_prompt]
-                new_prompt.extend([{'role': p['role'], 'content': c} for p, c in zip(prompts, user_prompts)])
-
-            with ConsoleStyle('warn') as console:
-                console.print(f"WARNING: Overflow tokens detected. Reducing prompt size to {70}% of max_tokens.")
-            truncated_prompts_ = [{'role': p['role'], 'content': c} for p, c in zip(prompts, user_prompts)]
+            truncated_prompts_ = [{'role': p['role'], 'content': c.strip()} for p, c in zip(prompts, user_prompts) if c.strip()]
         else:
             raise Exception('Invalid handle case for remedy strategy.') from error
 
@@ -188,12 +198,12 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
             callback = openai.completions.create
             kwargs['model'] = kwargs['model'] if 'model' in kwargs else self.model
             if except_remedy is not None:
-                res = except_remedy(e, callback, argument)
+                res = except_remedy(self, e, callback, argument)
             else:
                 try:
                     # implicit remedy strategy
                     except_remedy = InvalidRequestErrorRemedyCompletionStrategy()
-                    res = except_remedy(e, callback, argument)
+                    res = except_remedy(self, e, callback, argument)
                 except Exception as e2:
                     ex = Exception(f'Failed to handle exception: {e}. Also failed implicit remedy strategy after retry: {e2}')
                     raise ex from e

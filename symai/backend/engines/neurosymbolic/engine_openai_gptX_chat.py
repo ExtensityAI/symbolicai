@@ -24,10 +24,9 @@ class InvalidRequestErrorRemedyChatStrategy:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def __call__(self, error, callback, argument):
+    def __call__(self, engine, error, callback, argument):
         openai_kwargs = {}
         kwargs              = argument.kwargs
-        instance            = argument.prop.instance
         prompts_            = argument.prop.prepared_input
 
         # send prompt to GPT-X Chat-based
@@ -39,7 +38,7 @@ class InvalidRequestErrorRemedyChatStrategy:
         try:
             if "This model's maximum context length is" in msg:
                 handle = 'type1'
-                max_ = instance.max_tokens
+                max_ = engine.max_tokens
                 usr = msg.split('tokens. ')[1].split(' ')[-1]
                 overflow_tokens = int(usr) - int(max_)
             elif "is less than the minimum" in msg:
@@ -63,25 +62,26 @@ class InvalidRequestErrorRemedyChatStrategy:
                 console.print(f"WARNING: Overflow tokens detected. Reducing prompt size by {overflow_tokens} characters.")
         elif handle == 'type2':
             user_prompts = [p['content'] for p in prompts]
-            new_prompt = [*system_prompt]
+            new_prompt   = [*system_prompt]
             new_prompt.extend([{'role': p['role'], 'content': c} for p, c in zip(prompts, user_prompts)])
-            overflow_tokens = instance.compute_required_tokens(new_prompt) - int(instance.max_tokens * 0.70)
+            overflow_tokens = engine.compute_required_tokens(new_prompt) - int(engine.max_tokens * 0.70)
             if overflow_tokens > 0:
                 print('WARNING: Overflow tokens detected. Reducing prompt size to 70% of max_tokens.')
                 for i, content in enumerate(user_prompts):
-                    token_ids = instance.tokenizer.encode(content)
+                    token_ids = engine.tokenizer.encode(content)
                     if overflow_tokens >= len(token_ids):
                         overflow_tokens -= len(token_ids)
                         user_prompts[i] = ''
                     else:
-                        user_prompts[i] = instance.tokenizer.decode(token_ids[overflow_tokens:])
+                        new_content = engine.tokenizer.decode(token_ids[:-overflow_tokens])
+                        user_prompts[i] = new_content
                         overflow_tokens = 0
                         break
 
             new_prompt = [*system_prompt]
             new_prompt.extend([{'role': p['role'], 'content': c} for p, c in zip(prompts, user_prompts)])
-            assert instance.compute_required_tokens(new_prompt) <= int(instance.max_tokens * 0.70), \
-                f"Token overflow: prompts exceed {int(instance.max_tokens * 0.70)} tokens after truncation"
+            assert engine.compute_required_tokens(new_prompt) <= engine.max_tokens, \
+                f"Token overflow: prompts exceed {engine.max_tokens} tokens after truncation"
 
             truncated_prompts_ = [{'role': p['role'], 'content': c.strip()} for p, c in zip(prompts, user_prompts) if c.strip()]
         else:
@@ -90,7 +90,7 @@ class InvalidRequestErrorRemedyChatStrategy:
         truncated_prompts_ = [*system_prompt, *truncated_prompts_]
 
         # convert map to list of strings
-        max_tokens          = kwargs['max_tokens'] if 'max_tokens' in kwargs else instance.compute_remaining_tokens(truncated_prompts_)
+        max_tokens          = kwargs['max_tokens'] if 'max_tokens' in kwargs else engine.compute_remaining_tokens(truncated_prompts_)
         temperature         = kwargs['temperature'] if 'temperature' in kwargs else 1
         frequency_penalty   = kwargs['frequency_penalty'] if 'frequency_penalty' in kwargs else 0
         presence_penalty    = kwargs['presence_penalty'] if 'presence_penalty' in kwargs else 0
@@ -213,12 +213,12 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             callback = openai.chat.completions.create
             kwargs['model'] = kwargs['model'] if 'model' in kwargs else self.model
             if except_remedy is not None:
-                res = except_remedy(e, callback, argument)
+                res = except_remedy(self, e, callback, argument)
             else:
                 try:
                     # implicit remedy strategy
                     except_remedy = InvalidRequestErrorRemedyChatStrategy()
-                    res = except_remedy(e, callback, argument)
+                    res = except_remedy(self, e, callback, argument)
                 except Exception as e2:
                     ex = Exception(f'Failed to handle exception: {e}. Also failed implicit remedy strategy after retry: {e2}')
                     raise ex from e
