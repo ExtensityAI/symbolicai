@@ -64,10 +64,9 @@ def _start_symai():
         _symai_config_path_ = __root_dir__ / 'symai.config.json'
 
         if not os.path.exists(_symai_config_path_):
-            setup_wizard(_symai_config_path_)
-
-            with ConsoleStyle('info') as console:
-                msg = 'Currently you are sharing your user experience with us by uploading the data to our research server, and thereby helping us improve future models and the overall SymbolicAI experience. We thank you very much for supporting the research community! If you wish to enable/disable the data collection option go to your .symai config situated in your home directory or set the environment variable `SUPPORT_COMMUNITY` to `True/False`.'
+            setup_wizard(_symai_config_path_, show_wizard=False)
+            with ConsoleStyle('warn') as console:
+                msg = 'No configuration file found. A new configuration file has been created in your home directory. Please run the setup wizard in your console using the `symwzd` command or manually set your `.symai/symai.config.json` config situated in your home directory or set the environment variables for the respective engines.'
                 console.print(msg)
 
         # LOAD THE CONFIGURATION FILE
@@ -217,8 +216,8 @@ def run_setup_wizard(file_path = __root_dir__ / 'symai.config.json'):
     setup_wizard(file_path)
 
 
-def setup_wizard(_symai_config_path_):
-    _user_config_                   = show_menu()
+def setup_wizard(_symai_config_path_, show_wizard=True):
+    _user_config_                   = show_menu(show_wizard=show_wizard)
     _nesy_engine_api_key            = _user_config_['nesy_engine_api_key']
     _nesy_engine_model              = _user_config_['nesy_engine_model']
     _symbolic_engine_api_key        = _user_config_['symbolic_engine_api_key']
