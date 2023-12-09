@@ -66,12 +66,12 @@ class SlidingWindowStringConcatMemory(Memory):
         self.max_tokens = _max_tokens
 
     def history(self):
-        return self._memory.split(self.marker)
+        return [hist for hist in self._memory.split(self.marker) if hist]
 
     def drop(self):
         self._memory = ''
 
-    def store(self, query: str, *args, **kwargs):
+    def store(self, query: str):
         # append to string to memory
         self._memory += f'{str(query)}{self.marker}'
 
@@ -81,11 +81,15 @@ class SlidingWindowStringConcatMemory(Memory):
         self._memory = str(sym - query)
 
     def recall(self, query: str, *args, **kwargs) -> Symbol:
-        val  = self.history()
-        val  = '\n'.join(val)
-        func = Function(query)
+        hist    = self.history()
+        memory  = ''
+        if len(hist) > 0:
+            memory  = '[MEMORY]\n'
+            val     = '\n'.join(hist)
+            memory += val
+        func    = Function(memory)
         func.static_context = self.static_context # TODO: consider dynamic context
-        return func(val, *args, **kwargs)
+        return func(query, *args, **kwargs)
 
 
 class VectorDatabaseMemory(Memory):
