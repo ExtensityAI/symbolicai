@@ -1342,7 +1342,43 @@ res = sym.compose()
 
 ### Custom Engine
 
-If you want to replace or extend the functionality of our framework, you can do so by customizing the existing engines or creating new engines. The `Expression` class provides helper methods for this functionality, such as `command`. The `command` method can pass on configurations (as `**kwargs`) to the engines and change functionalities or parameters. To re-initialize an engine with your custom engine implementation, which must subclass the `Engine` class you can use the `EngineRpository` in `functional.py`.
+If you want to replace or extend the functionality of our framework, you can do so by customizing the existing engines or creating new engines.
+To create and use any other LLM as a backend you can for example change the `neurosymbolic` engine setting and register the new engine to the `EngineRepository`. The following example shows how to create a new `neurosymbolic` engine:
+
+```python
+from symai.backend.base import Engine
+from symai.functional import EngineRepository
+
+# setup an engine
+class MyEngine(Engine):
+  def id(self):
+    return 'neurosymbolic'
+
+  def prepare(self, argument):
+    # get input from the pre-processors output and use *args, **kwargs and prop from argument
+    # argument.prop contains all your kwargs accessible via dot `.` operation and additional meta info
+    # such as function signature, system relevant info etc.
+    prompts = argument.prop.preprocessed_input
+    args    = argument.args
+    kwargs  = argument.kwargs
+    # prepare the prompt statement as you want (take a look at the other engines like for GPT-4)
+    ...
+    # assign it to prepared_input
+    argument.prop.prepared_input = ...
+
+  def forward(self, argument):
+    # get prep statement
+    prompt = argument.prop.prepared_input
+    # Your API / engine related call code here
+    return ...
+
+# register your engine
+EngineRepository().register('neurosymbolic', engine)
+```
+
+Any engine is derived from the base class `Engine` and is then registered in the engines repository using its registry ID. The ID is for instance used in `core.py` decorators to address where to send the zero/few-shot statements using the class `EngineRepository`. You can find the `EngineRepository` defined in `functional.py` with the respective  `process_query` method. Every engine has therefore three main methods you need to implement. The `id`, `prepare` and `forward` method. The `id` return the engine category. The `prepare` and `forward` methods have a signature variable called  `argument` which carries all necessary pipeline relevant data. For instance, the output of the `argument.prop.preprocessed_input` contains the pre-processed output of the `PreProcessor` objects and is usually what you need to build and pass on to the `argument.prop.prepared_input`, which is then used in the `forward` call.
+
+If you don't want to re-write the entire engine code but overwrite the existing prompt `prepare` logic, you can do so by subclassing the existing engine and overriding the `prepare` method.
 
 Here is an example of how to initialize your own engine. We will subclass the existing `GPTXCompletionEngine` and override the `prepare` method. This method is called before the neural computation and can be used to modify the input prompt's parameters that will be passed in for execution. In this example, we will replace the prompt with dummy text for illustration purposes:
 
@@ -1358,7 +1394,9 @@ EngineRepository().register('neurosymbolic', custom_engine)
 res = sym.compose()
 ```
 
-To configure an engine, we can use the `command` method. In this example, we will enable `verbose` mode, where the engine will print out the methods it is executing and the parameters it is using. This is useful for debugging purposes:
+To configure an engine, we can forward commands through `Expression` objects by using the `command` method. The `command` method passes on configurations (as `**kwargs`) to the engines and change functionalities or parameters. The functionalities depend on the respective engine.
+
+In this example, we will enable `verbose` mode, where the engine will print out the methods it is executing and the parameters it is using. This is useful for debugging purposes:
 
 ```python
 sym = Symbol('Hello World!')
