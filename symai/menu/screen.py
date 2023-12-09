@@ -62,27 +62,27 @@ def show_main_setup_menu(show_wizard: bool = True):
     with open(terms_of_services, 'r', encoding="utf-8") as f:
         TERMS_OF_SERVICES = f.read()
 
-    # define variables
+    # define defaults variables
     agreed                          = False
     support_community               = False
     donation_result                 = False
-    nesy_engine_model               = ''
+    nesy_engine_model               = "gpt-3.5-turbo"
     nesy_engine_api_key             = ''
     embedding_engine_api_key        = ''
-    embedding_model                 = ''
+    embedding_model                 = "text-embedding-ada-002"
     symbolic_engine_api_key         = ''
-    symbolic_engine_model           = ''
+    symbolic_engine_model           = "wolframalpha"
     imagerendering_engine_api_key   = ''
-    vision_engine_model             = ''
+    vision_engine_model             = "openai/clip-vit-base-patch32"
     search_engine_api_key           = ''
-    search_engine_model             = ''
+    search_engine_model             = "google"
     ocr_engine_api_key              = ''
-    speech_to_text_engine_model     = ''
-    text_to_speech_engine_model     = ''
-    text_to_speech_engine_voice     = ''
+    speech_to_text_engine_model     = "base"
+    text_to_speech_engine_model     = "tts-1"
+    text_to_speech_engine_voice     = "echo"
     indexing_engine_api_key         = ''
-    indexing_engine_environment     = ''
-    caption_engine_environment      = ''
+    indexing_engine_environment     = "us-west1-gcp"
+    caption_engine_environment      = "blip2_opt/pretrain_opt2.7b"
     text_to_speech_engine_api_key   = ''
 
     if show_wizard:
@@ -103,7 +103,7 @@ def show_main_setup_menu(show_wizard: bool = True):
             nesy_engine_model = input_dialog(
                 title="Select Model",
                 text="Please select a OpenAI model (https://platform.openai.com/docs/models) or a custom neuro-symbolic model:",
-                default="gpt-3.5-turbo" if 'NEUROSYMBOLIC_ENGINE_MODEL' not in SYMAI_CONFIG else SYMAI_CONFIG['NEUROSYMBOLIC_ENGINE_MODEL'],
+                default=nesy_engine_model if 'NEUROSYMBOLIC_ENGINE_MODEL' not in SYMAI_CONFIG else SYMAI_CONFIG['NEUROSYMBOLIC_ENGINE_MODEL'],
             ).run()
 
             # Step 2.2: Enter API key
@@ -111,7 +111,7 @@ def show_main_setup_menu(show_wizard: bool = True):
                 nesy_engine_api_key = input_dialog(
                     title="OpenAI API Key",
                     text="Please enter your OpenAI API Key (https://platform.openai.com/api-keys):",
-                    default='' if 'NEUROSYMBOLIC_ENGINE_API_KEY' not in SYMAI_CONFIG else SYMAI_CONFIG['NEUROSYMBOLIC_ENGINE_API_KEY'],
+                    default=nesy_engine_api_key if 'NEUROSYMBOLIC_ENGINE_API_KEY' not in SYMAI_CONFIG else SYMAI_CONFIG['NEUROSYMBOLIC_ENGINE_API_KEY'],
                 ).run()
                 if not nesy_engine_api_key:
                     with ConsoleStyle('warn') as console:
@@ -120,7 +120,7 @@ def show_main_setup_menu(show_wizard: bool = True):
                 nesy_engine_api_key = input_dialog(
                     title="[Optional] Neuro-Symbolic Model API Key",
                     text="Please enter your Neuro-Symbolic Model API Key if applicable:",
-                    default='' if 'NEUROSYMBOLIC_ENGINE_API_KEY' not in SYMAI_CONFIG else SYMAI_CONFIG['NEUROSYMBOLIC_ENGINE_API_KEY'],
+                    default=nesy_engine_api_key if 'NEUROSYMBOLIC_ENGINE_API_KEY' not in SYMAI_CONFIG else SYMAI_CONFIG['NEUROSYMBOLIC_ENGINE_API_KEY'],
                 ).run()
 
             # Step 2.3: Enter Embedding Engine API Key is_openai_api_model(nesy_engine_model)
@@ -130,7 +130,7 @@ def show_main_setup_menu(show_wizard: bool = True):
                 embedding_engine_api_key = input_dialog(
                     title="[Optional] Embedding Engine API Key",
                     text="Please enter your Embedding Engine API Key if applicable:",
-                    default='' if 'EMBEDDING_ENGINE_API_KEY' not in SYMAI_CONFIG else SYMAI_CONFIG['EMBEDDING_ENGINE_API_KEY'],
+                    default=embedding_engine_api_key if 'EMBEDDING_ENGINE_API_KEY' not in SYMAI_CONFIG else SYMAI_CONFIG['EMBEDDING_ENGINE_API_KEY'],
                 ).run()
 
             # Ask for optional settings yes/no
@@ -147,40 +147,40 @@ def show_main_setup_menu(show_wizard: bool = True):
                 embedding_model = input_dialog(
                     title="[Optional] Embedding Model",
                     text="Please enter an embedding model if applicable. We currently support OpenAI's embedding models:",
-                    default="text-embedding-ada-002" if 'EMBEDDING_ENGINE_MODEL' not in SYMAI_CONFIG else SYMAI_CONFIG['EMBEDDING_ENGINE_MODEL'],
+                    default=embedding_model if 'EMBEDDING_ENGINE_MODEL' not in SYMAI_CONFIG else SYMAI_CONFIG['EMBEDDING_ENGINE_MODEL'],
                 ).run()
 
                 # Step 2.5: Symbolic Engine API Key
                 symbolic_engine_api_key = input_dialog(
                     title="[Optional] Symbolic Engine API Key",
                     text="Please enter your Symbolic Engine API Key if applicable. We currently support Wolfram Alpha as an symbolic solver. Get a Key here https://products.wolframalpha.com/api:",
-                    default='' if 'SYMBOLIC_ENGINE_API_KEY' not in SYMAI_CONFIG else SYMAI_CONFIG['SYMBOLIC_ENGINE_API_KEY'],
+                    default=symbolic_engine_api_key if 'SYMBOLIC_ENGINE_API_KEY' not in SYMAI_CONFIG else SYMAI_CONFIG['SYMBOLIC_ENGINE_API_KEY'],
                 ).run()
 
                 if symbolic_engine_api_key:
                     # Step 2.6: Symbolic Engine Model
-                    symbolic_engine_model = "wolframalpha"
+                    symbolic_engine_model = symbolic_engine_model
 
                 # Step 2.7: Enter Imagerendering engine api key
                 if is_openai_api_model(nesy_engine_model):
                     imagerendering_engine_api_key = input_dialog(
                         title="[Optional] Image Rendering Engine API Key",
                         text="Please enter your Image Rendering Engine API Key if applicable. We currently support OpenAI's DALL-E model:",
-                        default=nesy_engine_api_key if 'IMAGERENDERING_ENGINE_API_KEY' not in SYMAI_CONFIG else SYMAI_CONFIG['IMAGERENDERING_ENGINE_API_KEY'],
+                        default=imagerendering_engine_api_key if 'IMAGERENDERING_ENGINE_API_KEY' not in SYMAI_CONFIG else SYMAI_CONFIG['IMAGERENDERING_ENGINE_API_KEY'],
                     ).run()
 
                 # Step 2.8: Enter Vision Engine Model
                 vision_engine_model = input_dialog(
                     title="[Optional] Vision Engine Model",
                     text="Please enter your CLIP Engine Model based on HuggingFace https://huggingface.co/models?other=clip if applicable:",
-                    default="openai/clip-vit-base-patch32" if 'VISION_ENGINE_MODEL' not in SYMAI_CONFIG else SYMAI_CONFIG['VISION_ENGINE_MODEL'],
+                    default=vision_engine_model if 'VISION_ENGINE_MODEL' not in SYMAI_CONFIG else SYMAI_CONFIG['VISION_ENGINE_MODEL'],
                 ).run()
 
                 # Step 2.9: Enter Search Engine API Key
                 search_engine_api_key = input_dialog(
                     title="[Optional] Search Engine API Key",
                     text="Please enter your Search Engine API Key if applicable. We currently support SerpApi https://serpapi.com/search-api:",
-                    default='' if 'SEARCH_ENGINE_API_KEY' not in SYMAI_CONFIG else SYMAI_CONFIG['SEARCH_ENGINE_API_KEY'],
+                    default=search_engine_api_key if 'SEARCH_ENGINE_API_KEY' not in SYMAI_CONFIG else SYMAI_CONFIG['SEARCH_ENGINE_API_KEY'],
                 ).run()
 
                 if search_engine_api_key:
@@ -188,49 +188,49 @@ def show_main_setup_menu(show_wizard: bool = True):
                     search_engine_model = input_dialog(
                         title="[Optional] Search Engine Model",
                         text="Please enter your Search Engine Model if applicable:",
-                        default="google" if 'SEARCH_ENGINE_MODEL' not in SYMAI_CONFIG else SYMAI_CONFIG['SEARCH_ENGINE_MODEL'],
+                        default=search_engine_model if 'SEARCH_ENGINE_MODEL' not in SYMAI_CONFIG else SYMAI_CONFIG['SEARCH_ENGINE_MODEL'],
                     ).run()
 
                 # Step 2.11: Enter OCR Engine API Key
                 ocr_engine_api_key = input_dialog(
                     title="[Optional] OCR Engine API Key",
                     text="Please enter your OCR Engine API Key if applicable. We currently support ApiLayer https://apilayer.com/marketplace/image_to_text-api:",
-                    default='' if 'OCR_ENGINE_API_KEY' not in SYMAI_CONFIG else SYMAI_CONFIG['OCR_ENGINE_API_KEY'],
+                    default=ocr_engine_api_key if 'OCR_ENGINE_API_KEY' not in SYMAI_CONFIG else SYMAI_CONFIG['OCR_ENGINE_API_KEY'],
                 ).run()
 
                 # Step 2.12: Enter Speech-to-Text Engine Model
                 speech_to_text_engine_model = input_dialog(
                     title="[Optional] Speech-to-Text Engine Model",
                     text="Please enter your Speech-to-Text Engine Model if applicable. We currently use whisper self-hosted models:",
-                    default="base" if 'SPEECH_TO_TEXT_ENGINE_MODEL' not in SYMAI_CONFIG else SYMAI_CONFIG['SPEECH_TO_TEXT_ENGINE_MODEL'],
+                    default=speech_to_text_engine_model if 'SPEECH_TO_TEXT_ENGINE_MODEL' not in SYMAI_CONFIG else SYMAI_CONFIG['SPEECH_TO_TEXT_ENGINE_MODEL'],
                 ).run()
 
                 # Step 2.13: Enter Text-to-Speech Engine API Key
                 text_to_speech_engine_api_key = input_dialog(
                     title="[Optional] Text-to-Speech Engine API Key",
                     text="Please enter your Text-to-Speech Engine API Key if applicable. Currently this is based on OpenAI's tts models:",
-                    default='' if 'TEXT_TO_SPEECH_ENGINE_API_KEY' not in SYMAI_CONFIG else SYMAI_CONFIG['TEXT_TO_SPEECH_ENGINE_API_KEY'],
+                    default=text_to_speech_engine_api_key if 'TEXT_TO_SPEECH_ENGINE_API_KEY' not in SYMAI_CONFIG else SYMAI_CONFIG['TEXT_TO_SPEECH_ENGINE_API_KEY'],
                 ).run()
 
                 # Step 2.14: Enter Text-to-Speech Engine Model
                 text_to_speech_engine_model = input_dialog(
                     title="[Optional] Text-to-Speech Engine Model",
                     text="Please enter your Text-to-Speech Engine Model if applicable:",
-                    default="tts-1" if 'TEXT_TO_SPEECH_ENGINE_MODEL' not in SYMAI_CONFIG else SYMAI_CONFIG['TEXT_TO_SPEECH_ENGINE_MODEL'],
+                    default=text_to_speech_engine_model if 'TEXT_TO_SPEECH_ENGINE_MODEL' not in SYMAI_CONFIG else SYMAI_CONFIG['TEXT_TO_SPEECH_ENGINE_MODEL'],
                 ).run()
 
                 # Step 2.15: Enter Text-to-Speech Engine Voice
                 text_to_speech_engine_voice = input_dialog(
                     title="[Optional] Text-to-Speech Engine Voice",
                     text="Please enter your Text-to-Speech Engine Voice if applicable:",
-                    default="echo" if 'TEXT_TO_SPEECH_ENGINE_VOICE' not in SYMAI_CONFIG else SYMAI_CONFIG['TEXT_TO_SPEECH_ENGINE_VOICE'],
+                    default=text_to_speech_engine_voice if 'TEXT_TO_SPEECH_ENGINE_VOICE' not in SYMAI_CONFIG else SYMAI_CONFIG['TEXT_TO_SPEECH_ENGINE_VOICE'],
                 ).run()
 
                 # Step 2.16: Enter Indexing Engine API Key
                 indexing_engine_api_key = input_dialog(
                     title="[Optional] Indexing Engine API Key",
                     text="Please enter your Indexing Engine API Key if applicable. Currently we support Pinecone https://www.pinecone.io/product/:",
-                    default='' if 'INDEXING_ENGINE_API_KEY' not in SYMAI_CONFIG else SYMAI_CONFIG['INDEXING_ENGINE_API_KEY'],
+                    default=indexing_engine_api_key if 'INDEXING_ENGINE_API_KEY' not in SYMAI_CONFIG else SYMAI_CONFIG['INDEXING_ENGINE_API_KEY'],
                 ).run()
 
                 # Step 2.17: Enter Indexing Engine Environment
@@ -239,14 +239,14 @@ def show_main_setup_menu(show_wizard: bool = True):
                     indexing_engine_environment = input_dialog(
                         title="[Optional] Indexing Engine Environment",
                         text="Please enter your Indexing Engine Environment if applicable:",
-                        default="us-west1-gcp" if 'INDEXING_ENGINE_ENVIRONMENT' not in SYMAI_CONFIG else SYMAI_CONFIG['INDEXING_ENGINE_ENVIRONMENT'],
+                        default=indexing_engine_environment if 'INDEXING_ENGINE_ENVIRONMENT' not in SYMAI_CONFIG else SYMAI_CONFIG['INDEXING_ENGINE_ENVIRONMENT'],
                     ).run()
 
                 # Step 2.18: Enter Caption Engine Environment
                 caption_engine_environment = input_dialog(
                     title="[Optional] Caption Engine Environment",
                     text="Please enter your Caption Engine Environment if applicable. The current implementation is based on HuggingFace https://huggingface.co/models?pipeline_tag=image-to-text:",
-                    default="blip2_opt/pretrain_opt2.7b" if 'CAPTION_ENGINE_ENVIRONMENT' not in SYMAI_CONFIG else SYMAI_CONFIG['CAPTION_ENGINE_ENVIRONMENT'],
+                    default=caption_engine_environment if 'CAPTION_ENGINE_ENVIRONMENT' not in SYMAI_CONFIG else SYMAI_CONFIG['CAPTION_ENGINE_ENVIRONMENT'],
                 ).run()
 
             # Step 3: Enable/Disable community support and data sharing
