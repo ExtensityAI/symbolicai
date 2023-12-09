@@ -64,6 +64,8 @@ def show_main_setup_menu(show_wizard: bool = True):
 
     # define variables
     agreed                          = False
+    support_community               = False
+    donation_result                 = False
     nesy_engine_model               = ''
     nesy_engine_api_key             = ''
     embedding_engine_api_key        = ''
