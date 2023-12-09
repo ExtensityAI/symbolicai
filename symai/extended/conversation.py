@@ -67,12 +67,12 @@ class Conversation(SlidingWindowStringConcatMemory):
 
     def store_system_message(self, message: str, *args, **kwargs):
         val = f"[SYSTEM_INSTRUCTION::]: <<<\n{str(message)}\n>>>\n"
-        self.store(val, *args, **kwargs)
+        self.store(val)
 
     def store_file(self, file_path: str, *args, **kwargs):
         content = self.reader(file_path)
         val = f"[DATA::{file_path}]: <<<\n{str(content)}\n>>>\n"
-        self.store(val, *args, **kwargs)
+        self.store(val)
 
     @staticmethod
     def save_conversation_state(conversation: "Conversation", file_path: str) -> None:
@@ -148,14 +148,6 @@ class Conversation(SlidingWindowStringConcatMemory):
         query = self._to_symbol(query)
         memory = None
 
-        # append to string to memory
-        val = self.build_tag(self.user_tag, query)
-        self.store(val, *args, **kwargs)
-        history = Symbol(f'[HISTORY::]: <<<\n{self._memory}\n>>>\n')
-        if 'payload' in kwargs:
-            history =  f'{history}\n{kwargs["payload"]}'
-            del kwargs['payload']
-
         if self.index is not None:
             memory_split = self._memory.split(self.marker)
             memory_shards = []
@@ -177,19 +169,36 @@ class Conversation(SlidingWindowStringConcatMemory):
             if 'raw_result' in kwargs:
                 print(memory)
 
-        if memory:
-            res = self.recall(query, payload=str(memory)[:1500], *args, **kwargs)
-        else:
-            res = self.recall(query, *args, **kwargs)
+        payload = ''
+        # if payload is set, then add it to the memory
+        if 'payload' in kwargs:
+            payload           = kwargs['payload']
+            kwargs['payload'] = f'[Conversation Payload]:\n{payload}\n'
 
+        index_memory = ''
+        # if index is set, then add it to the memory
+        if memory:
+            index_memory = f'[Index Retrieval]:\n{str(memory)[:1500]}\n'
+
+        payload = f'{index_memory}{payload}'
+        # perform a recall function using the query
+        res = self.recall(query, *args, **kwargs)
+
+        # if user is requesting to preview the response, then return only the preview result
         if 'preview' in kwargs and kwargs['preview']:
             if self.auto_print:
                 print(res)
             return res
 
+        ### --- asses memory update --- ###
+
+        # append the bot prompt to the memory
+        prompt = self.build_tag(self.user_tag, query)
+        self.store(prompt)
+
         self._value = res.value # save last response
         val = self.build_tag(self.bot_tag, res)
-        self.store(val, *args, **kwargs)
+        self.store(val)
 
         # WARN: DO NOT PROCESS THE RES BY REMOVING `<<<` AND `>>>` TAGS
 

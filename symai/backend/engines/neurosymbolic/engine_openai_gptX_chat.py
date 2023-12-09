@@ -253,7 +253,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             system += f"[DYNAMIC CONTEXT]\n{dyn_ctxt}\n\n"
 
         payload = argument.prop.payload
-        if payload is not None:
+        if argument.prop.payload:
             system += f"[ADDITIONAL CONTEXT]\n{str(payload)}\n\n"
 
         examples: List[str] = argument.prop.examples

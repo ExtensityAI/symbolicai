@@ -102,6 +102,7 @@ class Persona(Conversation):
         return sym.query(query, *args, **kwargs)
 
     def extract_details(self, dialogue):
+        dialogue = str(dialogue)
         # ensure to remove all `<<<` or `>>>` tags before returning the response
         # remove up to the first `<<<` tag
         dialogue = dialogue.split('<<<')[-1].strip()
@@ -125,14 +126,15 @@ class Persona(Conversation):
         val  = '\n'.join(val)
         pre_processors = TagProcessor()
         post_processors = StripPostProcessor()
-        func = Function(query,
+        func = Function(val,
                         pre_processors=pre_processors,
                         post_processors=post_processors)
 
         tag = self.bot_tag if source is None else source
         if not tag.endswith('::'):
             tag = f'{tag}::'
-        res = func(val,
+        user_query = self.build_tag(self.user_tag, query)
+        res = func(user_query,
                    payload=f'[PERSONA BIO]\n{self.bio()}',
                    tag=tag,
                    thoughts=thoughts,

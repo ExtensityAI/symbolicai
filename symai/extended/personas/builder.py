@@ -90,7 +90,7 @@ class PersonaBuilder(Expression):
             description = self.func()
         # extract full name
         full_name = None
-        for line in description.split('\n'):
+        for line in str(description).split('\n'):
             if 'Name:' in line:
                 full_name = line.split('Name:')[-1].strip()
                 break
