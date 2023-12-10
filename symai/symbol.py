@@ -430,12 +430,22 @@ class Symbol(ABC, *SYMBOL_PRIMITIVES):
 
     def __len__(self) -> int:
         '''
-        Get the length of the tokenized value of the Symbol.
+        Get the length of the value of the Symbol.
 
         Returns:
-            int: The length of the tokenized value of the Symbol.
+            int: The length of the value of the Symbol.
         '''
-        return len(self.tokens)
+        return len(self.value)
+
+    @property
+    def shape(self) -> tuple:
+        '''
+        Get the shape of the value of the Symbol.
+
+        Returns:
+            tuple: The shape of the value of the Symbol.
+        '''
+        return self.value.shape
 
     def __bool__(self) -> bool:
         '''
