@@ -161,4 +161,6 @@ class FileEngine(Engine):
 
     def prepare(self, argument):
         assert not argument.prop.processed_input, "FileEngine does not support processed_input."
-        argument.prop.prepared_input = argument.prop.path
+        path = argument.prop.path
+        path = path.replace('\\', '')
+        argument.prop.prepared_input = path
