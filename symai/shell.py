@@ -9,6 +9,7 @@ from .post_processors import StripPostProcessor
 from .pre_processors import PreProcessor
 from .symbol import Expression
 from .shellsv import run as shellsv_run
+from . import SYMAI_VERSION
 
 
 SHELL_CONTEXT = """[Description]
@@ -67,9 +68,15 @@ class Shell(Expression):
 
 
 def process_query(args) -> None:
+    if args.version:
+        with ConsoleStyle('extensity') as console:
+            console.print(f"ExtensityAI: Symbolic Shell v{SYMAI_VERSION}")
+        return
+
     query = args.query
     if query is None or len(query) == 0:
-        print("Starting ExtensityAI: Symbolic Shell ...")
+        with ConsoleStyle('extensity') as console:
+            console.print(f"Starting ExtensityAI: Symbolic Shell v{SYMAI_VERSION}")
         shellsv_run(auto_query_on_error=args.auto,
                     conversation_style=args.style if args.style is not None and args.style != '' else None)
         return
@@ -122,6 +129,8 @@ def run() -> None:
                         help='query the the LLM if a command resulted unsuccessfully.')
     parser.add_argument('--style', dest='style', default=None, required=False, type=str,
                         help='add speech style to the shell.')
+    parser.add_argument('--version', dest='version', default=False, required=False, action=argparse.BooleanOptionalAction,
+                        help='show the version of the shell.')
 
     args = parser.parse_args()
     process_query(args)
