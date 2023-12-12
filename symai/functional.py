@@ -40,8 +40,10 @@ def _execute_query(engine, post_processors, return_constraint, argument) -> List
             rsp             = pp(rsp, argument)
 
     # check if return type cast
-    if   return_constraint == type(rsp):
+    # compare string representation of return type to allow for generic duck typing of return types
+    if   str(return_constraint) == str(type(rsp)):
         pass
+    # check if return type is list, tuple, set, dict, use ast.literal_eval to cast
     elif return_constraint == list or \
          return_constraint == tuple or \
          return_constraint == set or \
@@ -53,6 +55,7 @@ def _execute_query(engine, post_processors, return_constraint, argument) -> List
             res = rsp
         assert res is not None, "Return type cast failed! Check if the return type is correct or post_processors output matches desired format: " + str(rsp)
         rsp = res
+    # check if return type is bool
     elif return_constraint == bool:
         # do not cast with bool -> always returns true
         if len(rsp) <= 0:

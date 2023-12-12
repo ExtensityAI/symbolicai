@@ -4,7 +4,7 @@ from box import Box
 
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
-from ....symbol import Symbol
+from ....symbol import Result
 
 try:
     import wolframalpha as wa
@@ -12,7 +12,7 @@ except:
     wa = None
 
 
-class WolframResult(Symbol):
+class WolframResult(Result):
     def __init__(self, value) -> None:
         super().__init__(value)
         self.raw = Box(value)

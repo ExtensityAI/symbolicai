@@ -12,7 +12,519 @@ from .. import core_ext
 from ..prompts import Prompt
 
 if TYPE_CHECKING:
-    from ..symbol import Expression, Symbol, Result
+    from ..symbol import Expression, Symbol
+
+
+class ArithmeticPrimitives:
+    '''
+    This mixin contains functions that perform arithmetic operations on symbols or symbol values.
+    The functions in this mixin are bound to the 'neurosymbolic' engine for evaluation.
+    '''
+
+    def __getitem__(self, key: Union[str, int, slice]) -> 'Symbol':
+        '''
+        Get the item of the Symbol value with the specified key or index.
+        If the Symbol value is a list, tuple, or numpy array, the key can be an integer or slice.
+        If the Symbol value is a dictionary, the key can be a string or an integer.
+        If the direct item retrieval fails, the method falls back to using the @core.getitem decorator, which retrieves and returns the item using core functions.
+
+        Args:
+            key (Union[str, int, slice]): The key or index for the item in the Symbol value.
+
+        Returns:
+            Symbol: The item of the Symbol value with the specified key or index.
+
+        Raises:
+            KeyError: If the key or index is not found in the Symbol value.
+        '''
+        try:
+            if (isinstance(key, int) or isinstance(key, slice)) and (isinstance(self.value, list) or isinstance(self.value, tuple) or isinstance(self.value, np.ndarray)):
+                return self.value[key]
+            elif (isinstance(key, str) or isinstance(key, int)) and isinstance(self.value, dict):
+                return self.value[key]
+        except KeyError:
+            raise KeyError(f'Key {key} not found in {self.value}')
+
+        @core.getitem()
+        def _func(_, index: str):
+            pass
+
+        return self._to_symbol(_func(self, key))
+
+    def __setitem__(self, key: Union[str, int, slice], value: Any) -> None:
+        '''
+        Set the item of the Symbol value with the specified key or index to the given value.
+        If the Symbol value is a list, tuple, or numpy array, the key can be an integer or slice.
+        If the Symbol value is a dictionary, the key can be a string or an integer.
+        If the direct item setting fails, the method falls back to using the @core.setitem decorator, which sets the item using core functions.
+
+        Args:
+            key (Union[str, int, slice]): The key or index for the item in the Symbol value.
+            value: The value to set the item to.
+
+        Raises:
+            KeyError: If the key or index is not found in the Symbol value.
+        '''
+        try:
+            if (isinstance(key, int) or isinstance(key, slice)) and (isinstance(self.value, list) or isinstance(self.value, tuple) or isinstance(self.value, np.ndarray)):
+                self.value[key] = value
+                return
+            elif (isinstance(key, str) or isinstance(key, int)) and isinstance(self.value, dict):
+                self.value[key] = value
+                return
+        except KeyError:
+            raise KeyError(f'Key {key} not found in {self.value}')
+
+        @core.setitem()
+        def _func(_, index: str, value: str):
+            pass
+
+        self._value = self._to_symbol(_func(self, key, value)).value
+
+    def __delitem__(self, key: Union[str, int]) -> None:
+        '''
+        Delete the item of the Symbol value with the specified key or index.
+        If the Symbol value is a dictionary, the key can be a string or an integer.
+        If the direct item deletion fails, the method falls back to using the @core.delitem decorator, which deletes the item using core functions.
+
+        Args:
+            key (Union[str, int]): The key for the item in the Symbol value.
+
+        Raises:
+            KeyError: If the key or index is not found in the Symbol value.
+        '''
+        try:
+            if (isinstance(key, str) or isinstance(key, int)) and isinstance(self.value, dict):
+                del self.value[key]
+                return
+        except KeyError:
+            raise KeyError(f'Key {key} not found in {self.value}')
+
+        @core.delitem()
+        def _func(_, index: str):
+            pass
+
+        self._value = self._to_symbol(_func(self, key)).value
+
+    def __contains__(self, other: Any) -> bool:
+        '''
+        Check if a Symbol object is present in another Symbol object.
+        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
+
+        Args:
+            other (Any): The object to check for containment.
+
+        Returns:
+            bool: True if the current Symbol contains the 'other' Symbol, otherwise False.
+        '''
+        @core.contains()
+        def _func(_, other) -> bool:
+            pass
+
+        return _func(self, other)
+
+    def __eq__(self, other: Any) -> bool:
+        '''
+        Check if the current Symbol is equal to another Symbol.
+        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
+
+        Args:
+            other (Any): The object to check for equality.
+
+        Returns:
+            bool: True if the current Symbol is equal to the 'other' Symbol, otherwise False.
+        '''
+        @core.equals()
+        def _func(_, other) -> bool:
+            pass
+
+        return _func(self, other)
+
+    def __matmul__(self, other: Any) -> 'Symbol':
+        '''
+        This method concatenates the string representation of two Symbol objects and returns a new Symbol with the concatenated result.
+        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
+
+        Args:
+            other (Any): The object to concatenate.
+
+        Returns:
+            Symbol: A new Symbol object with the concatenated value.
+        '''
+        return self._to_symbol(str(self) + str(other))
+
+    def __rmatmul__(self, other: Any) -> 'Symbol':
+        '''
+        This method concatenates the string representation of two Symbol objects in a reversed order and returns a new Symbol with the concatenated result.
+        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
+
+        Args:
+            other (Any): The object to concatenate.
+
+        Returns:
+            Symbol: A new Symbol object with the concatenated value.
+        '''
+        other = self._to_symbol(other)
+        return self._to_symbol(str(other) + str(self))
+
+    def __imatmul__(self, other: Any) -> 'Symbol':
+        '''
+        This method concatenates the string representation of two Symbol objects and assigns the concatenated result to the value of the current Symbol object.
+        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
+
+        Args:
+            other (Any): The object to concatenate.
+
+        Returns:
+            Symbol: The current Symbol object with the concatenated value.
+        '''
+        self._value =  self._to_symbol(str(self) + str(other))
+        return self
+
+    def __ne__(self, other: Any) -> bool:
+        '''
+        This method checks if a Symbol object is not equal to another Symbol by using the __eq__ method.
+        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
+
+        Args:
+            other (Any): The object to check for inequality.
+
+        Returns:
+            bool: True if the current Symbol is not equal to the 'other' Symbol, otherwise False.
+        '''
+        return not self.__eq__(other)
+
+    def __gt__(self, other: Any) -> bool:
+        '''
+        This method checks if a Symbol object is greater than another Symbol using the @core.compare() decorator with the '>' operator.
+        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
+
+        Args:
+            other (Any): The object to compare.
+
+        Returns:
+            bool: True if the current Symbol is greater than the 'other' Symbol, otherwise False.
+        '''
+        @core.compare(operator = '>')
+        def _func(_, other) -> bool:
+            pass
+
+        return _func(self, other)
+
+    def __lt__(self, other: Any) -> bool:
+        '''
+        This method checks if a Symbol object is less than another Symbol using the @core.compare() decorator with the '<' operator.
+        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
+
+        Args:
+            other (Any): The object to compare.
+
+        Returns:
+            bool: True if the current Symbol is less than the 'other' Symbol, otherwise False.
+        '''
+        @core.compare(operator = '<')
+        def _func(_, other) -> bool:
+            pass
+
+        return _func(self, other)
+
+    def __le__(self, other) -> bool:
+        '''
+        This method checks if a Symbol object is less than or equal to another Symbol using the @core.compare() decorator with the '<=' operator.
+        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
+
+        Args:
+            other (Any): The object to compare.
+
+        Returns:
+            bool: True if the current Symbol is less than or equal to the 'other' Symbol, otherwise False.
+        '''
+        @core.compare(operator = '<=')
+        def _func(_, other) -> bool:
+            pass
+
+        return _func(self, other)
+
+    def __ge__(self, other) -> bool:
+        '''
+        This method checks if a Symbol object is greater than or equal to another Symbol using the @core.compare() decorator with the '>=' operator.
+        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
+
+        Args:
+            other (Any): The object to compare.
+
+        Returns:
+            bool: True if the current Symbol is greater than or equal to the 'other' Symbol, otherwise False.
+        '''
+        @core.compare(operator = '>=')
+        def _func(_, other) -> bool:
+            pass
+
+        return _func(self, other)
+
+    def __neg__(self) -> 'Symbol':
+        '''
+        Return the negated value of the Symbol.
+        The method uses the @core.negate decorator to compute the negation of the Symbol value.
+
+        Returns:
+            Symbol: The negated value of the Symbol.
+        '''
+        @core.negate()
+        def _func(_):
+            pass
+
+        return self._to_symbol(_func(self))
+
+    def __not__(self) -> 'Symbol':
+        '''
+        Return the negated value of the Symbol.
+        The method uses the @core.negate decorator to compute the negation of the Symbol value.
+
+        Returns:
+            Symbol: The negated value of the Symbol.
+        '''
+        @core.negate()
+        def _func(_):
+            pass
+
+        return self._to_symbol(_func(self))
+
+    def __invert__(self) -> 'Symbol':
+        '''
+        Return the inverted value of the Symbol.
+        The method uses the @core.invert decorator to compute the inversion of the Symbol value.
+
+        Returns:
+            Symbol: The inverted value of the Symbol.
+        '''
+        @core.invert()
+        def _func(_):
+            pass
+
+        return self._to_symbol(_func(self))
+
+    def __lshift__(self, information: Any) -> 'Symbol':
+        '''
+        Add new information to the Symbol.
+        The method uses the @core.include decorator to incorporate information into the Symbol.
+
+        Args:
+            information (Any): The information to include in the Symbol.
+
+        Returns:
+            Symbol: The Symbol with the new information included.
+        '''
+        @core.include()
+        def _func(_, information: str):
+            pass
+
+        return self._to_symbol(_func(self, information))
+
+    def __rshift__(self, information: Any) -> 'Symbol':
+        '''
+        Add new information to the Symbol.
+        The method uses the @core.include decorator to incorporate information into the Symbol.
+
+        Args:
+            information (Any): The information to include in the Symbol.
+
+        Returns:
+            Symbol: The Symbol with the new information included.
+        '''
+        @core.include()
+        def _func(_, information: str):
+            pass
+
+        return self._to_symbol(_func(self, information))
+
+    def __rrshift__(self, information: Any) -> 'Symbol':
+        '''
+        Add new information to the Symbol.
+        The method uses the @core.include decorator to incorporate information into the Symbol.
+
+        Args:
+            information (Any): The information to include in the Symbol.
+
+        Returns:
+            Symbol: The Symbol with the new information included.
+        '''
+        @core.include()
+        def _func(_, information: str):
+            pass
+
+        return self._to_symbol(_func(self, information))
+
+    def __add__(self, other: Any) -> 'Symbol':
+        '''
+        Combine the Symbol with another value.
+        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
+        The method uses the @core.combine decorator to merge the Symbol and the other value.
+
+        Args:
+            other: The value to combine with the Symbol.
+
+        Returns:
+            Symbol: The Symbol combined with the other value.
+        '''
+        @core.combine()
+        def _func(_, a: str, b: str):
+            pass
+
+        return self._to_symbol(_func(self, other))
+
+    def __radd__(self, other) -> 'Symbol':
+        '''
+        Combine another value with the Symbol.
+        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
+        The method uses the @core.combine decorator to merge the other value and the Symbol.
+
+        Args:
+            other (Any): The value to combine with the Symbol.
+
+        Returns:
+            Symbol: The other value combined with the Symbol.
+        '''
+        @core.combine()
+        def _func(_, a: str, b: str):
+            pass
+        other = self._to_symbol(other)
+        return self._to_symbol(_func(other, self))
+
+    def __iadd__(self, other: Any) -> 'Symbol':
+        '''
+        This method adds another value to the Symbol and updates its value with the result.
+        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
+
+        Args:
+            other (Any): The value to add to the Symbol.
+
+        Returns:
+            Symbol: The updated Symbol with the added value.
+        '''
+        other = self._to_symbol(other)
+        self._value = self.__add__(other)
+        return self
+
+    def __sub__(self, other: Any) -> 'Symbol':
+        '''
+        Replace occurrences of a value with another value in the Symbol.
+        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
+        The method uses the @core.replace decorator to replace occurrences of the other value with an empty string in the Symbol.
+
+        Args:
+            other (Any): The value to replace in the Symbol.
+
+        Returns:
+            Symbol: The Symbol with occurrences of the other value replaced with an empty string.
+        '''
+        @core.replace()
+        def _func(_, text: str, replace: str, value: str):
+            pass
+
+        return self._to_symbol(_func(self, other, ''))
+
+    def __rsub__(self, other: Any) -> 'Symbol':
+        '''
+        Subtracts the symbol value from another one and removes the substrings that match the symbol value.
+        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
+        Using the core.replace decorator, this function creates a _func method to remove matching substrings.
+
+        Args:
+            other (Any): The string to subtract the symbol value from.
+
+        Returns:
+            Symbol: A new symbol with the result of the subtraction.
+        '''
+        @core.replace()
+        def _func(_, text: str, replace: str, value: str):
+            pass
+
+        other = self._to_symbol(other)
+        return self._to_symbol(_func(other, self, ''))
+
+    def __isub__(self, other: Any) -> 'Symbol':
+        '''
+        In-place subtraction of the symbol value by the other symbol value.
+        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
+
+        Args:
+            other (Any): The symbol to subtract from the current symbol.
+
+        Returns:
+            Symbol: The current symbol with the updated value.
+        '''
+        val = self.__sub__(other)
+        self._value = val.value
+
+        return self
+
+    def __and__(self, other: Any) -> 'Symbol':
+        '''
+        Performs a logical AND operation between the symbol value and another.
+        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
+        Uses the core.logic decorator with operator='and' to create a _func method for the AND operation.
+
+        Args:
+            other (Any): The string to perform the AND operation with the symbol value.
+
+        Returns:
+            Symbol: A new symbol with the result of the AND operation.
+        '''
+        @core.logic(operator='and')
+        def _func(_, a: str, b: str):
+            pass
+
+        return self._to_symbol(_func(self, other))
+
+    def __or__(self, other: Any) -> 'Symbol':
+        '''
+        Performs a logical OR operation between the symbol value and another.
+        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
+        Uses the core.logic decorator with operator='or' to create a _func method for the OR operation.
+
+        Args:
+            other (Any): The string to perform the OR operation with the symbol value.
+
+        Returns:
+            Symbol: A new symbol with the result of the OR operation.
+        '''
+        @core.logic(operator='or')
+        def _func(_, a: str, b: str):
+            pass
+
+        return self._to_symbol(_func(self, other))
+
+    def __xor__(self, other: Any) -> 'Symbol':
+        '''
+        Performs a logical XOR operation between the symbol value and another.
+        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
+        Uses the core.logic decorator with operator='xor' to create a _func method for the XOR operation.
+
+        Args:
+            other (Any): The string to perform the XOR operation with the symbol value.
+
+        Returns:
+            Symbol: A new symbol with the result of the XOR operation.
+        '''
+        @core.logic(operator='xor')
+        def _func(_, a: str, b: str):
+            pass
+
+        return self._to_symbol(_func(self, other))
+
+    def __truediv__(self, other: Any) -> 'Symbol':
+        '''
+        Divides the symbol value by another, splitting the symbol value by the other value.
+        The string representation of the other value is used to split the symbol value.
+
+        Args:
+            other (Any): The string to split the symbol value by.
+
+        Returns:
+            Symbol: A new symbol with the result of the division.
+        '''
+        return self._to_symbol(str(self).split(str(other)))
 
 
 class ContextualPrimitives:
@@ -83,7 +595,18 @@ class ValueHandlingPrimitives:
         '''
         pass
 
+    @property
     def type(self):
+        '''
+        Get the type of the Symbol.
+
+        Returns:
+            type: The type of the Symbol.
+        '''
+        return type(self)
+
+    @property
+    def value_type(self):
         '''
         Get the type of the Symbol's value.
 
@@ -169,6 +692,23 @@ class ComparisonPrimitives:
             pass
 
         return _func(self, element)
+
+    def isinstanceof(self, query: str, **kwargs) -> bool:
+        '''
+        Check if the current Symbol is an instance of a specific type.
+
+        Args:
+            query (str): The type to check if the Symbol is an instance of.
+            **kwargs: Any additional kwargs for @core.isinstanceof() decorator.
+
+        Returns:
+            bool: True if the current Symbol is an instance of the specified type, otherwise False.
+        '''
+        @core.isinstanceof()
+        def _func(_, query: str, **kwargs) -> bool:
+            pass
+
+        return _func(self, query, **kwargs)
 
 
 class ExpressionHandlingPrimitives:
@@ -1056,7 +1596,7 @@ class PersistencePrimitives:
                 f.write(str(self))
 
     @staticmethod
-    def load(path: str) -> 'Symbol':
+    def load(path: str) -> Any:
         '''
         Load a Symbol from a file.
 
@@ -1067,7 +1607,8 @@ class PersistencePrimitives:
             Symbol: The loaded Symbol.
         '''
         with open(path, 'rb') as f:
-            return pickle.load(f)
+            obj = pickle.load(f)
+        return obj
 
 
 class OutputHandlingPrimitives:

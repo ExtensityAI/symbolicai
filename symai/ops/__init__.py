@@ -1,6 +1,7 @@
-from .symbol_primitives import *
+from .primitives import *
 
 SYMBOL_PRIMITIVES = [
+    ArithmeticPrimitives,
     ContextualPrimitives,
     ValueHandlingPrimitives,
     ComparisonPrimitives,
