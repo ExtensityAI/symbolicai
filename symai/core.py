@@ -6,11 +6,11 @@ from . import post_processors as post
 from . import pre_processors as pre
 from . import prompts as prm
 from .functional import EngineRepository
-from .symbol import Symbol, Metadata
+from .symbol import Expression, Metadata
 
 
 
-class Argument(Symbol):
+class Argument(Expression):
     def __init__(self, args, signature_kwargs, decorator_kwargs):
         super().__init__()
         self.args             = args # there is only signature args

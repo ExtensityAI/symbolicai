@@ -86,11 +86,10 @@ class Import(Expression):
         if verbose:
             print(f"Loading module '{relative_module_path}.{expr['type']}'")
         module_class = getattr(importlib.import_module(relative_module_path), class_)
-        instance = module_class(*args, **kwargs)
-        return instance
+        return module_class(*args, **kwargs)
 
     def __call__(self, *args, **kwargs):
-        raise NotImplementedError()
+        raise Exception("Cannot call Import class directly. Use Import.load_module_class(module) instead.")
 
     @staticmethod
     def install(module: str):

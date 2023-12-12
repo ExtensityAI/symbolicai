@@ -4,7 +4,7 @@ from IPython.utils import io
 
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
-from ....symbol import Symbol
+from ....symbol import Result
 
 try:
     from serpapi import GoogleSearch
@@ -12,7 +12,7 @@ except:
     GoogleSearch = None
 
 
-class SearchResult(Symbol):
+class SearchResult(Result):
     def __init__(self, value) -> None:
         super().__init__(value)
         self.raw = value
