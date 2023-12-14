@@ -182,7 +182,7 @@ class Conversation(SlidingWindowStringConcatMemory):
 
         payload = f'{index_memory}{payload}'
         # perform a recall function using the query
-        res = self.recall(query, *args, **kwargs)
+        res = self.recall(query, *args, payload=payload, **kwargs)
 
         # if user is requesting to preview the response, then return only the preview result
         if 'preview' in kwargs and kwargs['preview']:
@@ -208,12 +208,12 @@ class Conversation(SlidingWindowStringConcatMemory):
 
 
 RETRIEVAL_CONTEXT = """[Description]
-This program is a retrieval augmented indexing program. It allows to index a directory or a git repository and retrieve files from it.
-The program uses a document retriever to index the files and a document reader to retrieve the files.
+This is a conversation between a retrieval augmented indexing program and a user. It allows to index a directory or a git repository and retrieve files from it.
+It uses a document retriever to index the files and a document reader to retrieve the files.
 The document retriever uses neural embeddings to vectorize the documents and a cosine similarity to retrieve the most similar documents.
 
 [Program Instructions]
-If the user requests functions or instructions, you will process the user queries based on the results of the retrieval augmented memory.
+If the user requests functions or instructions, you will process the user queries based on the results of the retrieval augmented memory and only return content about the retrieval augmented memory, conversation data and files content.
 """
 
 

@@ -164,7 +164,7 @@ class IndexEngine(Engine):
         rsp           = None
 
         if self.index is None:
-            self._init_index_engine()
+            self._init_index_engine(index_name=index_name, index_dims=self.index_dims, index_metric=self.index_metric)
 
         if index_name != self.index_name:
             assert index_name, 'Please set a valid index name for Pinecone indexing engine.'
@@ -198,13 +198,13 @@ class IndexEngine(Engine):
         assert not argument.prop.processed_input, 'Pinecone indexing engine does not support processed_input.'
         argument.prop.prepared_input = argument.prop.prompt
 
-    def _init_index_engine(self):
+    def _init_index_engine(self, index_name, index_dims, index_metric):
         pinecone.init(api_key=self.api_key, environment=self.environment)
 
-        if self.index_name is not None and self.index_name not in pinecone.list_indexes():
-            pinecone.create_index(name=self.index_name, dimension=self.index_dims, metric=self.index_metric)
+        if index_name is not None and index_name not in pinecone.list_indexes():
+            pinecone.create_index(name=index_name, dimension=index_dims, metric=index_metric)
 
-        self.index = pinecone.Index(index_name=self.index_name)
+        self.index = pinecone.Index(index_name=index_name)
 
     def _upsert(self, vectors):
         @core_ext.retry(tries=self.tries, delay=self.delay, max_delay=self.max_delay, backoff=self.backoff, jitter=self.jitter)

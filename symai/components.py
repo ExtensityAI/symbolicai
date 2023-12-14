@@ -587,7 +587,8 @@ class TokenTracker(Expression):
 class Indexer(Expression):
     DEFAULT = 'dataindex'
 
-    def replace_special_chars(self, index: str):
+    @staticmethod
+    def replace_special_chars(index: str):
         # replace special characters that are not for path
         index = str(index)
         index = index.replace('-', '')
@@ -598,7 +599,7 @@ class Indexer(Expression):
 
     def __init__(self, index_name: str = DEFAULT, top_k: int = 8, batch_size: int = 20, formatter: Callable = ParagraphFormatter(), auto_add=False, raw_result=True):
         super().__init__()
-        index_name = self.replace_special_chars(index_name)
+        index_name = Indexer.replace_special_chars(index_name)
         self.index_name = index_name
         self.elements   = []
         self.batch_size = batch_size
@@ -649,7 +650,7 @@ class Indexer(Expression):
             # run over the elments in batches
             for i in tqdm(range(0, len(self.elements), self.batch_size)):
                 val = Symbol(self.elements[i:i+self.batch_size]).zip()
-                that.add(val)
+                that.add(val, index_name=that.index_name)
 
         def _func(query, *args, **kwargs):
             query_emb = Symbol(query).embed().value

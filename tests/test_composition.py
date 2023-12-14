@@ -698,8 +698,8 @@ modified:   tests/test_composition.py
 
     def test_index(self):
         expr = Expression()
-        expr.add(Expression('Hello World!').zip())
-        expr.add(Expression('I like cookies!').zip())
+        expr.add(Expression('Hello World!').zip(), index_name='defaultindex')
+        expr.add(Expression('I like cookies!').zip(), index_name='defaultindex')
         res = expr.get(Expression('hello').embed().value).ast()
         self.assertTrue(res['matches'][0]['metadata']['text'][0] == 'Hello World!', res)
 

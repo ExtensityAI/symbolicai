@@ -626,7 +626,7 @@ class Expression(Symbol):
             pass
         return self.sym_return_type(_func(self))
 
-    def index(self, path: str, **kwargs) -> 'Symbol':
+    def index(self, path: str, index_name: str, **kwargs) -> 'Symbol':
         '''
         Execute a configuration operation on the index.
 
@@ -637,12 +637,12 @@ class Expression(Symbol):
         Returns:
             Symbol: An Expression object containing the configuration result.
         '''
-        @core.index(prompt=path, operation='config', **kwargs)
+        @core.index(prompt=path, index_name=index_name, operation='config', **kwargs)
         def _func(_):
             pass
         return _func(self)
 
-    def add(self, query: List[str], **kwargs) -> 'Symbol':
+    def add(self, query: List[str], index_name: str, **kwargs) -> 'Symbol':
         '''
         Add an entry to the existing index.
 
@@ -653,12 +653,12 @@ class Expression(Symbol):
         Returns:
             Symbol: An Expression object containing the addition result.
         '''
-        @core.index(prompt=query, operation='add', **kwargs)
+        @core.index(prompt=query, index_name=index_name, operation='add', **kwargs)
         def _func(_):
             pass
         return _func(self)
 
-    def get(self, query: List[int], **kwargs) -> 'Symbol':
+    def get(self, query: List[int], index_name: str, **kwargs) -> 'Symbol':
         '''
         Search the index based on the provided query.
 
@@ -669,7 +669,7 @@ class Expression(Symbol):
         Returns:
             Symbol: An Expression object containing the search result.
         '''
-        @core.index(prompt=query, operation='search', **kwargs)
+        @core.index(prompt=query, index_name=index_name, operation='search', **kwargs)
         def _func(_):
             pass
         return _func(self)
