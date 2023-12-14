@@ -28,10 +28,10 @@ class CLIPEngine(Engine):
             return 'text_vision'
         return super().id() # default to unregistered
 
-    def command(self, argument):
-        super().command(argument.kwargs)
-        if 'VISION_ENGINE_MODEL' in argument.kwargs:
-            self.model_id     = argument.kwargs['VISION_ENGINE_MODEL']
+    def command(self, *args, **kwargs):
+        super().command(*args, **kwargs)
+        if 'VISION_ENGINE_MODEL' in kwargs:
+            self.model_id     = kwargs['VISION_ENGINE_MODEL']
 
     def load_images(self, paths):
         if isinstance(paths, str):

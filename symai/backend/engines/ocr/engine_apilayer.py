@@ -32,11 +32,11 @@ class OCREngine(Engine):
             return 'ocr'
         return super().id() # default to unregistered
 
-    def command(self, argument):
-        super().command(argument.kwargs)
-        if 'OCR_ENGINE_API_KEY' in argument.kwargs:
+    def command(self, *args, **kwargs):
+        super().command(*args, **kwargs)
+        if 'OCR_ENGINE_API_KEY' in kwargs:
             self.headers = {
-                "apikey": argument.kwargs['OCR_ENGINE_API_KEY']
+                "apikey": kwargs['OCR_ENGINE_API_KEY']
             }
 
     def forward(self, argument):

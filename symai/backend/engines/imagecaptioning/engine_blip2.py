@@ -30,10 +30,10 @@ class Blip2Engine(Engine):
     def id(self) -> str:
         return 'imagecaptioning'
 
-    def command(self, argument):
-        super().command(argument.kwargs)
-        if 'CAPTION_ENGINE_MODEL' in argument.kwargs:
-            self.model_id = argument.kwargs['CAPTION_ENGINE_MODEL']
+    def command(self, *args, **kwargs):
+        super().command(*args, **kwargs)
+        if 'CAPTION_ENGINE_MODEL' in kwargs:
+            self.model_id = kwargs['CAPTION_ENGINE_MODEL']
 
     def forward(self, argument):
         if self.model is None:

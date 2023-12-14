@@ -45,12 +45,12 @@ class BardEngine(Engine, OpenAIMixin):
             return 'neurosymbolic'
         return super().id() # default to unregistered
 
-    def command(self, argument):
-        super().command(argument.kwargs)
-        if 'NEUROSYMBOLIC_ENGINE_API_KEY' in argument.kwargs:
-            self.api_key = argument.kwargs['NEUROSYMBOLIC_ENGINE_API_KEY']
-        if 'NEUROSYMBOLIC_ENGINE_MODEL' in argument.kwargs:
-            self.model = argument.kwargs['NEUROSYMBOLIC_ENGINE_MODEL']
+    def command(self, *args, **kwargs):
+        super().command(*args, **kwargs)
+        if 'NEUROSYMBOLIC_ENGINE_API_KEY' in kwargs:
+            self.api_key = kwargs['NEUROSYMBOLIC_ENGINE_API_KEY']
+        if 'NEUROSYMBOLIC_ENGINE_MODEL' in kwargs:
+            self.model = kwargs['NEUROSYMBOLIC_ENGINE_MODEL']
 
     def compute_remaining_tokens(self, prompts: list) -> int:
         # iterate over prompts and compute number of tokens

@@ -133,12 +133,12 @@ class IndexEngine(Engine):
             return 'index'
         return super().id() # default to unregistered
 
-    def command(self, argument):
-        super().command(argument.kwargs)
-        if 'INDEXING_ENGINE_API_KEY' in argument.kwargs:
-            self.api_key = argument.kwargs['INDEXING_ENGINE_API_KEY']
-        if 'INDEXING_ENGINE_ENVIRONMENT' in argument.kwargs:
-            self.environment = argument.kwargs['INDEXING_ENGINE_ENVIRONMENT']
+    def command(self, *args, **kwargs):
+        super().command(*args, **kwargs)
+        if 'INDEXING_ENGINE_API_KEY' in kwargs:
+            self.api_key = kwargs['INDEXING_ENGINE_API_KEY']
+        if 'INDEXING_ENGINE_ENVIRONMENT' in kwargs:
+            self.environment = kwargs['INDEXING_ENGINE_ENVIRONMENT']
 
     def _configure_index(self, **kwargs):
         index_name = kwargs['index_name'] if 'index_name' in kwargs else self.index_name
