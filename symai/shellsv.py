@@ -437,6 +437,7 @@ def retrieval_augmented_indexing(query: str, *args, **kwargs):
 
         # check if path contains git flag
         if path.startswith('git@'):
+            overwrite = True
             repo_path = os.path.join(os.path.expanduser('~'), '.symai', 'temp')
             cloner = RepositoryCloner(repo_path=repo_path)
             url = path[4:]
@@ -459,10 +460,11 @@ def retrieval_augmented_indexing(query: str, *args, **kwargs):
                 file = file @'\n'@ pdf_file
 
         index_name = path.split(sep)[-1]
+        index_name = index_name.replace('-', '_')
         print(f'Indexing {index_name} ...')
 
         # creates index if not exists
-        DocumentRetriever(index_name=index_name, file=file, overwrite=overwrite)
+        DocumentRetriever(index_name=index_name, file=file, overwrite=True)
 
     home_path = os.path.expanduser('~')
     symai_path = os.path.join(home_path, '.symai', '.conversation_state')

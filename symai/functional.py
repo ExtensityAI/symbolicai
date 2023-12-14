@@ -188,7 +188,7 @@ class EngineRepository(object):
         elif id in self._engines and allow_engine_override:
             reg_eng = self.get(id)
             with ConsoleStyle('warn', logging=True) as console:
-                console.print(f"Engine {id} is already registered. Overriding engine: {reg_eng.__name__} with {str(str(engine_instance))}")
+                console.print(f"Engine {id} is already registered. Overriding engine: {reg_eng} with {str(str(engine_instance))}")
         # debug
         # else:
         #     with ConsoleStyle('debug', logging=False) as console:

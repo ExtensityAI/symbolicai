@@ -1,4 +1,5 @@
 import json
+import copy
 import numpy as np
 
 from box import Box
@@ -706,6 +707,15 @@ class Expression(Symbol):
         def _func(_):
             pass
         return Expression(_func(Expression()))
+
+    def copy(self) -> Any:
+        '''
+        Returns a deep copy of the own object.
+
+        Returns:
+            Any: A deep copy of the own object.
+        '''
+        return copy.deepcopy(self)
 
 
 class Result(Expression):
