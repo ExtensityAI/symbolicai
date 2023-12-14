@@ -12,7 +12,7 @@ class FileMerger(Expression):
     Class to merge contents of multiple files into one, specified by their file endings and root path.
     Files specified in the exclude list will not be included.
     """
-    def __init__(self, file_endings: List[str] = ['.py', '.md', '.txt', '.sh', '.pdf', '.json', '.yaml'],
+    def __init__(self, file_endings: List[str] = ['.py', '.md', '.txt', '.sh', '.pdf', '.json', '.yaml', '.java', '.cpp', '.hpp', '.c', '.h', '.js', '.css', '.html', '.xml', '.csv', '.tsv', '.yml', '.rst', '.ipynb', '.tex', '.bib'],
                        file_excludes: List[str] = ['__init__.py', '__pycache__', 'LICENSE', 'requirements.txt', 'environment.yaml', '.git']):
         super().__init__()
         self.file_endings = file_endings
