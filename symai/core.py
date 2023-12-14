@@ -108,7 +108,7 @@ def few_shot(prompt: str = '',
             decorator_kwargs['prompt']   = prompt
             decorator_kwargs['examples'] = examples
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
-            return EngineRepository().process_query(
+            return EngineRepository.query(
                                 engine='neurosymbolic',
                                 instance=instance,
                                 func=func,
@@ -995,7 +995,7 @@ def expression(prompt: str = "Evaluate the symbolic expressions:\n",
             # Construct container object for the arguments and kwargs
             decorator_kwargs['prompt'] = prompt
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
-            return EngineRepository().process_query(
+            return EngineRepository.query(
                                 engine='symbolic',
                                 instance=instance,
                                 func=func,
@@ -1489,7 +1489,7 @@ def search(query: str,
             # Construct container object for the arguments and kwargs
             decorator_kwargs['query'] = query
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
-            return EngineRepository().process_query(
+            return EngineRepository.query(
                                 engine='search',
                                 instance=instance,
                                 func=func,
@@ -1530,7 +1530,7 @@ def opening(path: str,
             # Construct container object for the arguments and kwargs
             decorator_kwargs['path'] = path
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
-            return EngineRepository().process_query(
+            return EngineRepository.query(
                                 engine='files',
                                 instance=instance,
                                 func=func,
@@ -1565,7 +1565,7 @@ def embed(entries: List[str],
             # Construct container object for the arguments and kwargs
             decorator_kwargs['entries'] = entries
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
-            return EngineRepository().process_query(
+            return EngineRepository.query(
                                 engine='embedding',
                                 instance=instance,
                                 func=func,
@@ -1621,7 +1621,7 @@ def draw(operation: str = 'create',
             decorator_kwargs['operation'] = operation
             decorator_kwargs['prompt']    = prompt
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
-            return EngineRepository().process_query(
+            return EngineRepository.query(
                                 engine='imagerendering',
                                 instance=instance,
                                 func=func,
@@ -1656,7 +1656,7 @@ def text_vision(image: Optional[str] = None,
             decorator_kwargs['image'] = image
             decorator_kwargs['text']  = text
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
-            return EngineRepository().process_query(
+            return EngineRepository.query(
                                 engine='text_vision',
                                 instance=instance,
                                 func=func,
@@ -1688,7 +1688,7 @@ def ocr(image: str,
             # Construct container object for the arguments and kwargs
             decorator_kwargs['image'] = image
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
-            return EngineRepository().process_query(
+            return EngineRepository.query(
                                 engine='ocr',
                                 instance=instance,
                                 func=func,
@@ -1720,7 +1720,7 @@ def speech_to_text(prompt: str = 'decode',
             # Construct container object for the arguments and kwargs
             decorator_kwargs['prompt'] = prompt
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
-            return EngineRepository().process_query(
+            return EngineRepository.query(
                                 engine='speech-to-text',
                                 instance=instance,
                                 func=func,
@@ -1755,7 +1755,7 @@ def text_to_speech(prompt: str,
             decorator_kwargs['voice']  = voice
             decorator_kwargs['prompt'] = prompt
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
-            return EngineRepository().process_query(
+            return EngineRepository.query(
                                 engine='text-to-speech',
                                 instance=instance,
                                 func=func,
@@ -1788,7 +1788,7 @@ def output(constraints: List[Callable] = [],
         def wrapper(instance, *signature_args, **signature_kwargs):
             # Construct container object for the arguments and kwargs
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
-            return EngineRepository().process_query(engine='output',
+            return EngineRepository.query(engine='output',
                                 instance=instance,
                                 func=func,
                                 constraints=constraints,
@@ -1830,7 +1830,7 @@ def fetch(url: str,
             decorator_kwargs['urls'] = url
             decorator_kwargs['patterns'] = pattern
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
-            return EngineRepository().process_query(
+            return EngineRepository.query(
                                 engine='crawler',
                                 instance=instance,
                                 func=func,
@@ -1867,7 +1867,7 @@ def userinput(constraints: List[Callable] = [],
         def wrapper(instance, *signature_args, **signature_kwargs):
             # Construct container object for the arguments and kwargs
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
-            return EngineRepository().process_query(
+            return EngineRepository.query(
                                 engine='userinput',
                                 instance=instance,
                                 func=func,
@@ -1902,7 +1902,7 @@ def execute(default: Optional[str] = None,
         def wrapper(instance, *signature_args, **signature_kwargs):
             # Construct container object for the arguments and kwargs
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
-            return EngineRepository().process_query(
+            return EngineRepository.query(
                                 engine='execute',
                                 instance=instance,
                                 func=func,
@@ -1943,7 +1943,7 @@ def index(prompt: Any,
             decorator_kwargs['operation'] = operation
             decorator_kwargs['prompt']    = prompt
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
-            return EngineRepository().process_query(
+            return EngineRepository.query(
                                 engine='index',
                                 instance=instance,
                                 func=func,
@@ -1969,7 +1969,7 @@ def command(engines: List[str] = ['all'], **decorator_kwargs):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(instance):
-            return EngineRepository().execute_command(
+            return EngineRepository.command(
                     engines=engines,
                     instance=instance,
                     func=func,
@@ -1991,7 +1991,7 @@ def register(engines: Dict[str, Any]):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(instance, **kwargs):
-            return EngineRepository().register(
+            return EngineRepository.register(
                     engines=engines,
                     instance=instance,
                     func=func
@@ -2021,7 +2021,7 @@ def tune(operation: str = 'create',
             decorator_kwargs['__cmd__'] = operation #TODO: update engine
             # Construct container object for the arguments and kwargs
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
-            return EngineRepository().process_query(
+            return EngineRepository.query(
                                 engine='finetune',
                                 instance=instance,
                                 func=func,
@@ -2056,7 +2056,7 @@ def caption(image: str,
             decorator_kwargs['image']  = image
             decorator_kwargs['prompt'] = prompt
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
-            return EngineRepository().process_query(
+            return EngineRepository.query(
                                 engine='imagecaptioning',
                                 instance=instance,
                                 func=func,

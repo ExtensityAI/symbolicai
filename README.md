@@ -1328,7 +1328,7 @@ from symai.backend.engines.neurosymbolic.engine_nesy_client import NeSyClientEng
 from symai.functional import EngineRepository
 # setup local engine
 engine = NeSyClientEngine()
-EngineRepository().register('neurosymbolic', engine)
+EngineRepository.register('neurosymbolic', engine)
 ```
 
 
@@ -1373,10 +1373,10 @@ class MyEngine(Engine):
     return ...
 
 # register your engine
-EngineRepository().register('neurosymbolic', engine)
+EngineRepository.register('neurosymbolic', engine)
 ```
 
-Any engine is derived from the base class `Engine` and is then registered in the engines repository using its registry ID. The ID is for instance used in `core.py` decorators to address where to send the zero/few-shot statements using the class `EngineRepository`. You can find the `EngineRepository` defined in `functional.py` with the respective  `process_query` method. Every engine has therefore three main methods you need to implement. The `id`, `prepare` and `forward` method. The `id` return the engine category. The `prepare` and `forward` methods have a signature variable called  `argument` which carries all necessary pipeline relevant data. For instance, the output of the `argument.prop.preprocessed_input` contains the pre-processed output of the `PreProcessor` objects and is usually what you need to build and pass on to the `argument.prop.prepared_input`, which is then used in the `forward` call.
+Any engine is derived from the base class `Engine` and is then registered in the engines repository using its registry ID. The ID is for instance used in `core.py` decorators to address where to send the zero/few-shot statements using the class `EngineRepository`. You can find the `EngineRepository` defined in `functional.py` with the respective `query` method. Every engine has therefore three main methods you need to implement. The `id`, `prepare` and `forward` method. The `id` return the engine category. The `prepare` and `forward` methods have a signature variable called  `argument` which carries all necessary pipeline relevant data. For instance, the output of the `argument.prop.preprocessed_input` contains the pre-processed output of the `PreProcessor` objects and is usually what you need to build and pass on to the `argument.prop.prepared_input`, which is then used in the `forward` call.
 
 If you don't want to re-write the entire engine code but overwrite the existing prompt `prepare` logic, you can do so by subclassing the existing engine and overriding the `prepare` method.
 
@@ -1390,7 +1390,7 @@ class DummyEngine(GPTXCompletionEngine):
         argument.prop.prepared_input = ['Go wild and generate something!']
 custom_engine = DummyEngine()
 sym = Symbol()
-EngineRepository().register('neurosymbolic', custom_engine)
+EngineRepository.register('neurosymbolic', custom_engine)
 res = sym.compose()
 ```
 
@@ -1427,7 +1427,7 @@ Here is the list of names of the engines that are currently supported:
 * `output` - Output Callbacks (e.g., for printing to console or storage)
 * `imagerendering` - DALL·E 2
 
-Finally, if you want to create a completely new engine but still maintain our workflow, you can use the `_process_query` function from `symai/functional.py` and pass in your engine along with all other specified objects (i.e., Prompt, PreProcessor, etc.; see also section [Custom Operations](#🧪-custom-operations)).
+Finally, if you want to create a completely new engine but still maintain our workflow, you can use the `query` function from `symai/functional.py` and pass in your engine along with all other specified objects (i.e., Prompt, PreProcessor, etc.; see also section [Custom Operations](#🧪-custom-operations)).
 
 ## ⚡Limitations
 

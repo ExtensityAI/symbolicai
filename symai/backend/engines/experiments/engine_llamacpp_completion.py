@@ -43,10 +43,10 @@ class LLaMACppCompletionEngine(Engine):
 
         self.client = LLaMACppCompletionClient() # Initialize LLaMACpp client here
 
-    def command(self, argument):
-        super().command(argument.kwargs)
-        if 'NEUROSYMBOLIC_ENGINE_MODEL' in argument.kwargs:
-            self.model = argument.kwargs['NEUROSYMBOLIC_ENGINE_MODEL']
+    def command(self, *args, **kwargs):
+        super().command(*args, **kwargs)
+        if 'NEUROSYMBOLIC_ENGINE_MODEL' in kwargs:
+            self.model = kwargs['NEUROSYMBOLIC_ENGINE_MODEL']
 
     def forward(self, argument):
         prompts_            = argument.prop.prepared_input

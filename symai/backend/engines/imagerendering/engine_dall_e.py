@@ -53,10 +53,10 @@ class ImageRenderingEngine(Engine):
             return 'imagerendering'
         return super().id() # default to unregistered
 
-    def command(self, argument):
-        super().command(argument.kwargs)
-        if 'IMAGERENDERING_ENGINE_API_KEY' in argument.kwargs:
-            openai.api_key = argument.kwargs['IMAGERENDERING_ENGINE_API_KEY']
+    def command(self, *args, **kwargs):
+        super().command(*args, **kwargs)
+        if 'IMAGERENDERING_ENGINE_API_KEY' in kwargs:
+            openai.api_key = kwargs['IMAGERENDERING_ENGINE_API_KEY']
 
     def forward(self, argument):
         prompt        = argument.prop.prepared_input

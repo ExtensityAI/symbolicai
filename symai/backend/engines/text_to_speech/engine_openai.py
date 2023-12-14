@@ -26,12 +26,12 @@ class TTSEngine(Engine):
             return 'text-to-speech'
         return super().id() # default to unregistered
 
-    def command(self, argument):
-        super().command(argument.kwargs)
-        if 'TEXT_TO_SPEECH_ENGINE_API_KEY' in argument.kwargs:
-            self.api_key = argument.kwargs['TEXT_TO_SPEECH_ENGINE_API_KEY']
-        if 'TEXT_TO_SPEECH_ENGINE_MODEL' in argument.kwargs:
-            self.model_id = argument.kwargs['TEXT_TO_SPEECH_ENGINE_MODEL']
+    def command(self, *args, **kwargs):
+        super().command(*args, **kwargs)
+        if 'TEXT_TO_SPEECH_ENGINE_API_KEY' in kwargs:
+            self.api_key = kwargs['TEXT_TO_SPEECH_ENGINE_API_KEY']
+        if 'TEXT_TO_SPEECH_ENGINE_MODEL' in kwargs:
+            self.model_id = kwargs['TEXT_TO_SPEECH_ENGINE_MODEL']
 
     def forward(self, argument):
         kwargs              = argument.kwargs

@@ -31,12 +31,12 @@ class EmbeddingEngine(Engine, OpenAIMixin):
             return 'embedding'
         return super().id() # default to unregistered
 
-    def command(self, argument):
-        super().command(argument.kwargs)
-        if 'EMBEDDING_ENGINE_API_KEY' in argument.kwargs:
-            openai.api_key = argument.kwargs['EMBEDDING_ENGINE_API_KEY']
-        if 'EMBEDDING_ENGINE_MODEL' in argument.kwargs:
-            self.model = argument.kwargs['EMBEDDING_ENGINE_MODEL']
+    def command(self, *args, **kwargs):
+        super().command(*args, **kwargs)
+        if 'EMBEDDING_ENGINE_API_KEY' in kwargs:
+            openai.api_key = kwargs['EMBEDDING_ENGINE_API_KEY']
+        if 'EMBEDDING_ENGINE_MODEL' in kwargs:
+            self.model = kwargs['EMBEDDING_ENGINE_MODEL']
 
     def forward(self, argument):
         prepared_input = argument.prop.prepared_input

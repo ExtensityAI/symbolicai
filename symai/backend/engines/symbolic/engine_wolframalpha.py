@@ -35,10 +35,10 @@ class WolframAlphaEngine(Engine):
             return 'symbolic'
         return super().id() # default to unregistered
 
-    def command(self, argument):
-        super().command(argument.kwargs)
-        if 'SYMBOLIC_ENGINE_API_KEY' in argument.kwargs:
-            self.api_key = argument.kwargs['SYMBOLIC_ENGINE_API_KEY']
+    def command(self, *args, **kwargs):
+        super().command(*args, **kwargs)
+        if 'SYMBOLIC_ENGINE_API_KEY' in kwargs:
+            self.api_key = kwargs['SYMBOLIC_ENGINE_API_KEY']
             self.client  = wa.Client(self.api_key) if len(self.api_key) > 0 else None
 
     def forward(self, argument):

@@ -60,12 +60,12 @@ class SerpApiEngine(Engine):
             return 'search'
         return super().id() # default to unregistered
 
-    def command(self, argument):
-        super().command(argument.kwargs)
-        if 'SEARCH_ENGINE_API_KEY' in argument.kwargs:
-            self.api_key = argument.kwargs['SEARCH_ENGINE_API_KEY']
-        if 'SEARCH_ENGINE_MODEL' in argument.kwargs:
-            self.engine  = argument.kwargs['SEARCH_ENGINE_MODEL']
+    def command(self, *args, **kwargs):
+        super().command(*args, **kwargs)
+        if 'SEARCH_ENGINE_API_KEY' in kwargs:
+            self.api_key = kwargs['SEARCH_ENGINE_API_KEY']
+        if 'SEARCH_ENGINE_MODEL' in kwargs:
+            self.engine  = kwargs['SEARCH_ENGINE_MODEL']
 
     def forward(self, argument):
         queries  = argument.prop.prepared_input

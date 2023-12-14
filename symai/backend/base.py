@@ -109,15 +109,15 @@ class Engine(ABC):
     def prepare(self, argument):
         raise NotImplementedError()
 
-    def command(self, argument):
-        if argument.prop.verbose:
-            self.verbose = argument.prop.verbose
-        if argument.prop.logging:
-            self.logging = argument.prop.logging
-        if argument.prop.log_level:
-            self.log_level = argument.prop.log_level
-        if argument.prop.time_clock:
-            self.time_clock = argument.prop.time_clock
+    def command(self, *args, **kwargs):
+        if kwargs.get('verbose', None):
+            self.verbose = kwargs['verbose']
+        if kwargs.get('logging', None):
+            self.logging = kwargs['logging']
+        if kwargs.get('log_level', None):
+            self.log_level = kwargs['log_level']
+        if kwargs.get('time_clock', None):
+            self.time_clock = kwargs['time_clock']
 
     def __str__(self) -> str:
         return self.__class__.__name__

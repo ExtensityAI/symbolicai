@@ -7,9 +7,6 @@ from ...base import Engine
 from ...settings import SYMAI_CONFIG
 
 
-rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True
-
-
 class LLaMACppClientEngine(Engine):
     def __init__(self, host: str = 'localhost', port: int = 18100, timeout: int = 240):
         super().__init__()
@@ -19,17 +16,16 @@ class LLaMACppClientEngine(Engine):
         self.host       = host
         self.port       = port
         self.timeout    = timeout
-        self.connection = None
 
     def id(self) -> str:
         if  self.config['NEUROSYMBOLIC_ENGINE_MODEL'] and \
-            self.config['NEUROSYMBOLIC_ENGINE_MODEL'] == 'localhost':
+            self.config['NEUROSYMBOLIC_ENGINE_MODEL'] == 'llamacpp':
             return 'neurosymbolic'
         return super().id() # default to unregistered
 
     @property
     def max_tokens(self):
-        return self.connection.root.max_tokens()
+        return 4096
 
     def forward(self, argument):
         if self.connection is None:

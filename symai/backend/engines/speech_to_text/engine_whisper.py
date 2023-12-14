@@ -95,10 +95,10 @@ class WhisperEngine(Engine):
             return 'speech-to-text'
         return super().id() # default to unregistered
 
-    def command(self, argument):
-        super().command(argument.kwargs)
-        if 'SPEECH_TO_TEXT_ENGINE_MODEL' in argument.kwargs:
-            self.model_id = argument.kwargs['SPEECH_TO_TEXT_ENGINE_MODEL']
+    def command(self, *args, **kwargs):
+        super().command(*args, **kwargs)
+        if 'SPEECH_TO_TEXT_ENGINE_MODEL' in kwargs:
+            self.model_id = kwargs['SPEECH_TO_TEXT_ENGINE_MODEL']
 
     def forward(self, argument):
         assert whisper is not None, "Whisper is not installed. Please install it first."
