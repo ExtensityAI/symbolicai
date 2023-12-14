@@ -3,6 +3,8 @@ import openai
 import requests
 import tempfile
 
+from typing import Optional
+
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
 from ....symbol import Result
@@ -38,10 +40,10 @@ class DalleResult(Result):
 
 
 class ImageRenderingEngine(Engine):
-    def __init__(self, size: int = 512):
+    def __init__(self, size: int = 512, api_key: Optional[str] = None):
         super().__init__()
         self.config = SYMAI_CONFIG
-        openai.api_key = self.config['IMAGERENDERING_ENGINE_API_KEY']
+        openai.api_key = self.config['IMAGERENDERING_ENGINE_API_KEY'] if api_key is None else api_key
         logger = logging.getLogger('openai')
         logger.setLevel(logging.WARNING)
         self.size = size

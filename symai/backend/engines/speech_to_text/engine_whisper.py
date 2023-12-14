@@ -2,7 +2,7 @@ import logging
 import torch
 
 from itertools import takewhile
-from typing import Iterable, List
+from typing import Iterable, List, Optional
 
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
@@ -78,12 +78,12 @@ except ImportError:
 
 
 class WhisperEngine(Engine):
-    def __init__(self):
+    def __init__(self, model: Optional[str] = None):
         super().__init__()
         self.config       = SYMAI_CONFIG
         self.model        = None # lazy loading
-        self.model_id     = self.config['SPEECH_TO_TEXT_ENGINE_MODEL']
-        self.old_model_id = self.config['SPEECH_TO_TEXT_ENGINE_MODEL']
+        self.model_id     = self.config['SPEECH_TO_TEXT_ENGINE_MODEL'] if model is None else model
+        self.old_model_id = self.config['SPEECH_TO_TEXT_ENGINE_MODEL'] if model is None else model
         self.tokens       = []
         self.text         = []
         self.formatter    = WhisperTimestampsFormatter()

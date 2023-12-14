@@ -1,5 +1,7 @@
 import requests
 
+from typing import Optional
+
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
 from ....symbol import Result
@@ -17,12 +19,12 @@ class ApiLayerResult(Result):
 
 
 class OCREngine(Engine):
-    def __init__(self):
+    def __init__(self, api_key: Optional[str] = None):
         super().__init__()
         # Opening JSON file
         self.config = SYMAI_CONFIG
         self.headers = {
-            "apikey": self.config['OCR_ENGINE_API_KEY']
+            "apikey": self.config['OCR_ENGINE_API_KEY'] if api_key is None else api_key
         }
 
     def id(self) -> str:
