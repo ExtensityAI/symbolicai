@@ -64,8 +64,8 @@ class Engine(ABC):
             print(f"{argument.prop.func}: {req_time} sec")
         log['Output'] = res
         if self.verbose:
-            view   = {k: v for k, v in list(log['Input'].items()) if k != 'self' and k != 'func' and k != 'args'}
-            input_ = f"{str(log['Input']['self'])[:50]}, {str(log['Input']['func'])}, {str(view)}"
+            view   = {k: v for k, v in list(log['Input'].items()) if k != 'self'}
+            input_ = f"{str(log['Input']['self'])[:50]}, {str(argument.prop.func)}, {str(view)}"
             print(input_[:150], str(log['Output'])[:100])
         if self.logging:
             self.logger.log(self.log_level, log)
