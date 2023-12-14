@@ -11,8 +11,8 @@ class TestBackend(unittest.TestCase):
         expr = Expression()
         s1   = Symbol('Hello World!').zip()
         s2   = Symbol('I like cookies!').zip()
-        expr.add(s1)
-        expr.add(s2)
+        expr.add(s1, index_name='defaultindex')
+        expr.add(s2, index_name='defaultindex')
         res = expr.get(Symbol('hello').embed().value).ast()
         self.assertTrue('Hello World!' in res, res)
 

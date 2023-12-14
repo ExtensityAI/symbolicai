@@ -7,7 +7,6 @@ try:
     from lavis.models import load_model_and_preprocess
 except ImportError:
     load_model_and_preprocess = None
-    print('Blip2 is not installed. Please install it with `pip install symbolicai[blip2]`')
 
 from PIL import Image
 
@@ -18,8 +17,11 @@ from ...settings import SYMAI_CONFIG
 class Blip2Engine(Engine):
     def __init__(self):
         super().__init__()
-        config              = SYMAI_CONFIG
-        ids                 = config['CAPTION_ENGINE_MODEL'].split('/')
+        self.config         = SYMAI_CONFIG
+        ids                 = self.config['CAPTION_ENGINE_MODEL'].split('/')
+        if len(ids) != 2:
+            # return unregistered engine
+            return
         self.name_id        = ids[0]
         self.model_id       = ids[1]
         self.model          = None  # lazy loading
@@ -28,7 +30,10 @@ class Blip2Engine(Engine):
         self.device         = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     def id(self) -> str:
-        return 'imagecaptioning'
+        if  self.config['CAPTION_ENGINE_MODEL'] and \
+            'blip2' in self.config['CAPTION_ENGINE_MODEL']:
+            return 'imagecaptioning'
+        return super().id() # default to unregistered
 
     def command(self, *args, **kwargs):
         super().command(*args, **kwargs)
@@ -36,6 +41,8 @@ class Blip2Engine(Engine):
             self.model_id = kwargs['CAPTION_ENGINE_MODEL']
 
     def forward(self, argument):
+        if load_model_and_preprocess is None:
+            raise ImportError('Blip2 is not installed. Please install it with `pip install symbolicai[blip2]`')
         if self.model is None:
             self.model, self.vis_processors, self.txt_processors  = load_model_and_preprocess(name       = self.name_id,
                                                                                               model_type = self.model_id,

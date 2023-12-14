@@ -24,7 +24,7 @@ from pygments.lexers.shell import BashLexer
 from .menu.screen import show_intro_menu
 from .imports import Import
 from .backend.settings import SYMSH_CONFIG
-from .components import Function, FileReader
+from .components import Function, FileReader, Indexer
 from .extended import Conversation, RetrievalAugmentedConversation
 from .misc.console import ConsoleStyle
 from .misc.loader import Loader
@@ -460,11 +460,11 @@ def retrieval_augmented_indexing(query: str, *args, **kwargs):
                 file = file @'\n'@ pdf_file
 
         index_name = path.split(sep)[-1]
-        index_name = index_name.replace('-', '_')
+        index_name = Indexer.replace_special_chars(index_name)
         print(f'Indexing {index_name} ...')
 
         # creates index if not exists
-        DocumentRetriever(index_name=index_name, file=file, overwrite=True)
+        DocumentRetriever(index_name=index_name, file=file, overwrite=overwrite)
 
     home_path = os.path.expanduser('~')
     symai_path = os.path.join(home_path, '.symai', '.conversation_state')

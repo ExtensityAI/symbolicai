@@ -93,20 +93,21 @@ class SlidingWindowStringConcatMemory(Memory):
 
 
 class VectorDatabaseMemory(Memory):
-    def __init__(self, enabled: bool = True, top_k: int = 3):
+    def __init__(self, enabled: bool = True, top_k: int = 3, index_name: str = 'defaultindex'):
         super().__init__()
         self.enabled: bool = enabled
         self.top_k: int    = top_k
+        self.index_name    = index_name
 
     def store(self, query: str , *args, **kwargs):
         if not self.enabled: return
 
-        self.add(Symbol(query).zip())
+        self.add(Symbol(query).zip(), index_name=self.index_name)
 
     def recall(self, query: str, *args, **kwargs):
         if not self.enabled: return
 
-        res = self.get(Symbol(query).embed().value, index_top_k=self.top_k).ast()
+        res = self.get(Symbol(query).embed().value, index_top_k=self.top_k, index_name=self.index_name).ast()
 
         return [v['metadata']['text'] for v in res['matches']]
 

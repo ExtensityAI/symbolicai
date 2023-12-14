@@ -1916,6 +1916,7 @@ def execute(default: Optional[str] = None,
 
 
 def index(prompt: Any,
+          index_name: str,
           operation: str = 'search', # | add | config
           default: Optional[str] = None,
           constraints: List[Callable] = [],
@@ -1940,8 +1941,9 @@ def index(prompt: Any,
         @functools.wraps(func)
         def wrapper(instance, *signature_args, **signature_kwargs):
             # Construct container object for the arguments and kwargs
-            decorator_kwargs['operation'] = operation
-            decorator_kwargs['prompt']    = prompt
+            decorator_kwargs['operation']  = operation
+            decorator_kwargs['prompt']     = prompt
+            decorator_kwargs['index_name'] = index_name
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
             return EngineRepository.query(
                                 engine='index',

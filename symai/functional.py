@@ -16,6 +16,9 @@ from .backend.base import Engine, ENGINE_UNREGISTERED
 from .backend import engines
 
 
+logger = logging.getLogger('functional')
+
+
 class ConstraintViolationException(Exception):
     pass
 
@@ -211,17 +214,20 @@ class EngineRepository(object):
 
                 # Register class if it is a subclass of Engine (but not Engine itself)
                 if inspect.isclass(attribute) and issubclass(attribute, Engine) and attribute is not Engine:
-                    instance = attribute() # Create an instance of the engine class
-                    # Assume the class has an 'init' static method to initialize it
-                    engine_id_func_ = getattr(instance, 'id', None)
-                    if engine_id_func_ is None:
-                        raise ValueError(f"Engine {str(instance)} does not have an id. Please add a method id() to the class.")
-                    # call engine_() to get the id of the engine
-                    id_ = engine_id_func_()
-                    # only registered configured engine
-                    if id_ != ENGINE_UNREGISTERED:
-                        # register new engine
-                        self.register(id_, instance, allow_engine_override=allow_engine_override)
+                    try:
+                        instance = attribute() # Create an instance of the engine class
+                        # Assume the class has an 'init' static method to initialize it
+                        engine_id_func_ = getattr(instance, 'id', None)
+                        if engine_id_func_ is None:
+                            raise ValueError(f"Engine {str(instance)} does not have an id. Please add a method id() to the class.")
+                        # call engine_() to get the id of the engine
+                        id_ = engine_id_func_()
+                        # only registered configured engine
+                        if id_ != ENGINE_UNREGISTERED:
+                            # register new engine
+                            self.register(id_, instance, allow_engine_override=allow_engine_override)
+                    except Exception as e:
+                        logger.error(f"Failed to register engine {str(attribute)}: {str(e)}")
 
     @staticmethod
     def get(engine_name: str, *args, **kwargs) -> Engine:
