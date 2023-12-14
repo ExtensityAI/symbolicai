@@ -2,7 +2,7 @@ import logging
 import openai
 import tiktoken
 
-from typing import List
+from typing import List, Optional
 
 from ...base import Engine
 from ...mixin.openai import OpenAIMixin
@@ -130,11 +130,11 @@ class InvalidRequestErrorRemedyCompletionStrategy:
 
 
 class GPTXCompletionEngine(Engine, OpenAIMixin):
-    def __init__(self):
+    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         super().__init__()
         self.config     = SYMAI_CONFIG
-        openai.api_key  = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
-        self.model      = self.config['NEUROSYMBOLIC_ENGINE_MODEL']
+        openai.api_key  = self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] if api_key is None else api_key
+        self.model      = self.config['NEUROSYMBOLIC_ENGINE_MODEL'] if model is None else model
         logger          = logging.getLogger('openai')
         self.tokenizer  = tiktoken.encoding_for_model(self.model)
         self.pricing    = self.api_pricing()

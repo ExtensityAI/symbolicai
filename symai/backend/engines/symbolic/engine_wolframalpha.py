@@ -2,6 +2,8 @@ import json
 
 from box import Box
 
+from typing import Optional
+
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
 from ....symbol import Result
@@ -20,10 +22,10 @@ class WolframResult(Result):
 
 
 class WolframAlphaEngine(Engine):
-    def __init__(self):
+    def __init__(self, api_key: Optional[str] = None):
         super().__init__()
         self.config  = SYMAI_CONFIG
-        self.api_key = self.config['SYMBOLIC_ENGINE_API_KEY']
+        self.api_key = self.config['SYMBOLIC_ENGINE_API_KEY'] if api_key is None else api_key
         self.client  = None
 
     def id(self) -> str:

@@ -1,6 +1,7 @@
 import logging
 import requests
 
+from typing import Optional
 from PIL import Image
 from transformers import CLIPModel, CLIPProcessor
 
@@ -13,14 +14,14 @@ logging.getLogger("PIL").setLevel(logging.WARNING)
 
 
 class CLIPEngine(Engine):
-    def __init__(self):
+    def __init__(self, model: Optional[str] = None):
         super().__init__()
         self.model        =  None # lazy loading
         self.preprocessor = None # lazy loading
 
         self.config       = SYMAI_CONFIG
-        self.model_id     = self.config['VISION_ENGINE_MODEL']
-        self.old_model_id = self.config['VISION_ENGINE_MODEL']
+        self.model_id     = self.config['VISION_ENGINE_MODEL'] if model is None else model
+        self.old_model_id = self.config['VISION_ENGINE_MODEL'] if model is None else model
 
     def id(self) -> str:
         if self.config['VISION_ENGINE_MODEL']:

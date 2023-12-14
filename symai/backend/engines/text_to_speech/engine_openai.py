@@ -1,5 +1,7 @@
 import logging
+
 from openai import OpenAI
+from typing import Optional
 
 # suppress openai logging
 logging.getLogger("openai").setLevel(logging.WARNING)
@@ -10,11 +12,11 @@ from ....symbol import Result
 
 
 class TTSEngine(Engine):
-    def __init__(self):
+    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         super().__init__()
         self.config   = SYMAI_CONFIG
-        self.api_key  = self.config['TEXT_TO_SPEECH_ENGINE_API_KEY']
-        self.model_id = self.config['TEXT_TO_SPEECH_ENGINE_MODEL']
+        self.api_key  = self.config['TEXT_TO_SPEECH_ENGINE_API_KEY'] if api_key is None else api_key
+        self.model_id = self.config['TEXT_TO_SPEECH_ENGINE_MODEL'] if model is None else model
         self.tokens   = []
         self.text     = []
         self.client   = OpenAI(api_key=self.api_key)

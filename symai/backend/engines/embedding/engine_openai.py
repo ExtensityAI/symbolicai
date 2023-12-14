@@ -1,6 +1,8 @@
 import logging
 import openai
 
+from typing import Optional
+
 from ...base import Engine
 from ...mixin.openai import OpenAIMixin
 from ...settings import SYMAI_CONFIG
@@ -14,13 +16,13 @@ logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
 class EmbeddingEngine(Engine, OpenAIMixin):
-    def __init__(self):
+    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         super().__init__()
         logger = logging.getLogger('openai')
         logger.setLevel(logging.WARNING)
         self.config             = SYMAI_CONFIG
-        openai.api_key          = self.config['EMBEDDING_ENGINE_API_KEY']
-        self.model              = self.config['EMBEDDING_ENGINE_MODEL']
+        openai.api_key          = self.config['EMBEDDING_ENGINE_API_KEY'] if api_key is None else api_key
+        self.model              = self.config['EMBEDDING_ENGINE_MODEL'] if model is None else model
         self.pricing            = self.api_pricing()
         self.max_tokens         = self.api_max_tokens()
 
