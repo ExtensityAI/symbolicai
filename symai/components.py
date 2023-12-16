@@ -238,8 +238,8 @@ class Metric(Expression):
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
         sym = self._to_symbol(sym)
-        assert sym.type() == np.ndarray or sym.type() == list, 'Metric can only be applied to numpy arrays or lists.'
-        if sym.type() == list:
+        assert sym.value_type == np.ndarray or sym.value_type == list, 'Metric can only be applied to numpy arrays or lists.'
+        if sym.value_type == list:
             sym._value = np.array(sym.value)
         # compute normalization between 0 and 1
         if self.normalize:

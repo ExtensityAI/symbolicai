@@ -421,12 +421,36 @@ modified:   tests/test_composition.py
 
     def test_type(self):
         sym = Symbol(np.array([1, 2, 3, 4, 5]))
-        self.assertTrue(np.ndarray == sym.type(), sym.type())
+        self.assertTrue(np.ndarray == sym.value_type, sym.value_type)
 
     def test_output(self):
         sym = Symbol('Hello World')
         res = sym.output('Spanish', expr=sym.translate, handler=lambda kwargs: print(f'Lambda Function: {kwargs}'))
         self.assertTrue('Hola Mundo' in res, res)
+
+    def test_types(self):
+        from symai import Symbol
+        sym1 = Symbol('test')
+        sym2 = Symbol('test', mixin=False)
+        sym3 = Expression('test')
+        class Demo(Expression):
+            pass
+        sym4 = Demo('test')
+        assert 'query' in dir(sym1)
+        assert 'query' not in dir(sym2)
+        assert isinstance(sym1, Symbol)
+        assert isinstance(sym2, Symbol)
+        assert isinstance(sym3, Symbol)
+        assert isinstance(sym4, Symbol)
+        assert isinstance(sym4, Expression)
+        assert not isinstance(sym4, str)
+        assert type(sym1) != type(sym2)
+        assert Symbol != type(sym1)
+        assert Symbol == type(sym2)
+        assert type(sym1) != type(sym3)
+        assert Expression != type(sym3)
+        assert Demo != type(sym4)
+        assert str != type(sym4)
 
     def test_clean_expr(self):
         sym = Symbol('Hello World \n \n \n \n')
