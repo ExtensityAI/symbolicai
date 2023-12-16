@@ -1,11 +1,30 @@
 import logging
 import requests
+import json
 
 from typing import List
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
+from ....symbol import Result
+
+
+class LLaMAResult(Result):
+    def __init__(self, value=None, *args, **kwargs):
+        super().__init__(value, *args, **kwargs)
+        self._value = value
+        self.error  = None
+        self.raw    = value
+        self._perse_result()
+
+    def _perse_result(self):
+        val        = json.loads(self.value)
+        self.value = val
+        if 'error' in val:
+            self.error = val['error']
+        if 'content' in val:
+            self.value = val['content']
 
 
 class LLaMACppClientEngine(Engine):
@@ -62,6 +81,7 @@ class LLaMACppClientEngine(Engine):
 
         metadata = {}
 
+        res    = LLaMAResult(res)
         rsp    = [res]
         output = rsp if isinstance(prompts, list) else rsp[0]
         return output, metadata

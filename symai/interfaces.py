@@ -2,6 +2,7 @@ import logging
 from pydoc import locate
 
 from .symbol import Expression
+from .imports import Import
 
 
 class Interface(Expression):
@@ -9,7 +10,11 @@ class Interface(Expression):
         super().__init__(*args, **kwargs)
         self.logger = logging.getLogger(__name__)
 
-    def __new__(self, module: str, *args, **kwargs) :
+    def __new__(self, module: str, *args, **kwargs):
+        module = str(module)
+        # if `/` in module, assume github repo; else assume local module
+        if '/' in module:
+            return Import(module)
         module = module.lower()
         module = module.replace('-', '_')
         self._module = module

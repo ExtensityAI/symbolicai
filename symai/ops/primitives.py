@@ -134,6 +134,7 @@ class ArithmeticPrimitives:
         Returns:
             bool: True if the current Symbol is equal to the 'other' Symbol, otherwise False.
         '''
+        print('debug')
         @core.equals()
         def _func(_, other) -> bool:
             pass
@@ -1477,7 +1478,7 @@ class DataClusteringPrimitives:
         '''
         def _ensure_format(x):
             if not isinstance(x, np.ndarray):
-                if not isinstance(x, type(self._to_symbol(None))): #@NOTE: enforce Symbol to avoid circular import
+                if not isinstance(x, self._symbol_type): #@NOTE: enforce Symbol to avoid circular import
                     raise TypeError(f'Cannot compute similarity with type {type(x)}')
                 x = np.array(x.value)
             return x.squeeze()[:, None]

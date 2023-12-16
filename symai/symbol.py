@@ -54,30 +54,25 @@ class Metadata(object):
         self.__dict__[name] = value
 
 
-class UnifiedMeta(type):
+class SymbolMeta(type):
     """
     Metaclass to unify metaclasses of mixed-in primitives.
     """
+    def __instancecheck__(cls, obj):
+        if str(obj.__class__) == str(cls):
+            return True
+        return super().__instancecheck__(obj)
+
     def __new__(mcls, name, bases, attrs):
-        # Determine the metaclasses of the bases
-        metas = [type(base) for base in bases]
-        # Filter out types, as 'type' is not a valid base for new metaclass
-        metas = [meta for meta in metas if meta is not type]
-
-        # If all metaclasses are the same or there is only the 'type' metaclass, use it
-        if len(set(metas)) == 1 or not metas:
-            meta = metas[0] if metas else type
-        else:
-            # Multiple different metaclasses; create a common metaclass that inherits from all
-            class CombinedMeta(*metas):
-                pass
-            meta = CombinedMeta
-
-        # Create and return the new class with the unified metaclass
-        return meta(name, bases, attrs)
+        """
+        Create a new class with a unified metaclass.
+        """
+        # create a new cls type that inherits from Symbol and the mixin primitive types
+        cls            = type.__new__(mcls, name, bases, attrs)
+        return cls
 
 
-class Symbol:
+class Symbol(metaclass=SymbolMeta):
     _mixin      = True
     _primitives = SYMBOL_PRIMITIVES
     _metadata   = Metadata()
@@ -152,15 +147,13 @@ class Symbol:
         '''
         use_mixin  = mixin if mixin is not None else cls._mixin
         primitives = primitives if primitives is not None else cls._primitives
+        ori_cls    = cls
         # Initialize instance as a combination of Symbol and the mixin primitive types
         if use_mixin:
             # create a new cls type that inherits from Symbol and the mixin primitive types
-            assert cls.__class__ == type, 'Only classes can be used as Symbol types.'
-            cls_module     = cls.__module__
-            cls_name       = cls.__name__
-            cls            = type(cls_name, (cls, *primitives), {})
-            cls.__module__ = cls_module
-        return super().__new__(cls)
+            cls       = SymbolMeta(cls.__name__, (cls,) + tuple(primitives), {})
+        obj = super().__new__(cls)
+        return obj
 
     def __reduce__(self):
         '''
@@ -206,16 +199,14 @@ class Symbol:
         Returns:
             Type: The reconstructed class.
         '''
+        ori_cls = base_cls
         if use_mixin:
-            assert base_cls.__class__ == type, 'Only classes can be used as Symbol types.'
-            cls_module = base_cls.__module__
-            cls_name = base_cls.__name__
             # Convert primitive info tuples back to types
-            primitives = [primitive for primitive, name in primitives_info]
+            primitives     = [primitive for primitive, name in primitives_info]
             # Create new cls with UnifiedMeta metaclass
-            cls = UnifiedMeta(cls_name, (base_cls,) + tuple(primitives), {})
-            cls.__module__ = cls_module
-            return cls()
+            cls            = SymbolMeta(base_cls.__name__, (base_cls,) + tuple(primitives), {})
+            obj            = cls()
+            return obj
         return base_cls()
 
     def __getstate__(self) -> Dict[str, Any]:
@@ -264,20 +255,6 @@ class Symbol:
         '''
         return json.dumps(self, cls=SymbolEncoder)
 
-    def istypeequal(self, type: Type) -> bool:
-        '''
-        Check if the type of the Symbol is equal to a specified type.
-        Compares the string representation of the types. Allows for comparison of types from different modules.
-        Attention: Due to mixin, runtime types and module types are not equal, however, they can be compared using this method.
-
-        Args:
-            type (Type): The type to check against.
-
-        Returns:
-            bool: True if the type of the Symbol is equal to the specified type, otherwise False.
-        '''
-        return str(type) == str(type(self))
-
     def _to_symbol(self, value: Any) -> "Symbol":
         '''
         Convert a value to a Symbol instance.
@@ -292,6 +269,16 @@ class Symbol:
             return value
 
         return Symbol(value)
+
+    @property
+    def _symbol_type(self) -> "Symbol":
+        '''
+        Get the type of the Symbol instance.
+
+        Returns:
+            Symbol: The type of the Symbol instance.
+        '''
+        return type(self._to_symbol(None))
 
     def __hash__(self) -> int:
         '''
