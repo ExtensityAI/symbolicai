@@ -12,11 +12,11 @@ from ...settings import SYMAI_CONFIG
 from ....symbol import Result
 
 
-def image_to_byte_array(image: Image) -> bytes:
+def image_to_byte_array(image: Image, format='PNG') -> bytes:
   # BytesIO is a file-like buffer stored in memory
   imgByteArr = io.BytesIO()
   # image.save expects a file-like as a argument
-  image.save(imgByteArr, format='PNG')
+  image.save(imgByteArr, format=format)
   # Turn the BytesIO object back into a bytes object
   imgByteArr = imgByteArr.getvalue()
   return imgByteArr
@@ -68,7 +68,9 @@ class LLaMACppClientEngine(Engine):
         user                = user['content']
 
         if isinstance(image['content'], Image):
-            im_bytes = image_to_byte_array(image['content'])
+            # format image to bytes
+            format_ = argument.prop.image_format if argument.prop.image_format else 'PNG'
+            im_bytes = image_to_byte_array(image['content'], format=format_)
         else:
             # Convert image to bytes, open as binary
             with open(image['content'], 'rb') as f:
