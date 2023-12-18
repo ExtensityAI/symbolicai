@@ -1,13 +1,25 @@
 import logging
 import requests
 import json
+import io
 
 from typing import List
 from requests_toolbelt.multipart.encoder import MultipartEncoder
+from PIL.Image import Image
 
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
 from ....symbol import Result
+
+
+def image_to_byte_array(image: Image) -> bytes:
+  # BytesIO is a file-like buffer stored in memory
+  imgByteArr = io.BytesIO()
+  # image.save expects a file-like as a argument
+  image.save(imgByteArr, format='PNG')
+  # Turn the BytesIO object back into a bytes object
+  imgByteArr = imgByteArr.getvalue()
+  return imgByteArr
 
 
 class LLaMAResult(Result):
@@ -54,9 +66,13 @@ class LLaMACppClientEngine(Engine):
         # escape special characters
         system              = system['content']
         user                = user['content']
-        # Convert image to bytes, open as binary
-        with open(image['content'], 'rb') as f:
-            im_bytes = f.read()
+
+        if isinstance(image['content'], Image):
+            im_bytes = image_to_byte_array(image['content'])
+        else:
+            # Convert image to bytes, open as binary
+            with open(image['content'], 'rb') as f:
+                im_bytes = f.read()
         # Create multipart/form-data payload
         payload      = MultipartEncoder(
             fields={
