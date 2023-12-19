@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  symai_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: extensityai/symbolicai:latest
+    command: uvicorn symai.endpoints.api:app --reload --host 0.0.0.0 --port 8999
+    ports:
+      - 8999:8999

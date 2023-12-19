@@ -1,5 +1,8 @@
 repositories:
   - repo:
+      name: "ExtensityAI/embeddings"
+      desc: "Embeddings based on the Sentence Transformers repository"
+  - repo:
       name: "ExtensityAI/fullmetalshell"
       desc: "Shell Style replies like the Drill Sergeant from Full Metal Jacket"
   - repo:

@@ -70,7 +70,7 @@ html_theme = "sphinx_book_theme"
 
 html_theme_options = {
     "path_to_docs": "docs",
-    "repository_url": "https://github.com/xpitfire/symbolicai",
+    "repository_url": "https://github.com/ExtensityAI/symbolicai",
     "use_repository_button": True,
     "show_toc_level": 2,
     "header_links_before_dropdown": 5,
@@ -80,7 +80,7 @@ html_theme_options = {
 
 html_context = {
     "display_github": True,  # Integrate GitHub
-    "github_user": "Xpitfire",  # Username
+    "github_user": "Extensity",  # Username
     "github_repo": "symbolicai",  # Repo name
     "github_version": "main",  # Version
     "conf_py_path": "/docs/",  # Path in the checkout to the docs root
