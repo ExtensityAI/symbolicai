@@ -1551,7 +1551,7 @@ We are also seeking contributors or investors to help grow and support this proj
 
 ### 📫 Contact
 
-Feel free to contact us with any questions about this project via [email](mailto:office@alphacoreai.eu), through our [website](https://alphacoreai.eu/symbolic-ai/), or find us on Discord:
+Feel free to contact us with any questions about this project via [email](mailto:office@extensity.ai), through our [website](https://extensity.ai/), or find us on Discord:
 
 [![Discord](https://img.shields.io/discord/768087161878085643?label=Discord&logo=Discord&logoColor=white)](https://discord.gg/QYMNnh9ra8)
 
