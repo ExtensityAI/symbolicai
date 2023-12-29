@@ -46,7 +46,10 @@ class PineconeResult(Result):
             match = match.strip()
             if match.startswith('# ----[FILE_START]') and '# ----[FILE_END]' in match:
                 m = match.split('[FILE_CONTENT]:')[-1].strip()
-                content, file_name = m.split('# ----[FILE_END]')
+                splits = m.split('# ----[FILE_END]')
+                assert len(splits) >= 2, 'Invalid file format: {}'.format(splits)
+                content = splits[0]
+                file_name = ','.join(splits[1:]) # TODO: check why there are multiple file names
                 yield file_name.strip(), content.strip()
             else:
                 yield i+1, match

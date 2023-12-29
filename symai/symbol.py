@@ -132,8 +132,6 @@ class Symbol(metaclass=SymbolMeta):
         elif len(value) > 1:
             self._value = [v.value if isinstance(v, Symbol) else v for v in value]
 
-        else:
-            self._value = None
 
     def __new__(cls, *args, mixin: Optional[bool] = None, primitives: Optional[List[Type]] = None, **kwargs) -> "Symbol":
         '''

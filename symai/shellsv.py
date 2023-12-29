@@ -7,6 +7,8 @@ import sys
 import signal
 import time
 import json
+import argparse
+import traceback
 
 from typing import Iterable
 from pathlib import Path
@@ -738,7 +740,7 @@ def save_conversation():
 
 
 # Function to listen for user input and execute commands
-def listen(session: PromptSession, word_comp: WordCompleter, auto_query_on_error: bool=False):
+def listen(session: PromptSession, word_comp: WordCompleter, auto_query_on_error: bool=False, verbose: bool=False):
     with patch_stdout():
         while True:
             try:
@@ -793,6 +795,8 @@ def listen(session: PromptSession, word_comp: WordCompleter, auto_query_on_error
 
             except Exception as e:
                 print(e)
+                if verbose:
+                    traceback.print_exc()
                 pass
 
 
@@ -826,7 +830,7 @@ def create_completer():
     return history, word_comp, merged_completer
 
 
-def run(auto_query_on_error=False, conversation_style=None):
+def run(auto_query_on_error=False, conversation_style=None, verbose=False):
     global FunctionType, ConversationType, RetrievalConversationType, use_styles
     if conversation_style is not None and conversation_style != '':
         print('Loading style:', conversation_style)
@@ -844,8 +848,12 @@ def run(auto_query_on_error=False, conversation_style=None):
         _config_path =  Path.home() / '.symai' / 'symsh.config.json'
         with open(_config_path, 'w') as f:
             json.dump(SYMSH_CONFIG, f, indent=4)
-    listen(session, word_comp, auto_query_on_error)
+    listen(session, word_comp, auto_query_on_error=auto_query_on_error, verbose=verbose)
 
 
 if __name__ == '__main__':
-    run()
+    parser = argparse.ArgumentParser(description='SymSH: Symbolic Shell')
+    parser.add_argument('--auto-query-on-error', action='store_true', help='Automatically query the language model on error.')
+    parser.add_argument('--verbose', action='store_true', help='Print verbose errors.')
+    args = parser.parse_args()
+    run(auto_query_on_error=args.auto_query_on_error, conversation_style=args.conversation_style, verbose=args.verbose)

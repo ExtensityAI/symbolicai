@@ -1,4 +1,5 @@
 import functools
+import traceback
 import os
 import os
 import pickle
@@ -152,3 +153,23 @@ def _cache_registry_func(
         pickle.dump(call , f)
 
     return call
+
+def error_logging(debug: bool = False):
+    '''
+    Log the error of a function call.
+    '''
+    def dec(func):
+        @functools.wraps(func)
+        def _dec(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                logging.error(e)
+                if debug:
+                    # Simple message:
+                    print('Function: {} call failed. Error: {}'.format(func.__name__, e))
+                    # print traceback
+                    traceback.print_exc()
+                raise e
+        return _dec
+    return dec

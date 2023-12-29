@@ -78,7 +78,8 @@ def process_query(args) -> None:
         with ConsoleStyle('extensity') as console:
             console.print(f"Starting ExtensityAI: Symbolic Shell v{SYMAI_VERSION}")
         shellsv_run(auto_query_on_error=args.auto,
-                    conversation_style=args.style if args.style is not None and args.style != '' else None)
+                    conversation_style=args.style if args.style is not None and args.style != '' else None,
+                    verbose=args.verbose)
         return
 
     shell = Shell(query)
@@ -131,6 +132,8 @@ def run() -> None:
                         help='add speech style to the shell.')
     parser.add_argument('--version', dest='version', default=False, required=False, action=argparse.BooleanOptionalAction,
                         help='show the version of the shell.')
+    parser.add_argument('--verbose', action='store_true',
+                        help='Print verbose errors.')
 
     args = parser.parse_args()
     process_query(args)
