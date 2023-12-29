@@ -2,6 +2,7 @@ import ast
 import os
 import pickle
 import uuid
+import torch
 import numpy as np
 
 from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple,
@@ -1655,3 +1656,20 @@ class FineTuningPrimitives:
         def _func(_, *args, **kwargs) -> str:
             pass
         return self.sym_return_type(_func(self))
+
+    @property
+    def data(self) -> torch.Tensor:
+        '''
+        Get the data as a Pytorch tensor.
+
+        Returns:
+            Any: The data of the symbol.
+        '''
+        if isinstance(self._metadata.data, torch.Tensor):
+            # return tensor
+            return self._metadata.data
+        elif isinstance(self._metadata.data, np.ndarray):
+            # convert to tensor
+            self._metadata.data = torch.from_numpy(self._metadata.data)
+            return self._metadata.data
+        return None

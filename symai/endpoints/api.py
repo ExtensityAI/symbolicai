@@ -8,12 +8,14 @@ from fastapi import FastAPI, APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Any, Generic, TypeVar, Dict, List, Optional, Union
 
+from .. import core_ext
 from ..symbol import Symbol, Expression
 
 
 # Configure Redis server connection parameters and executable path
-HOST = 'localhost'
-PORT = 6379
+HOST  = 'localhost'
+PORT  = 6379
+DEBUG = True
 
 
 def is_redis_running(host: str, port: int) -> bool:
@@ -167,6 +169,7 @@ def delete_symbol(symbol_id: str):
 
 
 @app.post("/symbol/{symbol_id}/{method_name}/")
+@core_ext.error_logging(debug=DEBUG)
 def operate_on_symbol(symbol_id: str, method_name: str, method_request: SymbolMethodRequest):
     symbol = symbol_repository.get(symbol_id)
     if symbol is None:
@@ -206,6 +209,7 @@ def get_expression(expression_id: str):
 
 
 @app.post("/expression/{expression_id}/call/")
+@core_ext.error_logging(debug=DEBUG)
 def call_expression(expression_id: str, method_request: SymbolMethodRequest):
     # Retrieve the expression instance by ID
     expression = expression_repository.get(expression_id)
@@ -216,6 +220,7 @@ def call_expression(expression_id: str, method_request: SymbolMethodRequest):
 
 
 @app.post("/expression/{expression_id}/{method_name}/")
+@core_ext.error_logging(debug=DEBUG)
 def operate_on_expression(expression_id: str, method_name: str, method_request: SymbolMethodRequest):
     expression = expression_repository.get(expression_id)
     if expression is None:
@@ -300,6 +305,7 @@ def get_component(instance_id: str):
 
 # Endpoint to execute a command on a component instance
 @app.post("/components/call/")
+@core_ext.error_logging(debug=DEBUG)
 def generic_forward(request: GenericRequest):
     # Dynamically import the class from components module based on request.class_name
     components_module = importlib.import_module('.components', package='symai')
@@ -379,6 +385,7 @@ def create_extended(request: CreateExtendedRequest):
 
 # Endpoint to execute a command on a component instance
 @app.post("/extended/call/")
+@core_ext.error_logging(debug=DEBUG)
 def extended_forward(request: GenericRequest):
     # Dynamically import the class from components module based on request.class_name
     try:
