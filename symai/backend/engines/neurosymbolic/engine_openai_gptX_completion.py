@@ -133,13 +133,14 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         super().__init__()
         logger.setLevel(logging.WARNING)
-        self.config     = SYMAI_CONFIG
-        openai.api_key  = self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] if api_key is None else api_key
-        self.model      = self.config['NEUROSYMBOLIC_ENGINE_MODEL'] if model is None else model
-        logger          = logging.getLogger('openai')
-        self.tokenizer  = tiktoken.encoding_for_model(self.model)
-        self.pricing    = self.api_pricing()
-        self.max_tokens = self.api_max_tokens() - 100 # TODO: account for tolerance. figure out how their magic number works to compute reliably the precise max token size
+        self.config         = SYMAI_CONFIG
+        openai.api_key      = self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] if api_key is None else api_key
+        self.model          = self.config['NEUROSYMBOLIC_ENGINE_MODEL'] if model is None else model
+        logger              = logging.getLogger('openai')
+        self.tokenizer      = tiktoken.encoding_for_model(self.model)
+        self.pricing        = self.api_pricing()
+        self.max_tokens     = self.api_max_tokens() - 100 # TODO: account for tolerance. figure out how their magic number works to compute reliably the precise max token size
+        self.except_remedy  = None
 
     def id(self) -> str:
         if   self.config['NEUROSYMBOLIC_ENGINE_MODEL'] and \
@@ -157,6 +158,8 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
             openai.api_key = kwargs['NEUROSYMBOLIC_ENGINE_API_KEY']
         if 'NEUROSYMBOLIC_ENGINE_MODEL' in kwargs:
             self.model     = kwargs['NEUROSYMBOLIC_ENGINE_MODEL']
+        if 'except_remedy' in kwargs:
+            self.except_remedy = kwargs['except_remedy']
 
     def compute_required_tokens(self, prompts: list) -> int:
        # iterate over prompts and compute number of tokens
@@ -181,7 +184,7 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
         frequency_penalty   = kwargs['frequency_penalty'] if 'frequency_penalty' in kwargs else 0
         presence_penalty    = kwargs['presence_penalty'] if 'presence_penalty' in kwargs else 0
         top_p               = kwargs['top_p'] if 'top_p' in kwargs else 1
-        except_remedy       = kwargs['except_remedy'] if 'except_remedy' in kwargs else None
+        except_remedy       = kwargs['except_remedy'] if 'except_remedy' in kwargs else self.except_remedy
 
         try:
             res = openai.completions.create(model=model,

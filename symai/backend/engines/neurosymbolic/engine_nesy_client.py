@@ -15,17 +15,26 @@ class NeSyClientEngine(Engine):
         super().__init__()
         logger = logging.getLogger('nesy_client')
         logger.setLevel(logging.WARNING)
-        self. config    = SYMAI_CONFIG
-        self.host       = host
-        self.port       = port
-        self.timeout    = timeout
-        self.connection = None
+        self. config        = SYMAI_CONFIG
+        self.host           = host
+        self.port           = port
+        self.timeout        = timeout
+        self.connection     = None
+        self.seed           = None
+        self.except_remedy  = None
 
     def id(self) -> str:
         if  self.config['NEUROSYMBOLIC_ENGINE_MODEL'] and \
             self.config['NEUROSYMBOLIC_ENGINE_MODEL'] == 'localhost':
             return 'neurosymbolic'
         return super().id() # default to unregistered
+
+    def command(self, *args, **kwargs):
+        super().command(*args, **kwargs)
+        if 'seed' in kwargs:
+            self.seed      = kwargs['seed']
+        if 'except_remedy' in kwargs:
+            self.except_remedy = kwargs['except_remedy']
 
     @property
     def max_tokens(self):
@@ -47,10 +56,10 @@ class NeSyClientEngine(Engine):
         temperature   = kwargs['temperature'] if 'temperature' in kwargs else 0.7
         top_p         = kwargs['top_p'] if 'top_p' in kwargs else 0.95
         top_k         = kwargs['top_k'] if 'top_k' in kwargs else 50
-        except_remedy = kwargs['except_remedy'] if 'except_remedy' in kwargs else None
+        seed          = kwargs['seed'] if 'seed' in kwargs else self.seed
+        except_remedy = kwargs['except_remedy'] if 'except_remedy' in kwargs else self.except_remedy
 
-        config = {
-        }
+        config = {}
         # add to config only if not None
         if stop is not None:
             config['stop_words'] = stop
@@ -64,6 +73,8 @@ class NeSyClientEngine(Engine):
             config['top_p'] = top_p
         if top_k is not None:
             config['top_k'] = top_k
+        if seed is not None:
+            config['seed'] = seed
 
         try:
             # use RPyC to send prompt to Model
