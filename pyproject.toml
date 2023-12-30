@@ -45,7 +45,7 @@ version = {attr = "symai.SYMAI_VERSION"}
 
 [tool.setuptools.packages.find]
 include = ["symai"]
-exclude = ["tests", "examples", "notebooks", "outputs", "assets"]
+exclude = ["tests", "examples", "notebooks", "outputs", "assets", "app.py"]
 
 [project.urls]
 "Homepage" = "https://alphacoreai.eu/"
