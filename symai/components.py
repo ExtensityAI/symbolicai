@@ -558,29 +558,32 @@ class InContextClassification(Expression):
 
 
 class TokenTracker(Expression):
-    def __init__(self):
+    def __init__(self, verbose: bool = True):
         super().__init__()
+        self.verbose         = verbose
         self._trace: bool    = False
         self._previous_frame = None
+        self.vals            = []
 
     @core_ext.bind(engine='neurosymbolic', property='max_tokens')
     def max_tokens(self): pass
 
     def __enter__(self):
         self._trace = True
+        self.vals   = []
         self._previous_frame = inspect.currentframe().f_back
         return self
 
     def __exit__(self, type, value, traceback):
         local_vars = self._previous_frame.f_locals
-        vals = []
         for key, var in local_vars.items():
             if hasattr(var, 'token_ratio'):
-                vals.append(var)
+                self.vals.append(var)
 
-        for val in vals:
+        for val in self.vals:
             max_ = self.max_tokens() * val.token_ratio
-            print('\n\n================\n[Used tokens: {:.2f}%]\n================\n'.format(len(val) / max_ * 100))
+            if self.verbose:
+                print('\n\n================\n[Used tokens: {:.2f}%]\n================\n'.format(len(val) / max_ * 100))
         self._trace = False
 
 
