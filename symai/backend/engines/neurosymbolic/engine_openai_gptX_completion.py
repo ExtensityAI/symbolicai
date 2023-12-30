@@ -132,6 +132,7 @@ class InvalidRequestErrorRemedyCompletionStrategy:
 class GPTXCompletionEngine(Engine, OpenAIMixin):
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         super().__init__()
+        logger.setLevel(logging.WARNING)
         self.config     = SYMAI_CONFIG
         openai.api_key  = self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] if api_key is None else api_key
         self.model      = self.config['NEUROSYMBOLIC_ENGINE_MODEL'] if model is None else model
@@ -139,7 +140,6 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
         self.tokenizer  = tiktoken.encoding_for_model(self.model)
         self.pricing    = self.api_pricing()
         self.max_tokens = self.api_max_tokens() - 100 # TODO: account for tolerance. figure out how their magic number works to compute reliably the precise max token size
-        logger.setLevel(logging.WARNING)
 
     def id(self) -> str:
         if   self.config['NEUROSYMBOLIC_ENGINE_MODEL'] and \

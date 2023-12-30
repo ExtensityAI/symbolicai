@@ -135,7 +135,6 @@ class ArithmeticPrimitives:
         Returns:
             bool: True if the current Symbol is equal to the 'other' Symbol, otherwise False.
         '''
-        print('debug')
         @core.equals()
         def _func(_, other) -> bool:
             pass

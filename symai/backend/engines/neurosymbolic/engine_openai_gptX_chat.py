@@ -127,6 +127,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         self.tokenizer  = tiktoken.encoding_for_model(self.model)
         self.pricing    = self.api_pricing()
         self.max_tokens = self.api_max_tokens() - 100 # TODO: account for tolerance. figure out how their magic number works to compute reliably the precise max token size
+        self.seed       = None
 
     def id(self) -> str:
         if   self.config['NEUROSYMBOLIC_ENGINE_MODEL'] and \
@@ -140,7 +141,9 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         if 'NEUROSYMBOLIC_ENGINE_API_KEY' in kwargs:
             openai.api_key = kwargs['NEUROSYMBOLIC_ENGINE_API_KEY']
         if 'NEUROSYMBOLIC_ENGINE_MODEL' in kwargs:
-            self.model = kwargs['NEUROSYMBOLIC_ENGINE_MODEL']
+            self.model     = kwargs['NEUROSYMBOLIC_ENGINE_MODEL']
+        if 'seed' in kwargs:
+            self.seed      = kwargs['seed']
 
     def compute_required_tokens(self, prompts: dict) -> int:
         # iterate over prompts and compute number of tokens
@@ -175,6 +178,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         # send prompt to GPT-X Chat-based
         stop                = kwargs['stop'] if 'stop' in kwargs else None
         model               = kwargs['model'] if 'model' in kwargs else self.model
+        seed                = kwargs['seed'] if 'seed' in kwargs else self.seed
 
         # convert map to list of strings
         max_tokens          = kwargs['max_tokens'] if 'max_tokens' in kwargs else self.compute_remaining_tokens(prompts_)
@@ -192,6 +196,8 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             openai_kwargs['functions'] = functions
         if function_call is not None:
             openai_kwargs['function_call'] = function_call
+        if seed is not None:
+            openai_kwargs['seed'] = seed
 
         try:
             res = openai.chat.completions.create(model=model,
