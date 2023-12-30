@@ -119,7 +119,7 @@ class InvalidRequestErrorRemedyChatStrategy:
 class GPTXChatEngine(Engine, OpenAIMixin):
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         super().__init__()
-        logger = logging.getLogger('openai')
+        logger              = logging.getLogger('openai')
         logger.setLevel(logging.WARNING)
         self.config         = SYMAI_CONFIG
         openai.api_key      = self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] if api_key is None else api_key

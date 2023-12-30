@@ -13,7 +13,7 @@ rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True
 class NeSyClientEngine(Engine):
     def __init__(self, host: str = 'localhost', port: int = 18100, timeout: int = 240):
         super().__init__()
-        logger = logging.getLogger('nesy_client')
+        logger              = logging.getLogger('nesy_client')
         logger.setLevel(logging.WARNING)
         self. config        = SYMAI_CONFIG
         self.host           = host
