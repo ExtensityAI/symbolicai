@@ -8,6 +8,7 @@ from .seo_query_optimizer import SEOQueryOptimizer
 from ..components import Indexer, FileReader
 from ..memory import SlidingWindowStringConcatMemory
 from ..symbol import Symbol
+from ..interfaces import Interface
 
 
 class CodeFormatter:
@@ -19,6 +20,7 @@ class CodeFormatter:
 class Conversation(SlidingWindowStringConcatMemory):
     def __init__(self, init:     Optional[str] = None,
                  file_link:      Optional[List[str]] = None,
+                 url_link:       Optional[List[str]] = None,
                  index_name:     Optional[str] = None,
                  auto_print:     bool          = True,
                  token_ratio:    float         = 0.6,
@@ -28,10 +30,14 @@ class Conversation(SlidingWindowStringConcatMemory):
         self.auto_print  = auto_print
         if file_link and isinstance(file_link, str):
             file_link    = [file_link]
+        if url_link and isinstance(url_link, str):
+            url_link     = [url_link]
         self.file_link   = file_link
+        self.url_link    = url_link
         self.index_name  = index_name
         self.seo_opt     = SEOQueryOptimizer()
         self.reader      = FileReader()
+        self.crawler     = Interface('selenium')
         self.user_tag    = 'USER::'
         self.bot_tag     = 'ASSISTANT::'
 
@@ -40,6 +46,9 @@ class Conversation(SlidingWindowStringConcatMemory):
         if file_link is not None:
             for fl in file_link:
                 self.store_file(fl, *args, **kwargs)
+        if url_link is not None:
+            for url in url_link:
+                self.store_url(url, *args, **kwargs)
         self.indexer     = None
         self.index       = None
         if index_name is not None:
@@ -74,6 +83,11 @@ class Conversation(SlidingWindowStringConcatMemory):
         val = f"[DATA::{file_path}]: <<<\n{str(content)}\n>>>\n"
         self.store(val)
 
+    def store_url(self, url: str, *args, **kwargs):
+        content = self.crawler(url)
+        val = f"[DATA::{url}]: <<<\n{str(content)}\n>>>\n"
+        self.store(val)
+
     @staticmethod
     def save_conversation_state(conversation: "Conversation", file_path: str) -> None:
         # Check if path exists and create it if it doesn't
@@ -103,6 +117,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         self.token_ratio = conversation_state.token_ratio
         self.auto_print  = conversation_state.auto_print
         self.file_link   = conversation_state.file_link
+        self.url_link    = conversation_state.url_link
         self.index_name  = conversation_state.index_name
         if self.index_name is not None:
             self.indexer = Indexer(index_name=self.index_name)
