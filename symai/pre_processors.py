@@ -9,6 +9,11 @@ class PreProcessor:
         raise NotImplementedError()
 
 
+class RawInputPreProcessor(PreProcessor):
+    def __call__(self, argument) -> Any:
+        return f"{str(argument.prop.prompt)}"
+
+
 class JsonPreProcessor(PreProcessor):
     def __call__(self, argument) -> None:
         assert len(argument.args) == 1

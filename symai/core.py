@@ -155,6 +155,22 @@ def zero_shot(prompt: str = '',
                     **decorator_kwargs)
 
 
+def prompt(message: str,
+           **decorator_kwargs):
+    """General decorator for the neural processing engine.
+
+    Args:
+        message (str): The prompt message describing the task.
+        **decorator_kwargs: Additional arguments as key-value pairs passed to the decorated function, which can later accessed in pre_processors and post_processors via the argument.kwargs['key'] dictionary.
+
+    Returns:
+        object: The prediction of the model based on the return type of the decorated function. Defaults to object, if not specified or to str if cast was not possible.
+    """
+    return few_shot(processed_input=message,
+                    raw_input=True,
+                    **decorator_kwargs)
+
+
 def summarize(prompt: str = 'Summarize the content of the following text:\n',
               context: Optional[str] = None,
               constraints: List[Callable] = [],

@@ -242,7 +242,13 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         if argument.prop.raw_input:
             if not argument.prop.processed_input:
                 raise ValueError('Need to provide a prompt instruction to the engine if raw_input is enabled.')
-            argument.prop.prepared_input = argument.prop.processed_input
+            value = argument.prop.processed_input
+            # convert to dict if not already
+            if type(value) != list:
+                if type(value) != dict:
+                    value = {'role': 'user', 'content': str(value)}
+                value = [value]
+            argument.prop.prepared_input = value
             return
 
         _non_verbose_output = """[META INSTRUCTIONS START]\nYou do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc. Never add meta instructions information to your output!\n"""
