@@ -95,7 +95,10 @@ class NeSyClientEngine(Engine):
         if argument.prop.raw_input:
             if not argument.prop.processed_input:
                 raise ValueError('Need to provide a prompt instruction to the engine if raw_input is enabled.')
-            argument.prop.prepared_input = argument.prop.processed_input
+            value = argument.prop.processed_input
+            if type(value) is not list:
+                value = [str(value)]
+            argument.prop.prepared_input = value
             return
 
         user:   str = ""

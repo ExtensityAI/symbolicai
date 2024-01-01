@@ -123,7 +123,9 @@ def _process_query(engine,
     else:
         if argument.args and len(argument.args) > 0:
             processed_input      += ' '.join([str(a) for a in argument.args])
-    argument.prop.processed_input = processed_input
+    # if not raw input, set processed input
+    if not argument.prop.raw_input:
+        argument.prop.processed_input = processed_input
 
     # try run the function
     try_cnt  = 0

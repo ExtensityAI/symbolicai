@@ -705,6 +705,23 @@ class Expression(Symbol):
         '''
         return copy.deepcopy(self)
 
+    @staticmethod
+    def prompt(message: str, **kwargs) -> 'Symbol':
+        '''
+        General raw input prompt method.
+
+        Args:
+            message (str): The prompt message for describing the task.
+            **kwargs: Arbitrary keyword arguments to be used by the core.prompt decorator.
+
+        Returns:
+            Symbol: An Expression object representing the prompt result.
+        '''
+        @core.prompt(message=message, **kwargs)
+        def _func(_):
+            pass
+        return Expression(_func(None))
+
 
 class Result(Expression):
     def __init__(self, value = None, *args, **kwargs):
