@@ -1457,7 +1457,24 @@ class DataClusteringPrimitives:
 
         return self._to_symbol(_func(self))
 
-    def similarity(self, other: Union['Symbol', np.ndarray], metric: Union['cosine', 'product', 'manhattan', 'euclidean', 'minkowski', 'jaccard'] = 'cosine', eps: float = 1e-8, **kwargs) -> float:
+    @property
+    def embedding(self) -> np.array:
+        '''
+        Get the embedding as a numpy array.
+
+        Returns:
+            Any: The embedding of the symbol.
+        '''
+        # if the embedding is not yet computed, compute it
+        if self._metadata.embedding is None:
+            # compute the embedding and store as numpy array
+            self._metadata.embedding = np.array(self.embed().value)
+        if isinstance(self._metadata.embedding, list):
+            self._metadata.embedding = np.array(self._metadata.embedding)
+        # return the embedding
+        return self._metadata.embedding
+
+    def similarity(self, other: Union['Symbol', np.ndarray, torch.Tensor], metric: Union['cosine', 'product', 'manhattan', 'euclidean', 'minkowski', 'jaccard'] = 'cosine', eps: float = 1e-8, **kwargs) -> float:
         '''
         Calculates the similarity between two Symbol objects using a specified metric.
         This method compares the values of two Symbol objects and calculates their similarity according to the specified metric.
@@ -1476,15 +1493,25 @@ class DataClusteringPrimitives:
             TypeError: If any of the Symbol objects is not of type np.ndarray or Symbol.
             NotImplementedError: If the given metric is not supported.
         '''
-        def _ensure_format(x):
-            if not isinstance(x, np.ndarray):
+        def _ensure_numpy_format(x):
+            # if it is a Symbol, get its value
+            if not isinstance(x, np.ndarray) or not isinstance(x, torch.Tensor):
                 if not isinstance(x, self._symbol_type): #@NOTE: enforce Symbol to avoid circular import
                     raise TypeError(f'Cannot compute similarity with type {type(x)}')
-                x = np.array(x.value)
+                # if it has a tensor representation, use that
+                if x._metadata.embedding is not None:
+                    x = x._metadata.embedding
+                # otherwise, use the value
+                else:
+                    # else assert that it is a list or tuple
+                    x = np.array(x.value)
+            # if it is a tensor, convert it to numpy
+            if isinstance(x, torch.Tensor):
+                x = x.detach().cpu().numpy()
             return x.squeeze()[:, None]
 
-        v = _ensure_format(self)
-        o = _ensure_format(other)
+        v = _ensure_numpy_format(self)
+        o = _ensure_numpy_format(other)
 
         if metric == 'cosine':
             val = (v.T@o / (np.sqrt(v.T@v) * np.sqrt(o.T@o) + eps)).item()
@@ -1530,6 +1557,102 @@ class DataClusteringPrimitives:
         query  = [{'text': str(self.value[i])} for i in range(len(self.value))]
 
         return list(zip(idx, embeds, query))
+
+
+class IOHandlingPrimitives:
+    '''
+    This mixin contains functionalities related to input/output operations.
+    '''
+    def input(self, message: str = 'Please add more information', **kwargs) -> 'Symbol':
+        '''
+        Request user input and return a Symbol containing the user input.
+
+        Args:
+            message (str, optional): The message displayed to request the user input. Defaults to 'Please add more information'.
+            **kwargs: Additional keyword arguments to be passed to the `@core.userinput` decorator.
+
+        Returns:
+            Symbol: The resulting Symbol after receiving the user input.
+        '''
+        @core.userinput(**kwargs)
+        def _func(_, message) -> str:
+            pass
+        return self.sym_return_type(_func(self, message))
+
+    def open(self, path: str, **kwargs) -> 'Symbol':
+        '''
+        Open a file and store its content in an Expression object as a string.
+
+        Args:
+            path (str): The path to the file that needs to be opened.
+            **kwargs: Arbitrary keyword arguments to be used by the core.opening decorator.
+
+        Returns:
+            Symbol: An Expression object containing the content of the file as a string value.
+        '''
+        @core.opening(path=path, **kwargs)
+        def _func(_) -> str:
+            pass
+        return self.sym_return_type(_func(self))
+
+
+class IndexingPrimitives:
+    '''
+    This mixin contains functionalities related to indexing symbols.
+    '''
+    def index(self, path: str, index_name: str, **kwargs) -> 'Symbol':
+        '''
+        Execute a configuration operation on the index.
+
+        Args:
+            path (str): Index configuration path.
+            **kwargs: Arbitrary keyword arguments to be used by the core.index decorator.
+
+        Returns:
+            Symbol: An Expression object containing the configuration result.
+        '''
+        @core.index(prompt=path, index_name=index_name, operation='config', **kwargs)
+        def _func(_):
+            pass
+        return _func(self)
+
+    def add(self, query: List[str], index_name: str, **kwargs) -> 'Symbol':
+        '''
+        Add an entry to the existing index.
+
+        Args:
+            query (List[str]): The query string used to add an entry to the index.
+            **kwargs: Arbitrary keyword arguments to be used by the core.index decorator.
+
+        Returns:
+            Symbol: An Expression object containing the addition result.
+        '''
+        @core.index(prompt=query, index_name=index_name, operation='add', **kwargs)
+        def _func(_):
+            pass
+        return _func(self)
+
+    def get(self, query: List[int], index_name: str, **kwargs) -> 'Symbol':
+        '''
+        Search the index based on the provided query.
+
+        Args:
+            query (List[int]): The query vector used to search entries in the index.
+            **kwargs: Arbitrary keyword arguments to be used by the core.index decorator.
+
+        Returns:
+            Symbol: An Expression object containing the search result.
+        '''
+        # convert query to list if it is a tensor or numpy array
+        if isinstance(query, np.ndarray):
+            query = query.tolist()
+        elif isinstance(query, torch.Tensor):
+            query = query.cpu().numpy().tolist()
+
+        @core.index(prompt=query, index_name=index_name, operation='search', **kwargs)
+        def _func(_):
+            pass
+        return _func(self)
 
 
 class PersistencePrimitives:
@@ -1664,11 +1787,19 @@ class FineTuningPrimitives:
         Returns:
             Any: The data of the symbol.
         '''
+        # if the data is not yet computed, compute it
+        if self._metadata.data is None:
+            # compute the data and store as numpy array
+            self._metadata.data = self.embedding
+        # if the data is a tensor, return it
         if isinstance(self._metadata.data, torch.Tensor):
             # return tensor
             return self._metadata.data
+        # if the data is a numpy array, convert it to tensor
         elif isinstance(self._metadata.data, np.ndarray):
             # convert to tensor
             self._metadata.data = torch.from_numpy(self._metadata.data)
             return self._metadata.data
-        return None
+        else:
+            raise TypeError(f'Expected data to be a tensor or numpy array, got {type(self._metadata.data)}')
+

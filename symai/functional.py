@@ -206,6 +206,21 @@ class EngineRepository(object):
         self._engines[id] = engine_instance
 
     @staticmethod
+    def register_from_plugin(id: str, plugin: str, selected_engine: Optional[str] = None, allow_engine_override: bool = False, *args, **kwargs) -> None:
+        from .imports import Import
+        types = Import.load_module_class(plugin)
+        # filter out engine class type
+        engines = [t for t in types if issubclass(t, Engine) and t is not Engine]
+        if len(engines) > 1 and selected_engine is None:
+            raise ValueError(f"Multiple engines found in plugin {plugin}. Please specify the engine to use.")
+        elif len(engines) > 1 and selected_engine is not None:
+            engine = [e for e in engines if selected_engine in str(e)]
+            if len(engine) <= 0:
+                raise ValueError(f"No engine named {selected_engine} found in plugin {plugin}.")
+        engine = engine[0]
+        EngineRepository.register(id, engine, allow_engine_override=allow_engine_override, *args, **kwargs)
+
+    @staticmethod
     def register_from_package(package: ModuleType, allow_engine_override: bool = False, *args, **kwargs) -> None:
         self = EngineRepository()
         # Iterate over all modules in the given package and import them

@@ -1,5 +1,6 @@
 import itertools
 import warnings
+import numpy as np
 
 warnings.filterwarnings('ignore', module='pinecone')
 try:
@@ -25,10 +26,10 @@ def chunks(iterable, batch_size=100):
 class PineconeResult(Result):
     def __init__(self, res, query: str, embedding: list):
         super().__init__(res)
-        self.query      = query
-        self.embedding  = embedding
-        self.raw        = res
-        self._value     = self._process(res)
+        self.raw                 = res
+        self._query              = query
+        self._value              = self._process(res)
+        self._metadata.embedding = np.array(embedding)
 
     def _process(self, res):
         if not res:
@@ -64,7 +65,7 @@ class PineconeResult(Result):
 [RESULT]
 {'-=-' * 13}
 
-Query: {self.query}
+Query: {self._query}
 
 {'-=-' * 13}
 
