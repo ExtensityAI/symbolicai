@@ -92,46 +92,57 @@ class Symbol(metaclass=SymbolMeta):
         '''
         super().__init__()
         self._value     = None
-        self._metadata  = self._metadata # use global metadata by default
+        self._metadata  = Metadata() # use global metadata by default
         self._parent    = None #@TODO: to enable graph construction
         self._children  = None #@TODO: to enable graph construction
         self._static_context = static_context
+        # if value is a single value, unwrap it
+        _value          = self._unwrap_symbols_args(*value)
+        self._value     = _value
 
-        if len(value) == 1:
+    def _unwrap_symbols_args(self, *args, nested: bool = False) -> Any:
+        if len(args) == 0:
+            return None
+        # check if args is a single value
+        elif len(args) == 1:
+            # get the first args value
+            value = args[0]
 
-            value = value[0]
+            # if the value is a primitive, store it as is
+            if isinstance(value, str) or isinstance(value, int) or isinstance(value, float) or isinstance(value, bool):
+                pass
 
-            if isinstance(value, Symbol):
-                self._value     = value._value
-                self._metadata  = value._metadata
-                self._parent    = value._parent
-                self._children  = value._children
+            # if the value is a symbol, unwrap it
+            elif isinstance(value, Symbol):
+                # if not nested, copy the symbol's value, metadata, parent, and children
+                if not nested:
+                    self._metadata       = value.metadata
+                    self._parent         = value._parent
+                    self._children       = value._children
+                    self._static_context = value.static_context
+                # unwrap the symbol's value
+                value                = value.value
 
+            # if the value is a list, tuple, dict, or set, unwrap all nested symbols
             elif isinstance(value, list) or isinstance(value, dict) or \
-                    isinstance(value, set) or isinstance(value, tuple) or \
-                        isinstance(value, str) or isinstance(value, int) or \
-                            isinstance(value, float) or isinstance(value, bool):
+                    isinstance(value, set) or isinstance(value, tuple):
 
                 if isinstance(value, list):
-                    value = [v.value if isinstance(v, Symbol) else v for v in value]
+                    value = [self._unwrap_symbols_args(v, nested=True) for v in value]
 
                 elif isinstance(value, dict):
-                    value = {k: v.value if isinstance(v, Symbol) else v for k, v in value.items()}
+                    value = {self._unwrap_symbols_args(k, nested=True): self._unwrap_symbols_args(v, nested=True) for k, v in value.items()}
 
                 elif isinstance(value, set):
-                    value = {v.value if isinstance(v, Symbol) else v for v in value}
+                    value = {self._unwrap_symbols_args(v, nested=True) for v in value}
 
                 elif isinstance(value, tuple):
-                    value = tuple([v.value if isinstance(v, Symbol) else v for v in value])
+                    value = tuple([self._unwrap_symbols_args(v, nested=True) for v in value])
 
-                self._value = value
+            return value
 
-            else:
-                self._value = value
-
-        elif len(value) > 1:
-            self._value = [v.value if isinstance(v, Symbol) else v for v in value]
-
+        elif len(args) > 1:
+            return [self._unwrap_symbols_args(a, nested=True) if isinstance(a, Symbol) else a for a in args]
 
     def __new__(cls, *args, mixin: Optional[bool] = None, primitives: Optional[List[Type]] = None, **kwargs) -> "Symbol":
         '''
@@ -155,6 +166,27 @@ class Symbol(metaclass=SymbolMeta):
             cls       = SymbolMeta(cls.__name__, (cls,) + tuple(primitives), {})
         obj = super().__new__(cls)
         return obj
+
+    def __array__(self, dtype=None):
+        '''
+        Get the numpy array representation of the Symbol's value.
+
+        Returns:
+            np.ndarray: The numpy array representation of the Symbol's value.
+        '''
+        return self.embedding.astype(dtype, copy=False)
+
+    def __buffer__(self, flags=0):
+        '''
+        Get the buffer of the Symbol's value.
+
+        Args:
+            flags (int, optional): The flags for the buffer. Defaults to 0.
+
+        Returns:
+            memoryview: The buffer of the Symbol's value.
+        '''
+        return memoryview(self.embedding)
 
     def __reduce__(self):
         '''
@@ -231,7 +263,7 @@ class Symbol(metaclass=SymbolMeta):
             state (dict): The state to set the symbol to.
         '''
         vars(self).update(state)
-        self._metadata = Symbol._metadata
+        self._metadata = Metadata()
         self._parent   = None
         self._children = None
 
