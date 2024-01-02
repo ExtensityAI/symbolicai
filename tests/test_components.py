@@ -1,5 +1,6 @@
 import unittest
 
+import torch
 import symai as ai
 from symai.components import *
 
@@ -82,6 +83,48 @@ class TestComponents(unittest.TestCase):
         index = indexer()
         rsp = index('Is there a test?') # retrieve
         self.assertTrue('confirmation that there is a test' in rsp)
+
+
+    def test_symbol_typing(self):
+        sym = Symbol({1: 'a', 2: 'b', 3: 'c'})
+        assert sym.value_type == dict
+        sym = Symbol([1, 2, 3])
+        assert sym.value_type == list
+        sym = Symbol('abc')
+        assert sym.value_type == str
+        sym = Symbol(1)
+        assert sym.value_type == int
+        sym = Symbol(1.0)
+        assert sym.value_type == float
+        sym = Symbol(True)
+        assert sym.value_type == bool
+        sym = Symbol(Symbol('test'))
+        assert sym.value_type == str
+        sym.value             == 'test'
+        sym = Symbol(Symbol(1))
+        assert sym.value_type == int
+        sym.value             == 1
+        sym = Symbol(Symbol(Symbol(1)))
+        assert sym.value_type == int
+        assert sym.value      == 1
+        sym = Symbol([Symbol(1), Symbol(2), Symbol(3)])
+        assert sym.value_type == list
+        assert sym.value      == [1, 2, 3]
+        sym = Symbol(Symbol([1, 2, 3]))
+        assert sym.value_type == list
+        assert sym.value      == [1, 2, 3]
+        sym = Symbol(Symbol(Symbol([1, 2, 3])))
+        assert sym.value_type == list
+        assert sym.value      == [1, 2, 3]
+        sym = Symbol({Symbol(1): Symbol(Symbol([1, 2, 4])), Symbol(3): Symbol(4)})
+        assert sym.value_type == dict
+        assert sym.value      == {1: [1, 2, 4], 3: 4}
+        arr = np.array(Symbol([Symbol(1), Symbol(3), Symbol(4)]))
+        assert np.all(np.array([1, 3, 4]))
+        tensor = torch.tensor(Symbol([Symbol(1), Symbol(3), Symbol(4)]))
+        assert torch.all(torch.tensor([1, 3, 4]))
+        tensor = torch.tensor(Symbol([Symbol(1), Symbol(3), Symbol(4)]), dtype=torch.float32)
+        assert torch.all(torch.tensor([1, 3, 4], dtype=torch.float32))
 
 
 if __name__ == '__main__':

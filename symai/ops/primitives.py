@@ -21,92 +21,6 @@ class ArithmeticPrimitives:
     This mixin contains functions that perform arithmetic operations on symbols or symbol values.
     The functions in this mixin are bound to the 'neurosymbolic' engine for evaluation.
     '''
-
-    def __getitem__(self, key: Union[str, int, slice]) -> 'Symbol':
-        '''
-        Get the item of the Symbol value with the specified key or index.
-        If the Symbol value is a list, tuple, or numpy array, the key can be an integer or slice.
-        If the Symbol value is a dictionary, the key can be a string or an integer.
-        If the direct item retrieval fails, the method falls back to using the @core.getitem decorator, which retrieves and returns the item using core functions.
-
-        Args:
-            key (Union[str, int, slice]): The key or index for the item in the Symbol value.
-
-        Returns:
-            Symbol: The item of the Symbol value with the specified key or index.
-
-        Raises:
-            KeyError: If the key or index is not found in the Symbol value.
-        '''
-        try:
-            if (isinstance(key, int) or isinstance(key, slice)) and (isinstance(self.value, list) or isinstance(self.value, tuple) or isinstance(self.value, np.ndarray)):
-                return self.value[key]
-            elif (isinstance(key, str) or isinstance(key, int)) and isinstance(self.value, dict):
-                return self.value[key]
-        except KeyError:
-            raise KeyError(f'Key {key} not found in {self.value}')
-
-        @core.getitem()
-        def _func(_, index: str):
-            pass
-
-        return self._to_symbol(_func(self, key))
-
-    def __setitem__(self, key: Union[str, int, slice], value: Any) -> None:
-        '''
-        Set the item of the Symbol value with the specified key or index to the given value.
-        If the Symbol value is a list, tuple, or numpy array, the key can be an integer or slice.
-        If the Symbol value is a dictionary, the key can be a string or an integer.
-        If the direct item setting fails, the method falls back to using the @core.setitem decorator, which sets the item using core functions.
-
-        Args:
-            key (Union[str, int, slice]): The key or index for the item in the Symbol value.
-            value: The value to set the item to.
-
-        Raises:
-            KeyError: If the key or index is not found in the Symbol value.
-        '''
-        try:
-            if (isinstance(key, int) or isinstance(key, slice)) and (isinstance(self.value, list) or isinstance(self.value, tuple) or isinstance(self.value, np.ndarray)):
-                self.value[key] = value
-                return
-            elif (isinstance(key, str) or isinstance(key, int)) and isinstance(self.value, dict):
-                self.value[key] = value
-                return
-        except KeyError:
-            raise KeyError(f'Key {key} not found in {self.value}')
-
-        @core.setitem()
-        def _func(_, index: str, value: str):
-            pass
-
-        self._value = self._to_symbol(_func(self, key, value)).value
-
-    def __delitem__(self, key: Union[str, int]) -> None:
-        '''
-        Delete the item of the Symbol value with the specified key or index.
-        If the Symbol value is a dictionary, the key can be a string or an integer.
-        If the direct item deletion fails, the method falls back to using the @core.delitem decorator, which deletes the item using core functions.
-
-        Args:
-            key (Union[str, int]): The key for the item in the Symbol value.
-
-        Raises:
-            KeyError: If the key or index is not found in the Symbol value.
-        '''
-        try:
-            if (isinstance(key, str) or isinstance(key, int)) and isinstance(self.value, dict):
-                del self.value[key]
-                return
-        except KeyError:
-            raise KeyError(f'Key {key} not found in {self.value}')
-
-        @core.delitem()
-        def _func(_, index: str):
-            pass
-
-        self._value = self._to_symbol(_func(self, key)).value
-
     def __contains__(self, other: Any) -> bool:
         '''
         Check if a Symbol object is present in another Symbol object.
@@ -526,6 +440,108 @@ class ArithmeticPrimitives:
             Symbol: A new symbol with the result of the division.
         '''
         return self._to_symbol(str(self).split(str(other)))
+
+
+class IterationPrimitives:
+    # DO NOT use by default neuro-symbolic iterations for mixins to avoid unwanted side effects
+    __nesy_iteration_primitives__ = False
+    '''
+    This mixin contains functions that perform iteration operations on symbols or symbol values.
+    The functions in this mixin are bound to the 'neurosymbolic' engine for evaluation.
+    '''
+    def __getitem__(self, key: Union[str, int, slice]) -> 'Symbol':
+        '''
+        Get the item of the Symbol value with the specified key or index.
+        If the Symbol value is a list, tuple, or numpy array, the key can be an integer or slice.
+        If the Symbol value is a dictionary, the key can be a string or an integer.
+        If the direct item retrieval fails, the method falls back to using the @core.getitem decorator, which retrieves and returns the item using core functions.
+
+        Args:
+            key (Union[str, int, slice]): The key or index for the item in the Symbol value.
+
+        Returns:
+            Symbol: The item of the Symbol value with the specified key or index.
+
+        Raises:
+            KeyError: If the key or index is not found in the Symbol value.
+        '''
+        try:
+            if (isinstance(key, int) or isinstance(key, slice)) and (isinstance(self.value, list) or isinstance(self.value, tuple) or isinstance(self.value, np.ndarray)):
+                return self.value[key]
+            elif (isinstance(key, str) or isinstance(key, int)) and isinstance(self.value, dict):
+                return self.value[key]
+        except KeyError:
+            raise KeyError(f'Key {key} not found in {self.value}')
+
+        if not IterationPrimitives.__nesy_iteration_primitives__:
+            raise KeyError(f'Key {key} not found in {self.value}')
+
+        @core.getitem()
+        def _func(_, index: str):
+            pass
+
+        return self._to_symbol(_func(self, key))
+
+    def __setitem__(self, key: Union[str, int, slice], value: Any) -> None:
+        '''
+        Set the item of the Symbol value with the specified key or index to the given value.
+        If the Symbol value is a list, tuple, or numpy array, the key can be an integer or slice.
+        If the Symbol value is a dictionary, the key can be a string or an integer.
+        If the direct item setting fails, the method falls back to using the @core.setitem decorator, which sets the item using core functions.
+
+        Args:
+            key (Union[str, int, slice]): The key or index for the item in the Symbol value.
+            value: The value to set the item to.
+
+        Raises:
+            KeyError: If the key or index is not found in the Symbol value.
+        '''
+        try:
+            if (isinstance(key, int) or isinstance(key, slice)) and (isinstance(self.value, list) or isinstance(self.value, tuple) or isinstance(self.value, np.ndarray)):
+                self.value[key] = value
+                return
+            elif (isinstance(key, str) or isinstance(key, int)) and isinstance(self.value, dict):
+                self.value[key] = value
+                return
+        except KeyError:
+            raise KeyError(f'Key {key} not found in {self.value}')
+
+        if not IterationPrimitives.__nesy_iteration_primitives__:
+            raise KeyError(f'Key {key} not found in {self.value}')
+
+        @core.setitem()
+        def _func(_, index: str, value: str):
+            pass
+
+        self._value = self._to_symbol(_func(self, key, value)).value
+
+    def __delitem__(self, key: Union[str, int]) -> None:
+        '''
+        Delete the item of the Symbol value with the specified key or index.
+        If the Symbol value is a dictionary, the key can be a string or an integer.
+        If the direct item deletion fails, the method falls back to using the @core.delitem decorator, which deletes the item using core functions.
+
+        Args:
+            key (Union[str, int]): The key for the item in the Symbol value.
+
+        Raises:
+            KeyError: If the key or index is not found in the Symbol value.
+        '''
+        try:
+            if (isinstance(key, str) or isinstance(key, int)) and isinstance(self.value, dict):
+                del self.value[key]
+                return
+        except KeyError:
+            raise KeyError(f'Key {key} not found in {self.value}')
+
+        if not IterationPrimitives.__nesy_iteration_primitives__:
+            raise KeyError(f'Key {key} not found in {self.value}')
+
+        @core.delitem()
+        def _func(_, index: str):
+            pass
+
+        self._value = self._to_symbol(_func(self, key)).value
 
 
 class ContextualPrimitives:
@@ -1448,10 +1464,14 @@ class DataClusteringPrimitives:
         Returns:
             Symbol: A Symbol object with its value embedded.
         '''
-        if not isinstance(self.value, list):
-            self._value = [self.value]
+        value = self.value
+        if not isinstance(value, list):
+            # must convert to list of str for embedding
+            value = [str(value)]
+        # ensure that all values are strings
+        value = [str(v) for v in value]
 
-        @core.embed(entries=self.value, **kwargs)
+        @core.embed(entries=value, **kwargs)
         def _func(_) -> list:
             pass
 
@@ -1467,8 +1487,13 @@ class DataClusteringPrimitives:
         '''
         # if the embedding is not yet computed, compute it
         if self._metadata.embedding is None:
-            # compute the embedding and store as numpy array
-            self._metadata.embedding = np.array(self.embed().value)
+            if ((isinstance(self.value, list) or isinstance(self.value, tuple)) and all([type(x) == int or type(x) == float or type(x) == bool for x in self.value])) \
+                or isinstance(self.value, np.ndarray):
+                # convert to tensor
+                self._metadata.embedding = np.asarray(self.value)
+            else:
+                # compute the embedding and store as numpy array
+                self._metadata.embedding = np.array(self.embed().value)
         if isinstance(self._metadata.embedding, list):
             self._metadata.embedding = np.array(self._metadata.embedding)
         # return the embedding

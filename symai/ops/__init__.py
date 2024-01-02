@@ -2,6 +2,7 @@ from .primitives import *
 
 SYMBOL_PRIMITIVES = [
     ArithmeticPrimitives,
+    IterationPrimitives,
     ContextualPrimitives,
     ValueHandlingPrimitives,
     ComparisonPrimitives,
