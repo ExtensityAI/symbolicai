@@ -1498,13 +1498,8 @@ class DataClusteringPrimitives:
             if not isinstance(x, np.ndarray) or not isinstance(x, torch.Tensor):
                 if not isinstance(x, self._symbol_type): #@NOTE: enforce Symbol to avoid circular import
                     raise TypeError(f'Cannot compute similarity with type {type(x)}')
-                # if it has a tensor representation, use that
-                if x._metadata.embedding is not None:
-                    x = x._metadata.embedding
-                # otherwise, use the value
-                else:
-                    # else assert that it is a list or tuple
-                    x = np.array(x.value)
+                # evaluate the Symbol as an embedding
+                x = x.embedding
             # if it is a tensor, convert it to numpy
             if isinstance(x, torch.Tensor):
                 x = x.detach().cpu().numpy()

@@ -25,6 +25,7 @@ class EmbeddingEngine(Engine, OpenAIMixin):
         self.model              = self.config['EMBEDDING_ENGINE_MODEL'] if model is None else model
         self.pricing            = self.api_pricing()
         self.max_tokens         = self.api_max_tokens()
+        self.embedding_dim      = 1536
 
     def id(self) -> str:
         if  self.config['EMBEDDING_ENGINE_API_KEY']:
