@@ -52,11 +52,8 @@ class SeleniumEngine(Engine):
         return 'crawler'
 
     def forward(self, argument):
-        kwargs          = argument.kwargs
         urls, patterns  = argument.prop.prepared_input
         urls     = urls if isinstance(urls, list) else [urls]
-        # check if all urls start with https:// otherwise add it
-        urls = [url if url.startswith('http') or url.startswith('file://') else 'https://' + url for url in urls]
 
         patterns = patterns if isinstance(patterns, list) else [patterns]
         assert len(urls) == len(patterns)
