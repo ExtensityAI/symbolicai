@@ -217,7 +217,7 @@ class EngineRepository(object):
             engine = [e for e in engines if selected_engine in str(e)]
             if len(engine) <= 0:
                 raise ValueError(f"No engine named {selected_engine} found in plugin {plugin}.")
-        engine = engine[0]
+        engine = engines[0]
         EngineRepository.register(id, engine, allow_engine_override=allow_engine_override, *args, **kwargs)
 
     @staticmethod
