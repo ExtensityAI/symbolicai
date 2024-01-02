@@ -1274,7 +1274,7 @@ We use `Pinecone` to index and search for text. The following example demonstrat
 expr = Expression()
 expr.add(Symbol('Hello World!').zip())
 expr.add(Symbol('I like cookies!').zip())
-res = expr.get(Symbol('hello').embed().value, index_name='default_index').ast()
+res = expr.get(Symbol('hello').embedding, index_name='default_index').ast()
 res['matches'][0]['metadata']['text'][0]
 ```
 

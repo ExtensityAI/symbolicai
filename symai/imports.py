@@ -56,9 +56,9 @@ class Import(Expression):
 
     @staticmethod
     def load_module_class(module):
+        module_classes = []
         with open(f'{BASE_PACKAGE_PATH}/{module}/package.json') as f:
             pkg = json.load(f)
-            module_classes = []
             for expr in pkg['expressions']:
                 module_path = f'{BASE_PACKAGE_PATH}/{expr["module"].replace("/", ".")}'
                 # Determine relative path and adjust namespace
@@ -67,7 +67,7 @@ class Import(Expression):
                 relative_module_path = module.split('/')[0] + '.' + module.split('/')[1] + '.' + relative_module_path
                 module_class = getattr(importlib.import_module(relative_module_path), expr['type'])
                 module_classes.append(module_class)
-            return module_classes
+        return module_classes
 
     def __new__(self, module, auto_clone: bool = True, verbose: bool = False, *args, **kwargs):
         if not Import.exists(module) and auto_clone:
