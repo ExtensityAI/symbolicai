@@ -148,7 +148,7 @@ class ExpandFunctionPostProcessor(PostProcessor):
 
 class CaseInsensitivePostProcessor(PostProcessor):
     def __call__(self, response, argument) -> Any:
-        return response.lower()
+        return str(response).lower()
 
 class ConfirmToBoolPostProcessor(PostProcessor):
     def __call__(self, response, argument) -> Any:
