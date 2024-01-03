@@ -4,7 +4,7 @@ import numpy as np
 
 from box import Box
 from json import JSONEncoder
-from typing import Any, Dict, Iterator, List, Optional, Type
+from typing import Any, Dict, Iterator, List, Optional, Type, Callable
 
 from . import core
 from .ops import SYMBOL_PRIMITIVES
@@ -73,9 +73,10 @@ class SymbolMeta(type):
 
 
 class Symbol(metaclass=SymbolMeta):
-    _mixin      = True
-    _primitives = SYMBOL_PRIMITIVES
-    _metadata   = Metadata()
+    _mixin                = True
+    _primitives           = SYMBOL_PRIMITIVES
+    _metadata             = Metadata()
+    _metadata._primitives = {}
     _dynamic_context: Dict[str, List[str]] = {}
 
     def __init__(self, *value, static_context: Optional[str] = '', **kwargs) -> None:
@@ -144,7 +145,7 @@ class Symbol(metaclass=SymbolMeta):
         elif len(args) > 1:
             return [self._unwrap_symbols_args(a, nested=True) if isinstance(a, Symbol) else a for a in args]
 
-    def __new__(cls, *args, mixin: Optional[bool] = None, primitives: Optional[List[Type]] = None, **kwargs) -> "Symbol":
+    def __new__(cls, *args, mixin: Optional[bool] = None, primitives: Optional[List[Type]] = None, callables: Optional[Dict[str, Callable]] = None, **kwargs) -> "Symbol":
         '''
         Create a new Symbol instance.
 
@@ -152,6 +153,7 @@ class Symbol(metaclass=SymbolMeta):
             *args: Variable length argument list.
             mixin (Optional[bool]): Whether to mix in the SymbolArithmeticPrimitives class. Defaults to None.
             primitives (Optional[List[Type]]): A list of primitive classes to mix in. Defaults to None.
+            callables (Optional[List[Callable]]): A list of dynamic primitive functions to mix in. Defaults to None.
             **kwargs: Arbitrary keyword arguments.
 
         Returns:
@@ -165,6 +167,20 @@ class Symbol(metaclass=SymbolMeta):
             # create a new cls type that inherits from Symbol and the mixin primitive types
             cls       = SymbolMeta(cls.__name__, (cls,) + tuple(primitives), {})
         obj = super().__new__(cls)
+        # If metatype has additional runtime primitives, add them to the instance
+        if Symbol._metadata._primitives:
+            for name, callable in Symbol._metadata._primitives.items():
+                # create a new function that binds the instance to the callable
+                def _func(*args, **kwargs):
+                    return callable(obj, *args, **kwargs)
+                setattr(obj, name, _func)
+        # If object instantiation has additional runtime callables, add them to the instance
+        if callables:
+            for name, callable in callables.items():
+                # create a new function that binds the instance to the callable
+                def _func(*args, **kwargs):
+                    return callable(obj, *args, **kwargs)
+                setattr(obj, name, _func)
         return obj
 
     def __array__(self, dtype=None):
@@ -497,6 +513,32 @@ class Symbol(metaclass=SymbolMeta):
             StopIteration: If the iterable value reaches its end.
         '''
         return next(self.__iter__())
+
+    def set_primitive(self, name: str, callable: callable) -> None:
+        '''
+        Set a primitive function to the Symbol instance.
+
+        Args:
+
+            callable (callable): The primitive function to set.
+            scope (Union['instance', 'type', 'class'], optional): The scope of the primitive function. Defaults to 'instance'.
+
+        Args:
+            callable (callable): The primitive function to set.
+        '''
+        def _func(*args, **kwargs):
+            return callable(self, *args, **kwargs)
+        setattr(self, name, _func)
+
+    @staticmethod
+    def set_primitive_globally(name: str, callable: callable) -> None:
+        '''
+        Set a primitive function to the Symbol class.
+
+        Args:
+            callable (callable): The primitive function to set.
+        '''
+        Symbol._metadata._primitives[name] = callable
 
 
 class ExpressionEncoder(JSONEncoder):

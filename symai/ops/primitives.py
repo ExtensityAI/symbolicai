@@ -1499,7 +1499,7 @@ class DataClusteringPrimitives:
         # return the embedding
         return self._metadata.embedding
 
-    def similarity(self, other: Union['Symbol', np.ndarray, torch.Tensor], metric: Union['cosine', 'product', 'manhattan', 'euclidean', 'minkowski', 'jaccard'] = 'cosine', eps: float = 1e-8, **kwargs) -> float:
+    def similarity(self, other: Union['Symbol', np.ndarray, torch.Tensor], metric: Union['cosine', 'product', 'manhattan', 'euclidean', 'minkowski', 'jaccard'] = 'cosine', eps: float = 1e-8, normalize: Optional[Callable] = None, **kwargs) -> float:
         '''
         Calculates the similarity between two Symbol objects using a specified metric.
         This method compares the values of two Symbol objects and calculates their similarity according to the specified metric.
@@ -1509,6 +1509,7 @@ class DataClusteringPrimitives:
             other (Symbol): The other Symbol object to calculate the similarity with.
             metric (Optional[str]): The metric to use for calculating the similarity. Defaults to 'cosine'.
             eps (float): A small value to avoid division by zero.
+            normalize (Optional[Callable]): A function to normalize the Symbol's value before calculating the similarity. Defaults to None.
             **kwargs: Additional keyword arguments for the @core.similarity decorator.
 
         Returns:
@@ -1518,11 +1519,13 @@ class DataClusteringPrimitives:
             TypeError: If any of the Symbol objects is not of type np.ndarray or Symbol.
             NotImplementedError: If the given metric is not supported.
         '''
-        def _ensure_numpy_format(x):
+        def _ensure_numpy_format(x, cast=False):
             # if it is a Symbol, get its value
             if not isinstance(x, np.ndarray) or not isinstance(x, torch.Tensor):
                 if not isinstance(x, self._symbol_type): #@NOTE: enforce Symbol to avoid circular import
-                    raise TypeError(f'Cannot compute similarity with type {type(x)}')
+                    if not cast:
+                        raise TypeError(f'Cannot compute similarity with type {type(x)}')
+                    x = self._symbol_type(x)
                 # evaluate the Symbol as an embedding
                 x = x.embedding
             # if it is a tensor, convert it to numpy
@@ -1531,7 +1534,7 @@ class DataClusteringPrimitives:
             return x.squeeze()[:, None]
 
         v = _ensure_numpy_format(self)
-        o = _ensure_numpy_format(other)
+        o = _ensure_numpy_format(other, cast=True)
 
         if metric == 'cosine':
             val = (v.T@o / (np.sqrt(v.T@v) * np.sqrt(o.T@o) + eps)).item()
@@ -1549,6 +1552,8 @@ class DataClusteringPrimitives:
         else:
             raise NotImplementedError(f"Similarity metric {metric} not implemented. Available metrics: 'cosine'")
 
+        if normalize is not None:
+            val = normalize(val)
         return val
 
     def zip(self, **kwargs) -> List[Tuple[str, List, Dict]]:
