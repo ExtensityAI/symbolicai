@@ -442,6 +442,81 @@ class ArithmeticPrimitives:
         return self._to_symbol(str(self).split(str(other)))
 
 
+class CastingPrimitives:
+    '''
+    This mixin contains functionalities related to casting symbols.
+    '''
+    def cast(self, as_type: Type) -> Any:
+        '''
+        Cast the Symbol's value to a specific type.
+
+        Args:
+            as_type (Type): The type to cast the Symbol's value to.
+
+        Returns:
+            The Symbol's value casted to the specified type.
+        '''
+        return as_type(self.value)
+
+    def to(self, as_type: Type) -> Any:
+        '''
+        Cast the Symbol's value to a specific type.
+
+        Args:
+            as_type (Type): The type to cast the Symbol's value to.
+
+        Returns:
+            The Symbol's value casted to the specified type.
+        '''
+        return self.cast(as_type)
+
+    def ast(self) -> Any:
+        '''
+        Converts the string representation of the Symbol's value to an abstract syntax tree using 'ast.literal_eval'.
+
+        Returns:
+            The abstract syntax tree representation of the Symbol's value.
+        '''
+        return ast.literal_eval(str(self.value))
+
+    def str(self) -> str:
+        '''
+        Get the string representation of the Symbol's value.
+
+        Returns:
+            str: The string representation of the Symbol's value.
+        '''
+        return str(self.value)
+
+    def int(self) -> int:
+        '''
+        Get the integer representation of the Symbol's value.
+
+        Returns:
+            int: The integer representation of the Symbol's value.
+        '''
+        return int(self.value)
+
+    def float(self) -> float:
+
+        '''
+        Get the float representation of the Symbol's value.
+
+        Returns:
+            float: The float representation of the Symbol's value.
+        '''
+        return float(self.value)
+
+    def bool(self) -> bool:
+        '''
+        Get the boolean representation of the Symbol's value.
+
+        Returns:
+            bool: The boolean representation of the Symbol's value.
+        '''
+        return bool(self.value)
+
+
 class IterationPrimitives:
     # DO NOT use by default neuro-symbolic iterations for mixins to avoid unwanted side effects
     __nesy_iteration_primitives__ = False
@@ -631,27 +706,6 @@ class ValueHandlingPrimitives:
             type: The type of the Symbol's value.
         '''
         return type(self.value)
-
-    def cast(self, as_type: Type) -> Any:
-        '''
-        Cast the Symbol's value to a specific type.
-
-        Args:
-            as_type (Type): The type to cast the Symbol's value to.
-
-        Returns:
-            The Symbol's value casted to the specified type.
-        '''
-        return as_type(self.value)
-
-    def ast(self) -> Any:
-        '''
-        Converts the string representation of the Symbol's value to an abstract syntax tree using 'ast.literal_eval'.
-
-        Returns:
-            The abstract syntax tree representation of the Symbol's value.
-        '''
-        return ast.literal_eval(str(self.value))
 
     def index(self, item: str, **kwargs) -> 'Symbol':
         '''
@@ -1499,7 +1553,7 @@ class DataClusteringPrimitives:
         # return the embedding
         return self._metadata.embedding
 
-    def similarity(self, other: Union['Symbol', np.ndarray, torch.Tensor], metric: Union['cosine', 'product', 'manhattan', 'euclidean', 'minkowski', 'jaccard'] = 'cosine', eps: float = 1e-8, normalize: Optional[Callable] = None, **kwargs) -> float:
+    def similarity(self, other: Union['Symbol', list, np.ndarray, torch.Tensor], metric: Union['cosine', 'product', 'manhattan', 'euclidean', 'minkowski', 'jaccard'] = 'cosine', eps: float = 1e-8, normalize: Optional[Callable] = None, **kwargs) -> float:
         '''
         Calculates the similarity between two Symbol objects using a specified metric.
         This method compares the values of two Symbol objects and calculates their similarity according to the specified metric.
@@ -1534,23 +1588,35 @@ class DataClusteringPrimitives:
             return x.squeeze()[:, None]
 
         v = _ensure_numpy_format(self)
-        o = _ensure_numpy_format(other, cast=True)
+        if isinstance(other, list):
+            o = []
+            for i in range(len(other)):
+                o.append(_ensure_numpy_format(other[i], cast=True))
+            o = np.concatenate(o, axis=1)
+        else:
+            o = _ensure_numpy_format(other, cast=True)
 
         if metric == 'cosine':
-            val = (v.T@o / (np.sqrt(v.T@v) * np.sqrt(o.T@o) + eps)).item()
+            val = (v.T@o / (np.sqrt(v.T@v) * np.sqrt(o.T@o) + eps))
         elif metric == 'product':
-            val = (v.T@o / (v.shape[0] + eps)).item()
+            val = (v.T@o / (v.shape[0] + eps))
         elif metric == 'manhattan':
-            val = (np.abs(v - o).sum(axis=0) / (v.shape[0] + eps)).item()
+            val = (np.abs(v - o).sum(axis=0) / (v.shape[0] + eps))
         elif metric == 'euclidean':
-            val = (np.sqrt(np.sum((v - o)**2, axis=0)) / (v.shape[0] + eps)).item()
+            val = (np.sqrt(np.sum((v - o)**2, axis=0)) / (v.shape[0] + eps))
         elif metric == 'minkowski':
             p = kwargs.get('p', 3)
-            val = (np.sum(np.abs(v - o)**p, axis=0)**(1/p) / (v.shape[0] + eps)).item()
+            val = (np.sum(np.abs(v - o)**p, axis=0)**(1/p) / (v.shape[0] + eps))
         elif metric == 'jaccard':
-            val = (np.sum(np.minimum(v, o)) / np.sum(np.maximum(v, o) + eps)).item()
+            val = (np.sum(np.minimum(v, o)) / np.sum(np.maximum(v, o) + eps))
         else:
             raise NotImplementedError(f"Similarity metric {metric} not implemented. Available metrics: 'cosine'")
+
+        # get the similarity value(s)
+        if val.shape[0] > 1:
+            val = val.diagonal()
+        else:
+            val = val.item()
 
         if normalize is not None:
             val = normalize(val)
@@ -1781,7 +1847,6 @@ class OutputHandlingPrimitives:
             pass
 
         return self._to_symbol(_func(self, *args))
-
 
 
 class FineTuningPrimitives:

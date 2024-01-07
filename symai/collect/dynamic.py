@@ -9,6 +9,10 @@ class DynamicClass:
     def __repr__(self):
         return str(self.__dict__)
 
+    @staticmethod
+    def from_string(s):
+        return create_object_from_string(s)
+
 
 def create_dynamic_class(class_name, **kwargs):
     return type(class_name, (DynamicClass,), kwargs)()
@@ -32,8 +36,48 @@ def parse_custom_class_instances(s):
 
     return s
 
-
+# TODO: fix to properly parse nested lists and dicts
 def create_object_from_string(str_class):
+    def updated_attributes_process(str_class):
+        # Regular expression to extract key-value pairs
+        attr_pattern = r"(\w+)=(\[.*?\]|\{.*?\}|'.*?'|None|\w+)"
+        attributes = re.findall(attr_pattern, str_class)
+
+        # Create an instance of the dynamic class with initial attributes
+        updated_attributes = []
+        # remove string up until 'content='
+        content = str_class.split('ChatCompletionMessage(content=')[-1].split(", role=")[0][1:-1]
+        updated_attributes.append(('content', content))
+        for key, value in attributes:
+            if key.startswith("'") and key.endswith("'"):
+                key = key.strip("'")
+            if key.startswith('"') and key.endswith('"'):
+                key = key.strip('"')
+            if value.startswith("'") and value.endswith("'"):
+                value = value.strip("'")
+            if value.startswith('"') and value.endswith('"'):
+                value = value.strip('"')
+
+            if value.startswith('[') and value.endswith(']'):
+                value = parse_value(value)
+                dir(value)
+                if hasattr(value, '__dict__'):
+                    for k in value.__dict__.keys():
+                        v = getattr(value, k)
+                        if type(v) == str:
+                            value[k.strip("'")] = v.strip("'")
+            elif value.startswith('{') and value.endswith('}'):
+                value = parse_value(value)
+                new_value = {}
+                for k in value.keys():
+                    v = value[k]
+                    if type(v) == str:
+                        v = v.strip("'")
+                    new_value[k.strip("'")] = v
+                value = new_value
+            updated_attributes.append((key, value))
+        return updated_attributes
+
     def parse_value(value):
         try:
             value = parse_custom_class_instances(value)
@@ -55,41 +99,9 @@ def create_object_from_string(str_class):
             else:
                 return res
         except:
-            return create_object_from_string(value)
+            return value
 
-    # Regular expression to extract key-value pairs
-    attr_pattern = r"(\w+)=(\[.*?\]|\{.*?\}|'.*?'|None|\w+)"
-    attributes = re.findall(attr_pattern, str_class)
-
-    # Create an instance of the dynamic class with initial attributes
-    updated_attributes = []
-    for key, value in attributes:
-        if key.startswith("'") and key.endswith("'"):
-            key = key.strip("'")
-        if key.startswith('"') and key.endswith('"'):
-            key = key.strip('"')
-        if value.startswith("'") and value.endswith("'"):
-            value = value.strip("'")
-        if value.startswith('"') and value.endswith('"'):
-            value = value.strip('"')
-
-        if value.startswith('[') and value.endswith(']'):
-            value = parse_value(value)
-            dir(value)
-            for k in value.__dict__.keys():
-                v = getattr(value, k)
-                if type(v) == str:
-                    value[k.strip("'")] = v.strip("'")
-        elif value.startswith('{') and value.endswith('}'):
-            value = parse_value(value)
-            new_value = {}
-            for k in value.keys():
-                v = value[k]
-                if type(v) == str:
-                    v = v.strip("'")
-                new_value[k.strip("'")] = v
-            value = new_value
-        updated_attributes.append((key, value))
+    updated_attributes = updated_attributes_process(str_class)
     obj = DynamicClass(**{key: parse_value(value) for key, value in updated_attributes})
 
     return obj
