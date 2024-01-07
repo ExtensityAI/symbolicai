@@ -288,7 +288,24 @@ class Clean(Expression):
 
 
 class Execute(Expression):
-    def forward(self, sym: Symbol, **kwargs) -> Symbol:
+    def __init__(self, enclosure: bool = False):
+        super().__init__()
+        self.enclosure = enclosure
+        self.template = """# -*- code execution template -*-
+def _func(*args, **kwargs):
+    _value_obj_ = None
+{sym}
+    # assume that code assigns to _value_obj_ variable
+    return _value_obj_
+_output_ = _func()
+"""
+
+    def forward(self, sym: Symbol, enclosure: bool = False, **kwargs) -> Symbol:
+        if enclosure or self.enclosure:
+            lines = str(sym).split('\n')
+            lines = ['    ' + line for line in lines]
+            sym = '\n'.join(lines)
+            sym = self.template.replace('{sym}', str(sym))
         sym = self._to_symbol(sym)
         return sym.execute(**kwargs)
 

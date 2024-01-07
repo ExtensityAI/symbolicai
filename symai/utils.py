@@ -82,6 +82,17 @@ def deprecated(message):
     return deprecated_decorator
 
 
+def toggle_test(enabled: bool = True, default = None):
+    def test_decorator(func):
+        def test_func(*args, **kwargs):
+            if enabled:
+                return func(*args, **kwargs)
+            else:
+                return default
+        return test_func
+    return test_decorator
+
+
 class Args:
     def __init__(self, skip_none: bool = False, **kwargs):
         # for each key set an attribute
