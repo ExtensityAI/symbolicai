@@ -724,6 +724,56 @@ class ValueHandlingPrimitives:
         return self._to_symbol(_func(self, item))
 
 
+class StringHelperPrimitives:
+    '''
+    This mixin contains functions that provide additional help for symbols or their values.
+    '''
+    def split(self, delimiter: str, **kwargs) -> 'Symbol':
+        '''
+        Splits the symbol value by a specified delimiter.
+        Uses the core.split decorator to create a _func method that splits the symbol value by the specified delimiter.
+
+        Args:
+            delimiter (str): The delimiter to split the symbol value by.
+
+        Returns:
+            Symbol: A new symbol with the split value.
+        '''
+        assert isinstance(delimiter, str),  f'delimiter must be a string, got {type(delimiter)}'
+        assert isinstance(self.value, str), f'self.value must be a string, got {type(self.value)}'
+        symbols = self.symbols(*self.value.split(delimiter))
+        return symbols
+
+    def startswith(self, prefix: str, **kwargs) -> bool:
+        '''
+        Checks if the symbol value starts with a specified prefix.
+        Uses the core.startswith decorator to create a _func method that checks if the symbol value starts with the specified prefix.
+
+        Args:
+            prefix (str): The prefix to check if the symbol value starts with.
+
+        Returns:
+            bool: True if the symbol value starts with the specified prefix, otherwise False.
+        '''
+        assert isinstance(prefix, str),  f'prefix must be a string, got {type(prefix)}'
+        assert isinstance(self.value, str), f'self.value must be a string, got {type(self.value)}'
+        return self.value.startswith(prefix)
+
+    def endswith(self, suffix: str, **kwargs) -> bool:
+        '''
+        Checks if the symbol value ends with a specified suffix.
+        Uses the core.endswith decorator to create a _func method that checks if the symbol value ends with the specified suffix.
+
+        Args:
+            suffix (str): The suffix to check if the symbol value ends with.
+
+        Returns:
+            bool: True if the symbol value ends with the specified suffix, otherwise False.
+        '''
+        assert isinstance(suffix, str),  f'suffix must be a string, got {type(suffix)}'
+        assert isinstance(self.value, str), f'self.value must be a string, got {type(self.value)}'
+        return self.value.endswith(suffix)
+
 class ComparisonPrimitives:
     '''
     This mixin is dedicated to functions that perform more complex comparison operations between symbols or symbol values.

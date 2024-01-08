@@ -204,6 +204,19 @@ class Symbol(metaclass=SymbolMeta):
         '''
         return memoryview(self.embedding)
 
+    @staticmethod
+    def symbols(*values) -> List["Symbol"]:
+        '''
+        Create a list of Symbol instances from a list of values.
+
+        Args:
+            values (List[Any]): The list of values to create Symbol instances from.
+
+        Returns:
+            List[Symbol]: The list of Symbol instances.
+        '''
+        return [Symbol(value) for value in values]
+
     def __reduce__(self):
         '''
         This method is called by pickle to serialize the object.
