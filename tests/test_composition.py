@@ -502,10 +502,10 @@ modified:   tests/test_composition.py
     def test_concatination(self):
         sym1 = Symbol('this is a text')
         sym2 = " from my home"
-        res1 = sym1 @ sym2
-        res2 = sym2 @ sym1
+        res1 = sym1 | sym2
+        res2 = sym2 | sym1
         self.assertTrue(res1 == res2)
-        sym1 @= sym2
+        sym1 |= sym2
         self.assertTrue(sym1 == res1)
 
     def test_cluster(self):
@@ -799,7 +799,7 @@ modified:   tests/test_composition.py
                         question = self.extract('question sentence')
                         req = question.extract('what is requested?')
                         x = self.extract('coordinate point (.,.)') # get coordinate point / could also ask for other points
-                        query = formula @ f', point x = {x}' @ f', solve {req}' # concatenate to the question and formula
+                        query = formula | f', point x = {x}' | f', solve {req}' # concatenate to the question and formula
                         res = expression(query) # TODO: wolframalpha python api does not give answer but on website this works -> triggered pull request
 
                     elif formula.isinstanceof('number comparison'):
