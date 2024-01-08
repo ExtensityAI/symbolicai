@@ -5,6 +5,7 @@ SYMBOL_PRIMITIVES = [
     IterationPrimitives,
     ContextualPrimitives,
     ValueHandlingPrimitives,
+    StringHelperPrimitives,
     CastingPrimitives,
     ComparisonPrimitives,
     ExpressionHandlingPrimitives,
