@@ -459,7 +459,7 @@ def retrieval_augmented_indexing(query: str, *args, **kwargs):
             arxiv = ArxivPdfParser()
             pdf_file = arxiv(file)
             if pdf_file is not None:
-                file = file @'\n'@ pdf_file
+                file = file |'\n'| pdf_file
 
         index_name = path.split(sep)[-1]
         index_name = Indexer.replace_special_chars(index_name)
@@ -499,7 +499,7 @@ def search_engine(query: str, res=None, *args, **kwargs):
 
 
 def handle_error(cmd, res, message, auto_query_on_error):
-    msg = Symbol(cmd) @ f'\n{str(res)}'
+    msg = Symbol(cmd) | f'\n{str(res)}'
     if 'command not found' in str(res) or 'not recognized as an internal or external command' in str(res):
         return res.stderr.decode('utf-8')
     else:
@@ -507,7 +507,7 @@ def handle_error(cmd, res, message, auto_query_on_error):
         if stderr and auto_query_on_error:
             rsp = stderr.decode('utf-8')
             print(rsp)
-            msg = msg @ f"\n{rsp}"
+            msg = msg | f"\n{rsp}"
             if 'usage:' in rsp:
                 try:
                     cmd = cmd.split('usage: ')[-1].split(' ')[0]
@@ -518,7 +518,7 @@ def handle_error(cmd, res, message, auto_query_on_error):
                     stdout = res.stdout
                     if stdout:
                         rsp = stdout.decode('utf-8')[:500]
-                        msg = msg @ f"\n{rsp}"
+                        msg = msg | f"\n{rsp}"
                 except Exception:
                     pass
 

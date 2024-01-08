@@ -17,6 +17,38 @@ if TYPE_CHECKING:
 
 
 class ArithmeticPrimitives:
+    # smart defaults to avoid unwanted side effects
+    __disable_shortcut_matches__   = False
+    __nesy_iteration_primitives__  = False
+
+    @staticmethod
+    def __check_shortcut_type_support__(sym):
+        return not ArithmeticPrimitives.__disable_shortcut_matches__ and \
+           (isinstance(sym.value, list) or \
+            isinstance(sym.value, tuple) or \
+            isinstance(sym.value, np.ndarray) or \
+            isinstance(sym.value, torch.Tensor) or \
+            isinstance(sym.value, set) or \
+            isinstance(sym.value, str) or \
+            isinstance(sym.value, dict) or \
+            # if is iterable
+            hasattr(sym.value, '__iter__')
+           )
+
+    def __try_type_specific_func(self, other, func, op: str = None):
+        other = self._to_symbol(other)
+        try:
+            # try type specific function
+            value = func(self, other)
+            if value == NotImplemented:
+                operation = '' if op is None else op
+                raise TypeError(f"unsupported operand type(s) for {operation}: '{type(self.value)}' and '{type(other.value)}'")
+            return value
+        except Exception as ex:
+            self._metadata._error = ex
+            pass
+        return None
+
     '''
     This mixin contains functions that perform arithmetic operations on symbols or symbol values.
     The functions in this mixin are bound to the 'neurosymbolic' engine for evaluation.
@@ -32,6 +64,16 @@ class ArithmeticPrimitives:
         Returns:
             bool: True if the current Symbol contains the 'other' Symbol, otherwise False.
         '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: other.value in self.value, op='in')
+        # verify the result and return if found return
+        if result:
+            return result
+        # verify if fuzzy matches are enabled in general
+        # DO NOT use by default neuro-symbolic iterations for mixins to avoid unwanted side effects
+        if not ArithmeticPrimitives.__nesy_iteration_primitives__:
+            return result
+
         @core.contains()
         def _func(_, other) -> bool:
             pass
@@ -49,52 +91,17 @@ class ArithmeticPrimitives:
         Returns:
             bool: True if the current Symbol is equal to the 'other' Symbol, otherwise False.
         '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value == other.value, op='==')
+        # verify the result and return if found return
+        if result:
+            return result
+
         @core.equals()
         def _func(_, other) -> bool:
             pass
 
         return _func(self, other)
-
-    def __matmul__(self, other: Any) -> 'Symbol':
-        '''
-        This method concatenates the string representation of two Symbol objects and returns a new Symbol with the concatenated result.
-        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
-
-        Args:
-            other (Any): The object to concatenate.
-
-        Returns:
-            Symbol: A new Symbol object with the concatenated value.
-        '''
-        return self._to_symbol(str(self) + str(other))
-
-    def __rmatmul__(self, other: Any) -> 'Symbol':
-        '''
-        This method concatenates the string representation of two Symbol objects in a reversed order and returns a new Symbol with the concatenated result.
-        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
-
-        Args:
-            other (Any): The object to concatenate.
-
-        Returns:
-            Symbol: A new Symbol object with the concatenated value.
-        '''
-        other = self._to_symbol(other)
-        return self._to_symbol(str(other) + str(self))
-
-    def __imatmul__(self, other: Any) -> 'Symbol':
-        '''
-        This method concatenates the string representation of two Symbol objects and assigns the concatenated result to the value of the current Symbol object.
-        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
-
-        Args:
-            other (Any): The object to concatenate.
-
-        Returns:
-            Symbol: The current Symbol object with the concatenated value.
-        '''
-        self._value =  self._to_symbol(str(self) + str(other))
-        return self
 
     def __ne__(self, other: Any) -> bool:
         '''
@@ -107,6 +114,11 @@ class ArithmeticPrimitives:
         Returns:
             bool: True if the current Symbol is not equal to the 'other' Symbol, otherwise False.
         '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other:  self.value != other.value, op='!=')
+        # verify the result and return if found return
+        if result:
+            return result
         return not self.__eq__(other)
 
     def __gt__(self, other: Any) -> bool:
@@ -120,10 +132,14 @@ class ArithmeticPrimitives:
         Returns:
             bool: True if the current Symbol is greater than the 'other' Symbol, otherwise False.
         '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value > other.value, op='>')
+        # verify the result and return if found return
+        if result:
+            return result
         @core.compare(operator = '>')
         def _func(_, other) -> bool:
             pass
-
         return _func(self, other)
 
     def __lt__(self, other: Any) -> bool:
@@ -137,10 +153,14 @@ class ArithmeticPrimitives:
         Returns:
             bool: True if the current Symbol is less than the 'other' Symbol, otherwise False.
         '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value < other.value, op='<')
+        # verify the result and return if found return
+        if result:
+            return result
         @core.compare(operator = '<')
         def _func(_, other) -> bool:
             pass
-
         return _func(self, other)
 
     def __le__(self, other) -> bool:
@@ -154,10 +174,14 @@ class ArithmeticPrimitives:
         Returns:
             bool: True if the current Symbol is less than or equal to the 'other' Symbol, otherwise False.
         '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value <= other.value, op='<=')
+        # verify the result and return if found return
+        if result:
+            return result
         @core.compare(operator = '<=')
         def _func(_, other) -> bool:
             pass
-
         return _func(self, other)
 
     def __ge__(self, other) -> bool:
@@ -171,10 +195,14 @@ class ArithmeticPrimitives:
         Returns:
             bool: True if the current Symbol is greater than or equal to the 'other' Symbol, otherwise False.
         '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value >= other.value, op='>=')
+        # verify the result and return if found return
+        if result:
+            return result
         @core.compare(operator = '>=')
         def _func(_, other) -> bool:
             pass
-
         return _func(self, other)
 
     def __neg__(self) -> 'Symbol':
@@ -185,10 +213,14 @@ class ArithmeticPrimitives:
         Returns:
             Symbol: The negated value of the Symbol.
         '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(None, lambda self, _: -self.value, op='-')
+        # verify the result and return if found return
+        if result:
+            return self._to_symbol(result)
         @core.negate()
         def _func(_):
             pass
-
         return self._to_symbol(_func(self))
 
     def __not__(self) -> 'Symbol':
@@ -199,10 +231,14 @@ class ArithmeticPrimitives:
         Returns:
             Symbol: The negated value of the Symbol.
         '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(None, lambda self, _: not self.value, op='not')
+        # verify the result and return if found return
+        if result:
+            return self._to_symbol(result)
         @core.negate()
         def _func(_):
             pass
-
         return self._to_symbol(_func(self))
 
     def __invert__(self) -> 'Symbol':
@@ -213,13 +249,17 @@ class ArithmeticPrimitives:
         Returns:
             Symbol: The inverted value of the Symbol.
         '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(None, lambda self, _: ~self.value, op='~')
+        # verify the result and return if found return
+        if result:
+            return self._to_symbol(result)
         @core.invert()
         def _func(_):
             pass
-
         return self._to_symbol(_func(self))
 
-    def __lshift__(self, information: Any) -> 'Symbol':
+    def __lshift__(self, other: Any) -> 'Symbol':
         '''
         Add new information to the Symbol.
         The method uses the @core.include decorator to incorporate information into the Symbol.
@@ -230,13 +270,17 @@ class ArithmeticPrimitives:
         Returns:
             Symbol: The Symbol with the new information included.
         '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value << other.value, op='<<')
+        # verify the result and return if found return
+        if result:
+            return self._to_symbol(result)
         @core.include()
         def _func(_, information: str):
             pass
+        return self._to_symbol(_func(self, other))
 
-        return self._to_symbol(_func(self, information))
-
-    def __rshift__(self, information: Any) -> 'Symbol':
+    def __rlshift__(self, other: Any) -> 'Symbol':
         '''
         Add new information to the Symbol.
         The method uses the @core.include decorator to incorporate information into the Symbol.
@@ -247,13 +291,17 @@ class ArithmeticPrimitives:
         Returns:
             Symbol: The Symbol with the new information included.
         '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: other.value << self.value, op='<<')
+        # verify the result and return if found return
+        if result:
+            return self._to_symbol(result)
         @core.include()
         def _func(_, information: str):
             pass
+        return self._to_symbol(_func(self, other))
 
-        return self._to_symbol(_func(self, information))
-
-    def __rrshift__(self, information: Any) -> 'Symbol':
+    def __ilshift__(self, other: Any) -> 'Symbol':
         '''
         Add new information to the Symbol.
         The method uses the @core.include decorator to incorporate information into the Symbol.
@@ -264,11 +312,82 @@ class ArithmeticPrimitives:
         Returns:
             Symbol: The Symbol with the new information included.
         '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value << other.value, op='<<=')
+        # verify the result and return if found return
+        if result:
+            self._value = result
+            return self
         @core.include()
         def _func(_, information: str):
             pass
+        self._value = _func(self, other)
+        return self
 
-        return self._to_symbol(_func(self, information))
+    def __rshift__(self, other: Any) -> 'Symbol':
+        '''
+        Add new information to the Symbol.
+        The method uses the @core.include decorator to incorporate information into the Symbol.
+
+        Args:
+            information (Any): The information to include in the Symbol.
+
+        Returns:
+            Symbol: The Symbol with the new information included.
+        '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value >> other.value, op='>>')
+        # verify the result and return if found return
+        if result:
+            return self._to_symbol(result)
+        @core.include()
+        def _func(_, information: str):
+            pass
+        return self._to_symbol(_func(self, other))
+
+    def __rrshift__(self, other: Any) -> 'Symbol':
+        '''
+        Add new information to the Symbol.
+        The method uses the @core.include decorator to incorporate information into the Symbol.
+
+        Args:
+            information (Any): The information to include in the Symbol.
+
+        Returns:
+            Symbol: The Symbol with the new information included.
+        '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: other.value >> self.value, op='>>')
+        # verify the result and return if found return
+        if result:
+            return self._to_symbol(result)
+        @core.include()
+        def _func(_, information: str):
+            pass
+        return self._to_symbol(_func(self, other))
+
+    def __irshift__(self, other: Any) -> 'Symbol':
+        '''
+        Add new information to the Symbol.
+        The method uses the @core.include decorator to incorporate information into the Symbol.
+
+        Args:
+            information (Any): The information to include in the Symbol.
+
+        Returns:
+            Symbol: The Symbol with the new information included.
+        '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value >> other.value, op='>>=')
+        # verify the result and return if found return
+        if result:
+            self._value = result
+            return self
+        @core.include()
+        def _func(_, information: str):
+            pass
+        self._value = _func(self, other)
+        return self
 
     def __add__(self, other: Any) -> 'Symbol':
         '''
@@ -282,10 +401,14 @@ class ArithmeticPrimitives:
         Returns:
             Symbol: The Symbol combined with the other value.
         '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value + other.value, op='+')
+        # verify the result and return if found return
+        if result:
+            return self._to_symbol(result)
         @core.combine()
         def _func(_, a: str, b: str):
             pass
-
         return self._to_symbol(_func(self, other))
 
     def __radd__(self, other) -> 'Symbol':
@@ -300,6 +423,11 @@ class ArithmeticPrimitives:
         Returns:
             Symbol: The other value combined with the Symbol.
         '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: other.value + self.value, op='+')
+        # verify the result and return if found return
+        if result:
+            return self._to_symbol(result)
         @core.combine()
         def _func(_, a: str, b: str):
             pass
@@ -317,6 +445,12 @@ class ArithmeticPrimitives:
         Returns:
             Symbol: The updated Symbol with the added value.
         '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value + other.value, op='+=')
+        # verify the result and return if found return
+        if result:
+            self._value = result
+            return self
         other = self._to_symbol(other)
         self._value = self.__add__(other)
         return self
@@ -333,10 +467,14 @@ class ArithmeticPrimitives:
         Returns:
             Symbol: The Symbol with occurrences of the other value replaced with an empty string.
         '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value - other.value, op='-')
+        # verify the result and return if found return
+        if result:
+            return self._to_symbol(result)
         @core.replace()
         def _func(_, text: str, replace: str, value: str):
             pass
-
         return self._to_symbol(_func(self, other, ''))
 
     def __rsub__(self, other: Any) -> 'Symbol':
@@ -351,10 +489,14 @@ class ArithmeticPrimitives:
         Returns:
             Symbol: A new symbol with the result of the subtraction.
         '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: other.value - self.value, op='-')
+        # verify the result and return if found return
+        if result:
+            return self._to_symbol(result)
         @core.replace()
         def _func(_, text: str, replace: str, value: str):
             pass
-
         other = self._to_symbol(other)
         return self._to_symbol(_func(other, self, ''))
 
@@ -369,12 +511,17 @@ class ArithmeticPrimitives:
         Returns:
             Symbol: The current symbol with the updated value.
         '''
-        val = self.__sub__(other)
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value - other.value, op='-=')
+        # verify the result and return if found return
+        if result:
+            self._value = result
+            return self
+        val         = self.__sub__(other)
         self._value = val.value
-
         return self
 
-    def __and__(self, other: Any) -> 'Symbol':
+    def __and__(self, other: Any) -> Any:
         '''
         Performs a logical AND operation between the symbol value and another.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
@@ -386,13 +533,64 @@ class ArithmeticPrimitives:
         Returns:
             Symbol: A new symbol with the result of the AND operation.
         '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value and other.value, op='&')
+        # verify the result and return if found return
+        if result:
+            return result
         @core.logic(operator='and')
         def _func(_, a: str, b: str):
             pass
-
         return self._to_symbol(_func(self, other))
 
-    def __or__(self, other: Any) -> 'Symbol':
+    def __rand__(self, other: Any) -> Any:
+        '''
+        Performs a logical AND operation between the symbol value and another.
+        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
+        Uses the core.logic decorator with operator='and' to create a _func method for the AND operation.
+
+        Args:
+            other (Any): The string to perform the AND operation with the symbol value.
+
+        Returns:
+            Symbol: A new symbol with the result of the AND operation.
+        '''
+        other = self._to_symbol(other)
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other:  other.value and self.value, op='&')
+        # verify the result and return if found return
+        if result:
+            return result
+        @core.logic(operator='and')
+        def _func(_, a: str, b: str):
+            pass
+        return self._to_symbol(_func(other, self))
+
+    def __iand__(self, other: Any) -> Any:
+        '''
+        Performs a logical AND operation between the symbol value and another.
+        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
+        Uses the core.logic decorator with operator='and' to create a _func method for the AND operation.
+
+        Args:
+            other (Any): The string to perform the AND operation with the symbol value.
+
+        Returns:
+            Symbol: A new symbol with the result of the AND operation.
+        '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value and other.value, op='&=')
+        # verify the result and return if found return
+        if result:
+            self._value = result
+            return self
+        @core.logic(operator='and')
+        def _func(_, a: str, b: str):
+            pass
+        self._value = _func(self, other)
+        return self
+
+    def __or__(self, other: Any) -> Any:
         '''
         Performs a logical OR operation between the symbol value and another.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
@@ -404,13 +602,56 @@ class ArithmeticPrimitives:
         Returns:
             Symbol: A new symbol with the result of the OR operation.
         '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value or other.value, op='|')
+        # verify the result and return if found return
+        if result:
+            return result
         @core.logic(operator='or')
         def _func(_, a: str, b: str):
             pass
-
         return self._to_symbol(_func(self, other))
 
-    def __xor__(self, other: Any) -> 'Symbol':
+    def __ror__(self, other: Any) -> 'Symbol':
+        '''
+        This method concatenates the string representation of two Symbol objects and returns a new Symbol with the concatenated result.
+        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
+
+        Args:
+            other (Any): The object to concatenate.
+
+        Returns:
+            Symbol: A new Symbol object with the concatenated value.
+        '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value | other.value, op='|')
+        # verify the result and return if found return
+        if result:
+            return self._to_symbol(result)
+        return self._to_symbol(str(self) + str(other))
+
+    def __ior__(self, other: Any) -> 'Symbol':
+        '''
+        This method concatenates the string representation of two Symbol objects and returns a new Symbol with the concatenated result.
+        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
+
+        Args:
+            other (Any): The object to concatenate.
+
+        Returns:
+            Symbol: A new Symbol object with the concatenated value.
+        '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value | other.value, op='|=')
+        # verify the result and return if found return
+        if result:
+            self._value = result
+            return self
+        result = self._to_symbol(str(self) + str(other))
+        self._value = result.value
+        return self
+
+    def __xor__(self, other: Any) -> Any:
         '''
         Performs a logical XOR operation between the symbol value and another.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
@@ -422,11 +663,116 @@ class ArithmeticPrimitives:
         Returns:
             Symbol: A new symbol with the result of the XOR operation.
         '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value ^ other.value, op='^')
+        # verify the result and return if found return
+        if result:
+            return self._to_symbol(result)
         @core.logic(operator='xor')
         def _func(_, a: str, b: str):
             pass
-
         return self._to_symbol(_func(self, other))
+
+    def __rxor__(self, other: Any) -> 'Symbol':
+        '''
+        Performs a logical XOR operation between the symbol value and another.
+        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
+        Uses the core.logic decorator with operator='xor' to create a _func method for the XOR operation.
+
+        Args:
+            other (Any): The string to perform the XOR operation with the symbol value.
+
+        Returns:
+            Symbol: A new symbol with the result of the XOR operation.
+        '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: other.value ^ self.value, op='^')
+        # verify the result and return if found return
+        if result:
+            return self._to_symbol(result)
+        @core.logic(operator='xor')
+        def _func(_, a: str, b: str):
+            pass
+        return self._to_symbol(_func(other, self))
+
+    def __ixor__(self, other: Any) -> 'Symbol':
+        '''
+        Performs a logical XOR operation between the symbol value and another.
+        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
+        Uses the core.logic decorator with operator='xor' to create a _func method for the XOR operation.
+
+        Args:
+            other (Any): The string to perform the XOR operation with the symbol value.
+
+        Returns:
+            Symbol: A new symbol with the result of the XOR operation.
+        '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value ^ other.value, op='^=')
+        # verify the result and return if found return
+        if result:
+            self._value = result
+            return self
+        @core.logic(operator='xor')
+        def _func(_, a: str, b: str):
+            pass
+        self._value = _func(self, other)
+        return self
+
+    def __matmul__(self, other: Any) -> 'Symbol':
+        '''
+        This method concatenates the string representation of two Symbol objects and returns a new Symbol with the concatenated result.
+        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
+
+        Args:
+            other (Any): The object to concatenate.
+
+        Returns:
+            Symbol: A new Symbol object with the concatenated value.
+        '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value.__matmul__(other.value), op='@')
+        # verify the result and return if found return
+        if result:
+            return self._to_symbol(result)
+        raise NotImplementedError('Matrix multiplication not supported! Might change in the future.') from self._metadata._error
+
+    def __rmatmul__(self, other: Any) -> 'Symbol':
+        '''
+        This method concatenates the string representation of two Symbol objects in a reversed order and returns a new Symbol with the concatenated result.
+        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
+
+        Args:
+            other (Any): The object to concatenate.
+
+        Returns:
+            Symbol: A new Symbol object with the concatenated value.
+        '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other:  self.value.__rmatmul__(other.value), op='@')
+        # verify the result and return if found return
+        if result:
+            return self._to_symbol(result)
+        raise NotImplementedError('Matrix multiplication not supported! Might change in the future.') from self._metadata._error
+
+    def __imatmul__(self, other: Any) -> 'Symbol':
+        '''
+        This method concatenates the string representation of two Symbol objects and assigns the concatenated result to the value of the current Symbol object.
+        By default, if 'other' is not a Symbol, it's casted to a Symbol object.
+
+        Args:
+            other (Any): The object to concatenate.
+
+        Returns:
+            Symbol: The current Symbol object with the concatenated value.
+        '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value.__imatmul__(other.value), op='@=')
+        # verify the result and return if found return
+        if result:
+            self._value = result
+            return self
+        raise NotImplementedError('Matrix multiplication not supported! Might change in the future.') from self._metadata._error
 
     def __truediv__(self, other: Any) -> 'Symbol':
         '''
@@ -439,7 +785,269 @@ class ArithmeticPrimitives:
         Returns:
             Symbol: A new symbol with the result of the division.
         '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value / other.value, op='/')
+        # verify the result and return if found return
+        if result:
+            return self._to_symbol(result)
         return self._to_symbol(str(self).split(str(other)))
+
+    def __rtruediv__(self, other: Any) -> 'Symbol':
+        '''
+        Divides the symbol value by another, splitting the symbol value by the other value.
+        The string representation of the other value is used to split the symbol value.
+
+        Args:
+            other (Any): The string to split the symbol value by.
+
+        Returns:
+            Symbol: A new symbol with the result of the division.
+        '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: other.value / self.value, op='/')
+        # verify the result and return if found return
+        if result:
+            return self._to_symbol(result)
+        raise NotImplementedError('Division operation not supported! Might change in the future.') from self._metadata._error
+
+    def __itruediv__(self, other: Any) -> 'Symbol':
+        '''
+        Divides the symbol value by another, splitting the symbol value by the other value.
+        The string representation of the other value is used to split the symbol value.
+
+        Args:
+            other (Any): The string to split the symbol value by.
+
+        Returns:
+            Symbol: A new symbol with the result of the division.
+        '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value / other.value, op='/=')
+        # verify the result and return if found return
+        if result:
+            self._value = result
+            return self
+        raise NotImplementedError('Division operation not supported! Might change in the future.') from self._metadata._error
+
+    def __floordiv__(self, other: Any) -> 'Symbol':
+        '''
+        Floor divides the symbol value by another, splitting the symbol value by the other value.
+        The string representation of the other value is used to split the symbol value.
+
+        Args:
+            other (Any): The string to split the symbol value by.
+
+        Returns:
+            Symbol: A new symbol with the result of the division.
+        '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value // other.value, op='//')
+        # verify the result and return if found return
+        if result:
+            return self._to_symbol(result)
+        return self._to_symbol(str(self).split(str(other)))
+
+    def __rfloordiv__(self, other: Any) -> 'Symbol':
+        '''
+        Floor divides the symbol value by another, splitting the symbol value by the other value.
+        The string representation of the other value is used to split the symbol value.
+
+        Args:
+            other (Any): The string to split the symbol value by.
+
+        Returns:
+            Symbol: A new symbol with the result of the division.
+        '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: other.value // self.value, op='//')
+        # verify the result and return if found return
+        if result:
+            return self._to_symbol(result)
+        raise NotImplementedError('Floor division operation not supported! Might change in the future.') from self._metadata._error
+
+    def __ifloordiv__(self, other: Any) -> 'Symbol':
+        '''
+        Floor divides the symbol value by another, splitting the symbol value by the other value.
+        The string representation of the other value is used to split the symbol value.
+
+        Args:
+            other (Any): The string to split the symbol value by.
+
+        Returns:
+            Symbol: A new symbol with the result of the division.
+        '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value // other.value, op='//=')
+        # verify the result and return if found return
+        if result:
+            self._value = result
+            return self
+        raise NotImplementedError('Floor division operation not supported! Might change in the future.') from self._metadata._error
+
+    def __pow__(self, other: Any) -> 'Symbol':
+        '''
+        Power operation on symbol value by another, splitting the symbol value by the other value.
+        The string representation of the other value is used to split the symbol value.
+
+        Args:
+            other (Any): The string to split the symbol value by.
+
+        Returns:
+            Symbol: A new symbol with the result of the division.
+        '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value ** other.value, op='**')
+        # verify the result and return if found return
+        if result:
+            return self._to_symbol(result)
+        raise NotImplementedError('Power operation not supported! Might change in the future.') from self._metadata._error
+
+    def __rpow__(self, other: Any) -> 'Symbol':
+        '''
+        Power operation on symbol value by another, splitting the symbol value by the other value.
+        The string representation of the other value is used to split the symbol value.
+
+        Args:
+            other (Any): The string to split the symbol value by.
+
+        Returns:
+            Symbol: A new symbol with the result of the division.
+        '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: other.value ** self.value, op='**')
+        # verify the result and return if found return
+        if result:
+            return self._to_symbol(result)
+        raise NotImplementedError('Power operation not supported! Might change in the future.') from self._metadata._error
+
+    def __ipow__(self, other: Any) -> 'Symbol':
+        '''
+        Power operation on symbol value by another, splitting the symbol value by the other value.
+        The string representation of the other value is used to split the symbol value.
+
+        Args:
+            other (Any): The string to split the symbol value by.
+
+        Returns:
+            Symbol: A new symbol with the result of the division.
+        '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value ** other.value, op='**=')
+        # verify the result and return if found return
+        if result:
+            self._value = result
+            return self
+        raise NotImplementedError('Power operation not supported! Might change in the future.') from self._metadata._error
+
+    def __mod__(self, other: Any) -> 'Symbol':
+        '''
+        Modulo operation on symbol value by another, splitting the symbol value by the other value.
+        The string representation of the other value is used to split the symbol value.
+
+        Args:
+            other (Any): The string to split the symbol value by.
+
+        Returns:
+            Symbol: A new symbol with the result of the division.
+        '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value % other.value, op='%')
+        # verify the result and return if found return
+        if result:
+            return self._to_symbol(result)
+        raise NotImplementedError('Modulo operation not supported! Might change in the future.') from self._metadata._error
+
+    def __rmod__(self, other: Any) -> 'Symbol':
+        '''
+        Modulo operation on symbol value by another, splitting the symbol value by the other value.
+        The string representation of the other value is used to split the symbol value.
+
+        Args:
+            other (Any): The string to split the symbol value by.
+
+        Returns:
+            Symbol: A new symbol with the result of the division.
+        '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: other.value % self.value, op='%')
+        # verify the result and return if found return
+        if result:
+            return self._to_symbol(result)
+        raise NotImplementedError('Modulo operation not supported! Might change in the future.') from self._metadata._error
+
+    def __imod__(self, other: Any) -> 'Symbol':
+        '''
+        Modulo operation on symbol value by another, splitting the symbol value by the other value.
+        The string representation of the other value is used to split the symbol value.
+
+        Args:
+            other (Any): The string to split the symbol value by.
+
+        Returns:
+            Symbol: A new symbol with the result of the division.
+        '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value % other.value, op='%=')
+        # verify the result and return if found return
+        if result:
+            self._value = result
+            return self
+        raise NotImplementedError('Modulo operation not supported! Might change in the future.') from self._metadata._error
+
+    def __mul__(self, other: Any) -> 'Symbol':
+        '''
+        Multiply operation on symbol value by another, splitting the symbol value by the other value.
+        The string representation of the other value is used to split the symbol value.
+
+        Args:
+            other (Any): The string to split the symbol value by.
+
+        Returns:
+            Symbol: A new symbol with the result of the division.
+        '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value * other.value, op='*')
+        # verify the result and return if found return
+        if result:
+            return self._to_symbol(result)
+        raise NotImplementedError('Multiply operation not supported! Might change in the future.') from self._metadata._error
+
+    def __rmul__(self, other: Any) -> 'Symbol':
+        '''
+        Multiply operation on symbol value by another, splitting the symbol value by the other value.
+        The string representation of the other value is used to split the symbol value.
+
+        Args:
+            other (Any): The string to split the symbol value by.
+
+        Returns:
+            Symbol: A new symbol with the result of the division.
+        '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: other.value * self.value, op='*')
+        # verify the result and return if found return
+        if result:
+            return self._to_symbol(result)
+        raise NotImplementedError('Multiply operation not supported! Might change in the future.') from self._metadata._error
+
+    def __imul__(self, other: Any) -> 'Symbol':
+        '''
+        Multiply operation on symbol value by another, splitting the symbol value by the other value.
+        The string representation of the other value is used to split the symbol value.
+
+        Args:
+            other (Any): The string to split the symbol value by.
+
+        Returns:
+            Symbol: A new symbol with the result of the division.
+        '''
+        # First verify for specific type support
+        result = self.__try_type_specific_func(other, lambda self, other: self.value * other.value, op='*=')
+        # verify the result and return if found return
+        if result:
+            self._value = result
+            return self
+        raise NotImplementedError('Multiply operation not supported! Might change in the future.') from self._metadata._error
 
 
 class CastingPrimitives:
@@ -541,13 +1149,17 @@ class IterationPrimitives:
             KeyError: If the key or index is not found in the Symbol value.
         '''
         try:
-            if (isinstance(key, int) or isinstance(key, slice)) and (isinstance(self.value, list) or isinstance(self.value, tuple) or isinstance(self.value, np.ndarray)):
+            if  (isinstance(key, int) or isinstance(key, slice)) and \
+                (isinstance(self.value, list) or \
+                 isinstance(self.value, tuple) or \
+                 isinstance(self.value, np.ndarray)):
                 return self.value[key]
-            elif (isinstance(key, str) or isinstance(key, int)) and isinstance(self.value, dict):
+            elif (isinstance(key, str) or isinstance(key, int)) and \
+                  isinstance(self.value, dict):
                 return self.value[key]
         except KeyError:
-            raise KeyError(f'Key {key} not found in {self.value}')
-
+            pass
+        # verify if fuzzy matches are enabled in general
         if not IterationPrimitives.__nesy_iteration_primitives__:
             raise KeyError(f'Key {key} not found in {self.value}')
 

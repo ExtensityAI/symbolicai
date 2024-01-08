@@ -183,6 +183,30 @@ class Symbol(metaclass=SymbolMeta):
                 setattr(obj, name, _func)
         return obj
 
+    def __getattr__(self, name: str) -> Any:
+        '''
+        Get the attribute of the Symbol's value with the specified name or the attribute of the Symbol value with the specified name.
+
+        Args:
+            name (str): The name of the attribute to get from the Symbol's value.
+
+        Returns:
+            Any: The attribute of the Symbol's value with the specified name.
+        '''
+        try:
+            # try to get attribute from current instance
+            if name in self.__dict__:
+                return self.__dict__[name]
+            value = self.value if self.value is not None else None
+            if isinstance(value, Exception):
+                raise value
+            raise AttributeError(f'{self.__class__.__name__} or {str(type(value))} value have no attribute {name}')
+        except AttributeError as ex:
+            # if has attribute and is public function
+            if hasattr(self.value, name) and not name.startswith('_'):
+                return getattr(self.value, name)
+            raise ex
+
     def __array__(self, dtype=None):
         '''
         Get the numpy array representation of the Symbol's value.

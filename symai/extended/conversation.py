@@ -179,7 +179,7 @@ class Conversation(SlidingWindowStringConcatMemory):
             else:
                 memory_shards = memory_shards[:2] + memory_shards[-3:]
             search_query = '\n'.join(memory_shards) # join with newlines
-            search_query = self.seo_opt(f'[Query]:' @ query @ '\n' @ search_query)
+            search_query = self.seo_opt(f'[Query]:' | query | '\n' | search_query)
             memory = self.index(search_query, *args, **kwargs)
             if 'raw_result' in kwargs:
                 print(memory)

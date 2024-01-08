@@ -254,7 +254,7 @@ class SymbiaChat(ChatBot):
                         q    = usr.extract('user question')
                         rsp  = file.stream(
                             Sequence(
-                                IncludeFilter('include only facts related to the user question: ' @ q),
+                                IncludeFilter('include only facts related to the user question: ' | q),
                                 Outline()
                             )
                         )

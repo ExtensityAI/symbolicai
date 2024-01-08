@@ -777,7 +777,7 @@ def causal_expression(self):
             question = self.extract('question sentence')
             req = question.extract('what is requested?')
             x = self.extract('coordinate point (.,.)') # get the coordinate point / could also ask for other points
-            query = formula @ f', point x = {x}' @ f', solve {req}' # concatenate the question and formula
+            query = formula | f', point x = {x}' | f', solve {req}' # concatenate the question and formula
             res = wolfram(query) # send the prepared query to WolframAlpha
 
         elif formula.isinstanceof('number comparison'):
