@@ -4,7 +4,7 @@ import pickle
 
 import numpy as np
 
-from ..symbol import Expression
+from ..symbol import Symbol, Expression
 from ..interfaces import Interface
 from .metrics import (
     adams_similarity,
@@ -137,6 +137,13 @@ class VectorDB(Expression):
         embeddings : numpy.ndarray
             A numpy array of embeddings.
         """
+        # unwrap the documents if they are a Symbol
+        if isinstance(documents, Symbol):
+            documents = documents.value
+        # if the documents are a list of Symbols, unwrap them
+        if len(documents) == 0:
+            return []
+
         if isinstance(documents, list):
             # If the documents are a list of dictionaries, extract the text from the dictionary
             if isinstance(documents[0], dict):
@@ -213,6 +220,10 @@ class VectorDB(Expression):
             A vector or list of vectors to add to the database.
 
         """
+        # unwrap the documents if they are a Symbol
+        if isinstance(documents, Symbol):
+            documents = documents.value
+
         if not isinstance(documents, list):
             return self.add_document(documents, vectors)
         self.add_documents(documents, vectors)
@@ -267,6 +278,14 @@ class VectorDB(Expression):
         vectors = vectors or np.array(self.embedding_function(documents)).astype(np.float32)
         for vector, document in zip(vectors, documents):
             self.add_document(document, vector)
+
+    def clear(self):
+        """
+        Clears the database.
+
+        """
+        self.vectors   = None
+        self.documents = []
 
     def save(self, storage_file: str = None):
         """
