@@ -29,7 +29,7 @@ class PineconeResult(Result):
         self.raw                 = res
         self._query              = query
         self._value              = self._process(res)
-        self._metadata.embedding = np.array(embedding)
+        self._metadata.raw       = embedding
 
     def _process(self, res):
         if not res:
