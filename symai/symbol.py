@@ -93,6 +93,10 @@ class Symbol(metaclass=SymbolMeta):
         '''
         super().__init__()
         self._value     = None
+        self._kwargs    = {
+            'static_context': static_context,
+            **kwargs
+        }
         self._metadata  = Metadata() # use global metadata by default
         self._parent    = None #@TODO: to enable graph construction
         self._children  = None #@TODO: to enable graph construction
@@ -169,6 +173,15 @@ class Symbol(metaclass=SymbolMeta):
             # create a new cls type that inherits from Symbol and the mixin primitive types
             cls       = SymbolMeta(cls.__name__, (cls,) + tuple(primitives), {})
         obj = super().__new__(cls)
+        # store to inherit when creating new instances
+        obj._kwargs = {
+            'mixin': use_mixin,
+            'primitives': primitives,
+            'callables': callables,
+            'only_nesy': only_nesy,
+            'iterate_nesy': iterate_nesy,
+            **kwargs
+        }
         # configure standard primitives
         if use_mixin and standard_primitives:
             # disable shortcut matches for all primitives
@@ -326,9 +339,10 @@ class Symbol(metaclass=SymbolMeta):
             state (dict): The state to set the symbol to.
         '''
         vars(self).update(state)
-        self._metadata = Metadata()
-        self._parent   = None
-        self._children = None
+        self._metadata   = Metadata()
+        self._kwargs     = self._kwargs
+        self._parent     = None
+        self._children   = None
 
     def json(self) -> Dict[str, Any]:
         '''
@@ -351,7 +365,7 @@ class Symbol(metaclass=SymbolMeta):
         '''
         return json.dumps(self, cls=SymbolEncoder)
 
-    def _to_symbol(self, value: Any) -> "Symbol":
+    def _to_symbol(self, value: Any, **kwargs) -> "Symbol":
         '''
         Convert a value to a Symbol instance.
 
@@ -363,8 +377,9 @@ class Symbol(metaclass=SymbolMeta):
         '''
         if isinstance(value, Symbol):
             return value
-
-        return Symbol(value)
+        # inherit kwargs for new symbol instance
+        kwargs = {**self._kwargs, **kwargs}
+        return Symbol(value, **kwargs)
 
     @property
     def _symbol_type(self) -> "Symbol":
@@ -672,23 +687,6 @@ class Expression(Symbol):
             type (Type): The casting type of this expression.
         '''
         self._sym_return_type = type
-
-    def _to_symbol(self, value: Any) -> 'Symbol':
-        '''
-        Create a Symbol instance from a given input value.
-        Helper function used to ensure that all values are wrapped in a Symbol instance.
-
-        Args:
-            value (Any): The input value.
-
-        Returns:
-            Symbol: The Symbol instance with the given input value.
-        '''
-        if isinstance(value, Symbol):
-            return value
-
-        return Symbol(value)
-
 
     def forward(self, *args, **kwargs) -> Symbol: #TODO make reserved kwargs with underscore: __<cmd>__
         '''
