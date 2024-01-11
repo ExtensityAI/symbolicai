@@ -11,8 +11,8 @@ from .symbol import Expression, Metadata
 
 
 class Argument(Expression):
-    def __init__(self, args, signature_kwargs, decorator_kwargs):
-        super().__init__()
+    def __init__(self, args, signature_kwargs, decorator_kwargs, **kwargs):
+        super().__init__(**kwargs)
         self.args             = args # there is only signature args
         self.signature_kwargs = signature_kwargs.copy()
         self.decorator_kwargs = decorator_kwargs.copy()

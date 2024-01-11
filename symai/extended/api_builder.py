@@ -72,8 +72,8 @@ class APIBuilder(Expression):
     def static_context(self) -> str:
         return API_BUILDER_DESCRIPTION
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.sym_return_type = APIBuilder
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
@@ -87,8 +87,8 @@ class APIBuilder(Expression):
 
 
 class StackTraceRetryExecutor(Expression):
-    def __init__(self, retries: int = 1):
-        super().__init__()
+    def __init__(self, retries: int = 1, **kwargs):
+        super().__init__(**kwargs)
         self.executor = Execute()
         self.max_retries = retries
         self._runnable = None
@@ -112,8 +112,8 @@ class StackTraceRetryExecutor(Expression):
 
 
 class APIExecutor(Expression):
-    def __init__(self, verbose=False, retries=1):
-        super().__init__()
+    def __init__(self, verbose=False, retries=1, **kwargs):
+        super().__init__(**kwargs)
         self.builder = APIBuilder()
         self.executor = StackTraceRetryExecutor(retries=retries)
 

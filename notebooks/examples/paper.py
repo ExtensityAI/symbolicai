@@ -27,8 +27,8 @@ Use best practices for colors, text font, etc."""
 
 
 class Paper(Expression):
-    def __init__(self, path: str, filters: List[Expression] = []):
-        super().__init__()
+    def __init__(self, path: str, filters: List[Expression] = [], **kwargs):
+        super().__init__(**kwargs)
         self.path = path
         filters = filters if isinstance(filters, List) or isinstance(filters, tuple) else [filters]
         self.data_stream = Stream(Sequence(

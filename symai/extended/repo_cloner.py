@@ -15,8 +15,8 @@ class RepositoryCloner(Expression):
       repo_path (Optional[str]): The path where to clone the repository.
                                  By default it will be at '~/.symai/repos/'.
     """
-    def __init__(self, repo_path: Optional[str] = None):
-        super().__init__()
+    def __init__(self, repo_path: Optional[str] = None, **kwargs):
+        super().__init__(**kwargs)
         self.repo_dir = Path.home() / '.symai/repos/' if repo_path is None else Path(repo_path)
         if not self.repo_dir.exists():
             self.repo_dir.mkdir(parents=True, exist_ok=True)

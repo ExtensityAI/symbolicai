@@ -10,8 +10,8 @@ from ....symbol import Expression, Result
 
 
 class WhisperTimestampsFormatter(Expression):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def forward(self, response: List[str]) -> str:
         result = []
@@ -62,8 +62,8 @@ class WhisperTimestampsFormatter(Expression):
 
 
 class WhisperResult(Result):
-    def __init__(self, value) -> None:
-        super().__init__(value)
+    def __init__(self, value, **kwargs) -> None:
+        super().__init__(value, **kwargs)
         self.raw = None
 
 

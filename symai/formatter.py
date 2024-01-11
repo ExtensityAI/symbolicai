@@ -6,8 +6,8 @@ from .symbol import Symbol, Expression
 
 
 class ParagraphFormatter(Expression):
-    def __init__(self, value=None):
-        super().__init__(value)
+    def __init__(self, value=None, **kwargs):
+        super().__init__(value, **kwargs)
         self.NEWLINES_RE = re.compile(r"\n{2,}")  # two or more "\n" characters
         self._has_file_start = False
 
@@ -116,8 +116,8 @@ class ParagraphFormatter(Expression):
 
 
 class SentenceFormatter(Expression):
-    def __init__(self, value=None):
-        super().__init__(value)
+    def __init__(self, value=None, **kwargs):
+        super().__init__(value, **kwargs)
         self.SENTENCES_RE = re.compile(r"[.!?]\n*|[\n]{1,}")  # Sentence ending characters followed by newlines
 
     def split_sentences(self, input_text=""):

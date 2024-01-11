@@ -10,8 +10,8 @@ from .file_merger import FileMerger
 
 
 class ArxivPdfParser(Expression):
-    def __init__(self, url_pattern: str = r'https://arxiv.org/(?:pdf|abs)/(\d+.\d+)(?:\.pdf)?'):
-        super().__init__()
+    def __init__(self, url_pattern: str = r'https://arxiv.org/(?:pdf|abs)/(\d+.\d+)(?:\.pdf)?', **kwargs):
+        super().__init__(**kwargs)
         self.url_pattern = url_pattern
         self.merger = FileMerger()
 

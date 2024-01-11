@@ -13,7 +13,8 @@ logger = logging.getLogger('pydub').setLevel(logging.WARNING)
 
 
 class Dialogue(Expression):
-    def __init__(self, *bots: Persona, n_turns: int = 10):
+    def __init__(self, *bots: Persona, n_turns: int = 10, **kwargs):
+        super().__init__(**kwargs)
         assert len(bots) == 2, 'Currently dialogue requires exactly two bots.'
         self.bots = bots
         for bot in bots:

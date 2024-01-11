@@ -7,8 +7,8 @@ from ....symbol import Result
 
 
 class SeleniumResult(Result):
-    def __init__(self, value) -> None:
-        super().__init__(value)
+    def __init__(self, value, **kwargs) -> None:
+        super().__init__(value, **kwargs)
         if value is not None:
             self.raw    = value
             self._value = self.extract()

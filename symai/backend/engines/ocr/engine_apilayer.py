@@ -8,8 +8,8 @@ from ....symbol import Result
 
 
 class ApiLayerResult(Result):
-    def __init__(self, text, status_code=200):
-        super().__init__()
+    def __init__(self, text, status_code=200, **kwargs):
+        super().__init__(**kwargs)
         self.raw = text
         try:
             dict_ = self._to_symbol(text).ast()

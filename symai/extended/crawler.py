@@ -6,8 +6,8 @@ from ..interfaces import Interface
 
 
 class Crawler(Expression):
-    def __init__(self, filters: List[Expression] = []):
-        super().__init__()
+    def __init__(self, filters: List[Expression] = [], **kwargs):
+        super().__init__(**kwargs)
         filters = filters if isinstance(filters, List) or isinstance(filters, tuple) else [filters]
         self.crawler = Interface('selenium')
         self.data_stream = Stream(Sequence(

@@ -774,7 +774,7 @@ class Result(Expression):
             *args: Variable length argument list.
             **kwargs: Arbitrary keyword arguments.
         '''
-        super().__init__(value) # value is the same as raw when initialized, however, it can be changed later
+        super().__init__(value, **kwargs) # value is the same as raw when initialized, however, it can be changed later
         self._sym_return_type = type(self)
         try:
             # try to make the values easily accessible

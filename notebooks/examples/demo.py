@@ -3,9 +3,9 @@ from typing import List
 import symai.core as ai
 
 
-class Demo(ai.Symbol):
-    def __init__(self, value = '') -> None:
-        super().__init__(value)
+class Demo(ai.Expression):
+    def __init__(self, value = '', **kwargs) -> None:
+        super().__init__(value, **kwargs)
 
     @ai.zero_shot(prompt="Generate a random integer between 0 and 10.",
                   constraints=[
