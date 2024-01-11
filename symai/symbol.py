@@ -93,6 +93,7 @@ class Symbol(metaclass=SymbolMeta):
         '''
         super().__init__()
         self._value     = None
+        # store kwargs for new symbol instance type passing
         self._kwargs    = {
             'static_context': static_context,
             **kwargs
