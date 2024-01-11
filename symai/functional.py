@@ -68,7 +68,8 @@ def _execute_query(engine, post_processors, return_constraint, argument) -> List
     elif return_constraint == inspect._empty:
         pass
     else:
-        rsp = return_constraint(rsp)
+        if not isinstance(rsp, return_constraint):
+            rsp = return_constraint(rsp)
 
     # check if satisfies constraints
     for constraint in argument.prop.constraints:
