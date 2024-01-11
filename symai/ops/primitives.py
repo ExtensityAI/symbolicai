@@ -40,14 +40,14 @@ class ArithmeticPrimitives(Primitive):
         # None shortcut
         if not self.__disable_none_shortcut__:
             if  self.value is None or other.value is None:
-                raise TypeError(f"unsupported {self._to_symbol(None).__class__} value operand type(s) for {op}: '{type(self.value)}' and '{type(other.value)}'")
+                raise TypeError(f"unsupported {self._symbol_type.__class__} value operand type(s) for {op}: '{type(self.value)}' and '{type(other.value)}'")
         # try type specific function
         try:
             # try type specific function
             value = func(self, other)
             if value == NotImplemented:
                 operation = '' if op is None else op
-                raise TypeError(f"unsupported {self._to_symbol(None).__class__} value operand type(s) for {operation}: '{type(self.value)}' and '{type(other.value)}'")
+                raise TypeError(f"unsupported {self._symbol_type.__class__} value operand type(s) for {operation}: '{type(self.value)}' and '{type(other.value)}'")
             return value
         except Exception as ex:
             self._metadata._error = ex
@@ -408,7 +408,7 @@ class ArithmeticPrimitives(Primitive):
         '''
         # prefer nesy engine over type specific functions for str since the default string concatenation operator in SymbolicAI is '|'
         if not (isinstance(self.value, str) and isinstance(other, str)) or \
-            not (isinstance(self.value, str) and isinstance(other.value, str)):
+            not (isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str)):
             result = None
         else:
             # Otherwise verify for specific type support
@@ -435,7 +435,7 @@ class ArithmeticPrimitives(Primitive):
         '''
         # prefer nesy engine over type specific functions for str since the default string concatenation operator in SymbolicAI is '|'
         if not (isinstance(self.value, str) and isinstance(other, str)) or \
-            not (isinstance(self.value, str) and isinstance(other.value, str)):
+            not (isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str)):
             result = None
         else:
             # Otherwise verify for specific type support
@@ -462,7 +462,7 @@ class ArithmeticPrimitives(Primitive):
         '''
         # prefer nesy engine over type specific functions for str since the default string concatenation operator in SymbolicAI is '|'
         if not (isinstance(self.value, str) and isinstance(other, str)) or \
-            not (isinstance(self.value, str) and isinstance(other.value, str)):
+            not (isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str)):
             result = None
         else:
             # Otherwise verify for specific type support
@@ -553,12 +553,11 @@ class ArithmeticPrimitives(Primitive):
         Returns:
             Symbol: A new symbol with the result of the AND operation.
         '''
-        if self.__disable_shortcut_matches__:
-            # Special case for string concatenation with AND (no space)
-            if isinstance(self.value, str) and isinstance(other, str) or \
-                isinstance(self.value, str) and isinstance(other.value, str):
-                other = self._to_symbol(other)
-                return self._to_symbol(f'{self.value}{other.value}')
+        # Special case for string concatenation with AND (no space)
+        if isinstance(self.value, str) and isinstance(other, str) or \
+            isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str):
+            other = self._to_symbol(other)
+            return self._to_symbol(f'{self.value}{other.value}')
 
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value and other.value, op='&')
@@ -582,12 +581,11 @@ class ArithmeticPrimitives(Primitive):
         Returns:
             Symbol: A new symbol with the result of the AND operation.
         '''
-        if self.__disable_shortcut_matches__:
-            # Special case for string concatenation with AND (no space)
-            if isinstance(self.value, str) and isinstance(other, str) or \
-                isinstance(self.value, str) and isinstance(other.value, str):
-                other = self._to_symbol(other)
-                return self._to_symbol(f'{other.value}{self.value}')
+        # Special case for string concatenation with AND (no space)
+        if isinstance(self.value, str) and isinstance(other, str) or \
+            isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str):
+            other = self._to_symbol(other)
+            return self._to_symbol(f'{other.value}{self.value}')
 
         other = self._to_symbol(other)
         # First verify for specific type support
@@ -612,12 +610,12 @@ class ArithmeticPrimitives(Primitive):
         Returns:
             Symbol: A new symbol with the result of the AND operation.
         '''
-        if self.__disable_shortcut_matches__:
-            # Special case for string concatenation with AND (no space)
-            if isinstance(self.value, str) and isinstance(other, str) or \
-                isinstance(self.value, str) and isinstance(other.value, str):
-                other = self._to_symbol(other)
-                return self._to_symbol(f'{self.value}{other.value}')
+        # Special case for string concatenation with AND (no space)
+        if isinstance(self.value, str) and isinstance(other, str) or \
+            isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str):
+            other       = self._to_symbol(other)
+            self._value = f'{self.value}{other.value}'
+            return self
 
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value and other.value, op='&=')
@@ -645,7 +643,7 @@ class ArithmeticPrimitives(Primitive):
         '''
         # Special case for string concatenation with OR
         if isinstance(self.value, str) and isinstance(other, str) or \
-            isinstance(self.value, str) and isinstance(other.value, str):
+            isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str):
             other = self._to_symbol(other)
             return self._to_symbol(f'{self.value} {other.value}')
 
@@ -674,7 +672,7 @@ class ArithmeticPrimitives(Primitive):
         if self.__disable_shortcut_matches__:
             # Special case for string concatenation with OR
             if isinstance(self.value, str) and isinstance(other, str) or \
-                isinstance(self.value, str) and isinstance(other.value, str):
+                isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str):
                 other = self._to_symbol(other)
                 return self._to_symbol(f'{other.value} {self.value}')
 
@@ -699,9 +697,10 @@ class ArithmeticPrimitives(Primitive):
         if self.__disable_shortcut_matches__:
             # Special case for string concatenation with OR
             if isinstance(self.value, str) and isinstance(other, str) or \
-                isinstance(self.value, str) and isinstance(other.value, str):
-                other = self._to_symbol(other)
-                return self._to_symbol(f'{self.value} {other.value}')
+                isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str):
+                other       = self._to_symbol(other)
+                self._value = f'{self.value} {other.value}'
+                return self
 
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value | other.value, op='|=')
