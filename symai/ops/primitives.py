@@ -1442,6 +1442,10 @@ class StringHelperPrimitives(Primitive):
         Returns:
             Symbol: A new symbol with the joined str value.
         '''
+        if isinstance(self.value, str):
+            # Special case for string joining to forward the original join method
+            return self.value.join(delimiter)
+
         assert isinstance(self.value, Iterable),  f'value must be an iterable, got {type(self.value)}'
         return self._to_symbol(delimiter.join(self.value))
 
