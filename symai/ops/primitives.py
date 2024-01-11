@@ -21,21 +21,10 @@ class ArithmeticPrimitives:
     __disable_shortcut_matches__   = False
     __nesy_iteration_primitives__  = False
 
-    @staticmethod
-    def __check_shortcut_type_support__(sym):
-        return not ArithmeticPrimitives.__disable_shortcut_matches__ and \
-           (isinstance(sym.value, list) or \
-            isinstance(sym.value, tuple) or \
-            isinstance(sym.value, np.ndarray) or \
-            isinstance(sym.value, torch.Tensor) or \
-            isinstance(sym.value, set) or \
-            isinstance(sym.value, str) or \
-            isinstance(sym.value, dict) or \
-            # if is iterable
-            hasattr(sym.value, '__iter__')
-           )
-
     def __try_type_specific_func(self, other, func, op: str = None):
+        if self.__disable_shortcut_matches__:
+            return None
+
         other = self._to_symbol(other)
         try:
             # try type specific function
