@@ -72,6 +72,27 @@ class JsonTruncatePostProcessor(PostProcessor):
         return response
 
 
+class JsonTruncateMarkdownPostProcessor(PostProcessor):
+    def __call__(self, response, argument) -> Any:
+        count_b = response.count('```json')
+        count_e = response.count('```')
+        if count_b > 1 or count_e > 2:
+            raise ValueError("More than one ```json Markdown found. Please only generate one JSON response.")
+        # cut off everything until the first '{'
+        start_idx = response.find('{')
+        response = response[start_idx:]
+        # find the first occurence of '}' looking backwards
+        end_idx = response.rfind('}') + 1
+        response = response[:end_idx]
+        # search after the first character of '{' if it is a '"' and if not, replace it
+        try:
+            if response[1:].strip()[0] == "'":
+                response = response.replace("'", '"')
+        except IndexError:
+            pass
+        return response
+
+
 class CodeExtractPostProcessor(PostProcessor):
     def __call__(self, response, argument) -> Any:
         if '```' not in response:
