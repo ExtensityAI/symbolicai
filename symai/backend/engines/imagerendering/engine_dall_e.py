@@ -18,8 +18,8 @@ logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
 class DalleResult(Result):
-    def __init__(self, value) -> None:
-        super().__init__(value)
+    def __init__(self, value, **kwargs) -> None:
+        super().__init__(value, **kwargs)
         # unpack the result
         if hasattr(value, 'data') and len(value.data) > 0:
             self._value = value.data[0].url

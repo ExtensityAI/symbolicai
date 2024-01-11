@@ -26,8 +26,8 @@ class Graph(Expression):
     def static_context(self) -> str:
         return GRAPH_DESCRIPTION
 
-    def __init__(self, formatter: Callable = SentenceFormatter(), n_workers: int = 1, verbose: bool = False):
-        super().__init__()
+    def __init__(self, formatter: Callable = SentenceFormatter(), n_workers: int = 1, verbose: bool = False, **kwargs):
+        super().__init__(**kwargs)
         self.formatter       = formatter
         self.n_workers       = n_workers
         self.sym_return_type = Graph

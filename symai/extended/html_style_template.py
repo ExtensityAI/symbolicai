@@ -57,8 +57,8 @@ HTML_TEMPLATE_STYLE = """
 
 
 class HtmlStyleTemplate(Expression):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.html_template_seq = Template()
         self.html_template_seq.template_ = HEADER_STYLE_DESCRIPTION
         self.html_stream = Stream(

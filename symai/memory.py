@@ -7,8 +7,8 @@ from .components import Function
 
 
 class Memory(Expression):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def store(self, query: str, *args, **kwargs):
         raise NotImplementedError
@@ -24,8 +24,8 @@ class Memory(Expression):
 
 
 class SlidingWindowListMemory(Memory):
-    def __init__(self, window_size: int = 10, max_size: int = 1000):
-        super().__init__()
+    def __init__(self, window_size: int = 10, max_size: int = 1000, **kwargs):
+        super().__init__(**kwargs)
         self._memory: List[str] = []
         self._window_size: int  = window_size
         self._max_size: int     = max_size
@@ -44,7 +44,7 @@ class SlidingWindowListMemory(Memory):
 
 class SlidingWindowStringConcatMemory(Memory):
     def __init__(self, token_ratio: float = 0.6, *args, **kwargs):
-        super().__init__()
+        super().__init__(**kwargs)
         self._memory: str       = ''
         self.marker: str        = '[--++=|=++--]'
         self.token_ratio: float  = token_ratio
@@ -93,8 +93,8 @@ class SlidingWindowStringConcatMemory(Memory):
 
 
 class VectorDatabaseMemory(Memory):
-    def __init__(self, enabled: bool = True, top_k: int = 3, index_name: str = 'defaultindex'):
-        super().__init__()
+    def __init__(self, enabled: bool = True, top_k: int = 3, index_name: str = 'defaultindex', **kwargs):
+        super().__init__(**kwargs)
         self.enabled: bool = enabled
         self.top_k: int    = top_k
         self.index_name    = index_name

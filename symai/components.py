@@ -25,8 +25,8 @@ class TrackerTraceable(Expression):
 
 
 class Any(Expression):
-    def __init__(self, *expr: List[Expression]):
-        super().__init__()
+    def __init__(self, *expr: List[Expression], **kwargs):
+        super().__init__(**kwargs)
         self.expr: List[Expression] = expr
 
     def forward(self, *args, **kwargs) -> Symbol:
@@ -34,8 +34,8 @@ class Any(Expression):
 
 
 class All(Expression):
-    def __init__(self, *expr: List[Expression]):
-        super().__init__()
+    def __init__(self, *expr: List[Expression], **kwargs):
+        super().__init__(**kwargs)
         self.expr: List[Expression] = expr
 
     def forward(self, *args, **kwargs) -> Symbol:
@@ -43,8 +43,8 @@ class All(Expression):
 
 
 class Try(Expression):
-    def __init__(self, expr: Expression, retries: int = 1):
-        super().__init__()
+    def __init__(self, expr: Expression, retries: int = 1, **kwargs):
+        super().__init__(**kwargs)
         self.expr: Expression = expr
         self.retries: int = retries
 
@@ -54,8 +54,8 @@ class Try(Expression):
 
 
 class Lambda(Expression):
-    def __init__(self, callable: Callable):
-        super().__init__()
+    def __init__(self, callable: Callable, **kwargs):
+        super().__init__(**kwargs)
         def _callable(*args, **kwargs):
             kw = {
                 'args': args,
@@ -69,8 +69,8 @@ class Lambda(Expression):
 
 
 class Choice(Expression):
-    def __init__(self, cases: List[str], default: Optional[str] = None):
-        super().__init__()
+    def __init__(self, cases: List[str], default: Optional[str] = None, **kwargs):
+        super().__init__(**kwargs)
         self.cases: List[str] = cases
         self.default: Optional[str] = default
 
@@ -80,8 +80,8 @@ class Choice(Expression):
 
 
 class Output(Expression):
-    def __init__(self, expr: Expression, handler: Callable, verbose: bool = False):
-        super().__init__()
+    def __init__(self, expr: Expression, handler: Callable, verbose: bool = False, **kwargs):
+        super().__init__(**kwargs)
         self.expr: Expression = expr
         self.handler: Callable = handler
         self.verbose: bool = verbose
@@ -93,8 +93,8 @@ class Output(Expression):
 
 
 class Sequence(TrackerTraceable):
-    def __init__(self, *expr: List[Expression]):
-        super().__init__()
+    def __init__(self, *expr: List[Expression], **kwargs):
+        super().__init__(**kwargs)
         self.expr: List[Expression] = expr
 
     def forward(self, *args, **kwargs) -> Symbol:
@@ -111,8 +111,8 @@ class Sequence(TrackerTraceable):
 
 #@TODO: BinPacker(format="...") -> ensure that data packages form a "bin" that's consistent (e.g. never break a sentence in the middle)
 class Stream(Expression):
-    def __init__(self, expr: Optional[Expression] = None, retrieval: Optional[str] = None):
-        super().__init__()
+    def __init__(self, expr: Optional[Expression] = None, retrieval: Optional[str] = None, **kwargs):
+        super().__init__(**kwargs)
         self.char_token_ratio:    float = 0.6
         self.expr: Optional[Expression] = expr
         self.retrieval:   Optional[str] = retrieval
@@ -162,8 +162,8 @@ class Stream(Expression):
 
 
 class Trace(Expression):
-    def __init__(self, expr: Optional[Expression] = None, engines=['all']):
-        super().__init__()
+    def __init__(self, expr: Optional[Expression] = None, engines=['all'], **kwargs):
+        super().__init__(**kwargs)
         self.expr: Expression = expr
         self.engines: List[str] = engines
 
@@ -186,8 +186,8 @@ class Trace(Expression):
 
 
 class Analyze(Expression):
-    def __init__(self, exception: Exception, query: Optional[str] = None):
-        super().__init__()
+    def __init__(self, exception: Exception, query: Optional[str] = None, **kwargs):
+        super().__init__(**kwargs)
         self.exception: Expression = exception
         self.query: Optional[str] = query
 
@@ -196,8 +196,8 @@ class Analyze(Expression):
 
 
 class Log(Expression):
-    def __init__(self, expr: Optional[Expression] = None, engines=['all']):
-        super().__init__()
+    def __init__(self, expr: Optional[Expression] = None, engines=['all'], **kwargs):
+        super().__init__(**kwargs)
         self.expr: Expression = expr
         self.engines: List[str] = engines
 
@@ -220,8 +220,8 @@ class Log(Expression):
 
 
 class Template(Expression):
-    def __init__(self, template: str = "<html><body>{{placeholder}}</body></html>", placeholder: str = '{{placeholder}}'):
-        super().__init__()
+    def __init__(self, template: str = "<html><body>{{placeholder}}</body></html>", placeholder: str = '{{placeholder}}', **kwargs):
+        super().__init__(**kwargs)
         self.placeholder = placeholder
         self.template_ = template
 
@@ -231,8 +231,8 @@ class Template(Expression):
 
 
 class Metric(Expression):
-    def __init__(self, normalize: bool = False, eps: float = 1e-8):
-        super().__init__()
+    def __init__(self, normalize: bool = False, eps: float = 1e-8, **kwargs):
+        super().__init__(**kwargs)
         self.normalize  = normalize
         self.eps        = eps
 
@@ -255,8 +255,8 @@ class Metric(Expression):
 
 
 class Style(Expression):
-    def __init__(self, description: str, libraries: List[str] = []):
-        super().__init__()
+    def __init__(self, description: str, libraries: List[str] = [], **kwargs):
+        super().__init__(**kwargs)
         self.description: str = description
         self.libraries: List[str] = libraries
 
@@ -266,8 +266,8 @@ class Style(Expression):
 
 
 class Query(TrackerTraceable):
-    def __init__(self, prompt: str):
-        super().__init__()
+    def __init__(self, prompt: str, **kwargs):
+        super().__init__(**kwargs)
         self.prompt: str = prompt
 
     def forward(self, sym: Symbol, context: Symbol = None, *args, **kwargs) -> Symbol:
@@ -288,8 +288,8 @@ class Clean(Expression):
 
 
 class Execute(Expression):
-    def __init__(self, enclosure: bool = False):
-        super().__init__()
+    def __init__(self, enclosure: bool = False, **kwargs):
+        super().__init__(**kwargs)
         self.enclosure = enclosure
         self.template = """# -*- code execution template -*-
 def _func(*args, **kwargs):
@@ -311,8 +311,8 @@ _output_ = _func()
 
 
 class Convert(Expression):
-    def __init__(self, format: str = 'Python'):
-        super().__init__()
+    def __init__(self, format: str = 'Python', **kwargs):
+        super().__init__(**kwargs)
         self.format = format
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
@@ -345,8 +345,8 @@ class Map(Expression):
 
 
 class Translate(Expression):
-    def __init__(self, language: str = 'English'):
-        super().__init__()
+    def __init__(self, language: str = 'English', **kwargs):
+        super().__init__(**kwargs)
         self.language = language
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
@@ -357,8 +357,8 @@ class Translate(Expression):
 
 
 class IncludeFilter(Expression):
-    def __init__(self, include: str):
-        super().__init__()
+    def __init__(self, include: str, **kwargs):
+        super().__init__(**kwargs)
         self.include = include
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
@@ -367,8 +367,8 @@ class IncludeFilter(Expression):
 
 
 class ExcludeFilter(Expression):
-    def __init__(self, exclude: str):
-        super().__init__()
+    def __init__(self, exclude: str, **kwargs):
+        super().__init__(**kwargs)
         self.exclude = exclude
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
@@ -435,8 +435,8 @@ class FileReader(Expression):
 
 
 class FileQuery(Expression):
-    def __init__(self, path: str, filter: str):
-        super().__init__()
+    def __init__(self, path: str, filter: str, **kwargs):
+        super().__init__(**kwargs)
         self.path = path
         file_open = FileReader()
         self.query_stream = Stream(Sequence(
@@ -458,7 +458,7 @@ class Function(TrackerTraceable):
                  default: Optional[object] = None,
                  constraints: List[Callable] = [],
                  return_type: Optional[Type] = str, *args, **kwargs):
-        super().__init__()
+        super().__init__(**kwargs)
         chars = ascii_lowercase + ascii_uppercase
         self.name = 'func_' + ''.join(sample(chars, 15))
         self.args = args
@@ -513,8 +513,8 @@ class Function(TrackerTraceable):
 
 
 class JsonParser(Expression):
-    def __init__(self, query: str, json_: dict):
-        super().__init__()
+    def __init__(self, query: str, json_: dict, **kwargs):
+        super().__init__(**kwargs)
         func = Function(prompt=JsonPromptTemplate(query, json_),
                         constraints=[DictFormatConstraint(json_)],
                         pre_processors=[JsonPreProcessor()],
@@ -528,8 +528,8 @@ class JsonParser(Expression):
 
 
 class SimilarityClassification(Expression):
-    def __init__(self, classes: List[str], metric: str = 'cosine', in_memory: bool = False):
-        super().__init__()
+    def __init__(self, classes: List[str], metric: str = 'cosine', in_memory: bool = False, **kwargs):
+        super().__init__(**kwargs)
         self.classes   = classes
         self.metric    = metric
         self.in_memory = in_memory
@@ -558,8 +558,8 @@ class SimilarityClassification(Expression):
 
 
 class InContextClassification(Expression):
-    def __init__(self, blueprint: Prompt):
-        super().__init__()
+    def __init__(self, blueprint: Prompt, **kwargs):
+        super().__init__(**kwargs)
         self.blueprint = blueprint
 
     def forward(self, x: Symbol, **kwargs) -> Symbol:
@@ -575,8 +575,8 @@ class InContextClassification(Expression):
 
 
 class TokenTracker(Expression):
-    def __init__(self, verbose: bool = True):
-        super().__init__()
+    def __init__(self, verbose: bool = True, **kwargs):
+        super().__init__(**kwargs)
         self.verbose         = verbose
         self._trace: bool    = False
         self._previous_frame = None
@@ -617,8 +617,8 @@ class Indexer(Expression):
         index = index.lower()
         return index
 
-    def __init__(self, index_name: str = DEFAULT, top_k: int = 8, batch_size: int = 20, formatter: Callable = ParagraphFormatter(), auto_add=False, raw_result=True):
-        super().__init__()
+    def __init__(self, index_name: str = DEFAULT, top_k: int = 8, batch_size: int = 20, formatter: Callable = ParagraphFormatter(), auto_add=False, raw_result=True, **kwargs):
+        super().__init__(**kwargs)
         index_name = Indexer.replace_special_chars(index_name)
         self.index_name = index_name
         self.elements   = []

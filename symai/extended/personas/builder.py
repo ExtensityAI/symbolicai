@@ -75,8 +75,8 @@ def run():
 
 
 class PersonaBuilder(Expression):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.func = Function(PERSONA_BUILDER_DESCRIPTION)
 
     def forward(self, name: str, description: str, relation: str = '', resume: Symbol = None, **kwargs) -> str:

@@ -88,7 +88,9 @@ class VectorDB(Expression):
         similarity_metric="cosine",
         batch_size=MAX_BATCH_SIZE,
         load_on_init=False,
+        **kwargs
     ):
+        super().__init__(**kwargs)
         documents               = documents or []
         self.documents          = []
         self.vectors            = None

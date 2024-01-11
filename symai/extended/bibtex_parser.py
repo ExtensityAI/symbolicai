@@ -77,8 +77,8 @@ class BibTexParser(Expression):
     def static_context(self) -> str:
         return BIB_DESCRIPTION
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.sym_return_type = BibTexParser
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:

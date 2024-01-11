@@ -12,8 +12,8 @@ class Abstract(Expression):
     def static_context(self):
         return HEADER_DESCRIPTION
 
-    def __init__(self, path: str, filters: List[Expression] = []):
-        super().__init__()
+    def __init__(self, path: str, filters: List[Expression] = [], **kwargs):
+        super().__init__(**kwargs)
         self.path = path
         filters = filters if isinstance(filters, List) or isinstance(filters, tuple) else [filters]
         self.data_stream = Stream(Sequence(

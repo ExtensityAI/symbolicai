@@ -28,8 +28,8 @@ class SEOQueryOptimizer(Expression):
     def static_context(self) -> str:
         return SEO_OPTIMIZER_DESCRIPTION
 
-    def __init__(self, formatter: Callable = SentenceFormatter()):
-        super().__init__()
+    def __init__(self, formatter: Callable = SentenceFormatter(), **kwargs):
+        super().__init__(**kwargs)
         self.formatter       = formatter
         self.sym_return_type = SEOQueryOptimizer
 

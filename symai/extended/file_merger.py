@@ -13,8 +13,8 @@ class FileMerger(Expression):
     Files specified in the exclude list will not be included.
     """
     def __init__(self, file_endings: List[str] = ['.py', '.md', '.txt', '.sh', '.pdf', '.json', '.yaml', '.java', '.cpp', '.hpp', '.c', '.h', '.js', '.css', '.html', '.xml', '.csv', '.tsv', '.yml', '.rst', '.ipynb', '.tex', '.bib'],
-                       file_excludes: List[str] = ['__init__.py', '__pycache__', 'LICENSE', 'requirements.txt', 'environment.yaml', '.git']):
-        super().__init__()
+                       file_excludes: List[str] = ['__init__.py', '__pycache__', 'LICENSE', 'requirements.txt', 'environment.yaml', '.git'], **kwargs):
+        super().__init__(**kwargs)
         self.file_endings = file_endings
         self.file_excludes = file_excludes
         self.reader = FileReader()

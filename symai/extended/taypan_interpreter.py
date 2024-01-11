@@ -123,8 +123,8 @@ class TaypanInterpreter(Expression):
     def static_context(self) -> str:
         return self.description
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.sym_return_type = TaypanInterpreter
         self.description = create_template()
 

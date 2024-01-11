@@ -21,8 +21,8 @@ logging.getLogger('charset_normalizer').setLevel(logging.ERROR)
 class ChatBot(Expression):
     _symai_chat: str = '''This is a conversation between a chatbot (Symbia:) and a human (User:). The chatbot follows a narrative structure, primarily relying on the provided instructions. It uses the user's input as a conditioning factor to generate its responses. Whenever Symbia retrieves any long-term memories, it checks the user's query and incorporates information from the long-term memory buffer into its response. If the long-term memories cannot provide a suitable answer, Symbia then checks its short-term memory to be aware of the topics discussed in the recent conversation rounds. Your primary task is to reply to the user's question or statement by generating a relevant and contextually appropriate response. Do not focus on filling the scratchpad with narration, long-term memory recall, short-term memory recall, or reflections. Always consider any follow-up questions or relevant information from the user to generate a response that is contextually relevant. Endeavor to reply to the greatest possible effort.'''
 
-    def __init__(self, value = None, name: str = 'Symbia', output: Optional[Output] = None, verbose: bool = False):
-        super().__init__(value)
+    def __init__(self, value = None, name: str = 'Symbia', output: Optional[Output] = None, verbose: bool = False, **kwargs):
+        super().__init__(value, **kwargs)
         self.sym_return_type = ChatBot
         self.verbose: bool   = verbose
         self.name            = name
@@ -168,8 +168,8 @@ The chatbot always reply in the following format
         return res
 
 class SymbiaChat(ChatBot):
-    def __init__(self, name: str = 'Symbia', verbose: bool = False):
-        super().__init__(name=name, verbose=verbose)
+    def __init__(self, name: str = 'Symbia', verbose: bool = False, **kwargs):
+        super().__init__(name=name, verbose=verbose, **kwargs)
         self.message = self.narrate(f'{self.name} introduces herself, writes a greeting message and asks how to help.', context=None)
 
     def forward(self, usr: Optional[str] = None) -> Symbol:

@@ -24,8 +24,8 @@ def chunks(iterable, batch_size=100):
 
 
 class PineconeResult(Result):
-    def __init__(self, res, query: str, embedding: list):
-        super().__init__(res)
+    def __init__(self, res, query: str, embedding: list, **kwargs):
+        super().__init__(res, **kwargs)
         self.raw                 = res
         self._query              = query
         self._value              = self._process(res)

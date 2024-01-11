@@ -171,7 +171,8 @@ class FormulaWriter(Expression):
 
 
 class Solver(Expression):
-    def __init__(self):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.sym_return_type = Solver
 
     def rewrite_formula(self, sym, **kwargs):

@@ -65,8 +65,9 @@ class OSCommand(Expression):
     def __init__(self, programs:        List[str],
                        metadata:   Dict[str, str] = {},
                        verbose:              bool = False,
-                       os_platform:           str = 'auto'):
-        super().__init__()
+                       os_platform:           str = 'auto',
+                       **kwargs):
+        super().__init__(**kwargs)
         self.verbose:            bool = verbose
         self.os_platform:         str = os_platform
         self.programs:      List[str] = programs

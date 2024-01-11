@@ -9,7 +9,7 @@ from ..formatter import ParagraphFormatter
 
 class DocumentRetriever(Expression):
     def __init__(self, index_name: str = Indexer.DEFAULT, file = None, top_k = 5, formatter: Callable = ParagraphFormatter(), overwrite: bool = False, raw_result: bool = False, **kwargs):
-        super().__init__()
+        super().__init__(**kwargs)
         indexer      = Indexer(index_name=index_name, top_k=top_k, formatter=formatter, auto_add=False, raw_result=raw_result)
         self.indexer = indexer
         text         = None

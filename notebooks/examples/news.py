@@ -34,7 +34,7 @@ class News(Expression):
     """The `News` class sub-classes `Expression` and provides a way to fetch and render news from a given url. It uses a `Stream` object to process the news data, with a sequence of `Clean`, `Translate`, `Outline`, and `Compose` expressions.
     It also defines a `Style` for the header, and a `Symbol` for the HTML templates.
     """
-    def __init__(self, url: str, pattern: str, filters: List[Expression] = [], render: bool = False):
+    def __init__(self, url: str, pattern: str, filters: List[Expression] = [], render: bool = False, **kwargs):
         """The `News` class constructor requires three arguments - `url`, `pattern` and `filters`.
         * `url` is a `str` containing the url to fetch the news from.
         * `pattern` is a `str` containing the regex pattern to be used to match the news.
@@ -42,7 +42,7 @@ class News(Expression):
         It defaults to an empty list if not specified.
         The `News` class also has an optional `render` argument which is a `bool` indicating whether the news should be rendered. It defaults to `False` if not specified.
         """
-        super().__init__()
+        super().__init__(**kwargs)
         self.url = url
         self.crawler = Interface('selenium')
         self.pattern = pattern
