@@ -145,7 +145,7 @@ class Symbol(metaclass=SymbolMeta):
         elif len(args) > 1:
             return [self._unwrap_symbols_args(a, nested=True) if isinstance(a, Symbol) else a for a in args]
 
-    def __new__(cls, *args, mixin: Optional[bool] = None, primitives: Optional[List[Type]] = None, callables: Optional[Dict[str, Callable]] = None, **kwargs) -> "Symbol":
+    def __new__(cls, *args, mixin: Optional[bool] = None, primitives: Optional[List[Type]] = None, callables: Optional[Dict[str, Callable]] = None, only_nesy: bool = False, iterate_nesy: bool = False, **kwargs) -> "Symbol":
         '''
         Create a new Symbol instance.
 
@@ -154,18 +154,27 @@ class Symbol(metaclass=SymbolMeta):
             mixin (Optional[bool]): Whether to mix in the SymbolArithmeticPrimitives class. Defaults to None.
             primitives (Optional[List[Type]]): A list of primitive classes to mix in. Defaults to None.
             callables (Optional[List[Callable]]): A list of dynamic primitive functions to mix in. Defaults to None.
+            only_nesy (bool): Whether to only use neuro-symbolic function or first check for type specific shortcut and the neuro-symbolic function. Defaults to False.
             **kwargs: Arbitrary keyword arguments.
 
         Returns:
             Symbol: The new Symbol instance.
         '''
-        use_mixin  = mixin if mixin is not None else cls._mixin
-        primitives = primitives if primitives is not None else cls._primitives
-        ori_cls    = cls
+        use_mixin           = mixin if mixin is not None else cls._mixin
+        standard_primitives = primitives is None
+        primitives          = primitives if not standard_primitives else cls._primitives
         # Initialize instance as a combination of Symbol and the mixin primitive types
         if use_mixin:
             # create a new cls type that inherits from Symbol and the mixin primitive types
             cls       = SymbolMeta(cls.__name__, (cls,) + tuple(primitives), {})
+            # configure standard primitives
+            if standard_primitives:
+                # disable shortcut matches for all primitives
+                if only_nesy:
+                    cls.__disable_shortcut_matches__ = True
+                # allow to iterate over iterables for neuro-symbolic values
+                if iterate_nesy:
+                    cls.__nesy_iteration_primitives__ = True
         obj = super().__new__(cls)
         # If metatype has additional runtime primitives, add them to the instance
         if Symbol._metadata._primitives:
