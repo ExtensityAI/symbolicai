@@ -22,7 +22,7 @@ class DictFormatConstraint:
                 raise ConstraintViolationException(f"Invalid JSON: ```json\n{input.value}\n```\n{e}")
             return DictFormatConstraint.check_keys(self.format, gen_dict)
         elif input.value_type == dict:
-            return DictFormatConstraint.check_keys(self.format, gen_dict)
+            return DictFormatConstraint.check_keys(self.format, input.value)
         else:
             raise ConstraintViolationException(f"Unsupported input type: {input.value_type}")
 
