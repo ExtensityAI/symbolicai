@@ -28,7 +28,7 @@ class FormatPreProcessor(PreProcessor):
 
     def __call__(self, argument) -> Any:
         assert len(argument.args) == 1
-        return argument.argument.args[0].format(**self.format_str)
+        return argument.args[0].format(**self.format_str)
 
 
 class EqualsPreProcessor(PreProcessor):
