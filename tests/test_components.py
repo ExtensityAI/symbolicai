@@ -50,6 +50,8 @@ class TestComponents(unittest.TestCase):
         # enable primitive iteration on nesy engine
         res = 'five' in Symbol(np.array([1, 2, 3, 4, 5]), iterate_nesy=True)
         assert res, res
+        sym = Symbol("Hi there, my name is Marius and I have a question: If I integrate two normal distributions do I ...?")
+        assert sym['name'] == "Marius"
 
     def test_symbia_capabilities(self):
         f = InContextClassification(ai.prompts.SymbiaCapabilities())
