@@ -333,6 +333,8 @@ class ContainsValue(Prompt):
             "10 in {1: 'one', 2: 'two', 3: 'three'} =>False",
             "1 in {'1': 'one', '2': 'two', '3': 'three'} =>True",
             "'ten' in [1, 2, 3] =>False",
+            "'talks about a cat' in 'My kitty is so cute!' =>True",
+            "'a dog type' in 'Keeshond or Wolfsspitz' =>True",
             "'option 1' in 'option 2 = [specific task or command]' =>False",
             "'option 2' in 'option 2 = [specific task or command]' =>True",
             "'option 3' in 'option 3 = [exit, quit, bye, goodbye]' =>True",

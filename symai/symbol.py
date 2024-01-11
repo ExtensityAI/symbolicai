@@ -155,6 +155,7 @@ class Symbol(metaclass=SymbolMeta):
             primitives (Optional[List[Type]]): A list of primitive classes to mix in. Defaults to None.
             callables (Optional[List[Callable]]): A list of dynamic primitive functions to mix in. Defaults to None.
             only_nesy (bool): Whether to only use neuro-symbolic function or first check for type specific shortcut and the neuro-symbolic function. Defaults to False.
+            iterate_nesy (bool): Whether to allow to iterate over iterables for neuro-symbolic values. Defaults to False.
             **kwargs: Arbitrary keyword arguments.
 
         Returns:
@@ -167,15 +168,15 @@ class Symbol(metaclass=SymbolMeta):
         if use_mixin:
             # create a new cls type that inherits from Symbol and the mixin primitive types
             cls       = SymbolMeta(cls.__name__, (cls,) + tuple(primitives), {})
-            # configure standard primitives
-            if standard_primitives:
-                # disable shortcut matches for all primitives
-                if only_nesy:
-                    cls.__disable_shortcut_matches__ = True
-                # allow to iterate over iterables for neuro-symbolic values
-                if iterate_nesy:
-                    cls.__nesy_iteration_primitives__ = True
         obj = super().__new__(cls)
+        # configure standard primitives
+        if use_mixin and standard_primitives:
+            # disable shortcut matches for all primitives
+            if only_nesy:
+                obj.__disable_shortcut_matches__ = True
+            # allow to iterate over iterables for neuro-symbolic values
+            if iterate_nesy:
+                obj.__nesy_iteration_primitives__ = True
         # If metatype has additional runtime primitives, add them to the instance
         if Symbol._metadata._primitives:
             for name, callable in Symbol._metadata._primitives.items():

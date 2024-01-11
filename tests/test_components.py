@@ -1,6 +1,7 @@
 import unittest
 
 import torch
+import numpy as np
 import symai as ai
 from symai.components import *
 
@@ -17,6 +18,38 @@ class TestComponents(unittest.TestCase):
         x = 'I bought a new mug.'
         y = f(x).value
         self.assertEqual(x, y)
+
+    def test_primitives(self):
+        # concatenation with space
+        res = Symbol('hello') | Symbol('world')
+        assert res.value == 'hello world', res
+        # concatenation without space
+        res = Symbol('hello') & Symbol('world')
+        assert res.value == 'helloworld', res
+        # neuro-symbolic engine calls
+        res = Symbol('I hate you now.') - 'hate' + 'love'
+        assert res.value == 'I love you now.', res
+        # type specific calls
+        res = Symbol(np.array([1,2,3])) + np.array([4,5,6])
+        assert np.all(res == np.array([5, 7, 9])), res
+        # fuzzy computations
+        res = Symbol('five') + 5
+        assert res.int() == 10, res
+        # fuzzy comparisons
+        res = Symbol('five') > 4
+        assert res, res
+        # fuzzy comparison
+        res = 'wolf' in Symbol('Wolfspitz')
+        assert res, res
+        # direct type comparison
+        res = 5 in Symbol(np.array([1, 2, 3, 4, 5]))
+        assert res, res
+        # NOT True => by default disable primitive iteration on nesy engine
+        res = 'five' in Symbol(np.array([1, 2, 3, 4, 5]))
+        assert not res, res
+        # enable primitive iteration on nesy engine
+        res = 'five' in Symbol(np.array([1, 2, 3, 4, 5]), iterate_nesy=True)
+        assert res, res
 
     def test_symbia_capabilities(self):
         f = InContextClassification(ai.prompts.SymbiaCapabilities())
