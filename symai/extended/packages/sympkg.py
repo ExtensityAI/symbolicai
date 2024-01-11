@@ -1,6 +1,7 @@
 import os
 import sys
 import argparse
+import pprint
 
 from pathlib import Path
 
@@ -19,7 +20,7 @@ class PackageHandler():
         parser = argparse.ArgumentParser(
             description='''SymbolicAI package manager.
             Manage extensions from the command line.
-            You can (i) install, (r) remove, (l) list installed, or (u) update a module.''',
+            You can (i) install, (r) remove, (l) list installed, (u) update a module or (U) update all modules.''',
             usage='''sympkg <command> [<args>]
 
             The most commonly used sympkg commands are:
@@ -27,6 +28,7 @@ class PackageHandler():
             r   Remove an installed package
             l   List all installed packages
             u   Update an installed package
+            U   Update all installed packages
             '''
         )
 
@@ -62,7 +64,6 @@ class PackageHandler():
         Import.remove(args.package)
 
     def l(self):
-        import pprint
         pprint.pprint(Import.list_installed())
 
     def u(self):
@@ -73,6 +74,15 @@ class PackageHandler():
         parser.add_argument('package', help='Name of package to update')
         args = parser.parse_args(sys.argv[2:])
         Import.update(args.package)
+
+    def U(self):
+        packages = Import.list_installed()
+        for package in packages:
+            try:
+                print(f'[UPDATE]: Updating {package}...')
+                Import.update(package)
+            except Exception as e:
+                print(f'[SKIP]: Error updating {package}: {e}')
 
 
 def run() -> None:
