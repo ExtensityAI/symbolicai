@@ -607,7 +607,7 @@ class Expression(Symbol):
             *args: Variable length argument list.
             **kwargs: Arbitrary keyword arguments.
         '''
-        super().__init__(value)
+        super().__init__(value, *args, **kwargs)
         self._sym_return_type = type(self)
 
     def __call__(self, *args, **kwargs) -> Any:
