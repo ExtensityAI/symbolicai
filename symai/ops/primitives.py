@@ -16,22 +16,40 @@ if TYPE_CHECKING:
     from ..symbol import Expression, Symbol
 
 
-class ArithmeticPrimitives:
-    # smart defaults to avoid unwanted side effects
+class Primitive:
+    # smart defaults to prefer type specific functions over neuro-symbolic iterations
     __disable_shortcut_matches__   = False
+    # DO NOT use by default neuro-symbolic iterations for mixins to avoid unwanted side effects
     __nesy_iteration_primitives__  = False
+    # disable None shortcut
+    __disable_none_shortcut__      = False
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # by default, disable shortcut matches and neuro-symbolic iterations
+        self.__disable_shortcut_matches__  = ArithmeticPrimitives.__disable_shortcut_matches__
+        self.__nesy_iteration_primitives__ = ArithmeticPrimitives.__nesy_iteration_primitives__
+        self.__disable_none_shortcut__     = ArithmeticPrimitives.__disable_none_shortcut__
+
+
+class ArithmeticPrimitives(Primitive):
     def __try_type_specific_func(self, other, func, op: str = None):
         if self.__disable_shortcut_matches__:
             return None
-
         other = self._to_symbol(other)
+        # None shortcut
+        if not self.__disable_none_shortcut__:
+            if  other is None or \
+                self.value is None or \
+                self.value is None and other.value is None:
+                raise TypeError(f"unsupported {self._to_symbol(None).__class__} operand type(s) for {op}: '{type(self.value)}' and '{type(other.value)}'")
+        # try type specific function
         try:
             # try type specific function
             value = func(self, other)
             if value == NotImplemented:
                 operation = '' if op is None else op
-                raise TypeError(f"unsupported operand type(s) for {operation}: '{type(self.value)}' and '{type(other.value)}'")
+                raise TypeError(f"unsupported {self._to_symbol(None).__class__} operand type(s) for {operation}: '{type(self.value)}' and '{type(other.value)}'")
             return value
         except Exception as ex:
             self._metadata._error = ex
@@ -591,11 +609,18 @@ class ArithmeticPrimitives:
         Returns:
             Symbol: A new symbol with the result of the OR operation.
         '''
+        # Special case for string concatenation with OR
+        if isinstance(self.value, str) and isinstance(other, str) or \
+            isinstance(self.value, str) and isinstance(other.value, str):
+            other = self._to_symbol(other)
+            return self._to_symbol(f'{self.value} {other.value}')
+
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value or other.value, op='|')
         # verify the result and return if found return
         if result:
             return result
+
         @core.logic(operator='or')
         def _func(_, a: str, b: str):
             pass
@@ -612,6 +637,13 @@ class ArithmeticPrimitives:
         Returns:
             Symbol: A new Symbol object with the concatenated value.
         '''
+        if self.__disable_shortcut_matches__:
+            # Special case for string concatenation with OR
+            if isinstance(self.value, str) and isinstance(other, str) or \
+                isinstance(self.value, str) and isinstance(other.value, str):
+                other = self._to_symbol(other)
+                return self._to_symbol(f'{other.value} {self.value}')
+
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value | other.value, op='|')
         # verify the result and return if found return
@@ -1039,7 +1071,7 @@ class ArithmeticPrimitives:
         raise NotImplementedError('Multiply operation not supported! Might change in the future.') from self._metadata._error
 
 
-class CastingPrimitives:
+class CastingPrimitives(Primitive):
     '''
     This mixin contains functionalities related to casting symbols.
     '''
@@ -1114,9 +1146,7 @@ class CastingPrimitives:
         return bool(self.value)
 
 
-class IterationPrimitives:
-    # DO NOT use by default neuro-symbolic iterations for mixins to avoid unwanted side effects
-    __nesy_iteration_primitives__ = False
+class IterationPrimitives(Primitive):
     '''
     This mixin contains functions that perform iteration operations on symbols or symbol values.
     The functions in this mixin are bound to the 'neurosymbolic' engine for evaluation.
@@ -1220,7 +1250,7 @@ class IterationPrimitives:
         self._value = self._to_symbol(_func(self, key)).value
 
 
-class ContextualPrimitives:
+class ContextualPrimitives(Primitive):
     '''
     This mixin contains functions that deal with the context of the symbol. The functions in this mixin manage dynamic context of symbols (like adding, clearing), or deal with type checking and related functionalities.
     New functionalities might include operations that further interact with or manipulate the context associated with symbols.
@@ -1251,7 +1281,7 @@ class ContextualPrimitives:
         self._dynamic_context[type_].clear()
 
 
-class ValueHandlingPrimitives:
+class ValueHandlingPrimitives(Primitive):
     '''
     This mixin includes functions responsible for handling symbol values - tokenization, type retrieval, value casting, indexing, etc.
     Future functions might include different methods of processing or manipulating the values of symbols, working with metadata of values, etc.
@@ -1325,7 +1355,7 @@ class ValueHandlingPrimitives:
         return self._to_symbol(_func(self, item))
 
 
-class StringHelperPrimitives:
+class StringHelperPrimitives(Primitive):
     '''
     This mixin contains functions that provide additional help for symbols or their values.
     '''
@@ -1375,7 +1405,7 @@ class StringHelperPrimitives:
         assert isinstance(self.value, str), f'self.value must be a string, got {type(self.value)}'
         return self.value.endswith(suffix)
 
-class ComparisonPrimitives:
+class ComparisonPrimitives(Primitive):
     '''
     This mixin is dedicated to functions that perform more complex comparison operations between symbols or symbol values.
     This usually involves additional context, which the builtin overrode (e.g. __eq__) functions lack.
@@ -1433,7 +1463,7 @@ class ComparisonPrimitives:
         return _func(self, query, **kwargs)
 
 
-class ExpressionHandlingPrimitives:
+class ExpressionHandlingPrimitives(Primitive):
     '''
     This mixin consists of functions that handle symbolic expressions - evaluations, parsing, computation and more.
     Future functionalities in this mixin might include operations to manipulate expressions, more complex evaluation techniques, etc.
@@ -1459,7 +1489,7 @@ class ExpressionHandlingPrimitives:
         return self._to_symbol(_func(self, expr))
 
 
-class DataHandlingPrimitives:
+class DataHandlingPrimitives(Primitive):
     '''
     This mixin houses functions that clean, summarize and outline symbols or their values.
     Future implementations in this mixin may include various other cleaning and summarization techniques, error detection/correction in symbols, complex filtering, bulk modifications, or other types of condition-based manipulations on symbols, etc.
@@ -1614,7 +1644,7 @@ class DataHandlingPrimitives:
         return self._to_symbol(_func(self, information))
 
 
-class UniquenessPrimitives:
+class UniquenessPrimitives(Primitive):
     '''
     This mixin includes functions that work with unique aspects of symbol values, like extracting unique information or composing new unique symbols.
     Future functionalities might include finding duplicate information, defining levels of uniqueness, etc.
@@ -1651,7 +1681,7 @@ class UniquenessPrimitives:
         return self._to_symbol(_func(self))
 
 
-class PatternMatchingPrimitives:
+class PatternMatchingPrimitives(Primitive):
     '''
     This mixin houses functions that deal with ranking symbols, extracting details based on patterns, and correcting symbols.
     It will house future functionalities that involve sorting, complex pattern detections, advanced correction techniques etc.
@@ -1748,7 +1778,7 @@ class PatternMatchingPrimitives:
         return self._to_symbol(_func(self))
 
 
-class QueryHandlingPrimitives:
+class QueryHandlingPrimitives(Primitive):
     '''
     This mixin helps in transforming, preparing, and executing queries, and it is designed to be extendable as new ways of handling queries are developed.
     Future methods could potentially include query optimization, enhanced query formatting, multi-level query execution, query error handling, etc.
@@ -1810,7 +1840,7 @@ class QueryHandlingPrimitives:
         return self._to_symbol(_func(self))
 
 
-class ExecutionControlPrimitives:
+class ExecutionControlPrimitives(Primitive):
     '''
     This mixin represents the core methods for dealing with symbol execution.
     Possible future methods could potentially include async execution, pipeline chaining, execution profiling, improved error handling, version management, embedding more complex execution control structures etc.
@@ -2037,7 +2067,7 @@ class ExecutionControlPrimitives:
                         )
 
 
-class DictHandlingPrimitives:
+class DictHandlingPrimitives(Primitive):
     '''
     This mixin hosts functions that deal with dictionary operations on symbol values.
     It can be extended in the future with more advanced dictionary methods and operations.
@@ -2088,7 +2118,7 @@ class DictHandlingPrimitives:
         return self._to_symbol(map_)
 
 
-class TemplateStylingPrimitives:
+class TemplateStylingPrimitives(Primitive):
     '''
     This mixin includes functionalities for stylizing symbols and applying templates.
     Future functionalities might include a variety of new stylizing methods, application of more complex templates, etc.
@@ -2134,7 +2164,7 @@ class TemplateStylingPrimitives:
         return self._to_symbol(_func(self))
 
 
-class DataClusteringPrimitives:
+class DataClusteringPrimitives(Primitive):
     '''
     This mixin contains functionalities that deal with clustering symbol values or generating embeddings.
     New functionalities in this mixin might include different types of clustering and embedding methods, dimensionality reduction techniques, etc.
@@ -2301,7 +2331,7 @@ class DataClusteringPrimitives:
         return list(zip(idx, embeds, query))
 
 
-class IOHandlingPrimitives:
+class IOHandlingPrimitives(Primitive):
     '''
     This mixin contains functionalities related to input/output operations.
     '''
@@ -2338,7 +2368,7 @@ class IOHandlingPrimitives:
         return self.sym_return_type(_func(self))
 
 
-class IndexingPrimitives:
+class IndexingPrimitives(Primitive):
     '''
     This mixin contains functionalities related to indexing symbols.
     '''
@@ -2397,7 +2427,7 @@ class IndexingPrimitives:
         return _func(self)
 
 
-class PersistencePrimitives:
+class PersistencePrimitives(Primitive):
     '''
     This mixin contains functionalities related to expanding symbols and saving/loading symbols to/from disk.
     Future functionalities in this mixin might include different ways of serialization and deserialization, or more complex expansion techniques etc.
@@ -2477,7 +2507,7 @@ class PersistencePrimitives:
         return obj
 
 
-class OutputHandlingPrimitives:
+class OutputHandlingPrimitives(Primitive):
     '''
     This mixin include functionalities related to outputting symbols. It can be expanded in the future to include different types of output methods or complex output formatting, etc.
     '''
@@ -2500,7 +2530,7 @@ class OutputHandlingPrimitives:
         return self._to_symbol(_func(self, *args))
 
 
-class FineTuningPrimitives:
+class FineTuningPrimitives(Primitive):
     '''
     This mixin contains functionalities related to fine tuning models.
     '''

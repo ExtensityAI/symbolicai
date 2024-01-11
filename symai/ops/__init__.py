@@ -23,4 +23,3 @@ SYMBOL_PRIMITIVES = [
     OutputHandlingPrimitives,
     FineTuningPrimitives,
 ]
-
