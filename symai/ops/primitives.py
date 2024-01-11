@@ -27,9 +27,9 @@ class Primitive:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # by default, disable shortcut matches and neuro-symbolic iterations
-        self.__disable_shortcut_matches__  = ArithmeticPrimitives.__disable_shortcut_matches__
-        self.__nesy_iteration_primitives__ = ArithmeticPrimitives.__nesy_iteration_primitives__
-        self.__disable_none_shortcut__     = ArithmeticPrimitives.__disable_none_shortcut__
+        self.__disable_shortcut_matches__  = Primitive.__disable_shortcut_matches__
+        self.__nesy_iteration_primitives__ = Primitive.__nesy_iteration_primitives__
+        self.__disable_none_shortcut__     = Primitive.__disable_none_shortcut__
 
 
 class ArithmeticPrimitives(Primitive):
@@ -543,7 +543,9 @@ class ArithmeticPrimitives(Primitive):
 
     def __and__(self, other: Any) -> Any:
         '''
-        Performs a logical AND operation between the symbol value and another.
+        Primary concatenation operator for Symbol objects if types are string. Concatenates them without a space in between.
+
+        Otherwise, performs a logical AND operation between the symbol value and another.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
         Uses the core.logic decorator with operator='and' to create a _func method for the AND operation.
 
@@ -571,7 +573,9 @@ class ArithmeticPrimitives(Primitive):
 
     def __rand__(self, other: Any) -> Any:
         '''
-        Performs a logical AND operation between the symbol value and another.
+        Primary concatenation operator for Symbol objects if types are string. Concatenates them without a space in between.
+
+        Otherwise, performs a logical AND operation between the symbol value and another.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
         Uses the core.logic decorator with operator='and' to create a _func method for the AND operation.
 
@@ -600,7 +604,9 @@ class ArithmeticPrimitives(Primitive):
 
     def __iand__(self, other: Any) -> Any:
         '''
-        Performs a logical AND operation between the symbol value and another.
+        Primary concatenation operator for Symbol objects if types are string. Concatenates them without a space in between.
+
+        Otherwise, performs a logical AND operation between the symbol value and another.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
         Uses the core.logic decorator with operator='and' to create a _func method for the AND operation.
 
@@ -631,7 +637,9 @@ class ArithmeticPrimitives(Primitive):
 
     def __or__(self, other: Any) -> Any:
         '''
-        Performs a logical OR operation between the symbol value and another.
+        Primary concatenation operator for Symbol objects if types are string. Concatenates them with a space in between.
+
+        Otherwise, performs a logical OR operation between the symbol value and another.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
         Uses the core.logic decorator with operator='or' to create a _func method for the OR operation.
 
@@ -660,7 +668,9 @@ class ArithmeticPrimitives(Primitive):
 
     def __ror__(self, other: Any) -> 'Symbol':
         '''
-        This method concatenates the string representation of two Symbol objects and returns a new Symbol with the concatenated result.
+        Primary concatenation operator for Symbol objects if types are string. Concatenates them with a space in between.
+
+        Otherwise, performs a logical OR operation between the symbol value and another.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
 
         Args:
@@ -685,7 +695,9 @@ class ArithmeticPrimitives(Primitive):
 
     def __ior__(self, other: Any) -> 'Symbol':
         '''
-        This method concatenates the string representation of two Symbol objects and returns a new Symbol with the concatenated result.
+        Primary concatenation operator for Symbol objects if types are string. Concatenates them with a space in between.
+
+        Otherwise, performs a logical OR operation between the symbol value and another.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
 
         Args:
