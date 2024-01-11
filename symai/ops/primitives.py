@@ -45,7 +45,7 @@ class ArithmeticPrimitives(Primitive):
         try:
             # try type specific function
             value = func(self, other)
-            if value == NotImplemented:
+            if value is NotImplemented:
                 operation = '' if op is None else op
                 raise TypeError(f"unsupported {self._symbol_type.__class__} value operand type(s) for {operation}: '{type(self.value)}' and '{type(other.value)}'")
             return value
@@ -72,7 +72,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: other.value in self.value, op='in')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return result
         # verify if fuzzy matches are enabled in general
         # DO NOT use by default neuro-symbolic iterations for mixins to avoid unwanted side effects
@@ -99,7 +99,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value == other.value, op='==')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return result
 
         @core.equals()
@@ -122,7 +122,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other:  self.value != other.value, op='!=')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return result
         return not self.__eq__(other)
 
@@ -140,7 +140,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value > other.value, op='>')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return result
         @core.compare(operator = '>')
         def _func(_, other) -> bool:
@@ -161,7 +161,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value < other.value, op='<')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return result
         @core.compare(operator = '<')
         def _func(_, other) -> bool:
@@ -182,7 +182,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value <= other.value, op='<=')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return result
         @core.compare(operator = '<=')
         def _func(_, other) -> bool:
@@ -203,7 +203,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value >= other.value, op='>=')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return result
         @core.compare(operator = '>=')
         def _func(_, other) -> bool:
@@ -221,7 +221,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(False, lambda self, _: -self.value, op='-')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return self._to_symbol(result)
         @core.negate()
         def _func(_):
@@ -239,7 +239,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(False, lambda self, _: not self.value, op='not')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return self._to_symbol(result)
         @core.negate()
         def _func(_):
@@ -257,7 +257,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(False, lambda self, _: ~self.value, op='~')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return self._to_symbol(result)
         @core.invert()
         def _func(_):
@@ -278,7 +278,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value << other.value, op='<<')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return self._to_symbol(result)
         @core.include()
         def _func(_, information: str):
@@ -299,7 +299,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: other.value << self.value, op='<<')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return self._to_symbol(result)
         @core.include()
         def _func(_, information: str):
@@ -320,7 +320,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value << other.value, op='<<=')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             self._value = result
             return self
         @core.include()
@@ -343,7 +343,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value >> other.value, op='>>')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return self._to_symbol(result)
         @core.include()
         def _func(_, information: str):
@@ -364,7 +364,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: other.value >> self.value, op='>>')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return self._to_symbol(result)
         @core.include()
         def _func(_, information: str):
@@ -385,7 +385,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value >> other.value, op='>>=')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             self._value = result
             return self
         @core.include()
@@ -407,14 +407,14 @@ class ArithmeticPrimitives(Primitive):
             Symbol: The Symbol combined with the other value.
         '''
         # prefer nesy engine over type specific functions for str since the default string concatenation operator in SymbolicAI is '|'
-        if not (isinstance(self.value, str) and isinstance(other, str)) or \
-            not (isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str)):
+        if (isinstance(self.value, str) and isinstance(other, str)) or \
+            (isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str)):
             result = None
         else:
             # Otherwise verify for specific type support
             result = self.__try_type_specific_func(other, lambda self, other: self.value + other.value, op='+')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return self._to_symbol(result)
         @core.combine()
         def _func(_, a: str, b: str):
@@ -434,14 +434,14 @@ class ArithmeticPrimitives(Primitive):
             Symbol: The other value combined with the Symbol.
         '''
         # prefer nesy engine over type specific functions for str since the default string concatenation operator in SymbolicAI is '|'
-        if not (isinstance(self.value, str) and isinstance(other, str)) or \
-            not (isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str)):
+        if (isinstance(self.value, str) and isinstance(other, str)) or \
+            (isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str)):
             result = None
         else:
             # Otherwise verify for specific type support
             result = self.__try_type_specific_func(other, lambda self, other: other.value + self.value, op='+')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return self._to_symbol(result)
         @core.combine()
         def _func(_, a: str, b: str):
@@ -461,14 +461,14 @@ class ArithmeticPrimitives(Primitive):
             Symbol: The updated Symbol with the added value.
         '''
         # prefer nesy engine over type specific functions for str since the default string concatenation operator in SymbolicAI is '|'
-        if not (isinstance(self.value, str) and isinstance(other, str)) or \
-            not (isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str)):
+        if (isinstance(self.value, str) and isinstance(other, str)) or \
+            (isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str)):
             result = None
         else:
             # Otherwise verify for specific type support
             result = self.__try_type_specific_func(other, lambda self, other: self.value + other.value, op='+=')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             self._value = result
             return self
         other = self._to_symbol(other)
@@ -490,7 +490,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value - other.value, op='-')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return self._to_symbol(result)
         @core.replace()
         def _func(_, text: str, replace: str, value: str):
@@ -512,7 +512,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: other.value - self.value, op='-')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return self._to_symbol(result)
         @core.replace()
         def _func(_, text: str, replace: str, value: str):
@@ -534,7 +534,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value - other.value, op='-=')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             self._value = result
             return self
         val         = self.__sub__(other)
@@ -564,7 +564,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value and other.value, op='&')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return result
         @core.logic(operator='and')
         def _func(_, a: str, b: str):
@@ -595,7 +595,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other:  other.value and self.value, op='&')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return result
         @core.logic(operator='and')
         def _func(_, a: str, b: str):
@@ -626,7 +626,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value and other.value, op='&=')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             self._value = result
             return self
         @core.logic(operator='and')
@@ -658,7 +658,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value or other.value, op='|')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return result
 
         @core.logic(operator='or')
@@ -689,7 +689,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value | other.value, op='|')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return self._to_symbol(result)
         return self._to_symbol(str(self) + str(other))
 
@@ -717,7 +717,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value | other.value, op='|=')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             self._value = result
             return self
         result = self._to_symbol(str(self) + str(other))
@@ -739,7 +739,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value ^ other.value, op='^')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return self._to_symbol(result)
         @core.logic(operator='xor')
         def _func(_, a: str, b: str):
@@ -761,7 +761,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: other.value ^ self.value, op='^')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return self._to_symbol(result)
         @core.logic(operator='xor')
         def _func(_, a: str, b: str):
@@ -783,7 +783,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value ^ other.value, op='^=')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             self._value = result
             return self
         @core.logic(operator='xor')
@@ -806,7 +806,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value.__matmul__(other.value), op='@')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return self._to_symbol(result)
         raise NotImplementedError('Matrix multiplication not supported! Might change in the future.') from self._metadata._error
 
@@ -824,7 +824,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other:  self.value.__rmatmul__(other.value), op='@')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return self._to_symbol(result)
         raise NotImplementedError('Matrix multiplication not supported! Might change in the future.') from self._metadata._error
 
@@ -842,7 +842,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value.__imatmul__(other.value), op='@=')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             self._value = result
             return self
         raise NotImplementedError('Matrix multiplication not supported! Might change in the future.') from self._metadata._error
@@ -861,7 +861,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value / other.value, op='/')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return self._to_symbol(result)
         return self._to_symbol(str(self).split(str(other)))
 
@@ -879,7 +879,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: other.value / self.value, op='/')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return self._to_symbol(result)
         raise NotImplementedError('Division operation not supported! Might change in the future.') from self._metadata._error
 
@@ -897,7 +897,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value / other.value, op='/=')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             self._value = result
             return self
         raise NotImplementedError('Division operation not supported! Might change in the future.') from self._metadata._error
@@ -916,7 +916,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value // other.value, op='//')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return self._to_symbol(result)
         return self._to_symbol(str(self).split(str(other)))
 
@@ -934,7 +934,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: other.value // self.value, op='//')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return self._to_symbol(result)
         raise NotImplementedError('Floor division operation not supported! Might change in the future.') from self._metadata._error
 
@@ -952,7 +952,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value // other.value, op='//=')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             self._value = result
             return self
         raise NotImplementedError('Floor division operation not supported! Might change in the future.') from self._metadata._error
@@ -971,7 +971,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value ** other.value, op='**')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return self._to_symbol(result)
         raise NotImplementedError('Power operation not supported! Might change in the future.') from self._metadata._error
 
@@ -989,7 +989,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: other.value ** self.value, op='**')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return self._to_symbol(result)
         raise NotImplementedError('Power operation not supported! Might change in the future.') from self._metadata._error
 
@@ -1007,7 +1007,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value ** other.value, op='**=')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             self._value = result
             return self
         raise NotImplementedError('Power operation not supported! Might change in the future.') from self._metadata._error
@@ -1026,7 +1026,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value % other.value, op='%')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return self._to_symbol(result)
         raise NotImplementedError('Modulo operation not supported! Might change in the future.') from self._metadata._error
 
@@ -1044,7 +1044,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: other.value % self.value, op='%')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return self._to_symbol(result)
         raise NotImplementedError('Modulo operation not supported! Might change in the future.') from self._metadata._error
 
@@ -1062,7 +1062,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value % other.value, op='%=')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             self._value = result
             return self
         raise NotImplementedError('Modulo operation not supported! Might change in the future.') from self._metadata._error
@@ -1081,7 +1081,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value * other.value, op='*')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return self._to_symbol(result)
         raise NotImplementedError('Multiply operation not supported! Might change in the future.') from self._metadata._error
 
@@ -1099,7 +1099,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: other.value * self.value, op='*')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             return self._to_symbol(result)
         raise NotImplementedError('Multiply operation not supported! Might change in the future.') from self._metadata._error
 
@@ -1117,7 +1117,7 @@ class ArithmeticPrimitives(Primitive):
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value * other.value, op='*=')
         # verify the result and return if found return
-        if result:
+        if result is not None:
             self._value = result
             return self
         raise NotImplementedError('Multiply operation not supported! Might change in the future.') from self._metadata._error
