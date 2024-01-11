@@ -15,7 +15,6 @@ except:
 class SearchResult(Result):
     def __init__(self, value) -> None:
         super().__init__(value)
-        self.raw = value
         if 'answer_box' in value.keys() and 'answer' in value['answer_box'].keys():
             self._value = value['answer_box']['answer']
         elif 'answer_box' in value.keys() and 'snippet' in value['answer_box'].keys():
