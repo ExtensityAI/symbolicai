@@ -5,7 +5,7 @@ import uuid
 import torch
 import numpy as np
 
-from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple,
+from typing import (TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Optional, Tuple,
                     Type, Union)
 
 from .. import core
@@ -1431,6 +1431,19 @@ class StringHelperPrimitives(Primitive):
         assert isinstance(self.value, str), f'self.value must be a string, got {type(self.value)}'
         symbols = self.symbols(*self.value.split(delimiter))
         return symbols
+
+    def join(self, delimiter: str = ' ', **kwargs) -> 'Symbol':
+        '''
+        Joins the symbol value with a specified delimiter.
+
+        Args:
+            delimiter (str, optional): The delimiter to join the symbol value with. Defaults to ' '.
+
+        Returns:
+            Symbol: A new symbol with the joined str value.
+        '''
+        assert isinstance(self.value, Iterable),  f'value must be an iterable, got {type(self.value)}'
+        return self._to_symbol(delimiter.join(self.value))
 
     def startswith(self, prefix: str, **kwargs) -> bool:
         '''
