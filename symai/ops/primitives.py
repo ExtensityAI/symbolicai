@@ -81,7 +81,7 @@ class ArithmeticPrimitives(Primitive):
         # verify if fuzzy matches are enabled in general
         # DO NOT use by default neuro-symbolic iterations for mixins to avoid unwanted side effects
         # check if value is iterable
-        if not self.__nesy_iteration_primitives__ and Primitive._is_iterable(self.value):
+        if not self.__nesy_iteration_primitives__ or Primitive._is_iterable(self.value):
             return result
 
         @core.contains()
@@ -1236,7 +1236,7 @@ class IterationPrimitives(Primitive):
         except KeyError:
             pass
         # verify if fuzzy matches are enabled in general
-        if not self.__nesy_iteration_primitives__ and Primitive._is_iterable(self.value):
+        if not self.__nesy_iteration_primitives__ or Primitive._is_iterable(self.value):
             raise KeyError(f'Key {key} not found in {self.value}')
 
         @core.getitem()
@@ -1269,7 +1269,7 @@ class IterationPrimitives(Primitive):
         except KeyError:
             raise KeyError(f'Key {key} not found in {self.value}')
 
-        if not self.__nesy_iteration_primitives__ and Primitive._is_iterable(self.value):
+        if not self.__nesy_iteration_primitives__ or Primitive._is_iterable(self.value):
             raise KeyError(f'Key {key} not found in {self.value}')
 
         @core.setitem()
@@ -1297,7 +1297,7 @@ class IterationPrimitives(Primitive):
         except KeyError:
             raise KeyError(f'Key {key} not found in {self.value}')
 
-        if not self.__nesy_iteration_primitives__ and Primitive._is_iterable(self.value):
+        if not self.__nesy_iteration_primitives__ or Primitive._is_iterable(self.value):
             raise KeyError(f'Key {key} not found in {self.value}')
 
         @core.delitem()
