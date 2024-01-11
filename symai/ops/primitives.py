@@ -42,14 +42,14 @@ class ArithmeticPrimitives(Primitive):
             if  other is None or \
                 self.value is None or \
                 self.value is None and other.value is None:
-                raise TypeError(f"unsupported {self._to_symbol(None).__class__} operand type(s) for {op}: '{type(self.value)}' and '{type(other.value)}'")
+                raise TypeError(f"unsupported {self._to_symbol(None).__class__} value operand type(s) for {op}: '{type(self.value)}' and '{type(other.value)}'")
         # try type specific function
         try:
             # try type specific function
             value = func(self, other)
             if value == NotImplemented:
                 operation = '' if op is None else op
-                raise TypeError(f"unsupported {self._to_symbol(None).__class__} operand type(s) for {operation}: '{type(self.value)}' and '{type(other.value)}'")
+                raise TypeError(f"unsupported {self._to_symbol(None).__class__} value operand type(s) for {operation}: '{type(self.value)}' and '{type(other.value)}'")
             return value
         except Exception as ex:
             self._metadata._error = ex
