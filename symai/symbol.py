@@ -390,7 +390,7 @@ class Symbol(metaclass=SymbolMeta):
         Returns:
             Symbol: The type of the Symbol instance.
         '''
-        return type(self._to_symbol(None))
+        return Symbol
 
     def __hash__(self) -> int:
         '''
