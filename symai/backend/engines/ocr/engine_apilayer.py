@@ -1,4 +1,5 @@
 import requests
+from pathlib import Path
 
 from typing import Optional
 
@@ -42,15 +43,23 @@ class OCREngine(Engine):
     def forward(self, argument):
         kwargs    = argument.kwargs
         image_url = argument.prop.image
-        url       = f"https://api.apilayer.com/image_to_text/url?url={image_url}"
-        payload   = {}
-        response    = requests.request("GET", url, headers=self.headers, data = payload)
+
+        if image_url.startswith("file://"):
+            file_path = Path(image_url[7:]).resolve()
+            with open(file_path, "rb") as file:
+                payload = file.read()
+            url      = "https://api.apilayer.com/image_to_text/upload"
+            response = requests.request("POST", url, headers=self.headers, data=payload)
+        else:
+            payload   = {}
+            url      = f"https://api.apilayer.com/image_to_text/url?url={image_url}"
+            response = requests.request("GET", url, headers=self.headers, data = payload)
+
         status_code = response.status_code
         rsp         = response.text
-
+        rsp       = ApiLayerResult(response.text, status_code)
         metadata  = {}
 
-        rsp       = ApiLayerResult(response.text, status_code)
         return [rsp], metadata
 
     def prepare(self, argument):
