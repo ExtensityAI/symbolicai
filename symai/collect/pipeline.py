@@ -90,16 +90,16 @@ class CollectionRepository:
 
     def update(self,
                record_id: str,
-               forward: Optional[Any]              = None,
-               engine: Optional[str]            = None,
+               forward: Optional[Any]             = None,
+               engine: Optional[str]              = None,
                metadata: Optional[Dict[str, Any]] = None) -> Any:
         if not self.support_community:
             return None
         updates: Dict[str, Any] = {'updated_at': datetime.now()}
         if forward is not None:
-            updates['forward'] = forward
+            updates['forward']  = forward
         if engine is not None:
-            updates['engine'] = engine
+            updates['engine']   = engine
         if metadata is not None:
             updates['metadata'] = metadata
 
@@ -125,11 +125,18 @@ class CollectionRepository:
         return self.collection.count_documents(filters) if self.collection else 0
 
     def connect(self) -> None:
-        if not self.client and self.support_community:
-            self.client = MongoClient(self.uri)
-            self.db = self.client[self.db_name]
-            self.collection = self.db[self.collection_name]
+        try:
+            if self.client is None and self.support_community:
+                self.client = MongoClient(self.uri)
+                self.db     = self.client[self.db_name]
+                self.collection = self.db[self.collection_name]
+        except Exception as e:
+            # disable retries
+            self.client     = False
+            self.db         = None
+            self.collection = None
+            print("[WARN] MongoClient: Connection failed: " + str(e))
 
     def close(self) -> None:
-        if self.client:
+        if self.client is not None:
             self.client.close()
