@@ -102,7 +102,7 @@ class StackTraceRetryExecutor(Expression):
         result = self._runnable['locals']['run'](value)
         retry = 0
         # Retry if there is a 'Traceback' in the result
-        while 'Traceback' in result and retry < self.max_retries:
+        while 'Traceback' in result and retry <= self.max_retries:
             self._runnable = self.executor(code, payload=result, locals=locals().copy(), globals=globals().copy(), **kwargs)
             result = self._runnable['locals']['run'](value)
             retry += 1
