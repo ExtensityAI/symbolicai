@@ -61,10 +61,10 @@ class OpenAIMixin:
             }
 
     def api_max_tokens(self):
-        if self.model == 'gpt-3.5-turbo' or self.model == 'gpt-3.5-turbo-0613' or self.model == 'gpt-3.5-turbo-instruct':
+        if self.model == 'gpt-3.5-turbo' or self.model == 'gpt-3.5-turbo-0613' or self.model == 'gpt-3.5-turbo-instruct' or self.model == 'gpt-3.5-turbo-1106':
             return 4_096
 
-        elif self.model == 'gpt-3.5-turbo-16k' or self.model == 'gpt-3.5-turbo-16k-0613' or self.model == 'gpt-3.5-turbo-1106':
+        elif self.model == 'gpt-3.5-turbo-16k' or self.model == 'gpt-3.5-turbo-16k-0613':
             return 16_384
 
         elif self.model == 'gpt-4' or self.model == 'gpt-4-0613':
