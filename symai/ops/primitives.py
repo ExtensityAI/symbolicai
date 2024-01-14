@@ -2462,18 +2462,18 @@ class IndexingPrimitives(Primitive):
             pass
         return _func(self)
 
-    def add(self, query: List[str], index_name: str, **kwargs) -> 'Symbol':
+    def add(self, doc: List[Tuple[str, List, Dict]], index_name: str, **kwargs) -> 'Symbol':
         '''
         Add an entry to the existing index.
 
         Args:
-            query (List[str]): The query string used to add an entry to the index.
+            doc (List[Tuple[str, List, Dict]]): The document used to add an entry to the index. Use zip(...) to generate the document.
             **kwargs: Arbitrary keyword arguments to be used by the core.index decorator.
 
         Returns:
             Symbol: An Expression object containing the addition result.
         '''
-        @core.index(prompt=query, index_name=index_name, operation='add', **kwargs)
+        @core.index(prompt=doc, index_name=index_name, operation='add', **kwargs)
         def _func(_):
             pass
         return _func(self)
