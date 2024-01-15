@@ -12,7 +12,7 @@ class pinecone(Expression):
         stmt  = self._to_symbol(stmt)
         index = self.index_name if index_name is None else index_name
         if   operation == "search":
-            return self.get(query=stmt.embedding, index_name=index, **kwargs)
+            return self.get(query=stmt.embedding, index_name=index, ori_query=stmt.value, **kwargs)
         elif operation == "add":
             return self.add(doc=stmt.zip(), index_name=index, **kwargs)
         elif operation == "config":
