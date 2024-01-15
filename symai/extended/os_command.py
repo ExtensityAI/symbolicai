@@ -99,4 +99,4 @@ class OSCommand(Expression):
                                 query=sym,
                                 metadata=self.meta)
         command = sym.query(prompt, post_processors=[CodeExtractPostProcessor()], **kwargs)
-        return self.sym_return_type(self.output(command, expr=self.execute_os_command))
+        return self.sym_return_type(self.output(expr=self.execute_os_command, raw_input=True, processed_input=command.value, **kwargs))
