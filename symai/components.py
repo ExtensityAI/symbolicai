@@ -16,8 +16,15 @@ from .formatter import ParagraphFormatter
 from .symbol import Expression, Symbol, Metadata
 from .utils import CustomUserWarning
 from .prompts import Prompt, JsonPromptTemplate
+from .processor import ProcessorPipeline
 from .pre_processors import PreProcessor, JsonPreProcessor
-from .post_processors import PostProcessor, JsonTruncatePostProcessor
+from .post_processors import (
+    PostProcessor,
+    JsonTruncatePostProcessor,
+    JsonTruncateMarkdownPostProcessor,
+    StripPostProcessor,
+    CodeExtractPostProcessor
+)
 
 
 class TrackerTraceable(Expression):
@@ -228,6 +235,32 @@ class Template(Expression):
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
         sym = self._to_symbol(sym)
         return sym.template(template=self.template_, placeholder=self.placeholder, **kwargs)
+
+
+class Extract(Expression):
+    def __init__(self, query, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.query = query
+
+    def forward(self, sym: Symbol, **kwargs) -> Symbol:
+        sym = self._to_symbol(sym)
+        return sym.extract(self.query, **kwargs)
+
+
+class RuntimeExpression(Expression):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # define function that executes expressions
+        self.runner = Execute(enclosure=True)
+
+    def forward(self, code: Symbol):
+        code = self._to_symbol(code)
+        # declare the runtime expression from the code
+        expr = self.runner(code)
+        def _func(sym):
+            # execute nested expression
+            return expr['locals']['_output_'](sym)
+        return _func
 
 
 class Metric(Expression):
@@ -510,6 +543,106 @@ class Function(TrackerTraceable):
         obj.sym_return_type = _type
 
         return self._to_symbol(obj(*args, **kwargs))
+
+
+class PrepareData(Function):
+    class PrepareDataPreProcessor(PreProcessor):
+        def __call__(self, argument):
+            assert argument.prop.context is not None
+            instruct = argument.prop.prompt
+            context  = argument.prop.context
+            return """{
+    'context': '%s',
+    'instruction': '%s',
+    'result': 'TODO: Replace this with the expected result.'
+}""" % (context, instruct)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.pre_processors  = [self.PrepareDataPreProcessor()]
+        self.constraints     = [DictFormatConstraint({ 'result': '<the data>' })]
+        self.post_processors = [JsonTruncateMarkdownPostProcessor()]
+        self.return_type     = dict # constraint to cast the result to a dict
+
+    @property
+    def static_context(self):
+        return """[CONTEXT]
+Your goal is to prepare the data for the next task instruction. The data should follow the format of the task description based on the given context. Replace the `TODO` section with the expected result of the data preparation. Only provide the 'result' json-key as follows: ```json\n{ 'result': 'TODO:...' }\n```
+
+[GENERAL TEMPLATE]
+```json
+{
+    'context': 'The general context of the task.',
+    'instruction': 'The next instruction of the task for the data preparation.',
+    'result': 'The expected result of the data preparation.'
+}
+```
+
+[EXAMPLE]
+[Instruction]:
+{
+    'context': 'Write a document about the history of AI and include references to the following people: Alan Turing, John McCarthy, Marvin Minsky, and Yoshua Bengio.',
+    'instruction': 'Google the history of AI for Alan Turing',
+    'result': 'TODO'
+}
+
+[Result]:
+```json
+{
+    'result': 'Alan Turing history of AI'
+}
+```
+"""
+
+
+class ExpressionBuilder(Function):
+    def __init__(self, **kwargs):
+        super().__init__('Generate the code following the instructions:', **kwargs)
+        self.processors = ProcessorPipeline([StripPostProcessor(), CodeExtractPostProcessor()])
+
+    def forward(self, instruct, *args, **kwargs):
+        result = super().forward(instruct)
+        return self.processors(str(result), None)
+
+    @property
+    def static_context(self):
+        return """[Description]
+Your goal is to generate the code of the forward function following the instruction of the extracted task and task description. Expect that all imports are already defined. Only produce the code for the TODO section as shown below:
+
+[Template]
+```python
+# do not remove or change the imports
+from symai import Function, Expression, Symbol
+class TODOExpression(Expression):
+    # initialize the expression with task specific arguments
+    def __init__(self, *args, **kwargs):
+        super().__init__(**kwargs)
+        # TODO: Place here the generated code.
+
+    # define the forward function with data specific arguments
+    def forward(self, sym: Symbol, *args, **kwargs) -> Symbol:
+        sym = self._to_symbol(sym) # ensure that sym is a Symbol
+        result = None
+        # TODO: Place here the generated code.
+        return result
+# assign the expression type to the variable _value_obj_
+_value_obj_ = TODOExpression
+```
+
+[API and Capabilities]
+Function: Define a function with a task description.
+func = Function('task description') # example: Function('Extract city names from the weather report.')
+res  = func('data') # example: func('The weather in New York is 20 degrees.')
+res # str containing the result of the function i.e. 'New York'
+Symbol: Define a symbol object that can be used to hold data.
+sym  = Symbol('data') # example: Symbol('The weather in New York is 20 degrees.')
+sym.value # value type containing the data i.e. 'The weather in New York is 20 degrees.'
+Expression: Define a custom expression that can be used to define a new task.
+expr = Expression() # example: Expression() that has a __init__ and forward function.
+res  = expr(sym) # example: expr(sym) where sym is a Symbol object.
+
+Always produce the entire code to be executed in the same Python process. All task expressions and functions are defined in the same process. Generate the code within the ```python # TODO: ``` code block as shown in the example. The code must be self-contained, include all imports and executable. Do NOT remove or change the template code or the imports. Only replace the parts with TODO in the respective section and expression name with your generated code.
+"""
 
 
 class JsonParser(Expression):
