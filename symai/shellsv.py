@@ -412,7 +412,7 @@ def query_language_model(query: str, res=None, *args, **kwargs):
     return msg
 
 
-def retrieval_augmented_indexing(query: str, *args, **kwargs):
+def retrieval_augmented_indexing(query: str, index_name = None, *args, **kwargs):
     global stateful_conversation
     sep = os.path.sep
     path = query
@@ -424,7 +424,6 @@ def retrieval_augmented_indexing(query: str, *args, **kwargs):
         path = path[1:]
 
     # check if request use of specific index
-    index_name      = None
     use_index_name  = False
     if path.startswith('index:'):
         use_index_name = True
@@ -461,7 +460,7 @@ def retrieval_augmented_indexing(query: str, *args, **kwargs):
             if pdf_file is not None:
                 file = file |'\n'| pdf_file
 
-        index_name = path.split(sep)[-1]
+        index_name = path.split(sep)[-1] if index_name is None else index_name
         index_name = Indexer.replace_special_chars(index_name)
         print(f'Indexing {index_name} ...')
 
