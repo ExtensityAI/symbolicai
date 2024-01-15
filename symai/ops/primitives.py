@@ -78,10 +78,20 @@ class ArithmeticPrimitives(Primitive):
         # verify the result and return if found return
         if result is not None and result is not False:
             return result
+        # allow for fuzzy matches between types
+        other = self._to_symbol(other)
+        if type(self.value) == str and \
+            (type(other.value) == int or \
+             type(other.value) == float or \
+             type(other.value) == bool):
+            result = str(other.value) in self.value
+            if result:
+                return result
         # verify if fuzzy matches are enabled in general
         # DO NOT use by default neuro-symbolic iterations for mixins to avoid unwanted side effects
         # check if value is iterable
-        if not self.__nesy_iteration_primitives__ or Primitive._is_iterable(self.value):
+        # except for str
+        if type(self.value) != str and (not self.__nesy_iteration_primitives__ or Primitive._is_iterable(self.value)):
             return result
 
         @core.contains()
