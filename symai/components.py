@@ -112,6 +112,7 @@ class Sequence(TrackerTraceable):
         for e in self.expr[1:]:
             sym = e(sym, **kwargs)
             metadata.results.append(sym)
+        sym = self._to_symbol(sym)
         sym._metadata.results = metadata.results
         return sym
 
