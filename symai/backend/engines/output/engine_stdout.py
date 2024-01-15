@@ -10,16 +10,24 @@ class OutputEngine(Engine):
 
     def forward(self, argument):
         expr, processed, args, kwargs  = argument.prop.prepared_input
-        res = None
+        res    = None
+        args   = [] if args is None else args
+        kwargs = {} if kwargs is None else kwargs
         if expr:
             if processed:
-                res = expr(processed)
+                res = expr(processed, *args, **kwargs)
             else:
                 res = expr(*args, **kwargs)
 
         metadata = {}
+        result   = {
+            'result': res,
+            'processed': processed,
+            'args': args,
+            'kwargs': kwargs
+        }
 
-        return [kwargs], metadata
+        return [result], metadata
 
     def prepare(self, argument):
         argument.prop.prepared_input = argument.prop.expr, argument.prop.processed_input, argument.prop.args, argument.prop.kwargs
