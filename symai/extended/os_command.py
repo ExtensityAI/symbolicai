@@ -71,7 +71,7 @@ class OSCommand(Expression):
         self.verbose:            bool = verbose
         self.os_platform:         str = os_platform
         self.programs:      List[str] = programs
-        self.metadata: Dict[str, str] = metadata
+        self.meta: Dict[str, str]     = metadata
 
         if self.os_platform == 'auto':
             self.os_platform = platform.platform()
@@ -97,6 +97,6 @@ class OSCommand(Expression):
         prompt = Context.format(programs=self.programs,
                                 platform=self.os_platform,
                                 query=sym,
-                                metadata=self.metadata)
+                                metadata=self.meta)
         command = sym.query(prompt, post_processors=[CodeExtractPostProcessor()], **kwargs)
         return self.sym_return_type(self.output(command, expr=self.execute_os_command))
