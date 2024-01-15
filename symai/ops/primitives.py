@@ -2340,15 +2340,18 @@ class DataClusteringPrimitives(Primitive):
         '''
         def _ensure_numpy_format(x, cast=False):
             # if it is a Symbol, get its value
-            if not isinstance(x, np.ndarray) or not isinstance(x, torch.Tensor):
+            if not isinstance(x, np.ndarray) or not isinstance(x, torch.Tensor) or not isinstance(x, list):
                 if not isinstance(x, self._symbol_type): #@NOTE: enforce Symbol to avoid circular import
                     if not cast:
                         raise TypeError(f'Cannot compute similarity with type {type(x)}')
                     x = self._symbol_type(x)
                 # evaluate the Symbol as an embedding
                 x = x.embedding
+            # if it is a list, convert it to numpy
+            if isinstance(x, list):
+                x = np.array(x)
             # if it is a tensor, convert it to numpy
-            if isinstance(x, torch.Tensor):
+            elif isinstance(x, torch.Tensor):
                 x = x.detach().cpu().numpy()
             return x.squeeze()[:, None]
 
@@ -2411,6 +2414,12 @@ class DataClusteringPrimitives(Primitive):
         embeds = self.embed(**kwargs).value
         idx    = [str(uuid.uuid4()) for _ in range(len(self.value))]
         query  = [{'text': str(self.value[i])} for i in range(len(self.value))]
+
+        # convert embeds to list if it is a tensor or numpy array
+        if type(embeds) == np.ndarray:
+            embeds = embeds.tolist()
+        elif type(embeds) == torch.Tensor:
+            embeds = embeds.cpu().numpy().tolist()
 
         return list(zip(idx, embeds, query))
 
