@@ -42,6 +42,10 @@ class VectorDB(Expression):
         The batch size to use when embedding documents into vectors.
     load_on_init : bool, optional
         Whether or not to load the database from a file on initialization.
+    index_dims : int, optional
+        The number of dimensions to use when creating a new index. Defaults to 768.
+    top_k : int, optional
+        The number of results to return when querying the database. Defaults to 5.
 
     Attributes
     ----------
@@ -88,6 +92,8 @@ class VectorDB(Expression):
         similarity_metric="cosine",
         batch_size=MAX_BATCH_SIZE,
         load_on_init=False,
+        index_dims=768,
+        top_k=5,
         **kwargs
     ):
         super().__init__(**kwargs)
@@ -97,6 +103,8 @@ class VectorDB(Expression):
         self.embeddings         = embedding_model or Interface('ExtensityAI/embeddings')
         self.embedding_function = embedding_function or self._get_embedding
         self.batch_size         = batch_size
+        self.index_dims         = index_dims
+        self.index_top_k        = top_k
         if vectors is not None:
             self.vectors        = vectors
             self.documents      = documents
@@ -247,6 +255,9 @@ class VectorDB(Expression):
             self.vectors = np.empty((0, len(vector)), dtype=np.float32)
         elif len(vector) != self.vectors.shape[1]:
             raise ValueError("All vectors must have the same length.")
+        # convert the vector to a numpy array if it is not already
+        if type(vector) == list:
+            vector = np.array(vector)
         self.vectors = np.vstack([self.vectors, vector]).astype(np.float32)
         self.documents.append(document)
 
@@ -340,7 +351,7 @@ class VectorDB(Expression):
         self.vectors   = data["vectors"].astype(np.float32)
         self.documents = data["documents"]
 
-    def forward(self, query, top_k=5, return_similarities=True):
+    def forward(self, query=None, vector=None, top_k=None, return_similarities=True):
         """
         Queries the database for similar documents.
 
@@ -359,7 +370,10 @@ class VectorDB(Expression):
             A list of results.
 
         """
-        query_vector   = self.embedding_function([query])[0]
+        top_k          = top_k or self.index_top_k
+        query_vector   = self.embedding_function([query])[0] if vector is None else vector
+        if type(query_vector) == list:
+            query_vector = np.array(query_vector)
         ranked_results, similarities = ranking_algorithm_sort(
             self.vectors, query_vector, top_k=top_k, metric=self.similarity_metric
         )

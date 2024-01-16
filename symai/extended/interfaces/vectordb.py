@@ -1,14 +1,14 @@
 from ... import core
 from ...symbol import Expression
-from ...backend.engines.index.engine_pinecone import PineconeResult, PineconeIndexEngine
+from ...backend.engines.index.engine_vectordb import VectorDBResult, VectorDBIndexEngine
 
 
-class pinecone(Expression):
-    def __init__(self, index_name = PineconeIndexEngine._default_index_name, *args, **kwargs):
+class vectordb(Expression):
+    def __init__(self, index_name = VectorDBIndexEngine._default_index_name, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.index_name = index_name
 
-    def __call__(self, stmt: str, operation: str = "search", index_name = None, **kwargs) -> PineconeResult:
+    def __call__(self, stmt: str, operation: str = "search", index_name = None, **kwargs) -> VectorDBResult:
         stmt  = self._to_symbol(stmt)
         index = self.index_name if index_name is None else index_name
         if   operation == "search":
