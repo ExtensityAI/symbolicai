@@ -313,7 +313,7 @@ class VectorDB(Expression):
         if storage_file is None:
             # use path to home directory by default
             storage_path = os.path.join(os.path.expanduser("~"), ".symai", "localdb")
-            os.makedirs(os.path.dirname(storage_path), exist_ok=True)
+            os.makedirs(storage_path, exist_ok=True)
             storage_file = os.path.join(storage_path, "default.pkl")
 
         data = {"vectors": self.vectors, "documents": self.documents}

@@ -85,6 +85,7 @@ class VectorDBIndexEngine(Engine):
     _default_index_top_k     = 5
     _default_index_metric    = 'cosine'
     _index_dict              = {}
+    _index_storage_file      = None
 
     def __init__(
             self,
@@ -93,6 +94,7 @@ class VectorDBIndexEngine(Engine):
             index_top_k=_default_index_top_k,
             index_metric=_default_index_metric,
             index_dict=_index_dict,
+            index_storage_file=_index_storage_file,
             **kwargs
         ):
         super().__init__()
@@ -100,6 +102,7 @@ class VectorDBIndexEngine(Engine):
         self.index_dims     = index_dims
         self.index_top_k    = index_top_k
         self.index_metric   = index_metric
+        self.storage_file   = index_storage_file
         # Initialize an instance of VectorDB
         # Note that embedding_function and vectors are not passed as VectorDB will compute it on the fly
         self.index = index_dict
@@ -119,6 +122,7 @@ class VectorDBIndexEngine(Engine):
         metric       = argument.prop.metric or self.index_metric
         kwargs       = argument.kwargs
         similarities = argument.prop.similarities or False
+        storage_file = argument.prop.storage_file or self.storage_file
         rsp          = None
 
         # Initialize the VectorDB if not already initialized
@@ -174,3 +178,9 @@ class VectorDBIndexEngine(Engine):
     def prepare(self, argument):
         assert not argument.prop.processed_input, 'VectorDB indexing engine does not support processed_input.'
         argument.prop.prepared_input = argument.prop.prompt
+
+    def save(self, index_name = None, storage_file = None):
+        index_name   = index_name or self.index_name
+        storage_file = storage_file or self._index_storage_file
+        # Save the pre-computed index to the provided path
+        self.index[index_name].save(storage_file)
