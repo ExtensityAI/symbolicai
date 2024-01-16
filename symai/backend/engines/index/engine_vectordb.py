@@ -134,7 +134,7 @@ class VectorDBIndexEngine(Engine):
             # Get the query text from the prepared input
             query_vector = embedding[0]
             # Perform search in the VectorDB
-            results = self.index[index_name](vector=query_vector, top_k=self.index_top_k, return_similarities=similarities)
+            results = self.index[index_name](vector=query_vector, top_k=top_k, return_similarities=similarities)
             rsp = [{'metadata': {'text': result}} for result in results]
 
         elif operation == 'add':
