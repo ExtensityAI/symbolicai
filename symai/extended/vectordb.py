@@ -91,7 +91,8 @@ class VectorDB(Expression):
     _default_embedding_function = None
     _default_index_dims         = 768
     _default_top_k              = 5
-    _default_storage_path       = os.path.join(os.path.expanduser("~"), ".symai", "localdb", "default.pkl")
+    _default_storage_path       = os.path.join(os.path.expanduser("~"), ".symai", "localdb")
+    _default_index_name         = "dataindex"
 
     def __init__(
         self,
@@ -104,6 +105,7 @@ class VectorDB(Expression):
         load_on_init=_default_storage_path,
         index_dims=_default_index_dims,
         top_k=_default_top_k,
+        index_name=_default_index_name,
         **kwargs
     ):
         super().__init__(**kwargs)
@@ -114,6 +116,7 @@ class VectorDB(Expression):
         self.batch_size         = batch_size
         self.index_dims         = index_dims
         self.index_top_k        = top_k
+        self.index_name         = index_name
         # init embedding function
         self.model              = embedding_model or Interface('ExtensityAI/embeddings')
         self.embedding_function = embedding_function or self._get_embedding
@@ -139,7 +142,8 @@ class VectorDB(Expression):
         if load_on_init:
             # If load_on_init is a string, use it as the storage file
             if isinstance(load_on_init, str):
-                self.load(load_on_init)
+                path = os.path.join(load_on_init, f"{self.index_name}.pkl")
+                self.load(path)
             else:
                 self.load()
 
@@ -326,7 +330,7 @@ class VectorDB(Expression):
             # use path to home directory by default
             storage_path = os.path.join(os.path.expanduser("~"), ".symai", "localdb")
             os.makedirs(storage_path, exist_ok=True)
-            storage_file = os.path.join(storage_path, "default.pkl")
+            storage_file = os.path.join(storage_path, f"{self.index_name}.pkl")
 
         data = {"vectors": self.vectors, "documents": self.documents}
         if storage_file.endswith(".gz"):
@@ -351,9 +355,11 @@ class VectorDB(Expression):
             storage_path = os.path.join(os.path.expanduser("~"), ".symai", "localdb")
             # create dir on first load if never used
             os.makedirs(storage_path, exist_ok=True)
-            storage_file = os.path.join(storage_path, "default.pkl")
-            if not os.path.exists(storage_file):
-                return
+            storage_file = os.path.join(storage_path, f"{self.index_name}.pkl")
+
+        # return since nothing to load
+        if not os.path.exists(storage_file):
+            return
 
         if storage_file.endswith(".gz"):
             with gzip.open(storage_file, "rb") as f:
@@ -363,6 +369,31 @@ class VectorDB(Expression):
                 data   = pickle.load(f)
         self.vectors   = data["vectors"].astype(np.float32)
         self.documents = data["documents"]
+
+    def purge(self, index_name : str):
+        """
+        Purges the database file from your machine, but does not delete the database from memory.
+        Use the `clear` method to clear the database from memory.
+        ATTENTION! This is a permanent action and cannot be undone.
+
+        Parameters
+        ----------
+        index_name : str
+            The index file to purge the database from your system.
+
+        """
+        # use path to home directory by default
+        storage_path = os.path.join(os.path.expanduser("~"), ".symai", "localdb")
+        # create dir on first load if never used
+        os.makedirs(storage_path, exist_ok=True)
+        storage_file = os.path.join(storage_path, f"{index_name}.pkl")
+
+        # return since nothing to load
+        if not os.path.exists(storage_file):
+            return
+
+        # remove the file
+        os.remove(storage_file)
 
     def forward(self, query=None, vector=None, top_k=None, return_similarities=True):
         """
