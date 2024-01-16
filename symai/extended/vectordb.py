@@ -83,28 +83,40 @@ class VectorDB(Expression):
     >>> db = LocalVectorDB()
     >>> db.add("Hello, world!")
     """
+    _default_documents          = []
+    _default_vectors            = None
+    _default_embedding_model    = None
+    _default_batch_size         = MAX_BATCH_SIZE
+    _default_similarity_metric  = "cosine"
+    _default_embedding_function = None
+    _default_index_dims         = 768
+    _default_top_k              = 5
+    _default_storage_path       = os.path.join(os.path.expanduser("~"), ".symai", "localdb", "default.pkl")
+
     def __init__(
         self,
-        documents=None,
-        vectors=None,
-        embedding_model=None,
-        embedding_function=None,
-        similarity_metric="cosine",
-        batch_size=MAX_BATCH_SIZE,
-        load_on_init=False,
-        index_dims=768,
-        top_k=5,
+        documents=_default_documents,
+        vectors=_default_vectors,
+        embedding_model=_default_embedding_model,
+        embedding_function=_default_embedding_function,
+        similarity_metric=_default_similarity_metric,
+        batch_size=_default_batch_size,
+        load_on_init=_default_storage_path,
+        index_dims=_default_index_dims,
+        top_k=_default_top_k,
         **kwargs
     ):
         super().__init__(**kwargs)
-        documents               = documents or []
+        #
         self.documents          = []
         self.vectors            = None
-        self.embeddings         = embedding_model or Interface('ExtensityAI/embeddings')
-        self.embedding_function = embedding_function or self._get_embedding
+        # init basic properties
         self.batch_size         = batch_size
         self.index_dims         = index_dims
         self.index_top_k        = top_k
+        # init embedding function
+        self.model              = embedding_model or Interface('ExtensityAI/embeddings')
+        self.embedding_function = embedding_function or self._get_embedding
         if vectors is not None:
             self.vectors        = vectors
             self.documents      = documents
@@ -182,7 +194,7 @@ class VectorDB(Expression):
         # Embed the documents in batches
         for batch in batches:
             # Extend the embeddings list with the embeddings from the batch
-            emb = self.embeddings(batch)
+            emb = self.model(batch)
             if len(emb.shape) == 1:
                 embeddings.append(emb)
             elif len(emb.shape) == 2:
@@ -337,6 +349,8 @@ class VectorDB(Expression):
         if storage_file is None:
             # use path to home directory by default
             storage_path = os.path.join(os.path.expanduser("~"), ".symai", "localdb")
+            # create dir on first load if never used
+            os.makedirs(storage_path, exist_ok=True)
             storage_file = os.path.join(storage_path, "default.pkl")
             if not os.path.exists(storage_file):
                 return
@@ -369,6 +383,7 @@ class VectorDB(Expression):
             A list of results.
 
         """
+        assert self.vectors is not None, f"Error: Cannot query the database without prior insertion / initialization."
         top_k          = top_k or self.index_top_k
         query_vector   = self.embedding_function([query])[0] if vector is None else vector
         if type(query_vector) == list:
