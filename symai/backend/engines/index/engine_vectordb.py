@@ -125,13 +125,7 @@ class VectorDBIndexEngine(Engine):
         storage_file = argument.prop.storage_file or self.storage_file
         rsp          = None
 
-        # Initialize the VectorDB if not already initialized
-        if self.index_name not in self.index:
-            self.index[self.index_name] = VectorDB(
-                index_dims=index_dims,
-                top_k=top_k,
-                similarity_metric=metric
-            )
+        self._init(top_k, index_dims, metric)
 
         # Process each operation
         if operation == 'search':
@@ -153,7 +147,7 @@ class VectorDBIndexEngine(Engine):
         elif operation == 'config':
             # Handle any configurations if needed (not applicable for in-memory VectorDB)
             assert kwargs, 'Please provide a configuration dictionary.'
-            assert argument.prop.storage_file, 'Please provide a `storage_file` path to load the pre-computed index.'
+            assert storage_file, 'Please provide a `storage_file` path to load the pre-computed index.'
             # Check if the index is to be persisted or loaded
             if argument.prop.load:
                 # Load the pre-computed index from the provided path
@@ -161,11 +155,12 @@ class VectorDBIndexEngine(Engine):
                     index_dims=index_dims,
                     top_k=top_k,
                     similarity_metric=metric,
-                    load_on_init=argument.prop.storage_file
+                    load_on_init=storage_file,
+                    index_name=index_name
                 )
             else:
                 # Save the pre-computed index to the provided path
-                self.index[index_name].save(argument.prop.storage_file)
+                self.index[index_name].save(storage_file)
 
         else:
             raise ValueError('Invalid operation')
@@ -174,6 +169,15 @@ class VectorDBIndexEngine(Engine):
 
         rsp = VectorDBResult(rsp, query, None)
         return [rsp], metadata
+
+    def _init(self, top_k, index_dims, metric):
+        # Initialize the VectorDB if not already initialized
+        if self.index_name not in self.index:
+            self.index[self.index_name] = VectorDB(
+                index_dims=index_dims,
+                top_k=top_k,
+                similarity_metric=metric
+            )
 
     def prepare(self, argument):
         assert not argument.prop.processed_input, 'VectorDB indexing engine does not support processed_input.'
@@ -184,3 +188,8 @@ class VectorDBIndexEngine(Engine):
         storage_file = storage_file or self._index_storage_file
         # Save the pre-computed index to the provided path
         self.index[index_name].save(storage_file)
+
+    def purge(self, index_name = None):
+        index_name   = index_name or self.index_name
+        # Purge the pre-computed index from the database path
+        self.index[index_name].purge(index_name)
