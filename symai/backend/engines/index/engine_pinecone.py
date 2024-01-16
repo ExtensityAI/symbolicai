@@ -43,6 +43,9 @@ class PineconeResult(Result):
         return [v['metadata']['text'] for v in res['matches']]
 
     def _unpack_matches(self):
+        if not self.value:
+            return
+
         for i, match in enumerate(self.value):
             match = match.strip()
             if match.startswith('# ----[FILE_START]') and '# ----[FILE_END]' in match:
@@ -83,7 +86,7 @@ Matches:
         return f'<ul>{doc_str}</ul>'
 
 
-class IndexEngine(Engine):
+class PineconeIndexEngine(Engine):
     _default_api_key         = SYMAI_CONFIG['INDEXING_ENGINE_API_KEY']
     _default_environment     = SYMAI_CONFIG['INDEXING_ENGINE_ENVIRONMENT']
     _default_index_name      = 'dataindex'
