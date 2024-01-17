@@ -468,30 +468,43 @@ class Symbol(metaclass=SymbolMeta):
 
         return f'\n[DYNAMIC CONTEXT]\n{val}' if val else ''
 
-    def adapt(self, context: str) -> None:
+    def adapt(self, context: str, types: List[Type] = []) -> None:
         '''
         Update the dynamic context with a given runtime context.
 
         Args:
             context (str): The context to be added to the dynamic context.
+            type (Type): The type used to update the dynamic context
 
         '''
-        type_ = str(type(self))
-        if type_ not in self._dynamic_context:
-            self._dynamic_context[type_] = []
+        if len(types) == 0:
+            types = [type(self)]
+        if not isinstance(types, list):
+            types = [types]
 
-        self._dynamic_context[type_].append(context)
+        for type_ in types:
+            type_ = str(type_)
+            if type_ not in self._dynamic_context:
+                self._dynamic_context[type_] = []
 
-    def clear(self) -> None:
+            self._dynamic_context[type_].append(context)
+
+    def clear(self, types: List[Type] = []) -> None:
         '''
         Clear the dynamic context associated with this symbol type.
         '''
-        type_ = str(type(self))
-        if type_ not in self._dynamic_context:
-            self._dynamic_context[type_] = []
-            return self
+        if len(types) == 0:
+            types = [type(self)]
+        if not isinstance(types, list):
+            types = [types]
 
-        self._dynamic_context[type_].clear()
+        for type_ in types:
+            type_ = str(type_)
+            if type_ not in self._dynamic_context:
+                self._dynamic_context[type_] = []
+                return self
+
+            self._dynamic_context[type_].clear()
 
     def __len__(self) -> int:
         '''
