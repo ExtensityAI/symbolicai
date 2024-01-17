@@ -117,6 +117,26 @@ class Sequence(TrackerTraceable):
         return sym
 
 
+class Parallel(Expression):
+    def __init__(self, *expr: List[Expression], sequential: bool = False, **kwargs):
+        super().__init__(**kwargs)
+        self.sequential: bool       = sequential
+        self.expr: List[Expression] = expr
+        self.results: List[Symbol]  = []
+
+    def forward(self, *args, **kwargs) -> Symbol:
+        # run in sequence
+        if self.sequential:
+            return [e(*args, **kwargs) for e in self.expr]
+        # run in parallel
+        @core_ext.parallel(self.expr)
+        def _func(e, *args, **kwargs):
+            return e(*args, **kwargs)
+        self.results = _func(*args, **kwargs)
+        # final result of the parallel execution
+        return self._to_symbol(self.results)
+
+
 #@TODO: BinPacker(format="...") -> ensure that data packages form a "bin" that's consistent (e.g. never break a sentence in the middle)
 class Stream(Expression):
     def __init__(self, expr: Optional[Expression] = None, retrieval: Optional[str] = None, **kwargs):
