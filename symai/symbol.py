@@ -468,6 +468,31 @@ class Symbol(metaclass=SymbolMeta):
 
         return f'\n[DYNAMIC CONTEXT]\n{val}' if val else ''
 
+    def adapt(self, context: str) -> None:
+        '''
+        Update the dynamic context with a given runtime context.
+
+        Args:
+            context (str): The context to be added to the dynamic context.
+
+        '''
+        type_ = str(type(self))
+        if type_ not in self._dynamic_context:
+            self._dynamic_context[type_] = []
+
+        self._dynamic_context[type_].append(context)
+
+    def clear(self) -> None:
+        '''
+        Clear the dynamic context associated with this symbol type.
+        '''
+        type_ = str(type(self))
+        if type_ not in self._dynamic_context:
+            self._dynamic_context[type_] = []
+            return self
+
+        self._dynamic_context[type_].clear()
+
     def __len__(self) -> int:
         '''
         Get the length of the value of the Symbol.

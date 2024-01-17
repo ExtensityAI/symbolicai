@@ -1317,37 +1317,6 @@ class IterationPrimitives(Primitive):
         self._value = self._to_symbol(_func(self, key)).value
 
 
-class ContextualPrimitives(Primitive):
-    '''
-    This mixin contains functions that deal with the context of the symbol. The functions in this mixin manage dynamic context of symbols (like adding, clearing), or deal with type checking and related functionalities.
-    New functionalities might include operations that further interact with or manipulate the context associated with symbols.
-    '''
-    def update(self, feedback: str) -> None:
-        '''
-        Update the dynamic context with a given runtime feedback.
-
-        Args:
-            feedback (str): The feedback to be added to the dynamic context.
-
-        '''
-        type_ = str(type(self))
-        if type_ not in self._dynamic_context:
-            self._dynamic_context[type_] = []
-
-        self._dynamic_context[type_].append(feedback)
-
-    def clear(self) -> None:
-        '''
-        Clear the dynamic context associated with this symbol type.
-        '''
-        type_ = str(type(self))
-        if type_ not in self._dynamic_context:
-            self._dynamic_context[type_] = []
-            return self
-
-        self._dynamic_context[type_].clear()
-
-
 class ValueHandlingPrimitives(Primitive):
     '''
     This mixin includes functions responsible for handling symbol values - tokenization, type retrieval, value casting, indexing, etc.
