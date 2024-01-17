@@ -100,6 +100,7 @@ class Symbol(metaclass=SymbolMeta):
         }
         self._metadata  = Metadata() # use global metadata by default
         self._parent    = None
+        self._root      = self
         self._children  = []
         self._static_context = static_context
         # if value is a single value, unwrap it
@@ -125,11 +126,10 @@ class Symbol(metaclass=SymbolMeta):
                 # if not nested, copy the symbol's value, metadata, parent, and children
                 if not nested:
                     self._metadata       = value.metadata
-                    # self._parent         = value._parent
-                    # self._children       = value._children
                     self._static_context = value.static_context
+                    self._kwargs         = value._kwargs
                 # unwrap the symbol's value
-                value                = value.value
+                value                    = value.value
 
             # if the value is a list, tuple, dict, or set, unwrap all nested symbols
             elif isinstance(value, list) or isinstance(value, dict) or \
@@ -160,19 +160,14 @@ class Symbol(metaclass=SymbolMeta):
             value (Any): The value of the symbol.
         '''
         # if value is a single value, unwrap it
-        if len(value) == 1:
-            v = value[0]
+        for v in value:
             if isinstance(v, Symbol):
+                # set root of new instance to root of previous instance
+                self._root = v._root
                 # new instance becomes child of previous instance
                 self._parent = v
                 # add new instance to children of previous instance
                 v._children.append(self)
-                # inherit metadata from previous instance
-                self._metadata = v._metadata
-                # inherit static context from previous instance
-                self._static_context = v._static_context
-                # inherit kwargs from previous instance
-                self._kwargs = v._kwargs
 
     def __new__(cls, *args, mixin: Optional[bool] = None, primitives: Optional[List[Type]] = None, callables: Optional[Dict[str, Callable]] = None, only_nesy: bool = False, iterate_nesy: bool = False, **kwargs) -> "Symbol":
         '''
@@ -491,6 +486,16 @@ class Symbol(metaclass=SymbolMeta):
         return f'\n{val}' if val else ''
 
     @property
+    def root(self) -> "Symbol":
+        '''
+        Get the root of the symbol.
+
+        Returns:
+            Symbol: The root of the symbol.
+        '''
+        return self._root
+
+    @property
     def parent(self) -> "Symbol":
         '''
         Get the parent of the symbol.
@@ -717,11 +722,13 @@ class Expression(Symbol):
         Returns:
             Any: The result of the forward method.
         '''
+        # evaluate the expression
         res = self.forward(*args, **kwargs)
-        if self._parent is not None:
-            if self._parent._metadata.results is None:
-                self._parent._metadata.results = []
-            self._parent._metadata.results.append(res)
+        # transport results to the root node for global access
+        if self.root is not None:
+            if self.root._metadata.results is None:
+                self.root._metadata.results = []
+            self.root._metadata.results.append(res)
         return res
 
     def __getstate__(self):
