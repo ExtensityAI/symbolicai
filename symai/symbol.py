@@ -99,12 +99,14 @@ class Symbol(metaclass=SymbolMeta):
             **kwargs
         }
         self._metadata  = Metadata() # use global metadata by default
-        self._parent    = None #@TODO: to enable graph construction
-        self._children  = None #@TODO: to enable graph construction
+        self._parent    = None
+        self._children  = []
         self._static_context = static_context
         # if value is a single value, unwrap it
         _value          = self._unwrap_symbols_args(*value)
         self._value     = _value
+        # construct dependency graph for symbol
+        self._construct_dependency_graph(*value)
 
     def _unwrap_symbols_args(self, *args, nested: bool = False) -> Any:
         if len(args) == 0:
@@ -123,8 +125,8 @@ class Symbol(metaclass=SymbolMeta):
                 # if not nested, copy the symbol's value, metadata, parent, and children
                 if not nested:
                     self._metadata       = value.metadata
-                    self._parent         = value._parent
-                    self._children       = value._children
+                    # self._parent         = value._parent
+                    # self._children       = value._children
                     self._static_context = value.static_context
                 # unwrap the symbol's value
                 value                = value.value
@@ -149,6 +151,28 @@ class Symbol(metaclass=SymbolMeta):
 
         elif len(args) > 1:
             return [self._unwrap_symbols_args(a, nested=True) if isinstance(a, Symbol) else a for a in args]
+
+    def _construct_dependency_graph(self, *value):
+        '''
+        Construct a dependency graph for the symbol.
+
+        Args:
+            value (Any): The value of the symbol.
+        '''
+        # if value is a single value, unwrap it
+        if len(value) == 1:
+            v = value[0]
+            if isinstance(v, Symbol):
+                # new instance becomes child of previous instance
+                self._parent = v
+                # add new instance to children of previous instance
+                v._children.append(self)
+                # inherit metadata from previous instance
+                self._metadata = v._metadata
+                # inherit static context from previous instance
+                self._static_context = v._static_context
+                # inherit kwargs from previous instance
+                self._kwargs = v._kwargs
 
     def __new__(cls, *args, mixin: Optional[bool] = None, primitives: Optional[List[Type]] = None, callables: Optional[Dict[str, Callable]] = None, only_nesy: bool = False, iterate_nesy: bool = False, **kwargs) -> "Symbol":
         '''
@@ -466,6 +490,26 @@ class Symbol(metaclass=SymbolMeta):
 
         return f'\n{val}' if val else ''
 
+    @property
+    def parent(self) -> "Symbol":
+        '''
+        Get the parent of the symbol.
+
+        Returns:
+            Symbol: The parent of the symbol.
+        '''
+        return self._parent
+
+    @property
+    def children(self) -> List["Symbol"]:
+        '''
+        Get the children of the symbol.
+
+        Returns:
+            List[Symbol]: The children of the symbol.
+        '''
+        return self._children
+
     def adapt(self, context: str, types: List[Type] = []) -> None:
         '''
         Update the dynamic context with a given runtime context.
@@ -673,7 +717,12 @@ class Expression(Symbol):
         Returns:
             Any: The result of the forward method.
         '''
-        return self.forward(*args, **kwargs)
+        res = self.forward(*args, **kwargs)
+        if self._parent is not None:
+            if self._parent._metadata.results is None:
+                self._parent._metadata.results = []
+            self._parent._metadata.results.append(res)
+        return res
 
     def __getstate__(self):
         state = super().__getstate__().copy()
