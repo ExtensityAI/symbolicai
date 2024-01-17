@@ -439,15 +439,13 @@ class Symbol(metaclass=SymbolMeta):
         Returns:
             str: The static context of the symbol.
         '''
-        return f'\n[STATIC CONTEXT]\n{self._static_context}' if self._static_context else ''
+        return f'{self._static_context}' if self._static_context else ''
 
     @static_context.setter
     def static_context(self, value: str):
         '''
         Set the static context of the symbol which is defined by the user when creating a symbol subclass.
         '''
-        if '\n[STATIC CONTEXT]\n' in value:
-            value = value.replace('\n[STATIC CONTEXT]\n', '')
         self._static_context = value
 
     @property
@@ -466,7 +464,7 @@ class Symbol(metaclass=SymbolMeta):
 
         val = '\n'.join(self._dynamic_context[type_])
 
-        return f'\n[DYNAMIC CONTEXT]\n{val}' if val else ''
+        return f'\n{val}' if val else ''
 
     def adapt(self, context: str, types: List[Type] = []) -> None:
         '''
@@ -477,10 +475,10 @@ class Symbol(metaclass=SymbolMeta):
             type (Type): The type used to update the dynamic context
 
         '''
-        if len(types) == 0:
-            types = [type(self)]
         if not isinstance(types, list):
             types = [types]
+        if len(types) == 0:
+            types = [type(self)]
 
         for type_ in types:
             type_ = str(type_)
@@ -493,10 +491,10 @@ class Symbol(metaclass=SymbolMeta):
         '''
         Clear the dynamic context associated with this symbol type.
         '''
-        if len(types) == 0:
-            types = [type(self)]
         if not isinstance(types, list):
             types = [types]
+        if len(types) == 0:
+            types = [type(self)]
 
         for type_ in types:
             type_ = str(type_)
