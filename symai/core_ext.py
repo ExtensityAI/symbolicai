@@ -6,10 +6,11 @@ import pickle
 import random
 import time
 import logging
+import dill
 import multiprocessing as mp
 
 from . import __root_dir__
-from typing import Callable
+from typing import Callable, List
 from pathlib import Path
 from pathos.multiprocessing import ProcessingPool as PPool
 
@@ -19,16 +20,35 @@ from .functional import EngineRepository
 logging.getLogger("multiprocessing").setLevel(logging.ERROR)
 
 
-def parallel(worker=mp.cpu_count()//2):
-    def dec(function):
-        @functools.wraps(function)
-        def _dec(*args, **kwargs):
-            with PPool(worker) as pool:
-                map_obj = pool.map(function, *args, **kwargs)
-            return map_obj
-        return _dec
-    return dec
+def _run_in_process(expr, func, args, kwargs):
+    # Unpickling the expression using dill
+    expr = dill.loads(expr)
+    func = dill.loads(func)
+    return func(expr, *args, **kwargs)
 
+def _parallel(func: Callable, expressions: List[Callable], worker: int = mp.cpu_count() // 2):
+    def proxy_function(*args, **kwargs):
+        # Pickle the expressions using dill
+        pickled_exprs = [dill.dumps(expr) for expr in expressions]
+        pickled_func = dill.dumps(func)
+        with mp.Pool(processes=worker) as pool:
+            # We map the _run_in_process function to each pickled expression
+            results = pool.starmap(_run_in_process, [(expr, pickled_func, args, kwargs) for expr in pickled_exprs])
+        return results
+    return proxy_function
+
+# Decorator
+def parallel(expressions: List[Callable], worker: int = mp.cpu_count() // 2):
+    def decorator_parallel(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            # Run expressions in parallel
+            parallel_func = _parallel(func, expressions, worker=worker)
+            # Call the proxy function to execute in parallel and capture results
+            results = parallel_func(*args, **kwargs)
+            return results
+        return wrapper
+    return decorator_parallel
 
 def bind(engine: str, property: str):
     '''
