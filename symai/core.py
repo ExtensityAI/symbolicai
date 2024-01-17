@@ -55,7 +55,7 @@ class Argument(Expression):
 
     @property
     def value(self):
-        return self.prop.processed_input
+        return self.prop
 
     def _construct_kwargs(self, signature_kwargs, decorator_kwargs):
         '''
