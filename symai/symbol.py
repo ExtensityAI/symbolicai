@@ -756,9 +756,9 @@ class Expression(Symbol):
         res = self.forward(*args, **kwargs)
         # transport results to the root node for global access
         if self.root is not None:
-            if self.root._metadata.results is None:
-                self.root._metadata.results = []
-            self.root._metadata.results.append(res)
+            if self.root.metadata._expr_results is None:
+                self.root.metadata._expr_results = []
+            self.root.metadata._expr_results.append(res)
         return res
 
     def __getstate__(self):
