@@ -630,7 +630,7 @@ class Symbol(metaclass=SymbolMeta):
             if type_ not in Symbol._dynamic_context:
                 Symbol._dynamic_context[type_] = []
 
-            Symbol._dynamic_context[type_].append(context)
+            Symbol._dynamic_context[type_].append(str(context))
 
     def clear(self, types: List[Type] = []) -> None:
         '''
