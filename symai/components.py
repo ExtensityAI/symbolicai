@@ -569,7 +569,7 @@ class Function(TrackerTraceable):
         })
         obj = _type()
 
-        return obj(*args, **kwargs)
+        return self._to_symbol(obj(*args, **kwargs))
 
 
 class PrepareData(Function):
