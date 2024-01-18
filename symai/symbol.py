@@ -54,6 +54,19 @@ class Metadata(object):
         '''
         self.__dict__[name] = value
 
+    def __repr__(self) -> str:
+        '''
+        Get the representation of the Symbol object as a string.
+
+        Returns:
+            str: The representation of the Symbol object.
+        '''
+        # class with full path
+        class_ = self.__class__.__module__ + '.' + self.__class__.__name__
+        hex_   = hex(id(self))
+        from_symbol =  f' from {self.symbol_type.__module__}.{self.symbol_type.__name__}' if self.symbol_type else ''
+        return f'<class {class_} at {hex_}{from_symbol}>'
+
 
 class SymbolMeta(type):
     """
@@ -74,7 +87,12 @@ class SymbolMeta(type):
         Create a new class with a unified metaclass.
         """
         # create a new cls type that inherits from Symbol and the mixin primitive types
-        cls            = type.__new__(mcls, name, bases, attrs)
+        cls = type.__new__(mcls, name, bases, attrs)
+        # inherit the base class module for dynamic type creation
+        if '__module__' in attrs:
+            cls.__module__ = attrs['__module__']
+        elif len(bases) > 0:
+            cls.__module__ = bases[0].__module__
         return cls
 
 
@@ -85,7 +103,7 @@ class Symbol(metaclass=SymbolMeta):
     _metadata._primitives = {}
     _dynamic_context: Dict[str, List[str]] = {}
 
-    def __init__(self, *value, static_context: Optional[str] = '', **kwargs) -> None:
+    def __init__(self, *value, static_context: Optional[str] = '', dynamic_context: Optional[str] = None, **kwargs) -> None:
         '''
         Initialize a Symbol instance with a specified value. Unwraps nested symbols.
 
@@ -105,9 +123,11 @@ class Symbol(metaclass=SymbolMeta):
             **kwargs
         }
         self._metadata  = Metadata() # use global metadata by default
+        self._metadata.symbol_type = type(self)
         self._parent    = None
         self._children  = []
-        self._static_context = static_context
+        self._static_context  = static_context
+        self._dynamic_context = dynamic_context or Symbol._dynamic_context
         # if value is a single value, unwrap it
         _value          = self._unwrap_symbols_args(*value)
         self._value     = _value
@@ -381,6 +401,7 @@ class Symbol(metaclass=SymbolMeta):
         '''
         vars(self).update(state)
         self._metadata   = Metadata()
+        self._metadata.symbol_type = type(self)
         self._kwargs     = self._kwargs
         self._parent     = None
         self._children   = []
@@ -500,13 +521,15 @@ class Symbol(metaclass=SymbolMeta):
         Returns:
             str: The dynamic context associated with this symbol type.
         '''
+        # if dynamic context is a string, return it
+        if isinstance(Symbol._dynamic_context, str):
+            return Symbol._dynamic_context
         type_ = str(type(self))
-        if type_ not in self._dynamic_context:
-            self._dynamic_context[type_] = []
+        if type_ not in Symbol._dynamic_context:
+            Symbol._dynamic_context[type_] = []
             return ''
 
-        val = '\n'.join(self._dynamic_context[type_])
-
+        val = '\n'.join(Symbol._dynamic_context[type_])
         return f'\n{val}' if val else ''
 
     @property
@@ -558,10 +581,10 @@ class Symbol(metaclass=SymbolMeta):
 
         for type_ in types:
             type_ = str(type_)
-            if type_ not in self._dynamic_context:
-                self._dynamic_context[type_] = []
+            if type_ not in Symbol._dynamic_context:
+                Symbol._dynamic_context[type_] = []
 
-            self._dynamic_context[type_].append(context)
+            Symbol._dynamic_context[type_].append(context)
 
     def clear(self, types: List[Type] = []) -> None:
         '''
@@ -574,11 +597,11 @@ class Symbol(metaclass=SymbolMeta):
 
         for type_ in types:
             type_ = str(type_)
-            if type_ not in self._dynamic_context:
-                self._dynamic_context[type_] = []
-                return self
+            if type_ not in Symbol._dynamic_context:
+                Symbol._dynamic_context[type_] = []
+                return
 
-            self._dynamic_context[type_].clear()
+            Symbol._dynamic_context[type_].clear()
 
     def __len__(self) -> int:
         '''

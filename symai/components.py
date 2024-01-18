@@ -506,26 +506,28 @@ class FileQuery(Expression):
 
 class Function(TrackerTraceable):
     def __init__(self, prompt: str,
-                 examples: Optional[str] = [],
-                 pre_processors: Optional[List[PreProcessor]] = None,
+                 examples: Optional[str]     = [],
+                 pre_processors: Optional[List[PreProcessor]]   = None,
                  post_processors: Optional[List[PostProcessor]] = None,
-                 default: Optional[object] = None,
+                 default: Optional[object]   = None,
                  constraints: List[Callable] = [],
-                 return_type: Optional[Type] = str, *args, **kwargs):
+                 return_type: Optional[Type] = str,
+                 origin_type: Optional[Type] = None, *args, **kwargs):
         super().__init__(**kwargs)
-        chars = ascii_lowercase + ascii_uppercase
-        self.name = 'func_' + ''.join(sample(chars, 15))
-        self.args = args
+        chars       = ascii_lowercase + ascii_uppercase
+        self.name   = 'func_' + ''.join(sample(chars, 15))
+        self.args   = args
         self.kwargs = kwargs
-        self._promptTemplate = prompt
-        self._promptFormatArgs = []
+        self._promptTemplate     = prompt
+        self._promptFormatArgs   = []
         self._promptFormatKwargs = {}
-        self.examples = Prompt(examples)
-        self.pre_processors = pre_processors
+        self.examples        = Prompt(examples)
+        self.pre_processors  = pre_processors
         self.post_processors = post_processors
-        self.constraints = constraints
-        self.default = default
-        self.return_type = return_type
+        self.constraints     = constraints
+        self.default         = default
+        self.return_type     = return_type
+        self.origin_type     = origin_type or Expression
 
     @property
     def prompt(self):
@@ -553,7 +555,7 @@ class Function(TrackerTraceable):
                   *self.args, **self.kwargs)
         def _func(_, *args, **kwargs) -> self.return_type:
             pass
-        _type = type(self.name, (Expression, ), {
+        _type = type(self.name, (self.origin_type, ), {
             # constructor
             "forward": _func,
             "sym_return_type": Symbol,
