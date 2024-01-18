@@ -702,7 +702,7 @@ class Symbol(metaclass=SymbolMeta):
         else:
             return str(self.value)
 
-    def __repr__(self) -> str:
+    def __repr__(self, simplified: bool = False) -> str:
         '''
         Get the representation of the Symbol object as a string.
 
@@ -716,7 +716,7 @@ class Symbol(metaclass=SymbolMeta):
         # only show first n characters of value and then add '...' and the last x characters
         if len(val) > 50:
             val = val[:25] + ' ... ' + val[-20:]
-        return f'<class {class_} at {hex_}>(value={val})'
+        return f'<class {class_} at {hex_}>(value={val})' if not simplified else f'{class_} at {hex_}'
 
     def _repr_html_(self) -> str:
         '''
