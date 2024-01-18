@@ -369,7 +369,6 @@ class Symbol(metaclass=SymbolMeta):
         Returns:
             Type: The reconstructed class.
         '''
-        ori_cls = base_cls
         if use_mixin:
             # Convert primitive info tuples back to types
             primitives     = [primitive for primitive, name in primitives_info]
@@ -547,6 +546,50 @@ class Symbol(metaclass=SymbolMeta):
         while root.parent is not None:
             root = root.parent
         return root
+
+    @property
+    def nodes(self) -> List["Symbol"]:
+        '''
+        Get all nodes descending recursively from the symbol.
+
+        Returns:
+            List[Symbol]: All nodes of the symbol.
+        '''
+        def _func(node, nodes):
+            nodes.append(node)
+            for child in node.children:
+                _func(child, nodes)
+
+        nodes = []
+        _func(self, nodes)
+        return nodes
+
+    @property
+    def edges(self) -> List[tuple]:
+        '''
+        Get all edges descending recursively from the symbol.
+
+        Returns:
+            List[tuple]: All edges of the symbol.
+        '''
+        def _func(node, edges):
+            for child in node.children:
+                edges.append((node, child))
+                _func(child, edges)
+
+        edges = []
+        _func(self, edges)
+        return edges
+
+    @property
+    def graph(self) -> (List["Symbol"], List[tuple]):
+        '''
+        Get the graph representation of the symbol.
+
+        Returns:
+            List[Symbol], List[tuple]: The nodes and edges of the symbol.
+        '''
+        return self.nodes, self.edges
 
     @property
     def parent(self) -> "Symbol":
