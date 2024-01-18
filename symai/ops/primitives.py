@@ -111,7 +111,10 @@ class ArithmeticPrimitives(Primitive):
         Returns:
             bool: True if the current Symbol is equal to the 'other' Symbol, otherwise False.
         '''
-        # First verify for specific type support
+        # First verify if not identical (same object)
+        if self is other:
+            return True
+        # Then verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value == other.value, op='==')
         # verify the result and return if found return
         if result is not None and result is not False:
