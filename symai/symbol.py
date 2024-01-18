@@ -521,15 +521,18 @@ class Symbol(metaclass=SymbolMeta):
         Returns:
             str: The dynamic context associated with this symbol type.
         '''
-        # if dynamic context is a string, return it
-        if isinstance(Symbol._dynamic_context, str):
-            return Symbol._dynamic_context
+        # if dynamic context is manually set to a string, return it
+        if isinstance(self._dynamic_context, str):
+            return self._dynamic_context
         type_ = str(type(self))
         if type_ not in Symbol._dynamic_context:
             Symbol._dynamic_context[type_] = []
             return ''
-
-        val = '\n'.join(str(Symbol._dynamic_context[type_]))
+        dyn_ctxt = Symbol._dynamic_context[type_]
+        if len(dyn_ctxt) == 0:
+            return ''
+        sym_val = [str(v.value) if isinstance(v, Symbol) else str(v) for v in dyn_ctxt]
+        val = '\n'.join(sym_val)
         return f'\n{val}' if val else ''
 
     @property

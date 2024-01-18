@@ -505,14 +505,16 @@ class FileQuery(Expression):
 
 
 class Function(TrackerTraceable):
-    def __init__(self, prompt: str,
-                 examples: Optional[str]     = [],
+    def __init__(self, prompt: str       = '',
+                 examples: Optional[str] = [],
                  pre_processors: Optional[List[PreProcessor]]   = None,
                  post_processors: Optional[List[PostProcessor]] = None,
-                 default: Optional[object]   = None,
-                 constraints: List[Callable] = [],
-                 return_type: Optional[Type] = str,
-                 origin_type: Optional[Type] = None, *args, **kwargs):
+                 default: Optional[object]       = None,
+                 constraints: List[Callable]     = [],
+                 return_type: Optional[Type]     = str,
+                 sym_return_type: Optional[Type] = Symbol,
+                 origin_type: Optional[Type]     = Expression,
+                 *args, **kwargs):
         super().__init__(**kwargs)
         chars       = ascii_lowercase + ascii_uppercase
         self.name   = 'func_' + ''.join(sample(chars, 15))
@@ -527,7 +529,8 @@ class Function(TrackerTraceable):
         self.constraints     = constraints
         self.default         = default
         self.return_type     = return_type
-        self.origin_type     = origin_type or Expression
+        self.sym_return_type = sym_return_type
+        self.origin_type     = origin_type
 
     @property
     def prompt(self):
@@ -558,14 +561,15 @@ class Function(TrackerTraceable):
         _type = type(self.name, (self.origin_type, ), {
             # constructor
             "forward": _func,
-            "sym_return_type": Symbol,
+            "sym_return_type": self.sym_return_type,
             "static_context": self.static_context,
             "dynamic_context": self.dynamic_context,
+            "__class__": self.__class__,
+            "__module__": self.__module__,
         })
         obj = _type()
-        obj.sym_return_type = _type
 
-        return self._to_symbol(obj(*args, **kwargs))
+        return obj(*args, **kwargs)
 
 
 class PrepareData(Function):
