@@ -5,6 +5,7 @@ import numpy as np
 from box import Box
 from json import JSONEncoder
 from typing import Any, Dict, Iterator, List, Optional, Type, Callable
+from collections.abc import Iterable
 
 from . import core
 from .ops import SYMBOL_PRIMITIVES
@@ -58,6 +59,11 @@ class SymbolMeta(type):
     """
     Metaclass to unify metaclasses of mixed-in primitives.
     """
+    def __call__(cls, *args, **kwargs):
+        obj = type.__call__(cls, *args, **kwargs)
+        obj.__post_init__()
+        return obj
+
     def __instancecheck__(cls, obj):
         if str(obj.__class__) == str(cls):
             return True
@@ -109,6 +115,25 @@ class Symbol(metaclass=SymbolMeta):
         # construct dependency graph for symbol
         self._construct_dependency_graph(*value)
 
+    def __post_init__(self): # this is called at the end of __init__
+        '''
+        Post-initialization method that is called at the end of the __init__ method.
+        '''
+        def _func(v):
+            # check if property is of type Symbol and not private and a class variable (not a function)
+            if isinstance(v, Symbol) and not k.startswith('_') and not callable(v):
+                v._parent = self
+                v._root   = self._root
+                self._children.append(v)
+            # else if iterable, check if it contains symbols
+            elif isinstance(v, Iterable) and not k.startswith('_') and not callable(v):
+                for i in v:
+                    _func(i)
+
+        # analyze all self. properties if they are of type Symbol and add their parent and root
+        for k, v in self.__dict__.items():
+            _func(v)
+
     def _unwrap_symbols_args(self, *args, nested: bool = False) -> Any:
         if len(args) == 0:
             return None
@@ -159,15 +184,15 @@ class Symbol(metaclass=SymbolMeta):
         Args:
             value (Any): The value of the symbol.
         '''
-        # if value is a single value, unwrap it
+        # for each value
         for v in value:
             if isinstance(v, Symbol):
                 # set root of new instance to root of previous instance
-                self._root = v._root
+                v._root = self._root
                 # new instance becomes child of previous instance
-                self._parent = v
+                v._parent = self
                 # add new instance to children of previous instance
-                v._children.append(self)
+                self._children.append(v)
 
     def __new__(cls, *args, mixin: Optional[bool] = None, primitives: Optional[List[Type]] = None, callables: Optional[Dict[str, Callable]] = None, only_nesy: bool = False, iterate_nesy: bool = False, **kwargs) -> "Symbol":
         '''
@@ -399,7 +424,11 @@ class Symbol(metaclass=SymbolMeta):
             return value
         # inherit kwargs for new symbol instance
         kwargs = {**self._kwargs, **kwargs}
-        return Symbol(value, **kwargs)
+        sym    = Symbol(value, **kwargs)
+        self._parent = sym
+        self._root   = sym._root
+        sym._children.append(self)
+        return sym
 
     @property
     def _symbol_type(self) -> "Symbol":
