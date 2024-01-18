@@ -3,11 +3,12 @@ import os
 import re
 import numpy as np
 
+from tqdm import tqdm
 from pathlib import Path
 from random import sample
 from string import ascii_lowercase, ascii_uppercase
 from typing import Callable, Iterator, List, Optional, Type
-from tqdm import tqdm
+from pyvis.network import Network
 
 from . import core
 from . import core_ext
@@ -25,6 +26,37 @@ from .post_processors import (
     StripPostProcessor,
     CodeExtractPostProcessor
 )
+
+
+class GraphViz(Expression):
+    def __init__(self,
+                 notebook = True,
+                 cdn_resources = "remote",
+                 bgcolor = "#222222",
+                 font_color = "white",
+                 height = "750px",
+                 width = "100%",
+                 select_menu = True,
+                 filter_menu = True,
+                 **kwargs):
+        super().__init__(**kwargs)
+        self.net  = Network(notebook=notebook,
+                            cdn_resources=cdn_resources,
+                            bgcolor=bgcolor,
+                            font_color=font_color,
+                            height=height,
+                            width=width,
+                            select_menu=select_menu,
+                            filter_menu=filter_menu)
+
+    def forward(self, sym: Symbol, file_path: str, **kwargs):
+        nodes = [str(n) if n.value else n.__repr__(simplified=True) for n in sym.nodes]
+        edges = [(str(e[0]) if e[0].value else e[0].__repr__(simplified=True),
+                  str(e[1]) if e[1].value else e[1].__repr__(simplified=True)) for e in sym.edges]
+        self.net.add_nodes(nodes)
+        self.net.add_edges(edges)
+        file_path = file_path if file_path.endswith('.html') else file_path + '.html'
+        return self.net.show(file_path)
 
 
 class TrackerTraceable(Expression):
