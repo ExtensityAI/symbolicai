@@ -529,7 +529,7 @@ class Symbol(metaclass=SymbolMeta):
             Symbol._dynamic_context[type_] = []
             return ''
 
-        val = '\n'.join(Symbol._dynamic_context[type_])
+        val = '\n'.join(str(Symbol._dynamic_context[type_]))
         return f'\n{val}' if val else ''
 
     @property
