@@ -5,7 +5,6 @@ import numpy as np
 from box import Box
 from json import JSONEncoder
 from typing import Any, Dict, Iterator, List, Optional, Type, Callable
-from collections.abc import Iterable
 
 from . import core
 from .ops import SYMBOL_PRIMITIVES
@@ -119,20 +118,20 @@ class Symbol(metaclass=SymbolMeta):
         '''
         Post-initialization method that is called at the end of the __init__ method.
         '''
-        def _func(v):
+        def _func(k, v):
             # check if property is of type Symbol and not private and a class variable (not a function)
             if isinstance(v, Symbol) and not k.startswith('_') and not callable(v):
                 v._parent = self
                 v._root   = self._root
                 self._children.append(v)
             # else if iterable, check if it contains symbols
-            elif isinstance(v, Iterable) and not k.startswith('_') and not callable(v):
+            elif (isinstance(v, list) or isinstance(v, tuple)) and not k.startswith('_') and not callable(v):
                 for i in v:
-                    _func(i)
+                    _func(k, i)
 
         # analyze all self. properties if they are of type Symbol and add their parent and root
         for k, v in self.__dict__.items():
-            _func(v)
+            _func(k, v)
 
     def _unwrap_symbols_args(self, *args, nested: bool = False) -> Any:
         if len(args) == 0:
