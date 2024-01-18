@@ -1,5 +1,6 @@
 import json
 import copy
+import html
 import numpy as np
 
 from box import Box
@@ -105,7 +106,6 @@ class Symbol(metaclass=SymbolMeta):
         }
         self._metadata  = Metadata() # use global metadata by default
         self._parent    = None
-        self._root      = self
         self._children  = []
         self._static_context = static_context
         # if value is a single value, unwrap it
@@ -120,12 +120,11 @@ class Symbol(metaclass=SymbolMeta):
         '''
         def _func(k, v):
             # check if property is of type Symbol and not private and a class variable (not a function)
-            if isinstance(v, Symbol) and not k.startswith('_') and not callable(v):
+            if isinstance(v, Symbol) and not k.startswith('_'):
                 v._parent = self
-                v._root   = self._root
                 self._children.append(v)
             # else if iterable, check if it contains symbols
-            elif (isinstance(v, list) or isinstance(v, tuple)) and not k.startswith('_') and not callable(v):
+            elif (isinstance(v, list) or isinstance(v, tuple)) and not k.startswith('_'):
                 for i in v:
                     _func(k, i)
 
@@ -186,8 +185,6 @@ class Symbol(metaclass=SymbolMeta):
         # for each value
         for v in value:
             if isinstance(v, Symbol):
-                # set root of new instance to root of previous instance
-                v._root = self._root
                 # new instance becomes child of previous instance
                 v._parent = self
                 # add new instance to children of previous instance
@@ -373,7 +370,6 @@ class Symbol(metaclass=SymbolMeta):
         state.pop('_metadata', None)
         state.pop('_parent', None)
         state.pop('_children', None)
-        state.pop('_root', None)
         return state
 
     def __setstate__(self, state) -> None:
@@ -388,7 +384,6 @@ class Symbol(metaclass=SymbolMeta):
         self._kwargs     = self._kwargs
         self._parent     = None
         self._children   = []
-        self._root       = self
 
     def json(self) -> Dict[str, Any]:
         '''
@@ -427,7 +422,6 @@ class Symbol(metaclass=SymbolMeta):
         kwargs = {**self._kwargs, **kwargs}
         sym    = Symbol(value, **kwargs)
         self._parent = sym
-        self._root   = sym._root
         sym._children.append(self)
         return sym
 
@@ -523,7 +517,10 @@ class Symbol(metaclass=SymbolMeta):
         Returns:
             Symbol: The root of the symbol.
         '''
-        return self._root
+        root = self
+        while root.parent is not None:
+            root = root.parent
+        return root
 
     @property
     def parent(self) -> "Symbol":
@@ -645,8 +642,12 @@ class Symbol(metaclass=SymbolMeta):
         '''
         # class with full path
         class_ = self.__class__.__module__ + '.' + self.__class__.__name__
-        hex_ = hex(id(self))
-        return f'<class {class_} at {hex_}>(value={str(self.value)})'
+        hex_   = hex(id(self))
+        val    = str(self.value)
+        # only show first n characters of value and then add '...' and the last x characters
+        if len(val) > 50:
+            val = val[:25] + ' ... ' + val[-20:]
+        return f'<class {class_} at {hex_}>(value={val})'
 
     def _repr_html_(self) -> str:
         '''
@@ -655,7 +656,7 @@ class Symbol(metaclass=SymbolMeta):
         Returns:
             str: The HTML representation of the Symbol's value.
         '''
-        return str(self.value)
+        return html.escape(self.__repr__())
 
     def __iter__(self) -> Iterator:
         '''
@@ -755,7 +756,7 @@ class Expression(Symbol):
         # evaluate the expression
         res = self.forward(*args, **kwargs)
         # transport results to the root node for global access
-        if self.root is not None:
+        if not self is self.root:
             if self.root.metadata._expr_results is None:
                 self.root.metadata._expr_results = []
             self.root.metadata._expr_results.append(res)

@@ -101,7 +101,10 @@ class Engine(ABC):
         return ENGINE_UNREGISTERED
 
     def preview(self, argument):
-        return argument, {}
+        # used here to avoid circular import
+        from ..symbol import Symbol
+        class Preview(Symbol): pass
+        return Preview(argument), {}
 
     def forward(self, *args: Any, **kwds: Any) -> List[str]:
         raise NotADirectoryError()
