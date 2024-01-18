@@ -373,6 +373,7 @@ class Symbol(metaclass=SymbolMeta):
         state.pop('_metadata', None)
         state.pop('_parent', None)
         state.pop('_children', None)
+        state.pop('_root', None)
         return state
 
     def __setstate__(self, state) -> None:
@@ -387,6 +388,7 @@ class Symbol(metaclass=SymbolMeta):
         self._kwargs     = self._kwargs
         self._parent     = None
         self._children   = None
+        self._root       = self
 
     def json(self) -> Dict[str, Any]:
         '''
