@@ -388,7 +388,7 @@ class Symbol(metaclass=SymbolMeta):
         self._kwargs     = self._kwargs
         self._parent     = None
         self._children   = []
-        self._root       = None
+        self._root       = self
 
     def json(self) -> Dict[str, Any]:
         '''
