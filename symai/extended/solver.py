@@ -1,7 +1,13 @@
 import argparse
+try:
+    import z3
+except ImportError:
+    z3 = None
 
+from .conversation import Conversation
 from .. import core
-from ..post_processors import StripPostProcessor
+from ..components import Execute
+from ..post_processors import StripPostProcessor, CodeExtractPostProcessor
 from ..pre_processors import PreProcessor
 from ..prompts import Prompt
 from ..symbol import Expression, Symbol
@@ -163,6 +169,54 @@ class FormulaWriter(Expression):
         return _func(self)
 
 
+LOGIC_TEMPLATE = """
+# imports the available functions from the z3 library
+from z3 import Solver, Function, IntSort, EnumSort, Int, And, Or, Xor, Const
+
+# Define the problem statement as a function that takes a solver as input and returns a query constant as output
+def problem_statement(S: Solver) -> Const:
+    # Example for using the solver:
+    # Porp, (A, B, C) = EnumSort('Prop', ('A', 'B', 'C')) # Define an enumerated sort
+    # p = Function('prop_func', IntSort(), Prop)          # Define an uninterpreted function that takes an integer as input and returns a Prop as output
+    # S.add(B == p(2))                                    # Assert a new fact
+    # S.add(And(p(1) == A, p(2) == B, p(3) == C))         # Assert a new fact
+    # ...                                                 # Define more facts
+    # query = Const("query", Prop)                        # Create a new constant
+    #
+    # TODO: Define the logic expressions here using the S variable as the solver.
+    query = None
+    # insert your code here
+    return query
+
+# assign result to global output variable to make accessible for caller
+_value_obj_ = problem_statement
+"""
+
+
+class SATSolver(Expression):
+    def forward(self, code):
+        assert z3 is not None, "The z3 library is not installed. Please install it using `pip install 'symbolicai[solver]'` and try again."
+        # Create the execution template
+        runner    = Execute(enclosure=True)
+        # Execute the code
+        statement = runner(code)
+        # Create a new solver instance
+        S         = z3.Solver()
+        # Create a new query
+        query     = statement['locals']['_output_'](S)
+        # Check if the query can be solved
+        r         = S.check()
+        # Print the solution
+        if r == z3.sat:
+            # Get the model
+            m = S.model()
+            # Return the solution
+            return m[query]
+        else:
+            print("Cannot solve the puzzle. Returned: " + str(r))
+            return None
+
+
 #############################################################################################
 #
 # Code for switching between different mathematical modules
@@ -174,6 +228,9 @@ class Solver(Expression):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.sym_return_type = Solver
+        self.solver = SATSolver()
+        self.conv   = Conversation(init=LOGIC_TEMPLATE)
+        self.pp     = CodeExtractPostProcessor()
 
     def rewrite_formula(self, sym, **kwargs):
         formula = sym
@@ -194,7 +251,10 @@ class Solver(Expression):
             formula = self.rewrite_formula(sym, **kwargs)
             print(formula)
         elif 'Implication and logical expressions' == problem:
-            raise NotImplementedError('This feature is not yet implemented.')
+            res     = self.conv(sym, **kwargs)
+            code    = self.pp(str(res), None, tag="python")
+            formula = self.solver(code, lambda: 'German')
+            print(formula)
         elif 'Probability and statistics' == problem:
             raise NotImplementedError('This feature is not yet implemented.')
         elif 'Linear algebra' == problem:

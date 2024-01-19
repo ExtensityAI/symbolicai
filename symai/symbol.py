@@ -590,14 +590,14 @@ class Symbol(metaclass=SymbolMeta):
         return self.nodes, self.edges
 
     @property
-    def root_results(self) -> List["Symbol"]:
+    def linker(self) -> List["Symbol"]:
         '''
-        Get all results descending recursively from the root of the symbol.
+        Returns the link object metadata by descending recursively from the root of the symbol to the root_link object.
 
         Returns:
             List[Symbol]: All results of the symbol.
         '''
-        return self.root.metadata._expr_results
+        return self.root.metadata.root_link
 
     @property
     def parent(self) -> "Symbol":
@@ -619,29 +619,33 @@ class Symbol(metaclass=SymbolMeta):
         '''
         return self._children
 
-    def root_link(self, sym: Any) -> Any:
+    def _root_link(self, sym: Any, **kwargs) -> Any:
         '''
         Call the forward method and assign the result to the graph value attribute.
 
         Args:
             res (Any): The result of the forward method.
+            **kwargs: Arbitrary keyword arguments.
 
         Returns:
             Any: The result of the forward method.
         '''
         # transport results to the root node for global access
         if not self is self.root:
-            if self.root.metadata._expr_results is None:
-                self.root.metadata._expr_results = []
+            ref = self.root.metadata
+            if ref.root_link is None:
+                ref.root_link = Metadata()
+            if ref.root_link.results is None:
+                ref.root_link.results = {}
             prev = None
-            if len(self.root.metadata._expr_results) > 0:
-                prev = self.root.metadata._expr_results[-1] # get previous result
+            if len(ref.root_link.results) > 0:
+                prev = list(ref.root_link.results.values())[-1] # get previous result
             # create new symbol to avoid circular references
             res_ = Symbol(sym)
             if prev is not None and not prev is res_.root:
                 prev.children.append(res_.root)
                 res_.root._parent = prev
-            self.root.metadata._expr_results.append(res_)
+            ref.root_link.results[self.__repr__()] = res_
 
     def adapt(self, context: str, types: List[Type] = []) -> None:
         '''
@@ -857,7 +861,7 @@ class Expression(Symbol):
         # evaluate the expression
         res = self.forward(*args, **kwargs)
         # store the result in the root node and link it to the previous result
-        self.root_link(res)
+        self._root_link(res, **kwargs)
         return res
 
     def __getstate__(self):
