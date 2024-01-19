@@ -140,7 +140,7 @@ class Symbol(metaclass=SymbolMeta):
         '''
         def _func(k, v):
             # check if property is of type Symbol and not private and a class variable (not a function)
-            if isinstance(v, Symbol) and not k.startswith('_'):
+            if isinstance(v, Symbol) and not k.startswith('_') and not v is self:
                 v._parent = self
                 self._children.append(v)
             # else if iterable, check if it contains symbols
@@ -204,7 +204,7 @@ class Symbol(metaclass=SymbolMeta):
         '''
         # for each value
         for v in value:
-            if isinstance(v, Symbol):
+            if isinstance(v, Symbol) and not v is self:
                 # new instance becomes child of previous instance
                 v._parent = self
                 # add new instance to children of previous instance
@@ -441,8 +441,6 @@ class Symbol(metaclass=SymbolMeta):
         # inherit kwargs for new symbol instance
         kwargs = {**self._kwargs, **kwargs}
         sym    = Symbol(value, **kwargs)
-        self._parent = sym
-        sym._children.append(self)
         return sym
 
     @property
@@ -592,6 +590,16 @@ class Symbol(metaclass=SymbolMeta):
         return self.nodes, self.edges
 
     @property
+    def root_results(self) -> List["Symbol"]:
+        '''
+        Get all results descending recursively from the root of the symbol.
+
+        Returns:
+            List[Symbol]: All results of the symbol.
+        '''
+        return self.root.metadata._expr_results
+
+    @property
     def parent(self) -> "Symbol":
         '''
         Get the parent of the symbol.
@@ -610,6 +618,30 @@ class Symbol(metaclass=SymbolMeta):
             List[Symbol]: The children of the symbol.
         '''
         return self._children
+
+    def root_link(self, sym: Any) -> Any:
+        '''
+        Call the forward method and assign the result to the graph value attribute.
+
+        Args:
+            res (Any): The result of the forward method.
+
+        Returns:
+            Any: The result of the forward method.
+        '''
+        # transport results to the root node for global access
+        if not self is self.root:
+            if self.root.metadata._expr_results is None:
+                self.root.metadata._expr_results = []
+            prev = None
+            if len(self.root.metadata._expr_results) > 0:
+                prev = self.root.metadata._expr_results[-1] # get previous result
+            # create new symbol to avoid circular references
+            res_ = Symbol(sym)
+            if prev is not None and not prev is res_.root:
+                prev.children.append(res_.root)
+                res_.root._parent = prev
+            self.root.metadata._expr_results.append(res_)
 
     def adapt(self, context: str, types: List[Type] = []) -> None:
         '''
@@ -824,11 +856,8 @@ class Expression(Symbol):
         '''
         # evaluate the expression
         res = self.forward(*args, **kwargs)
-        # transport results to the root node for global access
-        if not self is self.root:
-            if self.root.metadata._expr_results is None:
-                self.root.metadata._expr_results = []
-            self.root.metadata._expr_results.append(res)
+        # store the result in the root node and link it to the previous result
+        self.root_link(res)
         return res
 
     def __getstate__(self):
