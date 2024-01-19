@@ -2290,6 +2290,24 @@ class DataClusteringPrimitives(Primitive):
         # return the embedding
         return self._metadata.embedding
 
+    def _ensure_numpy_format(self, x, cast=False):
+        # if it is a Symbol, get its value
+        if not isinstance(x, np.ndarray) or not isinstance(x, torch.Tensor) or not isinstance(x, list):
+            if not isinstance(x, self._symbol_type): #@NOTE: enforce Symbol to avoid circular import
+                if not cast:
+                    raise TypeError(f'Cannot compute similarity with type {type(x)}')
+                x = self._symbol_type(x)
+            # evaluate the Symbol as an embedding
+            x = x.embedding
+        # if it is a list, convert it to numpy
+        if isinstance(x, list) or isinstance(x, tuple):
+            assert len(x) > 0, 'Cannot compute similarity with empty list'
+            x = np.array(x)
+        # if it is a tensor, convert it to numpy
+        elif isinstance(x, torch.Tensor):
+            x = x.detach().cpu().numpy()
+        return x.squeeze()[:, None]
+
     def similarity(self, other: Union['Symbol', list, np.ndarray, torch.Tensor], metric: Union['cosine', 'product', 'manhattan', 'euclidean', 'minkowski', 'jaccard'] = 'cosine', eps: float = 1e-8, normalize: Optional[Callable] = None, **kwargs) -> float:
         '''
         Calculates the similarity between two Symbol objects using a specified metric.
@@ -2310,34 +2328,20 @@ class DataClusteringPrimitives(Primitive):
             TypeError: If any of the Symbol objects is not of type np.ndarray or Symbol.
             NotImplementedError: If the given metric is not supported.
         '''
-        def _ensure_numpy_format(x, cast=False):
-            # if it is a Symbol, get its value
-            if not isinstance(x, np.ndarray) or not isinstance(x, torch.Tensor) or not isinstance(x, list):
-                if not isinstance(x, self._symbol_type): #@NOTE: enforce Symbol to avoid circular import
-                    if not cast:
-                        raise TypeError(f'Cannot compute similarity with type {type(x)}')
-                    x = self._symbol_type(x)
-                # evaluate the Symbol as an embedding
-                x = x.embedding
-            # if it is a list, convert it to numpy
-            if isinstance(x, list):
-                x = np.array(x)
-            # if it is a tensor, convert it to numpy
-            elif isinstance(x, torch.Tensor):
-                x = x.detach().cpu().numpy()
-            return x.squeeze()[:, None]
-
-        v = _ensure_numpy_format(self)
-        if isinstance(other, list):
+        v = self._ensure_numpy_format(self)
+        if isinstance(other, list) or isinstance(other, tuple):
             o = []
             for i in range(len(other)):
-                o.append(_ensure_numpy_format(other[i], cast=True))
+                o.append(self._ensure_numpy_format(other[i], cast=True))
             o = np.concatenate(o, axis=1)
         else:
-            o = _ensure_numpy_format(other, cast=True)
+            o = self._ensure_numpy_format(other, cast=True)
 
         if metric == 'cosine':
             val = (v.T@o / (np.sqrt(v.T@v) * np.sqrt(o.T@o) + eps))
+        elif metric == 'angular-similarity':
+            ang_dist = np.arccos((v.T@o / (np.sqrt(v.T@v) * np.sqrt(o.T@o) + eps))) / np.pi
+            val = 1 - ang_dist
         elif metric == 'product':
             val = (v.T@o / (v.shape[0] + eps))
         elif metric == 'manhattan':
@@ -2361,6 +2365,69 @@ class DataClusteringPrimitives(Primitive):
         if normalize is not None:
             val = normalize(val)
         return val
+
+    def distance(self, other: Union['Symbol', list, np.ndarray, torch.Tensor], kernel: Union['gaussian', 'laplacian', 'polynomial', 'sigmoid', 'linear', 'cauchy', 't-distribution', 'inverse-multiquadric'] = 'gaussian', eps: float = 1e-8, **kwargs) -> float:
+        '''
+        Calculates the kernel between two Symbol objects.
+
+        Args:
+            other (Symbol): The other Symbol object to calculate the kernel with.
+            kernel (Optional[str]): The function to use for calculating the kernel. Defaults to 'gaussian'.
+            eps (float): A small value to avoid division by zero.
+            **kwargs: Additional keyword arguments for the kernel arguments (e.g. gamma, coef).
+
+        Returns:
+            float: The kernel value between the two Symbol objects.
+
+        Raises:
+            TypeError: If any of the Symbol objects is not of type np.ndarray or Symbol.
+            NotImplementedError: If the given kernel is not supported.
+        '''
+        v = self._ensure_numpy_format(self)
+        if isinstance(other, list) or isinstance(other, tuple):
+            o = []
+            for i in range(len(other)):
+                o.append(self._ensure_numpy_format(other[i], cast=True))
+            o = np.concatenate(o, axis=1)
+        else:
+            o = self._ensure_numpy_format(other, cast=True)
+
+        # compute the kernel value
+        if kernel == 'gaussian':
+            gamma = kwargs.get('gamma', 1)
+            val = np.exp(-gamma * np.sum((v - o)**2, axis=0))
+        elif kernel == 'laplacian':
+            gamma = kwargs.get('gamma', 1)
+            val = np.exp(-gamma * np.sum(np.abs(v - o), axis=0))
+        elif kernel == 'polynomial':
+            degree = kwargs.get('degree', 3)
+            coef = kwargs.get('coef', 1)
+            val = (gamma * np.sum((v * o), axis=0) + coef)**degree
+        elif kernel == 'sigmoid':
+            gamma = kwargs.get('gamma', 1)
+            coef = kwargs.get('coef', 1)
+            val = np.tanh(gamma * np.sum((v * o), axis=0) + coef)
+        elif kernel == 'linear':
+            val = np.sum((v * o), axis=0)
+        elif kernel == 'cauchy':
+            gamma = kwargs.get('gamma', 1)
+            val = 1 / (1 + np.sum((v - o)**2, axis=0) / gamma)
+        elif kernel == 't-distribution':
+            gamma = kwargs.get('gamma', 1)
+            degree = kwargs.get('degree', 1)
+            val = 1 / (1 + (np.sum((v - o)**2, axis=0) / (gamma * degree))**(degree + 1) / 2)
+        elif kernel == 'inverse-multiquadric':
+            gamma = kwargs.get('gamma', 1)
+            val = 1 / np.sqrt(np.sum((v - o)**2, axis=0) / gamma**2 + 1)
+        else:
+            raise NotImplementedError(f"Kernel function {kernel} not implemented. Available functions: 'gaussian'")
+        # get the kernel value(s)
+        if val.shape[0] > 1:
+            val = val.diagonal()
+        else:
+            val = val.item()
+        return val
+
 
     def zip(self, **kwargs) -> List[Tuple[str, List, Dict]]:
         '''
