@@ -68,6 +68,52 @@ class Metadata(object):
         return f'<class {class_} at {hex_}{from_symbol}>'
 
 
+class Linker(Metadata):
+    def keys(self) -> List[str]:
+        '''
+        Get all keys of the linker.
+
+        Returns:
+            List[str]: All keys of the linker.
+        '''
+        return list(self.results.keys())
+
+    def values(self) -> List[Any]:
+        '''
+        Get all values of the linker.
+
+        Returns:
+            List[Any]: All values of the linker.
+        '''
+        return list(self.results.values())
+
+    def find(self, name: str, single: bool = True, strict: bool = False) -> Any:
+        '''
+        Find a result in the linker.
+
+        Args:
+            name (str): The name of the result to find.
+            single (bool): Whether to return a single result or a list of results. Defaults to True.
+            strict (bool): Whether to match the name exactly or not. Defaults to False.
+
+        Returns:
+            Any: The result.
+        '''
+        # search all results and return the first one that matches the name
+        res = []
+        for k in list(self.results.keys()):
+            match_ = lambda k, name: str(name).lower() in str(k).lower() if not strict else str(name) == str(k)
+            if match_(k, name):
+                res.append(self.results[k])
+        if single:
+            assert len(res) == 1, f'Found {len(res)} results for name {name}. Expected 1.'
+        if len(res) == 0:
+            return None
+        elif len(res) == 1:
+            return res[0]
+        return res
+
+
 class SymbolMeta(type):
     """
     Metaclass to unify metaclasses of mixed-in primitives.
@@ -634,7 +680,7 @@ class Symbol(metaclass=SymbolMeta):
         if not self is self.root:
             ref = self.root.metadata
             if ref.root_link is None:
-                ref.root_link = Metadata()
+                ref.root_link = Linker()
             if ref.root_link.results is None:
                 ref.root_link.results = {}
             prev = None
