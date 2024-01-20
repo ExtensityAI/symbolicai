@@ -271,7 +271,7 @@ class EngineRepository(object):
     @staticmethod
     def list() -> List[str]:
         self = EngineRepository()
-        return list(self._engines.keys())
+        return dict(self._engines.items())
 
     @staticmethod
     def command(engines: List[str], *args, **kwargs) -> Any:

@@ -138,5 +138,14 @@ class Engine(ABC):
         return self.__class__.__name__
 
     def __repr__(self) -> str:
-        return self.__str__()
+        '''
+        Get the representation of the Symbol object as a string.
+
+        Returns:
+            str: The representation of the Symbol object.
+        '''
+        # class with full path
+        class_ = self.__class__.__module__ + '.' + self.__class__.__name__
+        hex_   = hex(id(self))
+        return f'<class {class_} at {hex_}>'
 
