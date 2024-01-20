@@ -2366,7 +2366,7 @@ class DataClusteringPrimitives(Primitive):
             val = normalize(val)
         return val
 
-    def distance(self, other: Union['Symbol', list, np.ndarray, torch.Tensor], kernel: Union['gaussian', 'laplacian', 'polynomial', 'sigmoid', 'linear', 'cauchy', 't-distribution', 'inverse-multiquadric', 'cosine', 'angular-cosine'] = 'gaussian',  eps: float = 1e-8, normalize: Optional[Callable] = None, **kwargs) -> float:
+    def distance(self, other: Union['Symbol', list, np.ndarray, torch.Tensor], kernel: Union['gaussian', 'rbf', 'laplacian', 'polynomial', 'sigmoid', 'linear', 'cauchy', 't-distribution', 'inverse-multiquadric', 'cosine', 'angular-cosine'] = 'gaussian',  eps: float = 1e-8, normalize: Optional[Callable] = None, **kwargs) -> float:
         '''
         Calculates the kernel between two Symbol objects.
 
@@ -2396,10 +2396,15 @@ class DataClusteringPrimitives(Primitive):
         if kernel == 'gaussian':
             gamma = kwargs.get('gamma', 1)
             val = np.exp(-gamma * np.sum((v - o)**2, axis=0))
+        elif kernel == 'rbf':
+            gamma = kwargs.get('gamma', 1)
+            sigma = kwargs.get('sigma', 1)
+            val = np.exp(-gamma * np.sum((v - o)**2, axis=0) / (2 * sigma**2))
         elif kernel == 'laplacian':
             gamma = kwargs.get('gamma', 1)
             val = np.exp(-gamma * np.sum(np.abs(v - o), axis=0))
         elif kernel == 'polynomial':
+            gamma = kwargs.get('gamma', 1)
             degree = kwargs.get('degree', 3)
             coef = kwargs.get('coef', 1)
             val = (gamma * np.sum((v * o), axis=0) + coef)**degree
