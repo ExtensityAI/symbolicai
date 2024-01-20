@@ -2308,7 +2308,7 @@ class DataClusteringPrimitives(Primitive):
             x = x.detach().cpu().numpy()
         return x.squeeze()[:, None]
 
-    def similarity(self, other: Union['Symbol', list, np.ndarray, torch.Tensor], metric: Union['cosine', 'product', 'manhattan', 'euclidean', 'minkowski', 'jaccard'] = 'cosine', eps: float = 1e-8, normalize: Optional[Callable] = None, **kwargs) -> float:
+    def similarity(self, other: Union['Symbol', list, np.ndarray, torch.Tensor], metric: Union['cosine', 'angular-cosine', 'product', 'manhattan', 'euclidean', 'minkowski', 'jaccard'] = 'cosine', eps: float = 1e-8, normalize: Optional[Callable] = None, **kwargs) -> float:
         '''
         Calculates the similarity between two Symbol objects using a specified metric.
         This method compares the values of two Symbol objects and calculates their similarity according to the specified metric.
@@ -2339,9 +2339,9 @@ class DataClusteringPrimitives(Primitive):
 
         if metric == 'cosine':
             val = (v.T@o / (np.sqrt(v.T@v) * np.sqrt(o.T@o) + eps))
-        elif metric == 'angular-similarity':
-            ang_dist = np.arccos((v.T@o / (np.sqrt(v.T@v) * np.sqrt(o.T@o) + eps))) / np.pi
-            val = 1 - ang_dist
+        elif metric == 'angular-cosine':
+            c = kwargs.get('c', 1)
+            val = 1 - (c * np.arccos((v.T@o / (np.sqrt(v.T@v) * np.sqrt(o.T@o) + eps))) / np.pi)
         elif metric == 'product':
             val = (v.T@o / (v.shape[0] + eps))
         elif metric == 'manhattan':
@@ -2366,7 +2366,7 @@ class DataClusteringPrimitives(Primitive):
             val = normalize(val)
         return val
 
-    def distance(self, other: Union['Symbol', list, np.ndarray, torch.Tensor], kernel: Union['gaussian', 'laplacian', 'polynomial', 'sigmoid', 'linear', 'cauchy', 't-distribution', 'inverse-multiquadric'] = 'gaussian', normalize: Optional[Callable] = None, **kwargs) -> float:
+    def distance(self, other: Union['Symbol', list, np.ndarray, torch.Tensor], kernel: Union['gaussian', 'laplacian', 'polynomial', 'sigmoid', 'linear', 'cauchy', 't-distribution', 'inverse-multiquadric', 'cosine', 'angular-cosine'] = 'gaussian',  eps: float = 1e-8, normalize: Optional[Callable] = None, **kwargs) -> float:
         '''
         Calculates the kernel between two Symbol objects.
 
@@ -2419,6 +2419,11 @@ class DataClusteringPrimitives(Primitive):
         elif kernel == 'inverse-multiquadric':
             gamma = kwargs.get('gamma', 1)
             val = 1 / np.sqrt(np.sum((v - o)**2, axis=0) / gamma**2 + 1)
+        elif kernel == 'cosine':
+            val = 1 - (np.sum(v * o, axis=0) / (np.sqrt(np.sum(v**2, axis=0)) * np.sqrt(np.sum(o**2, axis=0)) + eps))
+        elif kernel == 'angular-cosine':
+            c = kwargs.get('c', 1)
+            val = c * np.arccos((np.sum(v * o, axis=0) / (np.sqrt(np.sum(v**2, axis=0)) * np.sqrt(np.sum(o**2, axis=0)) + eps))) / np.pi
         else:
             raise NotImplementedError(f"Kernel function {kernel} not implemented. Available functions: 'gaussian'")
         # get the kernel value(s)
