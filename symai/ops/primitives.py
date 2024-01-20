@@ -2366,14 +2366,14 @@ class DataClusteringPrimitives(Primitive):
             val = normalize(val)
         return val
 
-    def distance(self, other: Union['Symbol', list, np.ndarray, torch.Tensor], kernel: Union['gaussian', 'laplacian', 'polynomial', 'sigmoid', 'linear', 'cauchy', 't-distribution', 'inverse-multiquadric'] = 'gaussian', eps: float = 1e-8, **kwargs) -> float:
+    def distance(self, other: Union['Symbol', list, np.ndarray, torch.Tensor], kernel: Union['gaussian', 'laplacian', 'polynomial', 'sigmoid', 'linear', 'cauchy', 't-distribution', 'inverse-multiquadric'] = 'gaussian', normalize: Optional[Callable] = None, **kwargs) -> float:
         '''
         Calculates the kernel between two Symbol objects.
 
         Args:
             other (Symbol): The other Symbol object to calculate the kernel with.
             kernel (Optional[str]): The function to use for calculating the kernel. Defaults to 'gaussian'.
-            eps (float): A small value to avoid division by zero.
+            normalize (Optional[Callable]): A function to normalize the Symbol's value before calculating the kernel. Defaults to None.
             **kwargs: Additional keyword arguments for the kernel arguments (e.g. gamma, coef).
 
         Returns:
@@ -2426,6 +2426,9 @@ class DataClusteringPrimitives(Primitive):
             val = val.diagonal()
         else:
             val = val.item()
+
+        if normalize is not None:
+            val = normalize(val)
         return val
 
 
