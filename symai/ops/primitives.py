@@ -3,6 +3,7 @@ import os
 import pickle
 import uuid
 import torch
+from scipy import linalg
 import numpy as np
 
 from typing import (TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Optional, Tuple,
@@ -2343,27 +2344,27 @@ class EmbeddingPrimitives(Primitive):
         else:
             o = self._ensure_numpy_format(other, cast=True)
 
-        if metric == 'cosine':
-            val = (v.T@o / (np.sqrt(v.T@v) * np.sqrt(o.T@o) + eps))
+        if   metric == 'cosine':
+            val     = (v.T@o / (np.sqrt(v.T@v) * np.sqrt(o.T@o) + eps))
         elif metric == 'angular-cosine':
-            c = kwargs.get('c', 1)
-            val = 1 - (c * np.arccos((v.T@o / (np.sqrt(v.T@v) * np.sqrt(o.T@o) + eps))) / np.pi)
+            c       = kwargs.get('c', 1)
+            val     = 1 - (c * np.arccos((v.T@o / (np.sqrt(v.T@v) * np.sqrt(o.T@o) + eps))) / np.pi)
         elif metric == 'product':
-            val = (v.T@o / (v.shape[0] + eps))
+            val     = (v.T@o / (v.shape[0] + eps))
         elif metric == 'manhattan':
-            val = (np.abs(v - o).sum(axis=0) / (v.shape[0] + eps))
+            val     = (np.abs(v - o).sum(axis=0) / (v.shape[0] + eps))
         elif metric == 'euclidean':
-            val = (np.sqrt(np.sum((v - o)**2, axis=0)) / (v.shape[0] + eps))
+            val     = (np.sqrt(np.sum((v - o)**2, axis=0)) / (v.shape[0] + eps))
         elif metric == 'minkowski':
-            p = kwargs.get('p', 3)
-            val = (np.sum(np.abs(v - o)**p, axis=0)**(1/p) / (v.shape[0] + eps))
+            p       = kwargs.get('p', 3)
+            val     = (np.sum(np.abs(v - o)**p, axis=0)**(1/p) / (v.shape[0] + eps))
         elif metric == 'jaccard':
-            val = (np.sum(np.minimum(v, o)) / np.sum(np.maximum(v, o) + eps))
+            val     = (np.sum(np.minimum(v, o)) / np.sum(np.maximum(v, o) + eps))
         else:
             raise NotImplementedError(f"Similarity metric {metric} not implemented. Available metrics: 'cosine'")
 
         # get the similarity value(s)
-        if val.shape[0] > 1:
+        if len(val.shape) >= 1 and val.shape[0] > 1:
             val = val.diagonal()
         else:
             val = val.item()
@@ -2372,7 +2373,62 @@ class EmbeddingPrimitives(Primitive):
             val = normalize(val)
         return val
 
-    def distance(self, other: Union['Symbol', list, np.ndarray, torch.Tensor], kernel: Union['gaussian', 'rbf', 'laplacian', 'polynomial', 'sigmoid', 'linear', 'cauchy', 't-distribution', 'inverse-multiquadric', 'cosine', 'angular-cosine'] = 'gaussian',  eps: float = 1e-8, normalize: Optional[Callable] = None, **kwargs) -> float:
+    def _calculate_frechet_distance(self, mu1, sigma1, mu2, sigma2, eps=1e-6):
+        """Numpy implementation of the Frechet Distance.
+        The Frechet distance between two multivariate Gaussians X_1 ~ N(mu_1, C_1)
+        and X_2 ~ N(mu_2, C_2) is
+                d^2 = ||mu_1 - mu_2||^2 + Tr(C_1 + C_2 - 2*sqrt(C_1*C_2)).
+
+        Stable version by Dougal J. Sutherland.
+
+        Params:
+        -- mu1   : Numpy array containing the activations of a layer of the
+                inception net (like returned by the function 'get_predictions')
+                for generated samples.
+        -- mu2   : The sample mean over activations, precalculated on an
+                representative data set.
+        -- sigma1: The covariance matrix over activations for generated samples.
+        -- sigma2: The covariance matrix over activations, precalculated on an
+                representative data set.
+
+        Returns:
+        --   : The Frechet Distance.
+        """
+
+        mu1 = np.atleast_1d(mu1).squeeze()
+        mu2 = np.atleast_1d(mu2).squeeze()
+
+        sigma1 = np.atleast_2d(sigma1)
+        sigma2 = np.atleast_2d(sigma2)
+
+        assert mu1.shape == mu2.shape, \
+            'Training and test mean vectors have different lengths'
+        assert sigma1.shape == sigma2.shape, \
+            'Training and test covariances have different dimensions'
+
+        diff = mu1 - mu2
+
+        # Product might be almost singular
+        covmean, _ = linalg.sqrtm(sigma1.dot(sigma2), disp=False)
+        if not np.isfinite(covmean).all():
+            msg = ('fid calculation produces singular product; '
+                'adding %s to diagonal of cov estimates') % eps
+            print(msg)
+            offset = np.eye(sigma1.shape[0]) * eps
+            covmean = linalg.sqrtm((sigma1 + offset).dot(sigma2 + offset))
+
+        # Numerical error might give slight imaginary component
+        if np.iscomplexobj(covmean):
+            if not np.allclose(np.diagonal(covmean).imag, 0, atol=1e-3):
+                m = np.max(np.abs(covmean.imag))
+                raise ValueError('Imaginary component {}'.format(m))
+            covmean = covmean.real
+
+        tr_covmean = np.trace(covmean)
+        val = diff.dot(diff) + np.trace(sigma1) + np.trace(sigma2) - 2 * tr_covmean
+        return val
+
+    def distance(self, other: Union['Symbol', list, np.ndarray, torch.Tensor], kernel: Union['gaussian', 'rbf', 'laplacian', 'polynomial', 'sigmoid', 'linear', 'cauchy', 't-distribution', 'inverse-multiquadric', 'cosine', 'angular-cosine', 'frechet'] = 'gaussian',  eps: float = 1e-8, normalize: Optional[Callable] = None, **kwargs) -> float:
         '''
         Calculates the kernel between two Symbol objects.
 
@@ -2399,46 +2455,51 @@ class EmbeddingPrimitives(Primitive):
             o = self._ensure_numpy_format(other, cast=True)
 
         # compute the kernel value
-        if kernel == 'gaussian':
-            gamma = kwargs.get('gamma', 1)
-            val = np.exp(-gamma * np.sum((v - o)**2, axis=0))
+        if   kernel == 'gaussian':
+            gamma   = kwargs.get('gamma', 1)
+            val     = np.exp(-gamma * np.sum((v - o)**2, axis=0))
         elif kernel == 'rbf':
-            gamma = kwargs.get('gamma', 1)
-            sigma = kwargs.get('sigma', 1)
-            val = np.exp(-gamma * np.sum((v - o)**2, axis=0) / (2 * sigma**2))
+            gamma   = kwargs.get('gamma', 1)
+            sigma   = kwargs.get('sigma', 1)
+            val     = np.exp(-gamma * np.sum((v - o)**2, axis=0) / (2 * sigma**2))
         elif kernel == 'laplacian':
-            gamma = kwargs.get('gamma', 1)
-            val = np.exp(-gamma * np.sum(np.abs(v - o), axis=0))
+            gamma   = kwargs.get('gamma', 1)
+            val     = np.exp(-gamma * np.sum(np.abs(v - o), axis=0))
         elif kernel == 'polynomial':
-            gamma = kwargs.get('gamma', 1)
-            degree = kwargs.get('degree', 3)
-            coef = kwargs.get('coef', 1)
-            val = (gamma * np.sum((v * o), axis=0) + coef)**degree
+            gamma   = kwargs.get('gamma', 1)
+            degree  = kwargs.get('degree', 3)
+            coef    = kwargs.get('coef', 1)
+            val     = (gamma * np.sum((v * o), axis=0) + coef)**degree
         elif kernel == 'sigmoid':
-            gamma = kwargs.get('gamma', 1)
-            coef = kwargs.get('coef', 1)
-            val = np.tanh(gamma * np.sum((v * o), axis=0) + coef)
+            gamma   = kwargs.get('gamma', 1)
+            coef    = kwargs.get('coef', 1)
+            val     = np.tanh(gamma * np.sum((v * o), axis=0) + coef)
         elif kernel == 'linear':
-            val = np.sum((v * o), axis=0)
+            val     = np.sum((v * o), axis=0)
         elif kernel == 'cauchy':
-            gamma = kwargs.get('gamma', 1)
-            val = 1 / (1 + np.sum((v - o)**2, axis=0) / gamma)
+            gamma   = kwargs.get('gamma', 1)
+            val     = 1 / (1 + np.sum((v - o)**2, axis=0) / gamma)
         elif kernel == 't-distribution':
-            gamma = kwargs.get('gamma', 1)
-            degree = kwargs.get('degree', 1)
-            val = 1 / (1 + (np.sum((v - o)**2, axis=0) / (gamma * degree))**(degree + 1) / 2)
+            gamma   = kwargs.get('gamma', 1)
+            degree  = kwargs.get('degree', 1)
+            val     = 1 / (1 + (np.sum((v - o)**2, axis=0) / (gamma * degree))**(degree + 1) / 2)
         elif kernel == 'inverse-multiquadric':
-            gamma = kwargs.get('gamma', 1)
-            val = 1 / np.sqrt(np.sum((v - o)**2, axis=0) / gamma**2 + 1)
+            gamma   = kwargs.get('gamma', 1)
+            val     = 1 / np.sqrt(np.sum((v - o)**2, axis=0) / gamma**2 + 1)
         elif kernel == 'cosine':
-            val = 1 - (np.sum(v * o, axis=0) / (np.sqrt(np.sum(v**2, axis=0)) * np.sqrt(np.sum(o**2, axis=0)) + eps))
+            val     = 1 - (np.sum(v * o, axis=0) / (np.sqrt(np.sum(v**2, axis=0)) * np.sqrt(np.sum(o**2, axis=0)) + eps))
         elif kernel == 'angular-cosine':
-            c = kwargs.get('c', 1)
-            val = c * np.arccos((np.sum(v * o, axis=0) / (np.sqrt(np.sum(v**2, axis=0)) * np.sqrt(np.sum(o**2, axis=0)) + eps))) / np.pi
+            c       = kwargs.get('c', 1)
+            val     = c * np.arccos((np.sum(v * o, axis=0) / (np.sqrt(np.sum(v**2, axis=0)) * np.sqrt(np.sum(o**2, axis=0)) + eps))) / np.pi
+        elif kernel == 'frechet':
+            sigma1  = kwargs.get('sigma1', None)
+            sigma2  = kwargs.get('sigma2', None)
+            assert sigma1 is not None and sigma2 is not None, 'Frechet distance requires covariance matrices for both inputs'
+            val     = self._calculate_frechet_distance(v, sigma1, o, sigma2, eps)
         else:
             raise NotImplementedError(f"Kernel function {kernel} not implemented. Available functions: 'gaussian'")
         # get the kernel value(s)
-        if val.shape[0] > 1:
+        if len(val.shape) >= 1 and val.shape[0] > 1:
             val = val.diagonal()
         else:
             val = val.item()

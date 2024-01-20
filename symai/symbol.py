@@ -44,6 +44,18 @@ class Metadata(object):
         '''
         return self.__dict__.get(name)
 
+    def __getitem__(self, name):
+        '''
+        Get a metadata attribute by name.
+
+        Args:
+            name (str): The name of the metadata attribute to get.
+
+        Returns:
+            Any: The value of the metadata attribute.
+        '''
+        return self.__getattr__(name)
+
     def __setattr__(self, name, value):
         '''
         Set a metadata attribute by name.
@@ -53,6 +65,34 @@ class Metadata(object):
             value (Any): The value of the metadata attribute.
         '''
         self.__dict__[name] = value
+
+    def __setitem__(self, name, value):
+        '''
+        Set a metadata attribute by name.
+
+        Args:
+            name (str): The name of the metadata attribute to set.
+            value (Any): The value of the metadata attribute.
+        '''
+        self.__setattr__(name, value)
+
+    def __delattr__(self, name):
+        '''
+        Delete a metadata attribute by name.
+
+        Args:
+            name (str): The name of the metadata attribute to delete.
+        '''
+        del self.__dict__[name]
+
+    def __delitem__(self, name):
+        '''
+        Delete a metadata attribute by name.
+
+        Args:
+            name (str): The name of the metadata attribute to delete.
+        '''
+        self.__delattr__(name)
 
     def __repr__(self) -> str:
         '''
