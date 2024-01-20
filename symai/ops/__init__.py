@@ -16,6 +16,7 @@ SYMBOL_PRIMITIVES = [
     ExecutionControlPrimitives,
     TemplateStylingPrimitives,
     DataClusteringPrimitives,
+    EmbeddingPrimitives,
     IndexingPrimitives,
     IOHandlingPrimitives,
     PersistencePrimitives,

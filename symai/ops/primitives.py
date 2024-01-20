@@ -2243,6 +2243,12 @@ class DataClusteringPrimitives(Primitive):
 
         return self._to_symbol(_func(self))
 
+
+class EmbeddingPrimitives(Primitive):
+    '''
+    This mixin contains functionalities that deal with embedding symbol values.
+    New functionalities in this mixin might include different types of embedding methods, similarity and distance measures etc.
+    '''
     def embed(self, **kwargs) -> 'Symbol':
         '''
         Generates embeddings for the Symbol's value.
