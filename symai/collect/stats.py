@@ -6,13 +6,17 @@ from typing import Any
 from ..symbol import Symbol, Metadata
 
 
+def _normalize_name(name: str) -> str:
+    name.replace(' ', '_').replace('-', '_').replace('.', '_').replace(',', '_').replace('(', '_').replace(')', '_').replace('[', '_').replace(']', '_').replace('{', '_').replace('}', '_').replace(':', '_').replace(';', '_').replace('\'', '_').replace('"', '_').replace('?', '_').replace('!', '_').replace('@', '_').replace('#', '_').replace('$', '_').replace('%', '_').replace('^', '_').replace('&', '_').replace('*', '_').replace('+', '_').replace('=', '_').replace('/', '_').replace('\\', '_').replace('|', '_').replace('<', '_').replace('>', '_').replace('~', '_').replace('`', '_').replace('=', '_').replace(' ', '_')
+    return name.lower()
+
+
 class Aggregator(Metadata):
     def __getattr__(self, name):
+        # replace name special characters and spaces with underscores
+        name = _normalize_name(name)
         # Dynamically create new aggregator instance if it does not exist
         if name not in self.__dict__:
-            # replace name special characters and spaces with underscores
-            name = name.replace(' ', '_').replace('-', '_').replace('.', '_')
-            name = name.lower()
             aggregator = Aggregator()
             self.__dict__[name] = aggregator
             # create a new aggregate aggregator for the current aggregator
@@ -40,15 +44,15 @@ class Aggregator(Metadata):
                 self.entries = []
             assert type(entries) in [tuple, list, np.ndarray, torch.Tensor, int, float, bool, str] or isinstance(entries, Symbol), 'Entries must be a tuple, list, numpy array, torch tensor, integer, float, boolean, string, or Symbol!'
             if type(entries) == torch.Tensor:
-                entries = entries.detach().cpu().numpy()
+                entries = entries.detach().cpu().numpy().astype(np.float32)
             elif type(entries) in [tuple, list]:
-                entries = np.array(entries)
+                entries = np.array(entries, dtype=np.float32)
             elif type(entries) in [int, float]:
-                entries = np.array([entries])
+                entries = np.array([entries], dtype=np.float32)
             elif type(entries) == bool:
-                entries = np.array([int(entries)])
+                entries = np.array([int(entries)], dtype=np.float32)
             elif type(entries) == str:
-                entries = Symbol(entries).embedding
+                entries = Symbol(entries).embedding.astype(np.float32)
             elif isinstance(entries, Symbol):
                 self.add(entries.value)
                 return
