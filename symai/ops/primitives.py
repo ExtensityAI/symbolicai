@@ -2302,8 +2302,20 @@ class EmbeddingPrimitives(Primitive):
         if self._metadata.embedding is None:
             if ((isinstance(self.value, list) or isinstance(self.value, tuple)) and all([type(x) == int or type(x) == float or type(x) == bool for x in self.value])) \
                 or isinstance(self.value, np.ndarray):
-                # convert to tensor
-                self._metadata.embedding = np.asarray(self.value)
+                if isinstance(self.value, list) or isinstance(self.value, tuple):
+                    assert len(self.value) > 0, 'Cannot compute embedding of empty list'
+                    if isinstance(self.value[0], Symbol):
+                        # convert each element to numpy array
+                        self._metadata.embedding = np.array([x.embedding for x in self.value])
+                    elif isinstance(self.value[0], str):
+                        # embed each string
+                        self._metadata.embedding = np.array([Symbol(x).embedding for x in self.value])
+                    else:
+                        # convert to numpy array
+                        self._metadata.embedding = np.array(self.value)
+                else:
+                    # convert to numpy array
+                    self._metadata.embedding = np.asarray(self.value)
             else:
                 # compute the embedding and store as numpy array
                 self._metadata.embedding = np.array(self.embed().value)
