@@ -910,7 +910,7 @@ class Symbol(metaclass=SymbolMeta):
         Symbol._metadata._primitives[name] = _func
 
 
-# TODO: Workaround  for Python bug to enable runtime assignment of lambda function to new Symbol objects. Currently creating multiple lambda lambda functions within class __new__ definition only links last lambda function to all new Symbol attribute assignments. Need to contact Python developers to fix this bug.
+# TODO: Workaround  for Python bug to enable runtime assignment of lambda function to new Symbol objects. Currently creating multiple lambda functions within class __new__ definition only links last lambda function to all new Symbol attribute assignments. Need to contact Python developers to fix this bug.
 class Call(object):
     def __new__(self, name, callable: Callable) -> Any:
         '''
@@ -927,7 +927,7 @@ class Call(object):
         return (name, _func)
 
 
-class GlobalPrimitive(object):
+class GlobalSymbolPrimitive(object):
     def __new__(self, name, callable: Callable) -> Any:
         '''
         Prepare a callable for use in a Symbol instance.
