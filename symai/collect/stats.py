@@ -25,6 +25,43 @@ class Aggregator(Metadata):
             return self.__dict__.get(name)
         return self.__dict__.get(name)
 
+    def __setattr__(self, name, value):
+        # replace name special characters and spaces with underscores
+        name = _normalize_name(name)
+        return super().__setattr__(name, value)
+
+    def __delattr__(self, name):
+        # replace name special characters and spaces with underscores
+        name = _normalize_name(name)
+        return super().__delattr__(name)
+
+    def __getitem__(self, name):
+        # replace name special characters and spaces with underscores
+        name = _normalize_name(name)
+        return self.__getattr__(name)
+
+    def __setitem__(self, name, value):
+        # replace name special characters and spaces with underscores
+        name = _normalize_name(name)
+        return self.__setattr__(name, value)
+
+    def __delitem__(self, name):
+        # replace name special characters and spaces with underscores
+        name = _normalize_name(name)
+        return self.__delattr__(name)
+
+    def __repr__(self) -> str:
+        '''
+        Get the representation of the Symbol object as a string.
+
+        Returns:
+            str: The representation of the Symbol object.
+        '''
+        # class with full path
+        class_ = self.__class__.__module__ + '.' + self.__class__.__name__
+        hex_   = hex(id(self))
+        return f'<class {class_} at {hex_}>'
+
     def __or__(self, other: Any) -> Any:
         self.add(other)
         return other
@@ -118,14 +155,3 @@ class Aggregator(Metadata):
         assert 'entries' in self.__dict__, 'No entries found!'
         return np.max(self.entries, axis=axis)
 
-    def __repr__(self) -> str:
-        '''
-        Get the representation of the Symbol object as a string.
-
-        Returns:
-            str: The representation of the Symbol object.
-        '''
-        # class with full path
-        class_ = self.__class__.__module__ + '.' + self.__class__.__name__
-        hex_   = hex(id(self))
-        return f'<class {class_} at {hex_}>'
