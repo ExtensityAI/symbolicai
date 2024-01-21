@@ -37,13 +37,15 @@ class Aggregator(Metadata):
         # Append a new entry to the collector
         if 'entries' not in self.__dict__:
             self.entries = []
-        assert type(entries) in [tuple, list, np.ndarray, torch.Tensor, int, float, str] or isinstance(entries, Symbol), 'Entries must be a list or numpy array!'
+        assert type(entries) in [tuple, list, np.ndarray, torch.Tensor, int, float, bool, str] or isinstance(entries, Symbol), 'Entries must be a tuple, list, numpy array, torch tensor, integer, float, boolean, string, or Symbol!'
         if type(entries) == torch.Tensor:
             entries = entries.detach().cpu().numpy()
         elif type(entries) in [tuple, list]:
             entries = np.array(entries)
         elif type(entries) in [int, float]:
             entries = np.array([entries])
+        elif type(entries) == bool:
+            entries = np.array([int(entries)])
         elif type(entries) == str:
             entries = Symbol(entries).embedding
         elif isinstance(entries, Symbol):
