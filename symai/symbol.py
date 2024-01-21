@@ -1,3 +1,4 @@
+import os
 import json
 import copy
 import html
@@ -5,7 +6,7 @@ import numpy as np
 
 from box import Box
 from json import JSONEncoder
-from typing import Any, Dict, Iterator, List, Optional, Type, Callable
+from typing import Any, Dict, Iterator, List, Optional, Type, Callable, Tuple
 
 from . import core
 from .ops import SYMBOL_PRIMITIVES
@@ -44,6 +45,25 @@ class Metadata(object):
         '''
         return self.__dict__.get(name)
 
+    def __setattr__(self, name, value):
+        '''
+        Set a metadata attribute by name.
+
+        Args:
+            name (str): The name of the metadata attribute to set.
+            value (Any): The value of the metadata attribute.
+        '''
+        self.__dict__[name] = value
+
+    def __delattr__(self, name):
+        '''
+        Delete a metadata attribute by name.
+
+        Args:
+            name (str): The name of the metadata attribute to delete.
+        '''
+        del self.__dict__[name]
+
     def __getitem__(self, name):
         '''
         Get a metadata attribute by name.
@@ -56,16 +76,6 @@ class Metadata(object):
         '''
         return self.__getattr__(name)
 
-    def __setattr__(self, name, value):
-        '''
-        Set a metadata attribute by name.
-
-        Args:
-            name (str): The name of the metadata attribute to set.
-            value (Any): The value of the metadata attribute.
-        '''
-        self.__dict__[name] = value
-
     def __setitem__(self, name, value):
         '''
         Set a metadata attribute by name.
@@ -75,15 +85,6 @@ class Metadata(object):
             value (Any): The value of the metadata attribute.
         '''
         self.__setattr__(name, value)
-
-    def __delattr__(self, name):
-        '''
-        Delete a metadata attribute by name.
-
-        Args:
-            name (str): The name of the metadata attribute to delete.
-        '''
-        del self.__dict__[name]
 
     def __delitem__(self, name):
         '''
@@ -160,7 +161,7 @@ class SymbolMeta(type):
     """
     def __call__(cls, *args, **kwargs):
         obj = type.__call__(cls, *args, **kwargs)
-        obj.__post_init__()
+        obj.__post_init__(*args, **kwargs)
         return obj
 
     def __instancecheck__(cls, obj):
@@ -220,7 +221,7 @@ class Symbol(metaclass=SymbolMeta):
         # construct dependency graph for symbol
         self._construct_dependency_graph(*value)
 
-    def __post_init__(self): # this is called at the end of __init__
+    def __post_init__(self, *args, **kwargs): # this is called at the end of __init__
         '''
         Post-initialization method that is called at the end of the __init__ method.
         '''
@@ -296,7 +297,7 @@ class Symbol(metaclass=SymbolMeta):
                 # add new instance to children of previous instance
                 self._children.append(v)
 
-    def __new__(cls, *args, mixin: Optional[bool] = None, primitives: Optional[List[Type]] = None, callables: Optional[Dict[str, Callable]] = None, only_nesy: bool = False, iterate_nesy: bool = False, **kwargs) -> "Symbol":
+    def __new__(cls, *args, mixin: Optional[bool] = None, primitives: Optional[List[Type]] = None, callables: Optional[List[Tuple[str, Callable]]] = None, only_nesy: bool = False, iterate_nesy: bool = False, **kwargs) -> "Symbol":
         '''
         Create a new Symbol instance.
 
@@ -338,19 +339,15 @@ class Symbol(metaclass=SymbolMeta):
             if iterate_nesy:
                 obj.__nesy_iteration_primitives__ = True
         # If metatype has additional runtime primitives, add them to the instance
-        if Symbol._metadata._primitives:
-            for name, callable in Symbol._metadata._primitives.items():
+        if Symbol._metadata._primitives is not None:
+            for prim_name in list(Symbol._metadata._primitives.keys()):
                 # create a new function that binds the instance to the callable
-                def _func(*args, **kwargs):
-                    return callable(obj, *args, **kwargs)
-                setattr(obj, name, _func)
-        # If object instantiation has additional runtime callables, add them to the instance
-        if callables:
-            for name, callable in callables.items():
+                setattr(obj, prim_name, Symbol._metadata._primitives[prim_name](obj))
+        # If has additional runtime callables, add them to the instance
+        if callables is not None:
+            for call_name, call_func in callables:
                 # create a new function that binds the instance to the callable
-                def _func(*args, **kwargs):
-                    return callable(obj, *args, **kwargs)
-                setattr(obj, name, _func)
+                setattr(obj, call_name, call_func(obj))
         return obj
 
     def __getattr__(self, name: str) -> Any:
@@ -370,7 +367,7 @@ class Symbol(metaclass=SymbolMeta):
             value = self.value if self.value is not None else None
             if isinstance(value, Exception):
                 raise value
-            raise AttributeError(f'{self.__class__.__name__} or {str(type(value))} value have no attribute {name}')
+            raise AttributeError(f'<class \'{self.__class__.__name__}\'> or nested value of {str(type(value))} have no attribute \'{name}\'')
         except AttributeError as ex:
             # if has attribute and is public function
             if hasattr(self.value, name) and not name.startswith('_'):
@@ -884,7 +881,7 @@ class Symbol(metaclass=SymbolMeta):
         '''
         return next(self.__iter__())
 
-    def set_primitive(self, name: str, callable: callable) -> None:
+    def primitive(self, name: str, callable: callable) -> None:
         '''
         Set a primitive function to the Symbol instance.
 
@@ -901,14 +898,47 @@ class Symbol(metaclass=SymbolMeta):
         setattr(self, name, _func)
 
     @staticmethod
-    def set_primitive_globally(name: str, callable: callable) -> None:
+    def _global_primitive(name: str, callable: callable) -> None:
         '''
         Set a primitive function to the Symbol class.
 
         Args:
             callable (callable): The primitive function to set.
         '''
-        Symbol._metadata._primitives[name] = callable
+        def _func(obj):
+            return lambda *args, **kwargs: callable(obj, *args, **kwargs)
+        Symbol._metadata._primitives[name] = _func
+
+
+# TODO: Workaround  for Python bug to enable runtime assignment of lambda function to new Symbol objects. Currently creating multiple lambda lambda functions within class __new__ definition only links last lambda function to all new Symbol attribute assignments. Need to contact Python developers to fix this bug.
+class Call(object):
+    def __new__(self, name, callable: Callable) -> Any:
+        '''
+        Prepare a callable for use in a Symbol instance.
+
+        Args:
+            callable (Callable): The callable to prepare.
+
+        Returns:
+            Callable: The prepared callable.
+        '''
+        def _func(obj):
+            return lambda *args, **kwargs: callable(obj, *args, **kwargs)
+        return (name, _func)
+
+
+class GlobalPrimitive(object):
+    def __new__(self, name, callable: Callable) -> Any:
+        '''
+        Prepare a callable for use in a Symbol instance.
+
+        Args:
+            callable (Callable): The callable to prepare.
+
+        Returns:
+            Callable: The prepared callable.
+        '''
+        Symbol._global_primitive(name, callable)
 
 
 class ExpressionEncoder(JSONEncoder):

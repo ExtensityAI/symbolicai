@@ -272,7 +272,7 @@ from .backend.base import Engine
 from .prompts import Prompt
 from .shell import Shell
 from .strategy import Strategy
-from .symbol import Symbol, Expression, Metadata
+from .symbol import Symbol, Expression, Metadata, Call, GlobalPrimitive
 from .interfaces import Interface
 from .imports import Import
 from .components import Function
