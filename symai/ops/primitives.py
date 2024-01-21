@@ -668,6 +668,11 @@ class ArithmeticPrimitives(Primitive):
         Returns:
             Symbol: A new symbol with the result of the OR operation.
         '''
+        # exclude the evaluation for the Aggregator class
+        from ..collect.stats import Aggregator
+        if isinstance(other, Aggregator):
+            return NotImplemented
+
         # Special case for string concatenation with OR
         if isinstance(self.value, str) and isinstance(other, str) or \
             isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str):
@@ -698,6 +703,11 @@ class ArithmeticPrimitives(Primitive):
         Returns:
             Symbol: A new Symbol object with the concatenated value.
         '''
+        # exclude the evaluation for the Aggregator class
+        from ..collect.stats import Aggregator
+        if isinstance(other, Aggregator):
+            return NotImplemented
+
         if self.__disable_shortcut_matches__:
             # Special case for string concatenation with OR
             if isinstance(self.value, str) and isinstance(other, str) or \
@@ -725,6 +735,11 @@ class ArithmeticPrimitives(Primitive):
         Returns:
             Symbol: A new Symbol object with the concatenated value.
         '''
+        # exclude the evaluation for the Aggregator class
+        from ..collect.stats import Aggregator
+        if isinstance(other, Aggregator):
+            return NotImplemented
+
         if self.__disable_shortcut_matches__:
             # Special case for string concatenation with OR
             if isinstance(self.value, str) and isinstance(other, str) or \
