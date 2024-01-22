@@ -39,14 +39,17 @@ from .prompts import (
 
 
 def _probabilistic_bool(rsp: str, mode=ProbabilisticBooleanMode.TOLERANT) -> bool:
+    if rsp is None:
+        return False
     # check if rsp is a string / hard match
+    val = str(rsp).lower()
     if   mode == ProbabilisticBooleanMode.STRICT:
-        return str(rsp).lower() == ProbabilisticBooleanModeStrict
+        return val == ProbabilisticBooleanModeStrict
     elif mode == ProbabilisticBooleanMode.MEDIUM:
-        return str(rsp).lower() in ProbabilisticBooleanModeMedium
+        return val in ProbabilisticBooleanModeMedium
     elif mode == ProbabilisticBooleanMode.TOLERANT:
         # allow for probabilistic boolean / fault tolerance
-        return str(rsp).lower() in ProbabilisticBooleanModeTolerant
+        return val in ProbabilisticBooleanModeTolerant
     else:
         raise ValueError(f"Invalid mode {mode} for probabilistic boolean!")
 

@@ -619,6 +619,7 @@ class ArithmeticPrimitives(Primitive):
         @core.logic(operator='and')
         def _func(_, a: str, b: str):
             pass
+        other = self._to_symbol(other)
         return self._to_symbol(_func(other, self))
 
     def __iand__(self, other: Any) -> Any:
@@ -722,8 +723,9 @@ class ArithmeticPrimitives(Primitive):
             return self._to_symbol(result)
 
         @core.logic(operator='or')
-        def _func(_, a: str, b: str):
+        def _func(a: str, b: str):
             pass
+        other = self._to_symbol(other)
         return self._to_symbol(_func(other, self))
 
     def __ior__(self, other: Any) -> 'Symbol':
@@ -807,6 +809,7 @@ class ArithmeticPrimitives(Primitive):
         @core.logic(operator='xor')
         def _func(_, a: str, b: str):
             pass
+        other = self._to_symbol(other)
         return self._to_symbol(_func(other, self))
 
     def __ixor__(self, other: Any) -> 'Symbol':
