@@ -142,7 +142,7 @@ class Aggregator(Metadata):
             # Append a new entry to the aggregator
             if 'entries' not in self.__dict__:
                 self.entries = []
-            assert type(entries) in [tuple, list, np.ndarray, torch.Tensor, int, float, bool, str] or isinstance(entries, Symbol), 'Entries must be a tuple, list, numpy array, torch tensor, integer, float, boolean, string, or Symbol! Got: {}'.format(type(entries))
+            assert type(entries) in [tuple, list, np.float32, np.float64, np.ndarray, torch.Tensor, int, float, bool, str] or isinstance(entries, Symbol), 'Entries must be a tuple, list, numpy array, torch tensor, integer, float, boolean, string, or Symbol! Got: {}'.format(type(entries))
             if type(entries) == torch.Tensor:
                 entries = entries.detach().cpu().numpy().astype(np.float32)
             elif type(entries) in [tuple, list]:
