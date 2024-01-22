@@ -5,7 +5,8 @@ import importlib
 import pkgutil
 import logging
 
-from typing import Callable, Dict, List, Optional, Union
+from enum import Enum
+from typing import Callable, Dict, List, Optional
 from types import ModuleType
 from typing import Dict, Any, Tuple
 
@@ -21,6 +22,33 @@ logger = logging.getLogger('functional')
 
 class ConstraintViolationException(Exception):
     pass
+
+
+class ProbabilisticBooleanMode(Enum):
+    STRICT = 0
+    MEDIUM = 1
+    TOLERANT = 2
+
+
+ENGINE_PROBABILISTIC_BOOLEAN_MODE = ProbabilisticBooleanMode.MEDIUM
+from .prompts import (
+    ProbabilisticBooleanModeStrict,
+    ProbabilisticBooleanModeMedium,
+    ProbabilisticBooleanModeTolerant
+)
+
+
+def _probabilistic_bool(rsp: str, mode=ProbabilisticBooleanMode.TOLERANT) -> bool:
+    # check if rsp is a string / hard match
+    if   mode == ProbabilisticBooleanMode.STRICT:
+        return str(rsp).lower() == ProbabilisticBooleanModeStrict
+    elif mode == ProbabilisticBooleanMode.MEDIUM:
+        return str(rsp).lower() in ProbabilisticBooleanModeMedium
+    elif mode == ProbabilisticBooleanMode.TOLERANT:
+        # allow for probabilistic boolean / fault tolerance
+        return str(rsp).lower() in ProbabilisticBooleanModeTolerant
+    else:
+        raise ValueError(f"Invalid mode {mode} for probabilistic boolean!")
 
 
 def _execute_query(engine, post_processors, return_constraint, argument) -> List[object]:
@@ -64,7 +92,7 @@ def _execute_query(engine, post_processors, return_constraint, argument) -> List
         if len(rsp) <= 0:
             rsp = False
         else:
-            rsp = str(rsp).lower() in "'true', '1', 't', 'y', 'yes', 'yeah', 'yup', 'certainly', 'ok', ['true']"
+            rsp = _probabilistic_bool(rsp, mode=ENGINE_PROBABILISTIC_BOOLEAN_MODE)
     elif return_constraint == inspect._empty:
         pass
     else:

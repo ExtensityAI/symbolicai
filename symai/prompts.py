@@ -1030,3 +1030,8 @@ Answer: [IRRELEVANT](The user's query is about a transient information like toda
 Answer: [SAVE](The user has provided relevant information about their educational background by mentioning that they graduated from Harvard University. This information could be important for future conversations and assistance related to higher education topics, so it should be stored in the long-term memory.)
 '''
 ])
+
+
+ProbabilisticBooleanModeStrict   = "true"
+ProbabilisticBooleanModeMedium   = "'true', 'yes', 'ok', ['true']"
+ProbabilisticBooleanModeTolerant = "'true', '1', 't', 'y', 'yes', 'yeah', 'yup', 'certainly', 'ok', ['true']"
