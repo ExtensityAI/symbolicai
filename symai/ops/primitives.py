@@ -720,7 +720,11 @@ class ArithmeticPrimitives(Primitive):
         # verify the result and return if found return
         if result is not None and result is not False:
             return self._to_symbol(result)
-        return self._to_symbol(str(self) + str(other))
+
+        @core.logic(operator='or')
+        def _func(_, a: str, b: str):
+            pass
+        return self._to_symbol(_func(other, self))
 
     def __ior__(self, other: Any) -> 'Symbol':
         '''
@@ -755,7 +759,10 @@ class ArithmeticPrimitives(Primitive):
             self._value = result
             return self
         result = self._to_symbol(str(self) + str(other))
-        self._value = result.value
+        @core.logic(operator='or')
+        def _func(_, a: str, b: str):
+            pass
+        self._value = _func(self, other)
         return self
 
     def __xor__(self, other: Any) -> Any:
