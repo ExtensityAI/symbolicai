@@ -297,7 +297,13 @@ class Symbol(metaclass=SymbolMeta):
                 # add new instance to children of previous instance
                 self._children.append(v)
 
-    def __new__(cls, *args, mixin: Optional[bool] = None, primitives: Optional[List[Type]] = None, callables: Optional[List[Tuple[str, Callable]]] = None, only_nesy: bool = False, iterate_nesy: bool = False, **kwargs) -> "Symbol":
+    def __new__(cls, *args,
+                mixin: Optional[bool] = None,
+                primitives: Optional[List[Type]] = None,
+                callables: Optional[List[Tuple[str, Callable]]] = None,
+                only_nesy: bool = False,
+                iterate_nesy: bool = False,
+                **kwargs) -> "Symbol":
         '''
         Create a new Symbol instance.
 
@@ -316,6 +322,8 @@ class Symbol(metaclass=SymbolMeta):
         use_mixin           = mixin if mixin is not None else cls._mixin
         standard_primitives = primitives is None
         primitives          = primitives if not standard_primitives else cls._primitives
+        if not isinstance(primitives, list):
+            primitives = [primitives]
         # Initialize instance as a combination of Symbol and the mixin primitive types
         if use_mixin:
             # create a new cls type that inherits from Symbol and the mixin primitive types
@@ -345,6 +353,8 @@ class Symbol(metaclass=SymbolMeta):
                 setattr(obj, prim_name, Symbol._metadata._primitives[prim_name](obj))
         # If has additional runtime callables, add them to the instance
         if callables is not None:
+            if not isinstance(callables, list):
+                callables = [callables]
             for call_name, call_func in callables:
                 # create a new function that binds the instance to the callable
                 setattr(obj, call_name, call_func(obj))
