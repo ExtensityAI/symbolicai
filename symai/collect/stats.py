@@ -11,6 +11,7 @@ from ..symbol import Symbol
 
 
 SPECIAL_CONSTANT = '__aggregate_'
+EXCLUDE_LIST     = ['_ipython_canary_method_should_not_exist_', '__custom_documentations__']
 
 
 def _normalize_name(name: str) -> str:
@@ -33,7 +34,7 @@ class AggregatorJSONEncoder(JSONEncoder):
             for key in list(state.keys()):
                 if  not key.startswith(SPECIAL_CONSTANT) and key != '_value' or \
                     key == '_value' and obj._value == [] or \
-                    '_ipython_canary_method_should_not_exist_' in key:
+                    key.replace(SPECIAL_CONSTANT, '') in EXCLUDE_LIST:
                     state.pop(key, None)
             return state
         return obj.__dict__
@@ -139,7 +140,7 @@ class Aggregator(Symbol):
                 key = key.replace(SPECIAL_CONSTANT, '')
             if key == '_value':
                 value = np.asarray(value, dtype=np.float32)
-            setattr(obj, key, value)
+            obj.__setattr__(key, value)
 
     @staticmethod
     def _reconstruct(json_):
@@ -251,6 +252,11 @@ class Aggregator(Symbol):
             self.entries.append(entries)
         except Exception as e:
             raise Exception(f'Could not add entries to Aggregator object! Please verify type or original error: {e}') from e
+
+    def keys(self):
+        # Get all key names of items that have the SPECIAL_CONSTANT prefix
+        return [key.replace(SPECIAL_CONSTANT, '') for key in self.__dict__.keys() if not key.startswith('_') and \
+                key.replace(SPECIAL_CONSTANT, '') not in EXCLUDE_LIST]
 
     @property
     def active(self):
