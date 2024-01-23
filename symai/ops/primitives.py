@@ -3,12 +3,12 @@ import os
 import pickle
 import uuid
 import torch
-from scipy import linalg
 import numpy as np
 
 from typing import (TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Optional, Tuple,
                     Type, Union)
 
+from .measures import calculate_frechet_distance
 from .. import core
 from .. import core_ext
 from ..prompts import Prompt
@@ -22,6 +22,8 @@ class Primitive:
     __disable_shortcut_matches__   = False
     # DO NOT use by default neuro-symbolic iterations for mixins to avoid unwanted side effects
     __nesy_iteration_primitives__  = False
+    # disable the entire NeSy engine access
+    __disable_nesy_engine__        = False
     # disable None shortcut
     __disable_none_shortcut__      = False
 
@@ -30,6 +32,7 @@ class Primitive:
         # by default, disable shortcut matches and neuro-symbolic iterations
         self.__disable_shortcut_matches__  = self.__disable_shortcut_matches__ or Primitive.__disable_shortcut_matches__
         self.__nesy_iteration_primitives__ = self.__nesy_iteration_primitives__ or Primitive.__nesy_iteration_primitives__
+        self.__disable_nesy_engine__       = self.__disable_nesy_engine__ or Primitive.__disable_nesy_engine__
         self.__disable_none_shortcut__     = self.__disable_none_shortcut__ or Primitive.__disable_none_shortcut__
 
     @staticmethod
@@ -41,7 +44,8 @@ class ArithmeticPrimitives(Primitive):
     def __try_type_specific_func(self, other, func, op: str = None):
         if self.__disable_shortcut_matches__:
             return None
-        other = self._to_symbol(other)
+        if not isinstance(other, self._symbol_type):
+            other = self._to_symbol(other)
         # None shortcut
         if not self.__disable_none_shortcut__:
             if  self.value is None or other.value is None:
@@ -58,6 +62,13 @@ class ArithmeticPrimitives(Primitive):
             self._metadata._error = ex
             pass
         return None
+
+    def __throw_error_on_nesy_engine_call(self, func):
+        '''
+        This function raises an error if the neuro-symbolic engine is disabled.
+        '''
+        if self.__disable_nesy_engine__:
+            raise TypeError(f"unsupported {self.__class__} value operand type(s) for {func.__name__}: '{type(self.value)}'")
 
     '''
     This mixin contains functions that perform arithmetic operations on symbols or symbol values.
@@ -95,6 +106,8 @@ class ArithmeticPrimitives(Primitive):
         if type(self.value) != str and (not self.__nesy_iteration_primitives__ or Primitive._is_iterable(self.value)):
             return result
 
+        self.__throw_error_on_nesy_engine_call(self.__contains__)
+
         @core.contains()
         def _func(_, other) -> bool:
             pass
@@ -120,6 +133,8 @@ class ArithmeticPrimitives(Primitive):
         # verify the result and return if found return
         if result is not None and result is not False:
             return result
+
+        self.__throw_error_on_nesy_engine_call(self.__eq__)
 
         @core.equals()
         def _func(_, other) -> bool:
@@ -161,6 +176,9 @@ class ArithmeticPrimitives(Primitive):
         # verify the result and return if found return
         if result is not None and result is not False:
             return result
+
+        self.__throw_error_on_nesy_engine_call(self.__gt__)
+
         @core.compare(operator = '>')
         def _func(_, other) -> bool:
             pass
@@ -182,6 +200,9 @@ class ArithmeticPrimitives(Primitive):
         # verify the result and return if found return
         if result is not None and result is not False:
             return result
+
+        self.__throw_error_on_nesy_engine_call(self.__lt__)
+
         @core.compare(operator = '<')
         def _func(_, other) -> bool:
             pass
@@ -203,6 +224,9 @@ class ArithmeticPrimitives(Primitive):
         # verify the result and return if found return
         if result is not None and result is not False:
             return result
+
+        self.__throw_error_on_nesy_engine_call(self.__le__)
+
         @core.compare(operator = '<=')
         def _func(_, other) -> bool:
             pass
@@ -224,6 +248,9 @@ class ArithmeticPrimitives(Primitive):
         # verify the result and return if found return
         if result is not None and result is not False:
             return result
+
+        self.__throw_error_on_nesy_engine_call(self.__ge__)
+
         @core.compare(operator = '>=')
         def _func(_, other) -> bool:
             pass
@@ -242,6 +269,9 @@ class ArithmeticPrimitives(Primitive):
         # verify the result and return if found return
         if result is not None and result is not False:
             return self._to_symbol(result)
+
+        self.__throw_error_on_nesy_engine_call(self.__neg__)
+
         @core.negate()
         def _func(_):
             pass
@@ -260,6 +290,9 @@ class ArithmeticPrimitives(Primitive):
         # verify the result and return if found return
         if result is not None and result is not False:
             return self._to_symbol(result)
+
+        self.__throw_error_on_nesy_engine_call(self.__not__)
+
         @core.negate()
         def _func(_):
             pass
@@ -278,6 +311,9 @@ class ArithmeticPrimitives(Primitive):
         # verify the result and return if found return
         if result is not None and result is not False:
             return self._to_symbol(result)
+
+        self.__throw_error_on_nesy_engine_call(self.__invert__)
+
         @core.invert()
         def _func(_):
             pass
@@ -299,6 +335,9 @@ class ArithmeticPrimitives(Primitive):
         # verify the result and return if found return
         if result is not None and result is not False:
             return self._to_symbol(result)
+
+        self.__throw_error_on_nesy_engine_call(self.__lshift__)
+
         @core.include()
         def _func(_, information: str):
             pass
@@ -320,6 +359,9 @@ class ArithmeticPrimitives(Primitive):
         # verify the result and return if found return
         if result is not None and result is not False:
             return self._to_symbol(result)
+
+        self.__throw_error_on_nesy_engine_call(self.__rlshift__)
+
         @core.include()
         def _func(_, information: str):
             pass
@@ -342,6 +384,9 @@ class ArithmeticPrimitives(Primitive):
         if result is not None and result is not False:
             self._value = result
             return self
+
+        self.__throw_error_on_nesy_engine_call(self.__ilshift__)
+
         @core.include()
         def _func(_, information: str):
             pass
@@ -364,6 +409,9 @@ class ArithmeticPrimitives(Primitive):
         # verify the result and return if found return
         if result is not None and result is not False:
             return self._to_symbol(result)
+
+        self.__throw_error_on_nesy_engine_call(self.__rshift__)
+
         @core.include()
         def _func(_, information: str):
             pass
@@ -385,6 +433,9 @@ class ArithmeticPrimitives(Primitive):
         # verify the result and return if found return
         if result is not None and result is not False:
             return self._to_symbol(result)
+
+        self.__throw_error_on_nesy_engine_call(self.__rrshift__)
+
         @core.include()
         def _func(_, information: str):
             pass
@@ -407,6 +458,9 @@ class ArithmeticPrimitives(Primitive):
         if result is not None and result is not False:
             self._value = result
             return self
+
+        self.__throw_error_on_nesy_engine_call(self.__irshift__)
+
         @core.include()
         def _func(_, information: str):
             pass
@@ -435,6 +489,9 @@ class ArithmeticPrimitives(Primitive):
         # verify the result and return if found return
         if result is not None and result is not False:
             return self._to_symbol(result)
+
+        self.__throw_error_on_nesy_engine_call(self.__add__)
+
         @core.combine()
         def _func(_, a: str, b: str):
             pass
@@ -462,6 +519,9 @@ class ArithmeticPrimitives(Primitive):
         # verify the result and return if found return
         if result is not None and result is not False:
             return self._to_symbol(result)
+
+        self.__throw_error_on_nesy_engine_call(self.__radd__)
+
         @core.combine()
         def _func(_, a: str, b: str):
             pass
@@ -511,6 +571,9 @@ class ArithmeticPrimitives(Primitive):
         # verify the result and return if found return
         if result is not None and result is not False:
             return self._to_symbol(result)
+
+        self.__throw_error_on_nesy_engine_call(self.__sub__)
+
         @core.replace()
         def _func(_, text: str, replace: str, value: str):
             pass
@@ -533,6 +596,9 @@ class ArithmeticPrimitives(Primitive):
         # verify the result and return if found return
         if result is not None and result is not False:
             return self._to_symbol(result)
+
+        self.__throw_error_on_nesy_engine_call(self.__rsub__)
+
         @core.replace()
         def _func(_, text: str, replace: str, value: str):
             pass
@@ -585,6 +651,9 @@ class ArithmeticPrimitives(Primitive):
         # verify the result and return if found return
         if result is not None and result is not False:
             return result
+
+        self.__throw_error_on_nesy_engine_call(self.__and__)
+
         @core.logic(operator='and')
         def _func(_, a: str, b: str):
             pass
@@ -616,6 +685,9 @@ class ArithmeticPrimitives(Primitive):
         # verify the result and return if found return
         if result is not None and result is not False:
             return result
+
+        self.__throw_error_on_nesy_engine_call(self.__rand__)
+
         @core.logic(operator='and')
         def _func(_, a: str, b: str):
             pass
@@ -649,6 +721,9 @@ class ArithmeticPrimitives(Primitive):
         if result is not None and result is not False:
             self._value = result
             return self
+
+        self.__throw_error_on_nesy_engine_call(self.__iand__)
+
         @core.logic(operator='and')
         def _func(_, a: str, b: str):
             pass
@@ -686,6 +761,8 @@ class ArithmeticPrimitives(Primitive):
         if result is not None and result is not False:
             return result
 
+        self.__throw_error_on_nesy_engine_call(self.__or__)
+
         @core.logic(operator='or')
         def _func(_, a: str, b: str):
             pass
@@ -721,6 +798,8 @@ class ArithmeticPrimitives(Primitive):
         # verify the result and return if found return
         if result is not None and result is not False:
             return self._to_symbol(result)
+
+        self.__throw_error_on_nesy_engine_call(self.__ror__)
 
         @core.logic(operator='or')
         def _func(a: str, b: str):
@@ -761,6 +840,9 @@ class ArithmeticPrimitives(Primitive):
             self._value = result
             return self
         result = self._to_symbol(str(self) + str(other))
+
+        self.__throw_error_on_nesy_engine_call(self.__ior__)
+
         @core.logic(operator='or')
         def _func(_, a: str, b: str):
             pass
@@ -784,6 +866,9 @@ class ArithmeticPrimitives(Primitive):
         # verify the result and return if found return
         if result is not None and result is not False:
             return self._to_symbol(result)
+
+        self.__throw_error_on_nesy_engine_call(self.__xor__)
+
         @core.logic(operator='xor')
         def _func(_, a: str, b: str):
             pass
@@ -806,6 +891,9 @@ class ArithmeticPrimitives(Primitive):
         # verify the result and return if found return
         if result is not None and result is not False:
             return self._to_symbol(result)
+
+        self.__throw_error_on_nesy_engine_call(self.__rxor__)
+
         @core.logic(operator='xor')
         def _func(_, a: str, b: str):
             pass
@@ -830,6 +918,9 @@ class ArithmeticPrimitives(Primitive):
         if result is not None and result is not False:
             self._value = result
             return self
+
+        self.__throw_error_on_nesy_engine_call(self.__ixor__)
+
         @core.logic(operator='xor')
         def _func(_, a: str, b: str):
             pass
@@ -2316,21 +2407,21 @@ class EmbeddingPrimitives(Primitive):
                     assert len(self.value) > 0, 'Cannot compute embedding of empty list'
                     if isinstance(self.value[0], Symbol):
                         # convert each element to numpy array
-                        self._metadata.embedding = np.array([x.embedding for x in self.value])
+                        self._metadata.embedding = np.asarray([x.embedding for x in self.value])
                     elif isinstance(self.value[0], str):
                         # embed each string
-                        self._metadata.embedding = np.array([Symbol(x).embedding for x in self.value])
+                        self._metadata.embedding = np.asarray([Symbol(x).embedding for x in self.value])
                     else:
                         # convert to numpy array
-                        self._metadata.embedding = np.array(self.value)
+                        self._metadata.embedding = np.asarray(self.value)
                 else:
                     # convert to numpy array
                     self._metadata.embedding = np.asarray(self.value)
             else:
                 # compute the embedding and store as numpy array
-                self._metadata.embedding = np.array(self.embed().value)
+                self._metadata.embedding = np.asarray(self.embed().value)
         if isinstance(self._metadata.embedding, list):
-            self._metadata.embedding = np.array(self._metadata.embedding)
+            self._metadata.embedding = np.asarray(self._metadata.embedding)
         # return the embedding
         return self._metadata.embedding
 
@@ -2346,7 +2437,7 @@ class EmbeddingPrimitives(Primitive):
         # if it is a list, convert it to numpy
         if isinstance(x, list) or isinstance(x, tuple):
             assert len(x) > 0, 'Cannot compute similarity with empty list'
-            x = np.array(x)
+            x = np.asarray(x)
         # if it is a tensor, convert it to numpy
         elif isinstance(x, torch.Tensor):
             x = x.detach().cpu().numpy()
@@ -2408,61 +2499,6 @@ class EmbeddingPrimitives(Primitive):
 
         if normalize is not None:
             val = normalize(val)
-        return val
-
-    def _calculate_frechet_distance(self, mu1, sigma1, mu2, sigma2, eps=1e-6):
-        """Numpy implementation of the Frechet Distance.
-        The Frechet distance between two multivariate Gaussians X_1 ~ N(mu_1, C_1)
-        and X_2 ~ N(mu_2, C_2) is
-                d^2 = ||mu_1 - mu_2||^2 + Tr(C_1 + C_2 - 2*sqrt(C_1*C_2)).
-
-        Stable version by Dougal J. Sutherland.
-
-        Params:
-        -- mu1   : Numpy array containing the activations of a layer of the
-                inception net (like returned by the function 'get_predictions')
-                for generated samples.
-        -- mu2   : The sample mean over activations, precalculated on an
-                representative data set.
-        -- sigma1: The covariance matrix over activations for generated samples.
-        -- sigma2: The covariance matrix over activations, precalculated on an
-                representative data set.
-
-        Returns:
-        --   : The Frechet Distance.
-        """
-
-        mu1 = np.atleast_1d(mu1).squeeze()
-        mu2 = np.atleast_1d(mu2).squeeze()
-
-        sigma1 = np.atleast_2d(sigma1)
-        sigma2 = np.atleast_2d(sigma2)
-
-        assert mu1.shape == mu2.shape, \
-            'Training and test mean vectors have different lengths'
-        assert sigma1.shape == sigma2.shape, \
-            'Training and test covariances have different dimensions'
-
-        diff = mu1 - mu2
-
-        # Product might be almost singular
-        covmean, _ = linalg.sqrtm(sigma1.dot(sigma2), disp=False)
-        if not np.isfinite(covmean).all():
-            msg = ('fid calculation produces singular product; '
-                'adding %s to diagonal of cov estimates') % eps
-            print(msg)
-            offset = np.eye(sigma1.shape[0]) * eps
-            covmean = linalg.sqrtm((sigma1 + offset).dot(sigma2 + offset))
-
-        # Numerical error might give slight imaginary component
-        if np.iscomplexobj(covmean):
-            if not np.allclose(np.diagonal(covmean).imag, 0, atol=1e-3):
-                m = np.max(np.abs(covmean.imag))
-                raise ValueError('Imaginary component {}'.format(m))
-            covmean = covmean.real
-
-        tr_covmean = np.trace(covmean)
-        val = diff.dot(diff) + np.trace(sigma1) + np.trace(sigma2) - 2 * tr_covmean
         return val
 
     def distance(self, other: Union['Symbol', list, np.ndarray, torch.Tensor], kernel: Union['gaussian', 'rbf', 'laplacian', 'polynomial', 'sigmoid', 'linear', 'cauchy', 't-distribution', 'inverse-multiquadric', 'cosine', 'angular-cosine', 'frechet'] = 'gaussian',  eps: float = 1e-8, normalize: Optional[Callable] = None, **kwargs) -> float:
@@ -2532,7 +2568,7 @@ class EmbeddingPrimitives(Primitive):
             sigma1  = kwargs.get('sigma1', None)
             sigma2  = kwargs.get('sigma2', None)
             assert sigma1 is not None and sigma2 is not None, 'Frechet distance requires covariance matrices for both inputs'
-            val     = self._calculate_frechet_distance(v, sigma1, o, sigma2, eps)
+            val     = calculate_frechet_distance(v, sigma1, o, sigma2, eps)
         else:
             raise NotImplementedError(f"Kernel function {kernel} not implemented. Available functions: 'gaussian'")
         # get the kernel value(s)
