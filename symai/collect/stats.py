@@ -31,7 +31,7 @@ class AggregatorJSONEncoder(JSONEncoder):
             obj.pop('_map', None)
             # drop everything that starts with SPECIAL_CONSTANT
             for key in list(obj.keys()):
-                if not key.startswith(SPECIAL_CONSTANT) and not key.startswith('entries'):
+                if not key.startswith(SPECIAL_CONSTANT) and key != '_value':
                     obj.pop(key, None)
             return obj
         return obj.__dict__
@@ -142,7 +142,8 @@ class Aggregator(Symbol):
     @staticmethod
     def _reconstruct(json_):
         obj = Aggregator()
-        return Aggregator._set_values(obj, json_)
+        Aggregator._set_values(obj, json_)
+        return obj
 
     def __str__(self) -> str:
         '''
@@ -299,7 +300,7 @@ class Aggregator(Symbol):
         # Clear the entries of the aggregator
         if self._finalized:
             raise Exception('Aggregator object is frozen!')
-        self.entries = []
+        self._value = []
 
     def sum(self, axis=0):
         # Get the sum of the entries of the aggregator
