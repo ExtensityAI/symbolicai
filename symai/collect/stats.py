@@ -3,10 +3,14 @@ import re
 import json
 import numpy as np
 
-from typing import Any, Optional
+from typing import Any, Optional, Union, List, Type, Tuple, Callable
 from json import JSONEncoder
 
+from ..ops.primitives import ArithmeticPrimitives
 from ..symbol import Symbol
+
+
+SPECIAL_CONSTANT = '__aggregate_'
 
 
 def _normalize_name(name: str) -> str:
@@ -22,10 +26,12 @@ class AggregatorJSONEncoder(JSONEncoder):
         # drop active from state
         elif isinstance(obj, Aggregator):
             obj = obj.__dict__.copy()
-            obj.pop('active', None)
-            # drop everything that starts with __aggregate_
+            obj.pop('_active', None)
+            obj.pop('_finalized', None)
+            obj.pop('_map', None)
+            # drop everything that starts with SPECIAL_CONSTANT
             for key in list(obj.keys()):
-                if not key.startswith('__aggregate_') and not key.startswith('entries'):
+                if not key.startswith(SPECIAL_CONSTANT) and not key.startswith('entries'):
                     obj.pop(key, None)
             return obj
         return obj.__dict__
@@ -33,16 +39,44 @@ class AggregatorJSONEncoder(JSONEncoder):
 
 class Aggregator(Symbol):
     def __init__(self,
-                 aggregator: Optional["Aggregator"] = None,
+                 value: Optional[Union["Aggregator", Symbol]] = None,
                  active: bool = True,
                  *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if aggregator is not None:
-            assert isinstance(aggregator, Aggregator), 'Aggregator must be an instance of Aggregator! Got: {}'.format(type(aggregator))
-            Aggregator._set_values(self, aggregator.__dict__)
+        super().__init__(*args,
+                         **kwargs)
+        # disable nesy engine to avoid side effects
+        self.__disable_nesy_engine__ = True
+        if value is not None and isinstance(value, Symbol):
+            # use this to avoid recursion on map setter
+            self._value = value._value
+            if isinstance(self._value, np.ndarray):
+                self._value = self._value.tolist()
+            elif isinstance(self._value, torch.Tensor):
+                self._value = self._value.detach().cpu().numpy().tolist()
+            elif not isinstance(self._value, (list, tuple)):
+                self._value = [self._value]
+        elif value is not None:
+            raise Exception(f'Aggregator object must be of type Aggregator or Symbol! Got: {type(value)}')
+        else:
+            self._value = []
         self._active    = active
         self._finalized = False
-        self.entries    = []
+        self._map       = None
+
+    def __new__(cls, *args,
+            mixin: Optional[bool] = None,
+            primitives: Optional[List[Type]] = [ArithmeticPrimitives], # only inherit arithmetic primitives
+            callables: Optional[List[Tuple[str, Callable]]] = None,
+            only_nesy: bool = False,
+            iterate_nesy: bool = False,
+            **kwargs) -> "Symbol":
+        return super().__new__(cls, *args,
+                         mixin=mixin,
+                         primitives=primitives,
+                         callables=callables,
+                         only_nesy=only_nesy,
+                         iterate_nesy=iterate_nesy,
+                         **kwargs)
 
     def __getattr__(self, name):
         # replace name special characters and spaces with underscores
@@ -51,20 +85,14 @@ class Aggregator(Symbol):
         if self._active and name not in self.__dict__:
             aggregator = Aggregator()
             # create a new aggregate aggregator
-            # named __aggregate_{name} for automatic aggregation
-            self.__dict__[f'__aggregate_{name}'] = aggregator
-            # add also a property with the same name but without the __aggregate_ prefix as a shortcut
-            self.__dict__[name] = self.__dict__[f'__aggregate_{name}']
+            # named {SPECIAL_CONSTANT}{name} for automatic aggregation
+            self.__dict__[f'{SPECIAL_CONSTANT}{name}'] = aggregator
+            # add also a property with the same name but without the SPECIAL_CONSTANT prefix as a shortcut
+            self.__dict__[name] = self.__dict__[f'{SPECIAL_CONSTANT}{name}']
             return self.__dict__.get(name)
         elif not self._active and name not in self.__dict__:
             raise Exception(f'Aggregator object is frozen! No attribute {name} found!')
         return self.__dict__.get(name)
-
-    def shape(self):
-        if len(self.entries) > 0:
-            return self.entries[0].shape
-        else:
-            return ()
 
     def __setattr__(self, name, value):
         # replace name special characters and spaces with underscores
@@ -94,15 +122,10 @@ class Aggregator(Symbol):
     def __setstate__(self, state):
         # replace name special characters and spaces with underscores
         # drop active from state
-        state.pop('active', None)
+        state.pop('_active', None)
+        state.pop('_finalized', None)
+        state.pop('_map', None)
         return super().__setstate__(state)
-
-    def serialize(self):
-        return json.dumps(self, cls=AggregatorJSONEncoder)
-
-    def save(self, path: str):
-        with open(path, 'w') as f:
-            json.dump(self, f, cls=AggregatorJSONEncoder)
 
     @staticmethod
     def _set_values(obj, dictionary):
@@ -110,10 +133,10 @@ class Aggregator(Symbol):
         for key, value in dictionary.items():
             if isinstance(value, dict):
                 value = Aggregator._reconstruct(value)
-            if key.startswith('__aggregate_'):
-                key = key.replace('__aggregate_', '')
-            if key.startswith('entries'):
-                value = np.array(value, dtype=np.float32)
+            if key.startswith(SPECIAL_CONSTANT):
+                key = key.replace(SPECIAL_CONSTANT, '')
+            if key == '_value':
+                value = np.asarray(value, dtype=np.float32)
             setattr(obj, key, value)
 
     @staticmethod
@@ -121,24 +144,18 @@ class Aggregator(Symbol):
         obj = Aggregator()
         return Aggregator._set_values(obj, json_)
 
-    @staticmethod
-    def load(path: str):
-        with open(path, 'r') as f:
-            json_ = json.load(f)
-        obj = Aggregator._reconstruct(json_)
-        return obj
-
-    def __repr__(self) -> str:
+    def __str__(self) -> str:
         '''
-        Get the representation of the Symbol object as a string.
+        Get the string representation of the Symbol object.
 
         Returns:
-            str: The representation of the Symbol object.
+            str: The string representation of the Symbol object.
         '''
-        # class with full path
-        class_ = self.__class__.__module__ + '.' + self.__class__.__name__
-        hex_   = hex(id(self))
-        return f'<class {class_} at {hex_}>(entries={self.entries})'
+        return str(self.entries)
+
+    def _to_symbol(self, other) -> Symbol:
+        sym = super()._to_symbol(other)
+        return Aggregator(sym)
 
     def __or__(self, other: Any) -> Any:
         self.add(other)
@@ -153,7 +170,51 @@ class Aggregator(Symbol):
         return other
 
     def __len__(self) -> int:
-        return len(self.entries)
+        return len(self._value)
+
+    @property
+    def entries(self):
+        return self._value
+
+    @property
+    def value(self):
+        if self.map is not None:
+            res = np.asarray(self.map(np.asarray(self._value, dtype=np.float32)))
+            return res
+        return np.asarray(self._value, dtype=np.float32)
+
+    @property
+    def map(self):
+        return self._map if not self.empty() else None
+
+    @map.setter
+    def map(self, value):
+        self._set_map_recursively(value)
+
+    def _set_map_recursively(self, map):
+        self._map = map
+        for key, value in self.__dict__.items():
+            if isinstance(value, Aggregator) and (not key.startswith('_') or key.startswith(SPECIAL_CONSTANT)):
+                value.map = map
+
+    def shape(self):
+        if len(self.entries) > 0:
+            return np.asarray(self.entries).shape
+        else:
+            return ()
+
+    def serialize(self):
+        return json.dumps(self, cls=AggregatorJSONEncoder)
+
+    def save(self, path: str):
+        with open(path, 'w') as f:
+            json.dump(self, f, cls=AggregatorJSONEncoder)
+
+    @staticmethod
+    def load(path: str):
+        with open(path, 'r') as f:
+            json_ = json.load(f)
+        return Aggregator._reconstruct(json_)
 
     def empty(self) -> bool:
         return len(self) == 0
@@ -164,22 +225,22 @@ class Aggregator(Symbol):
             if self._finalized:
                 raise Exception('Aggregator object is frozen!')
             return
-
         try:
             # Append a new entry to the aggregator
             assert type(entries) in [tuple, list, np.float32, np.float64, np.ndarray, torch.Tensor, int, float, bool, str] or isinstance(entries, Symbol), 'Entries must be a tuple, list, numpy array, torch tensor, integer, float, boolean, string, or Symbol! Got: {}'.format(type(entries))
             if type(entries) == torch.Tensor:
                 entries = entries.detach().cpu().numpy().astype(np.float32)
             elif type(entries) in [tuple, list]:
-                entries = np.array(entries, dtype=np.float32)
+                entries = np.asarray(entries, dtype=np.float32)
             elif type(entries) in [int, float]:
-                entries = np.array([entries], dtype=np.float32)
+                entries = entries
             elif type(entries) == bool:
-                entries = np.array([int(entries)], dtype=np.float32)
+                entries = int(entries)
             elif type(entries) == str:
                 entries = Symbol(entries).embedding.astype(np.float32)
             elif isinstance(entries, Symbol):
-                self.add(entries.value)
+                # use this to avoid recursion on map setter
+                self.add(entries._value)
                 return
             elif isinstance(entries, Aggregator):
                 self.add(entries.get())
@@ -212,73 +273,67 @@ class Aggregator(Symbol):
 
     def finalize(self):
         # Finalizes the dynamic creation of the aggregators and freezes the object to prevent further changes
-        self._active      = False
+        self._active     = False
         self._finalized  = True
-        def raise_exception(*args, **kwargs):
-            raise Exception('Aggregator object is frozen!')
+        def raise_exception(name, value):
+            if name == 'map':
+                self.__setattr__(name, value)
+            else:
+                raise Exception('Aggregator object is frozen!')
         self.__setattr__ = raise_exception
         def get_attribute(*args, **kwargs):
             return self.__dict__.get(*args, **kwargs)
         self.__getattr__ = get_attribute
         # Do the same recursively for all properties of type Aggregator
         for key, value in self.__dict__.items():
-            if isinstance(value, Aggregator) and (not key.startswith('_') or key.startswith('__aggregate_')):
+            if isinstance(value, Aggregator) and (not key.startswith('_') or key.startswith(SPECIAL_CONSTANT)):
                 value.finalize()
 
-    def get(self):
+    def get(self, *args, **kwargs):
+        if self._map is not None:
+            return self._map(self.entries, *args, **kwargs)
         # Get the entries of the aggregator
-        assert 'entries' in self.__dict__, 'No entries found!'
         return self.entries
 
     def clear(self):
         # Clear the entries of the aggregator
-        assert 'entries' in self.__dict__, 'No entries found!'
         if self._finalized:
             raise Exception('Aggregator object is frozen!')
         self.entries = []
 
     def sum(self, axis=0):
         # Get the sum of the entries of the aggregator
-        assert 'entries' in self.__dict__, 'No entries found!'
         return np.sum(self.entries, axis=axis)
 
     def mean(self, axis=0):
         # Get the mean of the entries of the aggregator
-        assert 'entries' in self.__dict__, 'No entries found!'
         return np.mean(self.entries, axis=axis)
 
     def median(self, axis=0):
         # Get the median of the entries of the aggregator
-        assert 'entries' in self.__dict__, 'No entries found!'
         return np.median(self.entries, axis=axis)
 
     def var(self, axis=0):
         # Get the variance of the entries of the aggregator
-        assert 'entries' in self.__dict__, 'No entries found!'
         return np.var(self.entries, axis=axis)
 
     def cov(self, rowvar=False):
         # Get the covariance of the entries of the aggregator
-        assert 'entries' in self.__dict__, 'No entries found!'
         return np.cov(self.entries, rowvar=rowvar)
 
     def moment(self, moment=2, axis=0):
         # Get the moment of the entries of the aggregator
-        assert 'entries' in self.__dict__, 'No entries found!'
         return np.mean(np.power(self.entries, moment), axis=axis)
 
     def std(self, axis=0):
         # Get the standard deviation of the entries of the aggregator
-        assert 'entries' in self.__dict__, 'No entries found!'
         return np.std(self.entries, axis=axis)
 
     def min(self, axis=0):
         # Get the minimum of the entries of the aggregator
-        assert 'entries' in self.__dict__, 'No entries found!'
         return np.min(self.entries, axis=axis)
 
     def max(self, axis=0):
         # Get the maximum of the entries of the aggregator
-        assert 'entries' in self.__dict__, 'No entries found!'
         return np.max(self.entries, axis=axis)
 
