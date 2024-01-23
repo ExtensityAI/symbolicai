@@ -6,7 +6,7 @@ import numpy as np
 from typing import Any, Optional
 from json import JSONEncoder
 
-from ..symbol import Symbol, Metadata
+from ..symbol import Symbol
 
 
 def _normalize_name(name: str) -> str:
@@ -31,7 +31,7 @@ class AggregatorJSONEncoder(JSONEncoder):
         return obj.__dict__
 
 
-class Aggregator(Metadata):
+class Aggregator(Symbol):
     def __init__(self,
                  aggregator: Optional["Aggregator"] = None,
                  active: bool = True,
@@ -59,6 +59,12 @@ class Aggregator(Metadata):
         elif not self._active and name not in self.__dict__:
             raise Exception(f'Aggregator object is frozen! No attribute {name} found!')
         return self.__dict__.get(name)
+
+    def shape(self):
+        if len(self.entries) > 0:
+            return self.entries[0].shape
+        else:
+            return ()
 
     def __setattr__(self, name, value):
         # replace name special characters and spaces with underscores
@@ -132,7 +138,7 @@ class Aggregator(Metadata):
         # class with full path
         class_ = self.__class__.__module__ + '.' + self.__class__.__name__
         hex_   = hex(id(self))
-        return f'<class {class_} at {hex_}>'
+        return f'<class {class_} at {hex_}>(entries={self.entries})'
 
     def __or__(self, other: Any) -> Any:
         self.add(other)
@@ -216,7 +222,7 @@ class Aggregator(Metadata):
         self.__getattr__ = get_attribute
         # Do the same recursively for all properties of type Aggregator
         for key, value in self.__dict__.items():
-            if isinstance(value, Aggregator):
+            if isinstance(value, Aggregator) and (not key.startswith('_') or key.startswith('__aggregate_')):
                 value.finalize()
 
     def get(self):
