@@ -25,15 +25,17 @@ class AggregatorJSONEncoder(JSONEncoder):
             return obj.tolist()
         # drop active from state
         elif isinstance(obj, Aggregator):
-            obj = obj.__dict__.copy()
-            obj.pop('_active', None)
-            obj.pop('_finalized', None)
-            obj.pop('_map', None)
+            state = obj.__dict__.copy()
+            state.pop('_active', None)
+            state.pop('_finalized', None)
+            state.pop('_map', None)
             # drop everything that starts with SPECIAL_CONSTANT
-            for key in list(obj.keys()):
-                if not key.startswith(SPECIAL_CONSTANT) and key != '_value':
-                    obj.pop(key, None)
-            return obj
+            for key in list(state.keys()):
+                if  not key.startswith(SPECIAL_CONSTANT) and key != '_value' or \
+                    key == '_value' and obj._value == [] or \
+                    '_ipython_canary_method_should_not_exist_' in key:
+                    state.pop(key, None)
+            return state
         return obj.__dict__
 
 
