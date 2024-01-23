@@ -43,6 +43,7 @@ class AggregatorJSONEncoder(JSONEncoder):
 class Aggregator(Symbol):
     def __init__(self,
                  value: Optional[Union["Aggregator", Symbol]] = None,
+                 path: Optional[str] = None,
                  active: bool = True,
                  *args, **kwargs):
         super().__init__(*args,
@@ -65,6 +66,7 @@ class Aggregator(Symbol):
         self._active    = active
         self._finalized = False
         self._map       = None
+        self._path      = path
 
     def __new__(cls, *args,
             mixin: Optional[bool] = None,
@@ -86,7 +88,9 @@ class Aggregator(Symbol):
         name = _normalize_name(name)
         # Dynamically create new aggregator instance if it does not exist
         if self._active and name not in self.__dict__:
-            aggregator = Aggregator()
+            aggregator = Aggregator(path=name)
+            aggregator._parent = self
+            self._children.append(aggregator)
             # create a new aggregate aggregator
             # named {SPECIAL_CONSTANT}{name} for automatic aggregation
             self.__dict__[f'{SPECIAL_CONSTANT}{name}'] = aggregator
@@ -131,21 +135,30 @@ class Aggregator(Symbol):
         return super().__setstate__(state)
 
     @staticmethod
-    def _set_values(obj, dictionary):
+    def _set_values(obj, dictionary, parent, strict: bool = True):
         # recursively reconstruct the object
         for key, value in dictionary.items():
             if isinstance(value, dict):
-                value = Aggregator._reconstruct(value)
+                if parent is not None:
+                    obj._path = key
+                value = Aggregator._reconstruct(value, parent=parent, strict=strict)
             if key.startswith(SPECIAL_CONSTANT):
                 key = key.replace(SPECIAL_CONSTANT, '')
             if key == '_value':
-                value = np.asarray(value, dtype=np.float32)
+                try:
+                    value = np.asarray(value, dtype=np.float32)
+                except Exception as e:
+                    if strict:
+                        raise Exception(f'Could not set value of Aggregator object: {obj.path}! ERROR: {e}') from e
             obj.__setattr__(key, value)
 
     @staticmethod
-    def _reconstruct(json_):
+    def _reconstruct(dictionary, parent = None, strict: bool = True):
         obj = Aggregator()
-        Aggregator._set_values(obj, json_)
+        obj._parent = parent
+        if parent is not None:
+            parent._children.append(obj)
+        Aggregator._set_values(obj, dictionary, parent=obj, strict=strict)
         return obj
 
     def __str__(self) -> str:
@@ -159,7 +172,21 @@ class Aggregator(Symbol):
 
     def _to_symbol(self, other) -> Symbol:
         sym = super()._to_symbol(other)
-        return Aggregator(sym)
+        res = Aggregator(sym)
+        res._parent = self
+        self._children.append(res)
+        return
+
+    @property
+    def path(self) -> str:
+        path = ''
+        obj  = self
+        while obj is not None:
+            if obj._path is not None:
+                path = obj._path.replace(SPECIAL_CONSTANT, '') + '.' + path
+            obj = obj._parent
+        path = path[:-1] # remove last dot
+        return path
 
     def __or__(self, other: Any) -> Any:
         self.add(other)
@@ -215,10 +242,10 @@ class Aggregator(Symbol):
             json.dump(self, f, cls=AggregatorJSONEncoder)
 
     @staticmethod
-    def load(path: str):
+    def load(path: str, strict: bool = True):
         with open(path, 'r') as f:
             json_ = json.load(f)
-        return Aggregator._reconstruct(json_)
+        return Aggregator._reconstruct(json_, strict=strict)
 
     def empty(self) -> bool:
         return len(self) == 0
