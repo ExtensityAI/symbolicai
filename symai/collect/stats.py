@@ -276,6 +276,10 @@ class Aggregator(Symbol):
             elif isinstance(entries, Aggregator):
                 self.add(entries.get())
                 return
+
+            if isinstance(entries, np.ndarray) or isinstance(entries, np.float32):
+                entries = entries.squeeze()
+
             self.entries.append(entries)
         except Exception as e:
             raise Exception(f'Could not add entries to Aggregator object! Please verify type or original error: {e}') from e
