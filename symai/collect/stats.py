@@ -27,6 +27,7 @@ class AggregatorJSONEncoder(JSONEncoder):
         # drop active from state
         elif isinstance(obj, Aggregator):
             state = obj.__dict__.copy()
+            state.pop('_raise_error', None)
             state.pop('_active', None)
             state.pop('_finalized', None)
             state.pop('_map', None)
@@ -45,6 +46,7 @@ class Aggregator(Symbol):
                  value: Optional[Union["Aggregator", Symbol]] = None,
                  path: Optional[str] = None,
                  active: bool = True,
+                 raise_error: bool = False,
                  *args, **kwargs):
         super().__init__(*args,
                          **kwargs)
@@ -63,6 +65,7 @@ class Aggregator(Symbol):
             raise Exception(f'Aggregator object must be of type Aggregator or Symbol! Got: {type(value)}')
         else:
             self._value = []
+        self._raise_error   = raise_error
         self._active    = active
         self._finalized = False
         self._map       = None
@@ -129,6 +132,7 @@ class Aggregator(Symbol):
     def __setstate__(self, state):
         # replace name special characters and spaces with underscores
         # drop active from state
+        state.pop('_raise_error', None)
         state.pop('_active', None)
         state.pop('_finalized', None)
         state.pop('_map', None)
@@ -282,7 +286,10 @@ class Aggregator(Symbol):
 
             self.entries.append(entries)
         except Exception as e:
-            raise Exception(f'Could not add entries to Aggregator object! Please verify type or original error: {e}') from e
+            if not self._raise_error:
+                raise Exception(f'Could not add entries to Aggregator object! Please verify type or original error: {e}') from e
+            else:
+                print('Could not add entries to Aggregator object! Please verify type or original error: {}'.format(e))
 
     def keys(self):
         # Get all key names of items that have the SPECIAL_CONSTANT prefix

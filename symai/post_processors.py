@@ -94,7 +94,7 @@ class JsonTruncateMarkdownPostProcessor(PostProcessor):
 
 
 class CodeExtractPostProcessor(PostProcessor):
-    def __call__(self, response, argument, tag=None) -> Any:
+    def __call__(self, response, argument, tag=None, **kwargs) -> Any:
         if '```' not in response:
             return response
         matches = []
@@ -102,7 +102,7 @@ class CodeExtractPostProcessor(PostProcessor):
             if tag is None:
                 pattern = r'```(?:\w*\n)?(.*?)```'
             else:
-                pattern = r'```(?:\w*\n)?' + tag + r'\n(.*?)```'
+                pattern = r'```(?:\w*\n)?' + str(tag) + r'\n(.*?)```'
             matches = re.findall(pattern, response, re.DOTALL)
         except IndexError:
             pass
