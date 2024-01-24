@@ -11,7 +11,7 @@ from .symbol import Expression, Metadata
 
 
 class Argument(Expression):
-    _default_suppress_verbose_output            = True
+    _default_suppress_verbose_output            = False
     _default_parse_system_instructions          = False
 
     def __init__(self, args, signature_kwargs, decorator_kwargs, **kwargs):
