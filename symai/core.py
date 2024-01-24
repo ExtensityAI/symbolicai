@@ -11,6 +11,9 @@ from .symbol import Expression, Metadata
 
 
 class Argument(Expression):
+    _default_suppress_verbose_output            = True
+    _default_parse_system_instructions          = False
+
     def __init__(self, args, signature_kwargs, decorator_kwargs, **kwargs):
         super().__init__(**kwargs)
         self.args             = args # there is only signature args
@@ -40,14 +43,14 @@ class Argument(Expression):
             self.prop.processed_input   = None
         if 'template_suffix' not in self.kwargs:
             self.prop.template_suffix   = None
-        if 'disable_verbose_output_suppression' not in self.kwargs:
-            self.prop.disable_verbose_output_suppression = False
-        if 'parse_system_instructions' not in self.kwargs:
-            self.prop.parse_system_instructions          = False
         if 'input_handler' not in self.kwargs:
-            self.prop.input_handler    = None
+            self.prop.input_handler     = None
         if 'output_handler' not in self.kwargs:
-            self.prop.output_handler   = None
+            self.prop.output_handler    = None
+        if 'suppress_verbose_output' not in self.kwargs:
+            self.prop.suppress_verbose_output    = Argument._default_suppress_verbose_output
+        if 'parse_system_instructions' not in self.kwargs:
+            self.prop.parse_system_instructions  = Argument._default_parse_system_instructions
 
     def _set_all_kwargs_as_properties(self):
         for key, value in self.kwargs.items():

@@ -237,7 +237,7 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
         user:   str = ""
         system: str = ""
 
-        if argument.prop.disable_verbose_output_suppression:
+        if argument.prop.suppress_verbose_output:
             system  += _non_verbose_output
         system = f'{system}\n' if system and len(system) > 0 else ''
 
