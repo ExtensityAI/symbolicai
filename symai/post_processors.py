@@ -103,7 +103,7 @@ class CodeExtractPostProcessor(PostProcessor):
                 pattern = r'```(?:\w*\n)?(.*?)```'
             else:
                 pattern = r'```(?:\w*\n)?' + str(tag) + r'\n(.*?)```'
-            matches = re.findall(pattern, response, re.DOTALL)
+            matches = re.findall(pattern, str(response), re.DOTALL)
         except IndexError:
             pass
         code = "\n".join(matches).strip()
