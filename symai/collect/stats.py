@@ -286,7 +286,7 @@ class Aggregator(Symbol):
 
             self.entries.append(entries)
         except Exception as e:
-            if not self._raise_error:
+            if self._raise_error:
                 raise Exception(f'Could not add entries to Aggregator object! Please verify type or original error: {e}') from e
             else:
                 print('Could not add entries to Aggregator object! Please verify type or original error: {}'.format(e))
