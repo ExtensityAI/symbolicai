@@ -8,7 +8,7 @@ import numpy as np
 from typing import (TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Optional, Tuple,
                     Type, Union)
 
-from .measures import calculate_frechet_distance
+from .measures import calculate_frechet_distance, calculate_mmd
 from .. import core
 from .. import core_ext
 from ..prompts import Prompt
@@ -2501,7 +2501,7 @@ class EmbeddingPrimitives(Primitive):
             val = normalize(val)
         return val
 
-    def distance(self, other: Union['Symbol', list, np.ndarray, torch.Tensor], kernel: Union['gaussian', 'rbf', 'laplacian', 'polynomial', 'sigmoid', 'linear', 'cauchy', 't-distribution', 'inverse-multiquadric', 'cosine', 'angular-cosine', 'frechet'] = 'gaussian',  eps: float = 1e-8, normalize: Optional[Callable] = None, **kwargs) -> float:
+    def distance(self, other: Union['Symbol', list, np.ndarray, torch.Tensor], kernel: Union['gaussian', 'rbf', 'laplacian', 'polynomial', 'sigmoid', 'linear', 'cauchy', 't-distribution', 'inverse-multiquadric', 'cosine', 'angular-cosine', 'frechet', 'mmd'] = 'gaussian',  eps: float = 1e-8, normalize: Optional[Callable] = None, **kwargs) -> float:
         '''
         Calculates the kernel between two Symbol objects.
 
@@ -2569,6 +2569,8 @@ class EmbeddingPrimitives(Primitive):
             sigma2  = kwargs.get('sigma2', None)
             assert sigma1 is not None and sigma2 is not None, 'Frechet distance requires covariance matrices for both inputs'
             val     = calculate_frechet_distance(v, sigma1, o, sigma2, eps)
+        elif kernel == 'mmd':
+            val     = calculate_mmd(v, o)
         else:
             raise NotImplementedError(f"Kernel function {kernel} not implemented. Available functions: 'gaussian'")
         # get the kernel value(s)

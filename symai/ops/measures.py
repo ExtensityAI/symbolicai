@@ -57,3 +57,38 @@ def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
     tr_covmean = np.trace(covmean)
     val = diff.dot(diff) + np.trace(sigma1) + np.trace(sigma2) - 2 * tr_covmean
     return val
+
+
+def calculate_mmd(x, y, kernel='rbf', kernel_mul=2.0, kernel_num=5, fix_sigma=None):
+    def gaussian_kernel(source, target, kernel_mul, kernel_num, fix_sigma):
+        n_samples = source.shape[0] + target.shape[0]
+        total = np.concatenate([source, target], axis=0)
+        total0 = np.expand_dims(total, 0)
+        total1 = np.expand_dims(total, 1)
+        L2_distance = np.sum((total0 - total1) ** 2, axis=2)
+
+        if fix_sigma:
+            bandwidth = fix_sigma
+        else:
+            bandwidth = np.sum(L2_distance) / (n_samples ** 2 - n_samples)
+        bandwidth /= kernel_mul ** (kernel_num // 2)
+        bandwidth_list = [bandwidth * (kernel_mul ** i) for i in range(kernel_num)]
+        kernel_val = [np.exp(-L2_distance / bandwidth_temp) for bandwidth_temp in bandwidth_list]
+        return np.sum(kernel_val, axis=0)
+
+    def linear_mmd2(f_of_X, f_of_Y):
+        delta = f_of_X.mean(axis=0) - f_of_Y.mean(axis=0)
+        loss = np.dot(delta, delta.T)
+        return loss
+
+    if kernel == 'linear':
+        return linear_mmd2(x, y)
+    elif kernel == 'rbf':
+        batch_size = x.shape[0]
+        kernels = gaussian_kernel(x, y, kernel_mul=kernel_mul, kernel_num=kernel_num, fix_sigma=fix_sigma)
+        xx = np.mean(kernels[:batch_size, :batch_size])
+        yy = np.mean(kernels[batch_size:, batch_size:])
+        xy = np.mean(kernels[:batch_size, batch_size:])
+        yx = np.mean(kernels[batch_size:, :batch_size])
+        loss = xx + yy - xy - yx
+        return loss
