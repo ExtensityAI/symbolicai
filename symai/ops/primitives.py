@@ -2417,6 +2417,8 @@ class EmbeddingPrimitives(Primitive):
                 else:
                     # convert to numpy array
                     self._metadata.embedding = np.asarray(self.value)
+            elif isinstance(self.value, torch.Tensor):
+                self._metadata.embedding = self.value.detach().cpu().numpy()
             else:
                 # compute the embedding and store as numpy array
                 self._metadata.embedding = np.asarray(self.embed().value)
@@ -2532,9 +2534,18 @@ class EmbeddingPrimitives(Primitive):
             gamma   = kwargs.get('gamma', 1)
             val     = np.exp(-gamma * np.sum((v - o)**2, axis=0))
         elif kernel == 'rbf':
-            gamma   = kwargs.get('gamma', 1)
-            sigma   = kwargs.get('sigma', 1)
-            val     = np.exp(-gamma * np.sum((v - o)**2, axis=0) / (2 * sigma**2))
+            # vectors are expected to be normalized
+            bandwidth = kwargs.get('bandwidth', None)
+            gamma     = kwargs.get('gamma', 1)
+            d         = np.sum((v - o)**2, axis=0)
+            if bandwidth is not None:
+                val   = 0
+                for a in bandwidth:
+                    gamma = 1.0 / (2 * a)
+                    val  += np.exp(-gamma * d)
+            else:
+                # if no bandwidth is given, default to the gaussian kernel
+                val = np.exp(-gamma * d)
         elif kernel == 'laplacian':
             gamma   = kwargs.get('gamma', 1)
             val     = np.exp(-gamma * np.sum(np.abs(v - o), axis=0))
