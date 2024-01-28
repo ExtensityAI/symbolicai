@@ -2590,7 +2590,7 @@ class EmbeddingPrimitives(Primitive):
             raise NotImplementedError(f"Kernel function {kernel} not implemented. Available functions: 'gaussian'")
         # get the kernel value(s)
         if len(val.shape) >= 1 and val.shape[0] > 1:
-            val = val.diagonal()
+            val = val
         else:
             val = val.item()
 
