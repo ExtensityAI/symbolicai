@@ -2568,9 +2568,13 @@ class EmbeddingPrimitives(Primitive):
             sigma1  = kwargs.get('sigma1', None)
             sigma2  = kwargs.get('sigma2', None)
             assert sigma1 is not None and sigma2 is not None, 'Frechet distance requires covariance matrices for both inputs'
+            v       = v.T
+            o       = o.T
             val     = calculate_frechet_distance(v, sigma1, o, sigma2, eps)
         elif kernel == 'mmd':
-            val     = calculate_mmd(v, o)
+            v       = v.T
+            o       = o.T
+            val     = calculate_mmd(v, o, eps=eps)
         else:
             raise NotImplementedError(f"Kernel function {kernel} not implemented. Available functions: 'gaussian'")
         # get the kernel value(s)

@@ -59,7 +59,7 @@ def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
     return val
 
 
-def calculate_mmd(x, y, kernel='rbf', kernel_mul=2.0, kernel_num=5, fix_sigma=None):
+def calculate_mmd(x, y, kernel='rbf', kernel_mul=2.0, kernel_num=5, fix_sigma=None, eps=1e-9):
     def gaussian_kernel(source, target, kernel_mul, kernel_num, fix_sigma):
         n_samples = source.shape[0] + target.shape[0]
         total = np.concatenate([source, target], axis=0)
@@ -70,10 +70,10 @@ def calculate_mmd(x, y, kernel='rbf', kernel_mul=2.0, kernel_num=5, fix_sigma=No
         if fix_sigma:
             bandwidth = fix_sigma
         else:
-            bandwidth = np.sum(L2_distance) / (n_samples ** 2 - n_samples)
+            bandwidth = np.sum(L2_distance) / (n_samples ** 2 - n_samples + eps)
         bandwidth /= kernel_mul ** (kernel_num // 2)
         bandwidth_list = [bandwidth * (kernel_mul ** i) for i in range(kernel_num)]
-        kernel_val = [np.exp(-L2_distance / bandwidth_temp) for bandwidth_temp in bandwidth_list]
+        kernel_val = [np.exp(-L2_distance / (bandwidth_temp + eps)) for bandwidth_temp in bandwidth_list]
         return np.sum(kernel_val, axis=0)
 
     def linear_mmd2(f_of_X, f_of_Y):
