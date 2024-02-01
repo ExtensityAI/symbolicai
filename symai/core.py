@@ -80,9 +80,9 @@ class Argument(Expression):
 
 
 def few_shot(prompt: str = '',
-             examples: Any = [],
+             examples: prm.Prompt = [],
              constraints: List[Callable] = [],
-             default: Optional[object] = None,
+             default: Any = None,
              limit: int = 1,
              pre_processors: Optional[List[pre.PreProcessor]] = None,
              post_processors: Optional[List[post.PostProcessor]] = None,
