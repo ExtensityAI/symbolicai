@@ -2156,6 +2156,7 @@ class ExecutionControlPrimitives(Primitive):
 
         max_ctxt_tokens = int(_max_tokens(self) * token_ratio)
         prev = expr(self, preview=True, **kwargs)
+        prev = str(prev)
 
         if len(prev) > _max_tokens(self):
             n_splits = (len(prev) // max_ctxt_tokens) + 1
