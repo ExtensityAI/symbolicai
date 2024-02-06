@@ -187,8 +187,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         payload = ''
         # if payload is set, then add it to the memory
         if 'payload' in kwargs:
-            payload           = kwargs['payload']
-            kwargs['payload'] = f'[Conversation Payload]:\n{payload}\n'
+            payload  = f"[Conversation Payload]:\n{kwargs.pop('payload')}\n"
 
         index_memory = ''
         # if index is set, then add it to the memory

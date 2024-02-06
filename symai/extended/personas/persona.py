@@ -134,8 +134,14 @@ class Persona(Conversation):
         if not tag.endswith('::'):
             tag = f'{tag}::'
         user_query = self.build_tag(self.user_tag, query)
+
+        payload = ''
+        if 'payload' in kwargs:
+            p = kwargs.pop('payload')
+            payload = f'{p}[PERSONA BIO]\n{self.bio()}'
+
         res = func(user_query,
-                   payload=f'[PERSONA BIO]\n{self.bio()}',
+                   payload=payload,
                    tag=tag,
                    thoughts=thoughts,
                    stop=['>>>'],
