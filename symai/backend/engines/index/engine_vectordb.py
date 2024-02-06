@@ -125,7 +125,7 @@ class VectorDBIndexEngine(Engine):
         storage_file = argument.prop.storage_file or self.storage_file
         rsp          = None
 
-        self._init(top_k, index_dims, metric)
+        self._init(index_name, top_k, index_dims, metric)
 
         # Process each operation
         if operation == 'search':
@@ -170,10 +170,11 @@ class VectorDBIndexEngine(Engine):
         rsp = VectorDBResult(rsp, query, None)
         return [rsp], metadata
 
-    def _init(self, top_k, index_dims, metric):
+    def _init(self, index_name, top_k, index_dims, metric):
         # Initialize the VectorDB if not already initialized
-        if self.index_name not in self.index:
-            self.index[self.index_name] = VectorDB(
+        if index_name not in self.index:
+            self.index[index_name] = VectorDB(
+                index_name=index_name,
                 index_dims=index_dims,
                 top_k=top_k,
                 similarity_metric=metric
