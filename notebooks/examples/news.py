@@ -55,7 +55,6 @@ class News(Expression):
             *filters,
             Compose(f'Compose news paragraphs. Combine only facts that belong topic-wise together:\n'),
         ))
-
         self.html_stream = Stream(
             Sequence(
                 Template(template=HTML_TEMPLATE),
@@ -65,6 +64,7 @@ class News(Expression):
                                  'https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js']),
             )
         )
+        self.writer = FileWriter('tmp/news.html')
 
     def render(self, sym: Symbol, **kwargs) -> Symbol:
         """The `render` method takes a `Symbol` as an argument and returns a `Symbol` containing the rendered news.
@@ -75,6 +75,7 @@ class News(Expression):
         """
         res = '\n'.join([str(s) for s in self.html_stream(sym, **kwargs)])
         res = Symbol(str(HTML_TEMPLATE).replace('{{placeholder}}', res))
+        self.writer(res)
         return res
 
     def forward(self, **kwargs) -> Symbol:
