@@ -6,6 +6,7 @@ import redis
 from redis.exceptions import ConnectionError
 from fastapi import FastAPI, APIRouter, HTTPException, Security, status
 from fastapi.security import APIKeyHeader
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Any, Generic, TypeVar, Dict, List, Optional, Union
 
@@ -19,8 +20,7 @@ from ..symbol import Symbol, Expression
 HOST  = 'localhost'
 PORT  = 6379
 DEBUG = True
-API_KEY = settings.SYMAI_CONFIG['FASTAPI_API_KEY']
-print(f"API_KEY = {API_KEY}")
+API_KEY = settings.SYMAI_CONFIG.get('FASTAPI_API_KEY', None)
 
 def is_redis_running(host: str, port: int) -> bool:
     """Check if a Redis server is running at the given host and port."""
@@ -119,6 +119,7 @@ component_class_types = {
 }
 component_instance_repository = GenericRepository[Union[Symbol, Expression]](redis_client, "comp_id", use_redis=use_redis)
 
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 ### Symbols Endpoints ###
 
@@ -137,7 +138,9 @@ class SymbolMethodRequest(BaseModel):
     args: List[Any] = []
     kwargs: Dict[str, Any] = {}
 
-def get_api_key(api_key_header: str = Security(api_key_header)) -> str:
+def get_api_key(api_key_header: str = Security(api_key_header) if API_KEY else None) -> str:
+    if API_KEY == None:
+        return True
     if api_key_header == API_KEY:
         return api_key_header
     raise HTTPException(
