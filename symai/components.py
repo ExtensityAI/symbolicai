@@ -462,6 +462,17 @@ class ExcludeFilter(Expression):
         return sym.filter(self.exclude, include=False, **kwargs)
 
 
+class FileWriter(Expression):
+    def __init__(self, path: str, **kwargs):
+        super().__init__(**kwargs)
+        self.path = path
+
+    def forward(self, sym: Symbol, **kwargs) -> Symbol:
+        sym = self._to_symbol(sym)
+        with open(self.path, 'w') as f:
+            f.write(str(sym))
+
+
 class FileReader(Expression):
     @classmethod
     def exists(cls, path: str) -> bool:

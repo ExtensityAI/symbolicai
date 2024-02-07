@@ -217,7 +217,9 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             if openai.api_key is None or openai.api_key == '':
                 msg = 'OpenAI API key is not set. Please set it in the config file or pass it as an argument to the command method.'
                 logging.error(msg)
-                raise Exception(msg) from e
+                if self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] is None or self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] == '':
+                    raise Exception(msg) from e
+                openai.api_key = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
 
             callback = openai.chat.completions.create
             kwargs['model'] = kwargs['model'] if 'model' in kwargs else self.model
