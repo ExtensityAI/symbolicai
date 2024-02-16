@@ -723,7 +723,7 @@ class Symbol(metaclass=SymbolMeta):
             Any: The result of the forward method.
         '''
         # transport results to the root node for global access
-        if not self is self.root:
+        if not self is self.root and not self.metadata.detach:
             ref = self.root.metadata
             if ref.root_link is None:
                 ref.root_link = Linker()
