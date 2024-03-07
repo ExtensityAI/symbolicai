@@ -1,8 +1,12 @@
+import json
 import re
-from typing import List, Dict
+
+from beartype import beartype
+from beartype.typing import Any, Dict, List
+from tqdm import tqdm
 
 from . import core_ext
-from .symbol import Symbol, Expression
+from .symbol import Expression, Symbol
 
 
 class ParagraphFormatter(Expression):
@@ -135,3 +139,43 @@ class SentenceFormatter(Expression):
         # split text sentence-wise and index each sentence separately
         self.elements = self.split_sentences(sym.value)
         return self._to_symbol(self.elements)
+
+
+class JSONLChunkFormatter(Expression):
+    def __init__(
+            self,
+            value: Any = None,
+            key: str ="text",
+            text_split: int = 4,
+            **kwargs
+        ):
+        super().__init__(value, **kwargs)
+        self.key = key
+        self.text_split = text_split
+
+    @beartype
+    def forward(self, sym: Symbol, *args, **kwargs) -> Symbol:
+        jlines = [json.loads(jline) for jline in sym.value.split('\n') if jline]
+        chunks = [chunk for jline in tqdm(jlines) for chunk in self._chunk(jline)]
+        return self._to_symbol(chunks)
+
+    def _chunk(self, jline: Dict) -> List[str]:
+        text = jline[self.key]
+        step = len(text) // self.text_split
+        splits = []
+        i = c = 0
+        while c < self.text_split:
+            if c == self.text_split - 1:
+                splits.append(self._expand(text[i:], jline)) # we unify the last chunk with the previous one
+                break
+            splits.append(self._expand(text[i:i+step], jline))
+            i += step
+            c += 1
+        return splits
+
+    def _expand(self, text: str, jline: Dict) -> str:
+        return json.dumps({**jline, self.key: self._compactify(text)})
+
+    def _compactify(self, text: str) -> str:
+        return re.sub(r'\s+', ' ', text.replace('\n', ' ').strip())
+
