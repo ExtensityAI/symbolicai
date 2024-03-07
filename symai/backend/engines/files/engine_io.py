@@ -105,17 +105,24 @@ class FileEngine(Engine):
         fixed_pdf = PyPDF2.PdfReader(new_file_path)
         return fixed_pdf
 
-    def read_text(self, pdf_reader, range_):
+    def read_text(self, pdf_reader, page_range, as_jsonl=False):
         txt = ''
         n_pages = len(pdf_reader.pages)
-        if range_ is None:
-            for i in range(n_pages):
-                page = pdf_reader.pages[i]
+        for i in range(n_pages)[slice(0, n_pages) if page_range is None else page_range]:
+            page = pdf_reader.pages[i]
+            if as_jsonl:
+                extracted = page.extract_text().replace("\n", "\\n").replace("\t", "\\t").replace('"', '\\"')
+                txt += (
+                    '{'
+                        '"page": '
+                            f'"{i}",'
+                        '"text": '
+                            f'"{extracted}"'
+                    '}\n'
+                )
+            else:
                 txt += page.extract_text()
-        else:
-            for i in range(n_pages)[range_]:
-                page = pdf_reader.pages[i]
-                txt += page.extract_text()
+
         return txt
 
     def forward(self, argument):
@@ -123,25 +130,25 @@ class FileEngine(Engine):
         path          = argument.prop.prepared_input
 
         if '.pdf' in path:
-            range_ = None
+            page_range = None
             if 'slice' in kwargs:
-                range_ = kwargs['slice']
-                if isinstance(range_, tuple) or isinstance(range_, list):
-                    range_ = slice(*range_)
+                page_range = kwargs['slice']
+                if isinstance(page_range, tuple) or isinstance(page_range, list):
+                    page_range = slice(*page_range)
 
             rsp = ''
             try:
                 with open(str(path), 'rb') as f:
                     # creating a pdf reader object
                     pdf_reader = PyPDF2.PdfReader(f)
-                    rsp = self.read_text(pdf_reader, range_)
+                    rsp = self.read_text(pdf_reader, page_range, as_jsonl=kwargs.get('as_jsonl', False))
             except Exception as e:
                 print(f'Error reading PDF: {e} | {path}')
                 if 'fix_pdf' not in kwargs or not kwargs['fix_pdf']:
                     raise e
                 fixed_pdf = self.fix_pdf(str(path))
                 pdf_reader_fixed = PyPDF2.PdfReader(fixed_pdf)
-                rsp = self.read_text(pdf_reader_fixed, range_)
+                rsp = self.read_text(pdf_reader_fixed, page_range, as_jsonl=kwargs.get('as_jsonl', False))
         else:
             try:
                 rsp = self._read_slice_file(path)
