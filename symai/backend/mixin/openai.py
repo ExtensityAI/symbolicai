@@ -7,7 +7,9 @@ SUPPORTED_MODELS = [
     'gpt-4-16k',
     'gpt-4-1106-preview',
     'gpt-4-vision-preview',
-    'text-embedding-ada-002'
+    'text-embedding-ada-002',
+    'text-embedding-3-small',
+    'text-embedding-3-large'
 ]
 
 
@@ -60,6 +62,16 @@ class OpenAIMixin:
                 'usage': 0.0001 / 1_000
             }
 
+        elif self.model == 'text-embedding-3-small':
+            return {
+                'usage': 0.00002 / 1_000
+            }
+
+        elif self.model == 'text-embedding-3-large':
+            return {
+                'usage': 0.00013 / 1_000
+            }
+
     def api_max_tokens(self):
         if self.model == 'gpt-3.5-turbo' or self.model == 'gpt-3.5-turbo-0613' or self.model == 'gpt-3.5-turbo-instruct' or self.model == 'gpt-3.5-turbo-1106':
             return 4_096
@@ -88,7 +100,9 @@ class OpenAIMixin:
              self.model == 'ada':
             return 2_049
 
-        elif self.model == 'text-embedding-ada-002':
+        elif self.model == 'text-embedding-ada-002' or \
+             self.model == 'text-embedding-3-small' or \
+             self.model == 'text-embedding-3-large':
             return 8_191
 
         else:
