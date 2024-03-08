@@ -868,7 +868,6 @@ class Indexer(Expression):
         that = self
         if data is not None:
             data = self._to_symbol(data)
-            # split text paragraph-wise and index each paragraph separately
             self.elements = self.formatter(data).value
             # run over the elments in batches
             for i in tqdm(range(0, len(self.elements), self.batch_size)):

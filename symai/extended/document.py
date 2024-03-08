@@ -8,7 +8,17 @@ from ..formatter import ParagraphFormatter
 
 
 class DocumentRetriever(Expression):
-    def __init__(self, index_name: str = Indexer.DEFAULT, file = None, top_k = 5, formatter: Callable = ParagraphFormatter(), overwrite: bool = False, raw_result: bool = False, **kwargs):
+    def __init__(
+            self,
+            index_name: str = Indexer.DEFAULT,
+            file = None,
+            top_k = 5,
+            formatter: Callable = ParagraphFormatter(),
+            overwrite: bool = False,
+            raw_result: bool = False,
+            as_jsonl: bool = False,
+            **kwargs
+        ):
         super().__init__(**kwargs)
         indexer      = Indexer(index_name=index_name, top_k=top_k, formatter=formatter, auto_add=False, raw_result=raw_result)
         self.indexer = indexer
@@ -18,7 +28,7 @@ class DocumentRetriever(Expression):
             if type(file) is str:
                 file_path = file
                 reader = FileReader()
-                text = reader(file_path, **kwargs)
+                text = reader(file_path, as_jsonl=as_jsonl, **kwargs)
             else:
                 text = str(file)
             self.index = indexer(text, **kwargs)
