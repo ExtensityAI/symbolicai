@@ -1,0 +1,16 @@
+{
+    "colors": {
+        "completion-menu.completion.current": "bg:#323232 #212121",
+        "completion-menu.completion": "bg:#800080 #212121",
+        "scrollbar.background": "bg:#222222",
+        "scrollbar.button": "bg:#776677",
+        "history-completion": "bg:#212121 #f5f5f5",
+        "path-completion": "bg:#800080 #f5f5f5",
+        "file-completion": "bg:#9040b2 #f5f5f5",
+        "history-completion-selected": "bg:#efefef #b3d7ff",
+        "path-completion-selected": "bg:#efefef #b3d7ff",
+        "file-completion-selected": "bg:#efefef #b3d7ff"
+    },
+    "map-nt-cmd": true,
+    "show-splash-screen": true
+}
