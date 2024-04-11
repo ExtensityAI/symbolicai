@@ -21,5 +21,13 @@ class TestNesyEngine(unittest.TestCase):
         # which only gpt-4-* models can handle and they should be able to detect a cat in the image
         self.assertTrue('cat' in res.value)
 
+        file = 'https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/cat.jpg'
+        x = Symbol(f'<<vision:{file}:>>')
+        res = x.query('What is in the image?')
+
+        # same check but for url
+        self.assertTrue('cat' in res.value)
+
+
 if __name__ == '__main__':
     unittest.main()
