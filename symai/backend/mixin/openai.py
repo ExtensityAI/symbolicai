@@ -5,7 +5,9 @@ SUPPORTED_MODELS = [
     'gpt-3.5-turbo-instruct',
     'gpt-4',
     'gpt-4-16k',
-    'gpt-4-1106-preview',
+    'gpt-4-1106-preview', # @NOTE: probabily obsolete; same price as 'gpt-4-turbo-2024-04-09' but no vision
+    'gpt-4-turbo',
+    'gpt-4-turbo-2024-04-09',
     'gpt-4-vision-preview',
     'text-embedding-ada-002',
     'text-embedding-3-small',
@@ -51,7 +53,10 @@ class OpenAIMixin:
                 'output': 0.12 / 1_000
             }
 
-        elif self.model == 'gpt-4-1106-preview' or self.model == 'gpt-4-vision-preview':
+        elif self.model == 'gpt-4-1106-preview' or \
+             self.model == 'gpt-4-vision-preview' or \
+             self.model == 'gpt-4-turbo-2024-04-09' or \
+             self.model == 'gpt-4-turbo':
             return {
                 'input':  0.01 / 1_000,
                 'output': 0.03 / 1_000
@@ -73,22 +78,33 @@ class OpenAIMixin:
             }
 
     def api_max_tokens(self):
-        if self.model == 'gpt-3.5-turbo' or self.model == 'gpt-3.5-turbo-0613' or self.model == 'gpt-3.5-turbo-instruct' or self.model == 'gpt-3.5-turbo-1106':
+        if self.model == 'gpt-3.5-turbo' or \
+           self.model == 'gpt-3.5-turbo-0613' or \
+           self.model == 'gpt-3.5-turbo-instruct' or \
+           self.model == 'gpt-3.5-turbo-1106':
             return 4_096
 
-        elif self.model == 'gpt-3.5-turbo-16k' or self.model == 'gpt-3.5-turbo-16k-0613':
+        elif self.model == 'gpt-3.5-turbo-16k' or \
+             self.model == 'gpt-3.5-turbo-16k-0613':
             return 16_384
 
-        elif self.model == 'gpt-4' or self.model == 'gpt-4-0613':
+        elif self.model == 'gpt-4' or \
+             self.model == 'gpt-4-0613':
             return 8_192
 
-        elif self.model == 'gpt-4-1106-preview' or self.model == 'gpt-4-vision-preview':
+        elif self.model == 'gpt-4-1106-preview' or \
+             self.model == 'gpt-4-vision-preview' or \
+             self.model == 'gpt-4-turbo-2024-04-09' or \
+             self.model == 'gpt-4-turbo' or \
+             self.model == 'gpt-4-1106':
             return 128_000
 
-        elif self.model == 'gpt-4-32k' or self.model == 'gpt-4-32k-0613':
+        elif self.model == 'gpt-4-32k' or \
+             self.model == 'gpt-4-32k-0613':
             return 32_768
 
-        elif self.model == 'text-davinci-003' or self.model == 'text-davinci-002':
+        elif self.model == 'text-davinci-003' or \
+             self.model == 'text-davinci-002':
             return 4_097
 
         elif self.model == 'text-curie-001' or \

@@ -131,9 +131,9 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         self.except_remedy  = None
 
     def id(self) -> str:
-        if   self.config['NEUROSYMBOLIC_ENGINE_MODEL'] and \
-            (self.config['NEUROSYMBOLIC_ENGINE_MODEL'].startswith('gpt-3.5') or \
-             self.config['NEUROSYMBOLIC_ENGINE_MODEL'].startswith('gpt-4')):
+        if   self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and \
+            (self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('gpt-3.5') or \
+             self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('gpt-4')):
             return 'neurosymbolic'
         return super().id() # default to unregistered
 
@@ -151,7 +151,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
     def compute_required_tokens(self, prompts: dict) -> int:
         # iterate over prompts and compute number of tokens
         prompts_ = [role['content'] for role in prompts]
-        if self.model == 'gpt-4-vision-preview':
+        if self.model == 'gpt-4-vision-preview' or self.model == 'gpt-4-turbo-2024-04-09' or self.model == 'gpt-4-turbo':
             eval_prompt = ''
             for p in prompts_:
                 if type(p) == str:
@@ -168,30 +168,33 @@ class GPTXChatEngine(Engine, OpenAIMixin):
 
     def compute_remaining_tokens(self, prompts: list) -> int:
         val = self.compute_required_tokens(prompts)
-        if 'gpt-4-1106-preview' == self.model or 'gpt-4-vision-preview' == self.model: # models can only output 4_096 tokens
+        if 'gpt-4-1106-preview'     == self.model or \
+           'gpt-4-vision-preview'   == self.model or \
+           'gpt-4-turbo-2024-04-09' == self.model or \
+           'gpt-4-turbo'            == self.model : # models can only output 4_096 tokens
             return min(int((self.max_tokens - val) * 0.99), 4_096)
         return int((self.max_tokens - val) * 0.99) # TODO: figure out how their magic number works to compute reliably the precise max token size
 
     def forward(self, argument):
-        kwargs              = argument.kwargs
-        prompts_            = argument.prop.prepared_input
-
         openai_kwargs = {}
+        kwargs        = argument.kwargs
+        prompts_      = argument.prop.prepared_input
 
         # send prompt to GPT-X Chat-based
-        stop                = kwargs['stop'] if 'stop' in kwargs else None
-        model               = kwargs['model'] if 'model' in kwargs else self.model
-        seed                = kwargs['seed'] if 'seed' in kwargs else self.seed
+        stop  = kwargs.get('stop')
+        model = kwargs.get('model', self.model)
+        seed  = kwargs.get('seed', self.seed)
 
         # convert map to list of strings
-        max_tokens          = kwargs['max_tokens'] if 'max_tokens' in kwargs else self.compute_remaining_tokens(prompts_)
-        temperature         = kwargs['temperature'] if 'temperature' in kwargs else 1
-        frequency_penalty   = kwargs['frequency_penalty'] if 'frequency_penalty' in kwargs else 0
-        presence_penalty    = kwargs['presence_penalty'] if 'presence_penalty' in kwargs else 0
-        top_p               = kwargs['top_p'] if 'top_p' in kwargs else 1
-        except_remedy       = kwargs['except_remedy'] if 'except_remedy' in kwargs else self.except_remedy
-        functions           = kwargs['functions'] if 'functions' in kwargs else None
-        function_call       = "auto" if functions is not None else None
+        max_tokens        = kwargs.get('max_tokens', self.compute_remaining_tokens(prompts_))
+        temperature       = kwargs.get('temperature', 1)
+        frequency_penalty = kwargs.get('frequency_penalty', 0)
+        presence_penalty  = kwargs.get('presence_penalty', 0)
+        top_p             = kwargs.get('top_p', 1)
+        except_remedy     = kwargs.get('except_remedy', self.except_remedy)
+        functions         = kwargs.get('functions')
+        function_call     = "auto" if functions is not None else None
+
 
         if stop is not None:
             openai_kwargs['stop'] = stop
@@ -287,7 +290,11 @@ class GPTXChatEngine(Engine, OpenAIMixin):
 
         image_files = []
         # pre-process prompt if contains image url
-        if self.model == 'gpt-4-vision-preview' and '<<vision:' in str(argument.prop.processed_input):
+        if (self.model == 'gpt-4-vision-preview' or \
+            self.model == 'gpt-4-turbo-2024-04-09' or \
+            self.model == 'gpt-4-turbo') \
+            and '<<vision:' in str(argument.prop.processed_input):
+
             parts = extract_pattern(str(argument.prop.processed_input))
             for p in parts:
                 img_ = p.strip()
@@ -345,8 +352,14 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             user += f"\n[[PLACEHOLDER]]\n{str(argument.prop.template_suffix)}\n\n"
             user += f"Only generate content for the placeholder `[[PLACEHOLDER]]` following the instructions and context information. Do NOT write `[[PLACEHOLDER]]` or anything else in your output.\n\n"
 
-        images = [{ 'type': 'image', "image_url": { "url": file, "detail": "auto" }} for file in image_files]
         if self.model == 'gpt-4-vision-preview':
+           images = [{ 'type': 'image', "image_url": { "url": file, "detail": "auto" }} for file in image_files]
+           user_prompt = { "role": "user", "content": [
+                *images,
+                { 'type': 'text', 'text': user }
+            ]}
+        elif self.model == 'gpt-4-turbo-2024-04-09' or self.model == 'gpt-4-turbo':
+            images = [{ 'type': 'image_url', "image_url": { "url": file, "detail": "auto" }} for file in image_files]
             user_prompt = { "role": "user", "content": [
                 *images,
                 { 'type': 'text', 'text': user }
