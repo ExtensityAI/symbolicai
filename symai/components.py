@@ -820,7 +820,17 @@ class Indexer(Expression):
         index = index.lower()
         return index
 
-    def __init__(self, index_name: str = DEFAULT, top_k: int = 8, batch_size: int = 20, formatter: Callable = ParagraphFormatter(), auto_add=False, raw_result=True, **kwargs):
+    def __init__(
+            self,
+            index_name: str = DEFAULT,
+            top_k: int = 8,
+            batch_size: int = 20,
+            formatter: Callable = ParagraphFormatter(),
+            auto_add=False,
+            raw_result: bool = False,
+            new_dim: int = None,
+            **kwargs
+        ):
         super().__init__(**kwargs)
         index_name = Indexer.replace_special_chars(index_name)
         self.index_name = index_name
@@ -830,6 +840,7 @@ class Indexer(Expression):
         self.retrieval  = None
         self.formatter  = formatter
         self.raw_result = raw_result
+        self.new_dim    = new_dim
         self.sym_return_type = Expression
 
         # append index name to indices.txt in home directory .symai folder (default)
@@ -864,21 +875,26 @@ class Indexer(Expression):
             if self.index_name in indices:
                 return True
 
-    def forward(self, data: Optional[Symbol] = None, raw_result: bool = False) -> Symbol:
+    def forward(
+            self,
+            data: Optional[Symbol] = None,
+            raw_result: bool = False,
+        ) -> Symbol:
         that = self
         if data is not None:
             data = self._to_symbol(data)
             self.elements = self.formatter(data).value
             # run over the elments in batches
             for i in tqdm(range(0, len(self.elements), self.batch_size)):
-                val = Symbol(self.elements[i:i+self.batch_size]).zip()
+                val = Symbol(self.elements[i:i+self.batch_size]).zip(new_dim=self.new_dim)
                 that.add(val, index_name=that.index_name)
 
         def _func(query, *args, **kwargs):
-            query_emb = Symbol(query).embed().value
+            raw_result = kwargs.get('raw_result') or that.raw_result
+            query_emb = Symbol(query).embed(new_dim=that.new_dim).value
             res = that.get(query_emb, index_name=that.index_name, index_top_k=that.top_k, ori_query=query, **kwargs)
             that.retrieval = res
-            if that.raw_result or raw_result or ('raw_result' in kwargs and kwargs['raw_result']):
+            if raw_result:
                 return res
             rsp = res.query(query, *args, **kwargs)
             return rsp

@@ -222,19 +222,9 @@ class EngineRepository(object):
     def register(id: str, engine_instance: Engine, allow_engine_override: bool = False, *args, **kwargs) -> None:
         self = EngineRepository()
         # Check if the engine is already registered
-        if id in self._engines.keys() and not allow_engine_override:
+        if id in self._engines and not allow_engine_override:
             raise ValueError(f"Engine {id} is already registered. Set allow_engine_override to True to override.")
-        elif id in self._engines:
-            reg_eng = self.get(id)
-            # prompt message if engine is already registered and allow_engine_override is not explicitly set to True
-            if not allow_engine_override:
-                with ConsoleStyle('warn', logging=True) as console:
-                    console.print(f"Engine {id} is already registered. Overriding engine: {reg_eng} with {str(str(engine_instance))}")
-        # debug
-        # else:
-        #     with ConsoleStyle('debug', logging=False) as console:
-        #         console.print(f"Registering engine: {id} >> {str(engine_instance)}")
-        # Create an instance of the engine class and store it
+
         self._engines[id] = engine_instance
 
     @staticmethod
@@ -288,7 +278,7 @@ class EngineRepository(object):
             # get subpackage name from engine name
             subpackage_name = engine_name.replace('-', '_')
             # get subpackage
-            subpackage = subpackage = importlib.import_module(f"{engines.__package__}.{subpackage_name}", None)
+            subpackage = importlib.import_module(f"{engines.__package__}.{subpackage_name}", None)
             # raise exception if subpackage is not found
             if subpackage is None:
                 raise ValueError(f"The symbolicai library does not contain the engine named {engine_name}. Verify your configuration or if you have initialized the respective engine.")
