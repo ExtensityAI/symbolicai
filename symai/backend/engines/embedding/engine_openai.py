@@ -1,4 +1,5 @@
 import logging
+import numpy as np
 import openai
 
 from typing import Optional
@@ -20,12 +21,12 @@ class EmbeddingEngine(Engine, OpenAIMixin):
         super().__init__()
         logger = logging.getLogger('openai')
         logger.setLevel(logging.WARNING)
-        self.config             = SYMAI_CONFIG
-        openai.api_key          = self.config['EMBEDDING_ENGINE_API_KEY'] if api_key is None else api_key
-        self.model              = self.config['EMBEDDING_ENGINE_MODEL'] if model is None else model
-        self.pricing            = self.api_pricing()
-        self.max_tokens         = self.api_max_tokens()
-        self.embedding_dim      = 1536
+        self.config        = SYMAI_CONFIG
+        openai.api_key     = self.config['EMBEDDING_ENGINE_API_KEY'] if api_key is None else api_key
+        self.model         = self.config['EMBEDDING_ENGINE_MODEL'] if model is None else model
+        self.pricing       = self.api_pricing()
+        self.max_tokens    = self.api_max_tokens()
+        self.embedding_dim = self.api_embedding_dims()
 
     def id(self) -> str:
         if  self.config['EMBEDDING_ENGINE_API_KEY']:
@@ -41,11 +42,12 @@ class EmbeddingEngine(Engine, OpenAIMixin):
 
     def forward(self, argument):
         prepared_input = argument.prop.prepared_input
-        args            = argument.args
-        kwargs          = argument.kwargs
+        args           = argument.args
+        kwargs         = argument.kwargs
 
-        input_          = prepared_input if isinstance(prepared_input, list) else [prepared_input]
-        except_remedy   = kwargs['except_remedy'] if 'except_remedy' in kwargs else None
+        input_        = prepared_input if isinstance(prepared_input, list) else [prepared_input]
+        except_remedy = kwargs.get('except_remedy')
+        new_dim       = kwargs.get('new_dim')
 
         try:
             res = openai.embeddings.create(model=self.model,
@@ -56,7 +58,11 @@ class EmbeddingEngine(Engine, OpenAIMixin):
             callback = openai.embeddings.create
             res = except_remedy(e, input_, callback, self, *args, **kwargs)
 
-        rsp = [r.embedding for r in res.data]
+        if new_dim:
+            mn = min(new_dim, self.embedding_dim) #@NOTE: new_dim should be less than or equal to the original embedding dim
+            rsp = [self._normalize_l2(r.embedding[:mn]) for r in res.data]
+        else:
+            rsp = [r.embedding for r in res.data]
 
         metadata = {}
         return [rsp], metadata
@@ -64,3 +70,14 @@ class EmbeddingEngine(Engine, OpenAIMixin):
     def prepare(self, argument):
         assert not argument.prop.processed_input, "EmbeddingEngine does not support processed_input."
         argument.prop.prepared_input = argument.prop.entries
+
+    def _normalize_l2(self, x):
+        x = np.array(x)
+        if x.ndim == 1:
+            norm = np.linalg.norm(x)
+            if norm == 0:
+                return x.tolist()
+            return (x / norm).tolist()
+        else:
+            norm = np.linalg.norm(x, 2, axis=1, keepdims=True)
+            return np.where(norm == 0, x, x / norm).tolist()

@@ -125,3 +125,14 @@ class OpenAIMixin:
             # default to similar as in gpt-3.5-turbo
             print(f'WARNING: Model <{self.model}> not supported, defaulting to 4.096 tokens. May result in unexpected behavior.')
             return 4_096
+
+    def api_embedding_dims(self):
+        if self.model == 'text-embedding-ada-002':
+            return 1_536
+        elif self.model == 'text-embedding-3-small':
+            return 1_536
+        elif self.model == 'text-embedding-3-large':
+            return 3_072
+        else:
+            print(f'WARNING: Model <{self.model}> not supported, defaulting to 768 dims. May result in unexpected behavior.')
+            return 768

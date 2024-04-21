@@ -15,14 +15,15 @@ class DocumentRetriever(Expression):
             top_k = 5,
             formatter: Callable = ParagraphFormatter(),
             overwrite: bool = False,
-            raw_result: bool = False,
             as_jsonl: bool = False,
+            raw_result: Optional[bool] = False,
+            new_dim: Optional[int] = None,
             **kwargs
         ):
         super().__init__(**kwargs)
-        indexer      = Indexer(index_name=index_name, top_k=top_k, formatter=formatter, auto_add=False, raw_result=raw_result)
-        self.indexer = indexer
-        text         = None
+        indexer = Indexer(index_name=index_name, top_k=top_k, formatter=formatter, auto_add=False, new_dim=new_dim)
+        text    = None
+
         if not indexer.exists() or overwrite:
             indexer.register()
             if type(file) is str:
@@ -31,9 +32,17 @@ class DocumentRetriever(Expression):
                 text = reader(file_path, as_jsonl=as_jsonl, **kwargs)
             else:
                 text = str(file)
-            self.index = indexer(text, **kwargs)
+
+            self.index = indexer(
+                    text,
+                    raw_result=raw_result,
+                    **kwargs
+                )
         else:
-            self.index = indexer(**kwargs)
+            self.index = indexer(
+                    raw_result=raw_result,
+                    **kwargs
+                    )
 
         self.text = Symbol(text)
         if text is not None:
@@ -44,8 +53,15 @@ class DocumentRetriever(Expression):
                 os.makedirs(path)
             self.dump(os.path.join(path, 'dump_file'), replace=True)
 
-    def forward(self, query: Optional[Symbol], raw_result: bool = False) -> Symbol:
-        return self.index(query, raw_result=raw_result)
+    def forward(
+            self,
+            query: Symbol,
+            raw_result: Optional[bool] = False,
+        ) -> Symbol:
+        return self.index(
+                query,
+                raw_result=raw_result,
+                )
 
     def dump(self, path: str, replace: bool = True) -> Symbol:
         if self.text is None:
