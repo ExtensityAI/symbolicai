@@ -2648,13 +2648,31 @@ class IOHandlingPrimitives(Primitive):
 
         Returns:
             Symbol: The resulting Symbol after receiving the user input.
+
+        Examples:
+        --------
+        >>> from symai import Symbol
+        >>> s = Symbol().input('Please enter your name')
+        >>> [output: 'John']
+
+        >>> s = Symbol('I was born in')
+        >>> s = s.input('Please enter the year of your birth')
+        >>> [output: 'I was born in 1990'] # if Symbol has a <str> value inputs will be concatenated
+
+        # Works identically for the `Expression` class
         '''
         @core.userinput(**kwargs)
         def _func(_, message) -> str:
             pass
-        return self.sym_return_type(_func(self, message))
 
-    def open(self, path: str, **kwargs) -> 'Symbol':
+        res = _func(self, message)
+        condition = self.value is not None and isinstance(self.value, str)
+
+        if hasattr(self, 'sym_return_type'):
+            return self.sym_return_type(self.value if condition else '') | res
+        return self._to_symbol(self.value if condition else '') | self._to_symbol(res)
+
+    def open(self, path: str = None, **kwargs) -> 'Symbol':
         '''
         Open a file and store its content in an Expression object as a string.
 
@@ -2664,11 +2682,29 @@ class IOHandlingPrimitives(Primitive):
 
         Returns:
             Symbol: An Expression object containing the content of the file as a string value.
+
+        Examples:
+        --------
+        >>> from symai import Symbol
+        >>> s = Symbol().open('file.txt')
+
+        >>> s = Symbol('file.txt')
+        >>> s = s.open()
+
+        # Works identically for the `Expression` class
         '''
+
+        path = path if path is not None else self.value
+        if path is None:
+            raise ValueError('Path is not provided; either provide a path or set the value of the Symbol to the path')
+
         @core.opening(path=path, **kwargs)
         def _func(_) -> str:
             pass
-        return self.sym_return_type(_func(self))
+
+        if hasattr(self, 'sym_return_type'):
+            return self.sym_return_type(_func(self))
+        return self._to_symbol(_func(self))
 
 
 class IndexingPrimitives(Primitive):
