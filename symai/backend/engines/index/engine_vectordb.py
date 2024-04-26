@@ -148,9 +148,9 @@ class VectorDBIndexEngine(Engine):
         elif operation == 'config':
             # Handle any configurations if needed (not applicable for in-memory VectorDB)
             assert kwargs, 'Please provide a configuration dictionary.'
-            assert storage_file, 'Please provide a `storage_file` path to load the pre-computed index.'
             # Check if the index is to be persisted or loaded
             if argument.prop.load:
+                assert storage_file, 'Please provide a `storage_file` path to load the pre-computed index.'
                 # Load the pre-computed index from the provided path
                 self.index[index_name] = VectorDB(
                     index_dims=index_dims,

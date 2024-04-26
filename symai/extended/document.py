@@ -15,7 +15,7 @@ class DocumentRetriever(Expression):
             top_k = 5,
             formatter: Callable = ParagraphFormatter(),
             overwrite: bool = False,
-            as_jsonl: bool = False,
+            with_metadata: bool = False,
             raw_result: Optional[bool] = False,
             new_dim: Optional[int] = None,
             **kwargs
@@ -29,12 +29,12 @@ class DocumentRetriever(Expression):
             if type(file) is str:
                 file_path = file
                 reader = FileReader()
-                text = reader(file_path, as_jsonl=as_jsonl, **kwargs)
+                text = reader(file_path, with_metadata=with_metadata, **kwargs)
             else:
                 text = str(file)
 
             self.index = indexer(
-                    text,
+                    data=text, #@NOTE: we write the text to the index
                     raw_result=raw_result,
                     **kwargs
                 )
