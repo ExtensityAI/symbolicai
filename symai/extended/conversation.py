@@ -3,8 +3,10 @@ import pickle
 
 from datetime import datetime
 from typing import Any, Callable, Optional, List
+from pathlib import Path
 
 from .seo_query_optimizer import SEOQueryOptimizer
+from ..formatter import TextContainerFormatter
 from ..components import Indexer, FileReader
 from ..memory import SlidingWindowStringConcatMemory
 from ..symbol import Symbol
@@ -18,13 +20,17 @@ class CodeFormatter:
 
 
 class Conversation(SlidingWindowStringConcatMemory):
-    def __init__(self, init:     Optional[str] = None,
-                 file_link:      Optional[List[str]] = None,
-                 url_link:       Optional[List[str]] = None,
-                 index_name:     Optional[str] = None,
-                 auto_print:     bool          = True,
-                 token_ratio:    float         = 0.6,
-                 *args, **kwargs):
+    def __init__(
+            self,
+            init:          Optional[str]       = None,
+            file_link:     Optional[List[str]] = None,
+            url_link:      Optional[List[str]] = None,
+            index_name:    Optional[str]       = None,
+            auto_print:    bool                = True,
+            token_ratio:   float               = 0.6,
+            with_metadata: bool                = False,
+            *args, **kwargs
+        ):
         super().__init__(token_ratio, *args, **kwargs)
         self.token_ratio = token_ratio
         self.auto_print  = auto_print
@@ -36,7 +42,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         self.url_link    = url_link
         self.index_name  = index_name
         self.seo_opt     = SEOQueryOptimizer()
-        self.reader      = FileReader()
+        self.reader      = FileReader(with_metadata=with_metadata)
         self.crawler     = Interface('selenium')
         self.user_tag    = 'USER::'
         self.bot_tag     = 'ASSISTANT::'
@@ -53,7 +59,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         self.index       = None
         if index_name is not None:
             self.indexer = Indexer(index_name=index_name)
-            self.index   = self.indexer(raw_result=True)
+            self.index   = self.indexer(raw_result=kwargs.get('raw_result', False))
 
     def __getstate__(self):
         state = super().__getstate__().copy()
@@ -178,9 +184,12 @@ class Conversation(SlidingWindowStringConcatMemory):
                 memory_shards = memory_shards[:2] + memory_shards[-(length_memory_shards-2):]
             else:
                 memory_shards = memory_shards[:2] + memory_shards[-3:]
-            search_query = '\n'.join(memory_shards) # join with newlines
-            search_query = self.seo_opt(f'[Query]:' | query | '\n' | search_query)
+
+            search_query = query | '\n' | '\n'.join(memory_shards)
+            if kwargs.get('use_seo_opt'):
+                search_query = self.seo_opt(f'[Query]:' | search_query)
             memory = self.index(search_query, *args, **kwargs)
+
             if 'raw_result' in kwargs:
                 print(memory)
 
@@ -232,6 +241,69 @@ If the user requests functions or instructions, you will process the user querie
 
 
 class RetrievalAugmentedConversation(Conversation):
+    def __init__(
+            self,
+            folder_path: Optional[str] = None,
+            *,
+            index_name:  Optional[str] = None,
+            max_depth:   Optional[int] = 0,
+            auto_print:  bool          = True,
+            token_ratio: float         = 0.9,
+            top_k                      = 5,
+            formatter: Callable        = TextContainerFormatter(),
+            overwrite: bool            = False,
+            with_metadata: bool        = False,
+            raw_result: Optional[bool] = False,
+            new_dim: Optional[int]     = None,
+            **kwargs
+        ):
+
+        super().__init__(auto_print=auto_print, with_metadata=with_metadata, token_ratio=token_ratio, **kwargs)
+        self.folder_path   = folder_path
+        self.max_depth     = max_depth
+        self.index_name    = index_name
+        self.auto_print    = auto_print
+        self.token_ratio   = token_ratio
+        self.top_k         = top_k
+        self.formatter     = formatter
+        self.overwrite     = overwrite
+        self.with_metadata = with_metadata
+        self.raw_result    = raw_result
+        self.new_dim       = new_dim
+
+        indexer = Indexer(index_name=index_name, top_k=top_k, formatter=formatter, auto_add=False, new_dim=new_dim)
+        if folder_path and (not indexer.exists() or overwrite):
+            files = self.get_files(folder_path, max_depth)
+            indexer.register()
+            text = self.reader(files, with_metadata=with_metadata, **kwargs)
+
+            self.index = indexer(
+                    data=text,
+                    raw_result=raw_result,
+                    **kwargs
+                )
+        else:
+            self.index = indexer(
+                    raw_result=raw_result,
+                    **kwargs
+                )
+
     @property
     def static_context(self) -> str:
         return RETRIEVAL_CONTEXT
+
+    def get_files(self, folder_path, max_depth):
+        accepted_formats = ['.pdf', '.md', '.txt']
+
+        folder = Path(folder_path)
+        files = []
+        for file_path in folder.rglob("*"):
+            if file_path.is_file() and file_path.suffix in accepted_formats:
+                relative_path = file_path.relative_to(folder)
+                depth = len(relative_path.parts) - 1
+                if depth <= max_depth:
+                    files.append(file_path.as_posix())
+        return files
+
+    def forward(self, query: str, *args, **kwargs):
+        return super().forward(query, *args, **kwargs)

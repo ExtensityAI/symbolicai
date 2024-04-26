@@ -7,7 +7,7 @@ from tqdm import tqdm
 from pathlib import Path
 from random import sample
 from string import ascii_lowercase, ascii_uppercase
-from typing import Callable, Iterator, List, Optional, Type
+from typing import Callable, Iterator, List, Optional, Type, Union
 from pyvis.network import Network
 
 from . import core
@@ -474,8 +474,8 @@ class FileWriter(Expression):
 
 
 class FileReader(Expression):
-    @classmethod
-    def exists(cls, path: str) -> bool:
+    @staticmethod
+    def exists(path: str) -> bool:
         # remove slicing if any
         _tmp     = path
         _splits  = _tmp.split('[')
@@ -488,8 +488,8 @@ class FileReader(Expression):
             return True
         return False
 
-    @classmethod
-    def extract_files(cls, cmds: str) -> List[str]:
+    @staticmethod
+    def extract_files(cmds: str) -> List[str]:
         # Use the updated regular expression to match quoted and non-quoted paths
         pattern = r'''(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)'|`((?:\\.|[^`\\])*)`|((?:\\ |[^ ])+))'''
 
@@ -523,13 +523,28 @@ class FileReader(Expression):
 
         return files
 
-    @classmethod
-    def expand_user_path(cls, path: str) -> str:
+    @staticmethod
+    def expand_user_path(path: str) -> str:
         return path.replace('~', os.path.expanduser('~'))
 
-    def forward(self, path: str, **kwargs) -> Expression:
-        return self.open(path, **kwargs)
+    @staticmethod
+    def integrity_check(files: List[str]) -> List[str]:
+        not_skipped = []
+        for file in tqdm(files):
+            if FileReader.exists(file):
+                not_skipped.append(file)
+            else:
+                CustomUserWarning(f'Skipping file: {file}')
+        return not_skipped
 
+    def forward(self, files: Union[str, List[str]], **kwargs) -> Expression:
+        if isinstance(files, str):
+            return self.open(files, **kwargs)
+        if isinstance(files, list):
+            if kwargs.get('run_integrity_check'):
+                files = self.integrity_check(files)
+            return self.sym_return_type([self.open(f, **kwargs).value for f in files])
+        raise ValueError('Invalid input type. Please provide a string (file path) or a list of strings (file paths).')
 
 class FileQuery(Expression):
     def __init__(self, path: str, filter: str, **kwargs):
@@ -888,6 +903,7 @@ class Indexer(Expression):
             for i in tqdm(range(0, len(self.elements), self.batch_size)):
                 val = Symbol(self.elements[i:i+self.batch_size]).zip(new_dim=self.new_dim)
                 that.add(val, index_name=that.index_name)
+            that.config(None, index_name=that.index_name)
 
         def _func(query, *args, **kwargs):
             raw_result = kwargs.get('raw_result') or that.raw_result

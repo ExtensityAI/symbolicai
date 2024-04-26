@@ -141,7 +141,7 @@ class SentenceFormatter(Expression):
         return self._to_symbol(self.elements)
 
 
-class JSONLChunkFormatter(Expression):
+class TextContainerFormatter(Expression):
     def __init__(
             self,
             value: Any = None,
@@ -155,27 +155,32 @@ class JSONLChunkFormatter(Expression):
 
     @beartype
     def forward(self, sym: Symbol, *args, **kwargs) -> Symbol:
-        jlines = [json.loads(jline) for jline in sym.value.split('\n') if jline]
-        chunks = [chunk for jline in tqdm(jlines) for chunk in self._chunk(jline)]
+        if isinstance(sym.value, list):
+            containers = [container for pdf in sym.value for container in pdf]
+        chunks = [text for container in tqdm(containers) for text in self._chunk(container)]
         return self._to_symbol(chunks)
 
-    def _chunk(self, jline: Dict) -> List[str]:
-        text = jline[self.key]
+    def _chunk(self, container: 'TextContainer') -> List[str]:
+        text = container.text
         step = len(text) // self.text_split
         splits = []
         i = c = 0
         while c < self.text_split:
             if c == self.text_split - 1:
-                splits.append(self._expand(text[i:], jline)) # we unify the last chunk with the previous one
+                # Unify the last chunk with the previous one if necessary
+                splits.append(self._as_str(text[i:], container))
                 break
-            splits.append(self._expand(text[i:i+step], jline))
+            splits.append(self._as_str(text[i:i+step], container))
             i += step
             c += 1
         return splits
 
-    def _expand(self, text: str, jline: Dict) -> str:
-        return json.dumps({**jline, self.key: self._compactify(text)})
-
-    def _compactify(self, text: str) -> str:
-        return re.sub(r'\s+', ' ', text.replace('\n', ' ').strip())
+    def _as_str(self, text: str, container: 'TextContainer') -> str:
+        return (
+            '---\n'
+            f"id: {container.id}\n"
+            f"page: {container.page}\n"
+            '---\n'
+            f"{text}"
+        )
 

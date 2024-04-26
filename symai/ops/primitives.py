@@ -2699,7 +2699,7 @@ class IOHandlingPrimitives(Primitive):
             raise ValueError('Path is not provided; either provide a path or set the value of the Symbol to the path')
 
         @core.opening(path=path, **kwargs)
-        def _func(_) -> str:
+        def _func(_):
             pass
 
         if hasattr(self, 'sym_return_type'):
@@ -2711,7 +2711,7 @@ class IndexingPrimitives(Primitive):
     '''
     This mixin contains functionalities related to indexing symbols.
     '''
-    def index(self, path: str, index_name: str, **kwargs) -> 'Symbol':
+    def config(self, path: str, index_name: str, **kwargs) -> 'Symbol':
         '''
         Execute a configuration operation on the index.
 
