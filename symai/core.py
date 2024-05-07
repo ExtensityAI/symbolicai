@@ -58,7 +58,13 @@ class Argument(Expression):
 
     @property
     def value(self):
-        return self.prop
+        return {
+            'args': self.args,
+            'signature_kwargs': self.signature_kwargs,
+            'decorator_kwargs': self.decorator_kwargs,
+            'kwargs': self.kwargs,
+            'prop': self.prop
+        }
 
     def _construct_kwargs(self, signature_kwargs, decorator_kwargs):
         '''
