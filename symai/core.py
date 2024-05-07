@@ -1662,7 +1662,7 @@ def draw(operation: str = 'create',
     return decorator
 
 
-def text_vision(image: Optional[str] = None,
+def text_vision(image: Optional[str|bytes] = None,
                 text: List[str] = None,
                 pre_processors: Optional[List[pre.PreProcessor]] = None,
                 post_processors: Optional[List[post.PostProcessor]] = None,

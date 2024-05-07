@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 
 import numpy as np
 
@@ -10,7 +10,7 @@ class clip(Expression):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def __call__(self, image: str = None, text: List[str] = None, **kwargs) -> "clip":
+    def __call__(self, image: str | bytes = None, text: List[str] = None, **kwargs) -> "clip":
         @core.text_vision(image=image, text=text, **kwargs)
         def _func(_) -> np.ndarray:
             pass
