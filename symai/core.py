@@ -1,5 +1,6 @@
 import functools
 
+from box import Box
 from typing import Callable, Dict, List, Optional, Any
 
 from . import post_processors as post
@@ -58,13 +59,13 @@ class Argument(Expression):
 
     @property
     def value(self):
-        return {
+        return Box({
             'args': self.args,
             'signature_kwargs': self.signature_kwargs,
             'decorator_kwargs': self.decorator_kwargs,
             'kwargs': self.kwargs,
             'prop': self.prop
-        }
+        })
 
     def _construct_kwargs(self, signature_kwargs, decorator_kwargs):
         '''
