@@ -29,14 +29,14 @@ dependencies = [
 [project.optional-dependencies]
 blip2 = ["bitsandbytes>=0.39.1", "decord", "salesforce-lavis"]
 wolframalpha = ["wolframalpha>=5.0.0"]
-whisper = ["openai-whisper"]
+whisper = ["openai-whisper>=20231117"]
 selenium = ["selenium>=4.10.0", "webdriver-manager>=4.0.1", "chromedriver-autoinstaller>=0.4.0"]
 serpapi = ["google-search-results>=2.4.2"]
 pinecone = ["pinecone-client>=2.2.2"]
 bard = ["bardapi>=0.1.24"]
 services = ["fastapi>=0.104.1", "redis>=5.0.1", "uvicorn>=0.24.0.post1"]
 solver = ["z3-solver"]
-all = ["wolframalpha>=5.0.0", "openai-whisper", "selenium>=4.10.0", "webdriver-manager>=4.0.1", "chromedriver-autoinstaller>=0.4.0", "google-search-results>=2.4.2", "pinecone-client>=2.2.2", "fastapi>=0.104.1", "redis>=5.0.1", "uvicorn>=0.24.0.post1", "z3-solver"]
+all = ["wolframalpha>=5.0.0", "openai-whisper>=20231117", "selenium>=4.10.0", "webdriver-manager>=4.0.1", "chromedriver-autoinstaller>=0.4.0", "google-search-results>=2.4.2", "pinecone-client>=2.2.2", "fastapi>=0.104.1", "redis>=5.0.1", "uvicorn>=0.24.0.post1", "z3-solver"]
 
 [tool.setuptools.dynamic]
 version = {attr = "symai.SYMAI_VERSION"}
