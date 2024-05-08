@@ -118,14 +118,15 @@ class WhisperEngine(Engine):
             self.old_model_id = self.model_id
 
         self._try_compile()
-        show_pbar       = kwargs.get("progress", False)
-        language        = kwargs.get("language", "en")
-        temperature     = kwargs.get("temperature", (0.0, 0.2, 0.4, 0.6, 0.8, 1.0))
-        word_timestamps = kwargs.get("word_timestamps", False)
+        show_pbar          = kwargs.get("progress", False)
+        language           = kwargs.get("language", "en")
+        temperature        = kwargs.get("temperature", (0.0, 0.2, 0.4, 0.6, 0.8, 1.0))
+        without_timestamps = kwargs.get("without_timestamps", False)
 
         raw_result = []
         if prompt == 'detect_language':
             #@NOTE: the accuracy of mel spectrogram is not good enough; don't use it to transcribe
+            audio = whisper.pad_or_trim(audio)
             mel = whisper.log_mel_spectrogram(audio).to(self.model.device)
             _, probs = self.model.detect_language(mel)
             rsp = max(probs, key=probs.get)
@@ -140,7 +141,7 @@ class WhisperEngine(Engine):
                 result = self.model.transcribe(
                     chunk,
                     language=language,
-                    word_timestamps=word_timestamps,
+                    without_timestamps=without_timestamps,
                     temperature=temperature,
                     fp16=False,
                 )
@@ -151,7 +152,7 @@ class WhisperEngine(Engine):
                     for segment in result["segments"]
                     for token in segment["tokens"]
                 ])
-            if word_timestamps is not None:
+            if without_timestamps is not None:
                 tokenizer = get_tokenizer(self.model.is_multilingual)
                 tokens = [tokenizer.decode_with_timestamps(t) for t in self.tokens]
                 rsp = self.formatter(tokens)
