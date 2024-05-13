@@ -7,6 +7,7 @@ from typing import List, Optional
 from ...base import Engine
 from ...mixin.openai import OpenAIMixin
 from ...settings import SYMAI_CONFIG
+from ....utils import CustomUserWarning
 from ....misc.console import ConsoleStyle
 
 
@@ -23,18 +24,18 @@ class InvalidRequestErrorRemedyCompletionStrategy:
 
     def __call__(self, engine, error, callback, argument):
         openai_kwargs = {}
-        kwargs              = argument.kwargs
-        prompts_            = argument.prop.prepared_input
+        kwargs   = argument.kwargs
+        prompts_ = argument.prop.prepared_input
         # send prompt to GPT-X Completion-based
-        stop                = kwargs['stop'] if 'stop' in kwargs else None
-        model               = kwargs['model'] if 'model' in kwargs else None
+        stop  = kwargs['stop'] if 'stop' in kwargs else None
+        model = kwargs['model'] if 'model' in kwargs else None
 
         msg = str(error)
         handle = None
         try:
             if "This model's maximum context length is" in msg:
                 handle = 'type1'
-                max_ = engine.max_tokens
+                max_ = engine.max_context_tokens
                 usr = msg.split('tokens. ')[1].split(' ')[-1]
                 overflow_tokens = int(usr) - int(max_)
             elif "is less than the minimum" in msg:
@@ -65,7 +66,7 @@ class InvalidRequestErrorRemedyCompletionStrategy:
 
         def compute_remaining_tokens(prompts: list) -> int:
             val = compute_required_tokens(prompts)
-            return int((engine.max_tokens - val) * 0.99)
+            return int((engine.max_context_tokens - val) * 0.99)
 
         if handle == 'type1':
             truncated_content_ = [p['content'][overflow_tokens:] for p in prompts]
@@ -76,9 +77,9 @@ class InvalidRequestErrorRemedyCompletionStrategy:
             user_prompts = [p['content'] for p in prompts]
             new_prompt   = [*system_prompt]
             new_prompt.extend([{'role': p['role'], 'content': c} for p, c in zip(prompts, user_prompts)])
-            overflow_tokens = compute_required_tokens(new_prompt) - int(engine.max_tokens * 0.70)
+            overflow_tokens = compute_required_tokens(new_prompt) - int(engine.max_context_tokens * 0.70)
             if overflow_tokens > 0:
-                print('WARNING: Overflow tokens detected. Reducing prompt size to 70% of max_tokens.')
+                CustomUserWarning(f'WARNING: Overflow tokens detected. Reducing prompt size to 70% of model context size ({engine.max_context_tokens}).')
                 for i, content in enumerate(user_prompts):
                     token_ids = engine.tokenizer.encode(content)
                     if overflow_tokens >= len(token_ids):
@@ -92,8 +93,8 @@ class InvalidRequestErrorRemedyCompletionStrategy:
 
             new_prompt = [*system_prompt]
             new_prompt.extend([{'role': p['role'], 'content': c} for p, c in zip(prompts, user_prompts)])
-            assert compute_required_tokens(new_prompt) <= engine.max_tokens, \
-                f"Token overflow: prompts exceed {engine.max_tokens} tokens after truncation"
+            assert compute_required_tokens(new_prompt) <= engine.max_context_tokens, \
+                f"Token overflow: prompts exceed {engine.max_context_tokens} tokens after truncation"
 
             truncated_prompts_ = [{'role': p['role'], 'content': c.strip()} for p, c in zip(prompts, user_prompts) if c.strip()]
         else:
@@ -139,7 +140,7 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
         self.model          = self.config['NEUROSYMBOLIC_ENGINE_MODEL'] if model is None else model
         self.tokenizer      = tiktoken.encoding_for_model(self.model)
         self.pricing        = self.api_pricing()
-        self.max_tokens     = self.api_max_tokens() - 100 # TODO: account for tolerance. figure out how their magic number works to compute reliably the precise max token size
+        self.max_context_tokens = self.api_max_context_tokens()
         self.except_remedy  = None
 
     def id(self) -> str:
@@ -169,7 +170,7 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
 
     def compute_remaining_tokens(self, prompts: list) -> int:
         val = self.compute_required_tokens(prompts)
-        return int((self.max_tokens - val) * 0.99) # TODO: figure out how their magic number works to compute reliably the precise max token size
+        return int((self.max_context_tokens - val) * 0.99) # TODO: figure out how their magic number works to compute reliably the precise max token size
 
     def forward(self, argument):
         kwargs              = argument.kwargs
@@ -179,7 +180,6 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
         max_tokens          = kwargs['max_tokens'] if 'max_tokens' in kwargs else self.compute_remaining_tokens(prompts_)
         stop                = kwargs['stop'] if 'stop' in kwargs else None
         model               = kwargs['model'] if 'model' in kwargs else self.model
-        suffix              = kwargs['template_suffix'] if 'template_suffix' in kwargs else None
         temperature         = kwargs['temperature'] if 'temperature' in kwargs else 0.7
         frequency_penalty   = kwargs['frequency_penalty'] if 'frequency_penalty' in kwargs else 0
         presence_penalty    = kwargs['presence_penalty'] if 'presence_penalty' in kwargs else 0
@@ -189,7 +189,6 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
         try:
             res = openai.completions.create(model=model,
                                             prompt=prompts_,
-                                            suffix=suffix,
                                             max_tokens=max_tokens,
                                             temperature=temperature,
                                             frequency_penalty=frequency_penalty,
