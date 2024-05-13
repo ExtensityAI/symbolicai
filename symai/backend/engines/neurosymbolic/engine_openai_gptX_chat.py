@@ -8,7 +8,7 @@ from typing import List, Optional
 from ...base import Engine
 from ...mixin.openai import OpenAIMixin
 from ...settings import SYMAI_CONFIG
-from ....utils import encode_frames_file
+from ....utils import encode_frames_file, CustomUserWarning
 from ....misc.console import ConsoleStyle
 from ....symbol import Symbol
 
@@ -38,16 +38,12 @@ class InvalidRequestErrorRemedyChatStrategy:
         try:
             if "This model's maximum context length is" in msg:
                 handle = 'type1'
-                max_ = engine.max_tokens
+                max_ = engine.max_context_tokens
                 usr = msg.split('tokens. ')[1].split(' ')[-1]
                 overflow_tokens = int(usr) - int(max_)
             elif "is less than the minimum" in msg:
                 handle = 'type2'
-                # extract number until 'is'
-                msg_ = msg.split("is less than the minimum")[0]
-                # remove until the first `-`
-                msg_ = msg_.split(': "-')[-1]
-                overflow_tokens = int(msg_)
+                overflow_tokens = engine.max_response_tokens
             else:
                 raise Exception(msg) from error
         except Exception as e:
@@ -64,9 +60,9 @@ class InvalidRequestErrorRemedyChatStrategy:
             user_prompts = [p['content'] for p in prompts]
             new_prompt   = [*system_prompt]
             new_prompt.extend([{'role': p['role'], 'content': c} for p, c in zip(prompts, user_prompts)])
-            overflow_tokens = engine.compute_required_tokens(new_prompt) - int(engine.max_tokens * 0.70)
+            overflow_tokens = engine.compute_required_tokens(new_prompt) - int(engine.max_context_tokens * 0.70)
             if overflow_tokens > 0:
-                print('WARNING: Overflow tokens detected. Reducing prompt size to 70% of max_tokens.')
+                CustomUserWarning(f'WARNING: Overflow tokens detected. Reducing prompt size to 70% of model context size ({engine.max_context_tokens}).')
                 for i, content in enumerate(user_prompts):
                     token_ids = engine.tokenizer.encode(content)
                     if overflow_tokens >= len(token_ids):
@@ -80,8 +76,8 @@ class InvalidRequestErrorRemedyChatStrategy:
 
             new_prompt = [*system_prompt]
             new_prompt.extend([{'role': p['role'], 'content': c} for p, c in zip(prompts, user_prompts)])
-            assert engine.compute_required_tokens(new_prompt) <= engine.max_tokens, \
-                f"Token overflow: prompts exceed {engine.max_tokens} tokens after truncation"
+            assert engine.compute_required_tokens(new_prompt) <= engine.max_context_tokens, \
+                f"Token overflow: prompts exceed {engine.max_context_tokens} tokens after truncation"
 
             truncated_prompts_ = [{'role': p['role'], 'content': c.strip()} for p, c in zip(prompts, user_prompts) if c.strip()]
         else:
@@ -119,16 +115,17 @@ class InvalidRequestErrorRemedyChatStrategy:
 class GPTXChatEngine(Engine, OpenAIMixin):
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         super().__init__()
-        logger              = logging.getLogger('openai')
+        logger = logging.getLogger('openai')
         logger.setLevel(logging.WARNING)
-        self.config         = SYMAI_CONFIG
-        openai.api_key      = self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] if api_key is None else api_key
-        self.model          = self.config['NEUROSYMBOLIC_ENGINE_MODEL'] if model is None else model
-        self.tokenizer      = tiktoken.encoding_for_model(self.model)
-        self.pricing        = self.api_pricing()
-        self.max_tokens     = self.api_max_tokens() - 100 # TODO: account for tolerance. figure out how their magic number works to compute reliably the precise max token size
-        self.seed           = None
-        self.except_remedy  = None
+        self.config              = SYMAI_CONFIG
+        openai.api_key           = self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] if api_key is None else api_key
+        self.model               = self.config['NEUROSYMBOLIC_ENGINE_MODEL'] if model is None else model
+        self.tokenizer           = tiktoken.encoding_for_model(self.model)
+        self.pricing             = self.api_pricing()
+        self.max_context_tokens  = self.api_max_context_tokens()
+        self.max_response_tokens = self.api_max_response_tokens()
+        self.seed                = None
+        self.except_remedy       = None
 
     def id(self) -> str:
         if   self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and \
@@ -148,36 +145,85 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         if 'except_remedy' in kwargs:
             self.except_remedy = kwargs['except_remedy']
 
-    def compute_required_tokens(self, prompts: dict) -> int:
-        # iterate over prompts and compute number of tokens
-        prompts_ = [role['content'] for role in prompts]
-        if self.model == 'gpt-4-vision-preview' or \
-           self.model == 'gpt-4-turbo-2024-04-09' or \
-           self.model == 'gpt-4-turbo' or \
-           self.model == 'gpt-4o':
-            eval_prompt = ''
-            for p in prompts_:
-                if type(p) == str:
-                    eval_prompt += p
-                else:
-                    for p_ in p:
-                        if p_['type'] == 'text':
-                            eval_prompt += p_['text']
-            prompt = eval_prompt
+    def compute_required_tokens(self, messages):
+        """Return the number of tokens used by a list of messages."""
+
+        if self.model in {
+            "gpt-3.5-turbo-0613",
+            "gpt-3.5-turbo-16k-0613",
+            "gpt-4-0314",
+            "gpt-4-32k-0314",
+            "gpt-4-0613",
+            "gpt-4-32k-0613",
+            "gpt-4o"
+            }:
+            tokens_per_message = 3
+            tokens_per_name = 1
+        elif self.model == "gpt-3.5-turbo-0301":
+            tokens_per_message = 4  # every message follows <|start|>{role/name}\n{content}<|end|>\n
+            tokens_per_name = -1    # if there's a name, the role is omitted
+        elif self.model == "gpt-3.5-turbo":
+            CustomUserWarning("Warning: gpt-3.5-turbo may update over time. Returning num tokens assuming gpt-3.5-turbo-0613.")
+            self.tokenizer = tiktoken.encoding_for_model("gpt-3.5-turbo-0613")
+        elif self.model == "gpt-4":
+            CustomUserWarning("Warning: gpt-4 may update over time. Returning num tokens assuming gpt-4-0613.")
+            self.tokenizer = tiktoken.encoding_for_model("gpt-4-0613")
         else:
-            prompt = ''.join(prompts_)
-        val = len(self.tokenizer.encode(prompt, disallowed_special=()))
-        return val
+            raise NotImplementedError(
+                f"""num_tokens_from_messages() is not implemented for model {self.model}. See https://cookbook.openai.com/examples/how_to_count_tokens_with_tiktoken for information on how messages are converted to tokens."""
+            )
+
+        num_tokens = 0
+        for message in messages:
+            num_tokens += tokens_per_message
+            for key, value in message.items():
+                if type(value) == str:
+                    num_tokens += len(self.tokenizer.encode(value, disallowed_special=()))
+                else:
+                    for v in value:
+                        if v['type'] == 'text':
+                            num_tokens += len(self.tokenizer.encode(v['text'], disallowed_special=()))
+                if key == "name":
+                    num_tokens += tokens_per_name
+        num_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
+        return num_tokens
+
+    # def compute_required_tokens(self, prompts: dict) -> int:
+    #     # iterate over prompts and compute number of tokens
+    #     prompts_ = [role['content'] for role in prompts]
+    #     if self.model == 'gpt-4-vision-preview' or \
+    #        self.model == 'gpt-4-turbo-2024-04-09' or \
+    #        self.model == 'gpt-4-turbo' or \
+    #        self.model == 'gpt-4o':
+    #         eval_prompt = ''
+    #         for p in prompts_:
+    #             if type(p) == str:
+    #                 eval_prompt += p
+    #             else:
+    #                 for p_ in p:
+    #                     if p_['type'] == 'text':
+    #                         eval_prompt += p_['text']
+    #         prompt = eval_prompt
+    #     else:
+    #         prompt = ''.join(prompts_)
+    #     val = len(self.tokenizer.encode(prompt, disallowed_special=()))
+    #     return val
+
+    # def compute_remaining_tokens(self, prompts: list) -> int:
+    #     val = self.compute_required_tokens(prompts)
+    #     if 'gpt-4-1106-preview'     == self.model or \
+    #        'gpt-4-vision-preview'   == self.model or \
+    #        'gpt-4-turbo-2024-04-09' == self.model or \
+    #        'gpt-4-turbo'            == self.model or \
+    #        'gpt-4o'                 == self.model:
+    #         return min(int((self.max_tokens - val) * 0.99), 4_096)
+    #     return int((self.max_tokens - val) * 0.99) # TODO: figure out how their magic number works to compute reliably the precise max token size
 
     def compute_remaining_tokens(self, prompts: list) -> int:
         val = self.compute_required_tokens(prompts)
-        if 'gpt-4-1106-preview'     == self.model or \
-           'gpt-4-vision-preview'   == self.model or \
-           'gpt-4-turbo-2024-04-09' == self.model or \
-           'gpt-4-turbo'            == self.model or \
-           'gpt-4o'                 == self.model: # models can only output 4_096 tokens
-            return min(int((self.max_tokens - val) * 0.99), 4_096)
-        return int((self.max_tokens - val) * 0.99) # TODO: figure out how their magic number works to compute reliably the precise max token size
+        #@NOTE: this will obviously fail if val is greater than max_context_tokens
+        #       the remedy strategy should handle this case
+        return min(self.max_context_tokens - val, self.max_response_tokens)
 
     def forward(self, argument):
         openai_kwargs = {}
@@ -198,7 +244,6 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         except_remedy     = kwargs.get('except_remedy', self.except_remedy)
         functions         = kwargs.get('functions')
         function_call     = "auto" if functions is not None else None
-
 
         if stop is not None:
             openai_kwargs['stop'] = stop
