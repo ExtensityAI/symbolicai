@@ -9,6 +9,7 @@ SUPPORTED_MODELS = [
     'gpt-4-turbo',
     'gpt-4-turbo-2024-04-09',
     'gpt-4-vision-preview',
+    'gpt-4o',
     'text-embedding-ada-002',
     'text-embedding-3-small',
     'text-embedding-3-large'
@@ -62,6 +63,12 @@ class OpenAIMixin:
                 'output': 0.03 / 1_000
             }
 
+        elif self.model == 'gpt-4o':
+            return {
+                'input':  0.005 / 1_000,
+                'output': 0.015 / 1_000
+            }
+
         elif self.model == 'text-embedding-ada-002':
             return {
                 'usage': 0.0001 / 1_000
@@ -96,7 +103,8 @@ class OpenAIMixin:
              self.model == 'gpt-4-vision-preview' or \
              self.model == 'gpt-4-turbo-2024-04-09' or \
              self.model == 'gpt-4-turbo' or \
-             self.model == 'gpt-4-1106':
+             self.model == 'gpt-4-1106' or \
+             self.model == 'gpt-4o':
             return 128_000
 
         elif self.model == 'gpt-4-32k' or \

@@ -151,7 +151,10 @@ class GPTXChatEngine(Engine, OpenAIMixin):
     def compute_required_tokens(self, prompts: dict) -> int:
         # iterate over prompts and compute number of tokens
         prompts_ = [role['content'] for role in prompts]
-        if self.model == 'gpt-4-vision-preview' or self.model == 'gpt-4-turbo-2024-04-09' or self.model == 'gpt-4-turbo':
+        if self.model == 'gpt-4-vision-preview' or \
+           self.model == 'gpt-4-turbo-2024-04-09' or \
+           self.model == 'gpt-4-turbo' or \
+           self.model == 'gpt-4o':
             eval_prompt = ''
             for p in prompts_:
                 if type(p) == str:
@@ -171,7 +174,8 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         if 'gpt-4-1106-preview'     == self.model or \
            'gpt-4-vision-preview'   == self.model or \
            'gpt-4-turbo-2024-04-09' == self.model or \
-           'gpt-4-turbo'            == self.model : # models can only output 4_096 tokens
+           'gpt-4-turbo'            == self.model or \
+           'gpt-4o'                 == self.model: # models can only output 4_096 tokens
             return min(int((self.max_tokens - val) * 0.99), 4_096)
         return int((self.max_tokens - val) * 0.99) # TODO: figure out how their magic number works to compute reliably the precise max token size
 
@@ -292,7 +296,8 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         # pre-process prompt if contains image url
         if (self.model == 'gpt-4-vision-preview' or \
             self.model == 'gpt-4-turbo-2024-04-09' or \
-            self.model == 'gpt-4-turbo') \
+            self.model == 'gpt-4-turbo' or \
+            self.model == 'gpt-4o') \
             and '<<vision:' in str(argument.prop.processed_input):
 
             parts = extract_pattern(str(argument.prop.processed_input))
@@ -358,7 +363,10 @@ class GPTXChatEngine(Engine, OpenAIMixin):
                 *images,
                 { 'type': 'text', 'text': user }
             ]}
-        elif self.model == 'gpt-4-turbo-2024-04-09' or self.model == 'gpt-4-turbo':
+        elif self.model == 'gpt-4-turbo-2024-04-09' or \
+             self.model == 'gpt-4-turbo' or \
+             self.model == 'gpt-4o':
+
             images = [{ 'type': 'image_url', "image_url": { "url": file, "detail": "auto" }} for file in image_files]
             user_prompt = { "role": "user", "content": [
                 *images,
