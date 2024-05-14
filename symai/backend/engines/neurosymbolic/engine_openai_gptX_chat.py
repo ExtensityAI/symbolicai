@@ -101,15 +101,17 @@ class InvalidRequestErrorRemedyChatStrategy:
         if function_call is not None:
             openai_kwargs['function_call'] = function_call
 
-        return callback(model=model,
-                        messages=truncated_prompts_,
-                        max_tokens=max_tokens,
-                        temperature=temperature,
-                        frequency_penalty=frequency_penalty,
-                        presence_penalty=presence_penalty,
-                        top_p=top_p,
-                        n=1,
-                        **openai_kwargs)
+        return callback(
+                model=model,
+                messages=truncated_prompts_,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                frequency_penalty=frequency_penalty,
+                presence_penalty=presence_penalty,
+                top_p=top_p,
+                n=1,
+                **openai_kwargs
+            )
 
 
 class GPTXChatEngine(Engine, OpenAIMixin):
@@ -155,6 +157,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             "gpt-4-32k-0314",
             "gpt-4-0613",
             "gpt-4-32k-0613",
+            "gpt-4-turbo",
             "gpt-4o"
             }:
             tokens_per_message = 3
@@ -187,37 +190,6 @@ class GPTXChatEngine(Engine, OpenAIMixin):
                     num_tokens += tokens_per_name
         num_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
         return num_tokens
-
-    # def compute_required_tokens(self, prompts: dict) -> int:
-    #     # iterate over prompts and compute number of tokens
-    #     prompts_ = [role['content'] for role in prompts]
-    #     if self.model == 'gpt-4-vision-preview' or \
-    #        self.model == 'gpt-4-turbo-2024-04-09' or \
-    #        self.model == 'gpt-4-turbo' or \
-    #        self.model == 'gpt-4o':
-    #         eval_prompt = ''
-    #         for p in prompts_:
-    #             if type(p) == str:
-    #                 eval_prompt += p
-    #             else:
-    #                 for p_ in p:
-    #                     if p_['type'] == 'text':
-    #                         eval_prompt += p_['text']
-    #         prompt = eval_prompt
-    #     else:
-    #         prompt = ''.join(prompts_)
-    #     val = len(self.tokenizer.encode(prompt, disallowed_special=()))
-    #     return val
-
-    # def compute_remaining_tokens(self, prompts: list) -> int:
-    #     val = self.compute_required_tokens(prompts)
-    #     if 'gpt-4-1106-preview'     == self.model or \
-    #        'gpt-4-vision-preview'   == self.model or \
-    #        'gpt-4-turbo-2024-04-09' == self.model or \
-    #        'gpt-4-turbo'            == self.model or \
-    #        'gpt-4o'                 == self.model:
-    #         return min(int((self.max_tokens - val) * 0.99), 4_096)
-    #     return int((self.max_tokens - val) * 0.99) # TODO: figure out how their magic number works to compute reliably the precise max token size
 
     def compute_remaining_tokens(self, prompts: list) -> int:
         val = self.compute_required_tokens(prompts)
@@ -255,15 +227,17 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             openai_kwargs['seed'] = seed
 
         try:
-            res = openai.chat.completions.create(model=model,
-                                                 messages=prompts_,
-                                                 max_tokens=max_tokens,
-                                                 temperature=temperature,
-                                                 frequency_penalty=frequency_penalty,
-                                                 presence_penalty=presence_penalty,
-                                                 top_p=top_p,
-                                                 n=1,
-                                                 **openai_kwargs)
+            res = openai.chat.completions.create(
+                    model=model,
+                    messages=prompts_,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    frequency_penalty=frequency_penalty,
+                    presence_penalty=presence_penalty,
+                    top_p=top_p,
+                    n=1,
+                    **openai_kwargs
+                )
 
         except Exception as e:
             if openai.api_key is None or openai.api_key == '':
@@ -286,7 +260,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
                     ex = Exception(f'Failed to handle exception: {e}. Also failed implicit remedy strategy after retry: {e2}')
                     raise ex from e
 
-        metadata = {}
+        metadata = {'raw_output': res}
 
         rsp    = [r.message.content for r in res.choices]
         output = rsp if isinstance(prompts_, list) else rsp[0]

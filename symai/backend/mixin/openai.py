@@ -119,7 +119,10 @@ class OpenAIMixin:
             return 4_096
 
     def api_max_response_tokens(self):
-        if self.model == 'gpt-4o' or \
+        if self.model == 'davinci-002':
+            return 2_048
+
+        elif self.model == 'gpt-4o' or \
            self.model == 'gpt-4-turbo' or \
            self.model == 'gpt-4-turbo-2024-04-09' or \
            self.model == 'gpt-4-1106-preview' or \

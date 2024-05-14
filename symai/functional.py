@@ -168,6 +168,10 @@ def _process_query(engine,
             # return preview of the command if preview is set
             if argument.prop.preview:
                 return rsp
+
+            if argument.prop.raw_output:
+                return metadata.get('raw_output')
+
         except Exception as e:
             logging.error(f"Failed to execute query: {str(e)}")
             traceback.print_exc()
