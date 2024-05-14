@@ -30,6 +30,8 @@ class Argument(Expression):
             self.prop.preview           = False
         if 'raw_input' not in self.kwargs:
             self.prop.raw_input         = False
+        if 'raw_output' not in self.kwargs:
+            self.prop.raw_output        = False
         if 'logging' not in self.kwargs:
             self.prop.logging           = False
         if 'verbose' not in self.kwargs:
