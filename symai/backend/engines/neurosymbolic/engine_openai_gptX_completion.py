@@ -40,11 +40,7 @@ class InvalidRequestErrorRemedyCompletionStrategy:
                 overflow_tokens = int(usr) - int(max_)
             elif "is less than the minimum" in msg:
                 handle = 'type2'
-                # extract number until 'is'
-                msg_ = msg.split("is less than the minimum")[0]
-                # remove until the first `-`
-                msg_ = msg_.split(': "-')[-1]
-                overflow_tokens = int(msg_)
+                overflow_tokens = engine.max_response_tokens
             else:
                 raise Exception(msg) from error
         except Exception as e:
@@ -133,15 +129,16 @@ class InvalidRequestErrorRemedyCompletionStrategy:
 class GPTXCompletionEngine(Engine, OpenAIMixin):
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         super().__init__()
-        logger              = logging.getLogger('openai')
+        logger = logging.getLogger('openai')
         logger.setLevel(logging.WARNING)
-        self.config         = SYMAI_CONFIG
-        openai.api_key      = self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] if api_key is None else api_key
-        self.model          = self.config['NEUROSYMBOLIC_ENGINE_MODEL'] if model is None else model
-        self.tokenizer      = tiktoken.encoding_for_model(self.model)
-        self.pricing        = self.api_pricing()
-        self.max_context_tokens = self.api_max_context_tokens()
-        self.except_remedy  = None
+        self.config              = SYMAI_CONFIG
+        openai.api_key           = self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] if api_key is None else api_key
+        self.model               = self.config['NEUROSYMBOLIC_ENGINE_MODEL'] if model is None else model
+        self.tokenizer           = tiktoken.encoding_for_model(self.model)
+        self.pricing             = self.api_pricing()
+        self.max_context_tokens  = self.api_max_context_tokens()
+        self.max_response_tokens = self.api_max_response_tokens()
+        self.except_remedy       = None
 
     def id(self) -> str:
         if   self.config['NEUROSYMBOLIC_ENGINE_MODEL'] and \
@@ -170,7 +167,7 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
 
     def compute_remaining_tokens(self, prompts: list) -> int:
         val = self.compute_required_tokens(prompts)
-        return int((self.max_context_tokens - val) * 0.99) # TODO: figure out how their magic number works to compute reliably the precise max token size
+        return min(self.max_context_tokens - val, self.max_response_tokens)
 
     def forward(self, argument):
         kwargs              = argument.kwargs
