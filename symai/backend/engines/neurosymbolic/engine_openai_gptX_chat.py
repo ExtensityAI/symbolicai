@@ -396,7 +396,6 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         else:
             user_prompt = { "role": "user", "content": user }
 
-        breakpoint()
         argument.prop.prepared_input = [
             { "role": "system", "content": system },
             user_prompt,
