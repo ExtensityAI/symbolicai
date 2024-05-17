@@ -119,7 +119,9 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         super().__init__()
         logger = logging.getLogger('openai')
         logger.setLevel(logging.WARNING)
-        self.config              = SYMAI_CONFIG
+        self.config = SYMAI_CONFIG
+        if self.id() != 'neurosymbolic':
+            return # do not initialize if not neurosymbolic; avoids conflict with llama.cpp check in EngineRepository.register_from_package
         openai.api_key           = self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] if api_key is None else api_key
         self.model               = self.config['NEUROSYMBOLIC_ENGINE_MODEL'] if model is None else model
         self.tokenizer           = tiktoken.encoding_for_model(self.model)
@@ -394,6 +396,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         else:
             user_prompt = { "role": "user", "content": user }
 
+        breakpoint()
         argument.prop.prepared_input = [
             { "role": "system", "content": system },
             user_prompt,

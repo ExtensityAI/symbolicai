@@ -1310,31 +1310,23 @@ array([[9.72840726e-01, 6.34790864e-03, 2.59368378e-03, 3.41371237e-03,
 
 ### Local Neuro-Symbolic Engine
 
-You can use a locally hosted instance for the Neuro-Symbolic Engine. Out of the box, we provide a Hugging Face client-server backend and host the model `openlm-research/open_llama_13b` to perform the inference. As the name suggests, this is a six billion parameter model and requires a GPU with ~16GB RAM to run properly. The following example shows how to host and configure the usage of the local Neuro-Symbolic Engine.
+You can use a locally hosted instance for the Neuro-Symbolic Engine. We build on top of [llama.cpp](https://github.com/ggerganov/llama.cpp/tree/master) through [llama-cpp-python](https://github.com/abetlen/llama-cpp-python?tab=readme-ov-file). Please follow the `llama-cpp-python` installation instructions. We make the assumption the user has experience running `llama.cpp` prior to using our API for local hosting.
 
-First, we start the backend server:
-
+For instance, let's suppose you want to set as a Neuro-Symbolic Engine the latest Llama 3 model. Download the model and start the server:
 ```bash
-# optional: set cache folder for transformers (Linux/MacOS)
-export TRANSFORMERS_CACHE="<path-to-cache-folder>"
-# start server backend (default model is openlm-research/open_llama_13b)
-symsvr
-# initialize server with client call
-symclient
+python -m llama_cpp.server --model [your llama.cpp folder]/models/llama-pro-8b-instruct.Q4_K_M.gguf --n_gpu_layers -1 --chat_format llama-3 --port 8000 --host localhost
 ```
 
-Then, use the following code once to set up the local engine:
+Then, in your `symai.config.json` file, set the `NEUROSYMBOLIC_ENGINE_API_KEY` to `http://localhost:8000` (following the `--port` and `--host` you set in the previous step) and `NEUROSYMBOLIC_ENGINE_MODEL` to `llama.cpp`.
 
-```python
-from symai.backend.engines.neurosymbolic.engine_nesy_client import NeSyClientEngine
-from symai.functional import EngineRepository
-# setup local engine
-engine = NeSyClientEngine()
-EngineRepository.register('neurosymbolic', engine)
+```json
+{
+  "NEUROSYMBOLIC_ENGINE_API_KEY": "http://localhost:8000",
+  "NEUROSYMBOLIC_ENGINE_MODEL": "llama.cpp"
+}
 ```
+Now you are set to use the local engine.
 
-
-Now you can use the local engine to perform symbolic computation:
 ```python
 # do some symbolic computation with the local engine
 sym = Symbol('cats are cute')
