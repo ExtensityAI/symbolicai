@@ -25,13 +25,8 @@ class InvalidRequestErrorRemedyChatStrategy:
         super().__init__(*args, **kwargs)
 
     def __call__(self, engine, error, callback, argument):
-        openai_kwargs = {}
         kwargs              = argument.kwargs
         prompts_            = argument.prop.prepared_input
-
-        # send prompt to GPT-X Chat-based
-        stop                = kwargs['stop'] if 'stop' in kwargs else None
-        model               = kwargs['model'] if 'model' in kwargs else None
 
         msg = str(error)
         handle = None
@@ -85,21 +80,21 @@ class InvalidRequestErrorRemedyChatStrategy:
 
         truncated_prompts_ = [*system_prompt, *truncated_prompts_]
 
-        # convert map to list of strings
-        max_tokens          = kwargs['max_tokens'] if 'max_tokens' in kwargs else engine.compute_remaining_tokens(truncated_prompts_)
-        temperature         = kwargs['temperature'] if 'temperature' in kwargs else 1
-        frequency_penalty   = kwargs['frequency_penalty'] if 'frequency_penalty' in kwargs else 0
-        presence_penalty    = kwargs['presence_penalty'] if 'presence_penalty' in kwargs else 0
-        top_p               = kwargs['top_p'] if 'top_p' in kwargs else 1
-        functions           = kwargs['functions'] if 'functions' in kwargs else None
-        function_call       = "auto" if functions is not None else None
-
-        if stop is not None:
-            openai_kwargs['stop'] = stop
-        if functions is not None:
-            openai_kwargs['functions'] = functions
-        if function_call is not None:
-            openai_kwargs['function_call'] = function_call
+        model             = kwargs.get('model',             engine.model)
+        seed              = kwargs.get('seed',              engine.seed)
+        max_tokens        = kwargs.get('max_tokens',        engine.compute_remaining_tokens(truncated_prompts_))
+        stop              = kwargs.get('stop')
+        temperature       = kwargs.get('temperature',       1)
+        frequency_penalty = kwargs.get('frequency_penalty', 0)
+        presence_penalty  = kwargs.get('presence_penalty',  0)
+        top_p             = kwargs.get('top_p',             1)
+        n                 = kwargs.get('n',                 1)
+        logit_bias        = kwargs.get('logit_bias')
+        logprobs          = kwargs.get('logprobs',          False)
+        top_logprobs      = kwargs.get('top_logprobs')
+        tools             = kwargs.get('tools')
+        tool_choice       = kwargs.get('tool_choice')
+        response_format   = kwargs.get('response_format')
 
         return callback(
                 model=model,
@@ -109,8 +104,15 @@ class InvalidRequestErrorRemedyChatStrategy:
                 frequency_penalty=frequency_penalty,
                 presence_penalty=presence_penalty,
                 top_p=top_p,
-                n=1,
-                **openai_kwargs
+                n=n,
+                logit_bias=logit_bias,
+                logprobs=logprobs,
+                top_logprobs=top_logprobs,
+                tools=tools,
+                tool_choice=tool_choice,
+                response_format=response_format,
+                seed=seed,
+                stop=stop
             )
 
 
@@ -200,33 +202,25 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         return min(self.max_context_tokens - val, self.max_response_tokens)
 
     def forward(self, argument):
-        openai_kwargs = {}
         kwargs        = argument.kwargs
         prompts_      = argument.prop.prepared_input
 
-        # send prompt to GPT-X Chat-based
-        stop  = kwargs.get('stop')
-        model = kwargs.get('model', self.model)
-        seed  = kwargs.get('seed', self.seed)
-
-        # convert map to list of strings
-        max_tokens        = kwargs.get('max_tokens', self.compute_remaining_tokens(prompts_))
-        temperature       = kwargs.get('temperature', 1)
+        model             = kwargs.get('model',             self.model)
+        seed              = kwargs.get('seed',              self.seed)
+        except_remedy     = kwargs.get('except_remedy',     self.except_remedy)
+        max_tokens        = kwargs.get('max_tokens',        self.compute_remaining_tokens(prompts_))
+        stop              = kwargs.get('stop',              '')
+        temperature       = kwargs.get('temperature',       1)
         frequency_penalty = kwargs.get('frequency_penalty', 0)
-        presence_penalty  = kwargs.get('presence_penalty', 0)
-        top_p             = kwargs.get('top_p', 1)
-        except_remedy     = kwargs.get('except_remedy', self.except_remedy)
-        functions         = kwargs.get('functions')
-        function_call     = "auto" if functions is not None else None
-
-        if stop is not None:
-            openai_kwargs['stop'] = stop
-        if functions is not None:
-            openai_kwargs['functions'] = functions
-        if function_call is not None:
-            openai_kwargs['function_call'] = function_call
-        if seed is not None:
-            openai_kwargs['seed'] = seed
+        presence_penalty  = kwargs.get('presence_penalty',  0)
+        top_p             = kwargs.get('top_p',             1)
+        n                 = kwargs.get('n',                 1)
+        logit_bias        = kwargs.get('logit_bias')
+        logprobs          = kwargs.get('logprobs')
+        top_logprobs      = kwargs.get('top_logprobs')
+        tools             = kwargs.get('tools')
+        tool_choice       = kwargs.get('tool_choice')
+        response_format   = kwargs.get('response_format')
 
         try:
             res = openai.chat.completions.create(
@@ -237,8 +231,15 @@ class GPTXChatEngine(Engine, OpenAIMixin):
                     frequency_penalty=frequency_penalty,
                     presence_penalty=presence_penalty,
                     top_p=top_p,
-                    n=1,
-                    **openai_kwargs
+                    n=n,
+                    logit_bias=logit_bias,
+                    logprobs=logprobs,
+                    top_logprobs=top_logprobs,
+                    tools=tools,
+                    tool_choice=tool_choice,
+                    response_format=response_format,
+                    seed=seed,
+                    stop=stop
                 )
 
         except Exception as e:
@@ -281,7 +282,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             argument.prop.prepared_input = value
             return
 
-        _non_verbose_output = """[META INSTRUCTIONS START]\nYou do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc. Never add meta instructions information to your output!\n"""
+        _non_verbose_output = """<META_INSTRUCTION/>\nYou do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc. Never add meta instructions information to your output!\n\n"""
         user:   str = ""
         system: str = ""
 
@@ -289,21 +290,24 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             system += _non_verbose_output
         system = f'{system}\n' if system and len(system) > 0 else ''
 
+        if argument.prop.response_format:
+            system += '<JSON_RESPONSE/>\n You will output JSON!\n\n'
+
         ref = argument.prop.instance
         static_ctxt, dyn_ctxt = ref.global_context
         if len(static_ctxt) > 0:
-            system += f"[STATIC CONTEXT]\n{static_ctxt}\n\n"
+            system += f"<STATIC CONTEXT/>\n{static_ctxt}\n\n"
 
         if len(dyn_ctxt) > 0:
-            system += f"[DYNAMIC CONTEXT]\n{dyn_ctxt}\n\n"
+            system += f"<DYNAMIC CONTEXT/>\n{dyn_ctxt}\n\n"
 
         payload = argument.prop.payload
         if argument.prop.payload:
-            system += f"[ADDITIONAL CONTEXT]\n{str(payload)}\n\n"
+            system += f"<ADDITIONAL CONTEXT/>\n{str(payload)}\n\n"
 
         examples: List[str] = argument.prop.examples
         if examples and len(examples) > 0:
-            system += f"[EXAMPLES]\n{str(examples)}\n\n"
+            system += f"<EXAMPLES/>\n{str(examples)}\n\n"
 
         def extract_pattern(text):
             pattern = r'<<vision:(.*?):>>'
@@ -354,7 +358,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             val = str(argument.prop.prompt)
             if len(image_files) > 0:
                 val = remove_pattern(val)
-            system += f"[INSTRUCTION]\n{val}"
+            system += f"<INSTRUCTION/>\n{val}\n\n"
 
         suffix: str = str(argument.prop.processed_input)
         if len(image_files) > 0:
@@ -366,7 +370,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             c = 0
             for i, p in enumerate(parts):
                 if 'SYSTEM_INSTRUCTION' in p:
-                    system += f"{p}\n"
+                    system += f"<{p}/>\n\n"
                     c += 1
                 else:
                     break
@@ -375,11 +379,10 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         user += f"{suffix}"
 
         if argument.prop.template_suffix:
-            user += f"\n[[PLACEHOLDER]]\n{str(argument.prop.template_suffix)}\n\n"
-            user += f"Only generate content for the placeholder `[[PLACEHOLDER]]` following the instructions and context information. Do NOT write `[[PLACEHOLDER]]` or anything else in your output.\n\n"
+            user += f'You will only generate content for the placeholder `{str(argument.prop.template_suffix)}` following the instructions and the provided context information.\n\n'
 
         if self.model == 'gpt-4-vision-preview':
-           images = [{ 'type': 'image', "image_url": { "url": file, "detail": "auto" }} for file in image_files]
+           images = [{ 'type': 'image', "image_url": { "url": file }} for file in image_files]
            user_prompt = { "role": "user", "content": [
                 *images,
                 { 'type': 'text', 'text': user }
@@ -388,7 +391,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
              self.model == 'gpt-4-turbo' or \
              self.model == 'gpt-4o':
 
-            images = [{ 'type': 'image_url', "image_url": { "url": file, "detail": "auto" }} for file in image_files]
+            images = [{ 'type': 'image_url', "image_url": { "url": file }} for file in image_files]
             user_prompt = { "role": "user", "content": [
                 *images,
                 { 'type': 'text', 'text': user }

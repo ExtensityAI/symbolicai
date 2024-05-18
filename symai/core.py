@@ -36,6 +36,8 @@ class Argument(Expression):
             self.prop.logging           = False
         if 'verbose' not in self.kwargs:
             self.prop.verbose           = False
+        if 'response_format' not in self.kwargs:
+            self.prop.response_format   = None
         if 'log_level' not in self.kwargs:
             self.prop.log_level         = None
         if 'time_clock' not in self.kwargs:
