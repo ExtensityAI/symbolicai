@@ -171,8 +171,12 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             tokens_per_name = -1    # if there's a name, the role is omitted
         elif self.model == "gpt-3.5-turbo":
             CustomUserWarning("Warning: gpt-3.5-turbo may update over time. Returning num tokens assuming gpt-3.5-turbo-0613.")
+            tokens_per_message = 3
+            tokens_per_name = 1
             self.tokenizer = tiktoken.encoding_for_model("gpt-3.5-turbo-0613")
         elif self.model == "gpt-4":
+            tokens_per_message = 3
+            tokens_per_name = 1
             CustomUserWarning("Warning: gpt-4 may update over time. Returning num tokens assuming gpt-4-0613.")
             self.tokenizer = tiktoken.encoding_for_model("gpt-4-0613")
         else:
@@ -379,7 +383,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         user += f"{suffix}"
 
         if argument.prop.template_suffix:
-            user += f'You will only generate content for the placeholder `{str(argument.prop.template_suffix)}` following the instructions and the provided context information.\n\n'
+            system += f' You will only generate content for the placeholder `{str(argument.prop.template_suffix)}` following the instructions and the provided context information.\n\n'
 
         if self.model == 'gpt-4-vision-preview':
            images = [{ 'type': 'image', "image_url": { "url": file }} for file in image_files]
