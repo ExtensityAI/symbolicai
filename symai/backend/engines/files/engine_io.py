@@ -1,17 +1,25 @@
-import os
 import logging
+import os
+from dataclasses import dataclass
+from pathlib import Path
+
 import PyPDF2
 import tika
-
 from tika import unpack
 
 from ...base import Engine
-
 
 # initialize tika server
 tika.initVM()
 # suppress tika logging
 logging.getLogger('tika').setLevel(logging.CRITICAL)
+
+
+@dataclass
+class TextContainer:
+    id: str
+    page: str
+    text: str
 
 
 class FileEngine(Engine):
@@ -21,8 +29,10 @@ class FileEngine(Engine):
     def id(self) -> str:
         return 'files'
 
-    def _read_slice_file(self, file_path: str) -> str:
+    def _read_slice_file(self, file_path, argument):
         # check if file is empty
+        with_metadata = argument.kwargs.get('with_metadata', False)
+        id            = Path(argument.prop.prepared_input).stem.replace(' ', '_')
         if file_path is None or file_path.strip() == '':
             return None
 
@@ -74,7 +84,8 @@ class FileEngine(Engine):
                 new_content.extend(content[s])
             content = new_content
         content = '\n'.join(content)
-        return content
+        content = content.encode('utf8', 'ignore').decode('utf8', 'ignore')
+        return content if not with_metadata else [TextContainer(id, None, content)]
 
 
     def reset_eof_of_pdf_return_stream(self, pdf_stream_in: list):
@@ -105,55 +116,55 @@ class FileEngine(Engine):
         fixed_pdf = PyPDF2.PdfReader(new_file_path)
         return fixed_pdf
 
-    def read_text(self, pdf_reader, range_):
-        txt = ''
-        n_pages = len(pdf_reader.pages)
-        if range_ is None:
-            for i in range(n_pages):
-                page = pdf_reader.pages[i]
-                txt += page.extract_text()
-        else:
-            for i in range(n_pages)[range_]:
-                page = pdf_reader.pages[i]
-                txt += page.extract_text()
-        return txt
+    def read_text(self, pdf_reader, page_range, argument):
+        txt = []
+        n_pages  = len(pdf_reader.pages)
+        with_metadata = argument.kwargs.get('with_metadata', False)
+        id       = Path(argument.prop.prepared_input).stem.replace(' ', '_')
+        for i in range(n_pages)[slice(0, n_pages) if page_range is None else page_range]:
+            page = pdf_reader.pages[i]
+            extracted = page.extract_text()
+            extracted = extracted.encode('utf8', 'ignore').decode('utf8', 'ignore')
+            if with_metadata:
+                txt.append(TextContainer(id, str(i), extracted))
+            else:
+                txt.append(extracted)
+
+        return '\n'.join(txt) if not with_metadata else txt
 
     def forward(self, argument):
         kwargs        = argument.kwargs
         path          = argument.prop.prepared_input
 
         if '.pdf' in path:
-            range_ = None
+            page_range = None
             if 'slice' in kwargs:
-                range_ = kwargs['slice']
-                if isinstance(range_, tuple) or isinstance(range_, list):
-                    range_ = slice(*range_)
+                page_range = kwargs['slice']
+                if isinstance(page_range, tuple) or isinstance(page_range, list):
+                    page_range = slice(*page_range)
 
             rsp = ''
             try:
                 with open(str(path), 'rb') as f:
                     # creating a pdf reader object
                     pdf_reader = PyPDF2.PdfReader(f)
-                    rsp = self.read_text(pdf_reader, range_)
+                    rsp = self.read_text(pdf_reader, page_range, argument)
             except Exception as e:
                 print(f'Error reading PDF: {e} | {path}')
                 if 'fix_pdf' not in kwargs or not kwargs['fix_pdf']:
                     raise e
                 fixed_pdf = self.fix_pdf(str(path))
                 pdf_reader_fixed = PyPDF2.PdfReader(fixed_pdf)
-                rsp = self.read_text(pdf_reader_fixed, range_)
+                rsp = self.read_text(pdf_reader_fixed, page_range, argument)
         else:
             try:
-                rsp = self._read_slice_file(path)
+                rsp = self._read_slice_file(path, argument)
             except Exception as e:
                 print(f'Error reading empty file: {e} | {path}')
                 raise e
 
         if rsp is None:
             raise Exception(f'Error reading file - empty result: {path}')
-
-        # ensure encoding is utf8
-        rsp = rsp.encode('utf8', 'ignore').decode('utf8', 'ignore')
 
         metadata = {}
 

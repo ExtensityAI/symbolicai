@@ -1,8 +1,12 @@
+import json
 import re
-from typing import List, Dict
+
+from beartype import beartype
+from beartype.typing import Any, Dict, List
+from tqdm import tqdm
 
 from . import core_ext
-from .symbol import Symbol, Expression
+from .symbol import Expression, Symbol
 
 
 class ParagraphFormatter(Expression):
@@ -135,3 +139,48 @@ class SentenceFormatter(Expression):
         # split text sentence-wise and index each sentence separately
         self.elements = self.split_sentences(sym.value)
         return self._to_symbol(self.elements)
+
+
+class TextContainerFormatter(Expression):
+    def __init__(
+            self,
+            value: Any = None,
+            key: str ="text",
+            text_split: int = 4,
+            **kwargs
+        ):
+        super().__init__(value, **kwargs)
+        self.key = key
+        self.text_split = text_split
+
+    @beartype
+    def forward(self, sym: Symbol, *args, **kwargs) -> Symbol:
+        if isinstance(sym.value, list):
+            containers = [container for pdf in sym.value for container in pdf]
+        chunks = [text for container in tqdm(containers) for text in self._chunk(container)]
+        return self._to_symbol(chunks)
+
+    def _chunk(self, container: 'TextContainer') -> List[str]:
+        text = container.text
+        step = len(text) // self.text_split
+        splits = []
+        i = c = 0
+        while c < self.text_split:
+            if c == self.text_split - 1:
+                # Unify the last chunk with the previous one if necessary
+                splits.append(self._as_str(text[i:], container))
+                break
+            splits.append(self._as_str(text[i:i+step], container))
+            i += step
+            c += 1
+        return splits
+
+    def _as_str(self, text: str, container: 'TextContainer') -> str:
+        return (
+            '---\n'
+            f"id: {container.id}\n"
+            f"page: {container.page}\n"
+            '---\n'
+            f"{text}"
+        )
+

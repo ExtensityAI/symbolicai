@@ -32,10 +32,10 @@ class VectorDB(Expression):
         A list of documents to add to the database.
     vectors : list, optional
         A list of vectors to add to the database.
-    embedding_model : str, optional
-        The reference to an embedding model to use when embedding documents into vectors.
-    embedding_function : function, optional
-        A function that takes in a list of documents and returns a list of vectors.
+    embedding_model : callable, optional
+        The reference to a callable embedding model used in the default `embedding_function`; defaults to `ExtensityAI/embeddings` which is `all-mpnet-base-v2` based.
+    embedding_function : callable, optional
+        A function that takes in a list of documents and returns a list of vectors; defaults to `_get_embedding` which uses the callable `embedding_model`.
     similarity_metric : str, optional
         The similarity metric to use when querying the database. Can be either 'dot', 'cosine', 'euclidean', 'adams', or 'derrida'.
     batch_size : int, optional
@@ -79,9 +79,10 @@ class VectorDB(Expression):
 
     Examples
     --------
-    >>> from symai.extended import LocalVectorDB
-    >>> db = LocalVectorDB()
-    >>> db.add("Hello, world!")
+    >>> from symai.extended import VectorDB
+    >>> db = VectorDB()
+    >>> db.add("Hello, World!")
+    >>> db("Hello, World!")
     """
     _default_documents          = []
     _default_vectors            = None
