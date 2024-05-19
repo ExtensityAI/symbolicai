@@ -7,7 +7,7 @@ from tqdm import tqdm
 from pathlib import Path
 from random import sample
 from string import ascii_lowercase, ascii_uppercase
-from typing import Callable, Iterator, List, Optional, Type
+from typing import Callable, Iterator, List, Optional, Type, Union
 from pyvis.network import Network
 
 from . import core
@@ -474,8 +474,8 @@ class FileWriter(Expression):
 
 
 class FileReader(Expression):
-    @classmethod
-    def exists(cls, path: str) -> bool:
+    @staticmethod
+    def exists(path: str) -> bool:
         # remove slicing if any
         _tmp     = path
         _splits  = _tmp.split('[')
@@ -488,8 +488,8 @@ class FileReader(Expression):
             return True
         return False
 
-    @classmethod
-    def extract_files(cls, cmds: str) -> List[str]:
+    @staticmethod
+    def extract_files(cmds: str) -> List[str]:
         # Use the updated regular expression to match quoted and non-quoted paths
         pattern = r'''(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)'|`((?:\\.|[^`\\])*)`|((?:\\ |[^ ])+))'''
 
@@ -523,13 +523,28 @@ class FileReader(Expression):
 
         return files
 
-    @classmethod
-    def expand_user_path(cls, path: str) -> str:
+    @staticmethod
+    def expand_user_path(path: str) -> str:
         return path.replace('~', os.path.expanduser('~'))
 
-    def forward(self, path: str, **kwargs) -> Expression:
-        return self.open(path, **kwargs)
+    @staticmethod
+    def integrity_check(files: List[str]) -> List[str]:
+        not_skipped = []
+        for file in tqdm(files):
+            if FileReader.exists(file):
+                not_skipped.append(file)
+            else:
+                CustomUserWarning(f'Skipping file: {file}')
+        return not_skipped
 
+    def forward(self, files: Union[str, List[str]], **kwargs) -> Expression:
+        if isinstance(files, str):
+            return self.open(files, **kwargs)
+        if isinstance(files, list):
+            if kwargs.get('run_integrity_check'):
+                files = self.integrity_check(files)
+            return self.sym_return_type([self.open(f, **kwargs).value for f in files])
+        raise ValueError('Invalid input type. Please provide a string (file path) or a list of strings (file paths).')
 
 class FileQuery(Expression):
     def __init__(self, path: str, filter: str, **kwargs):
@@ -820,7 +835,17 @@ class Indexer(Expression):
         index = index.lower()
         return index
 
-    def __init__(self, index_name: str = DEFAULT, top_k: int = 8, batch_size: int = 20, formatter: Callable = ParagraphFormatter(), auto_add=False, raw_result=True, **kwargs):
+    def __init__(
+            self,
+            index_name: str = DEFAULT,
+            top_k: int = 8,
+            batch_size: int = 20,
+            formatter: Callable = ParagraphFormatter(),
+            auto_add=False,
+            raw_result: bool = False,
+            new_dim: int = None,
+            **kwargs
+        ):
         super().__init__(**kwargs)
         index_name = Indexer.replace_special_chars(index_name)
         self.index_name = index_name
@@ -830,6 +855,7 @@ class Indexer(Expression):
         self.retrieval  = None
         self.formatter  = formatter
         self.raw_result = raw_result
+        self.new_dim    = new_dim
         self.sym_return_type = Expression
 
         # append index name to indices.txt in home directory .symai folder (default)
@@ -864,22 +890,27 @@ class Indexer(Expression):
             if self.index_name in indices:
                 return True
 
-    def forward(self, data: Optional[Symbol] = None, raw_result: bool = False) -> Symbol:
+    def forward(
+            self,
+            data: Optional[Symbol] = None,
+            raw_result: bool = False,
+        ) -> Symbol:
         that = self
         if data is not None:
             data = self._to_symbol(data)
-            # split text paragraph-wise and index each paragraph separately
             self.elements = self.formatter(data).value
             # run over the elments in batches
             for i in tqdm(range(0, len(self.elements), self.batch_size)):
-                val = Symbol(self.elements[i:i+self.batch_size]).zip()
+                val = Symbol(self.elements[i:i+self.batch_size]).zip(new_dim=self.new_dim)
                 that.add(val, index_name=that.index_name)
+            that.config(None, index_name=that.index_name)
 
         def _func(query, *args, **kwargs):
-            query_emb = Symbol(query).embed().value
+            raw_result = kwargs.get('raw_result') or that.raw_result
+            query_emb = Symbol(query).embed(new_dim=that.new_dim).value
             res = that.get(query_emb, index_name=that.index_name, index_top_k=that.top_k, ori_query=query, **kwargs)
             that.retrieval = res
-            if that.raw_result or raw_result or ('raw_result' in kwargs and kwargs['raw_result']):
+            if raw_result:
                 return res
             rsp = res.query(query, *args, **kwargs)
             return rsp

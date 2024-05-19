@@ -1,5 +1,6 @@
 import functools
 
+from box import Box
 from typing import Callable, Dict, List, Optional, Any
 
 from . import post_processors as post
@@ -29,10 +30,14 @@ class Argument(Expression):
             self.prop.preview           = False
         if 'raw_input' not in self.kwargs:
             self.prop.raw_input         = False
+        if 'raw_output' not in self.kwargs:
+            self.prop.raw_output        = False
         if 'logging' not in self.kwargs:
             self.prop.logging           = False
         if 'verbose' not in self.kwargs:
             self.prop.verbose           = False
+        if 'response_format' not in self.kwargs:
+            self.prop.response_format   = None
         if 'log_level' not in self.kwargs:
             self.prop.log_level         = None
         if 'time_clock' not in self.kwargs:
@@ -58,7 +63,13 @@ class Argument(Expression):
 
     @property
     def value(self):
-        return self.prop
+        return Box({
+            'args': self.args,
+            'signature_kwargs': self.signature_kwargs,
+            'decorator_kwargs': self.decorator_kwargs,
+            'kwargs': self.kwargs,
+            'prop': self.prop
+        })
 
     def _construct_kwargs(self, signature_kwargs, decorator_kwargs):
         '''

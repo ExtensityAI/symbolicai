@@ -103,6 +103,7 @@ class VectorDBIndexEngine(Engine):
         self.index_top_k    = index_top_k
         self.index_metric   = index_metric
         self.storage_file   = index_storage_file
+        self.model          = None
         # Initialize an instance of VectorDB
         # Note that embedding_function and vectors are not passed as VectorDB will compute it on the fly
         self.index = index_dict
@@ -147,9 +148,9 @@ class VectorDBIndexEngine(Engine):
         elif operation == 'config':
             # Handle any configurations if needed (not applicable for in-memory VectorDB)
             assert kwargs, 'Please provide a configuration dictionary.'
-            assert storage_file, 'Please provide a `storage_file` path to load the pre-computed index.'
             # Check if the index is to be persisted or loaded
             if argument.prop.load:
+                assert storage_file, 'Please provide a `storage_file` path to load the pre-computed index.'
                 # Load the pre-computed index from the provided path
                 self.index[index_name] = VectorDB(
                     index_dims=index_dims,
@@ -163,21 +164,22 @@ class VectorDBIndexEngine(Engine):
                 self.index[index_name].save(storage_file)
 
         else:
-            raise ValueError('Invalid operation')
+            raise ValueError('Invalid operation; please use either "search", "add", or "config".')
 
         metadata = {}
 
         rsp = VectorDBResult(rsp, query, None)
         return [rsp], metadata
 
-    def _init(self, index_name, top_k, index_dims, metric):
+    def _init(self, index_name, top_k, index_dims, metric, embedding_model=not None):
         # Initialize the VectorDB if not already initialized
         if index_name not in self.index:
             self.index[index_name] = VectorDB(
                 index_name=index_name,
                 index_dims=index_dims,
                 top_k=top_k,
-                similarity_metric=metric
+                similarity_metric=metric,
+                embedding_model=embedding_model #@NOTE: the VectorDBIndexEngine class uses precomputed embeddings so the model is not needed in the VectorDB class
             )
 
     def prepare(self, argument):

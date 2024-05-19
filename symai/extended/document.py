@@ -8,22 +8,41 @@ from ..formatter import ParagraphFormatter
 
 
 class DocumentRetriever(Expression):
-    def __init__(self, index_name: str = Indexer.DEFAULT, file = None, top_k = 5, formatter: Callable = ParagraphFormatter(), overwrite: bool = False, raw_result: bool = False, **kwargs):
+    def __init__(
+            self,
+            index_name: str = Indexer.DEFAULT,
+            file = None,
+            top_k = 5,
+            formatter: Callable = ParagraphFormatter(),
+            overwrite: bool = False,
+            with_metadata: bool = False,
+            raw_result: Optional[bool] = False,
+            new_dim: Optional[int] = None,
+            **kwargs
+        ):
         super().__init__(**kwargs)
-        indexer      = Indexer(index_name=index_name, top_k=top_k, formatter=formatter, auto_add=False, raw_result=raw_result)
-        self.indexer = indexer
-        text         = None
+        indexer = Indexer(index_name=index_name, top_k=top_k, formatter=formatter, auto_add=False, new_dim=new_dim)
+        text    = None
+
         if not indexer.exists() or overwrite:
             indexer.register()
             if type(file) is str:
                 file_path = file
                 reader = FileReader()
-                text = reader(file_path, **kwargs)
+                text = reader(file_path, with_metadata=with_metadata, **kwargs)
             else:
                 text = str(file)
-            self.index = indexer(text, **kwargs)
+
+            self.index = indexer(
+                    data=text, #@NOTE: we write the text to the index
+                    raw_result=raw_result,
+                    **kwargs
+                )
         else:
-            self.index = indexer(**kwargs)
+            self.index = indexer(
+                    raw_result=raw_result,
+                    **kwargs
+                    )
 
         self.text = Symbol(text)
         if text is not None:
@@ -34,8 +53,15 @@ class DocumentRetriever(Expression):
                 os.makedirs(path)
             self.dump(os.path.join(path, 'dump_file'), replace=True)
 
-    def forward(self, query: Optional[Symbol], raw_result: bool = False) -> Symbol:
-        return self.index(query, raw_result=raw_result)
+    def forward(
+            self,
+            query: Symbol,
+            raw_result: Optional[bool] = False,
+        ) -> Symbol:
+        return self.index(
+                query,
+                raw_result=raw_result,
+                )
 
     def dump(self, path: str, replace: bool = True) -> Symbol:
         if self.text is None:

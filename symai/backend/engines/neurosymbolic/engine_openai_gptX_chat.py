@@ -8,7 +8,7 @@ from typing import List, Optional
 from ...base import Engine
 from ...mixin.openai import OpenAIMixin
 from ...settings import SYMAI_CONFIG
-from ....utils import encode_frames_file
+from ....utils import encode_frames_file, CustomUserWarning
 from ....misc.console import ConsoleStyle
 from ....symbol import Symbol
 
@@ -25,29 +25,20 @@ class InvalidRequestErrorRemedyChatStrategy:
         super().__init__(*args, **kwargs)
 
     def __call__(self, engine, error, callback, argument):
-        openai_kwargs = {}
         kwargs              = argument.kwargs
         prompts_            = argument.prop.prepared_input
-
-        # send prompt to GPT-X Chat-based
-        stop                = kwargs['stop'] if 'stop' in kwargs else None
-        model               = kwargs['model'] if 'model' in kwargs else None
 
         msg = str(error)
         handle = None
         try:
             if "This model's maximum context length is" in msg:
                 handle = 'type1'
-                max_ = engine.max_tokens
+                max_ = engine.max_context_tokens
                 usr = msg.split('tokens. ')[1].split(' ')[-1]
                 overflow_tokens = int(usr) - int(max_)
             elif "is less than the minimum" in msg:
                 handle = 'type2'
-                # extract number until 'is'
-                msg_ = msg.split("is less than the minimum")[0]
-                # remove until the first `-`
-                msg_ = msg_.split(': "-')[-1]
-                overflow_tokens = int(msg_)
+                overflow_tokens = engine.max_response_tokens
             else:
                 raise Exception(msg) from error
         except Exception as e:
@@ -64,9 +55,9 @@ class InvalidRequestErrorRemedyChatStrategy:
             user_prompts = [p['content'] for p in prompts]
             new_prompt   = [*system_prompt]
             new_prompt.extend([{'role': p['role'], 'content': c} for p, c in zip(prompts, user_prompts)])
-            overflow_tokens = engine.compute_required_tokens(new_prompt) - int(engine.max_tokens * 0.70)
+            overflow_tokens = engine.compute_required_tokens(new_prompt) - int(engine.max_context_tokens * 0.70)
             if overflow_tokens > 0:
-                print('WARNING: Overflow tokens detected. Reducing prompt size to 70% of max_tokens.')
+                CustomUserWarning(f'WARNING: Overflow tokens detected. Reducing prompt size to 70% of model context size ({engine.max_context_tokens}).')
                 for i, content in enumerate(user_prompts):
                     token_ids = engine.tokenizer.encode(content)
                     if overflow_tokens >= len(token_ids):
@@ -80,8 +71,8 @@ class InvalidRequestErrorRemedyChatStrategy:
 
             new_prompt = [*system_prompt]
             new_prompt.extend([{'role': p['role'], 'content': c} for p, c in zip(prompts, user_prompts)])
-            assert engine.compute_required_tokens(new_prompt) <= engine.max_tokens, \
-                f"Token overflow: prompts exceed {engine.max_tokens} tokens after truncation"
+            assert engine.compute_required_tokens(new_prompt) <= engine.max_context_tokens, \
+                f"Token overflow: prompts exceed {engine.max_context_tokens} tokens after truncation"
 
             truncated_prompts_ = [{'role': p['role'], 'content': c.strip()} for p, c in zip(prompts, user_prompts) if c.strip()]
         else:
@@ -89,51 +80,63 @@ class InvalidRequestErrorRemedyChatStrategy:
 
         truncated_prompts_ = [*system_prompt, *truncated_prompts_]
 
-        # convert map to list of strings
-        max_tokens          = kwargs['max_tokens'] if 'max_tokens' in kwargs else engine.compute_remaining_tokens(truncated_prompts_)
-        temperature         = kwargs['temperature'] if 'temperature' in kwargs else 1
-        frequency_penalty   = kwargs['frequency_penalty'] if 'frequency_penalty' in kwargs else 0
-        presence_penalty    = kwargs['presence_penalty'] if 'presence_penalty' in kwargs else 0
-        top_p               = kwargs['top_p'] if 'top_p' in kwargs else 1
-        functions           = kwargs['functions'] if 'functions' in kwargs else None
-        function_call       = "auto" if functions is not None else None
+        model             = kwargs.get('model',             engine.model)
+        seed              = kwargs.get('seed',              engine.seed)
+        max_tokens        = kwargs.get('max_tokens',        engine.compute_remaining_tokens(truncated_prompts_))
+        stop              = kwargs.get('stop')
+        temperature       = kwargs.get('temperature',       1)
+        frequency_penalty = kwargs.get('frequency_penalty', 0)
+        presence_penalty  = kwargs.get('presence_penalty',  0)
+        top_p             = kwargs.get('top_p',             1)
+        n                 = kwargs.get('n',                 1)
+        logit_bias        = kwargs.get('logit_bias')
+        logprobs          = kwargs.get('logprobs',          False)
+        top_logprobs      = kwargs.get('top_logprobs')
+        tools             = kwargs.get('tools')
+        tool_choice       = kwargs.get('tool_choice')
+        response_format   = kwargs.get('response_format')
 
-        if stop is not None:
-            openai_kwargs['stop'] = stop
-        if functions is not None:
-            openai_kwargs['functions'] = functions
-        if function_call is not None:
-            openai_kwargs['function_call'] = function_call
-
-        return callback(model=model,
-                        messages=truncated_prompts_,
-                        max_tokens=max_tokens,
-                        temperature=temperature,
-                        frequency_penalty=frequency_penalty,
-                        presence_penalty=presence_penalty,
-                        top_p=top_p,
-                        n=1,
-                        **openai_kwargs)
+        return callback(
+                model=model,
+                messages=truncated_prompts_,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                frequency_penalty=frequency_penalty,
+                presence_penalty=presence_penalty,
+                top_p=top_p,
+                n=n,
+                logit_bias=logit_bias,
+                logprobs=logprobs,
+                top_logprobs=top_logprobs,
+                tools=tools,
+                tool_choice=tool_choice,
+                response_format=response_format,
+                seed=seed,
+                stop=stop
+            )
 
 
 class GPTXChatEngine(Engine, OpenAIMixin):
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         super().__init__()
-        logger              = logging.getLogger('openai')
+        logger = logging.getLogger('openai')
         logger.setLevel(logging.WARNING)
-        self.config         = SYMAI_CONFIG
-        openai.api_key      = self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] if api_key is None else api_key
-        self.model          = self.config['NEUROSYMBOLIC_ENGINE_MODEL'] if model is None else model
-        self.tokenizer      = tiktoken.encoding_for_model(self.model)
-        self.pricing        = self.api_pricing()
-        self.max_tokens     = self.api_max_tokens() - 100 # TODO: account for tolerance. figure out how their magic number works to compute reliably the precise max token size
-        self.seed           = None
-        self.except_remedy  = None
+        self.config = SYMAI_CONFIG
+        if self.id() != 'neurosymbolic':
+            return # do not initialize if not neurosymbolic; avoids conflict with llama.cpp check in EngineRepository.register_from_package
+        openai.api_key           = self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] if api_key is None else api_key
+        self.model               = self.config['NEUROSYMBOLIC_ENGINE_MODEL'] if model is None else model
+        self.tokenizer           = tiktoken.encoding_for_model(self.model)
+        self.pricing             = self.api_pricing()
+        self.max_context_tokens  = self.api_max_context_tokens()
+        self.max_response_tokens = self.api_max_response_tokens()
+        self.seed                = None
+        self.except_remedy       = None
 
     def id(self) -> str:
-        if   self.config['NEUROSYMBOLIC_ENGINE_MODEL'] and \
-            (self.config['NEUROSYMBOLIC_ENGINE_MODEL'].startswith('gpt-3.5') or \
-             self.config['NEUROSYMBOLIC_ENGINE_MODEL'].startswith('gpt-4')):
+        if   self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and \
+            (self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('gpt-3.5') or \
+             self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('gpt-4')):
             return 'neurosymbolic'
         return super().id() # default to unregistered
 
@@ -148,70 +151,100 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         if 'except_remedy' in kwargs:
             self.except_remedy = kwargs['except_remedy']
 
-    def compute_required_tokens(self, prompts: dict) -> int:
-        # iterate over prompts and compute number of tokens
-        prompts_ = [role['content'] for role in prompts]
-        if self.model == 'gpt-4-vision-preview':
-            eval_prompt = ''
-            for p in prompts_:
-                if type(p) == str:
-                    eval_prompt += p
-                else:
-                    for p_ in p:
-                        if p_['type'] == 'text':
-                            eval_prompt += p_['text']
-            prompt = eval_prompt
+    def compute_required_tokens(self, messages):
+        """Return the number of tokens used by a list of messages."""
+
+        if self.model in {
+            "gpt-3.5-turbo-0613",
+            "gpt-3.5-turbo-16k-0613",
+            "gpt-4-0314",
+            "gpt-4-32k-0314",
+            "gpt-4-0613",
+            "gpt-4-32k-0613",
+            "gpt-4-turbo",
+            "gpt-4o"
+            }:
+            tokens_per_message = 3
+            tokens_per_name = 1
+        elif self.model == "gpt-3.5-turbo-0301":
+            tokens_per_message = 4  # every message follows <|start|>{role/name}\n{content}<|end|>\n
+            tokens_per_name = -1    # if there's a name, the role is omitted
+        elif self.model == "gpt-3.5-turbo":
+            CustomUserWarning("Warning: gpt-3.5-turbo may update over time. Returning num tokens assuming gpt-3.5-turbo-0613.")
+            tokens_per_message = 3
+            tokens_per_name = 1
+            self.tokenizer = tiktoken.encoding_for_model("gpt-3.5-turbo-0613")
+        elif self.model == "gpt-4":
+            tokens_per_message = 3
+            tokens_per_name = 1
+            CustomUserWarning("Warning: gpt-4 may update over time. Returning num tokens assuming gpt-4-0613.")
+            self.tokenizer = tiktoken.encoding_for_model("gpt-4-0613")
         else:
-            prompt = ''.join(prompts_)
-        val = len(self.tokenizer.encode(prompt, disallowed_special=()))
-        return val
+            raise NotImplementedError(
+                f"""num_tokens_from_messages() is not implemented for model {self.model}. See https://cookbook.openai.com/examples/how_to_count_tokens_with_tiktoken for information on how messages are converted to tokens."""
+            )
+
+        num_tokens = 0
+        for message in messages:
+            num_tokens += tokens_per_message
+            for key, value in message.items():
+                if type(value) == str:
+                    num_tokens += len(self.tokenizer.encode(value, disallowed_special=()))
+                else:
+                    for v in value:
+                        if v['type'] == 'text':
+                            num_tokens += len(self.tokenizer.encode(v['text'], disallowed_special=()))
+                if key == "name":
+                    num_tokens += tokens_per_name
+        num_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
+        return num_tokens
 
     def compute_remaining_tokens(self, prompts: list) -> int:
         val = self.compute_required_tokens(prompts)
-        if 'gpt-4-1106-preview' == self.model or 'gpt-4-vision-preview' == self.model: # models can only output 4_096 tokens
-            return min(int((self.max_tokens - val) * 0.99), 4_096)
-        return int((self.max_tokens - val) * 0.99) # TODO: figure out how their magic number works to compute reliably the precise max token size
+        #@NOTE: this will obviously fail if val is greater than max_context_tokens
+        #       the remedy strategy should handle this case
+        return min(self.max_context_tokens - val, self.max_response_tokens)
 
     def forward(self, argument):
-        kwargs              = argument.kwargs
-        prompts_            = argument.prop.prepared_input
+        kwargs        = argument.kwargs
+        prompts_      = argument.prop.prepared_input
 
-        openai_kwargs = {}
-
-        # send prompt to GPT-X Chat-based
-        stop                = kwargs['stop'] if 'stop' in kwargs else None
-        model               = kwargs['model'] if 'model' in kwargs else self.model
-        seed                = kwargs['seed'] if 'seed' in kwargs else self.seed
-
-        # convert map to list of strings
-        max_tokens          = kwargs['max_tokens'] if 'max_tokens' in kwargs else self.compute_remaining_tokens(prompts_)
-        temperature         = kwargs['temperature'] if 'temperature' in kwargs else 1
-        frequency_penalty   = kwargs['frequency_penalty'] if 'frequency_penalty' in kwargs else 0
-        presence_penalty    = kwargs['presence_penalty'] if 'presence_penalty' in kwargs else 0
-        top_p               = kwargs['top_p'] if 'top_p' in kwargs else 1
-        except_remedy       = kwargs['except_remedy'] if 'except_remedy' in kwargs else self.except_remedy
-        functions           = kwargs['functions'] if 'functions' in kwargs else None
-        function_call       = "auto" if functions is not None else None
-
-        if stop is not None:
-            openai_kwargs['stop'] = stop
-        if functions is not None:
-            openai_kwargs['functions'] = functions
-        if function_call is not None:
-            openai_kwargs['function_call'] = function_call
-        if seed is not None:
-            openai_kwargs['seed'] = seed
+        model             = kwargs.get('model',             self.model)
+        seed              = kwargs.get('seed',              self.seed)
+        except_remedy     = kwargs.get('except_remedy',     self.except_remedy)
+        max_tokens        = kwargs.get('max_tokens',        self.compute_remaining_tokens(prompts_))
+        stop              = kwargs.get('stop',              '')
+        temperature       = kwargs.get('temperature',       1)
+        frequency_penalty = kwargs.get('frequency_penalty', 0)
+        presence_penalty  = kwargs.get('presence_penalty',  0)
+        top_p             = kwargs.get('top_p',             1)
+        n                 = kwargs.get('n',                 1)
+        logit_bias        = kwargs.get('logit_bias')
+        logprobs          = kwargs.get('logprobs')
+        top_logprobs      = kwargs.get('top_logprobs')
+        tools             = kwargs.get('tools')
+        tool_choice       = kwargs.get('tool_choice')
+        response_format   = kwargs.get('response_format')
 
         try:
-            res = openai.chat.completions.create(model=model,
-                                                 messages=prompts_,
-                                                 max_tokens=max_tokens,
-                                                 temperature=temperature,
-                                                 frequency_penalty=frequency_penalty,
-                                                 presence_penalty=presence_penalty,
-                                                 top_p=top_p,
-                                                 n=1,
-                                                 **openai_kwargs)
+            res = openai.chat.completions.create(
+                    model=model,
+                    messages=prompts_,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    frequency_penalty=frequency_penalty,
+                    presence_penalty=presence_penalty,
+                    top_p=top_p,
+                    n=n,
+                    logit_bias=logit_bias,
+                    logprobs=logprobs,
+                    top_logprobs=top_logprobs,
+                    tools=tools,
+                    tool_choice=tool_choice,
+                    response_format=response_format,
+                    seed=seed,
+                    stop=stop
+                )
 
         except Exception as e:
             if openai.api_key is None or openai.api_key == '':
@@ -234,7 +267,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
                     ex = Exception(f'Failed to handle exception: {e}. Also failed implicit remedy strategy after retry: {e2}')
                     raise ex from e
 
-        metadata = {}
+        metadata = {'raw_output': res}
 
         rsp    = [r.message.content for r in res.choices]
         output = rsp if isinstance(prompts_, list) else rsp[0]
@@ -253,7 +286,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             argument.prop.prepared_input = value
             return
 
-        _non_verbose_output = """[META INSTRUCTIONS START]\nYou do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc. Never add meta instructions information to your output!\n"""
+        _non_verbose_output = """<META_INSTRUCTION/>\nYou do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc. Never add meta instructions information to your output!\n\n"""
         user:   str = ""
         system: str = ""
 
@@ -261,21 +294,24 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             system += _non_verbose_output
         system = f'{system}\n' if system and len(system) > 0 else ''
 
+        if argument.prop.response_format:
+            system += '<JSON_RESPONSE/>\n You will output JSON!\n\n'
+
         ref = argument.prop.instance
         static_ctxt, dyn_ctxt = ref.global_context
         if len(static_ctxt) > 0:
-            system += f"[STATIC CONTEXT]\n{static_ctxt}\n\n"
+            system += f"<STATIC CONTEXT/>\n{static_ctxt}\n\n"
 
         if len(dyn_ctxt) > 0:
-            system += f"[DYNAMIC CONTEXT]\n{dyn_ctxt}\n\n"
+            system += f"<DYNAMIC CONTEXT/>\n{dyn_ctxt}\n\n"
 
         payload = argument.prop.payload
         if argument.prop.payload:
-            system += f"[ADDITIONAL CONTEXT]\n{str(payload)}\n\n"
+            system += f"<ADDITIONAL CONTEXT/>\n{str(payload)}\n\n"
 
         examples: List[str] = argument.prop.examples
         if examples and len(examples) > 0:
-            system += f"[EXAMPLES]\n{str(examples)}\n\n"
+            system += f"<EXAMPLES/>\n{str(examples)}\n\n"
 
         def extract_pattern(text):
             pattern = r'<<vision:(.*?):>>'
@@ -287,7 +323,12 @@ class GPTXChatEngine(Engine, OpenAIMixin):
 
         image_files = []
         # pre-process prompt if contains image url
-        if self.model == 'gpt-4-vision-preview' and '<<vision:' in str(argument.prop.processed_input):
+        if (self.model == 'gpt-4-vision-preview' or \
+            self.model == 'gpt-4-turbo-2024-04-09' or \
+            self.model == 'gpt-4-turbo' or \
+            self.model == 'gpt-4o') \
+            and '<<vision:' in str(argument.prop.processed_input):
+
             parts = extract_pattern(str(argument.prop.processed_input))
             for p in parts:
                 img_ = p.strip()
@@ -321,7 +362,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             val = str(argument.prop.prompt)
             if len(image_files) > 0:
                 val = remove_pattern(val)
-            system += f"[INSTRUCTION]\n{val}"
+            system += f"<INSTRUCTION/>\n{val}\n\n"
 
         suffix: str = str(argument.prop.processed_input)
         if len(image_files) > 0:
@@ -333,7 +374,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             c = 0
             for i, p in enumerate(parts):
                 if 'SYSTEM_INSTRUCTION' in p:
-                    system += f"{p}\n"
+                    system += f"<{p}/>\n\n"
                     c += 1
                 else:
                     break
@@ -342,11 +383,19 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         user += f"{suffix}"
 
         if argument.prop.template_suffix:
-            user += f"\n[[PLACEHOLDER]]\n{str(argument.prop.template_suffix)}\n\n"
-            user += f"Only generate content for the placeholder `[[PLACEHOLDER]]` following the instructions and context information. Do NOT write `[[PLACEHOLDER]]` or anything else in your output.\n\n"
+            system += f' You will only generate content for the placeholder `{str(argument.prop.template_suffix)}` following the instructions and the provided context information.\n\n'
 
-        images = [{ 'type': 'image', "image_url": { "url": file, "detail": "auto" }} for file in image_files]
         if self.model == 'gpt-4-vision-preview':
+           images = [{ 'type': 'image', "image_url": { "url": file }} for file in image_files]
+           user_prompt = { "role": "user", "content": [
+                *images,
+                { 'type': 'text', 'text': user }
+            ]}
+        elif self.model == 'gpt-4-turbo-2024-04-09' or \
+             self.model == 'gpt-4-turbo' or \
+             self.model == 'gpt-4o':
+
+            images = [{ 'type': 'image_url', "image_url": { "url": file }} for file in image_files]
             user_prompt = { "role": "user", "content": [
                 *images,
                 { 'type': 'text', 'text': user }
