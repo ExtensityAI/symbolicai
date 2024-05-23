@@ -18,8 +18,10 @@ logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 class LlamaCppTokenizer:
     _server_endpoint = SYMAI_CONFIG.get('NEUROSYMBOLIC_ENGINE_API_KEY')
-    def encode(self, text: str) -> List[int]:
-        res = requests.post(f"{self._server_endpoint}/extras/tokenize", json={
+
+    @staticmethod
+    def encode(text: str) -> List[int]:
+        res = requests.post(f"{LlamaCppTokenizer._server_endpoint}/extras/tokenize", json={
             "input": text,
         })
 
@@ -30,8 +32,9 @@ class LlamaCppTokenizer:
 
         return res['tokens']
 
-    def decode(self, tokens: List[int]) -> str:
-        res = requests.post(f"{self._server_endpoint}/extras/detokenize", json={
+    @staticmethod
+    def decode(tokens: List[int]) -> str:
+        res = requests.post(f"{LlamaCppTokenizer._server_endpoint}/extras/detokenize", json={
             "tokens": tokens,
         })
 
@@ -53,7 +56,7 @@ class LlamaCppEngine(Engine):
         if (self.server_endpoint is None or self.server_endpoint == '') and \
             not self.server_endpoint.startswith('http:'):
             raise ValueError('Invalid server endpoint! You are using the llama.cpp engine, but the server endpoint is not set. Please add the `NEUROSYMBOLIC_ENGINE_API_KEY` in the format `http://<ip>:<port>` to the `symai.config.json` file.')
-        self.tokenizer = LlamaCppTokenizer # backwards compatibility with how we handle tokenization, i.e. self.tokenizer.encode(...)
+        self.tokenizer = LlamaCppTokenizer # backwards compatibility with how we handle tokenization, i.e. self.tokenizer().encode(...)
 
     def id(self) -> str:
         if self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') == 'llama.cpp':
