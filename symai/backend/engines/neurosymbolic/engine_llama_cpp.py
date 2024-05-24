@@ -131,7 +131,7 @@ class LlamaCppEngine(Engine):
             if except_remedy is not None:
                 res = except_remedy(self, e, callback, argument)
             else:
-                raise ex from e
+                raise e
 
         metadata = {'raw_output': res}
 
