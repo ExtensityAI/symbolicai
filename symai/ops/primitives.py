@@ -2476,32 +2476,37 @@ class EmbeddingPrimitives(Primitive):
             o = self._ensure_numpy_format(other, cast=True)
 
         if   metric == 'cosine':
-            val     = (v.T@o / (np.sqrt(v.T@v) * np.sqrt(o.T@o) + eps))
+            val     = v.T@o / (np.sqrt(v.T@v) * np.sqrt(o.T@o) + eps)
         elif metric == 'angular-cosine':
             c       = kwargs.get('c', 1)
             val     = 1 - (c * np.arccos((v.T@o / (np.sqrt(v.T@v) * np.sqrt(o.T@o) + eps))) / np.pi)
         elif metric == 'product':
-            val     = (v.T@o / (v.shape[0] + eps))
+            val     = v.T@o
         elif metric == 'manhattan':
-            val     = (np.abs(v - o).sum(axis=0) / (v.shape[0] + eps))
+            val     = np.abs(v - o).sum(axis=0, keepdims=True)
         elif metric == 'euclidean':
-            val     = (np.sqrt(np.sum((v - o)**2, axis=0)) / (v.shape[0] + eps))
+            val     = np.sqrt(np.sum((v - o)**2, axis=0, keepdims=True))
         elif metric == 'minkowski':
             p       = kwargs.get('p', 3)
-            val     = (np.sum(np.abs(v - o)**p, axis=0)**(1/p) / (v.shape[0] + eps))
+            val     = np.sum(np.abs(v - o)**p, axis=0, keepdims=True)**(1/p)
         elif metric == 'jaccard':
-            val     = (np.sum(np.minimum(v, o)) / np.sum(np.maximum(v, o) + eps))
+            intersection = np.minimum(v, o)
+            union = np.maximum(v, o)
+            val = np.sum(intersection, axis=0, keepdims=True) / (np.sum(union, axis=0, keepdims=True) + eps)
         else:
-            raise NotImplementedError(f"Similarity metric {metric} not implemented. Available metrics: 'cosine'")
+            raise NotImplementedError(f"Similarity metric {metric} not implemented. Available metrics: 'cosine', 'angular-cosine', 'product', 'manhattan', 'euclidean', 'minkowski', 'jaccard'")
 
         # get the similarity value(s)
         if len(val.shape) >= 1 and val.shape[0] > 1:
             val = val.diagonal()
+        elif len(val.shape) >= 1:
+            val = val[0]
         else:
             val = val.item()
 
         if normalize is not None:
             val = normalize(val)
+
         return val
 
     def distance(self, other: Union['Symbol', list, np.ndarray, torch.Tensor], kernel: Union['gaussian', 'rbf', 'laplacian', 'polynomial', 'sigmoid', 'linear', 'cauchy', 't-distribution', 'inverse-multiquadric', 'cosine', 'angular-cosine', 'frechet', 'mmd'] = 'gaussian',  eps: float = 1e-8, normalize: Optional[Callable] = None, **kwargs) -> float:
