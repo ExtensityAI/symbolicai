@@ -151,16 +151,17 @@ class LlamaCppEngine(Engine):
             argument.prop.prepared_input = value
             return
 
-        _non_verbose_output = """<META_INSTRUCTION/>\n I do not output verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. I consider well formatted output, e.g. for sentences I use punctuation, spaces etc. or for code I use indentation, etc. I will never add meta instructions information to the output!\n"""
+        _non_verbose_output = """<META_INSTRUCTION/>\n You will NOT output verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. You will consider well formatted output, e.g. for sentences you will use punctuation, spaces, etc. or for code indentation, etc.\n"""
 
-        #@TODO: Non-trivial how to handle user/system/assistant roles; For instance Mixtral-8x7B can't use the system role with llama.cpp while other models can, so how to handle this?
-        #       For now, just use user and assistant, as one can rephrase the system from the assistant perspective.
+        #@TODO: Non-trivial how to handle user/system/assistant roles;
+        #       For instance Mixtral-8x7B can't use the system role with llama.cpp while other models can, or Mixtral-8x22B expects the conversation roles must
+        #       alternate user/assistant/user/assistant/..., so how to handle this?
+        #       For now just use the user, as one can rephrase the system from the user perspective.
         user:   str = ""
-        assistant: str = ""
 
         if argument.prop.suppress_verbose_output:
-            assistant += _non_verbose_output
-        assistant = f'{assistant}\n' if assistant and len(assistant) > 0 else ''
+            user += _non_verbose_output
+        user = f'{user}\n' if user and len(user) > 0 else ''
 
         ref = argument.prop.instance
         static_ctxt, dyn_ctxt = ref.global_context
@@ -181,13 +182,13 @@ class LlamaCppEngine(Engine):
         if argument.prop.prompt is not None and len(argument.prop.prompt) > 0:
             user += f"<INSTRUCTION/>\n{str(argument.prop.prompt)}\n\n"
 
+        if argument.prop.template_suffix:
+            user += f" You will only generate content for the placeholder `{str(argument.prop.template_suffix)}` following the instructions and the provided context information.\n\n"
+
         user += str(argument.prop.processed_input)
 
-        if argument.prop.template_suffix:
-            assistant += f"I will only generate content for the placeholder `{str(argument.prop.template_suffix)}` following the instructions and the provided context information.\n\n"
-
+        print(user)
         argument.prop.prepared_input = [
-            { "role": "assistant", "content": assistant },
-            { "role": "user", "content": user }
+            { "role": "user", "content": user },
         ]
 
