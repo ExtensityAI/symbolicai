@@ -1,17 +1,17 @@
+import asyncio
 import logging
 import re
-import tiktoken
-import openai
-
 from typing import List, Optional
 
+import openai
+import tiktoken
+
+from ....misc.console import ConsoleStyle
+from ....symbol import Symbol
+from ....utils import CustomUserWarning, encode_frames_file
 from ...base import Engine
 from ...mixin.openai import OpenAIMixin
 from ...settings import SYMAI_CONFIG
-from ....utils import encode_frames_file, CustomUserWarning
-from ....misc.console import ConsoleStyle
-from ....symbol import Symbol
-
 
 logging.getLogger("openai").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)
@@ -83,7 +83,7 @@ class InvalidRequestErrorRemedyChatStrategy:
         model             = kwargs.get('model',             engine.model)
         seed              = kwargs.get('seed',              engine.seed)
         max_tokens        = kwargs.get('max_tokens',        engine.compute_remaining_tokens(truncated_prompts_))
-        stop              = kwargs.get('stop')
+        stop              = kwargs.get('stop',              '')
         temperature       = kwargs.get('temperature',       1)
         frequency_penalty = kwargs.get('frequency_penalty', 0)
         presence_penalty  = kwargs.get('presence_penalty',  0)
@@ -96,24 +96,26 @@ class InvalidRequestErrorRemedyChatStrategy:
         tool_choice       = kwargs.get('tool_choice')
         response_format   = kwargs.get('response_format')
 
-        return callback(
-                model=model,
-                messages=truncated_prompts_,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                frequency_penalty=frequency_penalty,
-                presence_penalty=presence_penalty,
-                top_p=top_p,
-                n=n,
-                logit_bias=logit_bias,
-                logprobs=logprobs,
-                top_logprobs=top_logprobs,
-                tools=tools,
-                tool_choice=tool_choice,
-                response_format=response_format,
-                seed=seed,
-                stop=stop
-            )
+        return asyncio.run(
+                    callback(
+                        model=model,
+                        messages=truncated_prompts_,
+                        max_tokens=max_tokens,
+                        temperature=temperature,
+                        frequency_penalty=frequency_penalty,
+                        presence_penalty=presence_penalty,
+                        top_p=top_p,
+                        logit_bias=logit_bias,
+                        logprobs=logprobs,
+                        top_logprobs=top_logprobs,
+                        tools=tools,
+                        tool_choice=tool_choice,
+                        response_format=response_format,
+                        seed=seed,
+                        stop=stop,
+                        n=n,
+                    )
+                )
 
 
 class GPTXChatEngine(Engine, OpenAIMixin):
@@ -132,6 +134,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         self.max_response_tokens = self.api_max_response_tokens()
         self.seed                = None
         self.except_remedy       = None
+        self.client    = openai.AsyncClient(api_key=openai.api_key)
 
     def id(self) -> str:
         if   self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and \
@@ -205,6 +208,9 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         #       the remedy strategy should handle this case
         return min(self.max_context_tokens - val, self.max_response_tokens)
 
+    async def arequest(self, **kwargs) -> dict:
+        return await self.client.chat.completions.create(**kwargs)
+
     def forward(self, argument):
         kwargs        = argument.kwargs
         prompts_      = argument.prop.prepared_input
@@ -227,23 +233,25 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         response_format   = kwargs.get('response_format')
 
         try:
-            res = openai.chat.completions.create(
-                    model=model,
-                    messages=prompts_,
-                    max_tokens=max_tokens,
-                    temperature=temperature,
-                    frequency_penalty=frequency_penalty,
-                    presence_penalty=presence_penalty,
-                    top_p=top_p,
-                    n=n,
-                    logit_bias=logit_bias,
-                    logprobs=logprobs,
-                    top_logprobs=top_logprobs,
-                    tools=tools,
-                    tool_choice=tool_choice,
-                    response_format=response_format,
-                    seed=seed,
-                    stop=stop
+            res = asyncio.run(
+                    self.arequest(
+                        model=model,
+                        messages=prompts_,
+                        max_tokens=max_tokens,
+                        temperature=temperature,
+                        frequency_penalty=frequency_penalty,
+                        presence_penalty=presence_penalty,
+                        top_p=top_p,
+                        logit_bias=logit_bias,
+                        logprobs=logprobs,
+                        top_logprobs=top_logprobs,
+                        tools=tools,
+                        tool_choice=tool_choice,
+                        response_format=response_format,
+                        seed=seed,
+                        stop=stop,
+                        n=n,
+                    )
                 )
 
         except Exception as e:
@@ -254,7 +262,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
                     raise Exception(msg) from e
                 openai.api_key = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
 
-            callback = openai.chat.completions.create
+            callback = self.client.chat.completions.create
             kwargs['model'] = kwargs['model'] if 'model' in kwargs else self.model
             if except_remedy is not None:
                 res = except_remedy(self, e, callback, argument)
@@ -264,8 +272,8 @@ class GPTXChatEngine(Engine, OpenAIMixin):
                     except_remedy = InvalidRequestErrorRemedyChatStrategy()
                     res = except_remedy(self, e, callback, argument)
                 except Exception as e2:
-                    ex = Exception(f'Failed to handle exception: {e}. Also failed implicit remedy strategy after retry: {e2}')
-                    raise ex from e
+                    ex = Exception(f'Failed to handle exception: {e2}. Also failed implicit remedy strategy after retry: {e2}')
+                    raise ex from e2
 
         metadata = {'raw_output': res}
 
