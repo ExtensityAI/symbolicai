@@ -206,6 +206,9 @@ def _process_query(engine,
     elif limit_ is not None and limit_ > 1 and return_constraint == tuple:
         rsp = tuple(list(rsp)[:limit_])
 
+    if argument.prop.return_metadata:
+        return rsp, metadata
+    
     return rsp
 
 
