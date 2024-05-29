@@ -19,24 +19,71 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "setuptools>=67.7.2", "toml>=0.10.2", "natsort>=8.3.1", "numpy>=1.24.3", "tqdm>=4.65.0", "python-box>=7.0.1", "rpyc>=5.3.1", "pandas>=2.0.2",
-    "scikit-learn>=1.2.2", "torch>=2.0.0", "torchaudio>=2.0.1", "torchvision>=0.15.0", "PyYAML>=6.0", "transformers>=4.30.2", "sympy>=1.12",
-    "openai>=1.1.0", "PyPDF2>=3.0.1", "ipython>=8.14.0", "accelerate>=0.20.3", "sentencepiece>=0.1.99", "sentence-transformers>=2.5.1",
-    "tiktoken>=0.7.0", "tika>=2.6.0", "beautifulsoup4>=4.12.2", "colorama>=0.4.6", "GitPython>=3.1.32", "pathos>=0.3.1", "prompt-toolkit>=3.0.39",
-    "pydub", "opencv-python", "pymongo==3.12.3", "pymongo[srv]", "requests_toolbelt", "pyvis", "beartype>=0.17.2"
+    "setuptools>=67.7.2",
+    "toml>=0.10.2",
+    "natsort>=8.3.1",
+    "aiohttp==3.9.5",
+    "numpy==1.26.4",
+    "tqdm==4.66.2",
+    "python-box==7.1.1",
+    "rpyc==6.0.0",
+    "pandas==2.2.2",
+    "scikit-learn==1.5.0",
+    "torch==2.2.2",
+    "torchaudio==2.2.2",
+    "torchvision==0.17.2",
+    "PyYAML==6.0.1",
+    "transformers==4.38.2",
+    "sympy==1.12",
+    "openai==1.13.3",
+    "PyPDF2==3.0.1",
+    "ipython==8.24.0",
+    "accelerate==0.27.2",
+    "sentencepiece==0.2.0",
+    "sentence-transformers==2.5.1",
+    "tiktoken==0.7.0",
+    "tika==2.6.0",
+    "beautifulsoup4==4.12.3",
+    "colorama==0.4.6",
+    "GitPython==3.1.42",
+    "pathos==0.3.2",
+    "prompt-toolkit==3.0.43",
+    "pydub==0.25.1",
+    "opencv-python==4.8.0.74",
+    "pymongo==3.12.3",
+    "pymongo[srv]",
+    "requests-toolbelt==1.0.0",
+    "pyvis==0.3.2",
+    "beartype==0.18.2"
 ]
 
 [project.optional-dependencies]
-blip2 = ["bitsandbytes>=0.39.1", "decord", "salesforce-lavis"]
-wolframalpha = ["wolframalpha>=5.0.0"]
-whisper = ["openai-whisper>=20231117"]
-selenium = ["selenium>=4.10.0", "webdriver-manager>=4.0.1", "chromedriver-autoinstaller>=0.4.0"]
-serpapi = ["google-search-results>=2.4.2"]
-pinecone = ["pinecone-client>=2.2.2"]
-bard = ["bardapi>=0.1.24"]
-services = ["fastapi>=0.104.1", "redis>=5.0.1", "uvicorn>=0.24.0.post1"]
-solver = ["z3-solver"]
-all = ["wolframalpha>=5.0.0", "openai-whisper>=20231117", "selenium>=4.10.0", "webdriver-manager>=4.0.1", "chromedriver-autoinstaller>=0.4.0", "google-search-results>=2.4.2", "pinecone-client>=2.2.2", "fastapi>=0.104.1", "redis>=5.0.1", "uvicorn>=0.24.0.post1", "z3-solver"]
+blip2        = ["bitsandbytes==0.43.1", "decord==0.6.0", "salesforce-lavis==1.0.0"]
+wolframalpha = ["wolframalpha==5.0.0"]
+whisper      = ["openai-whisper==20231117"]
+selenium     = ["selenium==4.18.1", "webdriver-manager==4.0.1", "chromedriver-autoinstaller==0.6.4"]
+serpapi      = ["google_search_results==2.4.2"]
+pinecone     = ["pinecone-client==3.1.0"]
+bard         = ["bardapi==1.0.0"]
+services     = ["fastapi==0.110.0", "redis==5.0.2", "uvicorn==0.27.1"]
+solver       = ["z3-solver==4.12.6.0"]
+all          = [
+    "bitsandbytes==0.43.1",
+    "decord==0.6.0",
+    "salesforce-lavis==1.0.0",
+    "wolframalpha==5.0.0",
+    "openai-whisper==20231117",
+    "selenium==4.18.1",
+    "webdriver-manager==4.0.1",
+    "chromedriver-autoinstaller==0.6.4",
+    "google_search_results==2.4.2",
+    "pinecone-client==3.1.0",
+    "bardapi==1.0.0",
+    "fastapi==0.110.0",
+    "redis==5.0.2",
+    "uvicorn==0.27.1",
+    "z3-solver==4.12.6.0"
+]
 
 [tool.setuptools.dynamic]
 version = {attr = "symai.SYMAI_VERSION"}
@@ -50,14 +97,14 @@ exclude = ["tests", "examples", "notebooks", "outputs", "assets", "app.py"]
 
 [project.urls]
 "Homepage" = "https://alphacoreai.eu/"
-"GitHub" = "https://github.com/Xpitfire/symai"
+"GitHub"   = "https://github.com/Xpitfire/symai"
 
 [project.scripts]
-symchat = "symai.chat:run"
-symsvr = "symai.nesy_server:run"
+symchat   = "symai.chat:run"
+symsvr    = "symai.nesy_server:run"
 symclient = "symai.nesy_client:run"
-symsh = "symai.shell:run"
-symwzd = "symai:run_setup_wizard"
-sympkg = "symai.extended.packages.sympkg:run"
-symdev = "symai.extended.packages.symdev:run"
-symrun = "symai.extended.packages.symrun:run"
+symsh     = "symai.shell:run"
+symwzd    = "symai:run_setup_wizard"
+sympkg    = "symai.extended.packages.sympkg:run"
+symdev    = "symai.extended.packages.symdev:run"
+symrun    = "symai.extended.packages.symrun:run"
