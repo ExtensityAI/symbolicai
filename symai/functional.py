@@ -167,6 +167,8 @@ def _process_query(engine,
             rsp, metadata = _execute_query(engine, post_processors, return_constraint, argument)
             # return preview of the command if preview is set
             if argument.prop.preview:
+                if argument.prop.return_metadata:
+                    return rsp, metadata
                 return rsp
 
             if argument.prop.raw_output:
