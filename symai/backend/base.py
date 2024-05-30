@@ -104,6 +104,7 @@ class Engine(ABC):
         # used here to avoid circular import
         from ..symbol import Symbol
         class Preview(Symbol):
+            
             def __repr__(self) -> str:
                 '''
                 Get the representation of the Symbol object as a string.
@@ -111,11 +112,7 @@ class Engine(ABC):
                 Returns:
                     str: The representation of the Symbol object.
                 '''
-                # class with full path
-                class_ = self.__class__.__module__ + '.' + self.__class__.__name__
-                hex_   = hex(id(self))
-                from_symbol =  f' of {self.__class__.__module__}.{self.value.__class__.__name__}' if self.value else ''
-                return f'<class {class_} at {hex_}{from_symbol}>'
+                return self.value.prop.prepared_input
         return Preview(argument), {}
 
     def forward(self, *args: Any, **kwds: Any) -> List[str]:
