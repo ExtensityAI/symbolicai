@@ -95,7 +95,7 @@ class JsonTruncateMarkdownPostProcessor(PostProcessor):
 
 class CodeExtractPostProcessor(PostProcessor):
     def __call__(self, response, argument, tag=None, **kwargs) -> Any:
-        if '```' not in response:
+        if '```' not in str(response):
             return response
         matches = []
         try:
