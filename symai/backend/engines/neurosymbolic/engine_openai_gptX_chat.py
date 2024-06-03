@@ -128,19 +128,18 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             return # do not initialize if not neurosymbolic; avoids conflict with llama.cpp check in EngineRepository.register_from_package
         openai.api_key           = self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] if api_key is None else api_key
         self.model               = self.config['NEUROSYMBOLIC_ENGINE_MODEL'] if model is None else model
-        self.tokenizer           = tiktoken.encoding_for_model(self.model)
+        self.tokenizer           = self.get_tokenizer()
         self.pricing             = self.api_pricing()
         self.max_context_tokens  = self.api_max_context_tokens()
         self.max_response_tokens = self.api_max_response_tokens()
         self.seed                = None
         self.except_remedy       = None
-        self.client    = openai.AsyncClient(api_key=openai.api_key)
+        self.client = openai.AsyncClient(api_key=openai.api_key)
 
     def id(self) -> str:
-        if   self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and \
-            (self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('gpt-3.5') or \
-             self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('gpt-4')):
-            return 'neurosymbolic'
+        if self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and \
+           self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('gpt'):
+               return 'neurosymbolic'
         return super().id() # default to unregistered
 
     def command(self, *args, **kwargs):
@@ -154,9 +153,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         if 'except_remedy' in kwargs:
             self.except_remedy = kwargs['except_remedy']
 
-    def compute_required_tokens(self, messages):
-        """Return the number of tokens used by a list of messages."""
-
+    def get_tokenizer(self):
         if self.model in {
             "gpt-3.5-turbo-0613",
             "gpt-3.5-turbo-16k-0613",
@@ -167,29 +164,32 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             "gpt-4-turbo",
             "gpt-4o"
             }:
-            tokens_per_message = 3
-            tokens_per_name = 1
+            self._tokens_per_message = 3
+            self._tokens_per_name = 1
+            return tiktoken.encoding_for_model(self.model)
         elif self.model == "gpt-3.5-turbo-0301":
-            tokens_per_message = 4  # every message follows <|start|>{role/name}\n{content}<|end|>\n
-            tokens_per_name = -1    # if there's a name, the role is omitted
+            self._tokens_per_message = 4  # every message follows <|start|>{role/name}\n{content}<|end|>\n
+            self._tokens_per_name = -1    # if there's a name, the role is omitted
+            return tiktoken.encoding_for_model(self.model)
         elif self.model == "gpt-3.5-turbo":
             CustomUserWarning("Warning: gpt-3.5-turbo may update over time. Returning num tokens assuming gpt-3.5-turbo-0613.")
-            tokens_per_message = 3
-            tokens_per_name = 1
-            self.tokenizer = tiktoken.encoding_for_model("gpt-3.5-turbo-0613")
-        elif self.model == "gpt-4":
-            tokens_per_message = 3
-            tokens_per_name = 1
+            self._tokens_per_message = 3
+            self._tokens_per_name = 1
+            return tiktoken.encoding_for_model("gpt-3.5-turbo-0613")
+        elif self.model == "gpt-4" or self.model == "gpt-4-1106-preview":
             CustomUserWarning("Warning: gpt-4 may update over time. Returning num tokens assuming gpt-4-0613.")
-            self.tokenizer = tiktoken.encoding_for_model("gpt-4-0613")
+            self._tokens_per_message = 3
+            self._tokens_per_name = 1
+            return tiktoken.encoding_for_model("gpt-4-0613")
         else:
             raise NotImplementedError(
-                f"""num_tokens_from_messages() is not implemented for model {self.model}. See https://cookbook.openai.com/examples/how_to_count_tokens_with_tiktoken for information on how messages are converted to tokens."""
+                f'Encoding for model {self.model} not supported.'
             )
 
+    def compute_required_tokens(self, messages):
         num_tokens = 0
         for message in messages:
-            num_tokens += tokens_per_message
+            num_tokens += self._tokens_per_message
             for key, value in message.items():
                 if type(value) == str:
                     num_tokens += len(self.tokenizer.encode(value, disallowed_special=()))
@@ -198,7 +198,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
                         if v['type'] == 'text':
                             num_tokens += len(self.tokenizer.encode(v['text'], disallowed_special=()))
                 if key == "name":
-                    num_tokens += tokens_per_name
+                    num_tokens += self._tokens_per_name
         num_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
         return num_tokens
 
