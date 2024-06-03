@@ -134,7 +134,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         self.max_response_tokens = self.api_max_response_tokens()
         self.seed                = None
         self.except_remedy       = None
-        self.client    = openai.AsyncClient(api_key=openai.api_key)
+        self.client = openai.AsyncClient(api_key=openai.api_key)
 
     def id(self) -> str:
         if   self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and \
@@ -160,6 +160,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         if self.model in {
             "gpt-3.5-turbo-0613",
             "gpt-3.5-turbo-16k-0613",
+            "gpt-4-1106-preview",
             "gpt-4-0314",
             "gpt-4-32k-0314",
             "gpt-4-0613",
