@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import warnings
 
 from pathlib import Path
 
@@ -16,6 +17,10 @@ logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
 logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 logging.getLogger("huggingface").setLevel(logging.ERROR)
+logging.getLogger('pydub').setLevel(logging.ERROR)
+
+warnings.simplefilter("ignore")
+
 
 # set the environment variable for the transformers library
 os.environ['TOKENIZERS_PARALLELISM'] = "false"
