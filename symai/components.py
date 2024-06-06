@@ -800,7 +800,7 @@ class TokenTracker(Expression):
         self._previous_frame = None
         self.vals            = []
 
-    @core_ext.bind(engine='neurosymbolic', property='max_tokens')
+    @core_ext.bind(engine='neurosymbolic', property='max_context_tokens')
     def max_tokens(self): pass
 
     def __enter__(self):
