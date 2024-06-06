@@ -14,7 +14,7 @@ class TestOpenAIEngine(unittest.TestCase):
         self.assertTrue(True)
 
     def test_vision(self):
-        file = Path(__file__).parent.parent / 'assets' / 'images' / 'cat.jpg'
+        file = Path(__file__).parent.parent.parent.parent / 'assets' / 'images' / 'cat.jpg'
         x = Symbol(f'<<vision:{file}:>>')
         res = x.query('What is in the image?')
 
