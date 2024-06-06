@@ -2151,7 +2151,7 @@ class ExecutionControlPrimitives(Primitive):
         Raises:
             ValueError: If the Expression object exceeds the maximum allowed tokens.
         '''
-        @core_ext.bind(engine='neurosymbolic', property='max_tokens')
+        @core_ext.bind(engine='neurosymbolic', property='max_context_tokens')
         def _max_tokens(_): pass
 
         max_ctxt_tokens = int(_max_tokens(self) * token_ratio)
