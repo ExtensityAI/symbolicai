@@ -14,12 +14,14 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 logging.getLogger("tika").setLevel(logging.ERROR)
 logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
+logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
+logging.getLogger("huggingface").setLevel(logging.ERROR)
 
 # set the environment variable for the transformers library
 os.environ['TOKENIZERS_PARALLELISM'] = "false"
 
 
-SYMAI_VERSION = "0.6.2"
+SYMAI_VERSION = "0.6.3"
 __version__   = SYMAI_VERSION
 __root_dir__  = Path.home() / '.symai'
 

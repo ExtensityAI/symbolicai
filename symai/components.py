@@ -843,7 +843,7 @@ class Indexer(Expression):
             formatter: Callable = ParagraphFormatter(),
             auto_add=False,
             raw_result: bool = False,
-            new_dim: int = None,
+            new_dim: int = 1536,
             **kwargs
         ):
         super().__init__(**kwargs)
@@ -902,13 +902,13 @@ class Indexer(Expression):
             # run over the elments in batches
             for i in tqdm(range(0, len(self.elements), self.batch_size)):
                 val = Symbol(self.elements[i:i+self.batch_size]).zip(new_dim=self.new_dim)
-                that.add(val, index_name=that.index_name)
-            that.config(None, index_name=that.index_name)
+                that.add(val, index_name=that.index_name, index_dims=that.new_dim)
+            that.config(None, index_name=that.index_name, index_dims=that.new_dim)
 
         def _func(query, *args, **kwargs):
             raw_result = kwargs.get('raw_result') or that.raw_result
             query_emb = Symbol(query).embed(new_dim=that.new_dim).value
-            res = that.get(query_emb, index_name=that.index_name, index_top_k=that.top_k, ori_query=query, **kwargs)
+            res = that.get(query_emb, index_name=that.index_name, index_top_k=that.top_k, ori_query=query, index_dims=that.new_dim, **kwargs)
             that.retrieval = res
             if raw_result:
                 return res
