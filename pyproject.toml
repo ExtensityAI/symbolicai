@@ -54,7 +54,8 @@ dependencies = [
     "pymongo[srv]",
     "requests-toolbelt==1.0.0",
     "pyvis==0.3.2",
-    "beartype==0.18.2"
+    "beartype==0.18.2",
+    "pycryptodome==3.20.0"
 ]
 
 [project.optional-dependencies]
@@ -63,7 +64,7 @@ wolframalpha = ["wolframalpha==5.0.0"]
 whisper      = ["openai-whisper==20231117"]
 selenium     = ["selenium==4.18.1", "webdriver-manager==4.0.1", "chromedriver-autoinstaller==0.6.4"]
 serpapi      = ["google_search_results==2.4.2"]
-pinecone     = ["pinecone-client==3.1.0"]
+pinecone     = ["pinecone-client==4.1.0"]
 bard         = ["bardapi==1.0.0"]
 services     = ["fastapi==0.110.0", "redis==5.0.2", "uvicorn==0.27.1"]
 solver       = ["z3-solver==4.12.6.0"]
@@ -77,7 +78,7 @@ all          = [
     "webdriver-manager==4.0.1",
     "chromedriver-autoinstaller==0.6.4",
     "google_search_results==2.4.2",
-    "pinecone-client==3.1.0",
+    "pinecone-client==4.1.0",
     "bardapi==1.0.0",
     "fastapi==0.110.0",
     "redis==5.0.2",

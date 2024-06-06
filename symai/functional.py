@@ -210,7 +210,7 @@ def _process_query(engine,
 
     if argument.prop.return_metadata:
         return rsp, metadata
-    
+
     return rsp
 
 

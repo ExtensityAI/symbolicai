@@ -4,9 +4,9 @@ import numpy as np
 
 warnings.filterwarnings('ignore', module='pinecone')
 try:
-    import pinecone
+    from pinecone import Pinecone, ServerlessSpec
 except:
-    pinecone = None
+    pass
 
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
@@ -132,10 +132,11 @@ class PineconeIndexEngine(Engine):
         self.backoff        = backoff
         self.jitter         = jitter
         self.index          = None
+        self.pinecone       = None
 
     def id(self) -> str:
         if SYMAI_CONFIG['INDEXING_ENGINE_API_KEY']:
-            if pinecone is None:
+            if Pinecone is None:
                 print('Pinecone is not installed. Please install it with `pip install symbolicai[pinecone]`.')
             return 'index'
         return super().id() # default to unregistered
@@ -152,11 +153,11 @@ class PineconeIndexEngine(Engine):
 
         del_ = kwargs['index_del'] if 'index_del' in kwargs else False
         if self.index is not None and del_:
-            pinecone.delete_index(index_name)
+            self.pinecone.delete_index(index_name)
 
         get_ = kwargs['index_get'] if 'index_get' in kwargs else False
         if self.index is not None and get_:
-            self.index = pinecone.Index(index_name=index_name)
+            self.index = self.pinecone.Index(name=index_name)
 
     def forward(self, argument):
         assert self.api_key,        'Please set the API key for Pinecone indexing engine.'
@@ -168,10 +169,11 @@ class PineconeIndexEngine(Engine):
         query         = argument.prop.ori_query
         operation     = argument.prop.operation
         index_name    = argument.prop.index_name if argument.prop.index_name else self.index_name
+        index_dims    = argument.prop.index_dims if argument.prop.index_dims else self.index_dims
         rsp           = None
 
         if self.index is None:
-            self._init_index_engine(index_name=index_name, index_dims=self.index_dims, index_metric=self.index_metric)
+            self._init_index_engine(index_name=index_name, index_dims=index_dims, index_metric=self.index_metric)
 
         if index_name != self.index_name:
             assert index_name, 'Please set a valid index name for Pinecone indexing engine.'
@@ -206,12 +208,15 @@ class PineconeIndexEngine(Engine):
         argument.prop.prepared_input = argument.prop.prompt
 
     def _init_index_engine(self, index_name, index_dims, index_metric):
-        pinecone.init(api_key=self.api_key, environment=self.environment)
+        self.pinecone = Pinecone(api_key=self.api_key)
 
-        if index_name is not None and index_name not in pinecone.list_indexes():
-            pinecone.create_index(name=index_name, dimension=index_dims, metric=index_metric)
+        if index_name is not None and index_name not in str(self.pinecone.list_indexes()):
+            self.pinecone.create_index(name=index_name, dimension=index_dims, metric=index_metric, spec=ServerlessSpec(
+                cloud='aws',
+                region=self.environment
+            ))
 
-        self.index = pinecone.Index(index_name=index_name)
+        self.index = self.pinecone.Index(name=index_name)
 
     def _upsert(self, vectors):
         @core_ext.retry(tries=self.tries, delay=self.delay, max_delay=self.max_delay, backoff=self.backoff, jitter=self.jitter)

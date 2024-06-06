@@ -1,4 +1,4 @@
-import asyncio
+#import asyncio
 import logging
 import re
 from typing import List, Optional
@@ -96,25 +96,23 @@ class InvalidRequestErrorRemedyChatStrategy:
         tool_choice       = kwargs.get('tool_choice')
         response_format   = kwargs.get('response_format')
 
-        return asyncio.run(
-                    callback(
-                        model=model,
-                        messages=truncated_prompts_,
-                        max_tokens=max_tokens,
-                        temperature=temperature,
-                        frequency_penalty=frequency_penalty,
-                        presence_penalty=presence_penalty,
-                        top_p=top_p,
-                        logit_bias=logit_bias,
-                        logprobs=logprobs,
-                        top_logprobs=top_logprobs,
-                        tools=tools,
-                        tool_choice=tool_choice,
-                        response_format=response_format,
-                        seed=seed,
-                        stop=stop,
-                        n=n,
-                    )
+        return callback(
+                    model=model,
+                    messages=truncated_prompts_,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    frequency_penalty=frequency_penalty,
+                    presence_penalty=presence_penalty,
+                    top_p=top_p,
+                    logit_bias=logit_bias,
+                    logprobs=logprobs,
+                    top_logprobs=top_logprobs,
+                    tools=tools,
+                    tool_choice=tool_choice,
+                    response_format=response_format,
+                    seed=seed,
+                    stop=stop,
+                    n=n,
                 )
 
 
@@ -134,7 +132,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         self.max_response_tokens = self.api_max_response_tokens()
         self.seed                = None
         self.except_remedy       = None
-        self.client    = openai.AsyncClient(api_key=openai.api_key)
+        self.client    = openai.Client(api_key=openai.api_key)
 
     def id(self) -> str:
         if   self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and \
@@ -208,9 +206,6 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         #       the remedy strategy should handle this case
         return min(self.max_context_tokens - val, self.max_response_tokens)
 
-    async def arequest(self, **kwargs) -> dict:
-        return await self.client.chat.completions.create(**kwargs)
-
     def forward(self, argument):
         kwargs        = argument.kwargs
         prompts_      = argument.prop.prepared_input
@@ -233,26 +228,24 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         response_format   = kwargs.get('response_format')
 
         try:
-            res = asyncio.run(
-                    self.arequest(
-                        model=model,
-                        messages=prompts_,
-                        max_tokens=max_tokens,
-                        temperature=temperature,
-                        frequency_penalty=frequency_penalty,
-                        presence_penalty=presence_penalty,
-                        top_p=top_p,
-                        logit_bias=logit_bias,
-                        logprobs=logprobs,
-                        top_logprobs=top_logprobs,
-                        tools=tools,
-                        tool_choice=tool_choice,
-                        response_format=response_format,
-                        seed=seed,
-                        stop=stop,
-                        n=n,
-                    )
-                )
+            res = self.client.chat.completions.create(
+                model=model,
+                messages=prompts_,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                frequency_penalty=frequency_penalty,
+                presence_penalty=presence_penalty,
+                top_p=top_p,
+                logit_bias=logit_bias,
+                logprobs=logprobs,
+                top_logprobs=top_logprobs,
+                tools=tools,
+                tool_choice=tool_choice,
+                response_format=response_format,
+                seed=seed,
+                stop=stop,
+                n=n,
+            )
 
         except Exception as e:
             if openai.api_key is None or openai.api_key == '':
