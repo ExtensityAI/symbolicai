@@ -285,7 +285,7 @@ from .strategy import Strategy
 from .symbol import Symbol, Expression, Metadata, Call, GlobalSymbolPrimitive
 from .interfaces import Interface
 from .imports import Import
-from .components import Function
+from .components import Function, PrimitiveDisabler
 from .pre_processors import PreProcessor
 from .post_processors import PostProcessor
 from .extended import Conversation

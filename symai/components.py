@@ -1,31 +1,28 @@
 import inspect
 import os
 import re
-import numpy as np
-
-from tqdm import tqdm
+from collections import defaultdict
 from pathlib import Path
 from random import sample
 from string import ascii_lowercase, ascii_uppercase
 from typing import Callable, Iterator, List, Optional, Type, Union
-from pyvis.network import Network
 
-from . import core
-from . import core_ext
+import numpy as np
+from pyvis.network import Network
+from tqdm import tqdm
+
+from . import core, core_ext
 from .constraints import DictFormatConstraint
 from .formatter import ParagraphFormatter
-from .symbol import Expression, Symbol, Metadata
-from .utils import CustomUserWarning
-from .prompts import Prompt, JsonPromptTemplate
+from .post_processors import (CodeExtractPostProcessor,
+                              JsonTruncateMarkdownPostProcessor,
+                              JsonTruncatePostProcessor, PostProcessor,
+                              StripPostProcessor)
+from .pre_processors import JsonPreProcessor, PreProcessor
 from .processor import ProcessorPipeline
-from .pre_processors import PreProcessor, JsonPreProcessor
-from .post_processors import (
-    PostProcessor,
-    JsonTruncatePostProcessor,
-    JsonTruncateMarkdownPostProcessor,
-    StripPostProcessor,
-    CodeExtractPostProcessor
-)
+from .prompts import JsonPromptTemplate, Prompt
+from .symbol import Expression, Metadata, Symbol
+from .utils import CustomUserWarning
 
 
 class GraphViz(Expression):
@@ -916,3 +913,44 @@ class Indexer(Expression):
             return rsp
 
         return _func
+
+
+class PrimitiveDisabler(Expression):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._primitives = set()
+        self._original_primitives = defaultdict(list)
+
+    def __enter__(self):
+        # Avoid circular imports; import locally
+        from .symbol import Symbol
+
+        frame = inspect.currentframe()
+        f_locals = frame.f_back.f_locals
+        self._symbols = {key: value for key, value in f_locals.items() if isinstance(value, Symbol)}
+        self._extract_primitives()
+        self._disable_primitives()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._enable_primitives()
+
+    def _disable_primitives(self):
+        for sym_name, sym in self._symbols.items():
+            for func in self._primitives:
+                if hasattr(sym, func):
+                    self._original_primitives[sym_name].append((func, getattr(sym, func)))
+                    setattr(sym, func, lambda *args, **kwargs: None)
+
+    def _enable_primitives(self):
+        for sym_name, sym in self._symbols.items():
+            for func, value in self._original_primitives[sym_name]:
+                setattr(sym, func, value)
+
+    def _extract_primitives(self):
+        for sym in self._symbols.values():
+            for primitive in sym._primitives:
+                for method, _ in inspect.getmembers(primitive, predicate=inspect.isfunction):
+                    if method in self._primitives or method.startswith('_'):
+                        continue
+                    self._primitives.add(method)
+

@@ -1,10 +1,10 @@
-import cv2
 import base64
 import inspect
 import sys
 import warnings
-import numpy as np
 
+import cv2
+import numpy as np
 from PIL import Image
 
 
