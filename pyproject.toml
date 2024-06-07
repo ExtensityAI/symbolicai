@@ -6,9 +6,9 @@ build-backend = "setuptools.build_meta"
 name = "symbolicai"
 dynamic = ["version"]
 authors = [
-    {name = "Marius-Constantin Dinu", email = "office@alphacoreai.eu"},
+    {name = "Marius-Constantin Dinu", email = "office@extensity.ai"},
 ]
-description = "A Neuro-Symbolic Framework for Python"
+description = "A Neuro-Symbolic Framework for Large Language Models"
 readme = "README.md"
 requires-python = ">=3.9"
 keywords = ["symbolic programming", "machine learning"]
@@ -19,9 +19,9 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "setuptools>=67.7.2",
-    "toml>=0.10.2",
-    "natsort>=8.3.1",
+    "setuptools==67.7.2",
+    "toml==0.10.2",
+    "natsort==8.3.1",
     "aiohttp==3.9.5",
     "numpy==1.26.4",
     "tqdm==4.66.2",
@@ -69,21 +69,15 @@ bard         = ["bardapi==1.0.0"]
 services     = ["fastapi==0.110.0", "redis==5.0.2", "uvicorn==0.27.1"]
 solver       = ["z3-solver==4.12.6.0"]
 all          = [
-    "bitsandbytes==0.43.1",
-    "decord==0.6.0",
-    "salesforce-lavis==1.0.0",
-    "wolframalpha==5.0.0",
-    "openai-whisper==20231117",
-    "selenium==4.18.1",
-    "webdriver-manager==4.0.1",
-    "chromedriver-autoinstaller==0.6.4",
-    "google_search_results==2.4.2",
-    "pinecone-client==4.1.0",
-    "bardapi==1.0.0",
-    "fastapi==0.110.0",
-    "redis==5.0.2",
-    "uvicorn==0.27.1",
-    "z3-solver==4.12.6.0"
+    "symbolicai[blip2]",
+    "symbolicai[wolframalpha]",
+    "symbolicai[whisper]",
+    "symbolicai[selenium]",
+    "symbolicai[serpapi]",
+    "symbolicai[pinecone]",
+    "symbolicai[bard]",
+    "symbolicai[services]",
+    "symbolicai[solver]"
 ]
 
 [tool.setuptools.dynamic]
@@ -97,8 +91,8 @@ include = ["symai"]
 exclude = ["tests", "examples", "notebooks", "outputs", "assets", "app.py"]
 
 [project.urls]
-"Homepage" = "https://alphacoreai.eu/"
-"GitHub"   = "https://github.com/Xpitfire/symai"
+"Homepage" = "https://extensity.ai"
+"GitHub"   = "https://github.com/ExtensityAI/symbolicai"
 
 [project.scripts]
 symchat   = "symai.chat:run"
