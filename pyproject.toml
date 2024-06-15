@@ -20,6 +20,7 @@ classifiers = [
 ]
 dependencies = [
     "setuptools==67.7.2",
+    "aiohttp==3.9.5",
     "toml==0.10.2",
     "natsort==8.3.1",
     "aiohttp==3.9.5",
