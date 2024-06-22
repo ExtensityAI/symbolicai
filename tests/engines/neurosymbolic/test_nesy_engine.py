@@ -1,8 +1,15 @@
 from pathlib import Path
+
 import pytest
 
-from symai import Symbol, Expression
+from symai import Expression, Symbol
+from symai.backend.settings import SYMAI_CONFIG
 from symai.core_ext import bind
+from openai.types.chat.chat_completion import ChatCompletion
+from anthropic.types.message import Message
+
+
+NEUROSYMBOLIC = SYMAI_CONFIG.get('NEUROSYMBOLIC_ENGINE_MODEL')
 
 @bind(engine='neurosymbolic', property='compute_required_tokens')(lambda: 0)
 def _compute_required_tokens(): pass
@@ -20,7 +27,6 @@ def test_vision():
     res = x.query('What is in the image?')
 
     # it makes sense here to explicitly check if there is a cat; we are testing the vision component
-    # which only gpt-4-* models can handle and they should be able to detect a cat in the image
     assert 'cat' in res.value
 
     file = 'https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/cat.jpg'
@@ -30,6 +36,7 @@ def test_vision():
     # same check but for url
     assert 'cat' in res.value
 
+@pytest.mark.skipif(NEUROSYMBOLIC.startswith('claude'), reason='Claude tokens computation is not yet implemented')
 def test_tokenizer():
     messages = [
         {
@@ -67,6 +74,13 @@ def test_tokenizer():
     tik_tokens = _compute_required_tokens(messages)
 
     assert api_tokens == tik_tokens
+
+def test_raw_output():
+    S = Expression.prompt('What is the capital of France?', raw_output=True)
+    if NEUROSYMBOLIC.startswith('claude'):
+        assert isinstance(S.value, Message)
+    elif NEUROSYMBOLIC.startswith('gpt'):
+        assert isinstance(S.value, ChatCompletion)
 
 
 if __name__ == '__main__':

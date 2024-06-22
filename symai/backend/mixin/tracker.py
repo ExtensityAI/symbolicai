@@ -9,6 +9,7 @@ from ...symbol import Symbol
 from ...utils import CustomUserWarning
 
 
+#TODO: deprecate
 class OpenAICostTracker:
     _supported_models = SUPPORTED_MODELS
 
