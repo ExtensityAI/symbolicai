@@ -37,6 +37,7 @@ dependencies = [
     "transformers==4.38.2",
     "sympy==1.12",
     "openai==1.13.3",
+    "anthropic==0.29.0",
     "PyPDF2==3.0.1",
     "ipython==8.24.0",
     "accelerate==0.27.2",
