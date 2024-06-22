@@ -789,6 +789,7 @@ class InContextClassification(Expression):
         return Symbol(_func(self))
 
 
+#@TODO: deprecate
 class TokenTracker(Expression):
     def __init__(self, verbose: bool = True, **kwargs):
         super().__init__(**kwargs)

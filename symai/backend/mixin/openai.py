@@ -17,6 +17,7 @@ SUPPORTED_MODELS = [
 
 
 class OpenAIMixin:
+    #@TODO: deprecate
     def api_pricing(self):
         if self.model == 'gpt-3.5-turbo':
             return {
