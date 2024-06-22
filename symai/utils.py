@@ -1,3 +1,4 @@
+import os
 import base64
 import inspect
 import sys
@@ -104,9 +105,10 @@ class Args:
 
 class CustomUserWarning:
     def __init__(self, message: str, stacklevel: int = 1) -> None:
-        caller   = inspect.getframeinfo(inspect.stack()[stacklevel][0])
-        lineno   = caller.lineno
-        filename = caller.filename
-        filename = filename[filename.find('symbolicai'):]
-        print(f"{filename}:{lineno}: {UserWarning.__name__}: {message}", file=sys.stderr)
+        if os.environ.get('SYMAI_WARNINGS', '1') == '1':
+            caller   = inspect.getframeinfo(inspect.stack()[stacklevel][0])
+            lineno   = caller.lineno
+            filename = caller.filename
+            filename = filename[filename.find('symbolicai'):]
+            print(f"{filename}:{lineno}: {UserWarning.__name__}: {message}", file=sys.stderr)
 
