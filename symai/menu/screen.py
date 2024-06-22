@@ -6,6 +6,7 @@ from pathlib import Path
 from prompt_toolkit import PromptSession, print_formatted_text
 from prompt_toolkit.shortcuts import yes_no_dialog, input_dialog, button_dialog
 
+from ..utils import CustomUserWarning
 from ..misc.console import ConsoleStyle
 
 
@@ -114,8 +115,7 @@ def show_main_setup_menu(show_wizard: bool = True):
                     default=nesy_engine_api_key if 'NEUROSYMBOLIC_ENGINE_API_KEY' not in SYMAI_CONFIG else SYMAI_CONFIG['NEUROSYMBOLIC_ENGINE_API_KEY'],
                 ).run()
                 if not nesy_engine_api_key:
-                    with ConsoleStyle('warn') as console:
-                        console.print("No API key or custom model ID provided. The framework will not work without it.")
+                    CustomUserWarning("No API key or custom model ID provided. The framework will not work without it.")
             else:
                 nesy_engine_api_key = input_dialog(
                     title="[Optional] Neuro-Symbolic Model API Key",
@@ -280,8 +280,7 @@ def show_main_setup_menu(show_wizard: bool = True):
                     console.print(msg)
         except Exception as e:
             # wizzard not supported
-            with ConsoleStyle('warn') as console:
-                console.print(f"Created a new config file, however, your application initialization did not finish properly and may not work as expected. Error: {e}")
+            CustomUserWarning(f"Created a new config file, however, your application initialization did not finish properly and may not work as expected. Error: {e}")
 
     # Process the setup results
     settings = {

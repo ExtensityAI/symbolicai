@@ -1,6 +1,7 @@
 import os
 import base64
 import inspect
+import httpx
 import sys
 import warnings
 
@@ -8,12 +9,19 @@ import cv2
 import numpy as np
 from PIL import Image
 
+from .misc.console import ConsoleStyle
 
-def encode_frames_file(file_path):
-    ext  = file_path.split('.')[-1]
-    if ext.lower() == 'jpg' or ext.lower() == 'jpeg' or ext.lower() == 'png':
-        return encode_image(file_path)
+
+def encode_media_frames(file_path):
+    ext = file_path.split('.')[-1]
+    if ext.lower() == 'jpg' or ext.lower() == 'jpeg' or ext.lower() == 'png' or ext.lower() == 'webp':
+        if file_path.startswith('http'):
+            return encode_image_url(file_path)
+        return encode_image_local(file_path)
     elif ext.lower() == 'gif':
+        if file_path.startswith('http'):
+            raise ValueError("GIF files from URLs are not supported. Please download the file and try again.")
+
         ext = 'jpeg'
         # get frames from gif
         base64Frames = []
@@ -26,6 +34,9 @@ def encode_frames_file(file_path):
                 base64Frames.append(base64.b64encode(buffer).decode("utf-8"))
         return base64Frames, ext
     elif ext.lower() == 'mp4' or ext.lower() == 'avi' or ext.lower() == 'mov':
+        if file_path.startswith('http'):
+            raise ValueError("Video files from URLs are not supported. Please download the file and try again.")
+
         ext = 'jpeg'
         video = cv2.VideoCapture(file_path)
         # get frames from video
@@ -42,14 +53,31 @@ def encode_frames_file(file_path):
         raise ValueError(f"File extension {ext} not supported")
 
 
-# Function to encode the image
-def encode_image(image_path):
+def encode_image_local(image_path):
+    ext = image_path.split('.')[-1]
+    # cast `jpg` to `jpeg` to avoid API issues
+    if ext.lower() == 'jpg':
+        ext = 'jpeg'
+
+    assert ext.lower() in ['jpg', 'jpeg', 'png', 'webp'], f"File extension '{ext}' not supported! Available extensions: ['jpg', 'jpeg', 'png', 'webp']"
+
     with open(image_path, "rb") as image_file:
-        enc_ = base64.b64encode(image_file.read()).decode('utf-8')
-        ext  = image_path.split('.')[-1]
-        if ext.lower() == 'jpg':
-            ext = 'jpeg'
-    return [enc_], ext # return list of base64 encoded images
+        enc_im = base64.b64encode(image_file.read()).decode('utf-8')
+
+    return [enc_im], ext
+
+
+def encode_image_url(image_url):
+    ext = image_url.split('.')[-1]
+    # cast `jpg` to `jpeg` to avoid API issues
+    if ext.lower() == 'jpg':
+        ext = 'jpeg'
+
+    assert ext.lower() in ['jpg', 'jpeg', 'png', 'webp'], f"File extension '{ext}' not supported! Available extensions: ['jpg', 'jpeg', 'png', 'webp']"
+
+    enc_im = base64.b64encode(httpx.get(image_url).content).decode("utf-8")
+
+    return [enc_im], ext
 
 
 def ignore_exception(exception=Exception, default=None):
@@ -110,5 +138,6 @@ class CustomUserWarning:
             lineno   = caller.lineno
             filename = caller.filename
             filename = filename[filename.find('symbolicai'):]
-            print(f"{filename}:{lineno}: {UserWarning.__name__}: {message}", file=sys.stderr)
+            with ConsoleStyle('warn') as console:
+                console.print(f"{filename}:{lineno}: {UserWarning.__name__}: {message}")
 

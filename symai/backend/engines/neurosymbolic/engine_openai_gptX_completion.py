@@ -67,8 +67,7 @@ class InvalidRequestErrorRemedyCompletionStrategy:
         if handle == 'type1':
             truncated_content_ = [p['content'][overflow_tokens:] for p in prompts]
             truncated_prompts_ = [{'role': p['role'], 'content': c} for p, c in zip(prompts, truncated_content_)]
-            with ConsoleStyle('warn') as console:
-                console.print(f"WARNING: Overflow tokens detected. Reducing prompt size by {overflow_tokens} characters.")
+            CustomUserWarning(f"WARNING: Overflow tokens detected. Reducing prompt size by {overflow_tokens} characters.")
         elif handle == 'type2':
             user_prompts = [p['content'] for p in prompts]
             new_prompt   = [*system_prompt]

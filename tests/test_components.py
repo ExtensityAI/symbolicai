@@ -1,5 +1,6 @@
 import pytest
-from symai import Symbol, Expression, PrimitiveDisabler
+
+from symai import Expression, PrimitiveDisabler, Symbol
 
 
 def test_disable_primitives():
