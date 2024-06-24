@@ -129,17 +129,17 @@ class Output(Expression):
 
 
 class Sequence(TrackerTraceable):
-    def __init__(self, *expr: List[Expression], **kwargs):
+    def __init__(self, *expressions: List[Expression], **kwargs):
         super().__init__(**kwargs)
-        self.expr: List[Expression] = expr
+        self.expressions: List[Expression] = expressions
 
     def forward(self, *args, **kwargs) -> Symbol:
-        sym = self.expr[0](*args, **kwargs)
+        sym = self.expressions[0](*args, **kwargs)
         metadata = Metadata()
         metadata.results = []
         metadata.results.append(sym)
-        for e in self.expr[1:]:
-            sym = e(sym, **kwargs)
+        for expr in self.expressions[1:]:
+            sym = expr(sym, **kwargs)
             metadata.results.append(sym)
         sym = self._to_symbol(sym)
         sym._metadata.results = metadata.results
@@ -787,37 +787,6 @@ class InContextClassification(Expression):
             pass
 
         return Symbol(_func(self))
-
-
-#@TODO: deprecate
-class TokenTracker(Expression):
-    def __init__(self, verbose: bool = True, **kwargs):
-        super().__init__(**kwargs)
-        self.verbose         = verbose
-        self._trace: bool    = False
-        self._previous_frame = None
-        self.vals            = []
-
-    @core_ext.bind(engine='neurosymbolic', property='max_context_tokens')
-    def max_tokens(self): pass
-
-    def __enter__(self):
-        self._trace = True
-        self.vals   = []
-        self._previous_frame = inspect.currentframe().f_back
-        return self
-
-    def __exit__(self, type, value, traceback):
-        local_vars = self._previous_frame.f_locals
-        for key, var in local_vars.items():
-            if hasattr(var, 'token_ratio'):
-                self.vals.append(var)
-
-        for val in self.vals:
-            max_ = self.max_tokens() * val.token_ratio
-            if self.verbose:
-                print('\n\n================\n[Used tokens: {:.2f}%]\n================\n'.format(len(val) / max_ * 100))
-        self._trace = False
 
 
 class Indexer(Expression):

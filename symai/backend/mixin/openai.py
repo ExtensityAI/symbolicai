@@ -17,63 +17,6 @@ SUPPORTED_MODELS = [
 
 
 class OpenAIMixin:
-    #@TODO: deprecate
-    def api_pricing(self):
-        if self.model == 'gpt-3.5-turbo':
-            return {
-                'input':  0.0015 / 1_000,
-                'output': 0.0020 / 1_000
-            }
-
-        elif self.model == 'gpt-3.5-turbo-16k':
-            return {
-                'input':  0.003 / 1_000,
-                'output': 0.004 / 1_000
-            }
-
-        elif self.model == 'gpt-3.5-turbo-1106' or \
-             self.model == 'gpt-3.5-turbo-0613':
-            return {
-                'input':  0.001 / 1_000,
-                'output': 0.002 / 1_000
-            }
-
-        elif self.model == 'gpt-4' or \
-             self.model == 'gpt-4-0613':
-            return {
-                'input':  0.03 / 1_000,
-                'output': 0.06 / 1_000
-            }
-
-        elif self.model == 'gpt-4-1106-preview' or \
-             self.model == 'gpt-4-turbo-2024-04-09' or \
-             self.model == 'gpt-4-turbo':
-            return {
-                'input':  0.01 / 1_000,
-                'output': 0.03 / 1_000
-            }
-
-        elif self.model == 'gpt-4o':
-            return {
-                'input':  0.005 / 1_000,
-                'output': 0.015 / 1_000
-            }
-
-        elif self.model == 'text-embedding-ada-002':
-            return {
-                'usage': 0.0001 / 1_000
-            }
-
-        elif self.model == 'text-embedding-3-small':
-            return {
-                'usage': 0.00002 / 1_000
-            }
-
-        elif self.model == 'text-embedding-3-large':
-            return {
-                'usage': 0.00013 / 1_000
-            }
-
     def api_max_context_tokens(self):
         if self.model == 'gpt-3.5-turbo' or \
            self.model == 'gpt-3.5-turbo-0613' or \
