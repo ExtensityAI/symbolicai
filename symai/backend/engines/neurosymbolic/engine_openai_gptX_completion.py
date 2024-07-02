@@ -67,8 +67,7 @@ class InvalidRequestErrorRemedyCompletionStrategy:
         if handle == 'type1':
             truncated_content_ = [p['content'][overflow_tokens:] for p in prompts]
             truncated_prompts_ = [{'role': p['role'], 'content': c} for p, c in zip(prompts, truncated_content_)]
-            with ConsoleStyle('warn') as console:
-                console.print(f"WARNING: Overflow tokens detected. Reducing prompt size by {overflow_tokens} characters.")
+            CustomUserWarning(f"WARNING: Overflow tokens detected. Reducing prompt size by {overflow_tokens} characters.")
         elif handle == 'type2':
             user_prompts = [p['content'] for p in prompts]
             new_prompt   = [*system_prompt]
@@ -137,7 +136,6 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
         openai.api_key           = self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] if api_key is None else api_key
         self.model               = self.config['NEUROSYMBOLIC_ENGINE_MODEL'] if model is None else model
         self.tokenizer           = tiktoken.encoding_for_model(self.model)
-        self.pricing             = self.api_pricing()
         self.max_context_tokens  = self.api_max_context_tokens()
         self.max_response_tokens = self.api_max_response_tokens()
         self.except_remedy       = None

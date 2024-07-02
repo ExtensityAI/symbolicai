@@ -92,9 +92,17 @@ class PackageRunner():
         arg_values = [arg for arg in args.params if '=' not in arg]
         kwargs = {arg.split('=')[0]: arg.split('=')[1] for arg in args.params if '=' in arg}
 
-        with Loader(desc="Inference ...", end=""):
+        if '--disable-pbar' not in arg_values:
+            with Loader(desc="Inference ...", end=""):
+                result = expr(*arg_values, **kwargs)
+        else:
             result = expr(*arg_values, **kwargs)
-        self.console("Execution of {} => {} resulted in the following output:".format(args.alias, package), result)
+
+        if result is not None:
+            self.console("Execution of {} => {} resulted in the following output:".format(args.alias, package), result)
+        else:
+            self.console("Execution of {} => {} completed successfully.".format(args.alias, package))
+
         return result
 
     def c(self):

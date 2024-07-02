@@ -24,7 +24,6 @@ class EmbeddingEngine(Engine, OpenAIMixin):
         self.config        = SYMAI_CONFIG
         openai.api_key     = self.config['EMBEDDING_ENGINE_API_KEY'] if api_key is None else api_key
         self.model         = self.config['EMBEDDING_ENGINE_MODEL'] if model is None else model
-        self.pricing       = self.api_pricing()
         self.max_tokens    = self.api_max_context_tokens()
         self.embedding_dim = self.api_embedding_dims()
 

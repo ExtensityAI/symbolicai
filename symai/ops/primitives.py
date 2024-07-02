@@ -2918,3 +2918,13 @@ class FineTuningPrimitives(Primitive):
         else:
             raise TypeError(f'Expected data to be a tensor or numpy array, got {type(self._metadata.data)}')
 
+    @data.setter
+    def data(self, data: torch.Tensor) -> None:
+        '''
+        Set the data of the symbol.
+
+        Args:
+            data (torch.Tensor): The data to set.
+        '''
+        self._metadata.data = data
+

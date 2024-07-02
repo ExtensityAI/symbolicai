@@ -10,7 +10,7 @@ class MaxTokensExceptRemedy(Expression):
         self.expr = expr
         self.logger = logging.getLogger(__name__)
 
-    @core_ext.bind(engine='neurosymbolic', property='max_tokens')
+    @core_ext.bind(engine='neurosymbolic', property='max_context_tokens')
     def _max_tokens(self): pass
 
     def forward(self, ex: Exception, context: Symbol, *args, **kwargs):
