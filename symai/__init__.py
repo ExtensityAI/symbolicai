@@ -2,12 +2,12 @@ import json
 import logging
 import os
 import warnings
-
 from pathlib import Path
 
-from .misc.console import ConsoleStyle
-from .menu.screen import show_menu
 from .backend import settings
+from .menu.screen import show_menu
+from .misc.console import ConsoleStyle
+from .utils import CustomUserWarning
 
 # do not remove - hides the libraries' debug messages
 logging.getLogger("urllib3").setLevel(logging.WARNING)
@@ -75,9 +75,7 @@ def _start_symai():
 
         if not os.path.exists(_symai_config_path_):
             setup_wizard(_symai_config_path_, show_wizard=False)
-            with ConsoleStyle('warn') as console:
-                msg = 'No configuration file found. A new configuration file has been created in your home directory. Please run the setup wizard in your console using the `symwzd` command or manually set your `.symai/symai.config.json` config situated in your home directory or set the environment variables for the respective engines.'
-                console.print(msg)
+            CustomUserWarning('No configuration file found. A new configuration file has been created in your home directory. Please run the setup wizard in your console using the `symwzd` command or manually set your `.symai/symai.config.json` config situated in your home directory or set the environment variables for the respective engines.')
 
         # LOAD THE CONFIGURATION FILE
         # *==========================================================================================================*
@@ -214,9 +212,7 @@ def _start_symai():
     if 'custom' not in _symai_config_['NEUROSYMBOLIC_ENGINE_MODEL'].lower() and \
                       (_symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY'] is None or len(_symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY']) == 0):
 
-        with ConsoleStyle('warn') as console:
-            msg = 'The mandatory neuro-symbolic engine is not initialized. Please get a key from https://beta.openai.com/account/api-keys and set either a general environment variable OPENAI_API_KEY or a module specific environment variable NEUROSYMBOLIC_ENGINE_API_KEY.'
-            console.print(msg)
+        CustomUserWarning('The mandatory neuro-symbolic engine is not initialized. Please get a key from https://beta.openai.com/account/api-keys and set either a general environment variable OPENAI_API_KEY or a module specific environment variable NEUROSYMBOLIC_ENGINE_API_KEY.')
 
     settings.SYMAI_CONFIG = _symai_config_
     settings.SYMSH_CONFIG = _symsh_config_
@@ -279,15 +275,15 @@ _start_symai()
 
 
 from .backend.base import Engine
+from .components import Function, PrimitiveDisabler
+from .core import few_shot, zero_shot
+from .extended import Conversation
+from .functional import EngineRepository
+from .imports import Import
+from .interfaces import Interface
+from .post_processors import PostProcessor
+from .pre_processors import PreProcessor
 from .prompts import Prompt
 from .shell import Shell
 from .strategy import Strategy
-from .symbol import Symbol, Expression, Metadata, Call, GlobalSymbolPrimitive
-from .interfaces import Interface
-from .imports import Import
-from .components import Function
-from .pre_processors import PreProcessor
-from .post_processors import PostProcessor
-from .extended import Conversation
-from .core import few_shot, zero_shot
-from .functional import EngineRepository
+from .symbol import Call, Expression, GlobalSymbolPrimitive, Metadata, Symbol

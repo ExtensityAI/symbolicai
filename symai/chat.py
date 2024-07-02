@@ -3,7 +3,6 @@ import re
 
 from typing import Any, Optional
 
-from .backend.mixin.tracker import OpenAICostTracker
 from .backend import settings as settings
 from .components import (IncludeFilter, InContextClassification,
                          Outline, Output, Sequence)
@@ -303,10 +302,8 @@ Reflection: {self._extract_reflection(context)}
         return scratchpad
 
 def run() -> None:
-    with OpenAICostTracker() as tracker:
-        chat = SymbiaChat()
-        chat()
-    print(tracker)
+    chat = SymbiaChat()
+    chat()
 
 if __name__ == '__main__':
     run()

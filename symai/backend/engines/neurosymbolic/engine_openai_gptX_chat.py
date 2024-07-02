@@ -8,7 +8,7 @@ import tiktoken
 
 from ....misc.console import ConsoleStyle
 from ....symbol import Symbol
-from ....utils import CustomUserWarning, encode_frames_file
+from ....utils import CustomUserWarning, encode_media_frames
 from ...base import Engine
 from ...mixin.openai import OpenAIMixin
 from ...settings import SYMAI_CONFIG
@@ -49,8 +49,7 @@ class InvalidRequestErrorRemedyChatStrategy:
         if handle == 'type1':
             truncated_content_ = [p['content'][overflow_tokens:] for p in prompts]
             truncated_prompts_ = [{'role': p['role'], 'content': c} for p, c in zip(prompts, truncated_content_)]
-            with ConsoleStyle('warn') as console:
-                console.print(f"WARNING: Overflow tokens detected. Reducing prompt size by {overflow_tokens} characters.")
+            CustomUserWarning(f"WARNING: Overflow tokens detected. Reducing prompt size by {overflow_tokens} characters.")
         elif handle == 'type2':
             user_prompts = [p['content'] for p in prompts]
             new_prompt   = [*system_prompt]
@@ -119,15 +118,12 @@ class InvalidRequestErrorRemedyChatStrategy:
 class GPTXChatEngine(Engine, OpenAIMixin):
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         super().__init__()
-        logger = logging.getLogger('openai')
-        logger.setLevel(logging.WARNING)
         self.config = SYMAI_CONFIG
         if self.id() != 'neurosymbolic':
             return # do not initialize if not neurosymbolic; avoids conflict with llama.cpp check in EngineRepository.register_from_package
         openai.api_key           = self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] if api_key is None else api_key
         self.model               = self.config['NEUROSYMBOLIC_ENGINE_MODEL'] if model is None else model
         self.tokenizer           = tiktoken.encoding_for_model(self.model)
-        self.pricing             = self.api_pricing()
         self.max_context_tokens  = self.api_max_context_tokens()
         self.max_response_tokens = self.api_max_response_tokens()
         self.seed                = None
@@ -298,7 +294,9 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         system = f'{system}\n' if system and len(system) > 0 else ''
 
         if argument.prop.response_format:
-            system += '<JSON_RESPONSE/>\n You will output JSON!\n\n'
+            _rsp_fmt = argument.prop.response_format
+            assert _rsp_fmt.get('type') is not None, 'Expected format `{ "type": "json_object" }`! See https://platform.openai.com/docs/api-reference/chat/create#chat-create-response_format'
+            system += f'<RESPONSE_FORMAT/>\n{_rsp_fmt["type"]}\n\n'
 
         ref = argument.prop.instance
         static_ctxt, dyn_ctxt = ref.global_context
@@ -348,7 +346,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
                         max_used_frames = int(max_used_frames)
                         if max_used_frames < 1 or max_used_frames > max_frames_spacing:
                             raise ValueError(f"Invalid max_used_frames value: {max_used_frames}. Expected value between 1 and {max_frames_spacing}")
-                    buffer, ext = encode_frames_file(img_)
+                    buffer, ext = encode_media_frames(img_)
                     if len(buffer) > 1:
                         step = len(buffer) // max_frames_spacing # max frames spacing
                         frames = []

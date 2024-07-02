@@ -1,51 +1,55 @@
-import asyncio
 import json
+import requests
 import logging
 import re
+
 from typing import List, Optional
 
-import aiohttp
-
-from ....utils import CustomUserWarning
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
+from ....utils import CustomUserWarning
+
 
 logging.getLogger("requests").setLevel(logging.ERROR)
 logging.getLogger("urllib").setLevel(logging.ERROR)
 logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
 
+
 class LlamaCppTokenizer:
     _server_endpoint = SYMAI_CONFIG.get('NEUROSYMBOLIC_ENGINE_API_KEY')
 
     @staticmethod
-    async def _arequest_encode(text: str) -> List[int]:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(f"{LlamaCppTokenizer._server_endpoint}/extras/tokenize", json={"input": text}) as res:
-                if res.status != 200:
-                    raise ValueError(f"Request failed with status code: {res.status}")
-                res_json = await res.json()
-                return res_json['tokens']
-
-    @staticmethod
-    async def _areqest_decode(tokens: List[int]) -> str:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(f"{LlamaCppTokenizer._server_endpoint}/extras/detokenize", json={"tokens": tokens}) as res:
-                if res.status != 200:
-                    raise ValueError(f"Request failed with status code: {res.status}")
-                res_json = await res.json()
-                return res_json['text']
-
-    @staticmethod
     def encode(text: str) -> List[int]:
-        return asyncio.run(LlamaCppTokenizer._arequest_encode(text))
+        res = requests.post(f"{LlamaCppTokenizer._server_endpoint}/extras/tokenize", json={
+            "input": text,
+        })
+
+        if res.status_code != 200:
+            raise ValueError(f"Request failed with status code: {res.status_code}")
+
+        res = res.json()
+
+        return res['tokens']
 
     @staticmethod
     def decode(tokens: List[int]) -> str:
-        return asyncio.run(LlamaCppTokenizer._areqest_decode(tokens))
+        res = requests.post(f"{LlamaCppTokenizer._server_endpoint}/extras/detokenize", json={
+            "tokens": tokens,
+        })
+
+        if res.status_code != 200:
+            raise ValueError(f"Request failed with status code: {res.status_code}")
+
+        res = res.json()
+
+        return res['text']
+
 
 class LlamaCppEngine(Engine):
-    def __init__(self):
+    def __init__(
+            self
+        ):
         super().__init__()
         self.config = SYMAI_CONFIG
         self.server_endpoint = self.config.get('NEUROSYMBOLIC_ENGINE_API_KEY')
@@ -76,59 +80,52 @@ class LlamaCppEngine(Engine):
         #@TODO: quite non-trivial how to handle this with the llama.cpp server
         raise NotImplementedError
 
-    async def arequest(self, **kwargs):
-        async with aiohttp.ClientSession() as session:
-            async with session.post(f"{self.server_endpoint}/v1/chat/completions", json=kwargs) as res:
-                if res.status != 200:
-                    raise ValueError(f"Request failed with status code: {res.status}")
-                res_json = await res.json()
-                return res_json
-
     def forward(self, argument):
-        kwargs = argument.kwargs
-        prompts_ = argument.prop.prepared_input
+        kwargs        = argument.kwargs
+        prompts_      = argument.prop.prepared_input
 
-        stop = kwargs.get('stop')
-        seed = kwargs.get('seed')
-        temperature = kwargs.get('temperature', 0.6)
+        stop              = kwargs.get('stop')
+        seed              = kwargs.get('seed')
+        temperature       = kwargs.get('temperature', 0.6)
         frequency_penalty = kwargs.get('frequency_penalty', 0)
-        presence_penalty = kwargs.get('presence_penalty', 0)
-        top_p = kwargs.get('top_p', 0.95)
-        min_p = kwargs.get('min_p', 0.05)
-        n = kwargs.get('n', 1)
-        max_tokens = kwargs.get('max_tokens')
-        top_logprobs = kwargs.get('top_logprobs')
-        top_k = kwargs.get('top_k', 40)
-        repeat_penalty = kwargs.get('repeat_penalty', 1)
-        logits_bias = kwargs.get('logits_bias')
-        logprobs = kwargs.get('logprobs', False)
-        functions = kwargs.get('functions')
-        function_call = kwargs.get('function_call')
-        grammar = kwargs.get('grammar')
-        except_remedy = kwargs.get('except_remedy') #@TODO: mimic openai logic here (somehow)
+        presence_penalty  = kwargs.get('presence_penalty', 0)
+        top_p             = kwargs.get('top_p', 0.95)
+        min_p             = kwargs.get('min_p', 0.05)
+        n                 = kwargs.get('n', 1)
+        max_tokens        = kwargs.get('max_tokens')
+        top_logprobs      = kwargs.get('top_logprobs')
+        top_k             = kwargs.get('top_k', 40)
+        repeat_penalty    = kwargs.get('repeat_penalty', 1)
+        logits_bias       = kwargs.get('logits_bias')
+        logprobs          = kwargs.get('logprobs', False)
+        functions         = kwargs.get('functions')
+        function_call     = kwargs.get('function_call')
+        grammar           = kwargs.get('grammar')
+        except_remedy     = kwargs.get('except_remedy') #@TODO: mimic openai logic here (somehow)
 
         try:
-            res = asyncio.run(
-                    self.arequest(
-                        messages=prompts_,
-                        temperature=temperature,
-                        frequency_penalty=frequency_penalty,
-                        presence_penalty=presence_penalty,
-                        top_p=top_p,
-                        stop=stop,
-                        seed=seed,
-                        max_tokens=max_tokens,
-                        top_k=top_k,
-                        repeat_penalty=repeat_penalty,
-                        logits_bias=logits_bias,
-                        logprobs=logprobs,
-                        top_logprobs=top_logprobs,
-                        functions=functions,
-                        function_call=function_call,
-                        grammar=grammar,
-                        n=n,
-                    )
-                )
+            res = requests.post(f"{self.server_endpoint}/v1/chat/completions", json={
+                "messages": prompts_,
+                "temperature": temperature,
+                "frequency_penalty": frequency_penalty,
+                "presence_penalty": presence_penalty,
+                "top_p": top_p,
+                "stop": stop,
+                "seed": seed,
+                "max_tokens": max_tokens,
+                "top_k": top_k,
+                "repeat_penalty": repeat_penalty,
+                "logits_bias": logits_bias,
+                "logprobs": logprobs,
+                "functions": functions,
+                "function_call": function_call,
+                "grammar": grammar,
+            })
+
+            if res.status_code != 200:
+                raise ValueError(f"Request failed with status code: {res.status_code}")
+
+            res = res.json()
 
         except Exception as e:
             if except_remedy is not None:
@@ -160,7 +157,7 @@ class LlamaCppEngine(Engine):
         #       For instance Mixtral-8x7B can't use the system role with llama.cpp while other models can, or Mixtral-8x22B expects the conversation roles must
         #       alternate user/assistant/user/assistant/..., so how to handle this?
         #       For now just use the user, as one can rephrase the system from the user perspective.
-        user: str = ""
+        user:   str = ""
 
         if argument.prop.suppress_verbose_output:
             user += _non_verbose_output
@@ -190,7 +187,7 @@ class LlamaCppEngine(Engine):
 
         user += str(argument.prop.processed_input)
 
+        print(user)
         argument.prop.prepared_input = [
-            {"role": "user", "content": user},
+            { "role": "user", "content": user },
         ]
-
