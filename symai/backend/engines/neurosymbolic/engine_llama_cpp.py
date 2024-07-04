@@ -187,7 +187,6 @@ class LlamaCppEngine(Engine):
 
         user += str(argument.prop.processed_input)
 
-        print(user)
         argument.prop.prepared_input = [
             { "role": "user", "content": user },
         ]
