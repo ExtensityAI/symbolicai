@@ -1,6 +1,8 @@
 import json
 import logging
 import os
+import subprocess
+import sys
 import warnings
 from pathlib import Path
 
@@ -8,6 +10,7 @@ from .backend import settings
 from .menu.screen import show_menu
 from .misc.console import ConsoleStyle
 from .utils import CustomUserWarning
+from .server.llama_cpp_server import llama_cpp_server
 
 # do not remove - hides the libraries' debug messages
 logging.getLogger("urllib3").setLevel(logging.WARNING)
@@ -34,6 +37,7 @@ __root_dir__  = Path.home() / '.symai'
 def _start_symai():
     global _symai_config_
     global _symsh_config_
+    global _symserver_config_
 
     # CREATE THE SYMAI FOLDER IF IT DOES NOT EXIST YET
     # *==============================================================================================================*
@@ -61,6 +65,13 @@ def _start_symai():
                 "map-nt-cmd":                             True,
                 "show-splash-screen":                     True,
             }, f, indent=4)
+
+    # CREATE A SERVER CONFIGURATION FILE IF IT DOES NOT EXIST YET
+    # *==============================================================================================================*
+    _symserver_config_path_ = __root_dir__ / 'symserver.config.json'
+    if not os.path.exists(_symserver_config_path_):
+        with open(_symserver_config_path_, "w") as f:
+            json.dump({}, f, indent=4)
 
     # CHECK IF THE USER HAS A CONFIGURATION FILE IN THE CURRENT WORKING DIRECTORY (DEBUGGING MODE)
     # *==============================================================================================================*
@@ -190,15 +201,20 @@ def _start_symai():
             with open(_symai_config_path_, 'w') as f:
                 json.dump(_symai_config_, f, indent=4)
 
-    # CHECK IF MANADATORY API KEYS ARE SET
+    # LOAD THE CONFIGURATION FILE
     # *==============================================================================================================*
     with open(_symai_config_path_, 'r', encoding="utf-8") as f:
         _symai_config_ = json.load(f)
 
     # LOAD THE SHELL CONFIGURATION FILE
-    # *==========================================================================================================*
+    # *==============================================================================================================*
     with open(_symsh_config_path_, 'r', encoding="utf-8") as f:
         _symsh_config_ = json.load(f)
+
+    # LOAD THE SERVER CONFIGURATION FILE
+    # *==============================================================================================================*
+    with open(_symserver_config_path_, 'r', encoding="utf-8") as f:
+        _symserver_config_ = json.load(f)
 
     # MIGRATE THE SHELL SPLASH SCREEN CONFIGURATION
     # *==============================================================================================================*
@@ -209,18 +225,44 @@ def _start_symai():
 
     # CHECK IF THE USER HAS OPENAI API KEY
     # *==============================================================================================================*
-    if 'custom' not in _symai_config_['NEUROSYMBOLIC_ENGINE_MODEL'].lower() and \
-                      (_symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY'] is None or len(_symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY']) == 0):
+    if not (
+        _symai_config_['NEUROSYMBOLIC_ENGINE_MODEL'].lower().startswith('llama') or \
+        _symai_config_['NEUROSYMBOLIC_ENGINE_MODEL'].lower().startswith('hf')) \
+        and \
+            (
+            _symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY'] is None or \
+            len(_symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY']) == 0):
 
         CustomUserWarning('The mandatory neuro-symbolic engine is not initialized. Please get a key from https://beta.openai.com/account/api-keys and set either a general environment variable OPENAI_API_KEY or a module specific environment variable NEUROSYMBOLIC_ENGINE_API_KEY.')
 
     settings.SYMAI_CONFIG = _symai_config_
     settings.SYMSH_CONFIG = _symsh_config_
+    settings.SYMSERVER_CONFIG = _symserver_config_
 
 
 def run_setup_wizard(file_path = __root_dir__ / 'symai.config.json'):
     setup_wizard(file_path)
 
+
+def run_server():
+    _symserver_config_ = {}
+    if settings.SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL").startswith("llama"):
+        command, args = llama_cpp_server()
+        _symserver_config_.update(zip(args[::2], args[1::2]))
+        _symserver_config_['online'] = True
+
+        with open(__root_dir__ / "symserver.config.json", "w") as f:
+            json.dump(_symserver_config_, f, indent=4)
+
+        try:
+            subprocess.run(command, check=True)
+        except KeyboardInterrupt:
+            print("Server stopped by user.")
+        except Exception as e:
+            print(f"Error running server: {e}")
+        finally:
+            with open(__root_dir__ / "symserver.config.json", "w") as f:
+                json.dump({'online': False}, f, indent=4)
 
 def setup_wizard(_symai_config_path_, show_wizard=True):
     _user_config_                   = show_menu(show_wizard=show_wizard)

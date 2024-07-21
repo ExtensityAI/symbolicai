@@ -153,7 +153,7 @@ import symai as ai
 Overall, the following engines are currently supported:
 
 * **Neuro-Symbolic Engine**: [OpenAI's LLMs (supported GPT-3, ChatGPT, GPT-4)](https://beta.openai.com/docs/introduction/overview)
-  (as an experimental alternative using **RPC Client-Server Egnine** for local HuggingFace models)
+  (as an experimental alternative using **llama.cpp** for local models)
 * **Embedding Engine**: [OpenAI's Embedding API](https://beta.openai.com/docs/introduction/overview)
 * **[Optional] Symbolic Engine**: [WolframAlpha](https://www.wolframalpha.com/)
 * **[Optional] Search Engine**: [SerpApi](https://serpapi.com/)
@@ -1313,19 +1313,33 @@ array([[9.72840726e-01, 6.34790864e-03, 2.59368378e-03, 3.41371237e-03,
 
 You can use a locally hosted instance for the Neuro-Symbolic Engine. We build on top of [llama.cpp](https://github.com/ggerganov/llama.cpp/tree/master) through [llama-cpp-python](https://github.com/abetlen/llama-cpp-python?tab=readme-ov-file). Please follow the `llama-cpp-python` installation instructions. We make the assumption the user has experience running `llama.cpp` prior to using our API for local hosting.
 
-For instance, let's suppose you want to set as a Neuro-Symbolic Engine the latest Llama 3 model. Download the model and start the server:
+For instance, let's suppose you want to set as a Neuro-Symbolic Engine the latest Llama 3 model. First, download the model with the HuggingFace CLI:
 ```bash
-python -m llama_cpp.server --model [your llama.cpp folder]/models/llama-pro-8b-instruct.Q4_K_M.gguf --n_gpu_layers -1 --chat_format llama-3 --port 8000 --host localhost
+huggingface-cli download TheBloke/LLaMA-Pro-8B-Instruct-GGUF llama-pro-8b-instruct.Q4_K_M.gguf --local-dir .
 ```
 
-Then, in your `symai.config.json` file, set the `NEUROSYMBOLIC_ENGINE_API_KEY` to `http://localhost:8000` (following the `--port` and `--host` you set in the previous step) and `NEUROSYMBOLIC_ENGINE_MODEL` to `llama.cpp`.
+Normally, to start the server through `llama.cpp` you would run something that looks like this:
+```bash
+python -m llama_cpp.server --model ./llama-pro-8b-instruct.Q4_K_M.gguf --n_gpu_layers -1 --chat_format llama-3 --port 8000 --host localhost
+```
+With `symai`, simply set the `NEUROSYMBOLIC_ENGINE_MODEL` to `llamacpp`:
 
 ```json
 {
-  "NEUROSYMBOLIC_ENGINE_API_KEY": "http://localhost:8000",
-  "NEUROSYMBOLIC_ENGINE_MODEL": "llama.cpp"
+  "NEUROSYMBOLIC_ENGINE_API_KEY": "",
+  "NEUROSYMBOLIC_ENGINE_MODEL": "llamacpp",
+  ...
 }
 ```
+Then, run `symserver` with options available for `llama.cpp`:
+```bash
+symserver --model ./llama-pro-8b-instruct.Q4_K_M.gguf --n_gpu_layers -1 --chat_format llama-3 --port 8000 --host localhost
+```
+To see all the available options `llama.cpp` provides, run:
+```bash
+symserver --help
+```
+
 Now you are set to use the local engine.
 
 ```python

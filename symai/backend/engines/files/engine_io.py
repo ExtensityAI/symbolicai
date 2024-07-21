@@ -3,7 +3,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-import PyPDF2
+import pypdf
 import tika
 from tika import unpack
 
@@ -113,7 +113,7 @@ class FileEngine(Engine):
         with open(new_file_path, 'wb') as f:
             f.writelines(txtx)
 
-        fixed_pdf = PyPDF2.PdfReader(new_file_path)
+        fixed_pdf = pypdf.PdfReader(new_file_path)
         return fixed_pdf
 
     def read_text(self, pdf_reader, page_range, argument):
@@ -147,14 +147,14 @@ class FileEngine(Engine):
             try:
                 with open(str(path), 'rb') as f:
                     # creating a pdf reader object
-                    pdf_reader = PyPDF2.PdfReader(f)
+                    pdf_reader = pypdf.PdfReader(f)
                     rsp = self.read_text(pdf_reader, page_range, argument)
             except Exception as e:
                 print(f'Error reading PDF: {e} | {path}')
                 if 'fix_pdf' not in kwargs or not kwargs['fix_pdf']:
                     raise e
                 fixed_pdf = self.fix_pdf(str(path))
-                pdf_reader_fixed = PyPDF2.PdfReader(fixed_pdf)
+                pdf_reader_fixed = pypdf.PdfReader(fixed_pdf)
                 rsp = self.read_text(pdf_reader_fixed, page_range, argument)
         else:
             try:
