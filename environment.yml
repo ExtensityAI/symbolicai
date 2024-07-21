@@ -22,7 +22,7 @@ dependencies:
   - pyyaml
   - transformers
   - openai
-  - pypdf2
+  - pypdf
   - ipython
   - beautifulsoup4
   - selenium
