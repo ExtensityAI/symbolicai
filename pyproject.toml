@@ -26,6 +26,7 @@ dependencies = [
     "tqdm==4.66.3",
     "python-box==7.1.1",
     "rpyc==6.0.0",
+    "pytest==8.3.1",
     "pandas==2.2.2",
     "scikit-learn==1.5.0",
     "torch==2.2.2",

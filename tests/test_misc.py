@@ -7,6 +7,7 @@ from symai.backend.settings import SYMAI_CONFIG
 
 NEUROSYMBOLIC = SYMAI_CONFIG.get('NEUROSYMBOLIC_ENGINE_MODEL')
 
+@pytest.mark.skipif(NEUROSYMBOLIC.startswith('llama'), reason='llamacpp JSON format not yet supported')
 def test_json_format():
     res = Expression.prompt(
         message=[
