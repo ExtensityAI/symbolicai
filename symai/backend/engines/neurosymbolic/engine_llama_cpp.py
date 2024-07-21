@@ -52,6 +52,8 @@ class LlamaCppEngine(Engine):
         ):
         super().__init__()
         self.config = SYMAI_CONFIG
+        if self.id() != 'neurosymbolic':
+            return
         if not SYMSERVER_CONFIG.get('online'):
             raise CustomUserWarning('You are using the llama.cpp engine, but the server endpoint is not started. Please start the server with `symserver [--args]` or run `symserver --help` to see the available options for this engine.')
         self.server_endpoint = f"http://{SYMSERVER_CONFIG.get('--host')}:{SYMSERVER_CONFIG.get('--port')}"
