@@ -97,6 +97,7 @@ exclude = ["tests", "examples", "notebooks", "outputs", "assets", "app.py"]
 [project.scripts]
 symchat   = "symai.chat:run"
 symsh     = "symai.shell:run"
+symserver = "symai:run_server"
 symwzd    = "symai:run_setup_wizard"
 sympkg    = "symai.extended.packages.sympkg:run"
 symdev    = "symai.extended.packages.symdev:run"
