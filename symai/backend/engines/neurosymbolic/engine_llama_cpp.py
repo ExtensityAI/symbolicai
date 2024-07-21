@@ -6,7 +6,7 @@ import re
 from typing import List, Optional
 
 from ...base import Engine
-from ...settings import SYMAI_CONFIG
+from ...settings import SYMAI_CONFIG, SYMSERVER_CONFIG
 from ....utils import CustomUserWarning
 
 
@@ -17,7 +17,7 @@ logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
 class LlamaCppTokenizer:
-    _server_endpoint = SYMAI_CONFIG.get('NEUROSYMBOLIC_ENGINE_API_KEY')
+    _server_endpoint = f"http://{SYMSERVER_CONFIG.get('--host')}:{SYMSERVER_CONFIG.get('--port')}"
 
     @staticmethod
     def encode(text: str) -> List[int]:
@@ -52,14 +52,15 @@ class LlamaCppEngine(Engine):
         ):
         super().__init__()
         self.config = SYMAI_CONFIG
-        self.server_endpoint = self.config.get('NEUROSYMBOLIC_ENGINE_API_KEY')
-        if (self.server_endpoint is None or self.server_endpoint == '') and \
-            not self.server_endpoint.startswith('http:'):
-            raise ValueError('Invalid server endpoint! You are using the llama.cpp engine, but the server endpoint is not set. Please add the `NEUROSYMBOLIC_ENGINE_API_KEY` in the format `http://<ip>:<port>` to the `symai.config.json` file.')
+        if self.id() != 'neurosymbolic':
+            return
+        if not SYMSERVER_CONFIG.get('online'):
+            raise CustomUserWarning('You are using the llama.cpp engine, but the server endpoint is not started. Please start the server with `symserver [--args]` or run `symserver --help` to see the available options for this engine.')
+        self.server_endpoint = f"http://{SYMSERVER_CONFIG.get('--host')}:{SYMSERVER_CONFIG.get('--port')}"
         self.tokenizer = LlamaCppTokenizer # backwards compatibility with how we handle tokenization, i.e. self.tokenizer().encode(...)
 
     def id(self) -> str:
-        if self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') == 'llama.cpp':
+        if self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('llama'):
             return 'neurosymbolic'
         return super().id() # default to unregistered
 
@@ -187,7 +188,6 @@ class LlamaCppEngine(Engine):
 
         user += str(argument.prop.processed_input)
 
-        print(user)
         argument.prop.prepared_input = [
             { "role": "user", "content": user },
         ]
