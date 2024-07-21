@@ -37,6 +37,7 @@ def test_vision():
     assert 'cat' in res.value
 
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('claude'), reason='Claude tokens computation is not yet implemented')
+@pytest.mark.skipif(NEUROSYMBOLIC.startswith('llama'), reason='llamacpp tokens computation is not yet implemented')
 def test_tokenizer():
     messages = [
         {
