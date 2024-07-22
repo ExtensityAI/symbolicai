@@ -1,15 +1,14 @@
 import logging
+from typing import List, Optional
+
 import openai
 import tiktoken
 
-from typing import List, Optional
-
+from ....misc.console import ConsoleStyle
+from ....utils import CustomUserWarning
 from ...base import Engine
 from ...mixin.openai import OpenAIMixin
 from ...settings import SYMAI_CONFIG
-from ....utils import CustomUserWarning
-from ....misc.console import ConsoleStyle
-
 
 logging.getLogger("openai").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)

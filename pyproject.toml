@@ -33,7 +33,7 @@ dependencies = [
     "torchaudio==2.2.2",
     "torchvision==0.17.2",
     "PyYAML==6.0.1",
-    "transformers==4.38.2",
+    "transformers==4.42.4",
     "sympy==1.12",
     "openai==1.13.3",
     "anthropic==0.29.0",
@@ -56,11 +56,14 @@ dependencies = [
     "requests-toolbelt==1.0.0",
     "pyvis==0.3.2",
     "beartype==0.18.2",
+    "pydantic==2.8.2",
+    "pydantic-core==2.20.1",
+    "pydantic-settings==2.3.4",
     "pycryptodome==3.20.0"
 ]
 
 [project.optional-dependencies]
-blip2        = ["bitsandbytes==0.43.1", "decord==0.6.0", "salesforce-lavis==1.0.0"]
+blip2        = ["bitsandbytes==0.43.1", "decord==0.6.0", "salesforce-lavis==1.0.0", "opencv-python-headless==4.5.5.64"]
 wolframalpha = ["wolframalpha==5.0.0"]
 whisper      = ["openai-whisper==20231117"]
 selenium     = ["selenium==4.18.1", "webdriver-manager==4.0.1", "chromedriver-autoinstaller==0.6.4"]
