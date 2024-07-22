@@ -8,6 +8,9 @@ from string import ascii_lowercase, ascii_uppercase
 from typing import Callable, Iterator, List, Optional, Type, Union
 
 import numpy as np
+from attr import dataclass
+from box import Box
+from pydantic import BaseModel, ValidationError
 from pyvis.network import Network
 from tqdm import tqdm
 
@@ -923,4 +926,285 @@ class PrimitiveDisabler(Expression):
                     if method in self._primitives or method.startswith('_'):
                         continue
                     self._primitives.add(method)
+
+
+class FunctionWithUsage(Function):
+    def __init__(
+        self,
+        missing_usage_exception: bool = True,
+        *args,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+        self.prompt_tokens = 0
+        self.completion_tokens = 0
+        self.total_tokens = 0
+        self.missing_usage_exception = missing_usage_exception
+
+    def _format_usage(self, prompt_tokens, completion_tokens, total_tokens):
+        return Box(
+            {
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": total_tokens,
+            }
+        )
+
+    def reset_usage(self):
+        self.prompt_tokens = 0
+        self.completion_tokens = 0
+        self.total_tokens = 0
+
+    def add_usage(self, usage):
+        self.prompt_tokens += usage.prompt_tokens
+        self.completion_tokens += usage.completion_tokens
+        self.total_tokens += usage.total_tokens
+
+    def get_usage(self):
+        return self._format_usage(self.prompt_tokens, self.completion_tokens, self.total_tokens)
+
+    def forward(self, *args, **kwargs):
+        if "return_metadata" not in kwargs:
+            kwargs["return_metadata"] = True
+
+        res, metadata = super().forward(*args, **kwargs)
+
+        raw_output = metadata.get("raw_output")
+        if hasattr(raw_output, "usage"):
+            usage = raw_output.usage
+            prompt_tokens = (
+                usage.prompt_tokens if hasattr(usage, "prompt_tokens") else 0
+            )
+            completion_tokens = (
+                usage.completion_tokens if hasattr(usage, "completion_tokens") else 0
+            )
+            total_tokens = usage.total_tokens if hasattr(usage, "total_tokens") else 0
+
+            print(
+                f"[Usage] Prompt: {prompt_tokens} Completion: {completion_tokens} Total: {total_tokens}"
+            )
+
+            # keep running total
+            self.prompt_tokens += prompt_tokens
+            self.completion_tokens += completion_tokens
+            self.total_tokens += total_tokens
+        else:
+            if self.missing_usage_exception and not "preview" in kwargs:
+                raise Exception("Missing usage in metadata of neursymbolic engine")
+            else:
+                prompt_tokens = 0
+                completion_tokens = 0
+                total_tokens = 0
+
+        return res, self._format_usage(prompt_tokens, completion_tokens, total_tokens)
+
+
+class ValidatedFunction(FunctionWithUsage):
+    def __init__(
+        self,
+        data_model: BaseModel = None,
+        retry_count=5,
+        *args,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+        self.retry_count = retry_count
+        self.data_model = data_model
+
+    def forward(self, *args, **kwargs):
+        # force JSON mode
+        kwargs["response_format"] = {"type": "json_object"}
+        if "JSON" not in self.static_context:
+            raise Exception("The static context must contain the string 'JSON'")
+
+        json, usage = super().forward(*args, **kwargs)
+
+        # get list of seeds for remedy (to avoid same remedy for same input)
+        if "seed" in kwargs:
+            seed = kwargs["seed"]
+            rnd = np.random.RandomState(seed=seed)
+        else:
+            rnd = np.random.RandomState(seed=42)
+        remedy_seeds = rnd.randint(0, np.iinfo(np.int16).max, size=self.retry_count, dtype=np.int16).tolist()
+
+        # prepare remedy function
+        remedy_function = FunctionWithUsage(
+            (
+                "The following string should be in JSON format but contains errors. "
+                + "Fix the errors and return a valid JSON string that is valid for the given JSON schema without changing values.\n"
+            ),
+            static_context="You are an agent for validating JSON schemas and fixing errors.",
+            response_format={"type": "json_object"}
+        )
+
+        # try to validate the JSON and fix if necessary
+        result = None
+        for i in range(self.retry_count):
+            try:
+                # try to validate against provided data model
+                result = self.data_model.model_validate_json(json, strict=True)
+                break
+            except ValidationError as e:
+                # in case of validation error collect and format error messages
+                error_str = ""
+                for error in e.errors():
+                    error_str += f"[ERROR] {error['msg']}: {error['loc']}\n"
+
+                # ask model to fix the error
+                print(f"[Retry {i + 1}/{self.retry_count}] ValidationError: ", e)
+                remedy_function.clear()
+                remedy_function.adapt(
+                    "[[JSON Schema]]\n"
+                    + str(self.data_model.model_json_schema(mode="validation"))
+                    + "\n\n"
+                )
+                remedy_function.adapt("[[ERRORS]]\n" + error_str + "\n")
+                json, remedy_usage = remedy_function(json, seed=remedy_seeds[i])
+
+                # update usage
+                usage.prompt_tokens += remedy_usage.prompt_tokens
+                usage.completion_tokens += remedy_usage.completion_tokens
+                usage.total_tokens += remedy_usage.total_tokens
+
+                # update global usage
+                self.add_usage(remedy_usage)
+
+        if result is None:
+            raise Exception("Failed to retrieve valid JSON")
+
+        return result, usage
+
+
+@dataclass
+class LengthConstraint:
+    field_name: str
+    min_characters: int = 0
+    max_characters: int = 1000
+
+
+class LengthConstrainedFunction(ValidatedFunction):
+    def __init__(
+        self,
+        character_constraints: List[LengthConstraint] | LengthConstraint,
+        constraint_retry_count: int = 5,
+        *args,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+        self.character_constraints = character_constraints
+        self.constraint_retry_count = constraint_retry_count
+
+    def forward(self, *args, **kwargs):
+        result, usage = super().forward(*args, **kwargs)
+
+        original_task = args[0]  # TODO can we validate this?
+
+        # get list of seeds for remedy (to avoid same remedy for same input)
+        if "seed" in kwargs:
+            seed = kwargs["seed"]
+            rnd = np.random.RandomState(seed=seed)
+        else:
+            rnd = np.random.RandomState(seed=42)
+        remedy_seeds = rnd.randint(0, np.iinfo(np.int16).max, size=self.constraint_retry_count, dtype=np.int16).tolist()
+
+        for i in range(self.constraint_retry_count):
+            constraint_violations = self.check_constraints(result)
+            if len(constraint_violations) > 0:
+                print(f"Constraint violations: {constraint_violations}")
+                remedy_task = self.wrap_task(
+                    original_task, result.model_dump_json(), constraint_violations
+                )
+                kwargs["seed"] = remedy_seeds[i]
+                result, remedy_usage = super().forward(remedy_task, *args[1:], **kwargs)
+                # update local usage
+                usage.prompt_tokens += remedy_usage.prompt_tokens
+                usage.completion_tokens += remedy_usage.completion_tokens
+                usage.total_tokens += remedy_usage.total_tokens
+            else:
+                break
+
+        if i == self.constraint_retry_count and len(self.check_constraints(result)) > 0:
+            raise Exception("Failed to enforce constraints")
+
+        return result, usage
+
+    def check_constraints(self, result: BaseModel):
+        constraint_violations = []
+        if type(self.character_constraints) is not list:
+            character_constraints = [self.character_constraints]
+        else:
+            character_constraints = self.character_constraints
+
+        for constraint in character_constraints:
+            for field_value in self.get(result, constraint.field_name):
+                if (
+                    not constraint.min_characters
+                    <= len(field_value)
+                    <= constraint.max_characters
+                ):
+                    # TODO improve for lists (especially table of contents) by providing the index
+                    print(
+                        f"Field {constraint.field_name} must have between {constraint.min_characters} and {constraint.max_characters} characters, has {len(field_value)}"
+                    )
+                    remedy_str = [
+                        f"The field {constraint.field_name} must have between {constraint.min_characters} and {constraint.max_characters} characters, but has {len(field_value)}."
+                    ]
+                    if len(field_value) < constraint.min_characters:
+                        remedy_str.append(
+                            f"Increase the length of {constraint.field_name} by at least {constraint.min_characters - len(field_value)} characters."
+                        )
+                    elif len(field_value) > constraint.max_characters:
+                        remedy_str.append(
+                            f"Decrease the length of {constraint.field_name} by at least {len(field_value) - constraint.max_characters} characters."
+                        )
+                    constraint_violations.append(" ".join(remedy_str))
+                else:
+                    print(f"[PASS] Field {constraint.field_name} passed length validation: {len(field_value)} ({constraint.min_characters} - {constraint.max_characters})")
+
+        return constraint_violations
+
+    def wrap_task(self, task: str, result: str, violations: List[str]):
+        wrapped_task = [
+            "Your task was the following: \n\n" + task + "\n",
+            "Your output was the following: \n\n" + result + "\n",
+            "However, the output did violate the following constraints:",
+        ]
+        for constraint_violation in violations:
+            wrapped_task.append(constraint_violation)
+        wrapped_task.append(
+            "\nFollow the original task and make sure to adhere to the constraints."
+        )
+        return "\n".join(wrapped_task)
+
+    @staticmethod
+    def get(obj, path: str):
+        value = obj
+        for i, key in enumerate(path.split('.')):
+            if isinstance(value, list):
+                try:
+                    index = int(key)
+                    if index < len(value):
+                        value = value[index]
+                    else:
+                        raise ValueError(f"Index {index} out of range in {value}")
+                except:
+                    values = []
+                    for val in value:
+                        leaf = LengthConstrainedFunction.get(val, ".".join(path.split('.')[i:]))
+                        values.extend(leaf)
+                    return values
+            elif isinstance(value, dict):
+                if key in value:
+                    value = value[key]
+                else:
+                    raise ValueError(f"Key {key} not found in {value}")
+            else:
+                if hasattr(value, key):
+                    value = getattr(value, key)
+                else:
+                    raise ValueError(f"Key {key} not found in {value}")
+
+        if not isinstance(value, list):
+            value = [value]
+        return value
 
