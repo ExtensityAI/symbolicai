@@ -160,7 +160,8 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             "gpt-4-0613",
             "gpt-4-32k-0613",
             "gpt-4-turbo",
-            "gpt-4o"
+            "gpt-4o",
+            "gpt-4o-mini"
             }:
             tokens_per_message = 3
             tokens_per_name = 1
@@ -326,7 +327,8 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         if (self.model == 'gpt-4-vision-preview' or \
             self.model == 'gpt-4-turbo-2024-04-09' or \
             self.model == 'gpt-4-turbo' or \
-            self.model == 'gpt-4o') \
+            self.model == 'gpt-4o' or \
+            self.model == 'gpt-4o-mini') \
             and '<<vision:' in str(argument.prop.processed_input):
 
             parts = extract_pattern(str(argument.prop.processed_input))
@@ -393,7 +395,8 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             ]}
         elif self.model == 'gpt-4-turbo-2024-04-09' or \
              self.model == 'gpt-4-turbo' or \
-             self.model == 'gpt-4o':
+             self.model == 'gpt-4o' or \
+             self.model == 'gpt-4o-mini':
 
             images = [{ 'type': 'image_url', "image_url": { "url": file }} for file in image_files]
             user_prompt = { "role": "user", "content": [
