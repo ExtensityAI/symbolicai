@@ -25,7 +25,6 @@ dependencies = [
     "numpy==1.26.4",
     "tqdm==4.66.3",
     "python-box==7.1.1",
-    "rpyc==6.0.0",
     "pytest==8.3.1",
     "pandas==2.2.2",
     "scikit-learn==1.5.0",
@@ -63,7 +62,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-blip2        = ["bitsandbytes==0.43.1", "decord==0.6.0", "salesforce-lavis==1.0.0", "opencv-python-headless==4.5.5.64"]
+bitsandbytes = ["bitsandbytes==0.43.1"] # handle separately because of Apple Silicon
+blip2        = ["decord==0.6.0", "salesforce-lavis==1.0.0", "opencv-python-headless==4.5.5.64"]
+hf           = ["transformers==4.42.4", "accelerate==0.27.2", "peft==0.11.1", "datasets==2.20.0", "trl==0.9.6"]
 wolframalpha = ["wolframalpha==5.0.0"]
 whisper      = ["openai-whisper==20231117"]
 selenium     = ["selenium==4.18.1", "webdriver-manager==4.0.1", "chromedriver-autoinstaller==0.6.4"]
@@ -73,6 +74,7 @@ bard         = ["bardapi==1.0.0"]
 services     = ["fastapi==0.110.0", "redis==5.0.2", "uvicorn==0.27.1"]
 solver       = ["z3-solver==4.12.6.0"]
 all          = [
+    "symbolicai[hf]",
     "symbolicai[wolframalpha]",
     "symbolicai[whisper]",
     "symbolicai[selenium]",
