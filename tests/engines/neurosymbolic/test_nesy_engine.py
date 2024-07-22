@@ -21,6 +21,8 @@ def test_init():
     # if no errors are raised, then the test is successful
     assert True
 
+@pytest.mark.skipif(NEUROSYMBOLIC.startswith('llama'), reason='feature not yet implemented')
+@pytest.mark.skipif(NEUROSYMBOLIC.startswith('huggingface'), reason='feature not yet implemented')
 def test_vision():
     file = Path(__file__).parent.parent.parent.parent / 'assets' / 'images' / 'cat.jpg'
     x = Symbol(f'<<vision:{file}:>>')
@@ -38,6 +40,7 @@ def test_vision():
 
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('claude'), reason='Claude tokens computation is not yet implemented')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('llama'), reason='llamacpp tokens computation is not yet implemented')
+@pytest.mark.skipif(NEUROSYMBOLIC.startswith('huggingface'), reason='huggingface tokens computation is not yet implemented')
 def test_tokenizer():
     messages = [
         {

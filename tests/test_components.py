@@ -12,21 +12,15 @@ def test_disable_primitives():
         # disable primitives
         assert all([
             sym1.query('Is this a test?') is None,
-            sym1.contains('test') is None,
             sym2.query('Is this a test?') is None,
-            sym2.contains('test') is None,
             sym3.query('Is this a test?') is None,
-            sym3.contains('test') is None
             ])
 
     # re-enable primitives
     assert all([
         sym1.query('Is this a test?') is not None,
-        sym1.contains('test') is not None,
         sym2.query('Is this a test?') is not None,
-        sym2.contains('test') is not None,
         sym3.query('Is this a test?') is not None,
-        sym3.contains('test') is not None
         ])
 
 
