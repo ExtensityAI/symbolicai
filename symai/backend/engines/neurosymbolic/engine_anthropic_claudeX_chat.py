@@ -12,7 +12,6 @@ from ...base import Engine
 from ...mixin.anthropic import AnthropicMixin
 from ...settings import SYMAI_CONFIG
 
-
 logging.getLogger("anthropic").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)
 logging.getLogger("urllib").setLevel(logging.ERROR)
