@@ -15,13 +15,14 @@ logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
-class LlamaCppTokenizer:
-    _server_endpoint = f"http://{SYMSERVER_CONFIG.get('--host')}:{SYMSERVER_CONFIG.get('--port')}"
+class HFTokenizer:
+    _server_endpoint = f"http://{SYMSERVER_CONFIG.get('host')}:{SYMSERVER_CONFIG.get('port')}"
 
     @staticmethod
-    def encode(text: str) -> List[int]:
-        res = requests.post(f"{LlamaCppTokenizer._server_endpoint}/extras/tokenize", json={
+    def encode(text: str, add_special_tokens: bool = False) -> List[int]:
+        res = requests.post(f"{HFTokenizer._server_endpoint}/tokenize", json={
             "input": text,
+            "add_special_tokens": add_special_tokens,
         })
 
         if res.status_code != 200:
@@ -32,9 +33,10 @@ class LlamaCppTokenizer:
         return res['tokens']
 
     @staticmethod
-    def decode(tokens: List[int]) -> str:
-        res = requests.post(f"{LlamaCppTokenizer._server_endpoint}/extras/detokenize", json={
+    def decode(tokens: List[int], skip_special_tokens: bool = True) -> str:
+        res = requests.post(f"{HFTokenizer._server_endpoint}/detokenize", json={
             "tokens": tokens,
+            "skip_special_tokens": skip_special_tokens,
         })
 
         if res.status_code != 200:
@@ -45,7 +47,7 @@ class LlamaCppTokenizer:
         return res['text']
 
 
-class LlamaCppEngine(Engine):
+class HFEngine(Engine):
     def __init__(
             self
         ):
@@ -54,12 +56,12 @@ class LlamaCppEngine(Engine):
         if self.id() != 'neurosymbolic':
             return
         if not SYMSERVER_CONFIG.get('online'):
-            raise CustomUserWarning('You are using the llama.cpp engine, but the server endpoint is not started. Please start the server with `symserver [--args]` or run `symserver --help` to see the available options for this engine.')
-        self.server_endpoint = f"http://{SYMSERVER_CONFIG.get('--host')}:{SYMSERVER_CONFIG.get('--port')}"
-        self.tokenizer = LlamaCppTokenizer # backwards compatibility with how we handle tokenization, i.e. self.tokenizer().encode(...)
+            raise CustomUserWarning('You are using the huggingface engine, but the server endpoint is not started. Please start the server with `symserver [--args]` or run `symserver --help` to see the available options for this engine.')
+        self.server_endpoint = f"http://{SYMSERVER_CONFIG.get('host')}:{SYMSERVER_CONFIG.get('port')}"
+        self.tokenizer = HFTokenizer # backwards compatibility with how we handle tokenization, i.e. self.tokenizer().encode(...)
 
     def id(self) -> str:
-        if self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('llama'):
+        if self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('huggingface'):
             return 'neurosymbolic'
         return super().id() # default to unregistered
 
@@ -73,53 +75,40 @@ class LlamaCppEngine(Engine):
             self.except_remedy = kwargs['except_remedy']
 
     def compute_required_tokens(self, messages) -> int:
-        #@TODO: quite non-trivial how to handle this with the llama.cpp server
         raise NotImplementedError
 
     def compute_remaining_tokens(self, prompts: list) -> int:
-        #@TODO: quite non-trivial how to handle this with the llama.cpp server
         raise NotImplementedError
 
     def forward(self, argument):
-        kwargs        = argument.kwargs
-        prompts_      = argument.prop.prepared_input
+        kwargs  = argument.kwargs
+        prompts = argument.prop.prepared_input
 
-        stop              = kwargs.get('stop')
-        seed              = kwargs.get('seed')
-        temperature       = kwargs.get('temperature', 0.6)
-        frequency_penalty = kwargs.get('frequency_penalty', 0)
-        presence_penalty  = kwargs.get('presence_penalty', 0)
-        top_p             = kwargs.get('top_p', 0.95)
-        min_p             = kwargs.get('min_p', 0.05)
-        n                 = kwargs.get('n', 1)
-        max_tokens        = kwargs.get('max_tokens')
-        top_logprobs      = kwargs.get('top_logprobs')
-        top_k             = kwargs.get('top_k', 40)
-        repeat_penalty    = kwargs.get('repeat_penalty', 1)
-        logits_bias       = kwargs.get('logits_bias')
-        logprobs          = kwargs.get('logprobs', False)
-        functions         = kwargs.get('functions')
-        function_call     = kwargs.get('function_call')
-        grammar           = kwargs.get('grammar')
-        except_remedy     = kwargs.get('except_remedy') #@TODO: mimic openai logic here (somehow)
+        stop               = kwargs.get('stop')
+        seed               = kwargs.get('seed')
+        temperature        = kwargs.get('temperature', 1.)
+        top_p              = kwargs.get('top_p', 1.)
+        top_k              = kwargs.get('top_k', 50)
+        max_tokens         = kwargs.get('max_tokens', 2048)
+        max_tokens_forcing = kwargs.get('max_tokens_forcing')
+        logprobs           = kwargs.get('logprobs', True)
+        do_sample          = kwargs.get('do_sample', True)
+        eos_token_id       = kwargs.get('eos_token_id')
+        except_remedy      = kwargs.get('except_remedy')
 
         try:
-            res = requests.post(f"{self.server_endpoint}/v1/chat/completions", json={
-                "messages": prompts_,
+            res = requests.post(f"{self.server_endpoint}/chat", json={
+                "messages": prompts,
                 "temperature": temperature,
-                "frequency_penalty": frequency_penalty,
-                "presence_penalty": presence_penalty,
                 "top_p": top_p,
                 "stop": stop,
                 "seed": seed,
                 "max_tokens": max_tokens,
+                "max_tokens_forcing": max_tokens_forcing,
                 "top_k": top_k,
-                "repeat_penalty": repeat_penalty,
-                "logits_bias": logits_bias,
                 "logprobs": logprobs,
-                "functions": functions,
-                "function_call": function_call,
-                "grammar": grammar,
+                "do_sample": do_sample,
+                "eos_token_id": eos_token_id,
             })
 
             if res.status_code != 200:
@@ -136,7 +125,7 @@ class LlamaCppEngine(Engine):
         metadata = {'raw_output': res}
 
         rsp    = [r['message']['content'] for r in res['choices']]
-        output = rsp if isinstance(prompts_, list) else rsp[0]
+        output = rsp if isinstance(prompts, list) else rsp[0]
         return output, metadata
 
     def prepare(self, argument):
@@ -154,10 +143,7 @@ class LlamaCppEngine(Engine):
         _non_verbose_output = """<META_INSTRUCTION/>\n You will NOT output verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. You will consider well formatted output, e.g. for sentences you will use punctuation, spaces, etc. or for code indentation, etc.\n"""
 
         #@TODO: Non-trivial how to handle user/system/assistant roles;
-        #       For instance Mixtral-8x7B can't use the system role with llama.cpp while other models can, or Mixtral-8x22B expects the conversation roles must
-        #       alternate user/assistant/user/assistant/..., so how to handle this?
-        #       For now just use the user, as one can rephrase the system from the user perspective.
-        user:   str = ""
+        user = ""
 
         if argument.prop.suppress_verbose_output:
             user += _non_verbose_output

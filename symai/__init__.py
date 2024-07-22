@@ -6,11 +6,12 @@ import sys
 import warnings
 from pathlib import Path
 
+import uvicorn
+
 from .backend import settings
 from .menu.screen import show_menu
 from .misc.console import ConsoleStyle
 from .utils import CustomUserWarning
-from .server.llama_cpp_server import llama_cpp_server
 
 # do not remove - hides the libraries' debug messages
 logging.getLogger("urllib3").setLevel(logging.WARNING)
@@ -227,7 +228,7 @@ def _start_symai():
     # *==============================================================================================================*
     if not (
         _symai_config_['NEUROSYMBOLIC_ENGINE_MODEL'].lower().startswith('llama') or \
-        _symai_config_['NEUROSYMBOLIC_ENGINE_MODEL'].lower().startswith('hf')) \
+        _symai_config_['NEUROSYMBOLIC_ENGINE_MODEL'].lower().startswith('huggingface')) \
         and \
             (
             _symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY'] is None or \
@@ -247,6 +248,8 @@ def run_setup_wizard(file_path = __root_dir__ / 'symai.config.json'):
 def run_server():
     _symserver_config_ = {}
     if settings.SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL").startswith("llama"):
+        from .server.llama_cpp_server import llama_cpp_server
+
         command, args = llama_cpp_server()
         _symserver_config_.update(zip(args[::2], args[1::2]))
         _symserver_config_['online'] = True
@@ -257,12 +260,35 @@ def run_server():
         try:
             subprocess.run(command, check=True)
         except KeyboardInterrupt:
-            print("Server stopped by user.")
+            print("Server stopped!")
         except Exception as e:
             print(f"Error running server: {e}")
         finally:
             with open(__root_dir__ / "symserver.config.json", "w") as f:
                 json.dump({'online': False}, f, indent=4)
+
+    elif settings.SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL").startswith("huggingface"):
+        from .server.huggingface_server import huggingface_server
+
+        command, args = huggingface_server()
+        _symserver_config_.update(vars(args))
+        _symserver_config_['online'] = True
+
+        with open(__root_dir__ / "symserver.config.json", "w") as f:
+            json.dump(_symserver_config_, f, indent=4)
+
+        try:
+            command(host=args.host, port=args.port)
+        except KeyboardInterrupt:
+            print("Server stopped!")
+        except Exception as e:
+            print(f"Error running server: {e}")
+        finally:
+            with open(__root_dir__ / "symserver.config.json", "w") as f:
+                json.dump({'online': False}, f, indent=4)
+    else:
+        raise CustomUserWarning("You're trying to run a local server without a valid neuro-symbolic engine model. Please set a valid model in your configuration file. Current available options are 'llamacpp' and 'huggingface'.")
+
 
 def setup_wizard(_symai_config_path_, show_wizard=True):
     _user_config_                   = show_menu(show_wizard=show_wizard)
