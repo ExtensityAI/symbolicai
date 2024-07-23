@@ -166,6 +166,12 @@ class Linker(Metadata):
         return res
 
 
+class PropertyReservedError(AttributeError):
+    def __init__(self, property_name):
+        self.property_name = property_name
+        super().__init__(f"Cannot set reserved property '{property_name}'. This property is defined in the 'Symbol' base class and cannot be assigned.")
+
+
 class SymbolMeta(type):
     """
     Metaclass to unify metaclasses of mixed-in primitives.
@@ -200,6 +206,7 @@ class Symbol(metaclass=SymbolMeta):
     _metadata             = Metadata()
     _metadata._primitives = {}
     _dynamic_context: Dict[str, List[str]] = {}
+    _RESERVED_PROPERTIES = {'graph', 'linker', 'parent', 'children', 'metadata', 'value', 'root', 'nodes', 'edges', 'global_context', 'static_context', 'dynamic_context', 'shape'}
 
     def __init__(self, *value, static_context: Optional[str] = '', dynamic_context: Optional[str] = None, **kwargs) -> None:
         '''
@@ -370,6 +377,21 @@ class Symbol(metaclass=SymbolMeta):
                 # create a new function that binds the instance to the callable
                 setattr(obj, call_name, call_func(obj))
         return obj
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        '''
+        Set the attribute of the Symbol's value with the specified name.
+
+        Args:
+            name (str): The name of the attribute to set for the Symbol's value.
+            value (Any): The value of the attribute to set for the Symbol's value.
+
+        Raises:
+            PropertyReservedError: If the property is reserved and cannot be set.
+        '''
+        if name in self._RESERVED_PROPERTIES:
+            raise PropertyReservedError(name)
+        super().__setattr__(name, value)
 
     def __getattr__(self, name: str) -> Any:
         '''
