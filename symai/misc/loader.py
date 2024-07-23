@@ -1,33 +1,22 @@
 import sys
-
 from itertools import cycle
 from shutil import get_terminal_size
-from threading import Thread
+from threading import Thread, Event
 from time import sleep
 from prompt_toolkit import print_formatted_text
-
 from .console import ConsoleStyle
 
 print = print_formatted_text
 
-
-class Loader(object):
+class Loader:
     def __init__(self, desc="Loading...", end="\n", timeout=0.1):
-        """
-        A loader-based context manager
-
-        Args:
-            desc (str, optional): The loader's description. Defaults to "Loading...".
-            end (str, optional): Final print. Defaults to "".
-            timeout (float, optional): Sleep time between prints. Defaults to 0.1.
-        """
         self.desc = desc
         self.end = end
         self.timeout = timeout
 
         self._thread = Thread(target=self._animate, daemon=True)
         self.steps = ["⢿", "⣻", "⣽", "⣾", "⣷", "⣯", "⣟", "⡿"]
-        self.done = False
+        self.done = Event()
 
     def __call__(self, message):
         self.print(message)
@@ -38,7 +27,7 @@ class Loader(object):
 
     def _animate(self):
         for c in cycle(self.steps):
-            if self.done:
+            if self.done.is_set():
                 break
             with ConsoleStyle('debug'):
                 sys.stdout.write(f"\r{self.desc} {c}  ")
@@ -52,7 +41,8 @@ class Loader(object):
         return self
 
     def stop(self):
-        self.done = True
+        self.done.set()
+        self._thread.join()
         cols = get_terminal_size((80, 20)).columns
         with ConsoleStyle('debug'):
             sys.stdout.write("\r" + " " * cols)
@@ -63,7 +53,6 @@ class Loader(object):
         print()
 
     def __exit__(self, exc_type, exc_value, tb):
-        # handle exceptions with those variables ^
         self.stop()
 
     def print(self, message):
