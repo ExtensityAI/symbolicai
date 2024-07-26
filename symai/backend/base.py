@@ -104,7 +104,6 @@ class Engine(ABC):
         # used here to avoid circular import
         from ..symbol import Symbol
         class Preview(Symbol):
-            
             def __repr__(self) -> str:
                 '''
                 Get the representation of the Symbol object as a string.
@@ -112,7 +111,11 @@ class Engine(ABC):
                 Returns:
                     str: The representation of the Symbol object.
                 '''
+                return str(self.value.prop.prepared_input)
+
+            def prepared_input(self):
                 return self.value.prop.prepared_input
+
         return Preview(argument), {}
 
     def forward(self, *args: Any, **kwds: Any) -> List[str]:

@@ -14,6 +14,7 @@ from .symbol import Expression, Metadata
 class Argument(Expression):
     _default_suppress_verbose_output            = False
     _default_parse_system_instructions          = False
+    _default_preview_value                      = False
 
     def __init__(self, args, signature_kwargs, decorator_kwargs, **kwargs):
         super().__init__(**kwargs)
@@ -26,8 +27,8 @@ class Argument(Expression):
         self._set_all_kwargs_as_properties()
         # Set default values if not specified for backend processing
         # Reserved keywords
-        if 'preview' not in self.kwargs:
-            self.prop.preview           = False
+        if 'preview' not in self.kwargs: # used for previewing the input (also for operators)
+            self.prop.preview           = Argument._default_preview_value
         if 'raw_input' not in self.kwargs:
             self.prop.raw_input         = False
         if 'raw_output' not in self.kwargs:
