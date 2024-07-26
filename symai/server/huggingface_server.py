@@ -109,6 +109,8 @@ class ChatCompletionRequest(BaseModel):
     top_k: int = 50
     logprobs: bool = False
     do_sample: bool = True
+    num_beams: int = 1
+    num_beam_groups: int = 1
     eos_token_id: Optional[int] = None
 
 @app.post("/chat")
@@ -125,6 +127,8 @@ def chat_completions(request: ChatCompletionRequest):
         "top_p": request.top_p,
         "top_k": request.top_k,
         "do_sample": request.do_sample,
+        "num_beams": request.num_beams,
+        "num_beam_groups": request.num_beam_groups,
         "eos_token_id": request.eos_token_id if request.eos_token_id is not None else tokenizer.eos_token_id,
         "output_logits": request.logprobs,
         "return_dict_in_generate": True,
