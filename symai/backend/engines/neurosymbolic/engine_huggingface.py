@@ -93,6 +93,8 @@ class HFEngine(Engine):
         max_tokens_forcing = kwargs.get('max_tokens_forcing')
         logprobs           = kwargs.get('logprobs', True)
         do_sample          = kwargs.get('do_sample', True)
+        num_beams          = kwargs.get('num_beams', 1)
+        num_beam_groups    = kwargs.get('num_beam_groups', 1)
         eos_token_id       = kwargs.get('eos_token_id')
         except_remedy      = kwargs.get('except_remedy')
 
@@ -108,6 +110,8 @@ class HFEngine(Engine):
                 "top_k": top_k,
                 "logprobs": logprobs,
                 "do_sample": do_sample,
+                "num_beams": num_beams,
+                "num_beam_groups": num_beam_groups,
                 "eos_token_id": eos_token_id,
             })
 
