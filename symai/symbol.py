@@ -32,6 +32,10 @@ class Metadata(object):
     # example: metadata = Metadata()
     # metadata.some_new_attribute = 'some_value'
     # metadata.some_new_attribute
+    @property
+    def keys(self):
+        return self.__dict__.keys()
+
     def __getattr__(self, name):
         '''
         Get a metadata attribute by name.
