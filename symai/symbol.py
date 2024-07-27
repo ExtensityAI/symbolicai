@@ -566,11 +566,12 @@ class Symbol(metaclass=SymbolMeta):
         Returns:
             Symbol: The Symbol instance.
         '''
-        if isinstance(value, Symbol):
+        type_  = type(self)
+        if isinstance(value, type_):
             return value
         # inherit kwargs for new symbol instance
         kwargs = {**self._kwargs, **kwargs}
-        sym    = Symbol(value, **kwargs)
+        sym    = type_(value, **kwargs)
         return sym
 
     @property

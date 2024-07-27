@@ -135,6 +135,7 @@ def _process_query(engine,
     # prepare argument container
     argument.prop.engine            = engine
     argument.prop.instance          = instance
+    argument.prop.instance_type     = type(instance)
     argument.prop.signature         = sig
     argument.prop.func              = func
     argument.prop.constraints       = constraints
