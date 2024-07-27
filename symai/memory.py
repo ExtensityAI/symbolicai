@@ -87,8 +87,12 @@ class SlidingWindowStringConcatMemory(Memory):
             memory  = '[MEMORY]\n'
             val     = '\n'.join(hist)
             memory += val
-        func    = Function(memory)
-        func.static_context = self.static_context # TODO: consider dynamic context
+        that = self
+        class Recall(Function):
+            @property
+            def static_context(self):
+                return that.static_context
+        func = Recall(memory)
         return func(query, *args, **kwargs)
 
 
