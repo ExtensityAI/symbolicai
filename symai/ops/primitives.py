@@ -45,7 +45,7 @@ class ArithmeticPrimitives(Primitive):
         if self.__disable_shortcut_matches__:
             return None
         if not isinstance(other, self._symbol_type):
-            other = self._to_symbol(other)
+            other = self._to_type(other)
         # None shortcut
         if not self.__disable_none_shortcut__:
             if  self.value is None or other.value is None:
@@ -91,7 +91,7 @@ class ArithmeticPrimitives(Primitive):
         if result is not None and result is not False:
             return result
         # allow for fuzzy matches between types
-        other = self._to_symbol(other)
+        other = self._to_type(other)
         if type(self.value) == str and \
             (type(other.value) == int or \
              type(other.value) == float or \
@@ -268,14 +268,14 @@ class ArithmeticPrimitives(Primitive):
         result = self.__try_type_specific_func(False, lambda self, _: -self.value, op='-')
         # verify the result and return if found return
         if result is not None and result is not False:
-            return self._to_symbol(result)
+            return self._to_type(result)
 
         self.__throw_error_on_nesy_engine_call(self.__neg__)
 
         @core.negate()
         def _func(_):
             pass
-        return self._to_symbol(_func(self))
+        return self._to_type(_func(self))
 
     def __not__(self) -> 'Symbol':
         '''
@@ -289,14 +289,14 @@ class ArithmeticPrimitives(Primitive):
         result = self.__try_type_specific_func(False, lambda self, _: not self.value, op='not')
         # verify the result and return if found return
         if result is not None and result is not False:
-            return self._to_symbol(result)
+            return self._to_type(result)
 
         self.__throw_error_on_nesy_engine_call(self.__not__)
 
         @core.negate()
         def _func(_):
             pass
-        return self._to_symbol(_func(self))
+        return self._to_type(_func(self))
 
     def __invert__(self) -> 'Symbol':
         '''
@@ -310,14 +310,14 @@ class ArithmeticPrimitives(Primitive):
         result = self.__try_type_specific_func(False, lambda self, _: ~self.value, op='~')
         # verify the result and return if found return
         if result is not None and result is not False:
-            return self._to_symbol(result)
+            return self._to_type(result)
 
         self.__throw_error_on_nesy_engine_call(self.__invert__)
 
         @core.invert()
         def _func(_):
             pass
-        return self._to_symbol(_func(self))
+        return self._to_type(_func(self))
 
     def __lshift__(self, other: Any) -> 'Symbol':
         '''
@@ -334,14 +334,14 @@ class ArithmeticPrimitives(Primitive):
         result = self.__try_type_specific_func(other, lambda self, other: self.value << other.value, op='<<')
         # verify the result and return if found return
         if result is not None and result is not False:
-            return self._to_symbol(result)
+            return self._to_type(result)
 
         self.__throw_error_on_nesy_engine_call(self.__lshift__)
 
         @core.include()
         def _func(_, information: str):
             pass
-        return self._to_symbol(_func(self, other))
+        return self._to_type(_func(self, other))
 
     def __rlshift__(self, other: Any) -> 'Symbol':
         '''
@@ -358,14 +358,14 @@ class ArithmeticPrimitives(Primitive):
         result = self.__try_type_specific_func(other, lambda self, other: other.value << self.value, op='<<')
         # verify the result and return if found return
         if result is not None and result is not False:
-            return self._to_symbol(result)
+            return self._to_type(result)
 
         self.__throw_error_on_nesy_engine_call(self.__rlshift__)
 
         @core.include()
         def _func(_, information: str):
             pass
-        return self._to_symbol(_func(self, other))
+        return self._to_type(_func(self, other))
 
     def __ilshift__(self, other: Any) -> 'Symbol':
         '''
@@ -408,14 +408,14 @@ class ArithmeticPrimitives(Primitive):
         result = self.__try_type_specific_func(other, lambda self, other: self.value >> other.value, op='>>')
         # verify the result and return if found return
         if result is not None and result is not False:
-            return self._to_symbol(result)
+            return self._to_type(result)
 
         self.__throw_error_on_nesy_engine_call(self.__rshift__)
 
         @core.include()
         def _func(_, information: str):
             pass
-        return self._to_symbol(_func(self, other))
+        return self._to_type(_func(self, other))
 
     def __rrshift__(self, other: Any) -> 'Symbol':
         '''
@@ -432,14 +432,14 @@ class ArithmeticPrimitives(Primitive):
         result = self.__try_type_specific_func(other, lambda self, other: other.value >> self.value, op='>>')
         # verify the result and return if found return
         if result is not None and result is not False:
-            return self._to_symbol(result)
+            return self._to_type(result)
 
         self.__throw_error_on_nesy_engine_call(self.__rrshift__)
 
         @core.include()
         def _func(_, information: str):
             pass
-        return self._to_symbol(_func(self, other))
+        return self._to_type(_func(self, other))
 
     def __irshift__(self, other: Any) -> 'Symbol':
         '''
@@ -488,14 +488,14 @@ class ArithmeticPrimitives(Primitive):
             result = self.__try_type_specific_func(other, lambda self, other: self.value + other.value, op='+')
         # verify the result and return if found return
         if result is not None and result is not False:
-            return self._to_symbol(result)
+            return self._to_type(result)
 
         self.__throw_error_on_nesy_engine_call(self.__add__)
 
         @core.combine()
         def _func(_, a: str, b: str):
             pass
-        return self._to_symbol(_func(self, other))
+        return self._to_type(_func(self, other))
 
     def __radd__(self, other) -> 'Symbol':
         '''
@@ -518,15 +518,15 @@ class ArithmeticPrimitives(Primitive):
             result = self.__try_type_specific_func(other, lambda self, other: other.value + self.value, op='+')
         # verify the result and return if found return
         if result is not None and result is not False:
-            return self._to_symbol(result)
+            return self._to_type(result)
 
         self.__throw_error_on_nesy_engine_call(self.__radd__)
 
         @core.combine()
         def _func(_, a: str, b: str):
             pass
-        other = self._to_symbol(other)
-        return self._to_symbol(_func(other, self))
+        other = self._to_type(other)
+        return self._to_type(_func(other, self))
 
     def __iadd__(self, other: Any) -> 'Symbol':
         '''
@@ -550,7 +550,7 @@ class ArithmeticPrimitives(Primitive):
         if result is not None and result is not False:
             self._value = result
             return self
-        other = self._to_symbol(other)
+        other = self._to_type(other)
         self._value = self.__add__(other)
         return self
 
@@ -570,14 +570,14 @@ class ArithmeticPrimitives(Primitive):
         result = self.__try_type_specific_func(other, lambda self, other: self.value - other.value, op='-')
         # verify the result and return if found return
         if result is not None and result is not False:
-            return self._to_symbol(result)
+            return self._to_type(result)
 
         self.__throw_error_on_nesy_engine_call(self.__sub__)
 
         @core.replace()
         def _func(_, text: str, replace: str, value: str):
             pass
-        return self._to_symbol(_func(self, other, ''))
+        return self._to_type(_func(self, other, ''))
 
     def __rsub__(self, other: Any) -> 'Symbol':
         '''
@@ -595,15 +595,15 @@ class ArithmeticPrimitives(Primitive):
         result = self.__try_type_specific_func(other, lambda self, other: other.value - self.value, op='-')
         # verify the result and return if found return
         if result is not None and result is not False:
-            return self._to_symbol(result)
+            return self._to_type(result)
 
         self.__throw_error_on_nesy_engine_call(self.__rsub__)
 
         @core.replace()
         def _func(_, text: str, replace: str, value: str):
             pass
-        other = self._to_symbol(other)
-        return self._to_symbol(_func(other, self, ''))
+        other = self._to_type(other)
+        return self._to_type(_func(other, self, ''))
 
     def __isub__(self, other: Any) -> 'Symbol':
         '''
@@ -643,8 +643,8 @@ class ArithmeticPrimitives(Primitive):
         # Special case for string concatenation with AND (no space)
         if isinstance(self.value, str) and isinstance(other, str) or \
             isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str):
-            other = self._to_symbol(other)
-            return self._to_symbol(f'{self.value}{other.value}')
+            other = self._to_type(other)
+            return self._to_type(f'{self.value}{other.value}')
 
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value and other.value, op='&')
@@ -657,7 +657,7 @@ class ArithmeticPrimitives(Primitive):
         @core.logic(operator='and')
         def _func(_, a: str, b: str):
             pass
-        return self._to_symbol(_func(self, other))
+        return self._to_type(_func(self, other))
 
     def __rand__(self, other: Any) -> Any:
         '''
@@ -676,10 +676,10 @@ class ArithmeticPrimitives(Primitive):
         # Special case for string concatenation with AND (no space)
         if isinstance(self.value, str) and isinstance(other, str) or \
             isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str):
-            other = self._to_symbol(other)
-            return self._to_symbol(f'{other.value}{self.value}')
+            other = self._to_type(other)
+            return self._to_type(f'{other.value}{self.value}')
 
-        other = self._to_symbol(other)
+        other = self._to_type(other)
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other:  other.value and self.value, op='&')
         # verify the result and return if found return
@@ -691,8 +691,8 @@ class ArithmeticPrimitives(Primitive):
         @core.logic(operator='and')
         def _func(_, a: str, b: str):
             pass
-        other = self._to_symbol(other)
-        return self._to_symbol(_func(other, self))
+        other = self._to_type(other)
+        return self._to_type(_func(other, self))
 
     def __iand__(self, other: Any) -> Any:
         '''
@@ -711,7 +711,7 @@ class ArithmeticPrimitives(Primitive):
         # Special case for string concatenation with AND (no space)
         if isinstance(self.value, str) and isinstance(other, str) or \
             isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str):
-            other       = self._to_symbol(other)
+            other       = self._to_type(other)
             self._value = f'{self.value}{other.value}'
             return self
 
@@ -752,8 +752,8 @@ class ArithmeticPrimitives(Primitive):
         # Special case for string concatenation with OR
         if isinstance(self.value, str) and isinstance(other, str) or \
             isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str):
-            other = self._to_symbol(other)
-            return self._to_symbol(f'{self.value} {other.value}')
+            other = self._to_type(other)
+            return self._to_type(f'{self.value} {other.value}')
 
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value or other.value, op='|')
@@ -766,7 +766,7 @@ class ArithmeticPrimitives(Primitive):
         @core.logic(operator='or')
         def _func(_, a: str, b: str):
             pass
-        return self._to_symbol(_func(self, other))
+        return self._to_type(_func(self, other))
 
     def __ror__(self, other: Any) -> 'Symbol':
         '''
@@ -790,22 +790,22 @@ class ArithmeticPrimitives(Primitive):
             # Special case for string concatenation with OR
             if isinstance(self.value, str) and isinstance(other, str) or \
                 isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str):
-                other = self._to_symbol(other)
-                return self._to_symbol(f'{other.value} {self.value}')
+                other = self._to_type(other)
+                return self._to_type(f'{other.value} {self.value}')
 
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value | other.value, op='|')
         # verify the result and return if found return
         if result is not None and result is not False:
-            return self._to_symbol(result)
+            return self._to_type(result)
 
         self.__throw_error_on_nesy_engine_call(self.__ror__)
 
         @core.logic(operator='or')
         def _func(a: str, b: str):
             pass
-        other = self._to_symbol(other)
-        return self._to_symbol(_func(other, self))
+        other = self._to_type(other)
+        return self._to_type(_func(other, self))
 
     def __ior__(self, other: Any) -> 'Symbol':
         '''
@@ -829,7 +829,7 @@ class ArithmeticPrimitives(Primitive):
             # Special case for string concatenation with OR
             if isinstance(self.value, str) and isinstance(other, str) or \
                 isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str):
-                other       = self._to_symbol(other)
+                other       = self._to_type(other)
                 self._value = f'{self.value} {other.value}'
                 return self
 
@@ -839,7 +839,7 @@ class ArithmeticPrimitives(Primitive):
         if result is not None and result is not False:
             self._value = result
             return self
-        result = self._to_symbol(str(self) + str(other))
+        result = self._to_type(str(self) + str(other))
 
         self.__throw_error_on_nesy_engine_call(self.__ior__)
 
@@ -865,14 +865,14 @@ class ArithmeticPrimitives(Primitive):
         result = self.__try_type_specific_func(other, lambda self, other: self.value ^ other.value, op='^')
         # verify the result and return if found return
         if result is not None and result is not False:
-            return self._to_symbol(result)
+            return self._to_type(result)
 
         self.__throw_error_on_nesy_engine_call(self.__xor__)
 
         @core.logic(operator='xor')
         def _func(_, a: str, b: str):
             pass
-        return self._to_symbol(_func(self, other))
+        return self._to_type(_func(self, other))
 
     def __rxor__(self, other: Any) -> 'Symbol':
         '''
@@ -890,15 +890,15 @@ class ArithmeticPrimitives(Primitive):
         result = self.__try_type_specific_func(other, lambda self, other: other.value ^ self.value, op='^')
         # verify the result and return if found return
         if result is not None and result is not False:
-            return self._to_symbol(result)
+            return self._to_type(result)
 
         self.__throw_error_on_nesy_engine_call(self.__rxor__)
 
         @core.logic(operator='xor')
         def _func(_, a: str, b: str):
             pass
-        other = self._to_symbol(other)
-        return self._to_symbol(_func(other, self))
+        other = self._to_type(other)
+        return self._to_type(_func(other, self))
 
     def __ixor__(self, other: Any) -> 'Symbol':
         '''
@@ -942,7 +942,7 @@ class ArithmeticPrimitives(Primitive):
         result = self.__try_type_specific_func(other, lambda self, other: self.value.__matmul__(other.value), op='@')
         # verify the result and return if found return
         if result is not None and result is not False:
-            return self._to_symbol(result)
+            return self._to_type(result)
         raise NotImplementedError('Matrix multiplication not supported! Might change in the future.') from self._metadata._error
 
     def __rmatmul__(self, other: Any) -> 'Symbol':
@@ -960,7 +960,7 @@ class ArithmeticPrimitives(Primitive):
         result = self.__try_type_specific_func(other, lambda self, other:  self.value.__rmatmul__(other.value), op='@')
         # verify the result and return if found return
         if result is not None and result is not False:
-            return self._to_symbol(result)
+            return self._to_type(result)
         raise NotImplementedError('Matrix multiplication not supported! Might change in the future.') from self._metadata._error
 
     def __imatmul__(self, other: Any) -> 'Symbol':
@@ -997,8 +997,8 @@ class ArithmeticPrimitives(Primitive):
         result = self.__try_type_specific_func(other, lambda self, other: self.value / other.value, op='/')
         # verify the result and return if found return
         if result is not None and result is not False:
-            return self._to_symbol(result)
-        return self._to_symbol(str(self).split(str(other)))
+            return self._to_type(result)
+        return self._to_type(str(self).split(str(other)))
 
     def __rtruediv__(self, other: Any) -> 'Symbol':
         '''
@@ -1015,7 +1015,7 @@ class ArithmeticPrimitives(Primitive):
         result = self.__try_type_specific_func(other, lambda self, other: other.value / self.value, op='/')
         # verify the result and return if found return
         if result is not None and result is not False:
-            return self._to_symbol(result)
+            return self._to_type(result)
         raise NotImplementedError('Division operation not supported! Might change in the future.') from self._metadata._error
 
     def __itruediv__(self, other: Any) -> 'Symbol':
@@ -1052,8 +1052,8 @@ class ArithmeticPrimitives(Primitive):
         result = self.__try_type_specific_func(other, lambda self, other: self.value // other.value, op='//')
         # verify the result and return if found return
         if result is not None and result is not False:
-            return self._to_symbol(result)
-        return self._to_symbol(str(self).split(str(other)))
+            return self._to_type(result)
+        return self._to_type(str(self).split(str(other)))
 
     def __rfloordiv__(self, other: Any) -> 'Symbol':
         '''
@@ -1070,7 +1070,7 @@ class ArithmeticPrimitives(Primitive):
         result = self.__try_type_specific_func(other, lambda self, other: other.value // self.value, op='//')
         # verify the result and return if found return
         if result is not None and result is not False:
-            return self._to_symbol(result)
+            return self._to_type(result)
         raise NotImplementedError('Floor division operation not supported! Might change in the future.') from self._metadata._error
 
     def __ifloordiv__(self, other: Any) -> 'Symbol':
@@ -1107,7 +1107,7 @@ class ArithmeticPrimitives(Primitive):
         result = self.__try_type_specific_func(other, lambda self, other: self.value ** other.value, op='**')
         # verify the result and return if found return
         if result is not None and result is not False:
-            return self._to_symbol(result)
+            return self._to_type(result)
         raise NotImplementedError('Power operation not supported! Might change in the future.') from self._metadata._error
 
     def __rpow__(self, other: Any) -> 'Symbol':
@@ -1125,7 +1125,7 @@ class ArithmeticPrimitives(Primitive):
         result = self.__try_type_specific_func(other, lambda self, other: other.value ** self.value, op='**')
         # verify the result and return if found return
         if result is not None and result is not False:
-            return self._to_symbol(result)
+            return self._to_type(result)
         raise NotImplementedError('Power operation not supported! Might change in the future.') from self._metadata._error
 
     def __ipow__(self, other: Any) -> 'Symbol':
@@ -1162,7 +1162,7 @@ class ArithmeticPrimitives(Primitive):
         result = self.__try_type_specific_func(other, lambda self, other: self.value % other.value, op='%')
         # verify the result and return if found return
         if result is not None and result is not False:
-            return self._to_symbol(result)
+            return self._to_type(result)
         raise NotImplementedError('Modulo operation not supported! Might change in the future.') from self._metadata._error
 
     def __rmod__(self, other: Any) -> 'Symbol':
@@ -1180,7 +1180,7 @@ class ArithmeticPrimitives(Primitive):
         result = self.__try_type_specific_func(other, lambda self, other: other.value % self.value, op='%')
         # verify the result and return if found return
         if result is not None and result is not False:
-            return self._to_symbol(result)
+            return self._to_type(result)
         raise NotImplementedError('Modulo operation not supported! Might change in the future.') from self._metadata._error
 
     def __imod__(self, other: Any) -> 'Symbol':
@@ -1217,7 +1217,7 @@ class ArithmeticPrimitives(Primitive):
         result = self.__try_type_specific_func(other, lambda self, other: self.value * other.value, op='*')
         # verify the result and return if found return
         if result is not None and result is not False:
-            return self._to_symbol(result)
+            return self._to_type(result)
         raise NotImplementedError('Multiply operation not supported! Might change in the future.') from self._metadata._error
 
     def __rmul__(self, other: Any) -> 'Symbol':
@@ -1235,7 +1235,7 @@ class ArithmeticPrimitives(Primitive):
         result = self.__try_type_specific_func(other, lambda self, other: other.value * self.value, op='*')
         # verify the result and return if found return
         if result is not None and result is not False:
-            return self._to_symbol(result)
+            return self._to_type(result)
         raise NotImplementedError('Multiply operation not supported! Might change in the future.') from self._metadata._error
 
     def __imul__(self, other: Any) -> 'Symbol':
@@ -1373,7 +1373,7 @@ class IterationPrimitives(Primitive):
         def _func(_, index: str):
             pass
 
-        return self._to_symbol(_func(self, key))
+        return self._to_type(_func(self, key))
 
     def __setitem__(self, key: Union[str, int, slice], value: Any) -> None:
         '''
@@ -1406,7 +1406,7 @@ class IterationPrimitives(Primitive):
         def _func(_, index: str, value: str):
             pass
 
-        self._value = self._to_symbol(_func(self, key, value)).value
+        self._value = self._to_type(_func(self, key, value)).value
 
     def __delitem__(self, key: Union[str, int]) -> None:
         '''
@@ -1434,7 +1434,7 @@ class IterationPrimitives(Primitive):
         def _func(_, index: str):
             pass
 
-        self._value = self._to_symbol(_func(self, key)).value
+        self._value = self._to_type(_func(self, key)).value
 
 
 class ValueHandlingPrimitives(Primitive):
@@ -1508,7 +1508,7 @@ class ValueHandlingPrimitives(Primitive):
         @core.getitem(**kwargs)
         def _func(_, item: str) -> int:
             pass
-        return self._to_symbol(_func(self, item))
+        return self._to_type(_func(self, item))
 
 
 class StringHelperPrimitives(Primitive):
@@ -1546,7 +1546,7 @@ class StringHelperPrimitives(Primitive):
             return self.value.join(delimiter)
 
         assert isinstance(self.value, Iterable),  f'value must be an iterable, got {type(self.value)}'
-        return self._to_symbol(delimiter.join(self.value))
+        return self._to_type(delimiter.join(self.value))
 
     def startswith(self, prefix: str, **kwargs) -> bool:
         '''
@@ -1599,7 +1599,7 @@ class ComparisonPrimitives(Primitive):
         def _func(_, string: str) -> bool:
             pass
 
-        return self._to_symbol(_func(self, string))
+        return self._to_type(_func(self, string))
 
     def contains(self, element: Any, **kwargs) -> bool:
         '''
@@ -1659,7 +1659,7 @@ class ExpressionHandlingPrimitives(Primitive):
         def _func(_, expr: str):
             pass
 
-        return self._to_symbol(_func(self, expr))
+        return self._to_type(_func(self, expr))
 
 
 class DataHandlingPrimitives(Primitive):
@@ -1679,7 +1679,7 @@ class DataHandlingPrimitives(Primitive):
         def _func(_) -> str:
             pass
 
-        return self._to_symbol(_func(self))
+        return self._to_type(_func(self))
 
     def summarize(self, context: Optional[str] = None, **kwargs) -> 'Symbol':
         '''
@@ -1696,7 +1696,7 @@ class DataHandlingPrimitives(Primitive):
         def _func(_) -> str:
             pass
 
-        return self._to_symbol(_func(self))
+        return self._to_type(_func(self))
 
     def outline(self, **kwargs) -> 'Symbol':
         '''
@@ -1710,7 +1710,7 @@ class DataHandlingPrimitives(Primitive):
         def _func(_) -> str:
             pass
 
-        return self._to_symbol(_func(self))
+        return self._to_type(_func(self))
 
     def filter(self, criteria: str, include: Optional[bool] = False, **kwargs) -> 'Symbol':
         '''
@@ -1728,7 +1728,7 @@ class DataHandlingPrimitives(Primitive):
         def _func(_) -> str:
             pass
 
-        return self._to_symbol(_func(self))
+        return self._to_type(_func(self))
 
     def modify(self, changes: str, **kwargs) -> 'Symbol':
         '''
@@ -1745,7 +1745,7 @@ class DataHandlingPrimitives(Primitive):
         def _func(_) -> str:
             pass
 
-        return self._to_symbol(_func(self))
+        return self._to_type(_func(self))
 
     def replace(self, old: str, new: str, **kwargs) -> 'Symbol':
         '''
@@ -1763,7 +1763,7 @@ class DataHandlingPrimitives(Primitive):
         def _func(_, old: str, new: str):
             pass
 
-        return self._to_symbol(_func(self, old, new))
+        return self._to_type(_func(self, old, new))
 
     def remove(self, information: str, **kwargs) -> 'Symbol':
         '''
@@ -1780,7 +1780,7 @@ class DataHandlingPrimitives(Primitive):
         def _func(_, text: str, replace: str, value: str):
             pass
 
-        return self._to_symbol(_func(self, information, ''))
+        return self._to_type(_func(self, information, ''))
 
     def include(self, information: str, **kwargs) -> 'Symbol':
         '''
@@ -1797,7 +1797,7 @@ class DataHandlingPrimitives(Primitive):
         def _func(_, information: str):
             pass
 
-        return self._to_symbol(_func(self, information))
+        return self._to_type(_func(self, information))
 
     def combine(self, information: str, **kwargs) -> 'Symbol':
         '''
@@ -1814,7 +1814,7 @@ class DataHandlingPrimitives(Primitive):
         def _func(_, a: str, b: str):
             pass
 
-        return self._to_symbol(_func(self, information))
+        return self._to_type(_func(self, information))
 
 
 class UniquenessPrimitives(Primitive):
@@ -1837,7 +1837,7 @@ class UniquenessPrimitives(Primitive):
         def _func(_) -> str:
             pass
 
-        return self._to_symbol(_func(self))
+        return self._to_type(_func(self))
 
     def compose(self, **kwargs) -> 'Symbol':
         '''
@@ -1851,7 +1851,7 @@ class UniquenessPrimitives(Primitive):
         def _func(_) -> str:
             pass
 
-        return self._to_symbol(_func(self))
+        return self._to_type(_func(self))
 
 
 class PatternMatchingPrimitives(Primitive):
@@ -1876,7 +1876,7 @@ class PatternMatchingPrimitives(Primitive):
         def _func(_, measure: str) -> str:
             pass
 
-        return self._to_symbol(_func(self, measure))
+        return self._to_type(_func(self, measure))
 
     def extract(self, pattern: str, **kwargs) -> 'Symbol':
         '''
@@ -1893,7 +1893,7 @@ class PatternMatchingPrimitives(Primitive):
         def _func(_, pattern: str) -> str:
             pass
 
-        return self._to_symbol(_func(self, pattern))
+        return self._to_type(_func(self, pattern))
 
     def correct(self, context: str, **kwargs) -> 'Symbol':
         '''
@@ -1911,7 +1911,7 @@ class PatternMatchingPrimitives(Primitive):
         def _func(_) -> str:
             pass
 
-        return self._to_symbol(_func(self))
+        return self._to_type(_func(self))
 
     def translate(self, language: Optional[str] = 'English', **kwargs) -> 'Symbol':
         '''
@@ -1929,7 +1929,7 @@ class PatternMatchingPrimitives(Primitive):
         def _func(_) -> str:
             pass
 
-        return self._to_symbol(_func(self))
+        return self._to_type(_func(self))
 
     def choice(self, cases: List[str], default: str, **kwargs) -> 'Symbol':
         '''
@@ -1948,7 +1948,7 @@ class PatternMatchingPrimitives(Primitive):
         def _func(_) -> str:
             pass
 
-        return self._to_symbol(_func(self))
+        return self._to_type(_func(self))
 
 
 class QueryHandlingPrimitives(Primitive):
@@ -1974,7 +1974,7 @@ class QueryHandlingPrimitives(Primitive):
         def _func(_) -> str:
             pass
 
-        return self._to_symbol(_func(self))
+        return self._to_type(_func(self))
 
     def convert(self, format: str, **kwargs) -> 'Symbol':
         '''
@@ -1992,7 +1992,7 @@ class QueryHandlingPrimitives(Primitive):
         def _func(_) -> str:
             pass
 
-        return self._to_symbol(_func(self))
+        return self._to_type(_func(self))
 
     def transcribe(self, modify: str, **kwargs) -> 'Symbol':
         '''
@@ -2010,7 +2010,7 @@ class QueryHandlingPrimitives(Primitive):
         def _func(_) -> str:
             pass
 
-        return self._to_symbol(_func(self))
+        return self._to_type(_func(self))
 
 
 class ExecutionControlPrimitives(Primitive):
@@ -2033,7 +2033,7 @@ class ExecutionControlPrimitives(Primitive):
         def _func(_) -> str:
             pass
 
-        return self._to_symbol(_func(self))
+        return self._to_type(_func(self))
 
     def execute(self, **kwargs) -> 'Symbol':
         '''
@@ -2080,7 +2080,7 @@ class ExecutionControlPrimitives(Primitive):
         def _func(_):
             pass
 
-        return self._to_symbol(_func(self))
+        return self._to_type(_func(self))
 
     def sufficient(self, query: str, **kwargs) -> 'Symbol':
         '''
@@ -2097,7 +2097,7 @@ class ExecutionControlPrimitives(Primitive):
         def _func(_) -> bool:
             pass
 
-        return self._to_symbol(_func(self))
+        return self._to_type(_func(self))
 
     def list(self, condition: str, **kwargs) -> 'Symbol':  #@TODO: can't filter directly handle this case?
         '''
@@ -2114,7 +2114,7 @@ class ExecutionControlPrimitives(Primitive):
         def _func(_) -> list:
             pass
 
-        return self._to_symbol(_func(self))
+        return self._to_type(_func(self))
 
     def foreach(self, condition: str, apply: str, **kwargs) -> 'Symbol':
         '''
@@ -2132,7 +2132,7 @@ class ExecutionControlPrimitives(Primitive):
         def _func(_):
             pass
 
-        return self._to_symbol(_func(self))
+        return self._to_type(_func(self))
 
     def stream(self, expr: 'Expression', token_ratio: Optional[float] = 0.6, **kwargs) -> 'Symbol':
         '''
@@ -2163,7 +2163,7 @@ class ExecutionControlPrimitives(Primitive):
 
             for i in range(n_splits):
                 tokens_sliced = self.tokens[i * max_ctxt_tokens: (i + 1) * max_ctxt_tokens]
-                r = self._to_symbol(self.tokenizer().decode(tokens_sliced))
+                r = self._to_type(self.tokenizer().decode(tokens_sliced))
 
                 yield expr(r, **kwargs)
 
@@ -2263,7 +2263,7 @@ class DictHandlingPrimitives(Primitive):
         def _func(_):
             pass
 
-        return self._to_symbol(_func(self))
+        return self._to_type(_func(self))
 
     def map(self, **kwargs) -> 'Symbol':
         '''
@@ -2285,11 +2285,11 @@ class DictHandlingPrimitives(Primitive):
         map_ = {}
         keys = []
         for v in self.value.values():
-            k = self._to_symbol(v).unique(keys, **kwargs)
+            k = self._to_type(v).unique(keys, **kwargs)
             keys.append(k.value)
             map_[k.value] = v
 
-        return self._to_symbol(map_)
+        return self._to_type(map_)
 
 
 class TemplateStylingPrimitives(Primitive):
@@ -2313,7 +2313,7 @@ class TemplateStylingPrimitives(Primitive):
         '''
         def _func(self):
             res = template.replace(placeholder, str(self))
-            return that._to_symbol(res)
+            return that._to_type(res)
 
         return _func(that)
 
@@ -2335,7 +2335,7 @@ class TemplateStylingPrimitives(Primitive):
         def _func(_):
             pass
 
-        return self._to_symbol(_func(self))
+        return self._to_type(_func(self))
 
 
 class DataClusteringPrimitives(Primitive):
@@ -2359,7 +2359,7 @@ class DataClusteringPrimitives(Primitive):
         def _func(_):
             pass
 
-        return self._to_symbol(_func(self))
+        return self._to_type(_func(self))
 
 
 class EmbeddingPrimitives(Primitive):
@@ -2390,7 +2390,7 @@ class EmbeddingPrimitives(Primitive):
         def _func(_) -> list:
             pass
 
-        return self._to_symbol(_func(self))
+        return self._to_type(_func(self))
 
     @property
     def embedding(self) -> np.array:
@@ -2675,7 +2675,7 @@ class IOHandlingPrimitives(Primitive):
 
         if hasattr(self, 'sym_return_type'):
             return self.sym_return_type(self.value if condition else '') | res
-        return self._to_symbol(self.value if condition else '') | self._to_symbol(res)
+        return self._to_type(self.value if condition else '') | self._to_type(res)
 
     def open(self, path: str = None, **kwargs) -> 'Symbol':
         '''
@@ -2709,7 +2709,7 @@ class IOHandlingPrimitives(Primitive):
 
         if hasattr(self, 'sym_return_type'):
             return self.sym_return_type(_func(self))
-        return self._to_symbol(_func(self))
+        return self._to_type(_func(self))
 
 
 class IndexingPrimitives(Primitive):
@@ -2793,7 +2793,7 @@ class PersistencePrimitives(Primitive):
         @core.expand(**kwargs)
         def _func(_, *args): pass
 
-        _tmp_llm_func = self._to_symbol(_func(self, *args))
+        _tmp_llm_func = self._to_type(_func(self, *args))
         func_name = str(_tmp_llm_func.extract('function name'))
 
         def _llm_func(*args, **kwargs):
@@ -2871,7 +2871,7 @@ class OutputHandlingPrimitives(Primitive):
         def _func(_, *args):
             pass
 
-        return self._to_symbol(_func(self, *args))
+        return self._to_type(_func(self, *args))
 
 
 class FineTuningPrimitives(Primitive):

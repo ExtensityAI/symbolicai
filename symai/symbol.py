@@ -566,6 +566,24 @@ class Symbol(metaclass=SymbolMeta):
         Returns:
             Symbol: The Symbol instance.
         '''
+        type_  = Symbol
+        if isinstance(value, type_):
+            return value
+        # inherit kwargs for new symbol instance
+        kwargs = {**self._kwargs, **kwargs}
+        sym    = type_(value, **kwargs)
+        return sym
+
+    def _to_type(self, value: Any, **kwargs) -> "Symbol":
+        '''
+        Convert a value to its own type instance.
+
+        Args:
+            value (Any): The value to convert to its own type instance.
+
+        Returns:
+            Type: The type instance.
+        '''
         type_  = type(self)
         if isinstance(value, type_):
             return value
