@@ -229,7 +229,7 @@ class EngineRepository(object):
         return cls._instance
 
     @staticmethod
-    def register(id: str, engine_instance: Engine, allow_engine_override: bool = False, *args, **kwargs) -> None:
+    def register(id: str, engine_instance: Engine, allow_engine_override: bool = False) -> None:
         self = EngineRepository()
         # Check if the engine is already registered
         if id in self._engines and not allow_engine_override:
@@ -238,7 +238,7 @@ class EngineRepository(object):
         self._engines[id] = engine_instance
 
     @staticmethod
-    def register_from_plugin(id: str, plugin: str, selected_engine: Optional[str] = None, args = [], kwargs = {}, allow_engine_override: bool = False, *func_args, **func_kwargs) -> None:
+    def register_from_plugin(id: str, plugin: str, selected_engine: Optional[str] = None, allow_engine_override: bool = False, *args, **kwargs) -> None:
         from .imports import Import
         types = Import.load_module_class(plugin)
         # filter out engine class type
@@ -250,7 +250,7 @@ class EngineRepository(object):
             if len(engine) <= 0:
                 raise ValueError(f"No engine named {selected_engine} found in plugin {plugin}.")
         engine = engines[0](*args, **kwargs)
-        EngineRepository.register(id, engine, allow_engine_override=allow_engine_override, *func_args, **func_kwargs)
+        EngineRepository.register(id, engine, allow_engine_override=allow_engine_override)
 
     @staticmethod
     def register_from_package(package: ModuleType, allow_engine_override: bool = False, *args, **kwargs) -> None:
@@ -266,7 +266,7 @@ class EngineRepository(object):
                 # Register class if it is a subclass of Engine (but not Engine itself)
                 if inspect.isclass(attribute) and issubclass(attribute, Engine) and attribute is not Engine:
                     try:
-                        instance = attribute() # Create an instance of the engine class
+                        instance = attribute(*args, **kwargs) # Create an instance of the engine class
                         # Assume the class has an 'init' static method to initialize it
                         engine_id_func_ = getattr(instance, 'id', None)
                         if engine_id_func_ is None:
