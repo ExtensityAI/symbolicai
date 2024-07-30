@@ -19,6 +19,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
+    "attrs-23.2.0",
     "setuptools==67.7.2",
     "toml==0.10.2",
     "natsort==8.3.1",
