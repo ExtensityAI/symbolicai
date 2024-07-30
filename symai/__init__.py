@@ -2,11 +2,8 @@ import json
 import logging
 import os
 import subprocess
-import sys
 import warnings
 from pathlib import Path
-
-import uvicorn
 
 from .backend import settings
 from .menu.screen import show_menu
@@ -30,7 +27,7 @@ warnings.simplefilter("ignore")
 os.environ['TOKENIZERS_PARALLELISM'] = "false"
 
 
-SYMAI_VERSION = "0.6.3"
+SYMAI_VERSION = "0.6.4"
 __version__   = SYMAI_VERSION
 __root_dir__  = Path.home() / '.symai'
 
