@@ -27,7 +27,7 @@ warnings.simplefilter("ignore")
 os.environ['TOKENIZERS_PARALLELISM'] = "false"
 
 
-SYMAI_VERSION = "0.6.5"
+SYMAI_VERSION = "0.6.6"
 __version__   = SYMAI_VERSION
 __root_dir__  = Path.home() / '.symai'
 
