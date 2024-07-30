@@ -141,3 +141,5 @@ symai.config.json
 # ignore all files in the symai/extended/packages/ directory
 symai/extended/packages/**/*
 notebooks/demos/**/*
+.virtual_documents/notebooks
+notebooks/.virtual_documents
