@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 mandatory_dependencies = [
+    "attrs",
     "setuptools",
     "toml",
     "natsort",

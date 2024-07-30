@@ -19,8 +19,8 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "attrs-23.2.0",
-    "setuptools==67.7.2",
+    "attrs==23.2.0",
+    "setuptools==70.0.0",
     "toml==0.10.2",
     "natsort==8.3.1",
     "numpy==1.26.4",
@@ -67,7 +67,7 @@ bitsandbytes = ["bitsandbytes==0.43.1"] # handle separately because of Apple Sil
 blip2        = ["decord==0.6.0", "salesforce-lavis==1.0.0", "opencv-python-headless==4.5.5.64"]
 hf           = ["transformers==4.42.4", "accelerate==0.27.2", "peft==0.11.1", "datasets==2.20.0", "trl==0.9.6"]
 wolframalpha = ["wolframalpha==5.0.0"]
-whisper      = ["openai-whisper==20231117"]
+whisper      = ["openai-whisper==20231117", "numba==0.60.0"]
 selenium     = ["selenium==4.18.1", "webdriver-manager==4.0.1", "chromedriver-autoinstaller==0.6.4"]
 serpapi      = ["google_search_results==2.4.2"]
 pinecone     = ["pinecone-client==4.1.0"]
