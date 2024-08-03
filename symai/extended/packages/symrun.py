@@ -81,16 +81,16 @@ class PackageRunner():
             parser.print_help()
             return
 
+        arg_values = [arg for arg in args.params if '=' not in arg]
+        kwargs = {arg.split('=')[0]: arg.split('=')[1] for arg in args.params if '=' in arg}
+
         try:
-            expr = Import(package)
+            expr = Import(package, **kwargs)
         except Exception as e:
             with ConsoleStyle('error'):
                 print("Error: {} in package `{}`.\nPlease check your command {} or if package is available.".format(str(e), package, args))
             parser.print_help()
             return
-
-        arg_values = [arg for arg in args.params if '=' not in arg]
-        kwargs = {arg.split('=')[0]: arg.split('=')[1] for arg in args.params if '=' in arg}
 
         if '--disable-pbar' not in arg_values:
             with Loader(desc="Inference ...", end=""):
