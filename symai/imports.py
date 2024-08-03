@@ -31,6 +31,31 @@ class Import(Expression):
         return os.path.exists(f'{BASE_PACKAGE_PATH}/{module}/package.json')
 
     @staticmethod
+    def get_from_local(module, local_path):
+        # if base package does not exist, create it
+        if not os.path.exists(BASE_PACKAGE_PATH):
+            os.makedirs(BASE_PACKAGE_PATH)
+
+        subprocess.check_call(['mkdir', '-p', '--parents', f'{BASE_PACKAGE_PATH}/{module}'])
+        print(['cp', '-r', local_path, f'{BASE_PACKAGE_PATH}'])
+        subprocess.check_call(['cp', '-r', local_path, f'{BASE_PACKAGE_PATH}'])
+
+        # Install dependencies
+        with open(f'{BASE_PACKAGE_PATH}/{module}/package.json') as f:
+            pkg = json.load(f)
+            for dependency in pkg['dependencies']:
+                # Update git_url for the dependency
+                git_url_dependency = f'https://github.com/{dependency}'
+                if not os.path.exists(f'{BASE_PACKAGE_PATH}/{dependency}'):
+                    subprocess.check_call(['git', 'clone', git_url_dependency, f'{BASE_PACKAGE_PATH}/{dependency}'])
+
+        # Install requirements
+        if os.path.exists(f'{BASE_PACKAGE_PATH}/{module}/requirements.txt'):
+            with open(f'{BASE_PACKAGE_PATH}/{module}/requirements.txt') as f:
+                for dependency in f.readlines():
+                    subprocess.check_call(['pip', 'install', dependency])
+
+    @staticmethod
     def get_from_github(module):
         # if base package does not exist, create it
         if not os.path.exists(BASE_PACKAGE_PATH):
@@ -92,12 +117,18 @@ class Import(Expression):
         raise Exception("Cannot call Import class directly. Use Import.load_module_class(module) instead.")
 
     @staticmethod
-    def install(module: str):
+    def install(module: str, local_path: str = ''):
         if not Import.exists(module):
-            Import.get_from_github(module)
+            if local_path is None or len(local_path) == 0:
+                print("Using github")
+                Import.get_from_github(module)
+            else:
+                print("Using local")
+                Import.get_from_local(module,local_path)
             print(f"Module '{module}' installed.")
         else:
             print(f"Module '{module}' already installed.")
+
 
     @staticmethod
     def remove(module: str):
