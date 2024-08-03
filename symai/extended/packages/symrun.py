@@ -75,6 +75,9 @@ class PackageRunner():
         # try running the alias or as package
         package = aliases.get(args.alias) or args.alias
 
+        arg_values = [arg for arg in args.params if '=' not in arg]
+        kwargs = {arg.split('=')[0]: arg.split('=')[1] for arg in args.params if '=' in arg}
+
         if package is None:
             with ConsoleStyle('error'):
                 print("Alias run of `{}` not found. Please check your command {}".format(args.alias, args))
