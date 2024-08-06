@@ -54,7 +54,7 @@ class PackageHandler():
 
         if args is None:
             args = parser.parse_args(sys.argv[2:])
-        Import.install(args.package,args.local_path)
+        Import.install(args.package, args.local_path)
 
     def r(self):
         parser = argparse.ArgumentParser(
