@@ -438,11 +438,23 @@ The available commands are:
 - `l` or `list`: List all installed packages. To list installed packages, use the following command: `sympkg l`
 - `u` or `update`: Update an installed package. To update a package, use the following command: `sympkg u <package>`
 
+#### Usage example for local installation.
+The parent folder of the repo must be named < username >
+```bash
+$> sympkg i <username>/<repo_name> <path_to_repo>
+```
+
+```bash
+$> sympkg i somename/cool_repo /home/user/symai_projects/somename
+```
+
 For more information on each command, you can use the `--help` flag. For example, to get help on the `i` command, use the following command: `sympkg i --help`.
 
 Note: The package manager is based on GitHub, so you will need `git` installed to install or update packages. The packages names use the GitHub `<username>/<repo_name>` convention.
 
 Happy package managing!
+
+
 
 ### 📦 Package Runner
 

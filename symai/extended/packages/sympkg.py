@@ -21,7 +21,7 @@ class PackageHandler():
             description='''SymbolicAI package manager.
             Manage extensions from the command line.
             You can (i) install, (r) remove, (l) list installed, (u) update a module or (U) update all modules.''',
-            usage='''sympkg <command> [<args>]
+            usage='''sympkg <command> [<args>] [<optional path for a local installation>]
 
             The most commonly used sympkg commands are:
             i   Install a new package
@@ -50,9 +50,11 @@ class PackageHandler():
             usage='sympkg i [package]'
         )
         parser.add_argument('package', help='Name of package to install')
+        parser.add_argument('local_path', help='Local path to the package to install', nargs='?', const='', type=str)
+
         if args is None:
             args = parser.parse_args(sys.argv[2:])
-        Import.install(args.package)
+        Import.install(args.package, args.local_path)
 
     def r(self):
         parser = argparse.ArgumentParser(
