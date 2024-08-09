@@ -88,6 +88,8 @@ class Import(Expression):
                 elif isinstance(expressions, list):
                     if expr['type'] in expressions:
                         module_class = getattr(importlib.import_module(relative_module_path), expr['type'])
+                        if len(expressions) == 1:
+                            return module_class
                         module_classes.append(module_class)
         return module_classes
 
