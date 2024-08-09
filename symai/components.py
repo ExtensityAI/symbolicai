@@ -932,6 +932,7 @@ class FunctionWithUsage(Function):
     def __init__(
         self,
         missing_usage_exception: bool = True,
+        verbose=False,
         *args,
         **kwargs,
     ):
@@ -940,6 +941,11 @@ class FunctionWithUsage(Function):
         self.completion_tokens = 0
         self.total_tokens = 0
         self.missing_usage_exception = missing_usage_exception
+        self.verbose = verbose
+
+    def print_verbose(self, msg):
+        if self.verbose:
+            print(msg)
 
     def _format_usage(self, prompt_tokens, completion_tokens, total_tokens):
         return Box(
@@ -961,7 +967,9 @@ class FunctionWithUsage(Function):
         self.total_tokens += usage.total_tokens
 
     def get_usage(self):
-        return self._format_usage(self.prompt_tokens, self.completion_tokens, self.total_tokens)
+        return self._format_usage(
+            self.prompt_tokens, self.completion_tokens, self.total_tokens
+        )
 
     def forward(self, *args, **kwargs):
         if "return_metadata" not in kwargs:
@@ -980,7 +988,7 @@ class FunctionWithUsage(Function):
             )
             total_tokens = usage.total_tokens if hasattr(usage, "total_tokens") else 0
 
-            print(
+            self.print_verbose(
                 f"[Usage] Prompt: {prompt_tokens} Completion: {completion_tokens} Total: {total_tokens}"
             )
 
@@ -1011,6 +1019,21 @@ class ValidatedFunction(FunctionWithUsage):
         self.retry_count = retry_count
         self.data_model = data_model
 
+    def prepare_seeds(self, num_seeds: int, **kwargs):
+        # get list of seeds for remedy (to avoid same remedy for same input)
+        if "seed" in kwargs:
+            seed = kwargs["seed"]
+        elif hasattr(self, "seed"):
+            seed = self.seed
+        else:
+            seed = 42
+
+        rnd = np.random.RandomState(seed=seed)
+        seeds = rnd.randint(
+            0, np.iinfo(np.int16).max, size=num_seeds, dtype=np.int16
+        ).tolist()
+        return seeds
+
     def forward(self, *args, **kwargs):
         # force JSON mode
         kwargs["response_format"] = {"type": "json_object"}
@@ -1020,12 +1043,7 @@ class ValidatedFunction(FunctionWithUsage):
         json, usage = super().forward(*args, **kwargs)
 
         # get list of seeds for remedy (to avoid same remedy for same input)
-        if "seed" in kwargs:
-            seed = kwargs["seed"]
-            rnd = np.random.RandomState(seed=seed)
-        else:
-            rnd = np.random.RandomState(seed=42)
-        remedy_seeds = rnd.randint(0, np.iinfo(np.int16).max, size=self.retry_count, dtype=np.int16).tolist()
+        remedy_seeds = self.prepare_seeds(self.retry_count, **kwargs)
 
         # prepare remedy function
         remedy_function = FunctionWithUsage(
@@ -1034,7 +1052,7 @@ class ValidatedFunction(FunctionWithUsage):
                 + "Fix the errors and return a valid JSON string that is valid for the given JSON schema without changing values.\n"
             ),
             static_context="You are an agent for validating JSON schemas and fixing errors.",
-            response_format={"type": "json_object"}
+            response_format={"type": "json_object"},
         )
 
         # try to validate the JSON and fix if necessary
@@ -1051,7 +1069,7 @@ class ValidatedFunction(FunctionWithUsage):
                     error_str += f"[ERROR] {error['msg']}: {error['loc']}\n"
 
                 # ask model to fix the error
-                print(f"[Retry {i + 1}/{self.retry_count}] ValidationError: ", e)
+                self.print_verbose(f"[Retry {i + 1}/{self.retry_count}] ValidationError: ", e)
                 remedy_function.clear()
                 remedy_function.adapt(
                     "[[JSON Schema]]\n"
@@ -1100,17 +1118,12 @@ class LengthConstrainedFunction(ValidatedFunction):
         original_task = args[0]  # TODO can we validate this?
 
         # get list of seeds for remedy (to avoid same remedy for same input)
-        if "seed" in kwargs:
-            seed = kwargs["seed"]
-            rnd = np.random.RandomState(seed=seed)
-        else:
-            rnd = np.random.RandomState(seed=42)
-        remedy_seeds = rnd.randint(0, np.iinfo(np.int16).max, size=self.constraint_retry_count, dtype=np.int16).tolist()
+        remedy_seeds = self.prepare_seeds(self.constraint_retry_count, **kwargs)
 
         for i in range(self.constraint_retry_count):
             constraint_violations = self.check_constraints(result)
             if len(constraint_violations) > 0:
-                print(f"Constraint violations: {constraint_violations}")
+                self.print_verbose(f"Constraint violations: {constraint_violations}")
                 remedy_task = self.wrap_task(
                     original_task, result.model_dump_json(), constraint_violations
                 )
@@ -1143,7 +1156,7 @@ class LengthConstrainedFunction(ValidatedFunction):
                     <= constraint.max_characters
                 ):
                     # TODO improve for lists (especially table of contents) by providing the index
-                    print(
+                    self.print_verbose(
                         f"Field {constraint.field_name} must have between {constraint.min_characters} and {constraint.max_characters} characters, has {len(field_value)}"
                     )
                     remedy_str = [
@@ -1159,7 +1172,9 @@ class LengthConstrainedFunction(ValidatedFunction):
                         )
                     constraint_violations.append(" ".join(remedy_str))
                 else:
-                    print(f"[PASS] Field {constraint.field_name} passed length validation: {len(field_value)} ({constraint.min_characters} - {constraint.max_characters})")
+                    self.print_verbose(
+                        f"[PASS] Field {constraint.field_name} passed length validation: {len(field_value)} ({constraint.min_characters} - {constraint.max_characters})"
+                    )
 
         return constraint_violations
 
@@ -1179,7 +1194,7 @@ class LengthConstrainedFunction(ValidatedFunction):
     @staticmethod
     def get(obj, path: str):
         value = obj
-        for i, key in enumerate(path.split('.')):
+        for i, key in enumerate(path.split(".")):
             if isinstance(value, list):
                 try:
                     index = int(key)
@@ -1190,7 +1205,9 @@ class LengthConstrainedFunction(ValidatedFunction):
                 except:
                     values = []
                     for val in value:
-                        leaf = LengthConstrainedFunction.get(val, ".".join(path.split('.')[i:]))
+                        leaf = LengthConstrainedFunction.get(
+                            val, ".".join(path.split(".")[i:])
+                        )
                         values.extend(leaf)
                     return values
             elif isinstance(value, dict):
