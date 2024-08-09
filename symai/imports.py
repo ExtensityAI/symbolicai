@@ -91,6 +91,9 @@ class Import(Expression):
                         if len(expressions) == 1:
                             return module_class
                         module_classes.append(module_class)
+        assert len(module_classes) > 0, f"Expression '{expressions}' not found in module '{module}'"
+        module_classes_names = [str(class_.__name__) for class_ in module_classes]
+        assert len(module_classes) == len(expressions), f"Not all expressions found in module '{module}'. Could not load {[expr for expr in expressions if expr not in module_classes_names]}"
         return module_classes
 
     def __new__(self, module, auto_clone: bool = True, verbose: bool = False, *args, **kwargs):
