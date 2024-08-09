@@ -7,7 +7,7 @@ import stat
 import subprocess
 import sys
 from pathlib import Path
-from typing import List, Union
+from typing import List, Tuple, Union
 
 from .symbol import Expression
 
@@ -71,7 +71,7 @@ class Import(Expression):
         return module_classes
 
     @staticmethod
-    def load_expression(module, expressions: Union[List[str] | str]) -> Union[List[Expression] | Expression]:
+    def load_expression(module, expressions: Union[List[str] | Tuple[str] | str]) -> Union[List[Expression] | Expression]:
         module_classes = []
         with open(f'{BASE_PACKAGE_PATH}/{module}/package.json') as f:
             pkg = json.load(f)
@@ -85,12 +85,14 @@ class Import(Expression):
                     if expr['type'] == expressions:
                         module_class = getattr(importlib.import_module(relative_module_path), expr['type'])
                         return module_class
-                elif isinstance(expressions, list):
+                elif isinstance(expressions, list) or isinstance(expressions, tuple):
                     if expr['type'] in expressions:
                         module_class = getattr(importlib.import_module(relative_module_path), expr['type'])
                         if len(expressions) == 1:
                             return module_class
                         module_classes.append(module_class)
+                else:
+                    raise Exception("Invalid type for 'expressions'. Must be str, list or tuple.")
         assert len(module_classes) > 0, f"Expression '{expressions}' not found in module '{module}'"
         module_classes_names = [str(class_.__name__) for class_ in module_classes]
         assert len(module_classes) == len(expressions), f"Not all expressions found in module '{module}'. Could not load {[expr for expr in expressions if expr not in module_classes_names]}"
