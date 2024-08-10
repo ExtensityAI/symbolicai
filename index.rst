@@ -6,9 +6,9 @@ SymbolicAI: A Neuro-Symbolic Perspective on Large Language Models (LLMs)
    :caption: Contents:
 
    README
-   docs/INTRODUCTION
-   docs/INSTALLATION
-   docs/QUICKSTART
+   INTRODUCTION
+   INSTALLATION
+   QUICKSTART
    modules/Components
    modules/Symbol
    modules/Chat
