@@ -14,7 +14,7 @@ with open("pyproject.toml") as f:
 # -- Project information -----------------------------------------------------
 
 project = "SymbolicAI"
-copyright = "2023, AlphaCore AI e.U."
+copyright = "2024, ExtensityAI FlexCo"
 author = "Marius-Constantin Dinu"
 
 version = data["project"]["dynamic"][0]
