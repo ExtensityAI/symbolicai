@@ -1,3 +1,92 @@
+SymbolicAI: A Neuro-Symbolic Perspective on Large Language Models (LLMs)
+===========================================================================
+
+.. toctree::
+   :maxdepth: 5
+   :caption: Contents:
+
+   README
+   INTRODUCTION
+   INSTALLATION
+   QUICKSTART
+   CONTRIBUTING
+   LICENSE
+
+Expressions
+==========
+
+Chat
+----
+
+.. automodule:: symai.chat
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Components
+----------
+
+.. automodule:: symai.components
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Core
+----
+
+.. automodule:: symai.core
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Functional
+----------
+
+.. automodule:: symai.functional
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Memory
+------
+
+.. automodule:: symai.memory
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Post Processors
+---------------
+
+.. automodule:: symai.post_processors
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Pre Processors
+--------------
+
+.. automodule:: symai.pre_processors
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Prompts
+-------
+
+.. automodule:: symai.prompts
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Symbol
+------
+
+.. automodule:: symai.symbol
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Backend
 =======
 
