@@ -85,4 +85,4 @@ html_context = {
     "conf_py_path": "/docs/",  # Path in the checkout to the docs root
 }
 
-master_doc = 'index'
+master_doc = 'docs/index'
