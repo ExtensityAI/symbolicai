@@ -6,6 +6,7 @@ sphinx-rst-builder==0.0.3
 sphinx-book-theme==1.0.1
 autodoc-pydantic==1.8.0
 sphinx-code-include==1.1.1
+sphinx-multiproject==1.0.0rc1
 myst_parser==0.18.1
 myst-nb==0.17.2
 autodoc-pydantic
