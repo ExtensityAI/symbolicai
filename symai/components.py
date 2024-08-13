@@ -1069,7 +1069,7 @@ class ValidatedFunction(FunctionWithUsage):
                     error_str += f"[ERROR] {error['msg']}: {error['loc']}\n"
 
                 # ask model to fix the error
-                self.print_verbose(f"[Retry {i + 1}/{self.retry_count}] ValidationError: ", e)
+                self.print_verbose(f"[Retry {i + 1}/{self.retry_count}] ValidationError: {str(e)}")
                 remedy_function.clear()
                 remedy_function.adapt(
                     "[[JSON Schema]]\n"
