@@ -26,6 +26,7 @@ from .processor import ProcessorPipeline
 from .prompts import JsonPromptTemplate, Prompt
 from .symbol import Expression, Metadata, Symbol
 from .utils import CustomUserWarning
+from .backend.settings import HOME_PATH
 
 
 class GraphViz(Expression):
@@ -753,7 +754,7 @@ class SimilarityClassification(Expression):
         self.in_memory = in_memory
 
         if self.in_memory:
-            CustomUserWarning(f'Caching mode is enabled! It is your responsability to empty the .cache folder if you did changes to the classes. The cache is located at {Path.home()}/.symai/cache')
+            CustomUserWarning(f'Caching mode is enabled! It is your responsability to empty the .cache folder if you did changes to the classes. The cache is located at {HOME_PATH}/.symai/cache')
 
     def forward(self, x: Symbol) -> Symbol:
         x            = self._to_symbol(x)
@@ -829,7 +830,7 @@ class Indexer(Expression):
         self.sym_return_type = Expression
 
         # append index name to indices.txt in home directory .symai folder (default)
-        self.path = Path.home() / '.symai' / 'indices.txt'
+        self.path = HOME_PATH / '.symai' / 'indices.txt'
         if not self.path.exists():
             self.path.parent.mkdir(parents=True, exist_ok=True)
             self.path.touch()
@@ -852,7 +853,7 @@ class Indexer(Expression):
 
     def exists(self) -> bool:
         # check if index exists in home directory .symai folder (default) indices.txt
-        path = Path.home() / '.symai' / 'indices.txt'
+        path = HOME_PATH / '.symai' / 'indices.txt'
         if not path.exists():
             return False
         with open(path, 'r') as f:

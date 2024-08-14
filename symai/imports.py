@@ -10,12 +10,13 @@ from pathlib import Path
 from typing import List, Tuple, Union
 
 from .symbol import Expression
+from .backend.settings import HOME_PATH
 
 
 logging.getLogger("subprocess").setLevel(logging.ERROR)
 
 
-__root_dir__  = Path.home() / '.symai/packages/'
+__root_dir__  = HOME_PATH / '.symai/packages/'
 BASE_PACKAGE_MODULE = '' # use relative path
 BASE_PACKAGE_PATH = str(__root_dir__)
 sys.path.append(str(__root_dir__))
