@@ -2026,8 +2026,9 @@ def register(engines: Dict[str, Any]):
         def wrapper(instance, **kwargs):
             return EngineRepository.register(
                     engines=engines,
-                    instance=instance,
-                    func=func
+                    engine_instance=instance,
+                    func=func,
+                    **kwargs
                 )
         return wrapper
     return decorator
