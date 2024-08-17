@@ -12,7 +12,6 @@ from typing import Dict, Any, Tuple
 
 from .post_processors import PostProcessor
 from .pre_processors import PreProcessor
-from .misc.console import ConsoleStyle
 from .backend.base import Engine, ENGINE_UNREGISTERED
 from .backend import engines
 

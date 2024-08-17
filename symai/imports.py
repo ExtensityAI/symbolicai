@@ -6,7 +6,7 @@ import shutil
 import stat
 import subprocess
 import sys
-from pathlib import Path
+
 from typing import List, Tuple, Union
 
 from .symbol import Expression
