@@ -33,10 +33,7 @@ LOOKAHEAD_RANGE = 100  # Number of characters to look ahead for a sentence bound
 
 # Define emoji ranges
 def generate_emoji_pattern(file_name):
-    # Get the directory of the current file
     current_dir = os.path.dirname(os.path.abspath(__file__))
-
-    # Construct the full path to emoji.txt
     file_path = os.path.join(current_dir, file_name)
 
     emoji_codes = set()
@@ -46,11 +43,23 @@ def generate_emoji_pattern(file_name):
             for line in file:
                 # Skip comments and empty lines
                 if line.strip() and not line.startswith('#'):
-                    # Extract Unicode code points
-                    codes = line.split(';')[0].strip().split()
-                    for code in codes:
-                        # Convert hex to integer and then to Unicode character
-                        emoji_codes.add(chr(int(code, 16)))
+                    fields = line.strip().split(';')
+                    unicode_codes = fields[0].strip().split()
+
+                    if len(unicode_codes) == 1:
+                        # Single Unicode character
+                        emoji_codes.add(chr(int(unicode_codes[0], 16)))
+                    elif len(unicode_codes) > 1:
+                        # Sequence of Unicode characters
+                        emoji_sequence = ''.join(chr(int(code, 16)) for code in unicode_codes)
+                        emoji_codes.add(emoji_sequence)
+
+                    # We could also process vendor-specific codes here if needed
+                    # for i, vendor_code in enumerate(fields[1:], start=1):
+                    #     if vendor_code:
+                    #         # Process vendor-specific code
+                    #         pass
+
     except FileNotFoundError:
         print(f"Error: File '{file_name}' not found in {current_dir}")
         return None
@@ -59,29 +68,23 @@ def generate_emoji_pattern(file_name):
         return None
 
     # Sort the emoji codes
-    sorted_codes = sorted(emoji_codes)
-
-    # Group consecutive codes into ranges
-    ranges = []
-    start = sorted_codes[0]
-    prev = start
-
-    for code in sorted_codes[1:]:
-        if ord(code) != ord(prev) + 1:
-            ranges.append((start, prev))
-            start = code
-        prev = code
-    ranges.append((start, prev))
+    sorted_codes = sorted(emoji_codes, key=lambda x: [ord(c) for c in x])
 
     # Generate the regex pattern
-    pattern_parts = [f'\\U{ord(start):08x}-\\U{ord(end):08x}' for start, end in ranges]
-    emoji_pattern = '[' + ''.join(pattern_parts) + ']'
+    pattern_parts = []
+    for code in sorted_codes:
+        if len(code) == 1:
+            pattern_parts.append(f'\\U{ord(code):08x}')
+        else:
+            pattern_parts.append(''.join(f'\\U{ord(c):08x}' for c in code))
+
+    emoji_pattern = '(?:' + '|'.join(pattern_parts) + ')'
 
     return emoji_pattern
 
 # Usage
-emoji_file_path = 'emoji.txt'  # Update this to the actual path of your emoji.txt file
-EMOJI_PATTERN = generate_emoji_pattern(emoji_file_path)
+file_name = 'emoji.pytxt'
+EMOJI_PATTERN = generate_emoji_pattern(file_name)
 
 # Define the regex pattern
 CHUNK_REGEX = re.compile(
