@@ -151,8 +151,7 @@ class RegexFormatter(Expression):
         input_ = input_text.strip()
         split_text = self.SENTENCES_RE.split(input_)  # regex splitting
 
-        chunks = [s.strip() + ".\n" for s in split_text if s.strip()]
-        # s.strip() + ".\n" ensures that all lines in the sentence end with a period and newline
+        chunks = [s.strip() for s in split_text if s.strip()]
         # s.strip() == True if sentence has other characters than whitespace
 
         return chunks
