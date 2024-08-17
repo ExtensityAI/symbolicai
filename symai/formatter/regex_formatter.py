@@ -1,4 +1,6 @@
 import re
+import os
+
 
 # Define variables for magic numbers
 MAX_HEADING_LENGTH = 7
@@ -28,8 +30,58 @@ MAX_STANDALONE_LINE_LENGTH = 800
 MAX_HTML_TAG_ATTRIBUTES_LENGTH = 100
 MAX_HTML_TAG_CONTENT_LENGTH = 1000
 LOOKAHEAD_RANGE = 100  # Number of characters to look ahead for a sentence boundary
+
 # Define emoji ranges
-EMOJI_PATTERN = r'[\U0001F300-\U0001F5FF\U0001F600-\U0001F64F\U0001F680-\U0001F6FF\U0001F700-\U0001F77F\U0001F780-\U0001F7FF\U0001F800-\U0001F8FF\U0001F900-\U0001F9FF\U0001FA00-\U0001FA6F\U0001FA70-\U0001FAFF\U00002702-\U000027B0\U000024C2-\U0001F251]'
+def generate_emoji_pattern(file_name):
+    # Get the directory of the current file
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Construct the full path to emoji.txt
+    file_path = os.path.join(current_dir, file_name)
+
+    emoji_codes = set()
+
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            for line in file:
+                # Skip comments and empty lines
+                if line.strip() and not line.startswith('#'):
+                    # Extract Unicode code points
+                    codes = line.split(';')[0].strip().split()
+                    for code in codes:
+                        # Convert hex to integer and then to Unicode character
+                        emoji_codes.add(chr(int(code, 16)))
+    except FileNotFoundError:
+        print(f"Error: File '{file_name}' not found in {current_dir}")
+        return None
+    except Exception as e:
+        print(f"Error reading file: {e}")
+        return None
+
+    # Sort the emoji codes
+    sorted_codes = sorted(emoji_codes)
+
+    # Group consecutive codes into ranges
+    ranges = []
+    start = sorted_codes[0]
+    prev = start
+
+    for code in sorted_codes[1:]:
+        if ord(code) != ord(prev) + 1:
+            ranges.append((start, prev))
+            start = code
+        prev = code
+    ranges.append((start, prev))
+
+    # Generate the regex pattern
+    pattern_parts = [f'\\U{ord(start):08x}-\\U{ord(end):08x}' for start, end in ranges]
+    emoji_pattern = '[' + ''.join(pattern_parts) + ']'
+
+    return emoji_pattern
+
+# Usage
+emoji_file_path = 'emoji.txt'  # Update this to the actual path of your emoji.txt file
+EMOJI_PATTERN = generate_emoji_pattern(emoji_file_path)
 
 # Define the regex pattern
 CHUNK_REGEX = re.compile(
