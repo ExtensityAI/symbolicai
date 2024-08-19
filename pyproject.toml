@@ -90,7 +90,7 @@ all          = [
 version = {attr = "symai.SYMAI_VERSION"}
 
 [tool.setuptools.package-data]
-"*" = ["*.json", "*.md"]
+"*" = ["*.json", "*.md", "*.pytxt"]
 
 [tool.setuptools.packages.find]
 include = ["symai"]

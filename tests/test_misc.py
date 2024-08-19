@@ -1,9 +1,16 @@
 import json
+import sys
+import time
+import psutil
+import re
 
 import pytest
 
+from symai.components import FileReader
 from symai import Expression, Symbol
 from symai.backend.settings import SYMAI_CONFIG
+from symai.utils import format_bytes
+from symai.format import CHUNK_REGEX
 
 NEUROSYMBOLIC = SYMAI_CONFIG.get('NEUROSYMBOLIC_ENGINE_MODEL')
 
@@ -37,6 +44,55 @@ Speaking to V Magazine in an interview published Monday, Hathaway said: “Back 
     S = Symbol(text)
     res = S.query("Fill in the text.", template_suffix="{{fill}}")
     assert "{{fill}}" not in S.value.replace("{{fill}}", res.value)
+
+def test_regex_format():
+    # Test the regex pattern
+    reader = FileReader()
+
+    # Read from the arg[1] file
+    test_text = reader('README.md')
+
+    # Start measuring time and memory
+    start_time = time.time()
+    start_memory = psutil.Process().memory_info().rss
+
+    # Apply the regex
+    matches = CHUNK_REGEX.findall(str(test_text))
+
+    # End measuring time and memory
+    end_time = time.time()
+    end_memory = psutil.Process().memory_info().rss
+
+    # Calculate execution time and memory usage
+    execution_time = end_time - start_time
+    memory_used = end_memory - start_memory
+
+    # Output results
+    print(f"Number of chunks: {len(matches) if matches else 0}")
+    print(f"Execution time: {execution_time:.3f} seconds")
+    print(f"Memory used: {format_bytes(memory_used)}")
+
+    # Output the first 100 matches (or fewer if there are less than 100)
+    print('\nFirst 100 chunks:')
+    if matches:
+        for match in matches[:100]:
+            print(repr(match[:50]))
+    else:
+        print('No chunks found.')
+
+    # Output regex flags
+    flags = []
+    if CHUNK_REGEX.flags & re.MULTILINE:
+        flags.append('m')
+    if CHUNK_REGEX.flags & re.UNICODE:
+        flags.append('u')
+    print(f"\nRegex flags: {''.join(flags)}")
+
+    # Check for potential issues
+    if execution_time > 5:
+        print('\nWarning: Execution time exceeded 5 seconds. The regex might be too complex or the input too large.')
+    if memory_used > 100 * 1024 * 1024:
+        print('\nWarning: Memory usage exceeded 100 MB. Consider processing the input in smaller chunks.')
 
 if __name__ == "__main__":
     pytest.main()
