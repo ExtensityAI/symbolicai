@@ -1,7 +1,4 @@
-from typing import Callable
-
 from .. import core
-from ..formatter import SentenceFormatter
 from ..post_processors import StripPostProcessor
 from ..pre_processors import PreProcessor
 from ..prompts import Prompt

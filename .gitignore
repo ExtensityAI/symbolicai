@@ -143,3 +143,5 @@ symai/extended/packages/**/*
 notebooks/demos/**/*
 .virtual_documents/notebooks
 notebooks/.virtual_documents
+outputs/
+demos/
