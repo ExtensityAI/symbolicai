@@ -97,6 +97,8 @@ Conceptually, SymbolicAI is a framework that leverages machine learning – spec
     - [Indexing Engine](#indexing-engine)
     - [CLIP Engine](#clip-engine)
     - [Local Neuro-Symbolic Engine](#local-neuro-symbolic-engine)
+      - [llama.cpp backend](#llamacpp-backend)
+      - [HuggingFace backend](#huggingface-backend)
     - [Custom Engine](#custom-engine)
   - [⚡Limitations](#limitations)
   - [🥠 Future Work](#-future-work)
@@ -1104,9 +1106,9 @@ Here is the corresponding StackTrace of the model:
 
 <img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img8.png" width="900px">
 
-The above code creates a webpage with the crawled content from the original source. See the preview below, the entire [rendered webpage image here](https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/notebooks/examples/results/news.png), and the resulting [code of the webpage here](https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/notebooks/examples/results/news.html).
+The above code creates a webpage with the crawled content from the original source. See the preview below, the entire [rendered webpage image here](https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/results/news.png), and the resulting [code of the webpage here](https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/results/news.html).
 
-<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/notebooks/examples/results/news_prev.png" width="900px">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/results/news_prev.png" width="900px">
 
 ## ▶️ Experiment with Our API
 
