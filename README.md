@@ -1104,9 +1104,9 @@ Here is the corresponding StackTrace of the model:
 
 <img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img8.png" width="900px">
 
-The above code creates a webpage with the crawled content from the original source. See the preview below, the entire [rendered webpage image here](https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/examples/results/news.png), and the resulting [code of the webpage here](https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/examples/results/news.html).
+The above code creates a webpage with the crawled content from the original source. See the preview below, the entire [rendered webpage image here](https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/notebooks/examples/results/news.png), and the resulting [code of the webpage here](https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/notebooks/examples/results/news.html).
 
-<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/examples/results/news_prev.png" width="900px">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/notebooks/examples/results/news_prev.png" width="900px">
 
 ## ▶️ Experiment with Our API
 
@@ -1114,7 +1114,7 @@ Launch and explore the notebook here:
 
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/ExtensityAI/symbolicai/HEAD)
 
-Find more examples in the [examples folder](examples/) and the [notebooks folder](notebooks/). You can also examine the test cases in the [tests folder](tests/).
+Find more examples in the [examples folder](notebooks/examples/) and the [notebooks folder](notebooks/). You can also examine the test cases in the [tests folder](tests/).
 
 ## 📈 Interface for Query and Response Inspection
 
