@@ -90,7 +90,7 @@ class News(Expression):
         """
         res = self.crawler(url=self.url, pattern=self.pattern)
         vals = []
-        for news in self.data_stream(res, **kwargs):
+        for news in self.data_stream(str(res), **kwargs):
             vals.append(str(news))
         res = Symbol(vals).cluster()
         sym = res.map()
