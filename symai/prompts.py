@@ -1,4 +1,7 @@
+import threading
+
 from abc import ABC
+from enum import Enum
 from typing import Any, Callable, List
 
 from .exceptions import TemplatePropertyException
@@ -68,6 +71,176 @@ class Prompt(ABC):
 
     def clear(self) -> None:
         self.dynamic_value.clear()
+
+
+class PromptLanguage(Enum):
+    ENGLISH = "en"
+    GERMAN = "de"
+    SPANISH = "es"
+
+
+class ModelName(Enum):
+    ALL = "all"
+
+
+class PromptRegistry:
+    _instance = None
+    _default_language = None
+    _default_model = None
+    _prompt_values = None
+    _prompt_instructions = None
+    _prompt_tags = None
+    _model_fallback = True
+    _lock = threading.Lock()  # to ensure thread safety
+
+    _tag_prefix = "[["
+    _tag_suffix = "]]"
+
+    def __new__(cls):
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super(PromptRegistry, cls).__new__(cls)
+                    cls._instance._default_language = PromptLanguage.ENGLISH
+                    cls._instance._default_model = ModelName.ALL
+                    cls._instance._model_fallback = True
+                    cls._instance._prompt_values = {
+                        ModelName.ALL: {PromptLanguage.ENGLISH: {}}
+                    }
+                    cls._instance._prompt_instructions = {
+                        ModelName.ALL: {PromptLanguage.ENGLISH: {}}
+                    }
+                    cls._instance._prompt_tags = {
+                        ModelName.ALL: {PromptLanguage.ENGLISH: {}}
+                    }
+        return cls._instance
+
+    @property
+    def model_fallback(self) -> bool:
+        return self._model_fallback
+
+    @model_fallback.setter
+    def model_fallback(self, value: bool):
+        with self._lock:
+            self._model_fallback = value
+
+    @property
+    def default_language(self) -> PromptLanguage:
+        return self._default_language
+
+    @default_language.setter
+    def default_language(self, lang: PromptLanguage):
+        with self._lock:
+            self._default_language = lang
+
+    @property
+    def default_model(self) -> ModelName:
+        return self._default_model
+
+    @default_model.setter
+    def default_model(self, model: ModelName):
+        with self._lock:
+            self._default_model = model
+
+    def _init_model_lang(self, model: ModelName, lang: PromptLanguage):
+        model = model if model is not None else self._default_model
+        lang = lang if lang is not None else self._default_language
+
+        if model not in self._prompt_values:
+            self._prompt_values[model] = {}
+        if lang not in self._prompt_values[model]:
+            self._prompt_values[model][lang] = {}
+
+        return model, lang
+
+    def _retrieve_value(
+        self, dictionary, model: ModelName, lang: PromptLanguage, key: str
+    ):
+        model = model if model is not None else self._default_model
+        lang = lang if lang is not None else self._default_language
+
+        if (
+            model in dictionary
+            and lang in dictionary[model]
+            and key in dictionary[model][lang]
+        ):
+            return dictionary[model][lang][key]
+        elif self._model_fallback and model != ModelName.ALL:
+            return self._retrieve_value(dictionary, ModelName.ALL, lang, key)
+
+        raise ValueError(
+            f"Prompt value {key} not found for language {lang} and model {model} (fallback: {self._model_fallback})"
+        )
+
+    def register_value(
+        self,
+        lang: PromptLanguage,
+        key: str,
+        prompt: str,
+        model: ModelName = ModelName.ALL,
+    ):
+        with self._lock:
+            model, lang = self._init_model_lang(model, lang)
+            self._prompt_values[model][lang][key] = prompt
+
+    def register_instruction(
+        self, lang: PromptLanguage, key, instruction, model: ModelName = ModelName.ALL
+    ):
+        with self._lock:
+            model, lang = self._init_model_lang(model, lang)
+            self._prompt_instructions[model][lang][key] = instruction
+
+    def register_tag(
+        self, lang: PromptLanguage, key, tag, model: ModelName = ModelName.ALL
+    ):
+        with self._lock:
+            model, lang = self._init_model_lang(model, lang)
+            self._prompt_tags[model][lang][key] = tag
+
+    def value(
+        self, key, model: ModelName = ModelName.ALL, lang: PromptLanguage = None
+    ) -> str:
+        return self._retrieve_value(self._prompt_values, model, lang, key)
+
+    def instruction(
+        self, key, model: ModelName = ModelName.ALL, lang: PromptLanguage = None
+    ) -> str:
+        return self._retrieve_value(self._prompt_instructions, model, lang, key)
+
+    def tag(
+        self, key, model: ModelName = ModelName.ALL, lang: PromptLanguage = None, format=True
+    ) -> str:
+        if format:
+            return f"{self._tag_prefix}{self._retrieve_value(self._prompt_tags, model, lang, key)}{self._tag_suffix}"
+        else:
+            return self._retrieve_value(self._prompt_tags, model, lang, key)
+
+    def has_value(
+        self, key, model: ModelName = ModelName.ALL, lang: PromptLanguage = None
+    ) -> bool:
+        try:
+            value = self._retrieve_value(self._prompt_values, model, lang, key)
+            return value is not None
+        except ValueError:
+            return False
+
+    def has_instruction(
+        self, key, model: ModelName = ModelName.ALL, lang: PromptLanguage = None
+    ) -> bool:
+        try:
+            value = self._retrieve_value(self._prompt_instructions, model, lang, key)
+            return value is not None
+        except ValueError:
+            return False
+
+    def has_tag(
+        self, key, model: ModelName = ModelName.ALL, lang: PromptLanguage = None
+    ) -> bool:
+        try:
+            value = self._retrieve_value(self._prompt_tags, model, lang, key)
+            return value is not None
+        except ValueError:
+            return False
 
 
 class JsonPromptTemplate(Prompt):

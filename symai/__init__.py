@@ -27,7 +27,7 @@ warnings.simplefilter("ignore")
 os.environ['TOKENIZERS_PARALLELISM'] = "false"
 
 
-SYMAI_VERSION = "0.6.8"
+SYMAI_VERSION = "0.6.9"
 __version__   = SYMAI_VERSION
 __root_dir__  = settings.HOME_PATH / '.symai'
 
@@ -348,7 +348,7 @@ from .imports import Import
 from .interfaces import Interface
 from .post_processors import PostProcessor
 from .pre_processors import PreProcessor
-from .prompts import Prompt
+from .prompts import Prompt, PromptRegistry, PromptLanguage
 from .shell import Shell
 from .strategy import Strategy
 from .symbol import Call, Expression, GlobalSymbolPrimitive, Metadata, Symbol
