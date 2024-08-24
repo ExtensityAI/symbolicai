@@ -145,3 +145,7 @@ notebooks/demos/**/*
 notebooks/.virtual_documents
 outputs/
 demos/
+wandb/
+tmp/
+dist/
+bin/
