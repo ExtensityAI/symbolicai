@@ -67,7 +67,7 @@ res = sym.translate('German')
 <symai.backend.engines.engine_gptX_completion.GPTXCompletionEngine object at 0, <function Symbol.translate.<locals>._func at 0x7fd68ba04820>, {'instance': <class 'symai.symbol.S ['\n\nHallo Welt!']
 ```
 
-Here is the list engines that are currently supported: #TODO up to date?
+Here is the list engines that are currently supported: <!-- #TODO update -->
 
 * `neurosymbolic` - GPT-3, ChatGPT, GPT-4
 * `symbolic` - WolframAlpha

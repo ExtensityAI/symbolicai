@@ -21,7 +21,7 @@ An example approach using our framework would involve identifying the neural eng
 
 ```python
 val = "<one of the examples above>"
-#TODO link expression class
+
 # First, define a class that inherits from the Expression class
 class ComplexExpression(ai.Expression):
     # write a method that returns the causal evaluation
@@ -73,6 +73,7 @@ def causal_expression(self):
 
 In the example above, the `causal_expression` method iteratively extracts information, enabling manual resolution or external solver usage.
 
-**Attention:** Keep in mind that this implementation sketch requires significantly more engineering effort for the `causal_expression` method. Additionally, the current GPT-3 LLM backend may sometimes struggle to extract accurate information or make the correct comparison. However, we believe that future advances in the field, specifically fine-tuned models like ChatGPT with Reinforcement Learning from Human Feedback (RLHF), will improve these capabilities. #TODO relevant?
+**Attention:** Keep in mind that this implementation sketch requires significantly more engineering effort for the `causal_expression` method. Additionally, the current LLMs may sometimes struggle to extract accurate information or make correct comparisons. However, we believe that future advances in the field, specifically fine-tuned models like ChatGPT with Reinforcement Learning from Human Feedback (RLHF), will improve these capabilities.
 
-Lastly, with sufficient data, we could fine-tune methods to extract information or build knowledge graphs using natural language. This advancement would allow the performance of more complex reasoning tasks, like those mentioned above. Therefore, we recommend exploring recent publications on [Text-to-Graphs](https://aclanthology.org/2020.webnlg-1.8.pdf). In this approach, answering the query involves simply traversing the graph and extracting the necessary information. #TODO this section or another?
+Lastly, with sufficient data, we could fine-tune methods to extract information or build knowledge graphs using natural language. This advancement would allow the performance of more complex reasoning tasks, like those mentioned above. Therefore, we recommend exploring recent publications on [Text-to-Graphs](https://aclanthology.org/2020.webnlg-1.8.pdf). In this approach, answering the query involves simply traversing the graph and extracting the necessary information.
+<!-- #TODO update -->

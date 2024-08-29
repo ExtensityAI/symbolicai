@@ -70,7 +70,7 @@ $> "What is the capital of France?"
 # :Output:
 # Paris
 ```
-You can also type `Ctrl+Space` to treat any command as a query for a language model. #TODO is this correct?
+You can also type `Ctrl+Space` to treat any command as a query for a language model.
 
 #### Pipe with Files
 

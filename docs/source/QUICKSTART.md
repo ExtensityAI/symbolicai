@@ -23,7 +23,7 @@ print(translated)  # Output: Willkommen zu unserem Tutorial.
 
 ### Ranking Objects
 
-Our API can also execute basic data-agnostic operations like `filter`, `rank`, or `extract` patterns. For instance, we can rank a list of numbers: #TODO linking of functions
+Our API can also execute basic data-agnostic operations like `filter`, `rank`, or `extract` patterns. For instance, we can rank a list of numbers:
 
 ```python
 # Ranking objects
@@ -95,5 +95,6 @@ This quick start guide covers the basics of SymbolicAI. We also provide an inter
 * Advanced causal reasoning: {doc}`Causal Reasoning <FEATURES/causal_reasoning>`
 * Using operations to customize and define api behavior: {doc}`Operations <FEATURES/operations>`
 * Using expressions to create complex behaviors: {doc}`Expressions <FEATURES/expressions>`
+* Managing modules and imports: {doc}`Import Class <FEATURES/import>`
 * Error handling and debugging: {doc}`Error Handling and Debugging <FEATURES/error_handling>`
 * Built-in tools: {doc}`Tools <TOOLS/index>`

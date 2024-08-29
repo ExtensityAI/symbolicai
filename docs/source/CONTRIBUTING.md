@@ -26,7 +26,7 @@ Start reading our code and you'll get the hang of it. We optimize for readabilit
   * This is open source software. Consider the people who will read your code, and make it look nice for them. It's sort of like driving a car: Perhaps you love doing donuts when you're alone, but with passengers the goal is to make the ride as smooth as possible.
 
 ## Community Demos
-We are also showcasing the exciting demos and tools created using our framework. If you would like to add your project, feel free to message us on Twitter at @SymbolicAPI or via Discord.
+We are also showcasing the exciting demos and tools created using our framework. If you would like to add your project, feel free to message us on Twitter at [@SymbolicAPI](https://twitter.com/SymbolicAPI) or via [Discord](https://discord.gg/QYMNnh9ra8).
 
 Thanks,
 Marius-Constantin Dinu

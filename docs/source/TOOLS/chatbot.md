@@ -14,4 +14,4 @@ $>
 ```
 
 To exit the conversation, type `exit`, `quit`, or press `Ctrl+C`.
-You can also load our chatbot `SymbiaChat` into a jupyter notebook and process step-wise requests. #TODO how?
+You can also load our chatbot `SymbiaChat` into a jupyter notebook and process step-wise requests.
