@@ -35,6 +35,36 @@ In time, and with sufficient data, we can gradually transition from general-purp
 3. **Expressions**: Non-terminal symbols that can be further evaluated, allowing for complex computational graphs.
 4. **Engines**: Various backends (e.g., GPT-3, WolframAlpha, CLIP) that power different types of computations and transformations.
 
+## <img src="https://media.giphy.com/media/mGcNjsfWAjY5AEZNw6/giphy.gif" width="50"> More fun facts!
+
+SymbolicAI is fundamentally inspired by the [`neuro-symbolic programming paradigm`](https://arxiv.org/abs/2210.05050).
+
+**Neuro-symbolic programming** is an artificial intelligence and cognitive computing paradigm that combines the strengths of deep neural networks and symbolic reasoning.
+
+**Deep neural networks** are machine learning algorithms inspired by the structure and function of biological neural networks. They excel in tasks such as image recognition and natural language processing. However, they struggle with tasks that necessitate explicit reasoning, like long-term planning, problem-solving, and understanding causal relationships.
+
+**Symbolic reasoning** uses formal languages and logical rules to represent knowledge, enabling tasks such as planning, problem-solving, and understanding causal relationships. While symbolic reasoning systems excel in tasks requiring explicit reasoning, they fall short in tasks demanding pattern recognition or generalization, like image recognition or natural language processing.
+
+**Neuro-symbolic programming** aims to merge the strengths of both neural networks and symbolic reasoning, creating AI systems capable of handling various tasks. This combination is achieved by using neural networks to extract information from data and utilizing symbolic reasoning to make inferences and decisions based on that data. Another approach is for symbolic reasoning to guide the neural networks' generative process and increase interpretability.
+
+**Embedded accelerators for LLMs** will likely be ubiquitous in future computation platforms, including wearables, smartphones, tablets, and notebooks. These devices will incorporate models similar to GPT-3, ChatGPT, OPT, or Bloom.
+
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img1.png" width="720px">
+
+LLMs are expected to perform a wide range of computations, like natural language understanding and decision-making. Additionally, neuro-symbolic computation engines will learn how to tackle unseen tasks and resolve complex problems by querying various data sources for solutions and executing logical statements on top.
+To ensure the content generated aligns with our objectives, it is crucial to develop methods for instructing, steering, and controlling the generative processes of machine learning models. As a result, our approach works to enable active and transparent flow control of these generative processes.
+
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img7.png" width="720px">
+
+The figure above depicts this generative process as shifting the probability mass of an input stream toward an output stream in a contextualized manner. With properly designed conditions and expressions, you can validate and guide the behavior towards a desired outcome or repeat expressions that fail to meet requirements. Our approach consists of defining a set of _fuzzy_ operations to manipulate the data stream and condition LLMs to align with our goals. We regard all data objects – such as strings, letters, integers, and arrays – as symbols and view natural language as the primary interface for interaction. See the following figure:
+
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img10.png" width="720px">
+
+As long as our goals can be expressed through natural language, LLMs can be used for neuro-symbolic computations.
+Consequently, we develop operations that manipulate these symbols to construct new symbols. Each symbol can be interpreted as a statement, and multiple statements can be combined to formulate a logical expression.
+
+By combining statements together, we can build causal relationship functions and complete computations, transcending reliance purely on inductive approaches. The resulting computational stack resembles a neuro-symbolic computation engine at its core, facilitating the creation of new applications in tandem with established frameworks.
+
 ## Future Directions
 
 - Meta-learning semantic concepts on top of neuro-symbolic expressions

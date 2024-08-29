@@ -7,4 +7,5 @@ Features
    causal_reasoning
    operations
    expressions
+   import
    error_handling

@@ -1,4 +1,4 @@
-# **SymbolicAI** #TODO imports, other use cases, fun facts
+# **SymbolicAI**
 <img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/symai_logo.png" width="200px">
 
 ## **A Neuro-Symbolic Perspective on Large Language Models (LLMs)**
@@ -33,7 +33,7 @@ Conceptually, SymbolicAI is a framework that leverages machine learning – spec
 
 ## 📖 Table of Contents
 
-- [**SymbolicAI** #TODO imports, other use cases, fun facts](#symbolicai-todo-imports-other-use-cases-fun-facts)
+- [**SymbolicAI**](#symbolicai)
   - [**A Neuro-Symbolic Perspective on Large Language Models (LLMs)**](#a-neuro-symbolic-perspective-on-large-language-models-llms)
   - [Abstract](#abstract)
   - [Tutorials](#tutorials)

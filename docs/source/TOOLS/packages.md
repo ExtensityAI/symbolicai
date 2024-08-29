@@ -116,4 +116,5 @@ The Package Initializer creates the following files and directories:
 - `src/func.py`: Contains the main function and expression code for the package.
 
 The Package Initializer creates the package in the `.symai/packages/` directory in your home directory (`~/.symai/packages/<username>/<repo_name>`).
-Within the created package you will see the `package.json` config file defining the new package metadata and `symrun` entry point and offers the declared expression types to the `Import` class. #TODO link import location
+Within the created package you will see the `package.json` config file defining the new package metadata and `symrun` entry point and offers the declared expression types to the `Import` class. 
+Read more about the {doc}`import class <FEATURES/import>`
