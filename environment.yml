@@ -33,6 +33,8 @@ dependencies:
   - pandas
   - tika
   - pip
+  - paramiko   # For SSH protocol operations
+  - docker-py  # Docker SDK for Python
 
   - pip:
     - sympy
