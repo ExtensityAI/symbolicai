@@ -641,10 +641,11 @@ class ArithmeticPrimitives(Primitive):
             Symbol: A new symbol with the result of the AND operation.
         '''
         # Special case for string concatenation with AND (no space)
-        if isinstance(self.value, str) and isinstance(other, str) or \
-            isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str):
-            other = self._to_type(other)
-            return self._to_type(f'{self.value}{other.value}')
+        if not self.__disable_shortcut_matches__:
+            if isinstance(self.value, str) and isinstance(other, str) or \
+                isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str):
+                other = self._to_type(other)
+                return self._to_type(f'{self.value}{other.value}')
 
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value and other.value, op='&')
@@ -674,10 +675,11 @@ class ArithmeticPrimitives(Primitive):
             Symbol: A new symbol with the result of the AND operation.
         '''
         # Special case for string concatenation with AND (no space)
-        if isinstance(self.value, str) and isinstance(other, str) or \
-            isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str):
-            other = self._to_type(other)
-            return self._to_type(f'{other.value}{self.value}')
+        if not self.__disable_shortcut_matches__:
+            if isinstance(self.value, str) and isinstance(other, str) or \
+                isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str):
+                other = self._to_type(other)
+                return self._to_type(f'{other.value}{self.value}')
 
         other = self._to_type(other)
         # First verify for specific type support
@@ -709,11 +711,12 @@ class ArithmeticPrimitives(Primitive):
             Symbol: A new symbol with the result of the AND operation.
         '''
         # Special case for string concatenation with AND (no space)
-        if isinstance(self.value, str) and isinstance(other, str) or \
-            isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str):
-            other       = self._to_type(other)
-            self._value = f'{self.value}{other.value}'
-            return self
+        if not self.__disable_shortcut_matches__:
+            if isinstance(self.value, str) and isinstance(other, str) or \
+                isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str):
+                other       = self._to_type(other)
+                self._value = f'{self.value}{other.value}'
+                return self
 
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value and other.value, op='&=')
@@ -750,10 +753,11 @@ class ArithmeticPrimitives(Primitive):
             return NotImplemented
 
         # Special case for string concatenation with OR
-        if isinstance(self.value, str) and isinstance(other, str) or \
-            isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str):
-            other = self._to_type(other)
-            return self._to_type(f'{self.value} {other.value}')
+        if not self.__disable_shortcut_matches__:
+            if isinstance(self.value, str) and isinstance(other, str) or \
+                isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str):
+                other = self._to_type(other)
+                return self._to_type(f'{self.value} {other.value}')
 
         # First verify for specific type support
         result = self.__try_type_specific_func(other, lambda self, other: self.value or other.value, op='|')
