@@ -10,7 +10,7 @@ from symai.components import FileReader
 from symai import Expression, Symbol
 from symai.backend.settings import SYMAI_CONFIG
 from symai.utils import format_bytes
-from symai.format import CHUNK_REGEX
+from symai.formatter.formatter import CHUNK_REGEX
 
 NEUROSYMBOLIC = SYMAI_CONFIG.get('NEUROSYMBOLIC_ENGINE_MODEL')
 
