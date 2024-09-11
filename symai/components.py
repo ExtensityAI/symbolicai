@@ -929,6 +929,12 @@ class PrimitiveDisabler(Expression):
                     self._primitives.add(method)
 
 
+class ExceptionWithUsage(Exception):
+    def __init__(self, message, usage):
+        super().__init__(message)
+        self.usage = usage
+
+
 class FunctionWithUsage(Function):
     def __init__(
         self,
@@ -1058,6 +1064,7 @@ class ValidatedFunction(FunctionWithUsage):
 
         # try to validate the JSON and fix if necessary
         result = None
+        last_error = ""
         for i in range(self.retry_count):
             try:
                 # try to validate against provided data model
@@ -1068,6 +1075,7 @@ class ValidatedFunction(FunctionWithUsage):
                 error_str = ""
                 for error in e.errors():
                     error_str += f"[ERROR] {error['msg']}: {error['loc']}\n"
+                last_error = error_str
 
                 # ask model to fix the error
                 self.print_verbose(f"[Retry {i + 1}/{self.retry_count}] ValidationError: {str(e)}")
@@ -1089,7 +1097,7 @@ class ValidatedFunction(FunctionWithUsage):
                 self.add_usage(remedy_usage)
 
         if result is None:
-            raise Exception("Failed to retrieve valid JSON")
+            raise ExceptionWithUsage(f"Failed to retrieve valid JSON: {last_error}", usage)
 
         return result, usage
 
@@ -1120,7 +1128,6 @@ class LengthConstrainedFunction(ValidatedFunction):
 
         # get list of seeds for remedy (to avoid same remedy for same input)
         remedy_seeds = self.prepare_seeds(self.constraint_retry_count, **kwargs)
-
         for i in range(self.constraint_retry_count):
             constraint_violations = self.check_constraints(result)
             if len(constraint_violations) > 0:
@@ -1136,10 +1143,13 @@ class LengthConstrainedFunction(ValidatedFunction):
                 usage.total_tokens += remedy_usage.total_tokens
             else:
                 break
-
-        if i == self.constraint_retry_count and len(self.check_constraints(result)) > 0:
-            raise Exception("Failed to enforce constraints")
-
+        
+        last_violation = self.check_constraints(result)
+        if i == self.constraint_retry_count and len(last_violation) > 0:            
+            raise ExceptionWithUsage(
+                f"Failed to enforce length constraints: {' | '.join(last_violation)}", usage
+            )
+            
         return result, usage
 
     def check_constraints(self, result: BaseModel):
