@@ -126,7 +126,7 @@ def test_cast_return_type_constraint_violation():
         ({'a': [1, 2], 'b': {'c': 3}}, Dict[str, Union[List[int], Dict[str, int]]], {'a': [1, 2], 'b': {'c': 3}}),
         ('🐍🚀', str, '🐍🚀'),   
     ])
-
+# original symai implementation does not support complex types
 def test_cast_return_type_complex(input_value, return_constraint, expected):
     result = _cast_return_type(input_value, return_constraint, ProbabilisticBooleanMode.TOLERANT)
     assert result == expected
