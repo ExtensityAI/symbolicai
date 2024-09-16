@@ -1,7 +1,10 @@
+from types import SimpleNamespace
+
 import pytest
+
 from symai.functional import _apply_preprocessors
 from symai.pre_processors import PreProcessor
-from types import SimpleNamespace
+
 
 class MockArgument:
     def __init__(self, raw_input=False, args=None, instance=""):

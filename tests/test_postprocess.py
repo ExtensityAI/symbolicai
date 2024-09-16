@@ -1,13 +1,17 @@
-import pytest
-from symai.functional import _apply_postprocessors, ConstraintViolationException, ProbabilisticBooleanMode
-from symai.post_processors import PostProcessor
 from typing import Any
+
+import pytest
+
+from symai.functional import (ConstraintViolationException,
+                              ProbabilisticBooleanMode, _apply_postprocessors)
+from symai.post_processors import PostProcessor
 
 
 # Mock classes and functions
 class MockArgument:
     def __init__(self):
         self.prop = MockProp()
+
 
 class MockProp:
     def __init__(self):
@@ -16,20 +20,25 @@ class MockProp:
         self.metadata = None
         self.raw_output = None 
 
+
 class MockPostProcessor(PostProcessor):
     def __call__(self, rsp: Any, argument: Any) -> Any:
         return rsp.upper()
+
 
 class MockPostProcessor1(PostProcessor):
     def __call__(self, rsp: Any, argument: Any) -> Any:
         return rsp.upper()
 
+
 class MockPostProcessor2(PostProcessor):
     def __call__(self, rsp: Any, argument: Any) -> Any:
         return rsp + " world"
 
+
 def always_true(x):
     return True
+
 
 def always_false(x):
     return False
@@ -47,6 +56,7 @@ def test_postprocess_response_basic():
     assert result == "hello"
     assert metadata is None
 
+
 def test_postprocess_response_with_post_processor():
     rsp = ["hello"]
     return_constraint = str
@@ -58,6 +68,7 @@ def test_postprocess_response_with_post_processor():
     result, metadata = _apply_postprocessors(argument.prop.outputs, return_constraint, post_processors, argument, mode)
     assert result == "HELLO"
     assert metadata is None
+
 
 def test_postprocess_response_with_constraint_satisfied():
     rsp = ["hello"]
@@ -72,6 +83,7 @@ def test_postprocess_response_with_constraint_satisfied():
     assert result == "hello"
     assert metadata is None
 
+
 def test_postprocess_response_with_constraint_violation():
     rsp = ["hello"]
     return_constraint = str
@@ -83,6 +95,7 @@ def test_postprocess_response_with_constraint_violation():
 
     with pytest.raises(ConstraintViolationException):
         _apply_postprocessors(argument.prop.outputs, return_constraint, post_processors, argument, mode)
+
 
 def test_postprocess_response_type_casting():
     rsp = ["42"]
@@ -97,6 +110,7 @@ def test_postprocess_response_type_casting():
     assert isinstance(result, int)
     assert metadata is None
 
+
 def test_postprocess_response_with_multiple_post_processors():
     rsp = ["hello"]
     return_constraint = str
@@ -108,6 +122,7 @@ def test_postprocess_response_with_multiple_post_processors():
     result, metadata = _apply_postprocessors(argument.prop.outputs, return_constraint, post_processors, argument, mode)
     assert result == "HELLO world"
     assert metadata is None
+
 
 def test_postprocess_response_with_multiple_constraints():
     rsp = ["hello"]
@@ -122,6 +137,7 @@ def test_postprocess_response_with_multiple_constraints():
     assert result == "hello"
     assert metadata is None
 
+
 def test_postprocess_response_with_mixed_constraints():
     rsp = ["hello"]
     return_constraint = str
@@ -133,6 +149,7 @@ def test_postprocess_response_with_mixed_constraints():
 
     with pytest.raises(ConstraintViolationException):
         _apply_postprocessors(argument.prop.outputs, return_constraint, post_processors, argument, mode)
+
 
 def test_postprocess_response_with_list_return_constraint():
     rsp = [["a", "b", "c"]]

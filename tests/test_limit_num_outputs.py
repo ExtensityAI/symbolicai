@@ -1,6 +1,9 @@
-import pytest
-from symai.functional import _limit_number_results
 from types import SimpleNamespace
+
+import pytest
+
+from symai.functional import _limit_number_results
+
 
 @pytest.fixture
 def argument():
