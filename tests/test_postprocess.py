@@ -12,6 +12,9 @@ class MockArgument:
 class MockProp:
     def __init__(self):
         self.constraints = []
+        self.outputs = None
+        self.metadata = None
+        self.raw_output = None 
 
 class MockPostProcessor(PostProcessor):
     def __call__(self, rsp: Any, argument: Any) -> Any:
@@ -33,101 +36,114 @@ def always_false(x):
 
 # Test cases
 def test_postprocess_response_basic():
-    rsp = "hello"
+    rsp = ["hello"]
     return_constraint = str
     post_processors = None
     argument = MockArgument()
+    argument.prop.outputs = (rsp, None)
     mode = ProbabilisticBooleanMode.MEDIUM
 
-    result = _postprocess_response(rsp, return_constraint, post_processors, argument, mode)
+    result, metadata = _postprocess_response(argument.prop.outputs, return_constraint, post_processors, argument, mode)
     assert result == "hello"
+    assert metadata is None
 
 def test_postprocess_response_with_post_processor():
-    rsp = "hello"
+    rsp = ["hello"]
     return_constraint = str
     post_processors = [MockPostProcessor()]
     argument = MockArgument()
+    argument.prop.outputs = (rsp, None)
     mode = ProbabilisticBooleanMode.MEDIUM
 
-    result = _postprocess_response(rsp, return_constraint, post_processors, argument, mode)
+    result, metadata = _postprocess_response(argument.prop.outputs, return_constraint, post_processors, argument, mode)
     assert result == "HELLO"
+    assert metadata is None
 
 def test_postprocess_response_with_constraint_satisfied():
-    rsp = "hello"
+    rsp = ["hello"]
     return_constraint = str
     post_processors = None
     argument = MockArgument()
     argument.prop.constraints = [always_true]
+    argument.prop.outputs = (rsp, None)
     mode = ProbabilisticBooleanMode.MEDIUM
 
-    result = _postprocess_response(rsp, return_constraint, post_processors, argument, mode)
+    result, metadata = _postprocess_response(argument.prop.outputs, return_constraint, post_processors, argument, mode)
     assert result == "hello"
+    assert metadata is None
 
 def test_postprocess_response_with_constraint_violation():
-    rsp = "hello"
+    rsp = ["hello"]
     return_constraint = str
     post_processors = None
     argument = MockArgument()
     argument.prop.constraints = [always_false]
+    argument.prop.outputs = (rsp, None)
     mode = ProbabilisticBooleanMode.MEDIUM
 
     with pytest.raises(ConstraintViolationException):
-        _postprocess_response(rsp, return_constraint, post_processors, argument, mode)
+        _postprocess_response(argument.prop.outputs, return_constraint, post_processors, argument, mode)
 
 def test_postprocess_response_type_casting():
-    rsp = "42"
+    rsp = ["42"]
     return_constraint = int
     post_processors = None
     argument = MockArgument()
+    argument.prop.outputs = (rsp, None)
     mode = ProbabilisticBooleanMode.MEDIUM
 
-    result = _postprocess_response(rsp, return_constraint, post_processors, argument, mode)
+    result, metadata = _postprocess_response(argument.prop.outputs, return_constraint, post_processors, argument, mode)
     assert result == 42
     assert isinstance(result, int)
+    assert metadata is None
 
 def test_postprocess_response_with_multiple_post_processors():
-    rsp = "hello"
+    rsp = ["hello"]
     return_constraint = str
     post_processors = [MockPostProcessor1(), MockPostProcessor2()]
     argument = MockArgument()
+    argument.prop.outputs = (rsp, None)
     mode = ProbabilisticBooleanMode.MEDIUM
 
-    result = _postprocess_response(rsp, return_constraint, post_processors, argument, mode)
-    assert result == "HELLO"
+    result, metadata = _postprocess_response(argument.prop.outputs, return_constraint, post_processors, argument, mode)
+    assert result == "HELLO world"
+    assert metadata is None
 
 def test_postprocess_response_with_multiple_constraints():
-    rsp = "hello"
+    rsp = ["hello"]
     return_constraint = str
     post_processors = None
     argument = MockArgument()
     argument.prop.constraints = [always_true, always_true]
+    argument.prop.outputs = (rsp, None)
     mode = ProbabilisticBooleanMode.MEDIUM
 
-    result = _postprocess_response(rsp, return_constraint, post_processors, argument, mode)
+    result, metadata = _postprocess_response(argument.prop.outputs, return_constraint, post_processors, argument, mode)
     assert result == "hello"
+    assert metadata is None
 
 def test_postprocess_response_with_mixed_constraints():
-    rsp = "hello"
+    rsp = ["hello"]
     return_constraint = str
     post_processors = None
     argument = MockArgument()
     argument.prop.constraints = [always_true, always_false]
+    argument.prop.outputs = (rsp, None)
     mode = ProbabilisticBooleanMode.MEDIUM
 
     with pytest.raises(ConstraintViolationException):
-        _postprocess_response(rsp, return_constraint, post_processors, argument, mode)
-
+        _postprocess_response(argument.prop.outputs, return_constraint, post_processors, argument, mode)
 
 def test_postprocess_response_with_list_return_constraint():
-    rsp = ["a", "b", "c"]
+    rsp = [["a", "b", "c"]]
     return_constraint = list
     post_processors = None
     argument = MockArgument()
+    argument.prop.outputs = (rsp, None)
     mode = ProbabilisticBooleanMode.MEDIUM
 
-    result = _postprocess_response(rsp, return_constraint, post_processors, argument, mode)
+    result, metadata = _postprocess_response(argument.prop.outputs, return_constraint, post_processors, argument, mode)
     assert result == ["a", "b", "c"]
     assert isinstance(result, list)
+    assert metadata is None
 
- 
- 
