@@ -52,6 +52,148 @@ def _probabilistic_bool(rsp: str, mode=ProbabilisticBooleanMode.TOLERANT) -> boo
     else:
         raise ValueError(f"Invalid mode {mode} for probabilistic boolean!")
 
+def _cast_return_type(rsp: Any, return_constraint: Type, engine_probabilistic_boolean_mode: ProbabilisticBooleanMode) -> Any:
+    if str(return_constraint) == str(type(rsp)):
+        return rsp
+    elif return_constraint in (list, tuple, set, dict):
+        try:
+            res = ast.literal_eval(rsp)
+        except Exception as e:
+            warnings.warn(f"Failed to cast return type to {return_constraint} for {str(rsp)}", UserWarning)
+            res = rsp
+        assert res is not None, f"Return type cast failed! Check if the return type is correct or post_processors output matches desired format: {str(rsp)}"
+        return res
+    elif return_constraint == bool:
+        if len(rsp) <= 0:
+            return False
+        else:
+            return _probabilistic_bool(rsp, mode=engine_probabilistic_boolean_mode)
+    elif return_constraint == inspect._empty:
+        return rsp
+    else:
+        try:
+            return return_constraint(rsp)
+        except (ValueError, TypeError):
+            raise ConstraintViolationException(f"Failed to cast {rsp} to {return_constraint}")
+
+
+def _postprocess_response(outputs, return_constraint, post_processors, argument):
+    rsp, metadata = outputs[0][0], outputs[1]
+    argument.prop.outputs = outputs
+    argument.prop.metadata = metadata
+    
+    if argument.prop.raw_output:
+        return metadata.get('raw_output'), metadata
+    
+    if post_processors:
+        for pp in post_processors:
+            rsp = pp(rsp, argument)
+    rsp = _cast_return_type(rsp, return_constraint, ENGINE_PROBABILISTIC_BOOLEAN_MODE)
+    
+    for constraint in argument.prop.constraints:
+        if not constraint(rsp):
+            raise ConstraintViolationException("Constraint not satisfied:", rsp, constraint)
+    return rsp, metadata
+
+def _limit_number_results(rsp: Any, argument, return_type):
+    limit_ = argument.prop.limit if argument.prop.limit else (len(rsp) if hasattr(rsp, '__len__') else None)
+    # the following line is different from original code to make it work for iterable return types when the limit is 1
+    if limit_ is not None:
+        if return_type == str and isinstance(rsp, list):
+            return '\n'.join(rsp[:limit_])
+        elif return_type == list:
+            return rsp[:limit_]
+        elif return_type == dict:
+            keys = list(rsp.keys())
+            return {k: rsp[k] for k in keys[:limit_]}
+        elif return_type == set:
+            return set(list(rsp)[:limit_])
+        elif return_type == tuple:
+            return tuple(list(rsp)[:limit_])
+    return rsp
+
+def _prepare_argument(argument: Any, engine: Any, instance: Any, func: Callable, constraints: List[Callable], default: Any, limit: int, trials: int, pre_processors: Optional[List[PreProcessor]], post_processors: Optional[List[PostProcessor]]) -> Any:
+    sig = inspect.signature(func)
+    return_constraint = sig.return_annotation
+    assert 'typing' not in str(return_constraint), "Return type must be of base type not generic Typing object, e.g. int, str, list, etc."
+
+    argument.prop.engine = engine
+    argument.prop.instance = instance
+    argument.prop.signature = sig
+    argument.prop.func = func
+    argument.prop.constraints = constraints
+    argument.prop.return_constraint = return_constraint
+    argument.prop.default = default
+    argument.prop.limit = limit
+    argument.prop.trials = trials
+    argument.prop.pre_processors = pre_processors
+    argument.prop.post_processors = post_processors
+    return argument
+
+def _apply_preprocessors(argument, instance: Any, pre_processors: Optional[List[PreProcessor]]) -> str:
+    processed_input = ''
+    if pre_processors and not argument.prop.raw_input:
+        argument.prop.instance = instance
+        for pp in pre_processors:
+            t = pp(argument)
+            processed_input += t if t is not None else ''
+    elif argument.args and len(argument.args) > 0 and argument.prop.raw_input:
+       processed_input += ' '.join([str(a) for a in argument.args])
+    else:
+       processed_input = instance
+    return processed_input
+
+def _execute_query_fallback(func, instance, argument, default):
+    try:
+        result = func(instance, *argument.args, **argument.signature_kwargs)
+        return result if result is not None else default
+    except Exception as e:
+        if default is None:
+            raise e
+        return default
+
+def _process_query_single(engine,
+                          instance,
+                          func: Callable,
+                          constraints: List[Callable] = [],
+                          default: Optional[object] = None,
+                          limit: int = 1,
+                          trials: int = 1,
+                          pre_processors: Optional[List[PreProcessor]] = None,
+                          post_processors: Optional[List[PostProcessor]] = None,
+                          argument=None):   
+    if pre_processors and not isinstance(pre_processors, list):
+        pre_processors = [pre_processors]
+    if post_processors and not isinstance(post_processors, list):
+        post_processors = [post_processors] 
+    
+    argument = _prepare_argument(argument, engine, instance, func, constraints, default, limit, trials, pre_processors, post_processors)
+   
+    preprocessed_input = _apply_preprocessors(argument, instance, pre_processors)
+    argument.prop.processed_input = preprocessed_input
+    executor_callback = argument.kwargs.get('executor_callback', None)
+    engine.prepare(argument)
+
+    result = None
+    metadata = None
+    for _ in range(trials):
+        try:
+            outputs = executor_callback(argument)
+            result, metadata = _postprocess_response(outputs, argument.prop.return_constraint, post_processors, argument)
+            break
+        except Exception as e:
+            logging.error(f"Failed to execute query: {str(e)}")
+            traceback.print_exc()
+            if _ == trials - 1:
+                result = _execute_query_fallback(func, instance, argument, default)
+                if result is None:
+                    raise e
+
+    limited_result = _limit_number_results(result, argument, argument.prop.return_constraint)
+    if argument.prop.return_metadata:
+        return limited_result, metadata
+    return limited_result
+
 
 def _execute_query(engine, post_processors, return_constraint, argument) -> List[object]:
     # build prompt and query engine
@@ -324,7 +466,11 @@ class EngineRepository(object):
         self = EngineRepository()
         engine = self.get(engine)
         if engine:
-            return _process_query(engine, *args, **kwargs)
+            engine_allows_batching = getattr(engine, 'allows_batching', False)
+            if engine_allows_batching:
+                return _process_query_single(engine, *args, **kwargs)
+            else:
+                return _process_query(engine, *args, **kwargs)
         raise ValueError(f"No engine named {engine} is registered.")
 
     @staticmethod
