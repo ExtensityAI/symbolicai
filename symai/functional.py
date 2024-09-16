@@ -77,7 +77,7 @@ def _cast_return_type(rsp: Any, return_constraint: Type, engine_probabilistic_bo
             raise ConstraintViolationException(f"Failed to cast {rsp} to {return_constraint}")
 
 
-def _postprocess_response(outputs, return_constraint, post_processors, argument):
+def _postprocess_response(outputs, return_constraint, post_processors, argument, mode=ENGINE_PROBABILISTIC_BOOLEAN_MODE):
     rsp, metadata = outputs[0][0], outputs[1]
     argument.prop.outputs = outputs
     argument.prop.metadata = metadata
@@ -88,7 +88,7 @@ def _postprocess_response(outputs, return_constraint, post_processors, argument)
     if post_processors:
         for pp in post_processors:
             rsp = pp(rsp, argument)
-    rsp = _cast_return_type(rsp, return_constraint, ENGINE_PROBABILISTIC_BOOLEAN_MODE)
+    rsp = _cast_return_type(rsp, return_constraint, mode)
     
     for constraint in argument.prop.constraints:
         if not constraint(rsp):
