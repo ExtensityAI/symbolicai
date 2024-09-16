@@ -1,7 +1,11 @@
-import pytest
 import inspect
-from symai.functional import _cast_return_type, ProbabilisticBooleanMode, ConstraintViolationException
-from typing import Any, Type, Union, List, Dict
+from typing import Any, Dict, List, Type, Union
+
+import pytest
+
+from symai.functional import (ConstraintViolationException,
+                              ProbabilisticBooleanMode, _cast_return_type)
+
 
 @pytest.mark.parametrize("rsp, return_constraint, expected_output", [
     # String tests

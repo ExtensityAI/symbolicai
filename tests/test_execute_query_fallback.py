@@ -1,5 +1,7 @@
 import pytest
+
 from symai.functional import _execute_query_fallback
+
 
 class DummyArgument:
     def __init__(self, args=(), kwargs={}):
