@@ -95,6 +95,7 @@ def _postprocess_response(outputs, return_constraint, post_processors, argument)
             raise ConstraintViolationException("Constraint not satisfied:", rsp, constraint)
     return rsp, metadata
 
+
 def _limit_number_results(rsp: Any, argument, return_type):
     limit_ = argument.prop.limit if argument.prop.limit else (len(rsp) if hasattr(rsp, '__len__') else None)
     # the following line is different from original code to make it work for iterable return types when the limit is 1
@@ -111,6 +112,7 @@ def _limit_number_results(rsp: Any, argument, return_type):
         elif return_type == tuple:
             return tuple(list(rsp)[:limit_])
     return rsp
+
 
 def _prepare_argument(argument: Any, engine: Any, instance: Any, func: Callable, constraints: List[Callable], default: Any, limit: int, trials: int, pre_processors: Optional[List[PreProcessor]], post_processors: Optional[List[PostProcessor]]) -> Any:
     sig = inspect.signature(func)
@@ -130,6 +132,7 @@ def _prepare_argument(argument: Any, engine: Any, instance: Any, func: Callable,
     argument.prop.post_processors = post_processors
     return argument
 
+
 def _apply_preprocessors(argument, instance: Any, pre_processors: Optional[List[PreProcessor]]) -> str:
     processed_input = ''
     if pre_processors and not argument.prop.raw_input:
@@ -143,6 +146,7 @@ def _apply_preprocessors(argument, instance: Any, pre_processors: Optional[List[
        processed_input = instance
     return processed_input
 
+
 def _execute_query_fallback(func, instance, argument, default):
     try:
         result = func(instance, *argument.args, **argument.signature_kwargs)
@@ -151,6 +155,7 @@ def _execute_query_fallback(func, instance, argument, default):
         if default is None:
             raise e
         return default
+
 
 def _process_query_single(engine,
                           instance,
