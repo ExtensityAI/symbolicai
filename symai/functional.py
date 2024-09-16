@@ -77,7 +77,7 @@ def _cast_return_type(rsp: Any, return_constraint: Type, engine_probabilistic_bo
             raise ConstraintViolationException(f"Failed to cast {rsp} to {return_constraint}")
 
 
-def _postprocess_response(outputs, return_constraint, post_processors, argument, mode=ENGINE_PROBABILISTIC_BOOLEAN_MODE):
+def _apply_postprocessors(outputs, return_constraint, post_processors, argument, mode=ENGINE_PROBABILISTIC_BOOLEAN_MODE):
     rsp, metadata = outputs[0][0], outputs[1]
     argument.prop.outputs = outputs
     argument.prop.metadata = metadata
@@ -184,7 +184,7 @@ def _process_query_single(engine,
     for _ in range(trials):
         try:
             outputs = executor_callback(argument)
-            result, metadata = _postprocess_response(outputs, argument.prop.return_constraint, post_processors, argument)
+            result, metadata = _apply_postprocessors(outputs, argument.prop.return_constraint, post_processors, argument)
             break
         except Exception as e:
             logging.error(f"Failed to execute query: {str(e)}")

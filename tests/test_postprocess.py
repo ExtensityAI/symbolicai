@@ -1,5 +1,5 @@
 import pytest
-from symai.functional import _postprocess_response, ConstraintViolationException, ProbabilisticBooleanMode
+from symai.functional import _apply_postprocessors, ConstraintViolationException, ProbabilisticBooleanMode
 from symai.post_processors import PostProcessor
 from typing import Any
 
@@ -43,7 +43,7 @@ def test_postprocess_response_basic():
     argument.prop.outputs = (rsp, None)
     mode = ProbabilisticBooleanMode.MEDIUM
 
-    result, metadata = _postprocess_response(argument.prop.outputs, return_constraint, post_processors, argument, mode)
+    result, metadata = _apply_postprocessors(argument.prop.outputs, return_constraint, post_processors, argument, mode)
     assert result == "hello"
     assert metadata is None
 
@@ -55,7 +55,7 @@ def test_postprocess_response_with_post_processor():
     argument.prop.outputs = (rsp, None)
     mode = ProbabilisticBooleanMode.MEDIUM
 
-    result, metadata = _postprocess_response(argument.prop.outputs, return_constraint, post_processors, argument, mode)
+    result, metadata = _apply_postprocessors(argument.prop.outputs, return_constraint, post_processors, argument, mode)
     assert result == "HELLO"
     assert metadata is None
 
@@ -68,7 +68,7 @@ def test_postprocess_response_with_constraint_satisfied():
     argument.prop.outputs = (rsp, None)
     mode = ProbabilisticBooleanMode.MEDIUM
 
-    result, metadata = _postprocess_response(argument.prop.outputs, return_constraint, post_processors, argument, mode)
+    result, metadata = _apply_postprocessors(argument.prop.outputs, return_constraint, post_processors, argument, mode)
     assert result == "hello"
     assert metadata is None
 
@@ -82,7 +82,7 @@ def test_postprocess_response_with_constraint_violation():
     mode = ProbabilisticBooleanMode.MEDIUM
 
     with pytest.raises(ConstraintViolationException):
-        _postprocess_response(argument.prop.outputs, return_constraint, post_processors, argument, mode)
+        _apply_postprocessors(argument.prop.outputs, return_constraint, post_processors, argument, mode)
 
 def test_postprocess_response_type_casting():
     rsp = ["42"]
@@ -92,7 +92,7 @@ def test_postprocess_response_type_casting():
     argument.prop.outputs = (rsp, None)
     mode = ProbabilisticBooleanMode.MEDIUM
 
-    result, metadata = _postprocess_response(argument.prop.outputs, return_constraint, post_processors, argument, mode)
+    result, metadata = _apply_postprocessors(argument.prop.outputs, return_constraint, post_processors, argument, mode)
     assert result == 42
     assert isinstance(result, int)
     assert metadata is None
@@ -105,7 +105,7 @@ def test_postprocess_response_with_multiple_post_processors():
     argument.prop.outputs = (rsp, None)
     mode = ProbabilisticBooleanMode.MEDIUM
 
-    result, metadata = _postprocess_response(argument.prop.outputs, return_constraint, post_processors, argument, mode)
+    result, metadata = _apply_postprocessors(argument.prop.outputs, return_constraint, post_processors, argument, mode)
     assert result == "HELLO world"
     assert metadata is None
 
@@ -118,7 +118,7 @@ def test_postprocess_response_with_multiple_constraints():
     argument.prop.outputs = (rsp, None)
     mode = ProbabilisticBooleanMode.MEDIUM
 
-    result, metadata = _postprocess_response(argument.prop.outputs, return_constraint, post_processors, argument, mode)
+    result, metadata = _apply_postprocessors(argument.prop.outputs, return_constraint, post_processors, argument, mode)
     assert result == "hello"
     assert metadata is None
 
@@ -132,7 +132,7 @@ def test_postprocess_response_with_mixed_constraints():
     mode = ProbabilisticBooleanMode.MEDIUM
 
     with pytest.raises(ConstraintViolationException):
-        _postprocess_response(argument.prop.outputs, return_constraint, post_processors, argument, mode)
+        _apply_postprocessors(argument.prop.outputs, return_constraint, post_processors, argument, mode)
 
 def test_postprocess_response_with_list_return_constraint():
     rsp = [["a", "b", "c"]]
@@ -142,7 +142,7 @@ def test_postprocess_response_with_list_return_constraint():
     argument.prop.outputs = (rsp, None)
     mode = ProbabilisticBooleanMode.MEDIUM
 
-    result, metadata = _postprocess_response(argument.prop.outputs, return_constraint, post_processors, argument, mode)
+    result, metadata = _apply_postprocessors(argument.prop.outputs, return_constraint, post_processors, argument, mode)
     assert result == ["a", "b", "c"]
     assert isinstance(result, list)
     assert metadata is None
