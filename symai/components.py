@@ -1,11 +1,12 @@
 import inspect
+import json
 import os
 import re
 from collections import defaultdict
 from pathlib import Path
 from random import sample
 from string import ascii_lowercase, ascii_uppercase
-from typing import Callable, Iterator, List, Optional, Type, Union
+from typing import Callable, Dict, Iterator, List, Optional, Type, Union
 
 import numpy as np
 from attr import dataclass
@@ -15,6 +16,7 @@ from pyvis.network import Network
 from tqdm import tqdm
 
 from . import core, core_ext
+from .backend.settings import HOME_PATH
 from .constraints import DictFormatConstraint
 from .formatter import ParagraphFormatter
 from .post_processors import (CodeExtractPostProcessor,
@@ -26,7 +28,6 @@ from .processor import ProcessorPipeline
 from .prompts import JsonPromptTemplate, Prompt
 from .symbol import Expression, Metadata, Symbol
 from .utils import CustomUserWarning
-from .backend.settings import HOME_PATH
 
 
 class GraphViz(Expression):
@@ -1143,13 +1144,13 @@ class LengthConstrainedFunction(ValidatedFunction):
                 usage.total_tokens += remedy_usage.total_tokens
             else:
                 break
-        
+
         last_violation = self.check_constraints(result)
-        if i == self.constraint_retry_count and len(last_violation) > 0:            
+        if i == self.constraint_retry_count and len(last_violation) > 0:
             raise ExceptionWithUsage(
                 f"Failed to enforce length constraints: {' | '.join(last_violation)}", usage
             )
-            
+
         return result, usage
 
     def check_constraints(self, result: BaseModel):
@@ -1235,4 +1236,37 @@ class LengthConstrainedFunction(ValidatedFunction):
         if not isinstance(value, list):
             value = [value]
         return value
+
+
+class SelfPrompt(Expression):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def forward(self, existing_prompt: Dict[str, str]) -> Dict[str, str]:
+        """
+        Generate new system and user prompts based on the existing prompt.
+
+        :param existing_prompt: A dictionary containing the existing prompt in the format:
+                                {'user': '...', 'system': '...'}
+        :return: A dictionary containing the new prompts in the same format:
+                 {'user': '...', 'system': '...'}
+        """
+        @core.zero_shot(
+            prompt=(
+                "Based on the following prompt, generate a new system prompt and a new user prompt. "
+                "The new system prompt should set up a specialized agent tailored for the user's request. "
+                "If examples are provided, use them to guide the agent's behavior. "
+                "The new user prompt should contain the user's requirements. "
+                "Only output the new prompts in JSON format as shown:\n\n"
+                "{\"system\": \"<new system prompt>\", \"user\": \"<new user prompt>\"}\n\n"
+                "Do not include any additional text."
+            ),
+            response_format={"type": "json_object"},
+            post_processors=[
+                lambda res, _: json.loads(res)
+            ]
+        )
+        def _func(self, sym: Symbol, **kwargs): pass
+
+        return _func(self, self._to_symbol(existing_prompt))
 

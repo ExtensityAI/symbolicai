@@ -1,14 +1,13 @@
 import functools
+from typing import Any, Callable, Dict, List, Optional
 
 from box import Box
-from typing import Callable, Dict, List, Optional, Any
 
 from . import post_processors as post
 from . import pre_processors as pre
 from . import prompts as prm
 from .functional import EngineRepository
 from .symbol import Expression, Metadata
-
 
 
 class Argument(Expression):
@@ -37,6 +36,8 @@ class Argument(Expression):
             self.prop.logging           = False
         if 'verbose' not in self.kwargs:
             self.prop.verbose           = False
+        if 'self_prompt' not in self.kwargs:
+            self.prop.self_prompt       = False
         if 'response_format' not in self.kwargs:
             self.prop.response_format   = None
         if 'log_level' not in self.kwargs:
