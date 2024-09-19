@@ -1239,10 +1239,17 @@ class LengthConstrainedFunction(ValidatedFunction):
 
 
 class SelfPrompt(Expression):
+    _default_retry_tries     = 20
+    _default_retry_delay     = 0.5
+    _default_retry_max_delay = -1
+    _default_retry_backoff   = 1
+    _default_retry_jitter    = 0
+    _default_retry_graceful  = True
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def forward(self, existing_prompt: Dict[str, str]) -> Dict[str, str]:
+    def forward(self, existing_prompt: Dict[str, str], **kwargs) -> Dict[str, str]:
         """
         Generate new system and user prompts based on the existing prompt.
 
@@ -1251,6 +1258,14 @@ class SelfPrompt(Expression):
         :return: A dictionary containing the new prompts in the same format:
                  {'user': '...', 'system': '...'}
         """
+        tries     = kwargs.get('tries', self._default_retry_tries)
+        delay     = kwargs.get('delay', self._default_retry_delay)
+        max_delay = kwargs.get('max_delay', self._default_retry_max_delay)
+        backoff   = kwargs.get('backoff', self._default_retry_backoff)
+        jitter    = kwargs.get('jitter', self._default_retry_jitter)
+        graceful  = kwargs.get('graceful', self._default_retry_graceful)
+
+        @core_ext.retry(tries=tries, delay=delay, max_delay=max_delay, backoff=backoff, jitter=jitter, graceful=graceful)
         @core.zero_shot(
             prompt=(
                 "Based on the following prompt, generate a new system prompt and a new user prompt. "
@@ -1263,7 +1278,7 @@ class SelfPrompt(Expression):
             ),
             response_format={"type": "json_object"},
             post_processors=[
-                lambda res, _: json.loads(res)
+                lambda res, _: json.loads(res),
             ]
         )
         def _func(self, sym: Symbol, **kwargs): pass
