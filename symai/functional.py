@@ -81,19 +81,33 @@ def _apply_postprocessors(outputs, return_constraint, post_processors, argument,
     rsp, metadata = outputs[0][0], outputs[1]
     argument.prop.outputs = outputs
     argument.prop.metadata = metadata
-    
+
     if argument.prop.raw_output:
         return metadata.get('raw_output'), metadata
-    
+
     if post_processors:
         for pp in post_processors:
             rsp = pp(rsp, argument)
     rsp = _cast_return_type(rsp, return_constraint, mode)
-    
+
     for constraint in argument.prop.constraints:
         if not constraint(rsp):
             raise ConstraintViolationException("Constraint not satisfied:", rsp, constraint)
     return rsp, metadata
+
+
+def _apply_preprocessors(argument, instance: Any, pre_processors: Optional[List[PreProcessor]]) -> str:
+    processed_input = ''
+    if pre_processors and not argument.prop.raw_input:
+        argument.prop.instance = instance
+        for pp in pre_processors:
+            t = pp(argument)
+            processed_input += t if t is not None else ''
+    elif argument.args and len(argument.args) > 0 and argument.prop.raw_input:
+       processed_input += ' '.join([str(a) for a in argument.args])
+    else:
+       processed_input = instance
+    return processed_input
 
 
 def _limit_number_results(rsp: Any, argument, return_type):
@@ -133,20 +147,6 @@ def _prepare_argument(argument: Any, engine: Any, instance: Any, func: Callable,
     return argument
 
 
-def _apply_preprocessors(argument, instance: Any, pre_processors: Optional[List[PreProcessor]]) -> str:
-    processed_input = ''
-    if pre_processors and not argument.prop.raw_input:
-        argument.prop.instance = instance
-        for pp in pre_processors:
-            t = pp(argument)
-            processed_input += t if t is not None else ''
-    elif argument.args and len(argument.args) > 0 and argument.prop.raw_input:
-       processed_input += ' '.join([str(a) for a in argument.args])
-    else:
-       processed_input = instance
-    return processed_input
-
-
 def _execute_query_fallback(func, instance, argument, default):
     try:
         result = func(instance, *argument.args, **argument.signature_kwargs)
@@ -166,14 +166,14 @@ def _process_query_single(engine,
                           trials: int = 1,
                           pre_processors: Optional[List[PreProcessor]] = None,
                           post_processors: Optional[List[PostProcessor]] = None,
-                          argument=None):   
+                          argument=None):
     if pre_processors and not isinstance(pre_processors, list):
         pre_processors = [pre_processors]
     if post_processors and not isinstance(post_processors, list):
-        post_processors = [post_processors] 
-    
+        post_processors = [post_processors]
+
     argument = _prepare_argument(argument, engine, instance, func, constraints, default, limit, trials, pre_processors, post_processors)
-   
+
     preprocessed_input = _apply_preprocessors(argument, instance, pre_processors)
     argument.prop.processed_input = preprocessed_input
     executor_callback = argument.kwargs.get('executor_callback', None)
