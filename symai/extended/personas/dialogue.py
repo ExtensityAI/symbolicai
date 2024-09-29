@@ -12,6 +12,11 @@ from . import Persona
 logger = logging.getLogger('pydub').setLevel(logging.WARNING)
 
 
+DIALOG_DESCRIPTION = """A natural conversation between people. The dialogue text contains no markdown format or bullet points and is a simple back discussion of two people that know each other.
+Don't make the conversation too long, as it will be difficult to follow. The dialogue should be engaging and interesting to read.
+Do not speak like in a email or a letter, but like in a real conversation. Use contractions and informal language."""
+
+
 class Dialogue(Expression):
     def __init__(self, *bots: Persona, n_turns: int = 10, **kwargs):
         super().__init__(**kwargs)
@@ -27,7 +32,7 @@ class Dialogue(Expression):
         self._value.append((tag, message))
         print(f'[{tag}]: {message}\n')
 
-    def forward(self, initial_message: str, *system_instructions: List[str]):
+    def forward(self, initial_message: str, system_instructions: List[str] = [DIALOG_DESCRIPTION], **kwargs):
         # Assign the two Persona objects to variables for convenience
         bot_1 = self.bots[0]
         bot_2 = self.bots[1]
@@ -59,7 +64,7 @@ class Dialogue(Expression):
             # Get the last message from the conversation history for the starting bot to respond to
             last_message = conversation_history[-1]
             # Starting bot generates a response
-            response = responding_bot.forward(last_message)
+            response = responding_bot.forward(last_message, **kwargs)
             # Save starting bot's response to conversation history
             conversation_history.append(response)
             # Print starting bot's response
@@ -67,7 +72,7 @@ class Dialogue(Expression):
             # Check if conversation should continue
             if turn < self.n_turns - 1:
                 # Responding bot generates a response to the starting bot's message
-                response = starting_bot.forward(response)
+                response = starting_bot.forward(response, **kwargs)
                 # Save responding bot's response to conversation history
                 conversation_history.append(response)
                 # Print responding bot's response

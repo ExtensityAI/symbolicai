@@ -117,7 +117,7 @@ class Persona(Conversation):
             return dialogue.strip()
 
     def forward(self, *args, **kwargs):
-        res = super().forward(*args, **kwargs, enable_verbose_output=True)
+        res = super().forward(*args, **kwargs, enable_verbose_output=True, payload=self._memory)
         res = self.extract_details(res)
         return res
 

@@ -9,6 +9,8 @@ Be very detailed and specific about the persona, and include his visual appearan
 Add also a description how the persona usually interacts with other people, and how he speaks and behaves in general.
 Include also friends and family and how the persona interacts with them. Provide at least two names of his family or close friends and a one sentence description of them. {relation_description}
 
+Do not create any other markdown format than the one provided in the exemplary output structure.
+
 [Exemplary Output Structure] // add and vary the information or bullets if needed
 Persona Description >>>
 Name: ...
