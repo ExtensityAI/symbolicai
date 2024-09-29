@@ -71,7 +71,8 @@ def retry(
     delay=0,
     max_delay=-1,
     backoff=1,
-    jitter=0
+    jitter=0,
+    graceful=False
 ):
     '''
     Returns a retry decorator.
@@ -97,7 +98,8 @@ def retry(
                     delay=delay,
                     max_delay=max_delay,
                     backoff=backoff,
-                    jitter=jitter
+                    jitter=jitter,
+                    graceful=graceful
                 )
         return wrapper
     return decorator
@@ -109,8 +111,9 @@ def _retry_func(
     tries: int,
     delay: int,
     max_delay: int,
-    backoff=int,
-    jitter=int
+    backoff: int,
+    jitter: int,
+    graceful: bool
 ):
     _tries, _delay = tries, delay
     while _tries:
@@ -119,6 +122,8 @@ def _retry_func(
         except exceptions as e:
             _tries -= 1
             if not _tries:
+                if graceful:
+                    return None
                 raise
 
             time.sleep(_delay)

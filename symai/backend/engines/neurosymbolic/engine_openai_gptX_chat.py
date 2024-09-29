@@ -5,6 +5,7 @@ from typing import List, Optional
 import openai
 import tiktoken
 
+from ....components import SelfPrompt
 from ....misc.console import ConsoleStyle
 from ....symbol import Symbol
 from ....utils import CustomUserWarning, encode_media_frames
@@ -405,6 +406,27 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             ]}
         else:
             user_prompt = { "role": "user", "content": user }
+
+        # First check if the `Symbol` instance has the flag set, otherwise check if it was passed as an argument to a method
+        if argument.prop.instance._kwargs.get('self_prompt', False) or argument.prop.self_prompt:
+            self_prompter = SelfPrompt()
+
+            # fails gracefully by default to allow the user to skip the self-prompter
+            res = self_prompter({'user': user, 'system': system})
+            if res is None:
+                # skip everything in this block if the self-prompter returns None and defaults to the original prompt
+                argument.prop.prepared_input = (system, [user_prompt])
+                return
+
+            if len(image_files) > 0:
+                user_prompt = { "role": "user", "content": [
+                    *images,
+                    { 'type': 'text', 'text': res['user'] }
+                ]}
+            else:
+                user_prompt = { "role": "user", "content": res['user'] }
+
+            system = res['system']
 
         argument.prop.prepared_input = [
             { "role": "system", "content": system },
