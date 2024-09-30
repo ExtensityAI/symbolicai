@@ -56,15 +56,13 @@ class News(Expression):
             *filters,
             Compose(f'Compose a comprehensive news article. Group all facts that belong together topics-wise:\n'),
         ))
-        self.html_stream = Stream(
-            Sequence(
-                Template(template=HTML_TEMPLATE),
-                Style(description=HTML_STREAM_STYLE_DESCRIPTION,
-                      libraries=['https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css',
-                                 'https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js',
-                                 'https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js']),
-            )
-        )
+        self.html_stream = Stream(Sequence(
+            Template(template=HTML_TEMPLATE),
+            Style(description=HTML_STREAM_STYLE_DESCRIPTION,
+                    libraries=['https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css',
+                                'https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js',
+                                'https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js']),
+        ))
         self.post_processors = ProcessorPipeline([StripPostProcessor(), CodeExtractPostProcessor()])
         self.writer = FileWriter('tmp/news.html')
 
@@ -91,7 +89,8 @@ class News(Expression):
         res = self.crawler(url=self.url, pattern=self.pattern)
         vals = []
         for news in self.data_stream(str(res), **kwargs):
-            vals.append(str(news))
+            if news is not None and len(str(news).strip()) > 0:
+                vals.append(str(news))
         res = Symbol(vals).cluster()
         sym = res.map()
         if not self.render_:

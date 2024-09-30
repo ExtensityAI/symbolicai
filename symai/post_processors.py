@@ -97,17 +97,17 @@ class CodeExtractPostProcessor(PostProcessor):
     def __call__(self, response, argument, tag=None, **kwargs) -> Any:
         if '```' not in str(response):
             return response
-        matches = []
         try:
             if tag is None:
-                pattern = r'```(?:\w*\n)?(.*?)```'
+                pattern = r'```(?:\w*\n)?(.*?)(?:```|$)'
             else:
-                pattern = r'```(?:\w*\n)?' + str(tag) + r'\n(.*?)```'
+                pattern = r'```(?:\w*\n)?' + re.escape(str(tag)) + r'\n(.*?)(?:```|$)'
             matches = re.findall(pattern, str(response), re.DOTALL)
-        except IndexError:
-            pass
-        code = "\n".join(matches).strip()
-        return code
+            code = "\n".join(matches).strip()
+            return code
+        except Exception:
+            # If any error occurs during processing, return the original response
+            return response
 
 
 class WolframAlphaPostProcessor(PostProcessor):
