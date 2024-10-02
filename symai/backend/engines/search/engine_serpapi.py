@@ -2,9 +2,10 @@ import json
 
 from IPython.utils import io
 
+from ....symbol import Result
+from ....utils import CustomUserWarning
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
-from ....symbol import Result
 
 try:
     from serpapi import GoogleSearch
@@ -53,9 +54,9 @@ class SerpApiEngine(Engine):
         self.engine = self.config['SEARCH_ENGINE_MODEL']
 
     def id(self) -> str:
-        if self.config['SEARCH_ENGINE_API_KEY']:
+        if self.config.get('SEARCH_ENGINE_API_KEY') and self.config.get('SEARCH_ENGINE_MODEL') == "google": # only support Google for now
             if GoogleSearch is None:
-                print('SerpApi is not installed. Please install it with `pip install symbolicai[serpapi]`')
+                CustomUserWarning('SerpApi is not installed. Please install it with `pip install symbolicai[serpapi]`')
             return 'search'
         return super().id() # default to unregistered
 

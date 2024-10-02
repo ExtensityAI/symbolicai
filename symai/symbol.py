@@ -1187,10 +1187,10 @@ class Result(Expression):
         self._sym_return_type = type(self)
         try:
             # try to make the values easily accessible
-            self.raw              = Box(value)
+            self.raw = Box(value)
         except:
             # otherwise, store the unprocessed view
-            self.raw              = value
+            self.raw = value
 
     @property
     def value(self) -> Any:
