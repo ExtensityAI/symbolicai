@@ -153,12 +153,10 @@ import symai as ai
 ```
 
 Overall, the following engines are currently supported:
-
-* **Neuro-Symbolic Engine**: [OpenAI's LLMs (supported GPT-3, ChatGPT, GPT-4)](https://beta.openai.com/docs/introduction/overview)
-  (as an experimental alternative using **llama.cpp** for local models)
+* **Neuro-Symbolic Engine**: [OpenAI](https://beta.openai.com/docs/introduction/overview), [Anthropic](https://www.anthropic.com/api), [HuggingFace](https://huggingface.co/models), and [llama.cpp](https://github.com/ggerganov/llama.cpp)
 * **Embedding Engine**: [OpenAI's Embedding API](https://beta.openai.com/docs/introduction/overview)
 * **[Optional] Symbolic Engine**: [WolframAlpha](https://www.wolframalpha.com/)
-* **[Optional] Search Engine**: [SerpApi](https://serpapi.com/)
+* **[Optional] Search Engine**: [SerpApi](https://serpapi.com/) and [PerplexityAI](https://www.perplexity.ai/)
 * **[Optional] OCR Engine**: [APILayer](https://apilayer.com)
 * **[Optional] SpeechToText Engine**: [OpenAI's Whisper](https://openai.com/blog/whisper/)
 * **[Optional] WebCrawler Engine**: [Selenium](https://selenium-python.readthedocs.io/)
@@ -416,7 +414,7 @@ $> symchat
 
 This will launch a chatbot interface:
 
-```bash
+```text
 Symbia: Hi there! I'm Symbia, your virtual assistant. How may I help you?
 $>
 ```
@@ -660,7 +658,7 @@ Let's define a Symbol and perform some basic manipulations. We begin with a tran
 sym = ai.Symbol("Welcome to our tutorial.")
 sym.translate('German')
 ```
-```bash
+```text
 Output:
 <class 'symai.expressions.Symbol'>(value=Willkommen zu unserem Tutorial.)
 ```
@@ -673,7 +671,7 @@ Our API can also execute basic data-agnostic operations like `filter`, `rank`, o
 sym = ai.Symbol(numpy.array([1, 2, 3, 4, 5, 6, 7]))
 res = sym.rank(measure='numerical', order='descending')
 ```
-```bash
+```text
 Output:
 <class 'symai.expressions.Symbol'>(value=['7', '6', '5', '4', '3', '2', '1'])
 ```
@@ -695,7 +693,7 @@ The following examples display how to evaluate such an expression using a string
 ```python
 ai.Symbol('King - Man + Women').expression()
 ```
-```bash
+```text
 Output:
 <class 'symai.expressions.Symbol'>(value=Queen)
 ```
@@ -707,7 +705,7 @@ We can also subtract sentences from one another, where our operations condition 
 ```python
 res = ai.Symbol('Hello my enemy') - 'enemy' + 'friend'
 ```
-```bash
+```text
 Output:
 <class 'symai.expressions.Symbol'>(value=Hello my friend)
 ```
@@ -722,7 +720,7 @@ In this example, we perform a fuzzy comparison between two numerical objects. Th
 sym = ai.Symbol('3.1415...')
 sym == numpy.pi
 ```
-```bash
+```text
 :[Output]:
 True
 ```
@@ -734,7 +732,7 @@ The main goal of our framework is to enable reasoning capabilities on top of the
 ```python
 res = ai.Symbol('The horn only sounds on Sundays.') & ai.Symbol('I hear the horn.')
 ```
-```bash
+```text
 :[Output]:
 <class 'symai.expressions.Symbol'>(value=It is Sunday.)
 ```
@@ -929,7 +927,7 @@ res = ai.Symbol(1) <= ai.Symbol('one')
 
 This statement evaluates to `True` since the fuzzy compare operation conditions the engine to compare the two Symbols based on their semantic meaning.
 
-```bash
+```text
 :[Output]:
 True
 ```
@@ -1050,7 +1048,7 @@ res = expr(sym)
 
 The resulting output is the corrected, evaluated code:
 
-```bash
+```text
 :Output:
 a = 3
 ```
@@ -1137,7 +1135,7 @@ res = expr('German')
 
 Since we used verbose, the console print of the `Output` expression is also visible:
 
-```bash
+```text
 Input: (['Translate the following text into German:\n\nHello World!'],)
 Expression: <bound method Symbol.translate of <class 'symai.symbol.Symbol'>(value=Hello World!)>
 args: ('German',) kwargs: {'input_handler': <function OutputEngine.forward.<locals>.input_handler at ...
@@ -1162,7 +1160,7 @@ expression = Interface('wolframalpha')
 res = expression('x^2 + 2x + 1')
 ```
 
-```bash
+```text
 :Output:
 x = -1
 ```
@@ -1178,7 +1176,7 @@ speech = Interface('whisper')
 res = speech('examples/audio.mp3')
 ```
 
-```bash
+```text
 :Output:
 I may have overslept.
 ```
@@ -1196,7 +1194,7 @@ res = ocr('https://media-cdn.tripadvisor.com/media/photo-p/0f/da/22/3a/rechnung.
 
 The OCR engine returns a dictionary with a key `all_text` where the full text is stored. For more details, refer to their documentation [here](https://apilayer.com/marketplace/image_to_text-api).
 
-```bash
+```text
 :Output:
 China Restaurant\nMaixim,s\nSegeberger Chaussee 273\n22851 Norderstedt\nTelefon 040/529 16 2 ...
 ```
@@ -1213,10 +1211,55 @@ search = Interface('serpapi')
 res = search('Birthday of Barack Obama')
 ```
 
-```bash
+```text
 :Output:
 August 4, 1961
 ```
+
+Here's a quick example for how to set it up:
+```json
+{
+    …
+    "SEARCH_ENGINE_API_KEY": …,
+    "SEARCH_ENGINE_ENGINE": "google",
+    …
+}
+```
+
+At the same time, we can use `PerplexityAI` to search for a query and return the results:
+
+```python
+from symai.interfaces import Interface
+search = Interface("perplexity")
+res = search('What is a quantum computer?', system_message='You are Rick from Rick and Morty. You reply back as Rick would reply to Morty.')
+
+```
+```text
+:Output:
+Morty, a quantum computer is like a super-duper, hyper-advanced version of the old computer I used to build in my garage. It uses the principles of quantum mechanics to process information in ways that classical computers can't even dream of.
+
+Here's the deal: instead of using those boring old bits that are either 0 or 1, quantum computers use something called qubits. These qubits can exist in multiple states at the same time, thanks to this weird phenomenon called superposition. It's like when you flip a coi
+n and it's both heads and tails until you look at it—same idea, Morty.
+
+And then there's entanglement. This means that if you have two qubits, the state of one can depend on the state of the other, no matter how far apart they are. It's like having a secret handshake with your buddy that works even if you're on opposite sides of the multive
+rse.
+
+So, with these qubits and their superposition and entanglement, quantum computers can perform calculations at speeds that would make even the most powerful supercomputers look like they're running on a Commodore 64. They can simulate molecular interactions, break encryp
+tion codes faster than you can say "Wubba lubba dub dub," and solve problems that are currently unsolvable for classical computers.
+
+Now, if you'll excuse me, I have some real science to attend to. Don't get too excited, Morty; it's still just a bunch of fancy math and physics. But hey, it's cool stuff, right?
+```
+
+Please note that the `system_message` is optional and can be used to provide context to the model. For all available `kwargs` that can be passed to the `perplexity` engine, please refer to the PerplexityAI [documentation](https://docs.perplexity.ai/api-reference/chat-completions). Also, please see the available supported engines for `PerplexityAI` [here](https://docs.perplexity.ai/guides/model-cards). Here's a quick example for how to set it up:
+```json
+{
+    …
+    "SEARCH_ENGINE_API_KEY": "pplx-…",
+    "SEARCH_ENGINE_MODEL": "llama-3.1-sonar-small-128k-online",
+    …
+}
+```
+
 
 ### WebCrawler Engine
 
@@ -1231,7 +1274,7 @@ res = crawler(url="https://www.google.com/",
 ```
 The `pattern` property can be used to verify if the document has been loaded correctly. If the pattern is not found, the crawler will timeout and return an empty result.
 
-```bash
+```text
 :Output:
 GoogleKlicke hier, wenn du nach einigen Sekunden nicht automatisch weitergeleitet wirst.GmailBilderAnmelden ...
 ```
@@ -1247,7 +1290,7 @@ dalle = Interface('dall_e')
 res = dalle('a cat with a hat')
 ```
 
-```bash
+```text
 :Output:
 https://oaidalleapiprodscus.blob.core.windows.net/private/org-l6FsXDfth6Uct ...
 ```
@@ -1266,7 +1309,7 @@ expr = Expression()
 res = expr.open('./LICENSE')
 ```
 
-```bash
+```text
 :Output:
 BSD 3-Clause License\n\nCopyright (c) 2023 ...
 ```
@@ -1283,7 +1326,7 @@ res = expr.get(Symbol('hello').embedding, index_name='default_index').ast()
 res['matches'][0]['metadata']['text'][0]
 ```
 
-```bash
+```text
 :Output:
 Hello World!
 ```
@@ -1304,7 +1347,7 @@ res = clip('https://oaidalleapiprodscus.blob.core.windows.net/private/org-l6FsXD
               ['cat', 'dog', 'bird', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe'])
 ```
 
-```bash
+```text
 :Output:
 array([[9.72840726e-01, 6.34790864e-03, 2.59368378e-03, 3.41371237e-03,
         3.71197984e-03, 8.53193272e-03, 1.03346225e-04, 2.08464009e-03,
@@ -1450,7 +1493,7 @@ Expression.command(engines=['neurosymbolic'], verbose=True)
 res = sym.translate('German')
 ```
 
-```bash
+```text
 :Output:
 <symai.backend.engines.engine_gptX_completion.GPTXCompletionEngine object at 0, <function Symbol.translate.<locals>._func at 0x7fd68ba04820>, {'instance': <class 'symai.symbol.S ['\n\nHallo Welt!']
 ```
