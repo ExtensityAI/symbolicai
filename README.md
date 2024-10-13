@@ -123,27 +123,25 @@ pip install symbolicai
 
 One can run our framework in two ways:
 
-* using local engines (`experimental`) that are run on your local machine ([see Local Neuro-Symbolic Engine section](#local-neuro-symbolic-engine)), or
-* using engines powered by external APIs, i.e. using OpenAI's API ([see API Keys](#api-keys)).
+* Using local engines (`experimental`) that are run on your local machine ([see Local Neuro-Symbolic Engine section](#local-neuro-symbolic-engine)), or
+* Using engines powered by external APIs.
 
-### API Keys
+Currently, SymbolicAI supports the following neurosymbolic engines through API: OpenAI, Anthropic.
 
-Before the first run, define exports for the required `API keys` to enable the respective engines. This will register the keys in  internally for subsequent runs. By default `SymbolicAI` currently uses OpenAI's neural engines, i.e. GPT-3 Davinci-003, DALL·E 2 and Embedding Ada-002, for the neuro-symbolic computations, image generation and embeddings computation respectively. However, these modules can easily be replaced with open-source alternatives. Examples are
-- [OPT](https://huggingface.co/docs/transformers/model_doc/opt) or [Bloom](https://huggingface.co/bigscience/bloom) for neuro-symbolic computations,
-- [Craiyon](https://www.craiyon.com/) for image generation,
-- and any [BERT variants](https://huggingface.co/models) for semantic embedding computations.
-
-To set the OpenAI API Keys use the following command:
+### Setting up a neurosymbolic API Key
 
 ```bash
 # Linux / MacOS
-export OPENAI_API_KEY="<OPENAI_API_KEY>"
+export NEUROSYMBOLIC_ENGINE_API_KEY="…"
+export NEUROSYMBOLIC_ENGINE_MODEL="…"
 
 # Windows (PowerShell)
-$Env:OPENAI_API_KEY="<OPENAI_API_KEY>"
+$Env:NEUROSYMBOLIC_ENGINE_API_KEY="…"
+$Env:NEUROSYMBOLIC_ENGINE_MODEL="…"
 
-# Jupyter Notebooks (important: do not use quotes)
-%env OPENAI_API_KEY=<OPENAI_API_KEY>
+# Jupyter Notebooks
+%env NEUROSYMBOLIC_ENGINE_API_KEY=…
+%env NEUROSYMBOLIC_ENGINE_MODEL=…
 ```
 
 **To get started import our library by using:**
@@ -224,7 +222,7 @@ Alternatively, you can specify in your project path a `symai.config.json` file w
 ```json
 {
     "NEUROSYMBOLIC_ENGINE_API_KEY": "<OPENAI_API_KEY>",
-    "NEUROSYMBOLIC_ENGINE_MODEL": "text-davinci-003",
+    "NEUROSYMBOLIC_ENGINE_MODEL": "gpt-4o",
     "SYMBOLIC_ENGINE_API_KEY": "<WOLFRAMALPHA_API_KEY>",
     "EMBEDDING_ENGINE_API_KEY": "<OPENAI_API_KEY>",
     "EMBEDDING_ENGINE_MODEL": "text-embedding-ada-002",

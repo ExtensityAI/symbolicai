@@ -10,19 +10,22 @@ pip install symbolicai
 
 ## API Keys
 
-Before using SymbolicAI, you need to set up API keys for the various engines. By default, SymbolicAI uses OpenAI's neural engines.
+Before using SymbolicAI, you need to set up API keys for the various engines. Currently, SymbolicAI supports the following neurosymbolic engines through API: OpenAI, Anthropic. We also support local neurosymbolic engines, such as llama.cpp and huggingface ([see Local Neuro-Symbolic Engine section](#local-neuro-symbolic-engine)).
 
-### Setting up OpenAI API Key
+### Setting up a neurosymbolic API Key
 
 ```bash
 # Linux / MacOS
-export OPENAI_API_KEY="<OPENAI_API_KEY>"
+export NEUROSYMBOLIC_ENGINE_API_KEY="…"
+export NEUROSYMBOLIC_ENGINE_MODEL="…"
 
 # Windows (PowerShell)
-$Env:OPENAI_API_KEY="<OPENAI_API_KEY>"
+$Env:NEUROSYMBOLIC_ENGINE_API_KEY="…"
+$Env:NEUROSYMBOLIC_ENGINE_MODEL="…"
 
 # Jupyter Notebooks
-%env OPENAI_API_KEY=<OPENAI_API_KEY>
+%env NEUROSYMBOLIC_ENGINE_API_KEY=…
+%env NEUROSYMBOLIC_ENGINE_MODEL=…
 ```
 
 ### Optional API Keys
@@ -68,7 +71,7 @@ pip install "symbolicai[all]"
 
 ## Configuration File
 
-You can specify engine properties in a `symai.config.json` file in your project path. This will replace the environment variables. Example:
+You can specify engine properties in a `symai.config.json` file in your project path. This will replace the environment variables. Example for OpenAI, WolframAlpha, and Pinecone:
 
 ```json
 {
