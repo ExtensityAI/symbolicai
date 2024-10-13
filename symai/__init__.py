@@ -121,7 +121,6 @@ def _start_symai():
 
         # LOAD THE ENVIRONMENT VARIABLES
         # *==========================================================================================================*
-        _openai_api_key_                = os.environ.get('OPENAI_API_KEY', None)
         _neurosymbolic_engine_api_key_  = os.environ.get('NEUROSYMBOLIC_ENGINE_API_KEY', None)
         _neurosymbolic_engine_model_    = os.environ.get('NEUROSYMBOLIC_ENGINE_MODEL', None)
         _symbolic_engine_api_key_       = os.environ.get('SYMBOLIC_ENGINE_API_KEY', None)
@@ -151,13 +150,6 @@ def _start_symai():
         if _embedding_engine_api_key_:      _symai_config_['EMBEDDING_ENGINE_API_KEY']      = _embedding_engine_api_key_
         if _imagerendering_engine_api_key_: _symai_config_['IMAGERENDERING_ENGINE_API_KEY'] = _imagerendering_engine_api_key_
         if _text_to_speech_engine_api_key_: _symai_config_['TEXT_TO_SPEECH_ENGINE_API_KEY'] = _text_to_speech_engine_api_key_
-
-        # USE ENVIRONMENT VARIABLES IF THE USER DID NOT SET THE API KEYS
-        # *==========================================================================================================*
-        if _openai_api_key_ and not _neurosymbolic_engine_api_key_:  _symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY']  = _openai_api_key_
-        if _openai_api_key_ and not _embedding_engine_api_key_:      _symai_config_['EMBEDDING_ENGINE_API_KEY']      = _openai_api_key_
-        if _openai_api_key_ and not _imagerendering_engine_api_key_: _symai_config_['IMAGERENDERING_ENGINE_API_KEY'] = _openai_api_key_
-        if _openai_api_key_ and not _text_to_speech_engine_api_key_: _symai_config_['TEXT_TO_SPEECH_ENGINE_API_KEY'] = _openai_api_key_
 
         # OPTIONAL MODULES
         # *==========================================================================================================*
@@ -221,7 +213,7 @@ def _start_symai():
         with open(_symsh_config_path_, 'w') as f:
             json.dump(_symsh_config_, f, indent=4)
 
-    # CHECK IF THE USER HAS OPENAI API KEY
+    # CHECK IF THE USER HAS A NEUROSYMBOLIC API KEY
     # *==============================================================================================================*
     if not (
         _symai_config_['NEUROSYMBOLIC_ENGINE_MODEL'].lower().startswith('llama') or \
@@ -231,7 +223,7 @@ def _start_symai():
             _symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY'] is None or \
             len(_symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY']) == 0):
 
-        CustomUserWarning('The mandatory neuro-symbolic engine is not initialized. Please get a key from https://beta.openai.com/account/api-keys and set either a general environment variable OPENAI_API_KEY or a module specific environment variable NEUROSYMBOLIC_ENGINE_API_KEY.')
+        CustomUserWarning('The mandatory neuro-symbolic engine is not initialized. Please set the NEUROSYMBOLIC_ENGINE_MODEL and NEUROSYMBOLIC_ENGINE_API_KEY environment variables.')
 
     settings.SYMAI_CONFIG = _symai_config_
     settings.SYMSH_CONFIG = _symsh_config_
