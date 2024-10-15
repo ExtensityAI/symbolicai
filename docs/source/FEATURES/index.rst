@@ -7,5 +7,6 @@ Features
    causal_reasoning
    operations
    expressions
+   vision
    import
    error_handling
