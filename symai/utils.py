@@ -2,7 +2,6 @@ import os
 import base64
 import inspect
 import httpx
-import sys
 import warnings
 
 import cv2
@@ -141,3 +140,14 @@ class CustomUserWarning:
             with ConsoleStyle('warn') as console:
                 console.print(f"{filename}:{lineno}: {UserWarning.__name__}: {message}")
 
+
+# Function to format bytes to a human-readable string
+def format_bytes(bytes):
+    if bytes < 1024:
+        return f"{bytes} bytes"
+    elif bytes < 1048576:
+        return f"{bytes / 1024:.2f} KB"
+    elif bytes < 1073741824:
+        return f"{bytes / 1048576:.2f} MB"
+    else:
+        return f"{bytes / 1073741824:.2f} GB"

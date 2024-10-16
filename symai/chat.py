@@ -1,7 +1,7 @@
 import logging
 import re
 
-from typing import Any, Optional
+from typing import Optional
 
 from .backend import settings as settings
 from .components import (IncludeFilter, InContextClassification,

@@ -25,7 +25,7 @@ from pygments.lexers.shell import BashLexer
 
 from .menu.screen import show_intro_menu
 from .imports import Import
-from .backend.settings import SYMSH_CONFIG
+from .backend.settings import SYMSH_CONFIG, HOME_PATH
 from .components import Function, FileReader, Indexer
 from .extended import Conversation, RetrievalAugmentedConversation
 from .misc.console import ConsoleStyle
@@ -41,7 +41,7 @@ logging.getLogger("subprocess").setLevel(logging.ERROR)
 
 
 # load json config from home directory root
-home_path = Path.home() / '.symai'
+home_path = HOME_PATH / '.symai'
 config_path = os.path.join(home_path, 'symsh.config.json')
 # migrate config from old path
 if 'colors' not in SYMSH_CONFIG:
@@ -844,7 +844,7 @@ def run(auto_query_on_error=False, conversation_style=None, verbose=False):
         # set show splash screen to false
         SYMSH_CONFIG['show-splash-screen'] = False
         # save config
-        _config_path =  Path.home() / '.symai' / 'symsh.config.json'
+        _config_path =  HOME_PATH / '.symai' / 'symsh.config.json'
         with open(_config_path, 'w') as f:
             json.dump(SYMSH_CONFIG, f, indent=4)
     listen(session, word_comp, auto_query_on_error=auto_query_on_error, verbose=verbose)

@@ -3,11 +3,12 @@ import json
 import webbrowser
 
 from pathlib import Path
-from prompt_toolkit import PromptSession, print_formatted_text
+from prompt_toolkit import print_formatted_text
 from prompt_toolkit.shortcuts import yes_no_dialog, input_dialog, button_dialog
 
 from ..utils import CustomUserWarning
 from ..misc.console import ConsoleStyle
+from ..backend.settings import HOME_PATH
 
 
 def show_splash_screen(print: callable = print_formatted_text):
@@ -49,7 +50,7 @@ def show_main_setup_menu(show_wizard: bool = True):
     # Step 0: Load config
     symai_config_path = Path.cwd() / 'symai.config.json'
     if not symai_config_path.exists():
-        root_dir  = Path.home() / '.symai'
+        root_dir  = HOME_PATH / '.symai'
         symai_config_path = root_dir / 'symai.config.json'
 
     if symai_config_path.exists():
