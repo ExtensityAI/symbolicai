@@ -7,6 +7,10 @@
 
 
 import toml
+import os
+import sys
+sys.path.insert(0, os.path.abspath('../../'))
+os.chdir(os.path.abspath('../../'))
 
 with open("pyproject.toml") as f:
     data = toml.load(f)
@@ -29,16 +33,16 @@ html_title = project
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    "sphinx.ext.autodoc",
-    "sphinx.ext.autodoc.typehints",
-    "sphinx.ext.autosummary",
-    "sphinx.ext.napoleon",
-    "sphinx.ext.todo",
-    "sphinx.ext.viewcode",
-    "myst_nb",
-    "IPython.sphinxext.ipython_console_highlighting",
+"sphinx.ext.autodoc",
+"sphinx.ext.autodoc.typehints",
+"sphinx.ext.autosummary",
+"sphinx.ext.napoleon",
+"sphinx.ext.todo",
+"sphinx.ext.viewcode",
+"myst_nb",
+"IPython.sphinxext.ipython_console_highlighting",
 ]
-source_suffix = [".py", ".md", ".rst"]
+source_suffix = [".py", ".md", ".rst", ".txt", '']
 
 autodoc_pydantic_model_show_json = False
 autodoc_pydantic_field_list_validators = False
@@ -68,21 +72,21 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "build", "dist", "docs",
 html_theme = "sphinx_book_theme"
 
 html_theme_options = {
-    "path_to_docs": "docs",
-    "repository_url": "https://github.com/ExtensityAI/symbolicai",
-    "use_repository_button": True,
-    "show_toc_level": 2,
-    "header_links_before_dropdown": 5,
-    "icon_links_label": "Quick Links",
-    "primary_sidebar_end": ["indices.html"],
+"path_to_docs": "docs",
+"repository_url": "https://github.com/ExtensityAI/symbolicai",
+"use_repository_button": True,
+"show_toc_level": 2,
+"header_links_before_dropdown": 5,
+"icon_links_label": "Quick Links",
+"primary_sidebar_end": ["indices.html"],
 }
 
 html_context = {
-    "display_github": True,  # Integrate GitHub
-    "github_user": "Extensity",  # Username
-    "github_repo": "symbolicai",  # Repo name
-    "github_version": "main",  # Version
-    "conf_py_path": "/docs/",  # Path in the checkout to the docs root
+"display_github": True,  # Integrate GitHub
+"github_user": "Extensity",  # Username
+"github_repo": "symbolicai",  # Repo name
+"github_version": "main",  # Version
+"conf_py_path": "/docs/",  # Path in the checkout to the docs root
 }
 
 master_doc = 'index'

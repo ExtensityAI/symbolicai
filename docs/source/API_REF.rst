@@ -1,19 +1,8 @@
-SymbolicAI: A Neuro-Symbolic Perspective on Large Language Models (LLMs)
-===========================================================================
-
-.. toctree::
-   :maxdepth: 5
-   :caption: Contents:
-
-   README
-   INTRODUCTION
-   INSTALLATION
-   QUICKSTART
-   CONTRIBUTING
-   LICENSE
+API Reference
+===============
 
 Expressions
-==========
+===========
 
 Chat
 ----
@@ -104,7 +93,7 @@ Engines
 CLIP Engine
 ^^^^^^^^^^^
 
-.. automodule:: symai.backend.engines.engine_clip
+.. automodule:: symai.backend.engines.text_vision.engine_clip
    :members:
    :undoc-members:
    :show-inheritance:
@@ -112,7 +101,7 @@ CLIP Engine
 Selenium Engine
 ^^^^^^^^^^^^^^^
 
-.. automodule:: symai.backend.engines.engine_selenium
+.. automodule:: symai.backend.engines.crawler.engine_selenium
    :members:
    :undoc-members:
    :show-inheritance:
@@ -120,7 +109,7 @@ Selenium Engine
 Embedding Engine
 ^^^^^^^^^^^^^^^^
 
-.. automodule:: symai.backend.engines.engine_embedding
+.. automodule:: symai.backend.engines.embedding.engine_openai
    :members:
    :undoc-members:
    :show-inheritance:
@@ -128,15 +117,15 @@ Embedding Engine
 File Engine
 ^^^^^^^^^^^
 
-.. automodule:: symai.backend.engines.engine_file
+.. automodule:: symai.backend.engines.files.engine_io
    :members:
    :undoc-members:
    :show-inheritance:
 
-Google Engine
+Search Engine
 ^^^^^^^^^^^^^
 
-.. automodule:: symai.backend.engines.engine_google
+.. automodule:: symai.backend.engines.search.engine_serpapi
    :members:
    :undoc-members:
    :show-inheritance:
@@ -144,7 +133,7 @@ Google Engine
 GPT-X Chat Engine
 ^^^^^^^^^^^^^^^^^
 
-.. automodule:: symai.backend.engines.engine_gptX_chat
+.. automodule:: symai.backend.engines.neurosymbolic.engine_openai_gptX_chat
    :members:
    :undoc-members:
    :show-inheritance:
@@ -152,7 +141,7 @@ GPT-X Chat Engine
 GPT-X Completion Engine
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-.. automodule:: symai.backend.engines.engine_gptX_completion
+.. automodule:: symai.backend.engines.neurosymbolic.engine_openai_gptX_completion
    :members:
    :undoc-members:
    :show-inheritance:
@@ -160,7 +149,7 @@ GPT-X Completion Engine
 Image Rendering Engine
 ^^^^^^^^^^^^^^^^^^^^^^
 
-.. automodule:: symai.backend.engines.engine_imagerendering
+.. automodule:: symai.backend.engines.imagerendering.engine_dall_e
    :members:
    :undoc-members:
    :show-inheritance:
@@ -168,7 +157,7 @@ Image Rendering Engine
 Pinecone Engine
 ^^^^^^^^^^^^^^^
 
-.. automodule:: symai.backend.engines.engine_pinecone
+.. automodule:: symai.backend.engines.index.engine_pinecone
    :members:
    :undoc-members:
    :show-inheritance:
@@ -176,7 +165,7 @@ Pinecone Engine
 NeSy Client Engine
 ^^^^^^^^^^^^^^^^^^
 
-.. automodule:: symai.backend.engines.engine_nesy_client
+.. automodule:: symai.backend.engines.imagecaptioning.engine_llavacpp_client
    :members:
    :undoc-members:
    :show-inheritance:
@@ -184,7 +173,7 @@ NeSy Client Engine
 OCR Engine
 ^^^^^^^^^^
 
-.. automodule:: symai.backend.engines.engine_ocr
+.. automodule:: symai.backend.engines.ocr.engine_apilayer
    :members:
    :undoc-members:
    :show-inheritance:
@@ -192,7 +181,7 @@ OCR Engine
 Output Engine
 ^^^^^^^^^^^^^
 
-.. automodule:: symai.backend.engines.engine_output
+.. automodule:: symai.backend.engines.output.engine_stdout
    :members:
    :undoc-members:
    :show-inheritance:
@@ -200,7 +189,7 @@ Output Engine
 Python Engine
 ^^^^^^^^^^^^^
 
-.. automodule:: symai.backend.engines.engine_python
+.. automodule:: symai.backend.engines.execute.engine_python
    :members:
    :undoc-members:
    :show-inheritance:
@@ -208,7 +197,7 @@ Python Engine
 Speech-to-Text Engine
 ^^^^^^^^^^^^^^^^^^^^^
 
-.. automodule:: symai.backend.engines.engine_speech_to_text
+.. automodule:: symai.backend.engines.speech_to_text.engine_local_whisper
    :members:
    :undoc-members:
    :show-inheritance:
@@ -216,7 +205,7 @@ Speech-to-Text Engine
 Text-to-Speech Engine
 ^^^^^^^^^^^^^^^^^^^^^
 
-.. automodule:: symai.backend.engines.engine_text_to_speech
+.. automodule:: symai.backend.engines.text_to_speech.engine_openai
    :members:
    :undoc-members:
    :show-inheritance:
@@ -224,7 +213,7 @@ Text-to-Speech Engine
 User Input Engine
 ^^^^^^^^^^^^^^^^^
 
-.. automodule:: symai.backend.engines.engine_userinput
+.. automodule:: symai.backend.engines.userinput.engine_console
    :members:
    :undoc-members:
    :show-inheritance:
@@ -232,7 +221,7 @@ User Input Engine
 WolframAlpha Engine
 ^^^^^^^^^^^^^^^^^^^
 
-.. automodule:: symai.backend.engines.engine_wolframalpha
+.. automodule:: symai.backend.engines.symbolic.engine_wolframalpha
    :members:
    :undoc-members:
    :show-inheritance:
