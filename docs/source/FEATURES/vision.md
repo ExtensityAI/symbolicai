@@ -13,7 +13,7 @@ image_description = Symbol(f"Analyze this image <<vision:{image}:>> and describe
 
 
 images = [
-    "https://example.com/image1.png",
+    "https://example.com/image1.png", 
     "https://example.com/image2.png",
     "https://example.com/image3.png"
 ]

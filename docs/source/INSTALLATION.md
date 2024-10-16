@@ -8,19 +8,26 @@ To get started with SymbolicAI, you can install it using pip:
 pip install symbolicai
 ```
 
-Before using SymbolicAI, you need to set up API keys for the various engines. By default, SymbolicAI uses OpenAI's neural engines.
+### Setting up a neurosymbolic API Key
 
-To set the OpenAI API Keys use the following command:
+Before using SymbolicAI, you need to set up API keys for the various engines. Currently, SymbolicAI supports the following neurosymbolic engines through API: OpenAI, Anthropic. We also support {doc}`local neurosymbolic engines <ENGINES/local_engine>`, such as llama.cpp and huggingface.
 
 ```bash
 # Linux / MacOS
-export OPENAI_API_KEY="<OPENAI_API_KEY>"
+export NEUROSYMBOLIC_ENGINE_API_KEY="…"
+export NEUROSYMBOLIC_ENGINE_MODEL="…"
+```
 
+```bash
 # Windows (PowerShell)
-$Env:OPENAI_API_KEY="<OPENAI_API_KEY>"
+$Env:NEUROSYMBOLIC_ENGINE_API_KEY="…"
+$Env:NEUROSYMBOLIC_ENGINE_MODEL="…"
+```
 
+```bash
 # Jupyter Notebooks
-%env OPENAI_API_KEY=<OPENAI_API_KEY>
+%env NEUROSYMBOLIC_ENGINE_API_KEY=…
+%env NEUROSYMBOLIC_ENGINE_MODEL=…
 ```
 
 ### Optional Features
@@ -76,12 +83,12 @@ choco install ffmpeg
 
 ## Configuration File
 
-You can specify engine properties in a `symai.config.json` file in your project path. This will replace the environment variables. For example:
+You can specify engine properties in a symai.config.json file in your project path. This will replace the environment variables. Example for OpenAI, WolframAlpha, and Pinecone:
 
 ```json
 {
     "NEUROSYMBOLIC_ENGINE_API_KEY": "<OPENAI_API_KEY>",
-    "NEUROSYMBOLIC_ENGINE_MODEL": "text-davinci-003",
+    "NEUROSYMBOLIC_ENGINE_MODEL": "gpt-4o",
     "SYMBOLIC_ENGINE_API_KEY": "<WOLFRAMALPHA_API_KEY>",
     "EMBEDDING_ENGINE_API_KEY": "<OPENAI_API_KEY>",
     "EMBEDDING_ENGINE_MODEL": "text-embedding-ada-002",
