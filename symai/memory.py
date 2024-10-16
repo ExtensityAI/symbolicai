@@ -1,6 +1,5 @@
 from typing import List
 
-from . import core
 from . import core_ext
 from .symbol import Expression, Symbol
 from .components import Function

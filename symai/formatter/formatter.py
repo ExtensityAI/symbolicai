@@ -1,12 +1,12 @@
-import json
 import re
 
 from beartype import beartype
 from beartype.typing import Any, Dict, List
 from tqdm import tqdm
 
-from . import core_ext
-from .symbol import Expression, Symbol
+from .regex import CHUNK_REGEX
+from .. import core_ext
+from ..symbol import Expression, Symbol
 
 
 class ParagraphFormatter(Expression):
@@ -133,6 +133,28 @@ class SentenceFormatter(Expression):
         # s.strip() == True if sentence has other characters than whitespace
 
         return sentences
+
+    def forward(self, sym: Symbol, *args, **kwargs) -> Symbol:
+        sym = self._to_symbol(sym)
+        # split text sentence-wise and index each sentence separately
+        self.elements = self.split_sentences(sym.value)
+        return self._to_symbol(self.elements)
+
+
+class RegexFormatter(Expression):
+    def __init__(self, regex=None, **kwargs):
+        super().__init__(None, **kwargs)
+        # Chunk based on predefined regex pattern or custom regex pattern
+        self.SENTENCES_RE = regex if regex else CHUNK_REGEX
+
+    def split_sentences(self, input_text=""):
+        input_ = input_text.strip()
+        split_text = self.SENTENCES_RE.split(input_)  # regex splitting
+
+        chunks = [s.strip() for s in split_text if s.strip()]
+        # s.strip() == True if sentence has other characters than whitespace
+
+        return chunks
 
     def forward(self, sym: Symbol, *args, **kwargs) -> Symbol:
         sym = self._to_symbol(sym)

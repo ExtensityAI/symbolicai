@@ -3,6 +3,7 @@ from typing import Optional
 from git import Repo
 
 from ..symbol import Expression
+from ..backend.settings import HOME_PATH
 
 
 class RepositoryCloner(Expression):
@@ -17,7 +18,7 @@ class RepositoryCloner(Expression):
     """
     def __init__(self, repo_path: Optional[str] = None, **kwargs):
         super().__init__(**kwargs)
-        self.repo_dir = Path.home() / '.symai/repos/' if repo_path is None else Path(repo_path)
+        self.repo_dir = HOME_PATH / '.symai/repos/' if repo_path is None else Path(repo_path)
         if not self.repo_dir.exists():
             self.repo_dir.mkdir(parents=True, exist_ok=True)
 

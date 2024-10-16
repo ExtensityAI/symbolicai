@@ -16,10 +16,6 @@
 
 Conceptually, SymbolicAI is a framework that leverages machine learning – specifically LLMs – as its foundation, and composes operations based on task-specific prompting. We adopt a divide-and-conquer approach to break down a complex problem into smaller, more manageable problems. Consequently, each operation addresses a simpler task. By reassembling these operations, we can resolve the complex problem. Moreover, our design principles enable us to transition seamlessly between differentiable and classical programming, allowing us to harness the power of both paradigms.
 
-Read [**full paper here**](https://arxiv.org/abs/2402.00854).
-
-Read further [**documentation here**](https://symbolicai.readthedocs.io/en/latest/INTRODUCTION.html).
-
 ## Installation
 
 ### Core Features
@@ -214,8 +210,6 @@ print(result)  # Output: It is Sunday.
 ```
 
 The current `&` operation overloads the `and` logical operator and sends `few-shot` prompts to the neural computation engine for statement evaluation. However, we can define more sophisticated logical operators for `and`, `or`, and `xor` using formal proof statements. Additionally, the neural engines can parse data structures prior to expression evaluation. Users can also define custom operations for more complex and robust logical operations, including constraints to validate outcomes and ensure desired behavior.
-
-### 🪜 Next Steps
 
 This quick start guide covers the basics of SymbolicAI. We also provide an interactive [notebook](https://github.com/ExtensityAI/symbolicai/blob/main/notebooks/Basics.ipynb) that reiterates these basics. For more detailed information and advanced usage refer to [next steps](https://symbolicai.readthedocs.io/en/latest/QUICKSTART.html#next-steps).
 

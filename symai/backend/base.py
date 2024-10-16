@@ -4,13 +4,12 @@ import time
 
 from abc import ABC
 from typing import Any, List, Tuple
-from pathlib import Path
+from .settings import HOME_PATH
 
 from ..collect import CollectionRepository, rec_serialize
 
 
 ENGINE_UNREGISTERED = '<UNREGISTERED/>'
-
 
 class Engine(ABC):
     def __init__(self) -> None:
@@ -22,7 +21,7 @@ class Engine(ABC):
         self.collection = CollectionRepository()
         self.collection.connect()
         # create formatter
-        __root_dir__  = Path.home() / '.symai'
+        __root_dir__  = HOME_PATH / '.symai'
         os.makedirs(__root_dir__, exist_ok=True)
         __file_path__ = __root_dir__ / "engine.log"
         logging.basicConfig(filename=__file_path__, filemode="a", format='%(asctime)s %(name)s %(levelname)s %(message)s')

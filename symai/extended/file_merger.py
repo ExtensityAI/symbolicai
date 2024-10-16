@@ -4,7 +4,7 @@ from tqdm import tqdm
 from typing import List
 
 from ..symbol import Expression, Symbol
-from ..components import FileReader, Indexer
+from ..components import FileReader
 
 
 class FileMerger(Expression):
