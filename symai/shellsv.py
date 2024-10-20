@@ -1,17 +1,18 @@
-import logging
+import argparse
 import glob
-import subprocess
+import json
+import logging
 import os
 import re
-import sys
+import shutil
 import signal
+import subprocess
+import sys
 import time
-import json
-import argparse
 import traceback
-
-from typing import Iterable
 from pathlib import Path
+from typing import Iterable, Tuple
+
 from prompt_toolkit import HTML, PromptSession, print_formatted_text
 from prompt_toolkit.completion import Completer, Completion, WordCompleter
 from prompt_toolkit.history import History
@@ -23,22 +24,21 @@ from prompt_toolkit.shortcuts import CompleteStyle, ProgressBar
 from prompt_toolkit.styles import Style
 from pygments.lexers.shell import BashLexer
 
-from .menu.screen import show_intro_menu
+from .backend.settings import HOME_PATH, SYMSH_CONFIG
+from .components import FileReader, Function, Indexer
+from .extended import (ArxivPdfParser, Conversation, DocumentRetriever,
+                       FileMerger, RepositoryCloner,
+                       RetrievalAugmentedConversation)
 from .imports import Import
-from .backend.settings import SYMSH_CONFIG, HOME_PATH
-from .components import Function, FileReader, Indexer
-from .extended import Conversation, RetrievalAugmentedConversation
+from .interfaces import Interface
+from .menu.screen import show_intro_menu
 from .misc.console import ConsoleStyle
 from .misc.loader import Loader
 from .symbol import Symbol
-from .extended import DocumentRetriever, RepositoryCloner, FileMerger, ArxivPdfParser
-from .interfaces import Interface
-
 
 logging.getLogger("prompt_toolkit").setLevel(logging.ERROR)
 logging.getLogger("asyncio").setLevel(logging.ERROR)
 logging.getLogger("subprocess").setLevel(logging.ERROR)
-
 
 # load json config from home directory root
 home_path = HOME_PATH / '.symai'
@@ -60,14 +60,12 @@ if 'map-nt-cmd' not in SYMSH_CONFIG:
     with open(config_path, 'w') as f:
         json.dump(SYMSH_CONFIG, f, indent=4)
 
-
 print                     = print_formatted_text
 FunctionType              = Function
 ConversationType          = Conversation
 RetrievalConversationType = RetrievalAugmentedConversation
 use_styles                = False
 map_nt_cmd_enabled        = SYMSH_CONFIG['map-nt-cmd']
-
 
 SHELL_CONTEXT = """[Description]
 This shell program is the command interpreter on the Linux systems, MacOS and Windows PowerShell.
@@ -81,10 +79,8 @@ If additional instructions are provided the follow the user query to produce the
 A well related and helpful answer with suggested improvements is preferred over "I don't know" or "I don't understand" answers or stating the obvious.
 """
 
-
 stateful_conversation = None
 previous_kwargs       = None
-
 
 def supports_ansi_escape():
     try:
@@ -92,7 +88,6 @@ def supports_ansi_escape():
         return True
     except OSError:
         return False
-
 
 class PathCompleter(Completer):
     def get_completions(self, document, complete_event):
@@ -142,7 +137,6 @@ class PathCompleter(Completer):
                              style='class:file-completion',
                              selected_style='class:file-completion-selected')
 
-
 class HistoryCompleter(WordCompleter):
     def get_completions(self, document, complete_event):
         completions = super().get_completions(document, complete_event)
@@ -150,7 +144,6 @@ class HistoryCompleter(WordCompleter):
             completion.style = 'class:history-completion'
             completion.selected_style = 'class:history-completion-selected'
             yield completion
-
 
 class MergedCompleter(Completer):
     def __init__(self, path_completer, history_completer):
@@ -186,7 +179,6 @@ class MergedCompleter(Completer):
             yield from self.history_completer.get_completions(document, complete_event)
             yield from self.path_completer.get_completions(document, complete_event)
 
-
 # Create custom keybindings
 bindings = KeyBindings()
 previous_prefix = None
@@ -194,17 +186,14 @@ exec_prefix = 'default'
 # Get a copy of the current environment
 default_env = os.environ.copy()
 
-
 def get_exec_prefix():
     return sys.exec_prefix if exec_prefix == 'default' else exec_prefix
-
 
 def get_conda_env():
     # what conda env am I in (e.g., where is my Python process from)?
     ENVBIN = get_exec_prefix()
     env_name = os.path.basename(ENVBIN)
     return env_name
-
 
 # bind to 'Ctrl' + 'Space'
 @bindings.add(Keys.ControlSpace)
@@ -247,20 +236,17 @@ def _(event):
     with ConsoleStyle('code') as console:
         console.print(res)
 
-
 @bindings.add(Keys.PageUp)
 def _(event):
     # Moving up for 5 lines
     for _ in range(5):
         event.current_buffer.auto_up()
 
-
 @bindings.add(Keys.PageDown)
 def _(event):
     # Moving down for 5 lines
     for _ in range(5):
         event.current_buffer.auto_down()
-
 
 class FileHistory(History):
     '''
@@ -297,13 +283,11 @@ class FileHistory(History):
             for line in string.split("\n"):
                 write("%s\n" % line)
 
-
 # Defining commands history
 def load_history(home_path=os.path.expanduser('~'), history_file='.bash_history'):
     history_file_path = os.path.join(home_path, history_file)
     history = FileHistory(history_file_path)
     return history, list(history.load_history_strings())
-
 
 # Function to check if current directory is a git directory
 def get_git_branch():
@@ -316,6 +300,32 @@ def get_git_branch():
         pass
     return None
 
+def disambiguate(cmds: str) -> Tuple[str, int]:
+    '''
+    Ok, so, possible options for now:
+        1. query | cmd
+        2. query | file [file ...]
+        -- not supported
+        3. query | cmd | file
+        4. query | cmd cmd ...
+        5. query | file | cmd
+    '''
+    has_at_least_one_cmd = any([shutil.which(cmd) is not None for cmd in cmds.split(' ')])
+    has_multiple_cmds    = sum([shutil.which(cmd) is not None for cmd in cmds.split(' ')]) > 1
+    maybe_cmd   = cmds.split(' ')[0].strip() # get first command
+    maybe_files = FileReader.extract_files(cmds)
+    # if cmd follows file(s) or file(s) follows cmd or multiple cmds throw error as not supported
+    if maybe_files is not None and has_at_least_one_cmd or has_multiple_cmds:
+        raise ValueError('Cannot disambiguate commands that have both files and commands or multiple commands. Please provide correct order of commands. '
+                         'Supported are: '
+                         'query | file [file ...] (e.g. "what do these files have in common?" | file1 [file2 ...]) '
+                         'and '
+                         'query | cmd (e.g. "what flags can I use with rg?" | rg --help)')
+    # now check order of commands and keep correct order
+    if shutil.which(maybe_cmd) is not None:
+        return subprocess.run(cmds, capture_output=True, text=True, shell=True).stdout, 1
+    if maybe_files is not None:
+        return maybe_files, 2
 
 # query language model
 def query_language_model(query: str, res=None, *args, **kwargs):
@@ -358,38 +368,26 @@ def query_language_model(query: str, res=None, *args, **kwargs):
             ConversationType.save_conversation_state(stateful_conversation, symai_path)
         stateful_conversation = stateful_conversation.load_conversation_state(symai_path)
 
-    has_followup_cmd = False
     cmd              = None
     if '|' in query:
         cmds = query.split('|')
+        if len(cmds) > 2:
+            raise ValueError(('Cannot disambiguate commands that have more than 1 pipes. Please provide correct order of commands. '
+                              'Supported are: '
+                              'query | file [file ...] (e.g. "what do these files have in common?" | file1 [file2 ...]) '
+                              'and '
+                              'query | cmd (e.g. "what flags can I use with rg?" | rg --help)'))
         query = cmds[0]
-
-        # Join the remaining commands after the first split
-        joined_cmds = '|'.join(cmds[1:])
-
-        # Extract files from the remaining commands
-        files = FileReader.extract_files(joined_cmds)
-
-        # Remove empty strings
-        files = [FileReader.expand_user_path(fl) for fl in files if fl.strip() != '']
-
-        if  query.startswith('."') or query.startswith(".'") or query.startswith('.`') or\
-            query.startswith('!"') or query.startswith("!'") or query.startswith('!`'):
-            func = stateful_conversation
-
-            for fl in files:
-                if FileReader.exists(fl):
-                    # store fl (slicing supported by FileReader)
-                    func.store_file(fl)
-                else:
-                    # interpret as follow up command
-                    has_followup_cmd = True
-        else:
-            func = ConversationType(file_link=files, auto_print=False)
-
-        if has_followup_cmd:
-            cmd = '|'.join(cmds[1:])
-
+        payload, order = disambiguate(cmds[1].strip())
+        # check if we're in a stateful conversation
+        if query.startswith('."') or query.startswith(".'") or query.startswith('.`') or\
+           query.startswith('!"') or query.startswith("!'") or query.startswith('!`'):
+           func = stateful_conversation
+           if order == 1:
+               func.store_system_message(payload)
+           elif order == 2:
+               for file in payload: func.store_file(file)
+        else: func = FunctionType(payload)
     else:
         if  query.startswith('."') or query.startswith(".'") or query.startswith('.`') or\
             query.startswith('!"') or query.startswith("!'") or query.startswith('!`'):
@@ -398,19 +396,11 @@ def query_language_model(query: str, res=None, *args, **kwargs):
             func = FunctionType(SHELL_CONTEXT)
 
     with Loader(desc="Inference ...", end=""):
-        if res is None:
+        if res is not None:
             query = f"[Context]\n{res}\n\n[Query]\n{query}"
         msg = func(query, *args, **kwargs)
 
-    if has_followup_cmd:
-        if '$1' in cmd:
-            # replace newlines with spaces
-            msg = str(msg).replace('\n', r'\\n')
-            cmd = cmd.replace('$1', '"%s"' % msg)
-            msg = None
-        msg = run_shell_command(cmd, prev=msg)
     return msg
-
 
 def retrieval_augmented_indexing(query: str, index_name = None, *args, **kwargs):
     global stateful_conversation
@@ -479,7 +469,6 @@ def retrieval_augmented_indexing(query: str, index_name = None, *args, **kwargs)
     msg = f'{message}successfully indexed: {index_name}'
     return msg
 
-
 def search_engine(query: str, res=None, *args, **kwargs):
     search = Interface('serpapi')
     with Loader(desc="Searching ...", end=""):
@@ -495,7 +484,6 @@ def search_engine(query: str, res=None, *args, **kwargs):
         with open(symai_path, 'w') as f:
             f.write(f'[SEARCH_QUERY]:\n{search_query}\n[RESULTS]\n{res}\n[MESSAGE]\n{msg}')
     return msg
-
 
 def handle_error(cmd, res, message, auto_query_on_error):
     msg = Symbol(cmd) | f'\n{str(res)}'
@@ -527,7 +515,6 @@ def handle_error(cmd, res, message, auto_query_on_error):
             if stdout:
                 message = stderr.decode('utf-8')
             return message
-
 
 # run shell command
 def run_shell_command(cmd: str, prev=None, auto_query_on_error: bool=False, stdout=None, stderr=None):
@@ -565,13 +552,10 @@ def run_shell_command(cmd: str, prev=None, auto_query_on_error: bool=False, stdo
     else:
         return handle_error(cmd, res, message, auto_query_on_error)
 
-
-
 def is_llm_request(cmd: str):
     return cmd.startswith('"') or cmd.startswith('."') or cmd.startswith('!"') or cmd.startswith('?"') or\
            cmd.startswith("'") or cmd.startswith(".'") or cmd.startswith("!'") or cmd.startswith("?'") or\
            cmd.startswith('`') or cmd.startswith('.`') or cmd.startswith('!`') or cmd.startswith('?`')
-
 
 def map_nt_cmd(cmd: str, map_nt_cmd_enabled: bool = True):
     if os.name.lower() == 'nt' and map_nt_cmd_enabled and not is_llm_request(cmd):
@@ -731,12 +715,10 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
     else:
         return run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
 
-
 def save_conversation():
     home_path = os.path.expanduser('~')
     symai_path = os.path.join(home_path, '.symai', '.conversation_state')
     Conversation.save_conversation_state(stateful_conversation, symai_path)
-
 
 # Function to listen for user input and execute commands
 def listen(session: PromptSession, word_comp: WordCompleter, auto_query_on_error: bool=False, verbose: bool=False):
@@ -798,7 +780,6 @@ def listen(session: PromptSession, word_comp: WordCompleter, auto_query_on_error
                     traceback.print_exc()
                 pass
 
-
 def create_session(history, merged_completer):
     colors = SYMSH_CONFIG['colors']
 
@@ -815,7 +796,6 @@ def create_session(history, merged_completer):
 
     return session
 
-
 def create_completer():
     # Load history
     history, history_strings = load_history()
@@ -827,7 +807,6 @@ def create_completer():
     # Merge completers
     merged_completer = MergedCompleter(custom_completer, word_comp)
     return history, word_comp, merged_completer
-
 
 def run(auto_query_on_error=False, conversation_style=None, verbose=False):
     global FunctionType, ConversationType, RetrievalConversationType, use_styles
@@ -848,7 +827,6 @@ def run(auto_query_on_error=False, conversation_style=None, verbose=False):
         with open(_config_path, 'w') as f:
             json.dump(SYMSH_CONFIG, f, indent=4)
     listen(session, word_comp, auto_query_on_error=auto_query_on_error, verbose=verbose)
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='SymSH: Symbolic Shell')
