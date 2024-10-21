@@ -384,10 +384,10 @@ def query_language_model(query: str, res=None, *args, **kwargs):
            query.startswith('!"') or query.startswith("!'") or query.startswith('!`'):
            func = stateful_conversation
            if order == 1:
-               res = f'{res}\n{payload}' if res is not None else payload
+               func.store_system_message(payload)
            elif order == 2:
                for file in payload: func.store_file(file)
-        else: func = ConversationType(file_link=payload, auto_print=False)
+        else: func = FunctionType(payload)
     else:
         if  query.startswith('."') or query.startswith(".'") or query.startswith('.`') or\
             query.startswith('!"') or query.startswith("!'") or query.startswith('!`'):
