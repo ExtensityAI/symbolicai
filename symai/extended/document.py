@@ -1,18 +1,20 @@
 import os
+from pathlib import Path
+from typing import Callable, List, Optional, Union
 
-from typing import Callable, Optional
-
-from ..symbol import Expression, Symbol
 from ..components import FileReader, Indexer
 from ..formatter import ParagraphFormatter
+from ..symbol import Expression, Symbol
 
 
 class DocumentRetriever(Expression):
     def __init__(
             self,
+            source: Optional[str] = None,
+            *,
             index_name: str = Indexer.DEFAULT,
-            file = None,
-            top_k = 5,
+            top_k: int = 5,
+            max_depth: int = 1,
             formatter: Callable = ParagraphFormatter(),
             overwrite: bool = False,
             with_metadata: bool = False,
@@ -21,37 +23,18 @@ class DocumentRetriever(Expression):
             **kwargs
         ):
         super().__init__(**kwargs)
-        indexer = Indexer(index_name=index_name, top_k=top_k, formatter=formatter, auto_add=False, new_dim=new_dim)
-        text    = None
+        self.indexer = Indexer(index_name=index_name, top_k=top_k, formatter=formatter, auto_add=False, new_dim=new_dim)
+        self.reader  = FileReader(with_metadata=with_metadata)
+        self.new_dim = new_dim
 
-        if not indexer.exists() or overwrite:
-            indexer.register()
-            if type(file) is str:
-                file_path = file
-                reader = FileReader()
-                text = reader(file_path, with_metadata=with_metadata, **kwargs)
-            else:
-                text = str(file)
-
-            self.index = indexer(
-                    data=text, #@NOTE: we write the text to the index
-                    raw_result=raw_result,
-                    **kwargs
-                )
+        # we insert the text into the index if (1) index does not exist or (2) user wants to overwrite, and (3) there's a specific source
+        if source is not None and (not self.indexer.exists() or overwrite):
+            self.indexer.register()
+            text = self.parse_source(source, with_metadata=with_metadata, max_depth=max_depth, **kwargs)
+            self.index = self.indexer(data=text, raw_result=raw_result, **kwargs)
         else:
-            self.index = indexer(
-                    raw_result=raw_result,
-                    **kwargs
-                    )
-
-        self.text = Symbol(text)
-        if text is not None:
-            # save in home directory
-            path = os.path.join(os.path.expanduser('~'), '.symai', 'temp', index_name)
-            # create the directory if it does not exist
-            if not os.path.exists(path):
-                os.makedirs(path)
-            self.dump(os.path.join(path, 'dump_file'), replace=True)
+            # we don't insert the text at initialization since the index already exists and there's no specific source
+            self.index = self.indexer(raw_result=raw_result, **kwargs)
 
     def forward(
             self,
@@ -63,8 +46,23 @@ class DocumentRetriever(Expression):
                 raw_result=raw_result,
                 )
 
-    def dump(self, path: str, replace: bool = True) -> Symbol:
-        if self.text is None:
-            raise ValueError('No text to save.')
-        # save the text to a file
-        self.text.save(path, replace=replace)
+    def insert(self, source: Union[str, Path], **kwargs):
+        # dynamically insert data into the index given a session
+        # the data can be:
+        #  - a string (e.g. something that the user wants to insert)
+        #  - a file path (e.g. a new file that the user wants to insert)
+        #  - a directory path (e.g. a new directory that the user wants to insert)
+        text = self.parse_source(source, with_metadata=kwargs.get('with_metadata', False), max_depth=kwargs.get('max_depth', 1), **kwargs)
+        self.add(text, index_name=self.indexer.index_name, **kwargs)
+
+    def parse_source(self, source: Union[str, Path], with_metadata: bool, max_depth: int, **kwargs) -> List[Union[str, 'TextContainer']]:
+        if isinstance(source, str):
+            return Symbol(source).zip(new_dim=self.new_dim)
+        if source.is_dir():
+            files = FileReader.get_files(source, max_depth)
+            return self.reader(files, with_metadata=with_metadata, **kwargs)
+        elif source.is_file():
+            return self.reader(source, with_metadata=with_metadata, **kwargs)
+        else:
+            raise ValueError(f"Invalid source: {source}; must be a file, directory, or string")
+
