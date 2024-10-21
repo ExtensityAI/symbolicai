@@ -10,11 +10,11 @@
 
 ## Installation
 
-{%include_relative INSTALLATION.md%}
+{%include_relative docs/source/INSTALLATION.md%}
 
 ## Quick Start
 
-{%include_relative QUICKSTART.md%}
+{%include_relative docs/source/QUICKSTART.md%}
 
 <img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/preview.gif">
 
