@@ -96,3 +96,4 @@ You can specify engine properties in a `symai.config.json` file in your project 
 ```
 
 With these steps completed, you should be ready to start using SymbolicAI in your projects.
+
