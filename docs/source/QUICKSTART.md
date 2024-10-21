@@ -49,7 +49,7 @@ The following examples display how to evaluate such an expression using a string
 
 ```python
 # Word analogy
-result = ai.Symbol('King - Man + Women').expression()
+result = ai.Symbol('King - Man + Women').interpret()
 print(result)  # Output: Queen
 ```
 

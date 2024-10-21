@@ -3,11 +3,20 @@
 The main goal of our framework is to enable reasoning capabilities on top of the statistical inference of Language Models (LMs). As a result, our `Symbol` objects offers operations to perform deductive reasoning expressions. One such operation involves defining rules that describe the causal relationship between symbols. The following example demonstrates how the `&` operator is overloaded to compute the logical implication of two symbols.
 
 ```python
-result = ai.Symbol('The horn only sounds on Sundays.') & ai.Symbol('I hear the horn.')
-print(result)  # Output: It is Sunday.
+s1 = Symbol('The horn only sounds on Sundays.', only_nesy=True)
+s2 = Symbol('I hear the horn.')
+
+print(s1 & s2) # The horn only sounds on Sundays.I hear the horn.
+
+print(s1 | s2) # The horn only sounds on Sundays. I hear the horn.
+
 ```
 
+> **Note**: The first symbol (e.g., `s1`) needs to have the `only_nesy` flag set to `True` for logical operators. This is because, without this flag, the logical operators default to string concatenation. While we didn't find a better way to handle meta-overloading in Python, this flag allows us to use operators like `'A' & 'B' & 'C'` to produce `'ABC'` or `'A' | 'B' | 'C'` to result in `'A B C'`. This syntactic sugar is essential for our use case.
+
 The current `&` operation overloads the `and` logical operator and sends `few-shot` prompts to the neural computation engine for statement evaluation. However, we can define more sophisticated logical operators for `and`, `or`, and `xor` using formal proof statements. Additionally, the neural engines can parse data structures prior to expression evaluation. Users can also define custom operations for more complex and robust logical operations, including constraints to validate outcomes and ensure desired behavior.
+
+The first symbol (in the above case that's s1) must have the only_nesy flag set to True for the logical operators. Without going into detail for why we did this, the tl'dr is that we didn't find a better way in python to do meta-overloading. Without this flag, the logical operators default to string concatenation. For us, having syntactic sugar for concatenation is important, such as being able to use operators like 'A' & 'B' & 'C' to produce 'ABC' or 'A' | 'B' | 'C' to result in 'A B C '.
 
 To provide a more comprehensive understanding, we present several causal examples below. These examples aim to obtain logical answers based on questions like:
 
