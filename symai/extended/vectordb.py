@@ -368,7 +368,8 @@ class VectorDB(Expression):
         else:
             with open(storage_file, "rb") as f:
                 data   = pickle.load(f)
-        self.vectors   = data["vectors"].astype(np.float32)
+
+        self.vectors   = data["vectors"].astype(np.float32) if data["vectors"] is not None else None
         self.documents = data["documents"]
 
     def purge(self, index_name : str):

@@ -273,7 +273,7 @@ class RetrievalAugmentedConversation(Conversation):
 
         indexer = Indexer(index_name=index_name, top_k=top_k, formatter=formatter, auto_add=False, new_dim=new_dim)
         if folder_path and (not indexer.exists() or overwrite):
-            files = self.get_files(folder_path, max_depth)
+            files = FileReader.get_files(folder_path, max_depth)
             indexer.register()
             text = self.reader(files, with_metadata=with_metadata, **kwargs)
 
@@ -291,19 +291,6 @@ class RetrievalAugmentedConversation(Conversation):
     @property
     def static_context(self) -> str:
         return RETRIEVAL_CONTEXT
-
-    def get_files(self, folder_path, max_depth):
-        accepted_formats = ['.pdf', '.md', '.txt']
-
-        folder = Path(folder_path)
-        files = []
-        for file_path in folder.rglob("*"):
-            if file_path.is_file() and file_path.suffix in accepted_formats:
-                relative_path = file_path.relative_to(folder)
-                depth = len(relative_path.parts) - 1
-                if depth <= max_depth:
-                    files.append(file_path.as_posix())
-        return files
 
     def forward(self, query: str, *args, **kwargs):
         return super().forward(query, *args, **kwargs)

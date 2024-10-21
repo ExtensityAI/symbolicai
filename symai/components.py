@@ -491,6 +491,20 @@ class FileReader(Expression):
         return False
 
     @staticmethod
+    def get_files(folder_path: str, max_depth: int = 1) -> List[str]:
+        accepted_formats = ['.pdf', '.md', '.txt']
+
+        folder = Path(folder_path)
+        files = []
+        for file_path in folder.rglob("*"):
+            if file_path.is_file() and file_path.suffix in accepted_formats:
+                relative_path = file_path.relative_to(folder)
+                depth = len(relative_path.parts) - 1
+                if depth <= max_depth:
+                    files.append(file_path.as_posix())
+        return files
+
+    @staticmethod
     def extract_files(cmds: str) -> Optional[List[str]]:
         # Use the updated regular expression to match quoted and non-quoted paths
         pattern = r'''(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)'|`((?:\\.|[^`\\])*)`|((?:\\ |[^ ])+))'''
@@ -877,16 +891,15 @@ class Indexer(Expression):
                 that.add(val, index_name=that.index_name, index_dims=that.new_dim)
             that.config(None, index_name=that.index_name, index_dims=that.new_dim)
 
-        def _func(query, *args, **kwargs):
+        def _func(query, *args, **kwargs) -> Union[Symbol, 'VectorDBResult']:
             raw_result = kwargs.get('raw_result') or that.raw_result
             query_emb = Symbol(query).embed(new_dim=that.new_dim).value
             res = that.get(query_emb, index_name=that.index_name, index_top_k=that.top_k, ori_query=query, index_dims=that.new_dim, **kwargs)
             that.retrieval = res
             if raw_result:
                 return res
-            rsp = res.query(query, *args, **kwargs)
+            rsp = Symbol(res).query(prompt='From the retrieved data, select the most relevant information.', context=query)
             return rsp
-
         return _func
 
 
