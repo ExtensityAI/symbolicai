@@ -83,6 +83,25 @@ $> "explain this file" | file_path.txt
 ```
 This command would instruct the AI to explain the file `file_path.txt` and consider its contents for the conversation.
 
+#### Pipe with Commands
+`symsh` can also interact with other shell commands using the pipe (`|`) operator. This allows you to execute a shell command and use its output as input to the language model along with your query.
+**Basic Usage:**
+```bash
+$> "Your query" | command [arguments]
+```
+**Example:**
+Suppose you want to understand the usage of a complex command like `ffmpeg`, which has extensive help documentation. Instead of manually reading through the lengthy help output, you can ask `symsh` to summarize it for you:
+```bash
+$> "Summarize how to convert a video using ffmpeg" | ffmpeg -h
+```
+This command runs `ffmpeg -h`, captures its output, and then asks the language model to provide a concise summary.
+Similarly, if you're unsure about the options available for `grep`, which can be tedious to read through:
+```bash
+$> "Explain the options available for grep" | grep --help
+```
+This will execute `grep --help` and pass the output to the language model, which will then explain the various options in an understandable manner.
+These additions explain how to use the new feature that allows piping queries with commands, provide examples of its usage, and outline the current limitations.
+
 #### Slicing Operation on Files
 The real power of `symsh` shines through when dealing with large files. `symsh` extends the typical file interaction by allowing users to select specific sections or slices of a file.
 
@@ -152,3 +171,33 @@ This command will instruct the AI to explain the file `my_file.txt` and consider
 ```bash
 $> ."what did you mean with ...?"
 ```
+
+#### Limitations and Notes
+Currently, `symsh` supports piping your query to either a command or file(s), but **not both simultaneously**. The following cases are supported:
+- **Query with Command**: `query | command [arguments]`
+  *Example*:
+  ```bash
+  $> "How can I use the options for tar?" | tar --help
+  ```
+- **Query with File(s)**: `query | file [file ...]`
+  *Example*:
+  ```bash
+  $> "Summarize the contents of these files" | file1.txt file2.txt
+  ```
+The following cases are **not supported** and will result in an error:
+1. **Query with Command and File(s)**: `query | command | file`
+   *Not Supported*:
+   ```bash
+   $> "Process this data" | awk '{print $1}' | data.txt
+   ```
+2. **Query with Multiple Commands**: `query | command1 | command2`
+   *Not Supported*:
+   ```bash
+   $> "Explain the output" | ls -l | sort
+   ```
+3. **Query with File(s) and Command**: `query | file | command`
+   *Not Supported*:
+   ```bash
+   $> "Analyze this data" | data.txt | sort
+   ```
+> **Note**: If you attempt to use unsupported combinations, `symsh` will raise an error and prompt you to adjust your command accordingly. Ensure that your command outputs text to standard output (stdout). Binary outputs or commands that do not produce textual output may not work as expected.
