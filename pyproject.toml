@@ -50,7 +50,7 @@ dependencies = [
     "pathos==0.3.2",
     "prompt-toolkit==3.0.43",
     "pydub==0.25.1",
-    "opencv-python==4.8.0.74",
+    "opencv-python==4.8.1.78",
     "pymongo==3.12.3",
     "pymongo[srv]",
     "requests-toolbelt==1.0.0",
@@ -68,7 +68,7 @@ blip2        = ["decord==0.6.0", "salesforce-lavis==1.0.0", "opencv-python-headl
 hf           = ["transformers==4.45.2", "accelerate==0.33.0", "peft==0.13.1", "datasets==3.0.1", "trl==0.11.3"]
 wolframalpha = ["wolframalpha==5.0.0"]
 whisper      = ["openai-whisper==20240930", "numba==0.60.0"]
-selenium     = ["selenium==4.18.1", "webdriver-manager==4.0.1", "chromedriver-autoinstaller==0.6.4"]
+selenium     = ["selenium==4.18.1", "webdriver-manager==4.0.12", "chromedriver-autoinstaller==0.6.4"]
 serpapi      = ["google_search_results==2.4.2"]
 pinecone     = ["pinecone-client==4.1.0"]
 bard         = ["bardapi==1.0.0"]
