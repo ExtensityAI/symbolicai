@@ -555,12 +555,11 @@ class FileReader(Expression):
 
     def forward(self, files: Union[str, List[str]], **kwargs) -> Expression:
         if isinstance(files, str):
-            return self.open(files, **kwargs)
-        if isinstance(files, list):
-            if kwargs.get('run_integrity_check'):
-                files = self.integrity_check(files)
-            return self.sym_return_type([self.open(f, **kwargs).value for f in files])
-        raise ValueError('Invalid input type. Please provide a string (file path) or a list of strings (file paths).')
+            # Convert to list for uniform processing; more easily downstream
+            files = [files]
+        if kwargs.get('run_integrity_check'):
+            files = self.integrity_check(files)
+        return self.sym_return_type([self.open(f, **kwargs).value for f in files])
 
 class FileQuery(Expression):
     def __init__(self, path: str, filter: str, **kwargs):
@@ -889,7 +888,8 @@ class Indexer(Expression):
             for i in tqdm(range(0, len(self.elements), self.batch_size)):
                 val = Symbol(self.elements[i:i+self.batch_size]).zip(new_dim=self.new_dim)
                 that.add(val, index_name=that.index_name, index_dims=that.new_dim)
-            that.config(None, index_name=that.index_name, index_dims=that.new_dim)
+            # we save the index
+            that.config(None, save=True, index_name=that.index_name, index_dims=that.new_dim)
 
         def _func(query, *args, **kwargs) -> Union[Symbol, 'VectorDBResult']:
             raw_result = kwargs.get('raw_result') or that.raw_result

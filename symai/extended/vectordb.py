@@ -1,20 +1,16 @@
-import os
 import gzip
+import os
 import pickle
+from pathlib import Path
 
 import numpy as np
 
-from ..symbol import Symbol, Expression
+from ..backend.settings import HOME_PATH
 from ..interfaces import Interface
-from .metrics import (
-    adams_similarity,
-    cosine_similarity,
-    derridaean_similarity,
-    dot_product,
-    euclidean_metric,
-    ranking_algorithm_sort
-)
-
+from ..symbol import Expression, Symbol
+from .metrics import (adams_similarity, cosine_similarity,
+                      derridaean_similarity, dot_product, euclidean_metric,
+                      ranking_algorithm_sort)
 
 MAX_BATCH_SIZE = 2048 # Maximum batch size for embedding function
 
@@ -384,18 +380,29 @@ class VectorDB(Expression):
             The index file to purge the database from your system.
 
         """
+        index_name = index_name or self.index_name
+        assert index_name, "Error: Please provide an index name to purge the database."
+        # symai folder
+        symai_folder = Path(HOME_PATH) / ".symai"
         # use path to home directory by default
-        storage_path = os.path.join(os.path.expanduser("~"), ".symai", "localdb")
+        storage_path = symai_folder / "localdb"
         # create dir on first load if never used
         os.makedirs(storage_path, exist_ok=True)
-        storage_file = os.path.join(storage_path, f"{index_name}.pkl")
-
+        storage_file = storage_path / f"{index_name}.pkl"
         # return since nothing to load
-        if not os.path.exists(storage_file):
+        if not storage_file.exists():
             return
-
         # remove the file
         os.remove(storage_file)
+        # remove index from `indices.txt`
+        with open(symai_folder / 'indices.txt', 'r') as f:
+            indices = f.read().split('\n')
+            # filter out empty strings
+            indices = [i for i in indices if i]
+            if index_name in indices:
+                indices.remove(index_name)
+        with open(symai_folder / 'indices.txt', 'w') as f:
+            f.write('\n'.join(indices))
 
     def forward(self, query=None, vector=None, top_k=None, return_similarities=True):
         """
