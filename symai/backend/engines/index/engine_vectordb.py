@@ -1,9 +1,9 @@
 import itertools
 
+from ....extended.vectordb import VectorDB
+from ....symbol import Result
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
-from ....symbol import Result
-from ....extended.vectordb import VectorDB
 
 
 def chunks(iterable, batch_size=100):
@@ -121,9 +121,9 @@ class VectorDBIndexEngine(Engine):
         index_dims   = argument.prop.index_dims or self.index_dims
         top_k        = argument.prop.top_k or self.index_top_k
         metric       = argument.prop.metric or self.index_metric
-        kwargs       = argument.kwargs
         similarities = argument.prop.similarities or False
         storage_file = argument.prop.storage_file or self.storage_file
+        kwargs       = argument.kwargs
         rsp          = None
 
         self._init(index_name, top_k, index_dims, metric)
@@ -147,22 +147,19 @@ class VectorDBIndexEngine(Engine):
 
         elif operation == 'config':
             # Handle any configurations if needed (not applicable for in-memory VectorDB)
-            assert kwargs, 'Please provide a configuration dictionary.'
+            assert kwargs, 'Please provide a configuration by passing the appropriate kwargs. Currently, only `load`, `save`, `purge`.'
             # Check if the index is to be persisted or loaded
-            if argument.prop.load:
+            if kwargs.get('load'):
                 assert storage_file, 'Please provide a `storage_file` path to load the pre-computed index.'
-                # Load the pre-computed index from the provided path
-                self.index[index_name] = VectorDB(
-                    index_dims=index_dims,
-                    top_k=top_k,
-                    similarity_metric=metric,
-                    load_on_init=storage_file,
-                    index_name=index_name
-                )
-            else:
+                self.load(index_name, storage_file, index_dims, top_k, metric)
+            elif kwargs.get('save'):
                 # Save the pre-computed index to the provided path
-                self.index[index_name].save(storage_file)
-
+                self.save(index_name, storage_file)
+            elif kwargs.get('purge'):
+                # Purge the pre-computed index from the database path
+                self.purge(index_name)
+            else:
+                raise ValueError('Invalid configuration; please use either "load" or "save".')
         else:
             raise ValueError('Invalid operation; please use either "search", "add", or "config".')
 
@@ -185,6 +182,15 @@ class VectorDBIndexEngine(Engine):
     def prepare(self, argument):
         assert not argument.prop.processed_input, 'VectorDB indexing engine does not support processed_input.'
         argument.prop.prepared_input = argument.prop.prompt
+
+    def load(self, index_name, storage_file, index_dims, top_k, metric):
+        self.index[index_name] = VectorDB(
+            index_dims=index_dims,
+            top_k=top_k,
+            similarity_metric=metric,
+            load_on_init=storage_file,
+            index_name=index_name
+        )
 
     def save(self, index_name = None, storage_file = None):
         index_name   = index_name or self.index_name

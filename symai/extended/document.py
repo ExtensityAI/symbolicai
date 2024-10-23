@@ -27,8 +27,11 @@ class DocumentRetriever(Expression):
         self.reader  = FileReader(with_metadata=with_metadata)
         self.new_dim = new_dim
 
-        # we insert the text into the index if (1) index does not exist or (2) user wants to overwrite, and (3) there's a specific source
-        if source is not None and (not self.indexer.exists() or overwrite):
+        if overwrite:
+            self.config(None, purge=True, index_name=self.indexer.index_name, **kwargs)
+
+        # we insert the text into the index if (1) index does not exist and (2) there's a specific source
+        if source is not None and not self.indexer.exists():
             self.indexer.register()
             text = self.parse_source(source, with_metadata=with_metadata, max_depth=max_depth, **kwargs)
             self.index = self.indexer(data=text, raw_result=raw_result, **kwargs)
@@ -53,16 +56,18 @@ class DocumentRetriever(Expression):
         #  - a file path (e.g. a new file that the user wants to insert)
         #  - a directory path (e.g. a new directory that the user wants to insert)
         text = self.parse_source(source, with_metadata=kwargs.get('with_metadata', False), max_depth=kwargs.get('max_depth', 1), **kwargs)
+        #NOTE: Do we need `new_dim` here?
         self.add(text, index_name=self.indexer.index_name, **kwargs)
+        self.config(None, save=True, index_name=self.indexer.index_name, **kwargs)
 
-    def parse_source(self, source: Union[str, Path], with_metadata: bool, max_depth: int, **kwargs) -> List[Union[str, 'TextContainer']]:
-        if isinstance(source, str):
+    def parse_source(self, source: str, with_metadata: bool, max_depth: int, **kwargs) -> List[Union[str, 'TextContainer']]:
+        maybe_path = Path(source)
+        if isinstance(source, str) and not (maybe_path.is_file() or maybe_path.is_dir()):
             return Symbol(source).zip(new_dim=self.new_dim)
-        if source.is_dir():
+        if maybe_path.is_dir():
             files = FileReader.get_files(source, max_depth)
             return self.reader(files, with_metadata=with_metadata, **kwargs)
-        elif source.is_file():
+        if maybe_path.is_file():
             return self.reader(source, with_metadata=with_metadata, **kwargs)
-        else:
-            raise ValueError(f"Invalid source: {source}; must be a file, directory, or string")
+        raise ValueError(f"Invalid source: {source}; must be a file, directory, or string")
 
