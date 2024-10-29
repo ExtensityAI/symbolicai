@@ -311,11 +311,10 @@ def disambiguate(cmds: str) -> Tuple[str, int]:
         5. query | file | cmd
     '''
     has_at_least_one_cmd = any([shutil.which(cmd) is not None for cmd in cmds.split(' ')])
-    has_multiple_cmds    = sum([shutil.which(cmd) is not None for cmd in cmds.split(' ')]) > 1
     maybe_cmd   = cmds.split(' ')[0].strip() # get first command
     maybe_files = FileReader.extract_files(cmds)
-    # if cmd follows file(s) or file(s) follows cmd or multiple cmds throw error as not supported
-    if maybe_files is not None and has_at_least_one_cmd or has_multiple_cmds:
+    # if cmd follows file(s) or file(s) follows cmd throw error as not supported
+    if maybe_files is not None and has_at_least_one_cmd:
         raise ValueError('Cannot disambiguate commands that have both files and commands or multiple commands. Please provide correct order of commands. '
                          'Supported are: '
                          'query | file [file ...] (e.g. "what do these files have in common?" | file1 [file2 ...]) '
@@ -383,18 +382,21 @@ def query_language_model(query: str, res=None, *args, **kwargs):
         query = cmds[0]
         payload, order = disambiguate(cmds[1].strip())
         # check if we're in a stateful conversation
-        if query.startswith('."') or query.startswith(".'") or query.startswith('.`') or\
-           query.startswith('!"') or query.startswith("!'") or query.startswith('!`'):
-           func = stateful_conversation
-           if order == 1:
-               func.store_system_message(payload)
-           elif order == 2:
-               for file in payload: func.store_file(file)
+        is_stateful = query.startswith(('.', '!')) and any(query.startswith(f"{prefix}{quote}")
+                     for prefix in ['.', '!']
+                     for quote in ['"', "'", '`'])
+
+        if is_stateful:
+            func = stateful_conversation
         else:
+            func = FunctionType(payload) if order == 1 else ConversationType(file_link=payload, auto_print=False)
+
+        if is_stateful:
             if order == 1:
-                func = FunctionType(payload)
+                func.store_system_message(payload)
             elif order == 2:
-                func = ConversationType(file_link=payload, auto_print=False)
+                for file in payload:
+                    func.store_file(file)
     else:
         if  query.startswith('."') or query.startswith(".'") or query.startswith('.`') or\
             query.startswith('!"') or query.startswith("!'") or query.startswith('!`'):
