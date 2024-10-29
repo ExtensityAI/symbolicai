@@ -323,7 +323,10 @@ def disambiguate(cmds: str) -> Tuple[str, int]:
                          'query | cmd (e.g. "what flags can I use with rg?" | rg --help)')
     # now check order of commands and keep correct order
     if shutil.which(maybe_cmd) is not None:
-        return subprocess.run(cmds, capture_output=True, text=True, shell=True).stdout, 1
+        cmd_out = subprocess.run(cmds, capture_output=True, text=True, shell=True)
+        if not cmd_out.stdout:
+            raise ValueError(f'Command not found or failed. Error: {cmd_out.stderr}')
+        return cmd_out.stdout, 1
     if maybe_files is not None:
         return maybe_files, 2
 
@@ -387,7 +390,11 @@ def query_language_model(query: str, res=None, *args, **kwargs):
                func.store_system_message(payload)
            elif order == 2:
                for file in payload: func.store_file(file)
-        else: func = FunctionType(payload)
+        else:
+            if order == 1:
+                func = FunctionType(payload)
+            elif order == 2:
+                func = ConversationType(file_link=payload, auto_print=False)
     else:
         if  query.startswith('."') or query.startswith(".'") or query.startswith('.`') or\
             query.startswith('!"') or query.startswith("!'") or query.startswith('!`'):
