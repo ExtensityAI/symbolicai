@@ -149,7 +149,7 @@ GPT-X Completion Engine
 Image Rendering Engine
 ^^^^^^^^^^^^^^^^^^^^^^
 
-.. automodule:: symai.backend.engines.imagerendering.engine_dall_e
+.. automodule:: symai.backend.engines.drawing.engine_dall_e
    :members:
    :undoc-members:
    :show-inheritance:

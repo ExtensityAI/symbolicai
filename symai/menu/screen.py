@@ -74,8 +74,8 @@ def show_main_setup_menu(show_wizard: bool = True):
     embedding_model                 = ''
     symbolic_engine_api_key         = ''
     symbolic_engine_model           = ''
-    imagerendering_engine_api_key   = ''
-    imagerendering_engine_model     = ''
+    drawing_engine_api_key          = ''
+    drawing_engine_model            = ''
     vision_engine_model             = ''
     search_engine_api_key           = ''
     search_engine_model             = ''
@@ -165,12 +165,12 @@ def show_main_setup_menu(show_wizard: bool = True):
                     # Step 2.6: Symbolic Engine Model
                     symbolic_engine_model = symbolic_engine_model
 
-                # Step 2.7: Enter Imagerendering engine api key
+                # Step 2.7: Enter Drawing Engine api key
                 if is_openai_api_model(nesy_engine_model):
-                    imagerendering_engine_api_key = input_dialog(
-                        title="[Optional] Image Rendering Engine API Key",
-                        text="Please enter your Image Rendering Engine API Key if applicable. We currently support OpenAI's DALL-E model:",
-                        default=imagerendering_engine_api_key if 'IMAGERENDERING_ENGINE_API_KEY' not in SYMAI_CONFIG else SYMAI_CONFIG['IMAGERENDERING_ENGINE_API_KEY'],
+                    drawing_engine_api_key = input_dialog(
+                        title="[Optional] Drawing Engine API Key",
+                        text="Please enter your Drawing Engine API Key if applicable. We currently support OpenAI's DALL-E model:",
+                        default=drawing_engine_api_key if 'DRAWING_ENGINE_API_KEY' not in SYMAI_CONFIG else SYMAI_CONFIG['DRAWING_ENGINE_API_KEY'],
                     ).run()
 
                 # Step 2.8: Enter Vision Engine Model
@@ -297,8 +297,8 @@ def show_main_setup_menu(show_wizard: bool = True):
         'donated':                          donation_result,
         'embedding_engine_api_key':         embedding_engine_api_key,
         'embedding_model':                  embedding_model,
-        'imagerendering_engine_api_key':    imagerendering_engine_api_key,
-        'imagerendering_engine_model':      imagerendering_engine_model,
+        'drawing_engine_api_key':           drawing_engine_api_key,
+        'drawing_engine_model':             drawing_engine_model,
         'vision_engine_model':              vision_engine_model,
         'search_engine_api_key':            search_engine_api_key,
         'search_engine_model':              search_engine_model,

@@ -67,22 +67,4 @@ res = sym.translate('German')
 <symai.backend.engines.engine_gptX_completion.GPTXCompletionEngine object at 0, <function Symbol.translate.<locals>._func at 0x7fd68ba04820>, {'instance': <class 'symai.symbol.S ['\n\nHallo Welt!']
 ```
 
-Here is the list engines that are currently supported: <!-- #TODO update -->
-
-* `neurosymbolic` - GPT-3, ChatGPT, GPT-4
-* `symbolic` - WolframAlpha
-* `ocr` - Optical Character Recognition
-* `text_vision` - CLIP
-* `text-to-speech` - TTS-1 OpenAI
-* `speech-to-text` - Whisper
-* `embedding` - OpenAI Embeddings API (`ada-002`)
-* `userinput` - User Command Line Input
-* `serpapi` - SerpApi (Google search)
-* `crawler` - Selenium
-* `execute` - Python Interpreter
-* `index` - Pinecone
-* `open` - File System
-* `output` - Output Callbacks (e.g., for printing to console or storage)
-* `imagerendering` - DALL·E 2
-
 Finally, if you want to create a completely new engine but still maintain our workflow, you can use the `query` function from [`symai/functional.py`](https://github.com/ExtensityAI/symbolicai/blob/main/symai/functional.py) and pass in your engine along with all other specified objects (i.e., Prompt, PreProcessor, etc.; see also section {ref}`custom-operations-section`.

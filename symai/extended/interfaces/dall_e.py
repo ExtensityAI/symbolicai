@@ -1,6 +1,6 @@
 from ... import core
 from ...symbol import Expression, Symbol
-from ...backend.engines.imagerendering.engine_dall_e import DalleResult
+from ...backend.engines.drawing.engine_dall_e import DalleResult
 
 
 class dall_e(Expression):
