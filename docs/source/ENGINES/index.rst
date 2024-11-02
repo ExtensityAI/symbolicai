@@ -1,9 +1,6 @@
 Engines
 ================================================================
-
-Due to limited computing resources, we currently utilize OpenAI's GPT-3, ChatGPT and GPT-4 API for the neuro-symbolic engine. However, given adequate computing resources, it is feasible to use local machines to reduce latency and costs, with alternative engines like OPT or Bloom. This would enable recursive executions, loops, and more complex expressions.
-
-Furthermore, we interpret all objects as symbols with different encodings and have integrated a set of useful engines that convert these objects into the natural language domain to perform our operations.
+In symbolicai, we interpret all objects as symbols with different encodings and have integrated a set of useful engines that convert these objects into the natural language domain to perform our operations. Below you can find an exhaustive list of our current engines.
 
 .. toctree::
    :maxdepth: 2
@@ -19,17 +16,3 @@ Furthermore, we interpret all objects as symbols with different encodings and ha
    clip_engine
    local_engine
    custom_engine
-
-
-To read more on the different engines used by SymbolicAI:
-
-* **Neuro-Symbolic Engine**: [OpenAI](https://beta.openai.com/docs/introduction/overview), [Anthropic](https://www.anthropic.com/api), [HuggingFace](https://huggingface.co/models), and [llama.cpp](https://github.com/ggerganov/llama.cpp)
-* **Embedding Engine**: [OpenAI's Embedding API](https://beta.openai.com/docs/introduction/overview)
-* **[Optional] Symbolic Engine**: [WolframAlpha](https://www.wolframalpha.com/)
-* **[Optional] Search Engine**: [SerpApi](https://serpapi.com/) and [PerplexityAI](https://www.perplexity.ai/)
-* **[Optional] OCR Engine**: [APILayer](https://apilayer.com)
-* **[Optional] SpeechToText Engine**: [OpenAI's Whisper](https://openai.com/blog/whisper/)
-* **[Optional] WebCrawler Engine**: [Selenium](https://selenium-python.readthedocs.io/)
-* **[Optional] Drawing Engine**: [DALL·E 2 & 3](https://platform.openai.com/docs/guides/images)
-* **[Optional] Indexing Engine**: [Pinecone](https://app.pinecone.io/)
-* **[Optional] [CLIP](https://openai.com/blog/clip/) Engine**: 🤗 [Hugging Face](https://huggingface.co/) (experimental image and text embeddings)

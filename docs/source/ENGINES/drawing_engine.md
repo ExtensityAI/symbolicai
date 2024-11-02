@@ -57,6 +57,6 @@ Both interfaces support passing all available API parameters through `kwargs`.
 # - output_format: output image format (default: 'png')
 ```
 
-Don't worry, we would never hide an image of a cat with a hat from you! Here is the example Flux generated image preview and [link](https://bfldeliverysc.blob.core.windows.net/results/69800a2a82d042d3845677459a991534/sample.png?se=2024-11-02T23%3A24%3A35Z&sp=r&sv=2024-11-04&sr=b&rsct=image/png&sig=j8JncQyFl%2BW/YlGnTlPT0EAhzsySAyLRBQNr7PR%2B%2Bts%3D):
+Don't worry, we would never hide an image of a cat with a hat from you! Here is the example Flux generated image preview:
 
-<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/dev/assets/images/cat.png" width="200px">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/dev/assets/images/cat.png" width="512px">
