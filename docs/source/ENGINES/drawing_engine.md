@@ -1,11 +1,13 @@
 # Drawing Engine
 
-To render images from text descriptions, we use `DALL·E 2 & 3`. The following example demonstrates how to draw a text description and return the image:
+To render images from text descriptions, we support multiple image generation models through different providers. Currently supported are `DALL·E 2 & 3` and Black Forest Labs' `Flux` models.
+
+## DALL-E Example
 
 ```python
 from symai.interfaces import Interface
 
-
+# Initialize DALL-E interface
 dall_e = Interface('dall_e')
 res = dall_e('a fluffy cat with a cowboy hat', model='dall-e-3', image_size=1024)
 ```
@@ -15,6 +17,46 @@ res = dall_e('a fluffy cat with a cowboy hat', model='dall-e-3', image_size=1024
 https://oaidalleapiprodscus.blob.core.windows...
 ```
 
-Don't worry, we would never hide an image of a cat with a hat from you. Here is the image preview and [link](https://oaidalleapiprodscus.blob.core.windows.net/private/org-V7GXGSgpBiHOFLP9nrlYW6i5/user-YaUeHMUezl2Bxs7uFOX7FQTC/img-OIvTRtqat4ujvSksGsRC9Eae.png?st=2024-11-02T21%3A17%3A17Z&se=2024-11-02T23%3A17%3A17Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=d505667d-d6c1-4a0a-bac7-5c84a87759f8&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2024-11-02T01%3A40%3A53Z&ske=2024-11-03T01%3A40%3A53Z&sks=b&skv=2024-08-04&sig=Ta9INGFM6%2B5eWYQn7%2BbftInyjURQ2Z6Ew0hn4k9XBq0%3D):
+## Flux Example
 
-<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/cat.png" width="200px">
+```python
+from symai.interfaces import Interface
+
+# Initialize Flux interface
+flux = Interface('flux')
+res = flux('a fluffy cat with a cowboy hat', model='flux-pro-1.1', width=1024, height=1024)
+print(res)
+```
+
+## Supported Parameters
+
+Both interfaces support passing all available API parameters through `kwargs`.
+
+### DALL-E Parameters
+```python
+# All DALL-E API parameters are supported via kwargs:
+# - n: number of images to generate
+# - quality: "standard" or "hd"
+# - style: "vivid" or "natural"
+# - response_format: "url" or "b64_json"
+# and more...
+```
+
+### Flux Parameters
+```python
+# Available Flux parameters:
+# - model: model identifier (e.g., 'flux-pro-1.1')
+# - width: image width in pixels (default: 1024)
+# - height: image height in pixels (default: 768)
+# - steps: number of inference steps (default: 40)
+# - prompt_upsampling: whether to use prompt upsampling (default: False)
+# - seed: random seed for reproducibility (default: None)
+# - guidance: guidance scale (default: None)
+# - safety_tolerance: safety check tolerance (default: 2)
+# - interval: sampling interval (default: None)
+# - output_format: output image format (default: 'png')
+```
+
+Don't worry, we would never hide an image of a cat with a hat from you! Here is the example Flux generated image preview and [link](https://bfldeliverysc.blob.core.windows.net/results/69800a2a82d042d3845677459a991534/sample.png?se=2024-11-02T23%3A24%3A35Z&sp=r&sv=2024-11-04&sr=b&rsct=image/png&sig=j8JncQyFl%2BW/YlGnTlPT0EAhzsySAyLRBQNr7PR%2B%2Bts%3D):
+
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/dev/assets/images/cat.png" width="200px">
