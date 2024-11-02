@@ -39,33 +39,37 @@ class DalleResult(Result):
         return files
 
 
-class ImageRenderingEngine(Engine):
+class DrawingEngine(Engine):
     def __init__(self, size: int = 1024, api_key: Optional[str] = None, model: Optional[str] = None):
         super().__init__()
         self.config = SYMAI_CONFIG
-        openai.api_key = self.config['IMAGERENDERING_ENGINE_API_KEY'] if api_key is None else api_key
-        self.model = self.config['IMAGERENDERING_ENGINE_MODEL'] if model is None else model
+        openai.api_key = self.config['DRAWING_ENGINE_API_KEY'] if api_key is None else api_key
+        self.model = self.config['DRAWING_ENGINE_MODEL'] if model is None else model
         logger = logging.getLogger('openai')
         logger.setLevel(logging.WARNING)
         self.size = size # defaults to 1024 instead of 512 because dall-e-3 requires 1024
 
     def id(self) -> str:
-        if  self.config['IMAGERENDERING_ENGINE_API_KEY'] and self.config['IMAGERENDERING_ENGINE_MODEL'].startswith("dall-e"):
-            return 'imagerendering'
+        if  self.config['DRAWING_ENGINE_API_KEY'] and self.config['DRAWING_ENGINE_MODEL'].startswith("dall-e"):
+            return 'drawing'
         return super().id() # default to unregistered
 
     def command(self, *args, **kwargs):
         super().command(*args, **kwargs)
-        if 'IMAGERENDERING_ENGINE_API_KEY' in kwargs:
-            openai.api_key = kwargs['IMAGERENDERING_ENGINE_API_KEY']
-        if 'IMAGERENDERING_ENGINE_MODEL' in kwargs:
-            self.model = kwargs['IMAGERENDERING_ENGINE_MODEL']
+        if 'DRAWING_ENGINE_API_KEY' in kwargs:
+            openai.api_key = kwargs['DRAWING_ENGINE_API_KEY']
+        if 'DRAWING_ENGINE_MODEL' in kwargs:
+            self.model = kwargs['DRAWING_ENGINE_MODEL']
 
     def forward(self, argument):
-        prompt        = argument.prop.prepared_input
-        model         = kwargs.get('model', self.model)
-        kwargs        = argument.kwargs
-        size          = f"{kwargs['image_size']}x{kwargs['image_size']}" if 'image_size' in kwargs else f"{self.size}x{self.size}"
+        prompt          = argument.prop.prepared_input
+        kwargs          = argument.kwargs
+        model           = kwargs.get('model', self.model)
+        size            = f"{kwargs['image_size']}x{kwargs['image_size']}" if 'image_size' in kwargs else f"{self.size}x{self.size}"
+        n               = kwargs.get('n', 1)
+        quality         = kwargs.get('quality', 'standard')
+        response_format = kwargs.get('response_format', 'url')
+        style           = kwargs.get('style', 'vivid')
         except_remedy = kwargs['except_remedy'] if 'except_remedy' in kwargs else None
 
         callback = None
@@ -76,8 +80,11 @@ class ImageRenderingEngine(Engine):
                 res = openai.images.generate(
                     model=model,
                     prompt=prompt,
-                    n=1,
-                    size=size
+                    n=n,
+                    size=size,
+                    quality=quality,
+                    response_format=response_format,
+                    style=style,
                 )
             elif kwargs['operation'] == 'variation':
                 assert 'image_path' in kwargs
@@ -87,8 +94,9 @@ class ImageRenderingEngine(Engine):
                 res = openai.images.create_variation(
                     model=model,
                     image=open(image_path, "rb"),
-                    n=1,
-                    size=size
+                    n=n,
+                    size=size,
+                    response_format=response_format,
                 )
             elif kwargs['operation'] == 'edit':
                 assert 'mask_path' in kwargs
@@ -102,8 +110,9 @@ class ImageRenderingEngine(Engine):
                     image=open(image_path, "rb"),
                     mask=open(mask_path, "rb"),
                     prompt=prompt,
-                    n=1,
-                    size=size
+                    n=n,
+                    size=size,
+                    response_format=response_format,
                 )
             else:
                 raise Exception(f"Unknown operation: {kwargs['operation']}")

@@ -7,7 +7,7 @@ Furthermore, we interpret all objects as symbols with different encodings and ha
 
 .. toctree::
    :maxdepth: 2
-   
+
    symbolic_engine
    speech_engine
    ocr_engine
@@ -30,6 +30,6 @@ To read more on the different engines used by SymbolicAI:
 * **[Optional] OCR Engine**: [APILayer](https://apilayer.com)
 * **[Optional] SpeechToText Engine**: [OpenAI's Whisper](https://openai.com/blog/whisper/)
 * **[Optional] WebCrawler Engine**: [Selenium](https://selenium-python.readthedocs.io/)
-* **[Optional] Image Rendering Engine**: [DALL·E 2](https://openai.com/dall-e-2/)
+* **[Optional] Drawing Engine**: [DALL·E 2 & 3](https://platform.openai.com/docs/guides/images)
 * **[Optional] Indexing Engine**: [Pinecone](https://app.pinecone.io/)
 * **[Optional] [CLIP](https://openai.com/blog/clip/) Engine**: 🤗 [Hugging Face](https://huggingface.co/) (experimental image and text embeddings)

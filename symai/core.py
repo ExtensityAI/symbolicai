@@ -1654,7 +1654,7 @@ def draw(operation: str = 'create',
             decorator_kwargs['prompt']    = prompt
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
             return EngineRepository.query(
-                                engine='imagerendering',
+                                engine='drawing',
                                 instance=instance,
                                 func=func,
                                 pre_processors=pre_processors,
