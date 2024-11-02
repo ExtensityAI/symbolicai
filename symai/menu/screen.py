@@ -65,7 +65,7 @@ def show_main_setup_menu(show_wizard: bool = True):
         TERMS_OF_SERVICES = f.read()
 
     # define defaults variables
-    agreed                          = False
+    agreed                          = True
     support_community               = False
     donation_result                 = False
     nesy_engine_model               = ''
@@ -75,6 +75,7 @@ def show_main_setup_menu(show_wizard: bool = True):
     symbolic_engine_api_key         = ''
     symbolic_engine_model           = ''
     imagerendering_engine_api_key   = ''
+    imagerendering_engine_model     = ''
     vision_engine_model             = ''
     search_engine_api_key           = ''
     search_engine_model             = ''
@@ -87,7 +88,9 @@ def show_main_setup_menu(show_wizard: bool = True):
     caption_engine_environment      = ''
     text_to_speech_engine_api_key   = ''
 
+    #TODO: this is currently not maintained and it's mostly used to initialize the config file! Decide if keep or remove
     if show_wizard:
+        CustomUserWarning("You are using the setup wizard which is currently not up-to-date and possibly buggy. Please edit the config file directly instead which is located in your home directory under $HOME/.symai/symai.config.json.")
         try:
             # Step 1: Accept terms and services
             agreed = yes_no_dialog(
@@ -286,15 +289,16 @@ def show_main_setup_menu(show_wizard: bool = True):
     # Process the setup results
     settings = {
         'terms_agreed':                     agreed,
-        'nesy_engine_model':                nesy_engine_model if nesy_engine_model else '',
+        'nesy_engine_model':                nesy_engine_model,
         'nesy_engine_api_key':              nesy_engine_api_key,
         'symbolic_engine_api_key':          symbolic_engine_api_key,
         'symbolic_engine_model':            symbolic_engine_model,
         'support_community':                support_community,
         'donated':                          donation_result,
-        'embedding_engine_api_key':         embedding_engine_api_key if embedding_engine_api_key else '',
+        'embedding_engine_api_key':         embedding_engine_api_key,
         'embedding_model':                  embedding_model,
-        'imagerendering_engine_api_key':    imagerendering_engine_api_key if imagerendering_engine_api_key else '',
+        'imagerendering_engine_api_key':    imagerendering_engine_api_key,
+        'imagerendering_engine_model':      imagerendering_engine_model,
         'vision_engine_model':              vision_engine_model,
         'search_engine_api_key':            search_engine_api_key,
         'search_engine_model':              search_engine_model,

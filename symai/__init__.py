@@ -127,6 +127,7 @@ def _start_symai():
         _embedding_engine_api_key_      = os.environ.get('EMBEDDING_ENGINE_API_KEY', None)
         _embedding_engine_model_        = os.environ.get('EMBEDDING_ENGINE_MODEL', None)
         _imagerendering_engine_api_key_ = os.environ.get('IMAGERENDERING_ENGINE_API_KEY', None)
+        _imagerendering_engine_model_   = os.environ.get('IMAGERENDERING_ENGINE_MODEL', None)
         _vision_engine_model_           = os.environ.get('VISION_ENGINE_MODEL', None)
         _search_engine_api_key_         = os.environ.get('SEARCH_ENGINE_API_KEY', None)
         _search_engine_model_           = os.environ.get('SEARCH_ENGINE_MODEL', None)
@@ -143,17 +144,15 @@ def _start_symai():
         _collection_storage_            = os.environ.get('COLLECTION_STORAGE', None)
         _support_community_             = os.environ.get('SUPPORT_COMMUNITY', None)
 
-        # SET/UPDATE THE API KEYS
+        # SET/UPDATE THE API KEYS AND MODELS
         # *==========================================================================================================*
         if _neurosymbolic_engine_api_key_:  _symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY']  = _neurosymbolic_engine_api_key_
         if _symbolic_engine_api_key_:       _symai_config_['SYMBOLIC_ENGINE_API_KEY']       = _symbolic_engine_api_key_
         if _embedding_engine_api_key_:      _symai_config_['EMBEDDING_ENGINE_API_KEY']      = _embedding_engine_api_key_
         if _imagerendering_engine_api_key_: _symai_config_['IMAGERENDERING_ENGINE_API_KEY'] = _imagerendering_engine_api_key_
         if _text_to_speech_engine_api_key_: _symai_config_['TEXT_TO_SPEECH_ENGINE_API_KEY'] = _text_to_speech_engine_api_key_
-
-        # OPTIONAL MODULES
-        # *==========================================================================================================*
         if _neurosymbolic_engine_model_:    _symai_config_['NEUROSYMBOLIC_ENGINE_MODEL']    = _neurosymbolic_engine_model_
+        if _imagerendering_engine_model_:   _symai_config_['IMAGERENDERING_ENGINE_MODEL']   = _imagerendering_engine_model_
         if _embedding_engine_model_:        _symai_config_['EMBEDDING_ENGINE_MODEL']        = _embedding_engine_model_
         if _vision_engine_model_:           _symai_config_['VISION_ENGINE_MODEL']           = _vision_engine_model_
         if _search_engine_api_key_:         _symai_config_['SEARCH_ENGINE_API_KEY']         = _search_engine_api_key_
@@ -288,6 +287,7 @@ def setup_wizard(_symai_config_path_, show_wizard=True):
     _embedding_engine_api_key       = _user_config_['embedding_engine_api_key']
     _embedding_model                = _user_config_['embedding_model']
     _imagerendering_engine_api_key  = _user_config_['imagerendering_engine_api_key']
+    _imagerendering_engine_model    = _user_config_['imagerendering_engine_model']
     _vision_engine_model            = _user_config_['vision_engine_model']
     _search_engine_api_key          = _user_config_['search_engine_api_key']
     _search_engine_model            = _user_config_['search_engine_model']
@@ -310,6 +310,7 @@ def setup_wizard(_symai_config_path_, show_wizard=True):
             "EMBEDDING_ENGINE_API_KEY":       _embedding_engine_api_key,
             "EMBEDDING_ENGINE_MODEL":         _embedding_model,
             "IMAGERENDERING_ENGINE_API_KEY":  _imagerendering_engine_api_key,
+            "IMAGERENDERING_ENGINE_MODEL":    _imagerendering_engine_model,
             "VISION_ENGINE_MODEL":            _vision_engine_model,
             "SEARCH_ENGINE_API_KEY":          _search_engine_api_key,
             "SEARCH_ENGINE_MODEL":            _search_engine_model,
