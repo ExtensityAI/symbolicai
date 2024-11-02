@@ -33,7 +33,7 @@ class PerplexityEngine(Engine):
         super().__init__()
         self.config = SYMAI_CONFIG
         self.api_key = self.config['SEARCH_ENGINE_API_KEY']
-        self.engine = self.config['SEARCH_ENGINE_MODEL']
+        self.model = self.config['SEARCH_ENGINE_MODEL']
 
     def id(self) -> str:
         if self.config.get('SEARCH_ENGINE_API_KEY') and self.config.get('SEARCH_ENGINE_MODEL').startswith("llama-3.1"):
@@ -52,7 +52,7 @@ class PerplexityEngine(Engine):
         kwargs    = argument.kwargs
 
         payload = {
-            "model": self.engine,
+            "model": self.model,
             "messages": messages,
             "max_tokens": kwargs.get('max_tokens', None),
             "temperature": kwargs.get('temperature', 0.2),

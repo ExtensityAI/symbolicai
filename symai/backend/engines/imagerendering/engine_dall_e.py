@@ -40,16 +40,17 @@ class DalleResult(Result):
 
 
 class ImageRenderingEngine(Engine):
-    def __init__(self, size: int = 512, api_key: Optional[str] = None):
+    def __init__(self, size: int = 1024, api_key: Optional[str] = None, model: Optional[str] = None):
         super().__init__()
         self.config = SYMAI_CONFIG
         openai.api_key = self.config['IMAGERENDERING_ENGINE_API_KEY'] if api_key is None else api_key
+        self.model = self.config['IMAGERENDERING_ENGINE_MODEL'] if model is None else model
         logger = logging.getLogger('openai')
         logger.setLevel(logging.WARNING)
-        self.size = size
+        self.size = size # defaults to 1024 instead of 512 because dall-e-3 requires 1024
 
     def id(self) -> str:
-        if  self.config['IMAGERENDERING_ENGINE_API_KEY']:
+        if  self.config['IMAGERENDERING_ENGINE_API_KEY'] and self.config['IMAGERENDERING_ENGINE_MODEL'].startswith("dall-e"):
             return 'imagerendering'
         return super().id() # default to unregistered
 
@@ -57,9 +58,12 @@ class ImageRenderingEngine(Engine):
         super().command(*args, **kwargs)
         if 'IMAGERENDERING_ENGINE_API_KEY' in kwargs:
             openai.api_key = kwargs['IMAGERENDERING_ENGINE_API_KEY']
+        if 'IMAGERENDERING_ENGINE_MODEL' in kwargs:
+            self.model = kwargs['IMAGERENDERING_ENGINE_MODEL']
 
     def forward(self, argument):
         prompt        = argument.prop.prepared_input
+        model         = kwargs.get('model', self.model)
         kwargs        = argument.kwargs
         size          = f"{kwargs['image_size']}x{kwargs['image_size']}" if 'image_size' in kwargs else f"{self.size}x{self.size}"
         except_remedy = kwargs['except_remedy'] if 'except_remedy' in kwargs else None
@@ -70,6 +74,7 @@ class ImageRenderingEngine(Engine):
 
                 callback = openai.images.generate
                 res = openai.images.generate(
+                    model=model,
                     prompt=prompt,
                     n=1,
                     size=size
@@ -80,6 +85,7 @@ class ImageRenderingEngine(Engine):
 
                 callback = openai.images.create_variation
                 res = openai.images.create_variation(
+                    model=model,
                     image=open(image_path, "rb"),
                     n=1,
                     size=size
@@ -92,6 +98,7 @@ class ImageRenderingEngine(Engine):
 
                 callback = openai.images.edit
                 res = openai.images.edit(
+                    model=model,
                     image=open(image_path, "rb"),
                     mask=open(mask_path, "rb"),
                     prompt=prompt,
