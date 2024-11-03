@@ -166,7 +166,7 @@ This guide will help you get started with SymbolicAI, demonstrating basic usage 
 To start, import the library by using:
 
 ```python
-import symai as ai
+from symai import Symbol
 ```
 
 ### Creating and Manipulating Symbols
@@ -175,11 +175,9 @@ Our `Symbolic API` is based on object-oriented and compositional design patterns
 
 ```python
 # Create a Symbol
-sym = ai.Symbol("Welcome to our tutorial.")
-
+S = Symbol("Welcome to our tutorial.")
 # Translate the Symbol
-translated = sym.translate('German')
-print(translated)  # Output: Willkommen zu unserem Tutorial.
+print(S.translate('German') # Output: Willkommen zu unserem Tutorial.
 ```
 
 #### Ranking Objects
@@ -189,9 +187,9 @@ Our API can also execute basic data-agnostic operations like `filter`, `rank`, o
 ```python
 # Ranking objects
 import numpy as np
-sym = ai.Symbol(np.array([1, 2, 3, 4, 5, 6, 7]))
-ranked = sym.rank(measure='numerical', order='descending')
-print(ranked)  # Output: ['7', '6', '5', '4', '3', '2', '1']
+
+S = Symbol(np.array([1, 2, 3, 4, 5, 6, 7]))
+print(S.rank(measure='numerical', order='descending')) # Output: ['7', '6', '5', '4', '3', '2', '1']
 ```
 
 #### Evaluating Expressions
@@ -210,8 +208,8 @@ The following examples display how to evaluate such an expression using a string
 
 ```python
 # Word analogy
-result = ai.Symbol('King - Man + Women').interpret()
-print(result)  # Output: Queen
+S = Symbol('King - Man + Women').interpret()
+print(S)  # Output: Queen
 ```
 
 #### Dynamic Casting
@@ -220,8 +218,8 @@ We can also subtract sentences from one another, where our operations condition 
 
 ```python
 # Sentence manipulation
-result = ai.Symbol('Hello my enemy') - 'enemy' + 'friend'
-print(result)  # Output: Hello my friend
+S = Symbol('Hello my enemy') - 'enemy' + 'friend'
+print(S)  # Output: Hello my friend
 ```
 
 Additionally, the API performs dynamic casting when data types are combined with a Symbol object. If an overloaded operation of the Symbol class is employed, the Symbol class can automatically cast the second object to a Symbol. This is a convenient way to perform operations between `Symbol` objects and other data types, such as strings, integers, floats, lists, etc., without cluttering the syntax.
@@ -232,8 +230,8 @@ In this example, we perform a fuzzy comparison between two numerical objects. Th
 
 ```python
 # Fuzzy comparison
-sym = ai.Symbol('3.1415...')
-print(sym == numpy.pi)  # Output: True
+S = Symbol('3.1415...')
+print(S == np.pi)  # Output: True
 ```
 
 #### 🧠 Causal Reasoning
@@ -241,9 +239,12 @@ print(sym == numpy.pi)  # Output: True
 The main goal of our framework is to enable reasoning capabilities on top of the statistical inference of Language Models (LMs). As a result, our `Symbol` objects offers operations to perform deductive reasoning expressions. One such operation involves defining rules that describe the causal relationship between symbols. The following example demonstrates how the `&` operator is overloaded to compute the logical implication of two symbols.
 
 ```python
-result = ai.Symbol('The horn only sounds on Sundays.') & ai.Symbol('I hear the horn.')
-print(result)  # Output: It is Sunday.
+S1 = Symbol('The horn only sounds on Sundays.', only_nesy=True)
+S2 = Symbol('I hear the horn.')
+
+(S1 & S2).extract('answer') # Since I hear the horn, and the horn only sounds on Sundays, it must be Sunday.
 ```
+> **Note**: The first symbol (e.g., `S1`) needs to have the `only_nesy` flag set to `True` for logical operators. This is because, without this flag, the logical operators default to string concatenation. While we didn't find a better way to handle meta-overloading in Python, this flag allows us to use operators like `'A' & 'B' & 'C'` to produce `'ABC'` or `'A' | 'B' | 'C'` to result in `'A B C'`. This syntactic sugar is essential for our use case.
 
 The current `&` operation overloads the `and` logical operator and sends `few-shot` prompts to the neural computation engine for statement evaluation. However, we can define more sophisticated logical operators for `and`, `or`, and `xor` using formal proof statements. Additionally, the neural engines can parse data structures prior to expression evaluation. Users can also define custom operations for more complex and robust logical operations, including constraints to validate outcomes and ensure desired behavior.
 
