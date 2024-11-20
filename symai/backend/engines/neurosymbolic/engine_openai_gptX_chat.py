@@ -162,6 +162,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             "gpt-4-32k-0613",
             "gpt-4-turbo",
             "gpt-4o",
+            "gpt-4o-2024-11-20",
             "gpt-4o-mini"
             }:
             tokens_per_message = 3

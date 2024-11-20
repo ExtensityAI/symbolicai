@@ -10,6 +10,7 @@ SUPPORTED_MODELS = [
     'gpt-4-turbo',
     'gpt-4-turbo-2024-04-09',
     'gpt-4o',
+    'gpt-4o-2024-11-20',
     'gpt-4o-mini',
     'text-embedding-ada-002',
     'text-embedding-3-small',
@@ -38,6 +39,7 @@ class OpenAIMixin:
              self.model == 'gpt-4-turbo' or \
              self.model == 'gpt-4-1106' or \
              self.model == 'gpt-4o' or \
+             self.model == 'gpt-4o-2024-11-20' or \
              self.model == 'gpt-4o-mini':
             return 128_000
 
@@ -68,8 +70,7 @@ class OpenAIMixin:
         if self.model == 'davinci-002':
             return 2_048
 
-        elif self.model == 'gpt-4o' or \
-           self.model == 'gpt-4-turbo' or \
+        elif self.model == 'gpt-4-turbo' or \
            self.model == 'gpt-4-turbo-2024-04-09' or \
            self.model == 'gpt-4-1106-preview' or \
            self.model == 'gpt-3.5-turbo-1106' or \
@@ -83,7 +84,9 @@ class OpenAIMixin:
 
         elif self.model == 'gpt-3.5-turbo-16k-0613' or \
              self.model == 'gpt-3.5-turbo-16k' or \
-             self.model == 'gpt-4o-mini':
+             self.model == 'gpt-4o-mini' or \
+             self.model == 'gpt-4o' or \
+             self.model == 'gpt-4o-2024-11-20':
             return 16_384
 
     def api_embedding_dims(self):
