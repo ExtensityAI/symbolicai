@@ -149,3 +149,4 @@ wandb/
 tmp/
 dist/
 bin/
+.idea
