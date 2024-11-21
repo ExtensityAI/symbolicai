@@ -103,10 +103,9 @@ def _apply_preprocessors(argument, instance: Any, pre_processors: Optional[List[
         for pp in pre_processors:
             t = pp(argument)
             processed_input += t if t is not None else ''
-    elif argument.args and len(argument.args) > 0 and argument.prop.raw_input:
-       processed_input += ' '.join([str(a) for a in argument.args])
     else:
-       processed_input = instance
+        if argument.args and len(argument.args) > 0:
+            processed_input      += ' '.join([str(a) for a in argument.args])
     return processed_input
 
 
