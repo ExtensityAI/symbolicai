@@ -175,14 +175,13 @@ def _process_query_single(engine,
 
     preprocessed_input = _apply_preprocessors(argument, instance, pre_processors)
     argument.prop.processed_input = preprocessed_input
-    executor_callback = argument.kwargs.get('executor_callback', None)
     engine.prepare(argument)
 
     result = None
     metadata = None
     for _ in range(trials):
         try:
-            outputs = executor_callback(argument)
+            outputs = engine.executor_callback(argument)
             result, metadata = _apply_postprocessors(outputs, argument.prop.return_constraint, post_processors, argument)
             break
         except Exception as e:
