@@ -24,10 +24,14 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         super().__init__()
         self.config = SYMAI_CONFIG
+        # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
+        if api_key is not None and model is not None:
+            self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] = api_key
+            self.config['NEUROSYMBOLIC_ENGINE_MODEL']   = model
         if self.id() != 'neurosymbolic':
             return # do not initialize if not neurosymbolic; avoids conflict with llama.cpp check in EngineRepository.register_from_package
-        anthropic.api_key        = self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] if api_key is None else api_key
-        self.model               = self.config['NEUROSYMBOLIC_ENGINE_MODEL'] if model is None else model
+        anthropic.api_key        = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
+        self.model               = self.config['NEUROSYMBOLIC_ENGINE_MODEL']
         self.tokenizer           = None
         self.max_context_tokens  = self.api_max_context_tokens()
         self.max_response_tokens = self.api_max_response_tokens()
@@ -256,4 +260,3 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
             system = res['system']
 
         argument.prop.prepared_input = (system, [user_prompt])
-

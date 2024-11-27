@@ -46,11 +46,12 @@ class LlamaCppTokenizer:
 
 
 class LlamaCppEngine(Engine):
-    def __init__(
-            self
-        ):
+    def __init__(self, model: Optional[str] = None):
         super().__init__()
         self.config = SYMAI_CONFIG
+        # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
+        if model is not None:
+            self.config['NEUROSYMBOLIC_ENGINE_MODEL'] = model
         if self.id() != 'neurosymbolic':
             return
         if not SYMSERVER_CONFIG.get('online'):
