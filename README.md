@@ -1,5 +1,5 @@
 # **SymbolicAI**
-<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/symai_logo.png" width="200px">
+<img src="https://github.com/ExtensityAI/symbolicai/raw/refs/heads/main/assets/images/banner">
 
 ### **A Neuro-Symbolic Perspective on Large Language Models (LLMs)**
 
