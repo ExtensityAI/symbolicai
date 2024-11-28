@@ -297,6 +297,7 @@ class RetrievalAugmentedConversation(Conversation):
         )
 
         self.index = self.retriever.index
+        self.indexer = self.retriever.indexer
         self.folder_path = folder_path
         self.max_depth = max_depth
         self.index_name = index_name
@@ -314,4 +315,25 @@ class RetrievalAugmentedConversation(Conversation):
         return RETRIEVAL_CONTEXT
 
     def forward(self, query: str, *args, **kwargs):
-        return super().forward(query, *args, **kwargs)
+        query = self._to_symbol(query)
+
+        memory = self.index(query, *args, **kwargs)
+
+        if 'raw_result' in kwargs:
+            print(memory)
+            return memory
+
+        prompt = self.build_tag(self.user_tag, query)
+        self.store(prompt)
+
+        payload = f'[Index Retrieval]:\n{str(memory)[:1500]}\n'
+
+        res = self.recall(query, *args, payload=payload, **kwargs)
+
+        self._value = res.value  # save last response
+        val = self.build_tag(self.bot_tag, res)
+        self.store(val)
+
+        if self.auto_print:
+            print(res)
+        return res
