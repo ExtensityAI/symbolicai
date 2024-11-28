@@ -70,4 +70,3 @@ class DocumentRetriever(Expression):
         if maybe_path.is_file():
             return self.reader(source, with_metadata=with_metadata, **kwargs)
         raise ValueError(f"Invalid source: {source}; must be a file, directory, or string")
-

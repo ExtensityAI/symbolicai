@@ -6,6 +6,7 @@ from typing import Any, Callable, Optional, List
 from pathlib import Path
 
 from .seo_query_optimizer import SEOQueryOptimizer
+from .document import DocumentRetriever
 from ..formatter import TextContainerFormatter
 from ..components import Indexer, FileReader
 from ..memory import SlidingWindowStringConcatMemory
@@ -231,14 +232,36 @@ class Conversation(SlidingWindowStringConcatMemory):
 
 
 RETRIEVAL_CONTEXT = """[Description]
-This is a conversation between a retrieval augmented indexing program and a user. It allows to index a directory or a git repository and retrieve files from it.
-It uses a document retriever to index the files and a document reader to retrieve the files.
-The document retriever uses neural embeddings to vectorize the documents and a cosine similarity to retrieve the most similar documents.
+This is a conversation between a retrieval augmented indexing program and a user. The system combines document retrieval with conversational AI to provide context-aware responses. It can:
+1. Index and search through directories, files, and git repositories
+2. Process and understand various file formats (text, PDF, code, etc.)
+3. Maintain conversation history for contextual understanding
+4. Perform semantic search using neural embeddings
+
+[System Capabilities]
+- Document indexing using neural embeddings for semantic understanding
+- Cosine similarity-based retrieval for finding relevant information
+- Conversation memory to maintain context across interactions
+- Metadata preservation for source tracking and attribution
+- Support for hierarchical directory traversal
+- Dynamic index updates and modifications
 
 [Program Instructions]
-If the user requests functions or instructions, you will process the user queries based on the results of the retrieval augmented memory and only return content about the retrieval augmented memory, conversation data and files content.
-"""
+When processing user queries:
+1. Search through the indexed documents using semantic similarity
+2. Consider conversation history and context when formulating responses
+3. Only provide information that is contained within the indexed documents
+4. Include relevant source attribution when quoting from documents
+5. Stay focused on the retrieval augmented memory and document contents
+6. Inform users if requested information is not found in the indexed content
 
+[Response Format]
+Responses should be:
+- Accurate to the source material
+- Contextually relevant
+- Clear and concise
+- Referenced to source when applicable
+"""
 
 class RetrievalAugmentedConversation(Conversation):
     def __init__(
@@ -250,7 +273,7 @@ class RetrievalAugmentedConversation(Conversation):
             auto_print:  bool          = True,
             token_ratio: float         = 0.9,
             top_k                      = 5,
-            formatter: Callable        = TextContainerFormatter(),
+            formatter: Callable        = TextContainerFormatter(text_split=4),
             overwrite: bool            = False,
             with_metadata: bool        = False,
             raw_result: Optional[bool] = False,
@@ -259,34 +282,32 @@ class RetrievalAugmentedConversation(Conversation):
         ):
 
         super().__init__(auto_print=auto_print, with_metadata=with_metadata, token_ratio=token_ratio, **kwargs)
-        self.folder_path   = folder_path
-        self.max_depth     = max_depth
-        self.index_name    = index_name
-        self.auto_print    = auto_print
-        self.token_ratio   = token_ratio
-        self.top_k         = top_k
-        self.formatter     = formatter
-        self.overwrite     = overwrite
+
+        self.retriever = DocumentRetriever(
+            source=folder_path,
+            index_name=index_name,
+            top_k=top_k,
+            max_depth=max_depth,
+            formatter=formatter,
+            overwrite=overwrite,
+            with_metadata=with_metadata,
+            raw_result=raw_result,
+            new_dim=new_dim,
+            **kwargs
+        )
+
+        self.index = self.retriever.index
+        self.folder_path = folder_path
+        self.max_depth = max_depth
+        self.index_name = index_name
+        self.auto_print = auto_print
+        self.token_ratio = token_ratio
+        self.top_k = top_k
+        self.formatter = formatter
+        self.overwrite = overwrite
         self.with_metadata = with_metadata
-        self.raw_result    = raw_result
-        self.new_dim       = new_dim
-
-        indexer = Indexer(index_name=index_name, top_k=top_k, formatter=formatter, auto_add=False, new_dim=new_dim)
-        if folder_path and (not indexer.exists() or overwrite):
-            files = FileReader.get_files(folder_path, max_depth)
-            indexer.register()
-            text = self.reader(files, with_metadata=with_metadata, **kwargs)
-
-            self.index = indexer(
-                    data=text,
-                    raw_result=raw_result,
-                    **kwargs
-                )
-        else:
-            self.index = indexer(
-                    raw_result=raw_result,
-                    **kwargs
-                )
+        self.raw_result = raw_result
+        self.new_dim = new_dim
 
     @property
     def static_context(self) -> str:

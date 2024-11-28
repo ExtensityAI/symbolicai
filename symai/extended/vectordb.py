@@ -389,11 +389,9 @@ class VectorDB(Expression):
         # create dir on first load if never used
         os.makedirs(storage_path, exist_ok=True)
         storage_file = storage_path / f"{index_name}.pkl"
-        # return since nothing to load
-        if not storage_file.exists():
-            return
-        # remove the file
-        os.remove(storage_file)
+        if storage_file.exists():
+            # remove the file
+            os.remove(storage_file)
         # remove index from `indices.txt`
         with open(symai_folder / 'indices.txt', 'r') as f:
             indices = f.read().split('\n')
