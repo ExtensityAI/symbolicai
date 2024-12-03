@@ -133,7 +133,10 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         self.seed                = None
         self.except_remedy       = None
 
-        self.client    = openai.Client(api_key=openai.api_key)
+        try:
+            self.client    = openai.Client(api_key=openai.api_key)
+        except Exception as e:
+            raise Exception(f'Failed to initialize OpenAI client. Please check your OpenAI library version. Caused by: {e}') from e
 
     def id(self) -> str:
         if   self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and \
