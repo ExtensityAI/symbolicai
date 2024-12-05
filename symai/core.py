@@ -27,37 +27,41 @@ class Argument(Expression):
         # Set default values if not specified for backend processing
         # Reserved keywords
         if 'preview' not in self.kwargs: # used for previewing the input (also for operators)
-            self.prop.preview           = Argument._default_preview_value
+            self.prop.preview = Argument._default_preview_value
         if 'raw_input' not in self.kwargs:
-            self.prop.raw_input         = False
+            self.prop.raw_input = False
         if 'raw_output' not in self.kwargs:
-            self.prop.raw_output        = False
+            self.prop.raw_output = False
         if 'logging' not in self.kwargs:
-            self.prop.logging           = False
+            self.prop.logging = False
         if 'verbose' not in self.kwargs:
-            self.prop.verbose           = False
+            self.prop.verbose = False
         if 'self_prompt' not in self.kwargs:
-            self.prop.self_prompt       = False
+            self.prop.self_prompt = False
+        if 'truncation_percentage' not in self.kwargs:
+            self.prop.truncation_percentage = 0.8
+        if 'truncation_type' not in self.kwargs:
+            self.prop.truncation_type = 'head'
         if 'response_format' not in self.kwargs:
-            self.prop.response_format   = None
+            self.prop.response_format = None
         if 'log_level' not in self.kwargs:
-            self.prop.log_level         = None
+            self.prop.log_level = None
         if 'time_clock' not in self.kwargs:
-            self.prop.time_clock        = None
+            self.prop.time_clock = None
         if 'payload' not in self.kwargs:
-            self.prop.payload           = None
+            self.prop.payload = None
         if 'processed_input' not in self.kwargs:
-            self.prop.processed_input   = None
+            self.prop.processed_input = None
         if 'template_suffix' not in self.kwargs:
-            self.prop.template_suffix   = None
+            self.prop.template_suffix = None
         if 'input_handler' not in self.kwargs:
-            self.prop.input_handler     = None
+            self.prop.input_handler = None
         if 'output_handler' not in self.kwargs:
-            self.prop.output_handler    = None
+            self.prop.output_handler = None
         if 'suppress_verbose_output' not in self.kwargs:
-            self.prop.suppress_verbose_output    = Argument._default_suppress_verbose_output
+            self.prop.suppress_verbose_output = Argument._default_suppress_verbose_output
         if 'parse_system_instructions' not in self.kwargs:
-            self.prop.parse_system_instructions  = Argument._default_parse_system_instructions
+            self.prop.parse_system_instructions = Argument._default_parse_system_instructions
 
     def _set_all_kwargs_as_properties(self):
         for key, value in self.kwargs.items():
