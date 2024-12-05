@@ -62,7 +62,7 @@ def _start_symai():
                 },
                 "map-nt-cmd":                             True,
                 "show-splash-screen":                     True,
-                "symrun_command_prefix":                  None
+                "plugin_prefix":                          None
             }, f, indent=4)
 
     # CREATE A SERVER CONFIGURATION FILE IF IT DOES NOT EXIST YET
