@@ -334,6 +334,7 @@ def query_language_model(query: str, res=None, *args, **kwargs):
     global stateful_conversation, previous_kwargs
     home_path = os.path.expanduser('~')
     symai_path = os.path.join(home_path, '.symai', '.conversation_state')
+    symrun_prefix = SYMSH_CONFIG.get('symrun_command_prefix')
 
     # check and extract kwargs from query if any
     # format --kwargs key1=value1,key2=value2,key3=value3,...keyN=valueN
@@ -358,18 +359,40 @@ def query_language_model(query: str, res=None, *args, **kwargs):
         # unpack cmd_kwargs to kwargs
         kwargs = {**kwargs, **cmd_kwargs}
 
-    if (query.startswith('!"') or query.startswith("!'") or query.startswith('!`') or query.startswith('!(')):
+    # Handle stateful conversations:
+    # 1. If query starts with !" (new conversation), create new conversation state
+    # 2. If query starts with ." (follow-up), either:
+    #    - Load existing conversation state if it exists
+    #    - Create new conversation state if none exists
+    if (query.startswith('!"') or query.startswith("!'") or query.startswith('!`')):
         os.makedirs(os.path.dirname(symai_path), exist_ok=True)
         stateful_conversation = ConversationType(auto_print=False)
         ConversationType.save_conversation_state(stateful_conversation, symai_path)
-    elif (query.startswith('."') or query.startswith(".'") or query.startswith('.`')) and stateful_conversation is None:
-        if stateful_conversation is None:
-            stateful_conversation = ConversationType(auto_print=False)
-        if not os.path.exists(symai_path):
-            os.makedirs(os.path.dirname(symai_path), exist_ok=True)
-            ConversationType.save_conversation_state(stateful_conversation, symai_path)
-        stateful_conversation = stateful_conversation.load_conversation_state(symai_path)
-
+        # Special case: if query starts with !" and has a prefix, run the prefix command and store the output
+        if symrun_prefix is not None:
+            with Loader(desc="Inference ...", end=""):
+                cmd = query[1:].strip('\'"')
+                cmd = f"{symrun_prefix} '{cmd}' --disable-pbar"
+                cmd_out = run_shell_command(cmd, auto_query_on_error=True)
+                stateful_conversation.store(cmd_out)
+                ConversationType.save_conversation_state(stateful_conversation, symai_path)
+                return cmd_out
+    elif query.startswith('."') or query.startswith(".'") or query.startswith('.`'):
+        try:
+            stateful_conversation = stateful_conversation.load_conversation_state(symai_path)
+        except Exception:
+            with ConsoleStyle('error') as console:
+                console.print('No conversation state found. Please start a new conversation.')
+            return
+        if symrun_prefix is not None:
+            with Loader(desc="Inference ...", end=""):
+                query = query[1:].strip('\'"')
+                answer = stateful_conversation(query).value
+                cmd = f"{symrun_prefix} '{answer}' --disable-pbar"
+                cmd_out = run_shell_command(cmd, auto_query_on_error=True)
+                stateful_conversation.store(cmd_out)
+                ConversationType.save_conversation_state(stateful_conversation, symai_path)
+                return cmd_out
     cmd = None
     if '|' in query:
         cmds = query.split('|')
@@ -393,20 +416,10 @@ def query_language_model(query: str, res=None, *args, **kwargs):
 
         if is_stateful:
             if order == 1:
-                func.store_system_message(payload)
+                func.store(payload)
             elif order == 2:
                 for file in payload:
                     func.store_file(file)
-    elif query.startswith('!('):
-        # This is for cases in which the user wants to start directly with a command
-        # e.g. `!(ls -la)`
-        func = stateful_conversation
-        cmd = query[2:-1].strip() # remove !( and )
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-        output = result.stdout if result.stdout else result.stderr
-        func.store_system_message(output)
-        with Loader(desc="Inference ...", end=""):
-            return output
     else:
         if  query.startswith('."') or query.startswith(".'") or query.startswith('.`') or\
             query.startswith('!"') or query.startswith("!'") or query.startswith('!`'):
@@ -418,6 +431,12 @@ def query_language_model(query: str, res=None, *args, **kwargs):
         if res is not None:
             query = f"[Context]\n{res}\n\n[Query]\n{query}"
         msg = func(query, *args, **kwargs)
+
+    if stateful_conversation is not None and (
+        query.startswith('."') or query.startswith(".'") or query.startswith('.`') or
+        query.startswith('!"') or query.startswith("!'") or query.startswith('!`')
+    ):
+        ConversationType.save_conversation_state(stateful_conversation, symai_path)
 
     return msg
 
@@ -503,6 +522,24 @@ def search_engine(query: str, res=None, *args, **kwargs):
         with open(symai_path, 'w') as f:
             f.write(f'[SEARCH_QUERY]:\n{search_query}\n[RESULTS]\n{res}\n[MESSAGE]\n{msg}')
     return msg
+
+def set_default_prefix(cmd: str):
+    if cmd.startswith('set-prefix'):
+        prefix = cmd.split('set-prefix')[-1].strip()
+        SYMSH_CONFIG['symrun_command_prefix'] = prefix
+        with open(config_path, 'w') as f:
+            json.dump(SYMSH_CONFIG, f, indent=4)
+        msg = f"Default prefix set to: {prefix}"
+    elif cmd == 'unset-prefix':
+        SYMSH_CONFIG['symrun_command_prefix'] = None
+        with open(config_path, 'w') as f:
+            json.dump(SYMSH_CONFIG, f, indent=4)
+        msg = "Default prefix unset"
+    elif cmd == 'get-prefix':
+        msg = f"Default prefix is: {SYMSH_CONFIG['symrun_command_prefix']}"
+
+    with ConsoleStyle('success') as console:
+        console.print(msg)
 
 def handle_error(cmd, res, message, auto_query_on_error):
     msg = Symbol(cmd) | f'\n{str(res)}'
@@ -630,6 +667,8 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
 
     # map commands to windows if needed
     cmd = map_nt_cmd(cmd)
+    if cmd.startswith('set-prefix') or cmd == 'unset-prefix' or cmd == 'get-prefix':
+        return set_default_prefix(cmd)
 
     sep = os.path.sep
     # check for '&&' to also preserve pipes '|' in normal shell commands
@@ -651,7 +690,6 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
         res = run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
         return res
 
-    # check command type
     if cmd.startswith('?"') or cmd.startswith("?'") or cmd.startswith('?`'):
         cmd = cmd[1:]
         return search_engine(cmd, res=res)
@@ -836,8 +874,6 @@ def run(auto_query_on_error=False, conversation_style=None, verbose=False):
         FunctionType, ConversationType, RetrievalConversationType = styles_
         use_styles = True
 
-    history, word_comp, merged_completer = create_completer()
-    session = create_session(history, merged_completer)
     if SYMSH_CONFIG['show-splash-screen']:
         show_intro_menu()
         # set show splash screen to false
@@ -846,6 +882,11 @@ def run(auto_query_on_error=False, conversation_style=None, verbose=False):
         _config_path =  HOME_PATH / '.symai' / 'symsh.config.json'
         with open(_config_path, 'w') as f:
             json.dump(SYMSH_CONFIG, f, indent=4)
+    if 'symrun_command_prefix' not in SYMSH_CONFIG:
+        SYMSH_CONFIG['symrun_command_prefix'] = None
+
+    history, word_comp, merged_completer = create_completer()
+    session = create_session(history, merged_completer)
     listen(session, word_comp, auto_query_on_error=auto_query_on_error, verbose=verbose)
 
 if __name__ == '__main__':
