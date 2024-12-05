@@ -122,17 +122,18 @@ class Conversation(SlidingWindowStringConcatMemory):
         return self.restore(conversation_state)
 
     def restore(self, conversation_state: "Conversation") -> "Conversation":
-        self._memory     = conversation_state._memory
-        self.token_ratio = conversation_state.token_ratio
+        self._memory = conversation_state._memory
+        self.truncation_percentage = conversation_state.truncation_percentage
+        self.truncation_type = conversation_state.truncation_type
         self.auto_print  = conversation_state.auto_print
-        self.file_link   = conversation_state.file_link
-        self.url_link    = conversation_state.url_link
+        self.file_link = conversation_state.file_link
+        self.url_link = conversation_state.url_link
         self.index_name  = conversation_state.index_name
         if self.index_name is not None:
             self.indexer = Indexer(index_name=self.index_name)
-            self.index   = self.indexer(raw_result=True)
-        self.seo_opt     = SEOQueryOptimizer()
-        self.reader      = FileReader()
+            self.index = self.indexer(raw_result=True)
+        self.seo_opt = SEOQueryOptimizer()
+        self.reader = FileReader()
         return self
 
     def commit(self, target_file: str = None, formatter: Optional[Callable] = None):
@@ -275,20 +276,21 @@ class RetrievalAugmentedConversation(Conversation):
             self,
             folder_path: Optional[str] = None,
             *,
-            index_name:  Optional[str] = None,
-            max_depth:   Optional[int] = 0,
-            auto_print:  bool          = True,
-            token_ratio: float         = 0.9,
-            top_k                      = 5,
-            formatter: Callable        = TextContainerFormatter(text_split=4),
-            overwrite: bool            = False,
-            with_metadata: bool        = False,
+            index_name: Optional[str] = None,
+            max_depth: Optional[int] = 0,
+            auto_print: bool = True,
+            top_k: int = 5,
+            formatter: Callable = TextContainerFormatter(text_split=4),
+            overwrite: bool = False,
+            truncation_percentage: float = 0.8,
+            truncation_type: str = 'head',
+            with_metadata: bool = False,
             raw_result: Optional[bool] = False,
-            new_dim: Optional[int]     = None,
+            new_dim: Optional[int] = None,
             **kwargs
         ):
 
-        super().__init__(auto_print=auto_print, with_metadata=with_metadata, token_ratio=token_ratio, **kwargs)
+        super().__init__(auto_print=auto_print, truncation_percentage=truncation_percentage, truncation_type=truncation_type, with_metadata=with_metadata, *kwargs)
 
         self.retriever = DocumentRetriever(
             source=folder_path,
