@@ -42,11 +42,10 @@ class SlidingWindowListMemory(Memory):
 
 
 class SlidingWindowStringConcatMemory(Memory):
-    def __init__(self, token_ratio: float = 0.6, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(**kwargs)
         self._memory: str       = ''
         self.marker: str        = '[--++=|=++--]'
-        self.token_ratio: float  = token_ratio
 
     @core_ext.bind(engine='neurosymbolic', property='max_context_tokens')
     def max_tokens(self): pass
@@ -113,4 +112,3 @@ class VectorDatabaseMemory(Memory):
         res = self.get(Symbol(query).embed().value, index_top_k=self.top_k, index_name=self.index_name).ast()
 
         return [v['metadata']['text'] for v in res['matches']]
-

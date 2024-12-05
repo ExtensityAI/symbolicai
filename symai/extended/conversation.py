@@ -23,30 +23,32 @@ class CodeFormatter:
 class Conversation(SlidingWindowStringConcatMemory):
     def __init__(
             self,
-            init:          Optional[str]       = None,
-            file_link:     Optional[List[str]] = None,
-            url_link:      Optional[List[str]] = None,
-            index_name:    Optional[str]       = None,
-            auto_print:    bool                = True,
-            token_ratio:   float               = 0.6,
-            with_metadata: bool                = False,
+            init:                    Optional[str]       = None,
+            file_link:               Optional[List[str]] = None,
+            url_link:                Optional[List[str]] = None,
+            index_name:              Optional[str]       = None,
+            auto_print:              bool                = True,
+            truncation_percentage:   float               = 0.8,
+            truncation_type:         str                 = 'head',
+            with_metadata:           bool                = False,
             *args, **kwargs
         ):
-        super().__init__(token_ratio, *args, **kwargs)
-        self.token_ratio = token_ratio
-        self.auto_print  = auto_print
+        super().__init__(*args, **kwargs)
+        self.truncation_percentage = truncation_percentage
+        self.truncation_type = truncation_type
+        self.auto_print = auto_print
         if file_link and isinstance(file_link, str):
-            file_link    = [file_link]
+            file_link = [file_link]
         if url_link and isinstance(url_link, str):
-            url_link     = [url_link]
-        self.file_link   = file_link
-        self.url_link    = url_link
-        self.index_name  = index_name
-        self.seo_opt     = SEOQueryOptimizer()
-        self.reader      = FileReader(with_metadata=with_metadata)
-        self.crawler     = Interface('selenium')
-        self.user_tag    = 'USER::'
-        self.bot_tag     = 'ASSISTANT::'
+            url_link = [url_link]
+        self.file_link = file_link
+        self.url_link = url_link
+        self.index_name = index_name
+        self.seo_opt = SEOQueryOptimizer()
+        self.reader = FileReader(with_metadata=with_metadata)
+        self.crawler = Interface('selenium')
+        self.user_tag = 'USER::'
+        self.bot_tag = 'ASSISTANT::'
 
         if init is not None:
             self.store_system_message(init, *args, **kwargs)
@@ -167,6 +169,11 @@ class Conversation(SlidingWindowStringConcatMemory):
         return str(f"[{tag}{timestamp}]: <<<\n{str(query)}\n>>>\n")
 
     def forward(self, query: str, *args, **kwargs):
+        # dynamic takes precedence over static
+        dynamic_truncation_percentage = kwargs.get('truncation_percentage', self.truncation_percentage)
+        dynamic_truncation_type = kwargs.get('truncation_type', self.truncation_type)
+        kwargs = {**kwargs, 'truncation_percentage': dynamic_truncation_percentage, 'truncation_type': dynamic_truncation_type}
+
         query = self._to_symbol(query)
         memory = None
 
