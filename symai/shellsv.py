@@ -358,7 +358,7 @@ def query_language_model(query: str, res=None, *args, **kwargs):
         # unpack cmd_kwargs to kwargs
         kwargs = {**kwargs, **cmd_kwargs}
 
-    if (query.startswith('!"') or query.startswith("!'") or query.startswith('!`')):
+    if (query.startswith('!"') or query.startswith("!'") or query.startswith('!`') or query.startswith('!(')):
         os.makedirs(os.path.dirname(symai_path), exist_ok=True)
         stateful_conversation = ConversationType(auto_print=False)
         ConversationType.save_conversation_state(stateful_conversation, symai_path)
@@ -370,7 +370,7 @@ def query_language_model(query: str, res=None, *args, **kwargs):
             ConversationType.save_conversation_state(stateful_conversation, symai_path)
         stateful_conversation = stateful_conversation.load_conversation_state(symai_path)
 
-    cmd              = None
+    cmd = None
     if '|' in query:
         cmds = query.split('|')
         if len(cmds) > 2:
@@ -397,6 +397,16 @@ def query_language_model(query: str, res=None, *args, **kwargs):
             elif order == 2:
                 for file in payload:
                     func.store_file(file)
+    elif query.startswith('!('):
+        # This is for cases in which the user wants to start directly with a command
+        # e.g. `!(ls -la)`
+        func = stateful_conversation
+        cmd = query[2:-1].strip() # remove !( and )
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        output = result.stdout if result.stdout else result.stderr
+        func.store_system_message(output)
+        with Loader(desc="Inference ...", end=""):
+            return output
     else:
         if  query.startswith('."') or query.startswith(".'") or query.startswith('.`') or\
             query.startswith('!"') or query.startswith("!'") or query.startswith('!`'):
@@ -564,7 +574,8 @@ def run_shell_command(cmd: str, prev=None, auto_query_on_error: bool=False, stdo
 def is_llm_request(cmd: str):
     return cmd.startswith('"') or cmd.startswith('."') or cmd.startswith('!"') or cmd.startswith('?"') or\
            cmd.startswith("'") or cmd.startswith(".'") or cmd.startswith("!'") or cmd.startswith("?'") or\
-           cmd.startswith('`') or cmd.startswith('.`') or cmd.startswith('!`') or cmd.startswith('?`')
+           cmd.startswith('`') or cmd.startswith('.`') or cmd.startswith('!`') or cmd.startswith('?`') or\
+           cmd.startswith('!(')
 
 def map_nt_cmd(cmd: str, map_nt_cmd_enabled: bool = True):
     if os.name.lower() == 'nt' and map_nt_cmd_enabled and not is_llm_request(cmd):
@@ -757,7 +768,7 @@ def listen(session: PromptSession, word_comp: WordCompleter, auto_query_on_error
                     prompt = HTML(f"<ansiblue>{cur_working_dir}</ansiblue> <ansiwhite>conda:[</ansiwhite><ansimagenta>{conda_env}</ansimagenta><ansiwhite>]</ansiwhite> <ansicyan><b>symsh:</b> ❯</ansicyan> ")
 
                 # Read user input
-                cmd = session.prompt(prompt, lexer=PygmentsLexer(BashLexer))
+                cmd = session.prompt(prompt)
                 if cmd.strip() == '':
                     continue
 
