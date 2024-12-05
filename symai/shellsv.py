@@ -334,7 +334,7 @@ def query_language_model(query: str, res=None, *args, **kwargs):
     global stateful_conversation, previous_kwargs
     home_path = os.path.expanduser('~')
     symai_path = os.path.join(home_path, '.symai', '.conversation_state')
-    symrun_prefix = SYMSH_CONFIG.get('symrun_command_prefix')
+    plugin = SYMSH_CONFIG.get('plugin_prefix')
 
     # check and extract kwargs from query if any
     # format --kwargs key1=value1,key2=value2,key3=value3,...keyN=valueN
@@ -369,10 +369,10 @@ def query_language_model(query: str, res=None, *args, **kwargs):
         stateful_conversation = ConversationType(auto_print=False)
         ConversationType.save_conversation_state(stateful_conversation, symai_path)
         # Special case: if query starts with !" and has a prefix, run the prefix command and store the output
-        if symrun_prefix is not None:
+        if plugin is not None:
             with Loader(desc="Inference ...", end=""):
                 cmd = query[1:].strip('\'"')
-                cmd = f"{symrun_prefix} '{cmd}' --disable-pbar"
+                cmd = f"symrun {plugin} '{cmd}' --disable-pbar"
                 cmd_out = run_shell_command(cmd, auto_query_on_error=True)
                 stateful_conversation.store(cmd_out)
                 ConversationType.save_conversation_state(stateful_conversation, symai_path)
@@ -384,11 +384,11 @@ def query_language_model(query: str, res=None, *args, **kwargs):
             with ConsoleStyle('error') as console:
                 console.print('No conversation state found. Please start a new conversation.')
             return
-        if symrun_prefix is not None:
+        if plugin is not None:
             with Loader(desc="Inference ...", end=""):
                 query = query[1:].strip('\'"')
                 answer = stateful_conversation(query).value
-                cmd = f"{symrun_prefix} '{answer}' --disable-pbar"
+                cmd = f"symrun {plugin} '{answer}' --disable-pbar"
                 cmd_out = run_shell_command(cmd, auto_query_on_error=True)
                 stateful_conversation.store(cmd_out)
                 ConversationType.save_conversation_state(stateful_conversation, symai_path)
@@ -523,20 +523,20 @@ def search_engine(query: str, res=None, *args, **kwargs):
             f.write(f'[SEARCH_QUERY]:\n{search_query}\n[RESULTS]\n{res}\n[MESSAGE]\n{msg}')
     return msg
 
-def set_default_prefix(cmd: str):
-    if cmd.startswith('set-prefix'):
-        prefix = cmd.split('set-prefix')[-1].strip()
-        SYMSH_CONFIG['symrun_command_prefix'] = prefix
+def set_default_module(cmd: str):
+    if cmd.startswith('set-plugin'):
+        module = cmd.split('set-plugin')[-1].strip()
+        SYMSH_CONFIG['plugin_prefix'] = module
         with open(config_path, 'w') as f:
             json.dump(SYMSH_CONFIG, f, indent=4)
-        msg = f"Default prefix set to: {prefix}"
-    elif cmd == 'unset-prefix':
-        SYMSH_CONFIG['symrun_command_prefix'] = None
+        msg = f"Default plugin set to '{module}'"
+    elif cmd == 'unset-plugin':
+        SYMSH_CONFIG['plugin_prefix'] = None
         with open(config_path, 'w') as f:
             json.dump(SYMSH_CONFIG, f, indent=4)
-        msg = "Default prefix unset"
-    elif cmd == 'get-prefix':
-        msg = f"Default prefix is: {SYMSH_CONFIG['symrun_command_prefix']}"
+        msg = "Default plugin unset"
+    elif cmd == 'get-plugin':
+        msg = f"Default plugin is '{SYMSH_CONFIG['plugin_prefix']}'"
 
     with ConsoleStyle('success') as console:
         console.print(msg)
@@ -587,14 +587,10 @@ def run_shell_command(cmd: str, prev=None, auto_query_on_error: bool=False, stdo
     try:
         stdout = subprocess.PIPE if auto_query_on_error else stdout
         stderr = subprocess.PIPE if auto_query_on_error else stderr
-        res = subprocess.run(cmd,
-                            shell=True,
-                            stdout=stdout,
-                            stderr=stderr,
-                            env=new_env)
+        res = subprocess.run(cmd, shell=True, stdout=stdout, stderr=stderr, env=new_env)
         if res and stdout and res.stdout:
             message = res.stdout.decode('utf-8')
-        if res and stderr and res.stderr:
+        elif res and stderr and res.stderr:
             message = res.stderr.decode('utf-8')
     except FileNotFoundError as e:
         return e
@@ -667,8 +663,8 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
 
     # map commands to windows if needed
     cmd = map_nt_cmd(cmd)
-    if cmd.startswith('set-prefix') or cmd == 'unset-prefix' or cmd == 'get-prefix':
-        return set_default_prefix(cmd)
+    if cmd.startswith('set-plugin') or cmd == 'unset-plugin' or cmd == 'get-plugin':
+        return set_default_module(cmd)
 
     sep = os.path.sep
     # check for '&&' to also preserve pipes '|' in normal shell commands
@@ -882,8 +878,8 @@ def run(auto_query_on_error=False, conversation_style=None, verbose=False):
         _config_path =  HOME_PATH / '.symai' / 'symsh.config.json'
         with open(_config_path, 'w') as f:
             json.dump(SYMSH_CONFIG, f, indent=4)
-    if 'symrun_command_prefix' not in SYMSH_CONFIG:
-        SYMSH_CONFIG['symrun_command_prefix'] = None
+    if 'plugin_prefix' not in SYMSH_CONFIG:
+        SYMSH_CONFIG['plugin_prefix'] = None
 
     history, word_comp, merged_completer = create_completer()
     session = create_session(history, merged_completer)
