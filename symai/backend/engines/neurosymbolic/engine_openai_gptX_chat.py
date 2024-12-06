@@ -37,7 +37,11 @@ class TokenTruncator:
 
         # Get token counts
         system_tokens = Symbol(system_prompt['content']).tokens
-        user_tokens = Symbol(user_prompt['content'][0]['text']).tokens
+        user_tokens = []
+        for content_item in user_prompt['content']:
+            if content_item.get('type') == 'text':
+                user_tokens.extend(Symbol(content_item['text']).tokens)
+            else: continue
 
         system_token_count = len(system_tokens)
         user_token_count = len(user_tokens)
