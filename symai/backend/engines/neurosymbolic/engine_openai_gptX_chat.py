@@ -41,7 +41,10 @@ class TokenTruncator:
         for content_item in user_prompt['content']:
             if content_item.get('type') == 'text':
                 user_tokens.extend(Symbol(content_item['text']).tokens)
-            else: continue
+            else:
+                # @TODO: handle this properly
+                # return if image or other type of content detected
+                return prompts
 
         system_token_count = len(system_tokens)
         user_token_count = len(user_tokens)
