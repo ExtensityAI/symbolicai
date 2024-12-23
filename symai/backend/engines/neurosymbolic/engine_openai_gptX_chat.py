@@ -32,19 +32,35 @@ class TokenTruncator:
 
     def truncate(self, prompts, truncation_percentage, truncation_type):
         """Main truncation method"""
+        if len(prompts) != 2:
+            # Only support system and user prompts
+            return prompts
+
         system_prompt = prompts[0]
         user_prompt = prompts[1]
 
         # Get token counts
         system_tokens = Symbol(system_prompt['content']).tokens
         user_tokens = []
-        for content_item in user_prompt['content']:
-            if content_item.get('type') == 'text':
-                user_tokens.extend(Symbol(content_item['text']).tokens)
-            else:
-                # @TODO: handle this properly
-                # return if image or other type of content detected
-                return prompts
+
+        if isinstance(user_prompt['content'], str):
+            # default input format
+            user_tokens.extend(Symbol(user_prompt['content']).tokens)
+        elif isinstance(user_prompt['content'], list):
+            for content_item in user_prompt['content']:
+                # image input format
+                if isinstance(content_item, dict):
+                    if content_item.get('type') == 'text':
+                        user_tokens.extend(Symbol(content_item['text']).tokens)
+                    else:
+                        # image content; return original since not supported
+                        return prompts
+                else:
+                    # unknown input format
+                    return ValueError(f"Invalid content type: {type(content_item)}. Format input according to the documentation. See https://platform.openai.com/docs/api-reference/chat/create?lang=python")
+        else:
+            # unknown input format
+            raise ValueError(f"Unknown content type: {type(user_prompt['content'])}. Format input according to the documentation. See https://platform.openai.com/docs/api-reference/chat/create?lang=python")
 
         system_token_count = len(system_tokens)
         user_token_count = len(user_tokens)
