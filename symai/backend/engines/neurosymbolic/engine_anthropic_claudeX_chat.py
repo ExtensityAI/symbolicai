@@ -3,7 +3,7 @@ import re
 from typing import List, Optional
 
 import anthropic
-from anthropic.resources.messages import NOT_GIVEN
+from anthropic._types import NOT_GIVEN
 
 from ....components import SelfPrompt
 from ....misc.console import ConsoleStyle
@@ -117,7 +117,7 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
 
         metadata = {'raw_output': res}
 
-        rsp    = [r.text for r in res.content]
+        rsp    = [r.text for r in res.content if r.type == 'text']
         output = rsp if isinstance(prompt, list) else rsp[0]
         return output, metadata
 
