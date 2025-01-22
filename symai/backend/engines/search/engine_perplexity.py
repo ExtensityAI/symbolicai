@@ -36,7 +36,7 @@ class PerplexityEngine(Engine):
         self.model = self.config['SEARCH_ENGINE_MODEL']
 
     def id(self) -> str:
-        if self.config.get('SEARCH_ENGINE_API_KEY') and self.config.get('SEARCH_ENGINE_MODEL').startswith("llama-3.1"):
+        if self.config.get('SEARCH_ENGINE_API_KEY') and self.config.get('SEARCH_ENGINE_MODEL').startswith("sonar"):
             return 'search'
         return super().id()  # default to unregistered
 
