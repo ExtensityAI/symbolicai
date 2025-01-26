@@ -30,11 +30,9 @@ class ProbabilisticBooleanMode(Enum):
 
 
 ENGINE_PROBABILISTIC_BOOLEAN_MODE = ProbabilisticBooleanMode.MEDIUM
-from .prompts import (
-    ProbabilisticBooleanModeStrict,
-    ProbabilisticBooleanModeMedium,
-    ProbabilisticBooleanModeTolerant
-)
+ProbabilisticBooleanModeStrict   = "true"
+ProbabilisticBooleanModeMedium   = "'true', 'yes', 'ok', ['true']"
+ProbabilisticBooleanModeTolerant = "'true', '1', 't', 'y', 'yes', 'yeah', 'yup', 'certainly', 'ok', ['true']"
 
 
 def _probabilistic_bool(rsp: str, mode=ProbabilisticBooleanMode.TOLERANT) -> bool:

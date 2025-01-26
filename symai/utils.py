@@ -59,6 +59,7 @@ def encode_image_local(image_path):
         ext = 'jpeg'
 
     assert ext.lower() in ['jpg', 'jpeg', 'png', 'webp'], f"File extension '{ext}' not supported! Available extensions: ['jpg', 'jpeg', 'png', 'webp']"
+    assert os.path.exists(image_path), f"File '{image_path}' not found!"
 
     with open(image_path, "rb") as image_file:
         enc_im = base64.b64encode(image_file.read()).decode('utf-8')

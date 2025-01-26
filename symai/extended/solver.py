@@ -9,7 +9,7 @@ from .. import core
 from ..components import Execute
 from ..post_processors import StripPostProcessor, CodeExtractPostProcessor
 from ..pre_processors import PreProcessor
-from ..prompts import Prompt
+from ..few_shots import FewShot
 from ..symbol import Expression, Symbol
 
 #############################################################################################
@@ -72,7 +72,7 @@ class ProblemClassifier(Expression):
 
     def __eq__(self, other, **kwargs) -> bool:
         @core.few_shot(prompt="Verify equality of the following categories. Ignore typos, upper / lower case or singular / plural differences:\n",
-                     examples=Prompt([
+                     examples=FewShot([
                          '$> :Arithmetic formula: == :Arithmetics formula: =>True EOF',
                          '$> :arithmetic formula: == :Arithmetic formula: =>True EOF',
                          '$> :arithmetic formula: == :arithmeticformula: =>True EOF',
@@ -111,7 +111,7 @@ class FormulaCheckerPreProcessor(PreProcessor):
 class FormulaChecker(Expression):
     def forward(self, **kwargs) -> bool:
         @core.few_shot(prompt="Is the following statement in an explicit formula form without natural language text?:\n",
-                     examples=Prompt([
+                     examples=Examples([
                          '$> 2 + 2 * 2 =>True EOF',
                          '$> x + 2 = 3 =>True EOF',
                          '$> Set of all natural numbers =>False EOF',
@@ -151,7 +151,7 @@ class FormulaWriterPreProcessor(PreProcessor):
 class FormulaWriter(Expression):
     def forward(self, **kwargs) -> str:
         @core.few_shot(prompt="Rewrite the following natural language statement in a mathematical formula or higher-order logic statement to be solved by Mathematica:\n",
-                     examples=Prompt([
+                     examples=Examples([
                          '$> Add 5 plus 3 =>5 + 3 EOF',
                          '$> Seventy plus twenty =>70 + 20 EOF',
                          '$> Divide 5 by three =>5 / 3 EOF',

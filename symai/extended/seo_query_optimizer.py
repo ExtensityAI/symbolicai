@@ -1,7 +1,7 @@
 from .. import core
 from ..post_processors import StripPostProcessor
 from ..pre_processors import PreProcessor
-from ..prompts import Prompt
+from ..few_shots import FewShot
 from ..symbol import Expression, Symbol
 
 
@@ -31,7 +31,7 @@ class SEOQueryOptimizer(Expression):
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
         @core.few_shot(prompt="Extract relationships between entities:\n",
-                  examples=Prompt([
+                  examples=FewShot([
                         '$> John has a dog. =>John dog EOF',
                         '$> How can i find on wikipedia an article about programming? Preferably about python programming. =>Wikipedia python programming tutorial EOF',
                         '$> Similarly, the term general linguistics is used to distinguish core linguistics from other types of study =>general linguistics term, core linguistics from other types of study EOF',
@@ -43,5 +43,3 @@ class SEOQueryOptimizer(Expression):
             pass
 
         return _func(self, sym)
-
-

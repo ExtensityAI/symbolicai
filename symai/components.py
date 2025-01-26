@@ -25,7 +25,7 @@ from .post_processors import (CodeExtractPostProcessor,
                               StripPostProcessor)
 from .pre_processors import JsonPreProcessor, PreProcessor
 from .processor import ProcessorPipeline
-from .prompts import JsonPromptTemplate, Prompt
+from .few_shots import JsonFewShotTemplate, FewShot
 from .symbol import Expression, Metadata, Symbol
 from .utils import CustomUserWarning
 
@@ -596,7 +596,7 @@ class Function(TrackerTraceable):
         self._promptTemplate     = prompt
         self._promptFormatArgs   = []
         self._promptFormatKwargs = {}
-        self.examples        = Prompt(examples)
+        self.examples        = FewShot(examples)
         self.pre_processors  = pre_processors
         self.post_processors = post_processors
         self.constraints     = constraints
@@ -748,7 +748,7 @@ Always produce the entire code to be executed in the same Python process. All ta
 class JsonParser(Expression):
     def __init__(self, query: str, json_: dict, **kwargs):
         super().__init__(**kwargs)
-        func = Function(prompt=JsonPromptTemplate(query, json_),
+        func = Function(prompt=JsonFewShotTemplate(query, json_),
                         constraints=[DictFormatConstraint(json_)],
                         pre_processors=[JsonPreProcessor()],
                         post_processors=[JsonTruncatePostProcessor()])
@@ -791,7 +791,7 @@ class SimilarityClassification(Expression):
 
 
 class InContextClassification(Expression):
-    def __init__(self, blueprint: Prompt, **kwargs):
+    def __init__(self, blueprint: FewShot, **kwargs):
         super().__init__(**kwargs)
         self.blueprint = blueprint
 
@@ -1297,4 +1297,3 @@ class SelfPrompt(Expression):
         def _func(self, sym: Symbol, **kwargs): pass
 
         return _func(self, self._to_symbol(existing_prompt))
-

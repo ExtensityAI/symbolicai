@@ -9,7 +9,7 @@ from .components import (IncludeFilter, InContextClassification,
 from .memory import Memory, SlidingWindowListMemory, VectorDatabaseMemory
 from .post_processors import ConsolePostProcessor, StripPostProcessor
 from .pre_processors import ConsoleInputPreProcessor
-from .prompts import MemoryCapabilities, SymbiaCapabilities
+from .few_shots import MemoryCapabilities, SymbiaCapabilities
 from .symbol import Expression, Symbol
 from .interfaces import Interface
 from . import core
@@ -307,4 +307,3 @@ def run() -> None:
 
 if __name__ == '__main__':
     run()
-
