@@ -25,12 +25,10 @@ To provide a more comprehensive understanding, we present several causal example
 An example approach using our framework would involve identifying the neural engine best suited for the task and preparing the input for that engine. Here's how we could achieve this:
 
 ```python
-from symai.extended import Interface
-
 val = "<one of the examples above>"
 
 # First, define a class that inherits from the Expression class
-class ComplexExpression(ai.Expression):
+class ComplexExpression(Expression):
     # write a method that returns the causal evaluation
     def causal_expression(self):
         pass # see below for implementation
@@ -68,8 +66,8 @@ def causal_expression(self):
     elif self.isinstanceof('linguistic problem'):
         sentences = self / '.' # first, split into sentences
         graph = {} # define the graph
-        for s in sentences:
-            sym = ai.Symbol(s)
+        for sentence in sentences:
+            sym = Symbol(sentence)
             relations = sym.extract('connected entities (e.g., A has three B => A | A: three B)') / '|' # and split by pipe
             for r in relations:
                 ... # add relations and populate the graph, or alternatively, learn about CycleGT

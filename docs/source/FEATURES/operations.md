@@ -9,9 +9,9 @@ Inheritance is another essential aspect of our API, which is built on the `Symbo
 Defining custom operations can be done through overriding existing Python methods and providing a custom prompt object with example code. Here is an example of creating a custom `==` operation by overriding the `__eq__` method:
 
 ```python
-class Demo(ai.Symbol):
+class Demo(Symbol):
     def __eq__(self, other) -> bool:
-        @ai.equals(examples=ai.Prompt([
+        @core.equals(examples=FewShot([
               "1 == 'ONE' =>True",
               "'six' == 7 =>False",
               "'Acht' == 'eight' =>True",
@@ -33,11 +33,11 @@ The following section demonstrates that most operations in `symai/core.py` are d
 Defining custom operations is also possible, such as creating an operation to generate a random integer between 0 and 10:
 
 ```python
-class Demo(ai.Expression):
-    @ai.zero_shot(prompt="Generate a random integer between 0 and 10.",
-                  constraints=[
-                      lambda x: x >= 0,
-                      lambda x: x <= 10
+class Demo(Expression):
+    @zero_shot(prompt="Generate a random integer between 0 and 10.",
+               constraints=[
+                    lambda x: x >= 0,
+                    lambda x: x <= 10
                   ])
     def get_random_int(self) -> int:
         pass
@@ -47,17 +47,17 @@ random_int = demo.get_random_int()
 print(random_int)  # Output: A random integer between 0 and 10
 ```
 
-The Symbolic API employs Python `Decorators` to define operations, utilizing the `@ai.zero_shot` decorator to create custom operations that do not require demonstration examples when the prompt is self-explanatory. In this example, the `zero_shot` decorator accepts two arguments: `prompt` and `constraints`. The former defines the prompt dictating the desired operation behavior, while the latter establishes validation constraints for the computed outcome, ensuring it meets expectations.
+The Symbolic API employs Python `Decorators` to define operations, utilizing the `@zero_shot` decorator to create custom operations that do not require demonstration examples when the prompt is self-explanatory. In this example, the `zero_shot` decorator accepts two arguments: `prompt` and `constraints`. The former defines the prompt dictating the desired operation behavior, while the latter establishes validation constraints for the computed outcome, ensuring it meets expectations.
 
 If a constraint is not satisfied, the implementation will utilize the specified `default` fallback or default value. If neither is provided, the Symbolic API will raise a `ConstraintViolationException`. The return type is set to `int` in this example, so the value from the wrapped function will be of type int. The implementation uses auto-casting to a user-specified return data type, and if casting fails, the Symbolic API will raise a `ValueError`. If no return type is specified, the return type defaults to `Any`.
 
 ### Few-Shot Operations
 
-The `@ai.few_shot` decorator is a generalized version of the `@ai.zero_shot` decorator, used to define custom operations that require demonstration examples. To provide a clearer understanding, we present the function signature of the `few_shot` decorator:
+The `@few_shot` decorator is a generalized version of the `@zero_shot` decorator, used to define custom operations that require demonstration examples. To provide a clearer understanding, we present the function signature of the `few_shot` decorator:
 
 ```python
 def few_shot(prompt: str,
-             examples: Prompt,
+             examples: Optional[FewShot] = None,
              constraints: List[Callable] = [],
              default: Optional[object] = None,
              limit: int = 1,
@@ -74,32 +74,31 @@ To provide a more comprehensive understanding of our conceptual implementation, 
 
 The colors indicate logical groups of data processing steps. `Yellow` represents input and output data, `blue` shows places where one can customize or prepare the input of the engine, `green` indicates post-processing steps of the engine response, `red` displays the application of constraints (including attempted casting of the `return type signature` if specified in the decorated method), and `grey` denotes the custom method defining all properties, thus having access to all the previously mentioned objects.
 
-To conclude this section, here is an example of how to write a custom Japanese name generator using our `@ai.zero_shot` decorator:
+To conclude this section, here is an example of how to write a custom Japanese name generator using our `@zero_shot` decorator:
 
 ```python
-import symai as ai
-class Demo(ai.Symbol):
-    @ai.few_shot(prompt="Generate Japanese names: ",
-                 examples=ai.Prompt(
-                   ["愛子", "和花", "一郎", "和枝"]
-                 ),
-                 limit=2,
-                 constraints=[lambda x: len(x) > 1])
+class Demo(Symbol):
+    @aifew_shot(prompt="Generate Japanese names: ",
+                examples=FewShot(
+                    ["愛子", "和花", "一郎", "和枝"]
+                ),
+                limit=2,
+                constraints=[lambda x: len(x) > 1])
     def generate_japanese_names(self) -> list:
         return ['愛子', '和花'] # dummy implementation
 ```
 
 If the neural computation engine cannot compute the desired outcome, it will revert to the `default` implementation or default value. If no default implementation or value is found, the method call will raise an exception.
 
-## Prompt Design
+## Few-shot Examples Design
 
-The `Prompt` class is used to perform all the above operations. Acting as a container for information required to define a specific operation, the `Prompt` class also serves as the base class for all other Prompt classes.
+The `FewShot` class is used to perform all the above operations. Acting as a container for information required to define a specific operation, the `FewShot` class also serves as the base class for all other Examples classes.
 
-Here's an example of defining a `Prompt` to enforce the neural computation engine to compare two values:
+Here's an example of defining a `FewShot` to enforce the neural computation engine to compare two values:
 
 ```python
-class CompareValues(ai.Prompt):
-    def __init__(self) -> ai.Prompt:
+class CompareValues(FewShot):
+    def __init__(self) -> FewShot:
         super().__init__([
             "4 > 88 =>False",
             "-inf < 0 =>True",
@@ -113,7 +112,7 @@ class CompareValues(ai.Prompt):
 When calling the `<=` operation on two Symbols, the neural computation engine evaluates the symbols in the context of the `CompareValues` prompt.
 
 ```python
-res = ai.Symbol(1) <= ai.Symbol('one')
+res = Symbol(1) <= Symbol('one')
 ```
 
 This statement evaluates to `True` since the fuzzy compare operation conditions the engine to compare the two Symbols based on their semantic meaning.

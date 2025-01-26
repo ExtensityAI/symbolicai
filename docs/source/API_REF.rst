@@ -60,10 +60,10 @@ Pre Processors
    :undoc-members:
    :show-inheritance:
 
-Prompts
+Few-Shot Examples
 -------
 
-.. automodule:: symai.prompts
+.. automodule:: symai.few_shots
    :members:
    :undoc-members:
    :show-inheritance:

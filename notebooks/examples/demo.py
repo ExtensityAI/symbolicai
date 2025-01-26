@@ -1,6 +1,7 @@
 from typing import List
 
 import symai.core as ai
+from symai import FewShot
 
 
 class Demo(ai.Expression):
@@ -16,7 +17,7 @@ class Demo(ai.Expression):
         pass
 
     @ai.few_shot(prompt="Generate Japanese names: ",
-                 examples=ai.Prompt(["愛子", "和花", "一郎", "和枝"]),
+                 examples=FewShot(["愛子", "和花", "一郎", "和枝"]),
                  limit=2,
                  constraints=[lambda x: len(x) > 1])
     def generate_japanese_names(self) -> list:
