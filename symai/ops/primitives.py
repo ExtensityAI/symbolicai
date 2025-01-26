@@ -11,7 +11,7 @@ from typing import (TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Optional
 from .measures import calculate_frechet_distance, calculate_mmd
 from .. import core
 from .. import core_ext
-from ..prompts import Prompt
+from ..few_shots import FewShot
 
 if TYPE_CHECKING:
     from ..symbol import Expression, Symbol
@@ -1960,7 +1960,7 @@ class QueryHandlingPrimitives(Primitive):
     This mixin helps in transforming, preparing, and executing queries, and it is designed to be extendable as new ways of handling queries are developed.
     Future methods could potentially include query optimization, enhanced query formatting, multi-level query execution, query error handling, etc.
     '''
-    def query(self, context: str, prompt: Optional[str] = None, examples: Optional[List[Prompt]] = None, **kwargs) -> 'Symbol':
+    def query(self, context: str, prompt: Optional[str] = None, examples: Optional[List[FewShot]] = None, **kwargs) -> 'Symbol':
         '''
         Queries the symbol value based on a specified context.
         Uses the @core.query decorator, queries based on the context, prompt, and examples.
@@ -1968,7 +1968,7 @@ class QueryHandlingPrimitives(Primitive):
         Args:
             context (str): The context used for the query.
             prompt (Optional[str]): The prompt for the query. Defaults to None.
-            examples (Optional[List[Prompt]]): The examples for the query. Defaults to None.
+            examples (Optional[List[FewShot]]): The few shots for the query. Defaults to None.
             **kwargs: Additional keyword arguments to pass to the core.query decorator.
 
         Returns:
@@ -2931,4 +2931,3 @@ class FineTuningPrimitives(Primitive):
             data (torch.Tensor): The data to set.
         '''
         self._metadata.data = data
-

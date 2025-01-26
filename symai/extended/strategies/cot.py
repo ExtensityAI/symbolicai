@@ -1,10 +1,10 @@
 from pydantic import BaseModel
 from ...strategy import BaseStrategy
-from ...prompts import PromptRegistry, PromptLanguage
+from ...few_shots import FewShotRegistry, FewShotLanguage
 
 
-registry = PromptRegistry()
-registry.register_instruction(PromptLanguage.ENGLISH, "static_context_chain_of_thoughts",
+registry = FewShotRegistry()
+registry.register_instruction(FewShotLanguage.ENGLISH, "static_context_chain_of_thoughts",
 """
 {
     "stepbystep": "Q: Your warehouse has 5 pallets of widgets. You purchase 2 more shipments of widgets. Each shipment contains 3 pallets. How many pallets of widgets do you have now?
@@ -39,4 +39,3 @@ class ChainOfThought(BaseStrategy):
     @property
     def static_context(self):
         return registry.instruction("static_context_chain_of_thoughts")
-

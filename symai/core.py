@@ -5,7 +5,7 @@ from box import Box
 
 from . import post_processors as post
 from . import pre_processors as pre
-from . import prompts as prm
+from . import few_shots as fs
 from .functional import EngineRepository
 from .symbol import Expression, Metadata
 
@@ -97,7 +97,7 @@ class Argument(Expression):
 
 
 def few_shot(prompt: str = '',
-             examples: prm.Prompt = [],
+             examples: fs.FewShot = [],
              constraints: List[Callable] = [],
              default: Any = None,
              limit: int = 1,
@@ -109,7 +109,7 @@ def few_shot(prompt: str = '',
 
     Args:
         prompt (str): The prompt describing the task. Defaults to 'Summarize the content of the following text:\n'.
-        examples (Any): A object containing examples to be used for the task in specified format.
+        examples (Any): An object containing few shots to be used for the task in the specified format.
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         default (object, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         limit (int, optional): The maximum number of results to be returned, if more are obtained.
@@ -225,7 +225,7 @@ def summarize(prompt: str = 'Summarize the content of the following text:\n',
 def equals(context: str = 'contextually',
            default: bool = False,
            prompt: str = "Make a fuzzy equals comparison. Are the following objects {} the same?\n",
-           examples: prm.Prompt = prm.FuzzyEquals(),
+           examples: fs.FewShot = fs.FuzzyEquals(),
            constraints: List[Callable] = [],
            pre_processors: Optional[List[pre.PreProcessor]] = [pre.EqualsPreProcessor()],
            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
@@ -236,7 +236,7 @@ def equals(context: str = 'contextually',
         context (str, optional): Keyword to express how to compare the words. Defaults to 'contextually'. As an alternative, one can use other type such as 'literally'.
         default (bool, optional): Condition outcome. Defaults to False.
         prompt (str, optional): The prompt describing the task. Defaults to "Are the following objects {} the same?\n".
-        examples (Prompt, optional): List of fuzzy examples showing how to compare objects in specified format. Defaults to FuzzyEquals().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to FuzzyEquals().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [EqualsPreProcessor()] and uses 'self' plus one required argument for comparison (other).
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -259,7 +259,7 @@ def equals(context: str = 'contextually',
 def sufficient(query: str,
                prompt: str = "Consider if there is sufficient information to answer the query\n",
                default: bool = False,
-               examples: prm.Prompt = prm.SufficientInformation(),
+               examples: fs.FewShot = fs.SufficientInformation(),
                constraints: List[Callable] = [],
                pre_processors: Optional[List[pre.PreProcessor]] = [pre.SufficientInformationPreProcessor()],
                post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
@@ -270,7 +270,7 @@ def sufficient(query: str,
         query (str): The query to be evaluated.
         prompt (str, optional): The prompt describing the task. Defaults to "Consider if there is sufficient information to answer the query"
         default (bool, optional): The default value to be returned if the task cannot be solved. Defaults to False. Alternatively, one can implement the decorated function.
-        examples (Prompt, optional): A list of example inputs used to train the model. Defaults to SufficientInformation().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to SufficientInformation().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [SufficientInformationPreProcessor()].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -293,7 +293,7 @@ def sufficient(query: str,
 
 def delitem(default: Optional[str] = None,
             prompt: str = "Delete the items at the index position\n",
-            examples: prm.Prompt = prm.RemoveIndex(),
+            examples: fs.FewShot = fs.RemoveIndex(),
             constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.DeleteIndexPreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
@@ -303,7 +303,7 @@ def delitem(default: Optional[str] = None,
     Args:
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None.
         prompt (str, optional): The prompt describing the task. Defaults to 'Delete the items at the index position'
-        examples (Prompt, optional): A list of strings from which the model can learn. Defaults to RemoveIndex().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to RemoveIndex().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [DeleteIndexPreProcessor()].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -324,7 +324,7 @@ def delitem(default: Optional[str] = None,
 
 def setitem(default: Optional[str] = None,
             prompt: str = "Set item at index position\n",
-            examples: prm.Prompt = prm.SetIndex(),
+            examples: fs.FewShot = fs.SetIndex(),
             constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.SetIndexPreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
@@ -334,7 +334,7 @@ def setitem(default: Optional[str] = None,
     Args:
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         prompt (str, optional): The prompt describing the task. Defaults to "Set item at index position"
-        examples (Prompt, optional): A list of examples that the model should be trained on. Defaults to SetIndex().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to SetIndex().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [SetIndexPreProcessor()].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -355,7 +355,7 @@ def setitem(default: Optional[str] = None,
 
 def getitem(default: Optional[str] = None,
             prompt: str = "Get item at index position\n",
-            examples: prm.Prompt = prm.Index(),
+            examples: fs.FewShot = fs.Index(),
             constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.IndexPreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
@@ -365,7 +365,7 @@ def getitem(default: Optional[str] = None,
     Args:
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         prompt (str, optional): The prompt describing the task. Defaults to 'Get item at index position
-        examples (Prompt, optional): A list of examples to be used for training. Defaults to Index().
+        examples (FewShot, optional): A list of few shots to be used for training. Defaults to Index().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [IndexPreProcessor()].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -387,7 +387,7 @@ def getitem(default: Optional[str] = None,
 def modify(changes: str,
            default: Optional[str] = None,
            prompt: str = "Modify the text to match the criteria:\n",
-           examples: prm.Prompt = prm.Modify(),
+           examples: fs.FewShot = fs.Modify(),
            constraints: List[Callable] = [],
            pre_processors: Optional[List[pre.PreProcessor]] = [pre.ModifyPreProcessor()],
            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
@@ -398,7 +398,7 @@ def modify(changes: str,
         changes (str): The criteria to modify the text.
         default (str, optional): A default result if specified. Defaults to None.
         prompt (str, optional): The prompt describing the task. Defaults to "Modify the text to match the criteria:\n".
-        examples (Prompt, optional): List of possible modifications in specified format. Defaults to Modify().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to Modify().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [ModifyPreProcessor()] and requires one argument (text).
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -421,7 +421,7 @@ def filtering(criteria: str,
               include: bool = False,
               default: Optional[str] = None,
               prompt: str = "Filter the information from the text based on the filter criteria. Leave sentences unchanged if they are unrelated to the filter criteria:\n",
-              examples: prm.Prompt = prm.Filter(),
+              examples: fs.FewShot = fs.Filter(),
               constraints: List[Callable] = [],
               pre_processors: Optional[List[pre.PreProcessor]] = [pre.FilterPreProcessor()],
               post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
@@ -433,7 +433,7 @@ def filtering(criteria: str,
         include (bool, optional): If True, include the information matching the criteria. Defaults to False.
         default (str, optional): A default result if specified. Defaults to None.
         prompt (str, optional): The prompt describing the task. Defaults to "Remove the information from the text based on the filter criteria:\n".
-        examples (Prompt, optional): List of filtered examples in specified format. Defaults to Filter().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to Filter().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model.. Defaults to [FilterPreProcessor()].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -456,7 +456,7 @@ def filtering(criteria: str,
 def notify(subscriber: Dict[str, Callable],
            default: Optional[object] = None,
            prompt: str = "List the semantically related topics:\n",
-           examples: prm.Prompt = prm.SemanticMapping(),
+           examples: fs.FewShot = fs.SemanticMapping(),
            constraints: List[Callable] = [],
            pre_processors: Optional[List[pre.PreProcessor]] = [pre.SemanticMappingPreProcessor()],
            post_processors: Optional[List[post.PostProcessor]] = [post.SplitPipePostProcessor(), post.NotifySubscriberPostProcessor()],
@@ -467,7 +467,7 @@ def notify(subscriber: Dict[str, Callable],
         subscriber (Dict[str, Callable], optional): Dictionary of key-value pairs, with the key being the topic and the value being the function to be called if the topic is detected in the input text.
         default (object, optional): A default result if specified. Defaults to None.
         prompt (_type_, optional): The prompt describing the task. Defaults to "List the semantically related topics:\n".
-        examples (Prompt, optional): List of semantic mapping examples. Defaults to SemanticMapping().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to SemanticMapping().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model.. Defaults to [SemanticMappingPreProcessor()]. Requires one argument (text).
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [SplitPipePostProcessor(), NotifySubscriberPostProcessor()].
@@ -489,7 +489,7 @@ def notify(subscriber: Dict[str, Callable],
 def compare(default: bool = False,
             operator: str = '>',
             prompt: str = "Compare number 'A' to 'B':\n",
-            examples: prm.Prompt = prm.CompareValues(),
+            examples: fs.FewShot = fs.CompareValues(),
             constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.ComparePreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
@@ -500,7 +500,7 @@ def compare(default: bool = False,
         default (bool, optional): The conditional outcome of the comparison. Defaults to False.
         operator (str, optional): A logical operator comparing the two statements. Defaults to '>'.
         prompt (_type_, optional): The prompt describing the task. Defaults to "Compare number 'A' to 'B':\n".
-        examples (Prompt, optional): List of comparison examples. Defaults to CompareValues().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to CompareValues().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model.. Defaults to [ComparePreProcessor()]. Uses 'self' for 'A' and requires exactly one argument (B) to compare.
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -524,7 +524,7 @@ def compare(default: bool = False,
 def convert(format: str,
             default: Optional[str] = None,
             prompt: str = "Translate the following text into {} format.\n",
-            examples: prm.Prompt = prm.Format(),
+            examples: fs.FewShot = fs.Format(),
             constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.TextFormatPreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
@@ -535,7 +535,7 @@ def convert(format: str,
         format (str): Description of how to format the text.
         default (str, optional): A default result if specified. Defaults to None.
         prompt (str, optional): The prompt describing the task. Defaults to "Translate the following text into {} format.\n".
-        examples (Prompt, optional): List of format examples. Defaults to Format().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to Format().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (list, optional): A list of pre-processors to be applied to the input and shape the input to the model.. Defaults to [TextFormatPreProcessor()].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -557,7 +557,7 @@ def convert(format: str,
 def transcribe(modify: str,
                default: Optional[str] = None,
                prompt: str = "Transcribe the following text by only modifying the text by the provided instruction.\n",
-               examples: prm.Prompt = prm.Transcription(),
+               examples: fs.FewShot = fs.Transcription(),
                constraints: List[Callable] = [],
                pre_processors: Optional[List[pre.PreProcessor]] = [pre.TranscriptionPreProcessor()],
                post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
@@ -568,7 +568,7 @@ def transcribe(modify: str,
         modify (str): Description of how to modify the transcription.
         default (str, optional): A default result if specified. Defaults to None.
         prompt (str, optional): The prompt describing the task. Defaults to "Transcribe the following text by only modifying the text by the provided instruction.\n".
-        examples (Prompt, optional): List of format examples. Defaults to Format().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to Transcription().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (list, optional): A list of pre-processors to be applied to the input and shape the input to the model.. Defaults to [TextFormatPreProcessor()].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -625,7 +625,7 @@ def analyze(query: str,
             exception: Exception,
             default: Optional[str] = None,
             prompt: str = "Only analyze the error message and suggest a potential correction, however, do NOT provide the code!\n",
-            examples: prm.Prompt = prm.ExceptionMapping(),
+            examples: fs.FewShot = fs.ExceptionMapping(),
             constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.ExceptionPreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
@@ -637,7 +637,7 @@ def analyze(query: str,
         exception (Exception): The exception to be analyzed.
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         prompt (str, optional): The prompt describing the task. Defaults to 'Analyses the error and propose a correction.'.
-        examples (Prompt, optional): A list of example answers to the error. Defaults to ExceptionMapping().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to ExceptionMapping().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [ExceptionPreProcessor()].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -661,7 +661,7 @@ def correct(context: str,
             exception: Exception,
             default: Optional[str] = None,
             prompt: str = "Correct the code according to the context description.\n",
-            examples: Optional[prm.Prompt] = None,
+            examples: Optional[fs.FewShot] = None,
             constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.CorrectionPreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor(), post.ConfirmToBoolPostProcessor()],
@@ -673,7 +673,7 @@ def correct(context: str,
         exception (Exception): The exception to be analyzed.
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         prompt (str, optional): The prompt describing the task. Defaults to 'Correct the code according to the context description.'.
-        examples (Prompt, optional): A list of example answers to the error. Defaults to ExecutionCorrection().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to None.
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [CorrectionPreProcessor()].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -696,7 +696,7 @@ def correct(context: str,
 def translate(language: str = 'English',
               default: str = "Sorry, I do not understand the given language.",
               prompt: str = "Translate the following text into {}:\n",
-              examples: Optional[prm.Prompt] = None,
+              examples: Optional[fs.FewShot] = None,
               constraints: List[Callable] = [],
               pre_processors: Optional[List[pre.PreProcessor]] = [pre.LanguagePreProcessor()],
               post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
@@ -707,7 +707,7 @@ def translate(language: str = 'English',
         language (str, optional): The language to which the text should be translated. Defaults to 'English'.
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to "Sorry, I do not understand the given language.".
         prompt (str, optional): The prompt describing the task. Defaults to "Translate the following text into {}:".
-        examples (Prompt, optional): A list of example texts to be used as a reference. Defaults to [].
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to None.
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [LanguagePreProcessor()].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -729,7 +729,7 @@ def translate(language: str = 'English',
 def rank(default: Optional[object] = None,
          order: str = 'desc',
          prompt: str = "Order the list of objects based on their quality measure and oder literal:\n",
-         examples: prm.Prompt = prm.RankList(),
+         examples: fs.FewShot = fs.RankList(),
          constraints: List[Callable] = [],
          pre_processors: Optional[List[pre.PreProcessor]] = [pre.RankPreProcessor()],
          post_processors: Optional[List[post.PostProcessor]] = [post.ASTPostProcessor()],
@@ -740,7 +740,7 @@ def rank(default: Optional[object] = None,
         default (object, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         order (str, optional): The order of the objects in the list. Can be either 'desc' (descending) or 'asc' (ascending). Defaults to 'desc'.
         prompt (str, optional): The prompt describing the task. Defaults to "Order the list of objects based on their quality measure and oder literal:".
-        examples (Prompt, optional): A list of examples of ordered objects. Defaults to RankList().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to RankList().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [RankPreProcessor()].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [ASTPostProcessor()].
@@ -762,7 +762,7 @@ def rank(default: Optional[object] = None,
 
 def replace(prompt: str = "Replace text parts by string pattern.\n",
             default: Optional[str] = None,
-            examples: prm.Prompt = prm.ReplaceText(),
+            examples: fs.FewShot = fs.ReplaceText(),
             constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.ReplacePreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
@@ -772,7 +772,7 @@ def replace(prompt: str = "Replace text parts by string pattern.\n",
     Args:
         prompt (str, optional): The prompt describing the task. Defaults to 'Replace text parts by string pattern.'.
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None.
-        examples (Prompt, optional): A list of examples to be used to train the model. Defaults to ReplaceText().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to ReplaceText().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [ReplacePreProcessor()].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -792,7 +792,7 @@ def replace(prompt: str = "Replace text parts by string pattern.\n",
 
 def include(prompt: str = "Include information based on description.\n",
             default: Optional[str] = None,
-            examples: prm.Prompt = prm.IncludeText(),
+            examples: fs.FewShot = fs.IncludeText(),
             constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.IncludePreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
@@ -802,7 +802,7 @@ def include(prompt: str = "Include information based on description.\n",
     Args:
         prompt (str, optional): The prompt describing the task. Defaults to 'Include information based on description.'.
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
-        examples (Prompt, optional): A list of examples containing information to be included. Defaults to IncludeText().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to IncludeText().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -822,7 +822,7 @@ def include(prompt: str = "Include information based on description.\n",
 
 def combine(prompt: str = "Add the two data types in a logical way:\n",
             default: Optional[str] = None,
-            examples: prm.Prompt = prm.CombineText(),
+            examples: fs.FewShot = fs.CombineText(),
             constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.CombinePreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
@@ -832,7 +832,7 @@ def combine(prompt: str = "Add the two data types in a logical way:\n",
     Args:
         prompt (str, optional): The prompt describing the task. Defaults to 'Add the two data types in a logical way:'.
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None.
-        examples (Prompt, optional): A list of examples to show how the data should be combined. Defaults to CombineText().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to CombineText().
         constraints (List[Callable], optional): A list of constraints applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [CombinePreProcessor()].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -852,7 +852,7 @@ def combine(prompt: str = "Add the two data types in a logical way:\n",
 
 def negate(prompt: str = "Negate the following statement:\n",
            default: Optional[str] = None,
-           examples: prm.Prompt = prm.NegateStatement(),
+           examples: fs.FewShot = fs.NegateStatement(),
            constraints: List[Callable] = [],
            pre_processors: Optional[List[pre.PreProcessor]] = [pre.NegatePreProcessor()],
            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
@@ -862,7 +862,7 @@ def negate(prompt: str = "Negate the following statement:\n",
     Args:
         prompt (str, optional): The prompt describing the task. Defaults to "Negate the following statement:".
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None.
-        examples (Prompt, optional): A list of example statements to be used for training. Defaults to NegateStatement().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to NegateStatement().
         constraints (List[Callable], optional): A list of constraints applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [NegatePreProcessor()].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -882,7 +882,7 @@ def negate(prompt: str = "Negate the following statement:\n",
 
 def contains(default: bool = False,
              prompt: str = "Is semantically the information of 'A' contained in 'B'?\n",
-             examples: prm.Prompt = prm.ContainsValue(),
+             examples: fs.FewShot = fs.ContainsValue(),
              constraints: List[Callable] = [],
              pre_processors: Optional[List[pre.PreProcessor]] = [pre.ContainsPreProcessor()],
              post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
@@ -892,7 +892,7 @@ def contains(default: bool = False,
     Args:
         default (bool, optional): The default value to be returned if the task cannot be solved. Defaults to False.
         prompt (str, optional): The prompt describing the task. Defaults to 'Is information 'A' contained in 'B'?'
-        examples (Prompt, optional): Examples of strings to check if they contain the given string. Defaults to ContainsValue().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to ContainsValue().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [ContainsPreProcessor()].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -914,7 +914,7 @@ def contains(default: bool = False,
 
 def isinstanceof(default: bool = False,
                  prompt: str = "Detect if 'A' isinstanceof 'B':\n",
-                 examples: prm.Prompt = prm.IsInstanceOf(),
+                 examples: fs.FewShot = fs.IsInstanceOf(),
                  constraints: List[Callable] = [],
                  pre_processors: Optional[List[pre.PreProcessor]] = [pre.IsInstanceOfPreProcessor()],
                  post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
@@ -924,7 +924,7 @@ def isinstanceof(default: bool = False,
     Args:
         default (bool, optional): The default value to be returned if the task cannot be solved. Defaults to False. Alternatively, one can implement the decorated function.
         prompt (str, optional): The prompt describing the task. Defaults to "Detect if 'A' isinstanceof 'B':".
-        examples (Prompt, optional): A list of examples used to train the model. Defaults to IsInstanceOf().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to IsInstaceOf().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to IsInstanceOfPreProcessor().
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -947,7 +947,7 @@ def isinstanceof(default: bool = False,
 def case(enum: List[str],
          default: str,
          prompt: str = "Classify the text according to one of the following categories: ",
-         examples: Optional[prm.Prompt] = None,
+         examples: Optional[fs.FewShot] = None,
          stop: List[str] = ['\n'],
          pre_processors: Optional[List[pre.PreProcessor]] = [pre.EnumPreProcessor(), pre.TextMessagePreProcessor(), pre.PredictionMessagePreProcessor()],
          post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor(), post.CaseInsensitivePostProcessor()],
@@ -957,7 +957,7 @@ def case(enum: List[str],
     Args:
         enum (List[str]): A list of strings representing the categories to be classified.
         default (str): The default category to be returned if the task cannot be solved.
-        examples (Prompt, optional): A list of examples used to train the model.
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to None.
         stop (List[str], optional): A list of strings that will stop the prompt. Defaults to ['\n'].
         prompt (str, optional): The prompt describing the task. Defaults to "Classify the text according to one of the following categories: ".
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [EnumPreProcessor(), TextMessagePreProcessor(), PredictionMessagePreProcessor()].
@@ -979,7 +979,7 @@ def case(enum: List[str],
 
 def extract(prompt: str = "Extract a pattern from text:\n",
             default: Optional[str] = None,
-            examples: prm.Prompt = prm.ExtractPattern(),
+            examples: fs.FewShot = fs.ExtractPattern(),
             constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.ExtractPatternPreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
@@ -989,7 +989,7 @@ def extract(prompt: str = "Extract a pattern from text:\n",
     Args:
         prompt (str, optional): The prompt describing the task. Defaults to "Extract a pattern from text:".
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
-        examples (Prompt, optional): A list of examples of the pattern to be extracted. Defaults to ExtractPattern().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to ExtractPattern().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [ExtractPatternPreProcessor()].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -1047,7 +1047,7 @@ def expression(prompt: str = "Evaluate the symbolic expressions:\n",
 
 def interpret(prompt: str = "Evaluate the symbolic expressions:\n",
               default: Optional[str] = None,
-              examples: prm.Prompt = prm.SimpleSymbolicExpression(),
+              examples: fs.FewShot = fs.SimpleSymbolicExpression(),
               constraints: List[Callable] = [],
               pre_processors: Optional[List[pre.PreProcessor]] = [pre.InterpretExpressionPreProcessor()],
               post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
@@ -1057,6 +1057,7 @@ def interpret(prompt: str = "Evaluate the symbolic expressions:\n",
     Args:
         prompt (str, optional): The prompt describing the task. Defaults to 'Evaluate the symbolic expressions:'.
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to SimpleSymbolicExpression().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [SimpleSymbolicExpressionPreProcessor()].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -1077,7 +1078,7 @@ def interpret(prompt: str = "Evaluate the symbolic expressions:\n",
 def logic(prompt: str = "Evaluate the logic expressions:\n",
           operator: str = 'and',
           default: Optional[str] = None,
-          examples: prm.Prompt = prm.LogicExpression(),
+          examples: fs.FewShot = fs.LogicExpression(),
           constraints: List[Callable] = [],
           pre_processors: Optional[List[pre.PreProcessor]] = [pre.LogicExpressionPreProcessor()],
           post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
@@ -1088,7 +1089,7 @@ def logic(prompt: str = "Evaluate the logic expressions:\n",
         prompt (str, optional): The prompt describing the task. Defaults to 'Evaluate the logic expressions:'.
         operator (str, optional): The operator used in the expression. Defaults to 'and'.
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
-        examples (Prompt, optional): The list of examples to be tested. Defaults to LogicExpression().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to LogicExpression().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -1110,7 +1111,7 @@ def logic(prompt: str = "Evaluate the logic expressions:\n",
 
 def invert(prompt: str = "Invert the logic of the content:\n",
            default: Optional[str] = None,
-           examples: prm.Prompt = prm.InvertExpression(),
+           examples: fs.FewShot = fs.InvertExpression(),
            constraints: List[Callable] = [],
            pre_processors: Optional[List[pre.PreProcessor]] = [pre.ArrowMessagePreProcessor()],
            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
@@ -1120,7 +1121,7 @@ def invert(prompt: str = "Invert the logic of the content:\n",
     Args:
         prompt (str, optional): The prompt describing the task. Defaults to 'Invert the logic of the content:'.
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
-        examples (Prompt, optional): A list of examples used to train the model. Defaults to InvertExpression().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to InvertExpression().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [ArrowMessagePreProcessor()].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -1142,7 +1143,7 @@ def invert(prompt: str = "Invert the logic of the content:\n",
 def simulate(prompt: str = "Simulate the following code:\n",
              default: Optional[str] = None,
              limit: int = None,
-             examples: prm.Prompt = prm.SimulateCode(),
+             examples: fs.FewShot = fs.SimulateCode(),
              constraints: List[Callable] = [],
              pre_processors: Optional[List[pre.PreProcessor]] = [pre.SimulateCodePreProcessor()],
              post_processors: Optional[List[post.PostProcessor]] = [post.SplitPipePostProcessor(), post.TakeLastPostProcessor()],
@@ -1153,7 +1154,7 @@ def simulate(prompt: str = "Simulate the following code:\n",
         prompt (str, optional): The prompt describing the task. Defaults to 'Simulate the following code:'.
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         limit (int, optional): The number of results to be returned. Defaults to None.
-        examples (Prompt, optional): A list of example codes used to train the model. Defaults to SimulateCode().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to SimulateCode().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [SimulateCodePreProcessor()].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [SplitPipePostProcessor(), TakeLastPostProcessor()].
@@ -1174,7 +1175,7 @@ def simulate(prompt: str = "Simulate the following code:\n",
 def code(prompt: str = "Generate code that solves the following problems:\n",
          default: Optional[str] = None,
          limit: int = None,
-         examples: prm.Prompt = prm.GenerateCode(),
+         examples: fs.FewShot = fs.GenerateCode(),
          constraints: List[Callable] = [],
          pre_processors: Optional[List[pre.PreProcessor]] = [pre.GenerateCodePreProcessor()],
          post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
@@ -1185,7 +1186,7 @@ def code(prompt: str = "Generate code that solves the following problems:\n",
         prompt (str, optional): The prompt describing the task. Defaults to 'Generate code that solves the following problems:'.
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None.
         limit (int, optional): The maximum amount of code to be generated. Defaults to None.
-        examples (Prompt, optional): A list of given examples of code. Defaults to GenerateCode().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to GenerateCode().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to GenerateCodePreProcessor().
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -1206,7 +1207,7 @@ def code(prompt: str = "Generate code that solves the following problems:\n",
 def outline(prompt: str = "Outline only the essential content as a short list of bullets. Each bullet is in a new line:\n",
             default: List[str] = None,
             limit: int = None,
-            examples: prm.Prompt = prm.TextToOutline(),
+            examples: fs.FewShot = fs.TextToOutline(),
             constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.TextToOutlinePreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor(), post.SplitNewLinePostProcessor()],
@@ -1217,7 +1218,7 @@ def outline(prompt: str = "Outline only the essential content as a short list of
         prompt (str, optional): The prompt describing the task. Defaults to "Outline only the essential content as a short list of bullets. Each bullet is in a new line:".
         default (List[str], optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         limit (int, optional): The maximum length of the output. Defaults to None.
-        examples (Prompt, optional): The list of examples provided. Defaults to TextToOutline().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to TextToOutline().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor(), SplitNewLinePostProcessor()].
@@ -1239,7 +1240,7 @@ def unique(prompt: str = "Create a short unique key that captures the essential 
            keys: List[str] = None,
            default: List[str] = None,
            limit: int = None,
-           examples: prm.Prompt = prm.UniqueKey(),
+           examples: fs.FewShot = fs.UniqueKey(),
            constraints: List[Callable] = [],
            pre_processors: Optional[List[pre.PreProcessor]] = [pre.UniquePreProcessor()],
            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
@@ -1251,7 +1252,7 @@ def unique(prompt: str = "Create a short unique key that captures the essential 
         keys (List[str], optional): A list of keys to check against for uniqueness. Defaults to None.
         default (List[str], optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         limit (int, optional): The maximum number of keys to return. Defaults to None.
-        examples (Prompt, optional): A list of example keys that the unique key should be based on. Defaults to UniqueKey().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to UniqueKey().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [UniquePreProcessor()].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -1273,7 +1274,7 @@ def unique(prompt: str = "Create a short unique key that captures the essential 
 def clean(prompt: str = "Clean up the text from special characters or escape sequences. DO NOT change any words or sentences! Keep original semantics:\n",
           default: List[str] = None,
           limit: int = None,
-          examples: prm.Prompt = prm.CleanText(),
+          examples: fs.FewShot = fs.CleanText(),
           constraints: List[Callable] = [],
           pre_processors: Optional[List[pre.PreProcessor]] = [pre.CleanTextMessagePreProcessor()],
           post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
@@ -1284,7 +1285,7 @@ def clean(prompt: str = "Clean up the text from special characters or escape seq
         prompt (str, optional): The prompt describing the task. Defaults to "Clean up the text from special characters or escape sequences:".
         default (List[str], optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         limit (int, optional): The maximum number of cleaned up words to be returned. Defaults to None.
-        examples (Prompt, optional): A list of examples to be used to train the model. Defaults to [CleanText()].
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to CleanText().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [CleanTextMessagePreProcessor()].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -1304,7 +1305,7 @@ def clean(prompt: str = "Clean up the text from special characters or escape seq
 
 def compose(prompt: str = "Create a coherent text based on the facts listed in the outline:\n",
             default: Optional[str] = None,
-            examples: Optional[prm.Prompt] = None,
+            examples: Optional[fs.FewShot] = None,
             constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.GenerateTextPreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
@@ -1314,7 +1315,7 @@ def compose(prompt: str = "Create a coherent text based on the facts listed in t
     Args:
         prompt (str, optional): The prompt describing the task. Defaults to "Create a coherent text based on an outline:".
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
-        examples (Prompt, optional): A list of examples that help guide the model to solve the task. Defaults to [].
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to None.
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [GenerateTextPreProcessor()].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -1336,7 +1337,7 @@ def foreach(condition: str,
             apply: str,
             prompt: str = "Iterate over each element and apply operation based on condition:\n",
             default: Optional[str] = None,
-            examples: prm.Prompt = prm.ForEach(),
+            examples: fs.FewShot = fs.ForEach(),
             constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.ForEachPreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
@@ -1348,7 +1349,7 @@ def foreach(condition: str,
         apply (str): The operation to be applied to each element.
         prompt (str, optional): The prompt describing the task. Defaults to "Iterate over each element and apply operation based on condition:".
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
-        examples (Prompt, optional): A list of examples to be used by the model. Defaults to ForEach().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to ForEach().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -1371,7 +1372,7 @@ def foreach(condition: str,
 def dictionary(context: str,
                prompt: str = "Map related content together under a common abstract topic. Do not remove content:\n",
                default: Optional[str] = None,
-               examples: prm.Prompt = prm.MapContent(),
+               examples: fs.FewShot = fs.MapContent(),
                constraints: List[Callable] = [],
                pre_processors: Optional[List[pre.PreProcessor]] = [pre.MapPreProcessor()],
                post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor(), post.ASTPostProcessor()],
@@ -1382,7 +1383,7 @@ def dictionary(context: str,
         context (str): The text from which the content is to be mapped.
         prompt (str, optional): The prompt describing the task. Defaults to "Map related content together under a common abstract topic. Do not remove content:".
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
-        examples (Prompt, optional): A list of example content to be mapped. Defaults to MapContent().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to MapContent().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [MapPreProcessor()].
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor(), ASTPostProcessor()].
@@ -1404,7 +1405,7 @@ def dictionary(context: str,
 def listing(condition: str,
             prompt: str = "List each element contained in the text or list based on condition:\n",
             default: Optional[str] = None,
-            examples: prm.Prompt = prm.ListObjects(),
+            examples: fs.FewShot = fs.ListObjects(),
              constraints: List[Callable] = [],
             pre_processors: Optional[List[pre.PreProcessor]] = [pre.ListPreProcessor()],
             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
@@ -1415,7 +1416,7 @@ def listing(condition: str,
         condition (str): The condition to filter elements by.
         prompt (str, optional): The prompt describing the task. Defaults to "List each element contained in the text or list based on condition:".
         default (str, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
-        examples (Prompt, optional): A list of examples that can be used to validate the output of the model. Defaults to ListObjects().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to ListObjects().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to None.
         post_processors (List[PostProcessor], optional): A list of post-processors to be applied to the model output and before returning the result. Defaults to [StripPostProcessor()].
@@ -1436,7 +1437,7 @@ def listing(condition: str,
 
 def query(context: str,
           prompt: Optional[str] = None,
-          examples: Optional[prm.Prompt] = None,
+          examples: Optional[fs.FewShot] = None,
           constraints: List[Callable] = [],
           default: Optional[object] = None,
           pre_processors: Optional[List[pre.PreProcessor]] = [pre.QueryPreProcessor()],
@@ -1447,7 +1448,7 @@ def query(context: str,
     Args:
         context (str): The context for the query.
         prompt (str, optional): The prompt describing the task. Defaults to None.
-        examples (Prompt, optional): A list of examples to provide to the model. Defaults to [].
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to None.
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         default (object, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [QueryPreProcessor()].
@@ -1468,7 +1469,7 @@ def query(context: str,
 
 
 def expand(prompt: Optional[str] = 'Write a self-contained function (with all imports) to solve a specific user problem task. Label the function with a name that describes the task.',
-           examples: Optional[prm.Prompt] = prm.ExpandFunction(),
+           examples: Optional[fs.FewShot] = fs.ExpandFunction(),
            constraints: List[Callable] = [],
            default: Optional[object] = None,
            pre_processors: Optional[List[pre.PreProcessor]] = pre.ExpandFunctionPreProcessor(),
@@ -1478,7 +1479,7 @@ def expand(prompt: Optional[str] = 'Write a self-contained function (with all im
 
     Args:
         prompt (str, optional): The prompt describing the task. Defaults to 'Write a prompt to condition a large language model to perform an action given a user task'.
-        examples (Prompt, optional): A list of examples to provide to the model. Defaults to ExpandFunction().
+        examples (FewShot, optional): Few-shot examples to guide the model. Defaults to ExpandFunction().
         constraints (List[Callable], optional): A list of constrains applied to the model output to verify the output. Defaults to [].
         default (object, optional): The default value to be returned if the task cannot be solved. Defaults to None. Alternatively, one can implement the decorated function.
         pre_processors (List[PreProcessor], optional): A list of pre-processors to be applied to the input and shape the input to the model. Defaults to [QueryPreProcessor()].
@@ -1492,7 +1493,7 @@ def expand(prompt: Optional[str] = 'Write a self-contained function (with all im
                     constraints=constraints,
                     default=default,
                     limit=1,
-                    stop=[prm.Prompt.stop_token],
+                    stop=[fs.FewShot.stop_token],
                     pre_processors=pre_processors,
                     post_processors=post_processors,
                     **decorator_kwargs)

@@ -290,7 +290,7 @@ from .imports import Import
 from .interfaces import Interface
 from .post_processors import PostProcessor
 from .pre_processors import PreProcessor
-from .prompts import Prompt, PromptRegistry, PromptLanguage
+from .few_shots import FewShot, FewShotRegistry, FewShotLanguage
 from .shell import Shell
 from .strategy import Strategy
 from .symbol import Call, Expression, GlobalSymbolPrimitive, Metadata, Symbol

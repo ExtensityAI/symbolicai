@@ -5,7 +5,7 @@ from .. import core
 from ..formatter import SentenceFormatter
 from ..post_processors import StripPostProcessor
 from ..pre_processors import PreProcessor
-from ..prompts import Prompt
+from ..few_shots import FewShot
 from ..symbol import Expression, Symbol
 
 GRAPH_DESCRIPTION = """[Description]
@@ -37,7 +37,7 @@ class Graph(Expression):
         res = ''
 
         @core.few_shot(prompt="Extract relationships between entities:\n",
-                  examples=Prompt([
+                  examples=FewShot([
                         '$> John has a dog. =>John, dog, 1 EOF',
                         '$> Karl has two sons. =>Karl, sons, 2 EOF',
                         '$> Similarly, the term general linguistics is used to distinguish core linguistics from other types of study =>general linguistics, core linguistics, 1 EOF',
@@ -81,5 +81,3 @@ class Graph(Expression):
         for r in results:
             res += r
         return res
-
-

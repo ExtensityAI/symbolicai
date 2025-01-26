@@ -7,7 +7,7 @@ from typing import Any, Callable, List
 from .exceptions import TemplatePropertyException
 
 
-class Prompt(ABC):
+class FewShot(ABC):
     stop_token = 'EOF'
 
     def __init__(self, value, **format_kwargs):
@@ -19,17 +19,17 @@ class Prompt(ABC):
             for v in value:
                 if isinstance(v, str):
                     self._value.append(v)
-                elif isinstance(v, Prompt):
+                elif isinstance(v, FewShot):
                     self._value += v.value
                 else:
-                    raise ValueError(f"List of values must be strings or Prompts, not {type(v)}")
-        elif isinstance(value, Prompt):
+                    raise ValueError(f"List of values must be strings or FewShot, not {type(v)}")
+        elif isinstance(value, FewShot):
             self._value += value.value
         elif isinstance(value, Callable):
             res = value()
             self._value += res.value
         else:
-            raise TypeError(f"Prompt value must be of type str, List[str], Prompt, or List[Prompt], not {type(value)}")
+            raise TypeError(f"FewShot value must be of type str, List[str], FewShot, or List[FewShot], not {type(value)}")
         self.dynamic_value = []
         self.format_kwargs = format_kwargs
 
@@ -37,7 +37,7 @@ class Prompt(ABC):
     def value(self) -> List[str]:
         return self._value
 
-    def __call__(self, *args: Any, **kwds: Any) -> List["Prompt"]:
+    def __call__(self, *args: Any, **kwds: Any) -> List["FewShot"]:
         return self.value
 
     def __str__(self) -> str:
@@ -73,7 +73,7 @@ class Prompt(ABC):
         self.dynamic_value.clear()
 
 
-class PromptLanguage(Enum):
+class FewShotLanguage(Enum):
     ENGLISH = "en"
     GERMAN = "de"
     SPANISH = "es"
@@ -83,13 +83,13 @@ class ModelName(Enum):
     ALL = "all"
 
 
-class PromptRegistry:
+class FewShotRegistry:
     _instance = None
     _default_language = None
     _default_model = None
-    _prompt_values = None
-    _prompt_instructions = None
-    _prompt_tags = None
+    _few_shot_values = None
+    _few_shot_instructions = None
+    _few_shot_tags = None
     _model_fallback = True
     _lock = threading.Lock()  # to ensure thread safety
 
@@ -100,18 +100,18 @@ class PromptRegistry:
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
-                    cls._instance = super(PromptRegistry, cls).__new__(cls)
-                    cls._instance._default_language = PromptLanguage.ENGLISH
+                    cls._instance = super(FewShotRegistry, cls).__new__(cls)
+                    cls._instance._default_language = FewShotLanguage.ENGLISH
                     cls._instance._default_model = ModelName.ALL
                     cls._instance._model_fallback = True
-                    cls._instance._prompt_values = {
-                        ModelName.ALL: {PromptLanguage.ENGLISH: {}}
+                    cls._instance._few_shot_values = {
+                        ModelName.ALL: {FewShotLanguage.ENGLISH: {}}
                     }
-                    cls._instance._prompt_instructions = {
-                        ModelName.ALL: {PromptLanguage.ENGLISH: {}}
+                    cls._instance._few_shot_instructions = {
+                        ModelName.ALL: {FewShotLanguage.ENGLISH: {}}
                     }
-                    cls._instance._prompt_tags = {
-                        ModelName.ALL: {PromptLanguage.ENGLISH: {}}
+                    cls._instance._few_shot_tags = {
+                        ModelName.ALL: {FewShotLanguage.ENGLISH: {}}
                     }
         return cls._instance
 
@@ -125,11 +125,11 @@ class PromptRegistry:
             self._model_fallback = value
 
     @property
-    def default_language(self) -> PromptLanguage:
+    def default_language(self) -> FewShotLanguage:
         return self._default_language
 
     @default_language.setter
-    def default_language(self, lang: PromptLanguage):
+    def default_language(self, lang: FewShotLanguage):
         with self._lock:
             self._default_language = lang
 
@@ -142,19 +142,19 @@ class PromptRegistry:
         with self._lock:
             self._default_model = model
 
-    def _init_model_lang(self, model: ModelName, lang: PromptLanguage):
+    def _init_model_lang(self, model: ModelName, lang: FewShotLanguage):
         model = model if model is not None else self._default_model
         lang = lang if lang is not None else self._default_language
 
-        if model not in self._prompt_values:
-            self._prompt_values[model] = {}
-        if lang not in self._prompt_values[model]:
-            self._prompt_values[model][lang] = {}
+        if model not in self._few_shot_values:
+            self._few_shot_values[model] = {}
+        if lang not in self._few_shot_values[model]:
+            self._few_shot_values[model][lang] = {}
 
         return model, lang
 
     def _retrieve_value(
-        self, dictionary, model: ModelName, lang: PromptLanguage, key: str
+        self, dictionary, model: ModelName, lang: FewShotLanguage, key: str
     ):
         model = model if model is not None else self._default_model
         lang = lang if lang is not None else self._default_language
@@ -169,81 +169,81 @@ class PromptRegistry:
             return self._retrieve_value(dictionary, ModelName.ALL, lang, key)
 
         raise ValueError(
-            f"Prompt value {key} not found for language {lang} and model {model} (fallback: {self._model_fallback})"
+            f"FewShot value {key} not found for language {lang} and model {model} (fallback: {self._model_fallback})"
         )
 
     def register_value(
         self,
-        lang: PromptLanguage,
+        lang: FewShotLanguage,
         key: str,
         prompt: str,
         model: ModelName = ModelName.ALL,
     ):
         with self._lock:
             model, lang = self._init_model_lang(model, lang)
-            self._prompt_values[model][lang][key] = prompt
+            self._few_shot_values[model][lang][key] = prompt
 
     def register_instruction(
-        self, lang: PromptLanguage, key, instruction, model: ModelName = ModelName.ALL
+        self, lang: FewShotLanguage, key, instruction, model: ModelName = ModelName.ALL
     ):
         with self._lock:
             model, lang = self._init_model_lang(model, lang)
-            self._prompt_instructions[model][lang][key] = instruction
+            self._few_shot_instructions[model][lang][key] = instruction
 
     def register_tag(
-        self, lang: PromptLanguage, key, tag, model: ModelName = ModelName.ALL
+        self, lang: FewShotLanguage, key, tag, model: ModelName = ModelName.ALL
     ):
         with self._lock:
             model, lang = self._init_model_lang(model, lang)
-            self._prompt_tags[model][lang][key] = tag
+            self._few_shot_tags[model][lang][key] = tag
 
     def value(
-        self, key, model: ModelName = ModelName.ALL, lang: PromptLanguage = None
+        self, key, model: ModelName = ModelName.ALL, lang: FewShotLanguage = None
     ) -> str:
-        return self._retrieve_value(self._prompt_values, model, lang, key)
+        return self._retrieve_value(self._few_shot_values, model, lang, key)
 
     def instruction(
-        self, key, model: ModelName = ModelName.ALL, lang: PromptLanguage = None
+        self, key, model: ModelName = ModelName.ALL, lang: FewShotLanguage = None
     ) -> str:
-        return self._retrieve_value(self._prompt_instructions, model, lang, key)
+        return self._retrieve_value(self._few_shot_instructions, model, lang, key)
 
     def tag(
-        self, key, model: ModelName = ModelName.ALL, lang: PromptLanguage = None, format=True
+        self, key, model: ModelName = ModelName.ALL, lang: FewShotLanguage = None, format=True
     ) -> str:
         if format:
-            return f"{self._tag_prefix}{self._retrieve_value(self._prompt_tags, model, lang, key)}{self._tag_suffix}"
+            return f"{self._tag_prefix}{self._retrieve_value(self._few_shot_tags, model, lang, key)}{self._tag_suffix}"
         else:
-            return self._retrieve_value(self._prompt_tags, model, lang, key)
+            return self._retrieve_value(self._few_shot_tags, model, lang, key)
 
     def has_value(
-        self, key, model: ModelName = ModelName.ALL, lang: PromptLanguage = None
+        self, key, model: ModelName = ModelName.ALL, lang: FewShotLanguage = None
     ) -> bool:
         try:
-            value = self._retrieve_value(self._prompt_values, model, lang, key)
+            value = self._retrieve_value(self._few_shot_values, model, lang, key)
             return value is not None
         except ValueError:
             return False
 
     def has_instruction(
-        self, key, model: ModelName = ModelName.ALL, lang: PromptLanguage = None
+        self, key, model: ModelName = ModelName.ALL, lang: FewShotLanguage = None
     ) -> bool:
         try:
-            value = self._retrieve_value(self._prompt_instructions, model, lang, key)
+            value = self._retrieve_value(self._few_shot_instructions, model, lang, key)
             return value is not None
         except ValueError:
             return False
 
     def has_tag(
-        self, key, model: ModelName = ModelName.ALL, lang: PromptLanguage = None
+        self, key, model: ModelName = ModelName.ALL, lang: FewShotLanguage = None
     ) -> bool:
         try:
-            value = self._retrieve_value(self._prompt_tags, model, lang, key)
+            value = self._retrieve_value(self._few_shot_tags, model, lang, key)
             return value is not None
         except ValueError:
             return False
 
 
-class JsonPromptTemplate(Prompt):
+class JsonFewShotTemplate(FewShot):
     def __init__(self, query: str, json_format: dict):
         super().__init__(["""Process the query over the data to create a Json format: <data_query> => [JSON_BEGIN]<json_output>[JSON_END].
 --------------------------
@@ -265,7 +265,7 @@ DO NOT WRITE the semantic placeholders (e.g. {placeholder}, {entity}, {attribute
 """], query=query, json_format=str(json_format))
 
 
-class FuzzyEquals(Prompt):
+class FuzzyEquals(FewShot):
     def __init__(self):
         super().__init__([
             "1 == 'ONE' =>True",
@@ -312,7 +312,7 @@ class FuzzyEquals(Prompt):
         ])
 
 
-class SufficientInformation(Prompt):
+class SufficientInformation(FewShot):
     def __init__(self):
         super().__init__([
             "query 'What is the capital of Austria?' content 'Vienna is the capital, largest city, and one of nine states of Austria.' =>True",
@@ -324,7 +324,7 @@ class SufficientInformation(Prompt):
         ])
 
 
-class Modify(Prompt):
+class Modify(FewShot):
     def __init__(self):
         super().__init__([
             "text 'The quick brown fox jumps over the lazy dog.' modify 'fox to hours' =>The quick brown hours jumps over the lazy dog.",
@@ -337,7 +337,7 @@ class Modify(Prompt):
             ])
 
 
-class Filter(Prompt):
+class Filter(FewShot):
     def __init__(self):
         super().__init__([
             "text '['1', '7', '10', '-1', '177']' remove 'values larger or equal to 10' =>['1', '7', '-1']",
@@ -360,7 +360,7 @@ class Filter(Prompt):
 
 
 
-class SemanticMapping(Prompt):
+class SemanticMapping(FewShot):
     def __init__(self):
         super().__init__([
             """topics: ['animals', 'logic', 'mathematics', 'psychology', 'self-driving'] in
@@ -371,7 +371,7 @@ class SemanticMapping(Prompt):
         ])
 
 
-class Format(Prompt):
+class Format(FewShot):
     def __init__(self):
         super().__init__([
             "text 1 format 'number to text' =>one",
@@ -388,7 +388,7 @@ class Format(Prompt):
         ])
 
 
-class Transcription(Prompt):
+class Transcription(FewShot):
     def __init__(self):
         super().__init__([
             "text 'I once saw 1 cat and 2 dogs jumping around' modify only 'numbers to text' =>I once saw one cat two dogs jumping around",
@@ -399,7 +399,7 @@ class Transcription(Prompt):
         ])
 
 
-class ExceptionMapping(Prompt):
+class ExceptionMapping(FewShot):
     def __init__(self):
         super().__init__([
             """context 'Try to assure that variable "a" is not zero.' exception 'Traceback (most recent call last):\n  File "<stdin>", line 1, in <module>\nZeroDivisionError: division by zero' code 'def function():\n  return (1 + 1) / 0' =>Do not divide by zero or add an epsilon value. | def function(eps=1e-8):\n  return (1 + 1) / eps""",
@@ -408,7 +408,7 @@ class ExceptionMapping(Prompt):
         ])
 
 
-class ExecutionCorrection(Prompt):
+class ExecutionCorrection(FewShot):
     def __init__(self):
         super().__init__([
             """context "ValueError: invalid literal for int() with base 10: '4,'" "Verify if the literal is of type int | int(4)" code "a = int('4,')" =>int(4)""",
@@ -416,7 +416,7 @@ class ExecutionCorrection(Prompt):
         ])
 
 
-class CompareValues(Prompt):
+class CompareValues(FewShot):
     def __init__(self):
         super().__init__([
             "4 > 88 =>False",
@@ -468,7 +468,7 @@ class CompareValues(Prompt):
         ])
 
 
-class RankList(Prompt):
+class RankList(FewShot):
     def __init__(self):
         super().__init__([
             "order: 'desc' measure: 'ASCII occurrence' list: ['b', 'a', 'z', 3, '_'] =>['_', 3, 'a', 'b', 'z']",
@@ -487,7 +487,7 @@ class RankList(Prompt):
         ])
 
 
-class ContainsValue(Prompt):
+class ContainsValue(FewShot):
     def __init__(self):
         super().__init__([
             "'the letter a' in 'we have some random text about' =>True",
@@ -520,7 +520,7 @@ class ContainsValue(Prompt):
         ])
 
 
-class IsInstanceOf(Prompt):
+class IsInstanceOf(FewShot):
     def __init__(self):
         super().__init__([
             "'we have some random text about' isinstanceof 'English text' =>True",
@@ -549,17 +549,17 @@ class IsInstanceOf(Prompt):
         ])
 
 
-class FewShotPattern(Prompt):
+class FewShotPattern(FewShot):
     def __init__(self):
         super().__init__([
-            """description: 'Verify if information A is in contained in B' examples ["'[1, 2, 3] isinstanceof 'array' >>>True'", "'[1, 2, 3] isinstanceof 'string' >>>False"] =>Verify if information A is in contained in B:\nExamples:\n[1, 2, 3] isinstanceof 'array' >>>True\n'[1, 2, 3] isinstanceof 'string' >>>False\nYour Prediction:{} isinstanceof {} >>>""",
-            """description: 'Compare A to B' examples ["4 > 88 >>>False", "-inf < 0 >>>True", "inf > 0 >>>True", "1 >= 0 >>>True", "6.0 < 6 >>>False"] =>Compare A to B\n\Examples:\n4 > 88 >>>False\n-inf < 0 >>>True\ninf > 0 >>>True\n1 >= 0 >>>True\n6.0 < 6 >>>False\nYour Prediction:{} {} {} >>>""",
+            """description: 'Verify if information A is in contained in B' examples ["'[1, 2, 3] isinstanceof 'array' >>>True'", "'[1, 2, 3] isinstanceof 'string' >>>False"] =>Verify if information A is in contained in B:\nFewShot:\n[1, 2, 3] isinstanceof 'array' >>>True\n'[1, 2, 3] isinstanceof 'string' >>>False\nYour Prediction:{} isinstanceof {} >>>""",
+            """description: 'Compare A to B' examples ["4 > 88 >>>False", "-inf < 0 >>>True", "inf > 0 >>>True", "1 >= 0 >>>True", "6.0 < 6 >>>False"] =>Compare A to B\n\FewShot:\n4 > 88 >>>False\n-inf < 0 >>>True\ninf > 0 >>>True\n1 >= 0 >>>True\n6.0 < 6 >>>False\nYour Prediction:{} {} {} >>>""",
             """description: 'What is the capital of Austria?' examples [] =>What is the capital of Austria?\nYour Prediction: >>>""",
-            """description: 'Sort the array based on the criteria:' examples ["[1, 9, 4, 2] >>>[1, 2, 4, 9]", "['a', 'd', 'c', 'b'] >>>['a', 'b', 'c', 'd']"] =>Sort the array based on the criteria:\nExamples:\n[1, 9, 4, 2] >>>[1, 2, 4, 9]\n['a', 'd', 'c', 'b'] >>>['a', 'b', 'c', 'd']\nYour Prediction:{} >>>""",
+            """description: 'Sort the array based on the criteria:' examples ["[1, 9, 4, 2] >>>[1, 2, 4, 9]", "['a', 'd', 'c', 'b'] >>>['a', 'b', 'c', 'd']"] =>Sort the array based on the criteria:\nFewShot:\n[1, 9, 4, 2] >>>[1, 2, 4, 9]\n['a', 'd', 'c', 'b'] >>>['a', 'b', 'c', 'd']\nYour Prediction:{} >>>""",
         ])
 
 
-class ExtractPattern(Prompt):
+class ExtractPattern(FewShot):
     def __init__(self):
         super().__init__([
             "from 'My name is Ashly Johnson. Nice to meet you!' extract 'Full Name' =>Ashly Johnson",
@@ -582,7 +582,7 @@ class ExtractPattern(Prompt):
         ])
 
 
-class SimpleSymbolicExpression(Prompt):
+class SimpleSymbolicExpression(FewShot):
     def __init__(self):
         super().__init__([
             "expr :1 + 2 =: =>3",
@@ -619,7 +619,7 @@ class SimpleSymbolicExpression(Prompt):
         ])
 
 
-class LogicExpression(Prompt):
+class LogicExpression(FewShot):
     def __init__(self):
         super().__init__([
             "expr :True: and :True: =>True",
@@ -657,7 +657,7 @@ class LogicExpression(Prompt):
         ])
 
 
-class InvertExpression(Prompt):
+class InvertExpression(FewShot):
     def __init__(self):
         super().__init__([
             "I like to eat sushi, therefore I am Japanese. =>I am Japanese, therefore I like to eat sushi.",
@@ -677,7 +677,7 @@ class InvertExpression(Prompt):
         ])
 
 
-class NegateStatement(Prompt):
+class NegateStatement(FewShot):
     def __init__(self):
         super().__init__([
             "1 =>-1",
@@ -693,7 +693,7 @@ class NegateStatement(Prompt):
         ])
 
 
-class ReplaceText(Prompt):
+class ReplaceText(FewShot):
     def __init__(self):
         super().__init__([
             "text 'a + b' replace 'b' with '' =>a",
@@ -714,7 +714,7 @@ class ReplaceText(Prompt):
         ])
 
 
-class IncludeText(Prompt):
+class IncludeText(FewShot):
     def __init__(self):
         super().__init__([
             "text 'The green fox jumps of the brown chair.' include 'in the living room' =>In the living room the red fox jumps of the brown chair.",
@@ -729,7 +729,7 @@ class IncludeText(Prompt):
         ])
 
 
-class CombineText(Prompt):
+class CombineText(FewShot):
     def __init__(self):
         super().__init__([
             "1 + 2 =>3",
@@ -759,7 +759,7 @@ class CombineText(Prompt):
         ])
 
 
-class CleanText(Prompt):
+class CleanText(FewShot):
     def __init__(self):
         super().__init__([
             "Text: 'The    red \t\t\t\t fox \u202a\u202a\u202a\u202a\u202a jumps;;,,,,&amp;&amp;&amp;&amp;&&& of the brown\u202b\u202b\u202b\u202b chair.' =>The red fox jumps of the brown chair.",
@@ -767,7 +767,7 @@ class CleanText(Prompt):
         ])
 
 
-class ListObjects(Prompt):
+class ListObjects(FewShot):
     def __init__(self):
         super().__init__([
             "[1, 2, 3, 4, 5, 12, 48, 89, 99, 1, 4, 1] list '1' =>[1, 1, 1]",
@@ -785,7 +785,7 @@ class ListObjects(Prompt):
         ])
 
 
-class ExpandFunction(Prompt):
+class ExpandFunction(FewShot):
     def __init__(self):
         super().__init__([
             """$> Ping if google is still available =>
@@ -793,38 +793,38 @@ def _llm_ping_():
     "Ping if google is still available."
     import os
     response = os.system("ping -c 1 google.com")
-    return response == 0 """ + Prompt.stop_token,
+    return response == 0 """ + FewShot.stop_token,
 
             """$> Create a random number between 1 and 100 =>
 def _llm_random_():
     "Create a random number between 1 and 100."
     import random
-    return random.randint(1, 100) """ + Prompt.stop_token,
+    return random.randint(1, 100) """ + FewShot.stop_token,
 
             """$> Write any sentence in capital letters =>
 def _llm_upper_(input_):
     "Write any sentence in capital letters."
-    return input_.upper() """ + Prompt.stop_token,
+    return input_.upper() """ + FewShot.stop_token,
 
             """$> Open a file from the file system =>
 def _llm_open_(file_name):
     "Open a file form the file system."
-    return open(file_name, "r") """ + Prompt.stop_token,
+    return open(file_name, "r") """ + FewShot.stop_token,
 
             """$> Call OpenAI GPT-3 to perform an action given a user input =>
 def _llm_action_(input_):
     "Call OpenAI GPT-3 to perform an action given a user input."
     import openai
-    openai.Completion.create(prompt=input_, model="text-davinci-003") """ + Prompt.stop_token,
+    openai.Completion.create(prompt=input_, model="text-davinci-003") """ + FewShot.stop_token,
 
             """$> Create a prompt to translate a user query to an answer in well-formatted structure =>
 def _llm_action_(query_, answer_):
     "Create a prompt to translate a user query to an answer in well-formatted structure."
-    return f"Query: {query_} => {answer_}" """ + Prompt.stop_token,
+    return f"Query: {query_} => {answer_}" """ + FewShot.stop_token,
         ])
 
 
-class ForEach(Prompt):
+class ForEach(FewShot):
     def __init__(self):
         super().__init__([
             "[1, 2, 3, 4, 5, 12, 48, 89, 99, 1, 4, 1] foreach '1' apply '+1' =>[2, 3, 4, 5, 6, 13, 49, 90, 100, 2, 5, 2]",
@@ -841,7 +841,7 @@ class ForEach(Prompt):
         ])
 
 
-class MapContent(Prompt):
+class MapContent(FewShot):
     def __init__(self):
         super().__init__([
             "[1, 2, 3, 4, 5, 12, 48, 89, 99, 1, 4, 1] map 'number parity' =>{'even numbers': [2, 4, 12, 48, 4], 'odd numbers': [1, 3, 5, 89, 99, 1]}",
@@ -853,7 +853,7 @@ class MapContent(Prompt):
         ])
 
 
-class Index(Prompt):
+class Index(FewShot):
     def __init__(self):
         super().__init__([
             "[1, 2, 3, 4, 5, 12, 48, 89, 99, 1, 4, 1] index 1 =>2",
@@ -876,7 +876,7 @@ class Index(Prompt):
         ])
 
 
-class SetIndex(Prompt):
+class SetIndex(FewShot):
     def __init__(self):
         super().__init__([
             "[1, 2, 3, 4, 5, 12, 48, 89, 99, 1, 4, 1] index 1 set '7' =>[1, 7, 3, 4, 5, 12, 48, 89, 99, 1, 4, 1]",
@@ -898,7 +898,7 @@ class SetIndex(Prompt):
         ])
 
 
-class RemoveIndex(Prompt):
+class RemoveIndex(FewShot):
     def __init__(self):
         super().__init__([
             "[1, 2, 3, 4, 5, 12, 48, 89, 99, 1, 4, 1] remove 1 =>[1, 3, 4, 5, 12, 48, 89, 99, 1, 4, 1]",
@@ -918,7 +918,7 @@ class RemoveIndex(Prompt):
         ])
 
 
-class SimulateCode(Prompt):
+class SimulateCode(FewShot):
     def __init__(self):
         super().__init__([
 """code '# Import the SymPy library
@@ -943,7 +943,7 @@ with open(file_name, 'r') as file:
 ])
 
 
-class GenerateCode(Prompt):
+class GenerateCode(FewShot):
     def __init__(self):
         super().__init__([
 """description 'Generate an efficient Python function to compute the Fibonacci sequence of numbers.' =>def fibonacci(n):
@@ -984,7 +984,7 @@ void fft(complex<double>* input, complex<double>* output) {
 }"""])
 
 
-class TextToOutline(Prompt):
+class TextToOutline(FewShot):
     def __init__(self):
         super().__init__([
 """text 'We introduce NPM, the first NonParametric Masked Language Model.
@@ -996,7 +996,7 @@ use the encoder to locate the nearest phrase from the corpus and fill in the [MA
 ])
 
 
-class UniqueKey(Prompt):
+class UniqueKey(FewShot):
     def __init__(self):
         super().__init__([
 """text 'We introduce NPM, the first NonParametric Masked Language Model. NPM consists of an encoder and a reference corpus. =>NonParametric Masked Language Model (NPM)""",
@@ -1005,7 +1005,7 @@ class UniqueKey(Prompt):
 ])
 
 
-class GenerateText(Prompt):
+class GenerateText(FewShot):
     def __init__(self):
         super().__init__([
 """outline '- first NonParametric Masked Language Model (NPM)\n - consists of encoder and reference corpus\n - key idea: map all phrases in corpus into dense vector space using encoder when given query with [MASK] at inference\n - encoder locates nearest phrase from corpus and fill in [MASK]' =>NPM is the first NonParametric Masked Language Model.
@@ -1017,7 +1017,7 @@ use the encoder to locate the nearest phrase from the corpus and fill in the [MA
 ])
 
 
-class SymbiaCapabilities(Prompt):
+class SymbiaCapabilities(FewShot):
     def __init__(self):
         super().__init__([
 '''
@@ -1042,7 +1042,7 @@ Instructions:
     - Return the anwser in the format: [#category](#reflection), where #category is one of the categories above and #reflection is the explanation for why you classified the query as a first-person narrative.
     - Do NOT provide any additional information beyond the category and explanation!
 
-Examples:
+FewShot:
     Query:  "What is the weather in New York?"
     Answer: [SEARCH](The query falls under the search category since it requires up-to-date weather information which goes beyond my internal knowledge.)
 
@@ -1124,7 +1124,7 @@ Examples:
 ])
 
 
-class MemoryCapabilities(Prompt):
+class MemoryCapabilities(FewShot):
     def __init__(self):
         super().__init__([
 '''
@@ -1153,7 +1153,7 @@ Scratchpad format:
     The agent retrieved the following memories from their long-term memory.
 )
 
-Examples:
+FewShot:
 [CONTEXT](
     Query:      My dog's name is Bella.
     Reflection: The user is sharing the name of their dog, which is Bella.
@@ -1203,8 +1203,3 @@ Answer: [IRRELEVANT](The user's query is about a transient information like toda
 Answer: [SAVE](The user has provided relevant information about their educational background by mentioning that they graduated from Harvard University. This information could be important for future conversations and assistance related to higher education topics, so it should be stored in the long-term memory.)
 '''
 ])
-
-
-ProbabilisticBooleanModeStrict   = "true"
-ProbabilisticBooleanModeMedium   = "'true', 'yes', 'ok', ['true']"
-ProbabilisticBooleanModeTolerant = "'true', '1', 't', 'y', 'yes', 'yeah', 'yup', 'certainly', 'ok', ['true']"
