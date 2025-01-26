@@ -1,3 +1,4 @@
+from __future__ import annotations
 import ast
 import os
 import pickle
@@ -256,7 +257,7 @@ class ArithmeticPrimitives(Primitive):
             pass
         return _func(self, other)
 
-    def __neg__(self) -> 'Symbol':
+    def __neg__(self) -> Symbol:
         '''
         Return the negated value of the Symbol.
         The method uses the @core.negate decorator to compute the negation of the Symbol value.
@@ -277,7 +278,7 @@ class ArithmeticPrimitives(Primitive):
             pass
         return self._to_type(_func(self))
 
-    def __not__(self) -> 'Symbol':
+    def __not__(self) -> Symbol:
         '''
         Return the negated value of the Symbol.
         The method uses the @core.negate decorator to compute the negation of the Symbol value.
@@ -298,7 +299,7 @@ class ArithmeticPrimitives(Primitive):
             pass
         return self._to_type(_func(self))
 
-    def __invert__(self) -> 'Symbol':
+    def __invert__(self) -> Symbol:
         '''
         Return the inverted value of the Symbol.
         The method uses the @core.invert decorator to compute the inversion of the Symbol value.
@@ -319,7 +320,7 @@ class ArithmeticPrimitives(Primitive):
             pass
         return self._to_type(_func(self))
 
-    def __lshift__(self, other: Any) -> 'Symbol':
+    def __lshift__(self, other: Any) -> Symbol:
         '''
         Add new information to the Symbol.
         The method uses the @core.include decorator to incorporate information into the Symbol.
@@ -343,7 +344,7 @@ class ArithmeticPrimitives(Primitive):
             pass
         return self._to_type(_func(self, other))
 
-    def __rlshift__(self, other: Any) -> 'Symbol':
+    def __rlshift__(self, other: Any) -> Symbol:
         '''
         Add new information to the Symbol.
         The method uses the @core.include decorator to incorporate information into the Symbol.
@@ -367,7 +368,7 @@ class ArithmeticPrimitives(Primitive):
             pass
         return self._to_type(_func(self, other))
 
-    def __ilshift__(self, other: Any) -> 'Symbol':
+    def __ilshift__(self, other: Any) -> Symbol:
         '''
         Add new information to the Symbol.
         The method uses the @core.include decorator to incorporate information into the Symbol.
@@ -393,7 +394,7 @@ class ArithmeticPrimitives(Primitive):
         self._value = _func(self, other)
         return self
 
-    def __rshift__(self, other: Any) -> 'Symbol':
+    def __rshift__(self, other: Any) -> Symbol:
         '''
         Add new information to the Symbol.
         The method uses the @core.include decorator to incorporate information into the Symbol.
@@ -417,7 +418,7 @@ class ArithmeticPrimitives(Primitive):
             pass
         return self._to_type(_func(self, other))
 
-    def __rrshift__(self, other: Any) -> 'Symbol':
+    def __rrshift__(self, other: Any) -> Symbol:
         '''
         Add new information to the Symbol.
         The method uses the @core.include decorator to incorporate information into the Symbol.
@@ -441,7 +442,7 @@ class ArithmeticPrimitives(Primitive):
             pass
         return self._to_type(_func(self, other))
 
-    def __irshift__(self, other: Any) -> 'Symbol':
+    def __irshift__(self, other: Any) -> Symbol:
         '''
         Add new information to the Symbol.
         The method uses the @core.include decorator to incorporate information into the Symbol.
@@ -467,7 +468,7 @@ class ArithmeticPrimitives(Primitive):
         self._value = _func(self, other)
         return self
 
-    def __add__(self, other: Any) -> 'Symbol':
+    def __add__(self, other: Any) -> Symbol:
         '''
         Combine the Symbol with another value.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
@@ -497,7 +498,7 @@ class ArithmeticPrimitives(Primitive):
             pass
         return self._to_type(_func(self, other))
 
-    def __radd__(self, other) -> 'Symbol':
+    def __radd__(self, other) -> Symbol:
         '''
         Combine another value with the Symbol.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
@@ -528,7 +529,7 @@ class ArithmeticPrimitives(Primitive):
         other = self._to_type(other)
         return self._to_type(_func(other, self))
 
-    def __iadd__(self, other: Any) -> 'Symbol':
+    def __iadd__(self, other: Any) -> Symbol:
         '''
         This method adds another value to the Symbol and updates its value with the result.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
@@ -554,7 +555,7 @@ class ArithmeticPrimitives(Primitive):
         self._value = self.__add__(other)
         return self
 
-    def __sub__(self, other: Any) -> 'Symbol':
+    def __sub__(self, other: Any) -> Symbol:
         '''
         Replace occurrences of a value with another value in the Symbol.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
@@ -579,7 +580,7 @@ class ArithmeticPrimitives(Primitive):
             pass
         return self._to_type(_func(self, other, ''))
 
-    def __rsub__(self, other: Any) -> 'Symbol':
+    def __rsub__(self, other: Any) -> Symbol:
         '''
         Subtracts the symbol value from another one and removes the substrings that match the symbol value.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
@@ -605,7 +606,7 @@ class ArithmeticPrimitives(Primitive):
         other = self._to_type(other)
         return self._to_type(_func(other, self, ''))
 
-    def __isub__(self, other: Any) -> 'Symbol':
+    def __isub__(self, other: Any) -> Symbol:
         '''
         In-place subtraction of the symbol value by the other symbol value.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
@@ -772,7 +773,7 @@ class ArithmeticPrimitives(Primitive):
             pass
         return self._to_type(_func(self, other))
 
-    def __ror__(self, other: Any) -> 'Symbol':
+    def __ror__(self, other: Any) -> Symbol:
         '''
         Primary concatenation operator for Symbol objects if types are string. Concatenates them with a space in between.
 
@@ -811,7 +812,7 @@ class ArithmeticPrimitives(Primitive):
         other = self._to_type(other)
         return self._to_type(_func(other, self))
 
-    def __ior__(self, other: Any) -> 'Symbol':
+    def __ior__(self, other: Any) -> Symbol:
         '''
         Primary concatenation operator for Symbol objects if types are string. Concatenates them with a space in between.
 
@@ -878,7 +879,7 @@ class ArithmeticPrimitives(Primitive):
             pass
         return self._to_type(_func(self, other))
 
-    def __rxor__(self, other: Any) -> 'Symbol':
+    def __rxor__(self, other: Any) -> Symbol:
         '''
         Performs a logical XOR operation between the symbol value and another.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
@@ -904,7 +905,7 @@ class ArithmeticPrimitives(Primitive):
         other = self._to_type(other)
         return self._to_type(_func(other, self))
 
-    def __ixor__(self, other: Any) -> 'Symbol':
+    def __ixor__(self, other: Any) -> Symbol:
         '''
         Performs a logical XOR operation between the symbol value and another.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
@@ -931,7 +932,7 @@ class ArithmeticPrimitives(Primitive):
         self._value = _func(self, other)
         return self
 
-    def __matmul__(self, other: Any) -> 'Symbol':
+    def __matmul__(self, other: Any) -> Symbol:
         '''
         This method concatenates the string representation of two Symbol objects and returns a new Symbol with the concatenated result.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
@@ -949,7 +950,7 @@ class ArithmeticPrimitives(Primitive):
             return self._to_type(result)
         raise NotImplementedError('Matrix multiplication not supported! Might change in the future.') from self._metadata._error
 
-    def __rmatmul__(self, other: Any) -> 'Symbol':
+    def __rmatmul__(self, other: Any) -> Symbol:
         '''
         This method concatenates the string representation of two Symbol objects in a reversed order and returns a new Symbol with the concatenated result.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
@@ -967,7 +968,7 @@ class ArithmeticPrimitives(Primitive):
             return self._to_type(result)
         raise NotImplementedError('Matrix multiplication not supported! Might change in the future.') from self._metadata._error
 
-    def __imatmul__(self, other: Any) -> 'Symbol':
+    def __imatmul__(self, other: Any) -> Symbol:
         '''
         This method concatenates the string representation of two Symbol objects and assigns the concatenated result to the value of the current Symbol object.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
@@ -986,7 +987,7 @@ class ArithmeticPrimitives(Primitive):
             return self
         raise NotImplementedError('Matrix multiplication not supported! Might change in the future.') from self._metadata._error
 
-    def __truediv__(self, other: Any) -> 'Symbol':
+    def __truediv__(self, other: Any) -> Symbol:
         '''
         Divides the symbol value by another, splitting the symbol value by the other value.
         The string representation of the other value is used to split the symbol value.
@@ -1004,7 +1005,7 @@ class ArithmeticPrimitives(Primitive):
             return self._to_type(result)
         return self._to_type(str(self).split(str(other)))
 
-    def __rtruediv__(self, other: Any) -> 'Symbol':
+    def __rtruediv__(self, other: Any) -> Symbol:
         '''
         Divides the symbol value by another, splitting the symbol value by the other value.
         The string representation of the other value is used to split the symbol value.
@@ -1022,7 +1023,7 @@ class ArithmeticPrimitives(Primitive):
             return self._to_type(result)
         raise NotImplementedError('Division operation not supported! Might change in the future.') from self._metadata._error
 
-    def __itruediv__(self, other: Any) -> 'Symbol':
+    def __itruediv__(self, other: Any) -> Symbol:
         '''
         Divides the symbol value by another, splitting the symbol value by the other value.
         The string representation of the other value is used to split the symbol value.
@@ -1041,7 +1042,7 @@ class ArithmeticPrimitives(Primitive):
             return self
         raise NotImplementedError('Division operation not supported! Might change in the future.') from self._metadata._error
 
-    def __floordiv__(self, other: Any) -> 'Symbol':
+    def __floordiv__(self, other: Any) -> Symbol:
         '''
         Floor divides the symbol value by another, splitting the symbol value by the other value.
         The string representation of the other value is used to split the symbol value.
@@ -1059,7 +1060,7 @@ class ArithmeticPrimitives(Primitive):
             return self._to_type(result)
         return self._to_type(str(self).split(str(other)))
 
-    def __rfloordiv__(self, other: Any) -> 'Symbol':
+    def __rfloordiv__(self, other: Any) -> Symbol:
         '''
         Floor divides the symbol value by another, splitting the symbol value by the other value.
         The string representation of the other value is used to split the symbol value.
@@ -1077,7 +1078,7 @@ class ArithmeticPrimitives(Primitive):
             return self._to_type(result)
         raise NotImplementedError('Floor division operation not supported! Might change in the future.') from self._metadata._error
 
-    def __ifloordiv__(self, other: Any) -> 'Symbol':
+    def __ifloordiv__(self, other: Any) -> Symbol:
         '''
         Floor divides the symbol value by another, splitting the symbol value by the other value.
         The string representation of the other value is used to split the symbol value.
@@ -1096,7 +1097,7 @@ class ArithmeticPrimitives(Primitive):
             return self
         raise NotImplementedError('Floor division operation not supported! Might change in the future.') from self._metadata._error
 
-    def __pow__(self, other: Any) -> 'Symbol':
+    def __pow__(self, other: Any) -> Symbol:
         '''
         Power operation on symbol value by another, splitting the symbol value by the other value.
         The string representation of the other value is used to split the symbol value.
@@ -1114,7 +1115,7 @@ class ArithmeticPrimitives(Primitive):
             return self._to_type(result)
         raise NotImplementedError('Power operation not supported! Might change in the future.') from self._metadata._error
 
-    def __rpow__(self, other: Any) -> 'Symbol':
+    def __rpow__(self, other: Any) -> Symbol:
         '''
         Power operation on symbol value by another, splitting the symbol value by the other value.
         The string representation of the other value is used to split the symbol value.
@@ -1132,7 +1133,7 @@ class ArithmeticPrimitives(Primitive):
             return self._to_type(result)
         raise NotImplementedError('Power operation not supported! Might change in the future.') from self._metadata._error
 
-    def __ipow__(self, other: Any) -> 'Symbol':
+    def __ipow__(self, other: Any) -> Symbol:
         '''
         Power operation on symbol value by another, splitting the symbol value by the other value.
         The string representation of the other value is used to split the symbol value.
@@ -1151,7 +1152,7 @@ class ArithmeticPrimitives(Primitive):
             return self
         raise NotImplementedError('Power operation not supported! Might change in the future.') from self._metadata._error
 
-    def __mod__(self, other: Any) -> 'Symbol':
+    def __mod__(self, other: Any) -> Symbol:
         '''
         Modulo operation on symbol value by another, splitting the symbol value by the other value.
         The string representation of the other value is used to split the symbol value.
@@ -1169,7 +1170,7 @@ class ArithmeticPrimitives(Primitive):
             return self._to_type(result)
         raise NotImplementedError('Modulo operation not supported! Might change in the future.') from self._metadata._error
 
-    def __rmod__(self, other: Any) -> 'Symbol':
+    def __rmod__(self, other: Any) -> Symbol:
         '''
         Modulo operation on symbol value by another, splitting the symbol value by the other value.
         The string representation of the other value is used to split the symbol value.
@@ -1187,7 +1188,7 @@ class ArithmeticPrimitives(Primitive):
             return self._to_type(result)
         raise NotImplementedError('Modulo operation not supported! Might change in the future.') from self._metadata._error
 
-    def __imod__(self, other: Any) -> 'Symbol':
+    def __imod__(self, other: Any) -> Symbol:
         '''
         Modulo operation on symbol value by another, splitting the symbol value by the other value.
         The string representation of the other value is used to split the symbol value.
@@ -1206,7 +1207,7 @@ class ArithmeticPrimitives(Primitive):
             return self
         raise NotImplementedError('Modulo operation not supported! Might change in the future.') from self._metadata._error
 
-    def __mul__(self, other: Any) -> 'Symbol':
+    def __mul__(self, other: Any) -> Symbol:
         '''
         Multiply operation on symbol value by another, splitting the symbol value by the other value.
         The string representation of the other value is used to split the symbol value.
@@ -1224,7 +1225,7 @@ class ArithmeticPrimitives(Primitive):
             return self._to_type(result)
         raise NotImplementedError('Multiply operation not supported! Might change in the future.') from self._metadata._error
 
-    def __rmul__(self, other: Any) -> 'Symbol':
+    def __rmul__(self, other: Any) -> Symbol:
         '''
         Multiply operation on symbol value by another, splitting the symbol value by the other value.
         The string representation of the other value is used to split the symbol value.
@@ -1242,7 +1243,7 @@ class ArithmeticPrimitives(Primitive):
             return self._to_type(result)
         raise NotImplementedError('Multiply operation not supported! Might change in the future.') from self._metadata._error
 
-    def __imul__(self, other: Any) -> 'Symbol':
+    def __imul__(self, other: Any) -> Symbol:
         '''
         Multiply operation on symbol value by another, splitting the symbol value by the other value.
         The string representation of the other value is used to split the symbol value.
@@ -1342,7 +1343,7 @@ class IterationPrimitives(Primitive):
     This mixin contains functions that perform iteration operations on symbols or symbol values.
     The functions in this mixin are bound to the 'neurosymbolic' engine for evaluation.
     '''
-    def __getitem__(self, key: Union[str, int, slice]) -> 'Symbol':
+    def __getitem__(self, key: Union[str, int, slice]) -> Symbol:
         '''
         Get the item of the Symbol value with the specified key or index.
         If the Symbol value is a list, tuple, or numpy array, the key can be an integer or slice.
@@ -1498,7 +1499,7 @@ class ValueHandlingPrimitives(Primitive):
         '''
         return type(self.value)
 
-    def index(self, item: str, **kwargs) -> 'Symbol':
+    def index(self, item: str, **kwargs) -> Symbol:
         '''
         Returns the index of a specified item in the symbol value.
         Uses the core.getitem decorator to create a _func method that finds the index of the item.
@@ -1519,7 +1520,7 @@ class StringHelperPrimitives(Primitive):
     '''
     This mixin contains functions that provide additional help for symbols or their values.
     '''
-    def split(self, delimiter: str, **kwargs) -> 'Symbol':
+    def split(self, delimiter: str, **kwargs) -> Symbol:
         '''
         Splits the symbol value by a specified delimiter.
         Uses the core.split decorator to create a _func method that splits the symbol value by the specified delimiter.
@@ -1535,7 +1536,7 @@ class StringHelperPrimitives(Primitive):
         symbols = self.symbols(*self.value.split(delimiter))
         return symbols
 
-    def join(self, delimiter: str = ' ', **kwargs) -> 'Symbol':
+    def join(self, delimiter: str = ' ', **kwargs) -> Symbol:
         '''
         Joins the symbol value with a specified delimiter.
 
@@ -1587,7 +1588,7 @@ class ComparisonPrimitives(Primitive):
     This mixin is dedicated to functions that perform more complex comparison operations between symbols or symbol values.
     This usually involves additional context, which the builtin overrode (e.g. __eq__) functions lack.
     '''
-    def equals(self, string: str, context: str = 'contextually', **kwargs) -> 'Symbol':
+    def equals(self, string: str, context: str = 'contextually', **kwargs) -> Symbol:
         '''
         Checks if the symbol value is equal to another string.
         Uses the core.equals decorator to create a _func method that checks for equality in a specific context.
@@ -1645,7 +1646,7 @@ class ExpressionHandlingPrimitives(Primitive):
     This mixin consists of functions that handle symbolic expressions - evaluations, parsing, computation and more.
     Future functionalities in this mixin might include operations to manipulate expressions, more complex evaluation techniques, etc.
     '''
-    def interpret(self, expr: Optional[str] = None, **kwargs) -> 'Symbol':
+    def interpret(self, expr: Optional[str] = None, **kwargs) -> Symbol:
         '''
         Evaluates a symbolic expression using the provided engine.
         Uses the core.expression decorator to create a _func method that evaluates the given expression.
@@ -1671,7 +1672,7 @@ class DataHandlingPrimitives(Primitive):
     This mixin houses functions that clean, summarize and outline symbols or their values.
     Future implementations in this mixin may include various other cleaning and summarization techniques, error detection/correction in symbols, complex filtering, bulk modifications, or other types of condition-based manipulations on symbols, etc.
     '''
-    def clean(self, **kwargs) -> 'Symbol':
+    def clean(self, **kwargs) -> Symbol:
         '''
         Cleans the symbol value.
         Uses the core.clean decorator to create a _func method that cleans the symbol value.
@@ -1685,7 +1686,7 @@ class DataHandlingPrimitives(Primitive):
 
         return self._to_type(_func(self))
 
-    def summarize(self, context: Optional[str] = None, **kwargs) -> 'Symbol':
+    def summarize(self, context: Optional[str] = None, **kwargs) -> Symbol:
         '''
         Summarizes the symbol value.
         Uses the core.summarize decorator with an optional context to create a _func method that summarizes the symbol value.
@@ -1702,7 +1703,7 @@ class DataHandlingPrimitives(Primitive):
 
         return self._to_type(_func(self))
 
-    def outline(self, **kwargs) -> 'Symbol':
+    def outline(self, **kwargs) -> Symbol:
         '''
         Creates an outline of the symbol value.
         Uses the core.outline decorator to create a _func method that generates an outline of the symbol value.
@@ -1716,7 +1717,7 @@ class DataHandlingPrimitives(Primitive):
 
         return self._to_type(_func(self))
 
-    def filter(self, criteria: str, include: Optional[bool] = False, **kwargs) -> 'Symbol':
+    def filter(self, criteria: str, include: Optional[bool] = False, **kwargs) -> Symbol:
         '''
         Filters the symbol value based on a specified criteria.
         Uses the core.filtering decorator with the provided criteria and include flag to create a _func method to filter the symbol value.
@@ -1734,7 +1735,7 @@ class DataHandlingPrimitives(Primitive):
 
         return self._to_type(_func(self))
 
-    def modify(self, changes: str, **kwargs) -> 'Symbol':
+    def modify(self, changes: str, **kwargs) -> Symbol:
         '''
         Modifies the symbol value based on the specified changes.
         Uses the core.modify decorator with the provided changes to create a _func method to modify the symbol value.
@@ -1751,7 +1752,7 @@ class DataHandlingPrimitives(Primitive):
 
         return self._to_type(_func(self))
 
-    def replace(self, old: str, new: str, **kwargs) -> 'Symbol':
+    def replace(self, old: str, new: str, **kwargs) -> Symbol:
         '''
         Replaces one value in the symbol value with another.
         Uses the core.replace decorator to create a _func method that replaces the values in the symbol value.
@@ -1769,7 +1770,7 @@ class DataHandlingPrimitives(Primitive):
 
         return self._to_type(_func(self, old, new))
 
-    def remove(self, information: str, **kwargs) -> 'Symbol':
+    def remove(self, information: str, **kwargs) -> Symbol:
         '''
         Removes a specified piece of information from the symbol value.
         Uses the core.replace decorator to create a _func method that removes the specified information.
@@ -1786,7 +1787,7 @@ class DataHandlingPrimitives(Primitive):
 
         return self._to_type(_func(self, information, ''))
 
-    def include(self, information: str, **kwargs) -> 'Symbol':
+    def include(self, information: str, **kwargs) -> Symbol:
         '''
         Includes a specified piece of information in the symbol value.
         Uses the core.include decorator to create a _func method that includes the specified information.
@@ -1803,7 +1804,7 @@ class DataHandlingPrimitives(Primitive):
 
         return self._to_type(_func(self, information))
 
-    def combine(self, information: str, **kwargs) -> 'Symbol':
+    def combine(self, information: str, **kwargs) -> Symbol:
         '''
         Combines the current symbol value with another string.
         Uses the core.combine decorator to create a _func method that combines the symbol value with another string.
@@ -1826,7 +1827,7 @@ class UniquenessPrimitives(Primitive):
     This mixin includes functions that work with unique aspects of symbol values, like extracting unique information or composing new unique symbols.
     Future functionalities might include finding duplicate information, defining levels of uniqueness, etc.
     '''
-    def unique(self, keys: Optional[List[str]] = [], **kwargs) -> 'Symbol':
+    def unique(self, keys: Optional[List[str]] = [], **kwargs) -> Symbol:
         '''
         Extracts unique information from the symbol value, using provided keys.
         Uses the core.unique decorator with a list of keys to create a _func method that extracts unique data from the symbol value.
@@ -1843,7 +1844,7 @@ class UniquenessPrimitives(Primitive):
 
         return self._to_type(_func(self))
 
-    def compose(self, **kwargs) -> 'Symbol':
+    def compose(self, **kwargs) -> Symbol:
         '''
         Composes a text based on the symbol value.
         Uses the core.compose decorator to create a _func method that composes a text using the symbol value.
@@ -1863,7 +1864,7 @@ class PatternMatchingPrimitives(Primitive):
     This mixin houses functions that deal with ranking symbols, extracting details based on patterns, and correcting symbols.
     It will house future functionalities that involve sorting, complex pattern detections, advanced correction techniques etc.
     '''
-    def rank(self, measure: Optional[str] = 'alphanumeric', order: Optional[str] = 'desc', **kwargs) -> 'Symbol':
+    def rank(self, measure: Optional[str] = 'alphanumeric', order: Optional[str] = 'desc', **kwargs) -> Symbol:
         '''
         Ranks the symbol value based on a measure and a sort order.
         Uses the core.rank decorator with the specified measure and order to create a _func method that ranks the symbol value.
@@ -1882,7 +1883,7 @@ class PatternMatchingPrimitives(Primitive):
 
         return self._to_type(_func(self, measure))
 
-    def extract(self, pattern: str, **kwargs) -> 'Symbol':
+    def extract(self, pattern: str, **kwargs) -> Symbol:
         '''
         Extracts data from the symbol value based on a pattern.
         Uses the core.extract decorator with the specified pattern to create a _func method that extracts data from the symbol value.
@@ -1899,7 +1900,7 @@ class PatternMatchingPrimitives(Primitive):
 
         return self._to_type(_func(self, pattern))
 
-    def correct(self, context: str, **kwargs) -> 'Symbol':
+    def correct(self, context: str, **kwargs) -> Symbol:
         '''
         Corrects the symbol value based on a specified context.
         Uses the @core.correct decorator, corrects the value of the symbol based on the given context.
@@ -1917,7 +1918,7 @@ class PatternMatchingPrimitives(Primitive):
 
         return self._to_type(_func(self))
 
-    def translate(self, language: Optional[str] = 'English', **kwargs) -> 'Symbol':
+    def translate(self, language: Optional[str] = 'English', **kwargs) -> Symbol:
         '''
         Translates the symbol value to the specified language.
         Uses the @core.translate decorator to translate the symbol's value to the specified language.
@@ -1935,7 +1936,7 @@ class PatternMatchingPrimitives(Primitive):
 
         return self._to_type(_func(self))
 
-    def choice(self, cases: List[str], default: str, **kwargs) -> 'Symbol':
+    def choice(self, cases: List[str], default: str, **kwargs) -> Symbol:
         '''
         Chooses one of the cases based on the symbol value.
         Uses the @core.case decorator, selects one of the cases based on the symbol's value.
@@ -1960,7 +1961,7 @@ class QueryHandlingPrimitives(Primitive):
     This mixin helps in transforming, preparing, and executing queries, and it is designed to be extendable as new ways of handling queries are developed.
     Future methods could potentially include query optimization, enhanced query formatting, multi-level query execution, query error handling, etc.
     '''
-    def query(self, context: str, prompt: Optional[str] = None, examples: Optional[List[FewShot]] = None, **kwargs) -> 'Symbol':
+    def query(self, context: str, prompt: Optional[str] = None, examples: Optional[List[FewShot]] = None, **kwargs) -> Symbol:
         '''
         Queries the symbol value based on a specified context.
         Uses the @core.query decorator, queries based on the context, prompt, and examples.
@@ -1980,7 +1981,7 @@ class QueryHandlingPrimitives(Primitive):
 
         return self._to_type(_func(self))
 
-    def convert(self, format: str, **kwargs) -> 'Symbol':
+    def convert(self, format: str, **kwargs) -> Symbol:
         '''
         Converts the symbol value to the specified format.
         Uses the @core.convert decorator, converts the symbol's value to the specified format.
@@ -1998,7 +1999,7 @@ class QueryHandlingPrimitives(Primitive):
 
         return self._to_type(_func(self))
 
-    def transcribe(self, modify: str, **kwargs) -> 'Symbol':
+    def transcribe(self, modify: str, **kwargs) -> Symbol:
         '''
         Transcribes the symbol value based on a specified modification.
         Uses the @core.transcribe decorator, modifies the symbol's value based on the modify parameter.
@@ -2022,7 +2023,26 @@ class ExecutionControlPrimitives(Primitive):
     This mixin represents the core methods for dealing with symbol execution.
     Possible future methods could potentially include async execution, pipeline chaining, execution profiling, improved error handling, version management, embedding more complex execution control structures etc.
     '''
-    def analyze(self, exception: Exception, query: Optional[str] = '', **kwargs) -> 'Symbol':
+    def invoke(self, symbol: Symbol, **kwargs) -> Symbol:
+        '''
+        Invokes a compiled symbol to run it through the API based on the existing backend.
+        This requires that the Symbol has been compiled first (compiled=True). It will fail otherwise.
+        Only the `PromptWeaver().compile()` method can set the compiled flag to True.
+
+        Args:
+            symbol (Symbol): The compiled symbol to invoke.
+            **kwargs: Additional keyword arguments to pass to the API call.
+
+        Returns:
+            Symbol: The result from invoking the compiled symbol through the API.
+
+        Raises:
+            ValueError: If the provided symbol has not been compiled (compiled=False).
+        '''
+        assert getattr(symbol, "compiled", False), 'Symbol must be compiled before invoking it. See `PromptWeaver().compile()`'
+        raise NotImplementedError("TBD!")
+
+    def analyze(self, exception: Exception, query: Optional[str] = '', **kwargs) -> Symbol:
         '''Uses the @core.analyze decorator, analyzes an exception and returns a symbol.
 
         Args:
@@ -2039,7 +2059,7 @@ class ExecutionControlPrimitives(Primitive):
 
         return self._to_type(_func(self))
 
-    def execute(self, **kwargs) -> 'Symbol':
+    def execute(self, **kwargs) -> Symbol:
         '''
         Executes the symbol's expression using the @core.execute decorator.
 
@@ -2055,7 +2075,7 @@ class ExecutionControlPrimitives(Primitive):
 
         return _func(self)
 
-    def fexecute(self, **kwargs) -> 'Symbol':
+    def fexecute(self, **kwargs) -> Symbol:
         '''
         Executes the symbol's expression using the fallback execute method (ftry).
 
@@ -2065,12 +2085,12 @@ class ExecutionControlPrimitives(Primitive):
         Returns:
             Symbol: The result of the executed expression as a Symbol.
         '''
-        def _func(sym: 'Symbol', **kargs):
+        def _func(sym: Symbol, **kargs):
             return sym.execute(**kargs)
 
         return self.ftry(_func, **kwargs)
 
-    def simulate(self, **kwargs) -> 'Symbol':
+    def simulate(self, **kwargs) -> Symbol:
         '''
         Uses the @core.simulate decorator, simulates the value of the symbol. Used for hypothesis testing or code simulation.
 
@@ -2086,7 +2106,7 @@ class ExecutionControlPrimitives(Primitive):
 
         return self._to_type(_func(self))
 
-    def sufficient(self, query: str, **kwargs) -> 'Symbol':
+    def sufficient(self, query: str, **kwargs) -> Symbol:
         '''
         Uses the @core.sufficient decorator and checks if the symbol's value is sufficient based on the query.
 
@@ -2103,7 +2123,7 @@ class ExecutionControlPrimitives(Primitive):
 
         return self._to_type(_func(self))
 
-    def list(self, condition: str, **kwargs) -> 'Symbol':  #@TODO: can't filter directly handle this case?
+    def list(self, condition: str, **kwargs) -> Symbol:  #@TODO: can't filter directly handle this case?
         '''
         Uses the @core.listing decorator and lists elements based on the condition.
 
@@ -2120,7 +2140,7 @@ class ExecutionControlPrimitives(Primitive):
 
         return self._to_type(_func(self))
 
-    def foreach(self, condition: str, apply: str, **kwargs) -> 'Symbol':
+    def foreach(self, condition: str, apply: str, **kwargs) -> Symbol:
         '''
         Uses the @core.foreach decorator, iterates through the symbol's value, and applies the provided functionality.
 
@@ -2138,7 +2158,7 @@ class ExecutionControlPrimitives(Primitive):
 
         return self._to_type(_func(self))
 
-    def stream(self, expr: 'Expression', token_ratio: Optional[float] = 0.6, **kwargs) -> 'Symbol':
+    def stream(self, expr: 'Expression', token_ratio: Optional[float] = 0.6, **kwargs) -> Symbol:
         '''
         Streams the Symbol's value through an Expression object.
         This method divides the Symbol's value into chunks and processes each chunk through the given Expression object.
@@ -2174,7 +2194,7 @@ class ExecutionControlPrimitives(Primitive):
         else:
             yield expr(self, **kwargs)
 
-    def ftry(self, expr: 'Expression', retries: Optional[int] = 1, **kwargs) -> 'Symbol':
+    def ftry(self, expr: 'Expression', retries: Optional[int] = 1, **kwargs) -> Symbol:
         # TODO: find a way to pass on the constraints and behavior from the self.expr to the corrected code
         '''
         Tries to evaluate a Symbol using a given Expression.
@@ -2250,7 +2270,7 @@ class DictHandlingPrimitives(Primitive):
     This mixin hosts functions that deal with dictionary operations on symbol values.
     It can be extended in the future with more advanced dictionary methods and operations.
     '''
-    def dict(self, context: str, **kwargs) -> 'Symbol':
+    def dict(self, context: str, **kwargs) -> Symbol:
         '''
         Maps related content together under a common abstract topic as a dictionary of the Symbol value.
         This method uses the @core.dictionary decorator to apply the given context to the Symbol.
@@ -2269,7 +2289,7 @@ class DictHandlingPrimitives(Primitive):
 
         return self._to_type(_func(self))
 
-    def map(self, **kwargs) -> 'Symbol':
+    def map(self, **kwargs) -> Symbol:
         '''
         Transforms the keys of the dictionary value of a Symbol object to be unique.
         This function asserts that the Symbol's value is a dictionary and creates a new dictionary with the same values but unique keys.
@@ -2301,7 +2321,7 @@ class TemplateStylingPrimitives(Primitive):
     This mixin includes functionalities for stylizing symbols and applying templates.
     Future functionalities might include a variety of new stylizing methods, application of more complex templates, etc.
     '''
-    def template(that, template: str, placeholder: Optional[str] = '{{placeholder}}', **kwargs) -> 'Symbol':
+    def template(that, template: str, placeholder: Optional[str] = '{{placeholder}}', **kwargs) -> Symbol:
         '''
         Applies a template to the Symbol.
         This method uses the @core.template decorator to apply the given template and placeholder to the Symbol.
@@ -2321,7 +2341,7 @@ class TemplateStylingPrimitives(Primitive):
 
         return _func(that)
 
-    def style(self, description: str, libraries: Optional[List] = [], **kwargs) -> 'Symbol':
+    def style(self, description: str, libraries: Optional[List] = [], **kwargs) -> Symbol:
         '''
         Applies a style to the Symbol.
         This method uses the @core.style decorator to apply the given style description, libraries, and placeholder to the Symbol.
@@ -2347,7 +2367,7 @@ class DataClusteringPrimitives(Primitive):
     This mixin contains functionalities that deal with clustering symbol values or generating embeddings.
     New functionalities in this mixin might include different types of clustering and embedding methods, dimensionality reduction techniques, etc.
     '''
-    def cluster(self, **kwargs) -> 'Symbol':
+    def cluster(self, **kwargs) -> Symbol:
         '''
         Creates a cluster from the Symbol's value.
         This method uses the @core.cluster decorator to create a cluster from the Symbol's value.
@@ -2371,7 +2391,7 @@ class EmbeddingPrimitives(Primitive):
     This mixin contains functionalities that deal with embedding symbol values.
     New functionalities in this mixin might include different types of embedding methods, similarity and distance measures etc.
     '''
-    def embed(self, **kwargs) -> 'Symbol':
+    def embed(self, **kwargs) -> Symbol:
         '''
         Generates embeddings for the Symbol's value.
         This method uses the @core.embed decorator to generate embeddings for the Symbol's value.
@@ -2450,7 +2470,7 @@ class EmbeddingPrimitives(Primitive):
             x = x.detach().cpu().numpy()
         return x.squeeze()[:, None]
 
-    def similarity(self, other: Union['Symbol', list, np.ndarray, torch.Tensor], metric: Union['cosine', 'angular-cosine', 'product', 'manhattan', 'euclidean', 'minkowski', 'jaccard'] = 'cosine', eps: float = 1e-8, normalize: Optional[Callable] = None, **kwargs) -> float:
+    def similarity(self, other: Union[Symbol, list, np.ndarray, torch.Tensor], metric: Union['cosine', 'angular-cosine', 'product', 'manhattan', 'euclidean', 'minkowski', 'jaccard'] = 'cosine', eps: float = 1e-8, normalize: Optional[Callable] = None, **kwargs) -> float:
         '''
         Calculates the similarity between two Symbol objects using a specified metric.
         This method compares the values of two Symbol objects and calculates their similarity according to the specified metric.
@@ -2513,7 +2533,7 @@ class EmbeddingPrimitives(Primitive):
 
         return val
 
-    def distance(self, other: Union['Symbol', list, np.ndarray, torch.Tensor], kernel: Union['gaussian', 'rbf', 'laplacian', 'polynomial', 'sigmoid', 'linear', 'cauchy', 't-distribution', 'inverse-multiquadric', 'cosine', 'angular-cosine', 'frechet', 'mmd'] = 'gaussian',  eps: float = 1e-8, normalize: Optional[Callable] = None, **kwargs) -> float:
+    def distance(self, other: Union[Symbol, list, np.ndarray, torch.Tensor], kernel: Union['gaussian', 'rbf', 'laplacian', 'polynomial', 'sigmoid', 'linear', 'cauchy', 't-distribution', 'inverse-multiquadric', 'cosine', 'angular-cosine', 'frechet', 'mmd'] = 'gaussian',  eps: float = 1e-8, normalize: Optional[Callable] = None, **kwargs) -> float:
         '''
         Calculates the kernel between two Symbol objects.
 
@@ -2647,7 +2667,7 @@ class IOHandlingPrimitives(Primitive):
     '''
     This mixin contains functionalities related to input/output operations.
     '''
-    def input(self, message: str = 'Please add more information', **kwargs) -> 'Symbol':
+    def input(self, message: str = 'Please add more information', **kwargs) -> Symbol:
         '''
         Request user input and return a Symbol containing the user input.
 
@@ -2681,7 +2701,7 @@ class IOHandlingPrimitives(Primitive):
             return self.sym_return_type(self.value if condition else '') | res
         return self._to_type(self.value if condition else '') | self._to_type(res)
 
-    def open(self, path: str = None, **kwargs) -> 'Symbol':
+    def open(self, path: str = None, **kwargs) -> Symbol:
         '''
         Open a file and store its content in an Expression object as a string.
 
@@ -2720,7 +2740,7 @@ class IndexingPrimitives(Primitive):
     '''
     This mixin contains functionalities related to indexing symbols.
     '''
-    def config(self, path: str, index_name: str, **kwargs) -> 'Symbol':
+    def config(self, path: str, index_name: str, **kwargs) -> Symbol:
         '''
         Execute a configuration operation on the index.
 
@@ -2736,7 +2756,7 @@ class IndexingPrimitives(Primitive):
             pass
         return _func(self)
 
-    def add(self, doc: List[Tuple[str, List, Dict]], index_name: str, **kwargs) -> 'Symbol':
+    def add(self, doc: List[Tuple[str, List, Dict]], index_name: str, **kwargs) -> Symbol:
         '''
         Add an entry to the existing index.
 
@@ -2752,7 +2772,7 @@ class IndexingPrimitives(Primitive):
             pass
         return _func(self)
 
-    def get(self, query: List[int], index_name: str, **kwargs) -> 'Symbol':
+    def get(self, query: List[int], index_name: str, **kwargs) -> Symbol:
         '''
         Search the index based on the provided query.
 
@@ -2859,7 +2879,7 @@ class OutputHandlingPrimitives(Primitive):
     '''
     This mixin include functionalities related to outputting symbols. It can be expanded in the future to include different types of output methods or complex output formatting, etc.
     '''
-    def output(self, *args, **kwargs) -> 'Symbol':
+    def output(self, *args, **kwargs) -> Symbol:
         '''
         Output the current Symbol to an output handler.
         This method uses the `@core.output` decorator and allows additional keyword arguments to be passed to the decorator.
@@ -2882,7 +2902,7 @@ class FineTuningPrimitives(Primitive):
     '''
     This mixin contains functionalities related to fine tuning models.
     '''
-    def tune(self, operation: str = 'create', **kwargs) -> 'Symbol':
+    def tune(self, operation: str = 'create', **kwargs) -> Symbol:
         '''
         Fine tune a base model.
 
