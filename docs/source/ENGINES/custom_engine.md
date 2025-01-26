@@ -67,4 +67,4 @@ res = sym.translate('German')
 <symai.backend.engines.engine_gptX_completion.GPTXCompletionEngine object at 0, <function Symbol.translate.<locals>._func at 0x7fd68ba04820>, {'instance': <class 'symai.symbol.S ['\n\nHallo Welt!']
 ```
 
-Finally, if you want to create a completely new engine but still maintain our workflow, you can use the `query` function from [`symai/functional.py`](https://github.com/ExtensityAI/symbolicai/blob/main/symai/functional.py) and pass in your engine along with all other specified objects (i.e., Prompt, PreProcessor, etc.; see also section {ref}`custom-operations-section`.
+Finally, if you want to create a completely new engine but still maintain our workflow, you can use the `query` function from [`symai/functional.py`](https://github.com/ExtensityAI/symbolicai/blob/main/symai/functional.py) and pass in your engine along with all other specified objects (i.e., Examples, PreProcessor, etc.; see also section {ref}`custom-operations-section`.
