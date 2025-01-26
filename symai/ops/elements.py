@@ -4,6 +4,7 @@ import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
+from types import NotImplementedType
 from typing import Callable, Dict, List, Optional, Set, Tuple, Union
 
 from beartype import beartype
@@ -13,8 +14,12 @@ from ..components import FileReader
 from ..few_shots import FewShot
 from ..symbol import Expression, Symbol
 from ..utils import encode_media_frames
+from ..core_ext import bind
+from ..backend.mixin.anthropic import SUPPORTED_MODELS as ANTHROPIC_MODELS
+from ..backend.mixin.openai import SUPPORTED_MODELS as OPENAI_MODELS
 
 
+@beartype
 class PromptWeaver(Expression):
     """Context manager for prompt composition to ensure cleanup."""
     def __init__(self, **kwargs):
@@ -27,21 +32,117 @@ class PromptWeaver(Expression):
         Element._default_context = Context()
         return False
 
-    def compile(self, chain: List[Element]) -> str:
+    def compile(self, chain: List[Element], **kwargs) -> Symbol:
         """Compile the chain."""
         try:
-            chain.reverse() # mimic a deque
-            element = chain.pop().symbol
-            while chain:
-                next_element = chain.pop().symbol
-                element = element | next_element
-            Element._default_context = Context()
-            return element
+            model = self.config.get("NEUROSYMBOLIC_ENGINE_MODEL")
+            if model in ANTHROPIC_MODELS:
+                return self.compile_anthropic_backend(chain, **kwargs)
+            elif model in OPENAI_MODELS:
+                return self.compile_openai_backend(chain, **kwargs)
+            elif model.startswith("huggingface"):
+                return self.compile_huggingface_backend(chain, **kwargs)
+            elif model.starswith("llama"):
+                return self.compile_llama_cpp_backend(chain, **kwargs)
         except Exception as e:
             raise ValueError(f"Error compiling the chain: {e}")
         finally:
             # reset the default context anyway since we might continue to use the prompt weaver and create a new chain
             Element._default_context = Context()
+        raise ValueError(f"No backend found for model: {model}")
+
+    @bind(engine='neurosymbolic', property='config')(lambda: 0)
+    def config(self): pass
+
+    def compile_anthropic_backend(self, chain: List[Element], **kwargs) -> Symbol:
+        """Compile the chain using the Anthropic backend."""
+        system_content = None
+        user_content_blocks = []
+
+        for element in chain:
+            if isinstance(element, System):
+                system_content = str(element.symbol)
+
+            elif isinstance(element, User):
+                user_content_blocks.append({
+                    "type": "text",
+                    "text": str(element.symbol)
+                })
+
+            elif isinstance(element, Media):
+                for frame in element.frames:
+                    user_content_blocks.append({
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": f"image/{element.extension}",
+                            "data": frame
+                        }
+                    })
+                    # We also add the metadata block in another user message if user asked for it
+                    if element.with_metadata:
+                        user_content_blocks.append({
+                            "type": "text",
+                            "text": element.apply_xml_tags(json.dumps(element.metadata))
+                        })
+
+            elif isinstance(element, Document):
+                # Only text is supported for now
+                doc_type = "text"
+                doc_media_type = "text/plain"
+
+                user_content_blocks.append({
+                    "type": "document",
+                    "source": {
+                        "type": doc_type,
+                        "media_type": doc_media_type,
+                        "data": str(element.symbol[0])
+                    },
+                    "citations": {"enabled": element.citations_enabled}
+                })
+                # We also add the metadata block in another user message if user asked for it
+                if element.with_metadata:
+                    user_content_blocks.append({
+                        "type": "text",
+                        "text": element.apply_xml_tags(json.dumps(element.metadata))
+                    })
+
+            elif isinstance(element, Examples):
+                user_content_blocks.append({
+                    "type": "text",
+                    "text": str(element.symbol)
+                })
+
+            else:
+                user_content_blocks.append({
+                    "type": "text",
+                    "text": str(element.symbol)
+                })
+
+        data = Symbol({
+            "system": system_content,
+            "messages": {
+                "role": "user",
+                "content": user_content_blocks
+            }
+        })
+
+        setattr(data, "compiled", True)
+
+        return data
+
+
+    def compile_openai_backend(self, chain: List[Element], **kwargs) -> Symbol:
+        """Compile the chain using the OpenAI backend."""
+        raise NotImplementedError("OpenAI backend is not yet implemented.")
+
+    def compile_huggingface_backend(self, chain: List[Element], **kwargs) -> Symbol:
+        """Compile the chain using the Huggingface backend."""
+        raise NotImplementedError("Huggingface backend is not yet implemented.")
+
+    def compile_llama_cpp_backend(self, chain: List[Element], **kwargs) -> Symbol:
+        """Compile the chain using the Llama.cpp backend."""
+        raise NotImplementedError("Llama.cpp backend is not yet implemented.")
 
 @dataclass
 class Context:
@@ -81,13 +182,11 @@ class Element(ABC):
         """
         pass
 
-    def apply_xml_tags(self, content: str, metadata: Optional[Dict[str, str]]=None) -> str:
+    def apply_xml_tags(self, content: str) -> str:
         if self.xml_tags is None:
             return content
         left_tag, right_tag = self.xml_tags
-        if metadata is None:
-            return f"\n{left_tag}\n{content}\n{right_tag}\n"
-        return f"\n{left_tag}\n{json.dumps(metadata)}\n{content}\n{right_tag}\n"
+        return f"\n{left_tag}\n{content}\n{right_tag}\n"
 
     def __or__(self, other: Element) -> Symbol:
         """Compose the element with another element."""
@@ -216,6 +315,7 @@ class Media(Element):
         *,
         ref: Optional[str] = None,
         max_frames: int = 10,
+        with_metadata: bool = True,
         xml_tags: Optional[Tuple[str, str]] = ("<media>", "</media>")
     ):
         super().__init__()
@@ -226,6 +326,7 @@ class Media(Element):
         self.ref = ref
         self.xml_tags = xml_tags
         self.max_frames = max_frames
+        self.with_metadata = with_metadata
 
         try:
             assert self.media_type in ["image", "video", "gif"], f"Unsupported media type: {self.media_type}. Supported types: ['image', 'video', 'gif']"
@@ -245,8 +346,7 @@ class Media(Element):
             "source": self.source,
             }
         )
-        self.content = self.apply_xml_tags(self.frames, self.metadata)
-        self._symbol = Symbol(self.content)
+        self._symbol = Symbol(self.frames)
 
         if not self.validate_element():
             raise ValueError("Invalid media element.")
@@ -281,6 +381,7 @@ class Document(Element):
         fn_composition_validation: Optional[Callable] = None,
         *,
         ref: Optional[str] = None,
+        with_metadata: bool = True,
         xml_tags: Optional[Tuple[str, str]] = ("<document>", "</document>"),
         citations_enabled: bool = False,
     ):
@@ -291,6 +392,7 @@ class Document(Element):
         self.fn_composition_validation = fn_composition_validation
         self.ref = ref
         self.xml_tags = xml_tags
+        self.with_metadata = with_metadata
         self.citations_enabled = citations_enabled
         self.reader = FileReader()
 
@@ -308,7 +410,6 @@ class Document(Element):
             }
 
             self.content = self.reader(self.source).value
-            self.content = self.apply_xml_tags(self.content, self.metadata)
             self._symbol = Symbol(self.content)
 
         except Exception as e:
