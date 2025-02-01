@@ -19,62 +19,61 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "attrs==23.2.0",
-    "setuptools==70.0.0",
-    "toml==0.10.2",
-    "natsort==8.3.1",
-    "numpy==1.26.4",
-    "tqdm==4.66.3",
-    "python-box==7.1.1",
-    "pytest==8.3.1",
-    "pandas==2.2.2",
-    "scikit-learn==1.5.0",
-    "torch==2.2.2",
-    "torchaudio==2.2.2",
-    "torchvision==0.17.2",
-    "PyYAML==6.0.1",
-    "transformers==4.45.2",
-    "sympy==1.12",
-    "openai==1.13.3",
-    "anthropic==0.43.1",
-    "pypdf==4.3.0",
-    "ipython==8.24.0",
-    "accelerate==0.33.0",
-    "sentencepiece==0.2.0",
-    "sentence-transformers==2.5.1",
-    "tiktoken==0.7.0",
-    "tika==2.6.0",
-    "beautifulsoup4==4.12.3",
-    "colorama==0.4.6",
-    "GitPython==3.1.42",
-    "pathos==0.3.2",
-    "prompt-toolkit==3.0.43",
-    "pydub==0.25.1",
-    "opencv-python==4.8.1.78",
-    "pymongo==3.12.3",
-    "pymongo[srv]",
-    "requests-toolbelt==1.0.0",
-    "pyvis==0.3.2",
-    "beartype==0.18.2",
-    "pydantic==2.8.2",
-    "pydantic-core==2.20.1",
-    "pydantic-settings==2.3.4",
-    "pycryptodome==3.20.0",
-    "httpx==0.27.2"
+    "attrs>=23.2.0",
+    "setuptools>=70.0.0",
+    "toml>=0.10.2",
+    "natsort>=8.3.1",
+    "numpy>=1.26.4,<2.0",
+    "tqdm>=4.66.3",
+    "python-box>=7.1.1",
+    "pytest>=8.3.1",
+    "pandas>=2.2.2",
+    "scikit-learn>=1.5.0",
+    "torch>=2.2.2",
+    "torchaudio>=2.2.2",
+    "torchvision>=0.17.2",
+    "PyYAML>=6.0.1",
+    "transformers>=4.45.2",
+    "sympy>=1.12",
+    "openai>=1.13.3",
+    "anthropic>=0.43.1",
+    "pypdf>=4.3.0",
+    "ipython>=8.24.0",
+    "accelerate>=0.33.0",
+    "sentencepiece>=0.2.0",
+    "sentence-transformers>=2.5.1",
+    "tiktoken>=0.7.0",
+    "tika>=2.6.0",
+    "beautifulsoup4>=4.12.3",
+    "colorama>=0.4.6",
+    "GitPython>=3.1.42",
+    "pathos>=0.3.2",
+    "prompt-toolkit>=3.0.43",
+    "pydub>=0.25.1",
+    "opencv-python>=4.8.1.78",
+    "pymongo>=3.12.3, <4.8",
+    "requests-toolbelt>=1.0.0",
+    "pyvis>=0.3.2",
+    "beartype>=0.18.2",
+    "pydantic>=2.8.2",
+    "pydantic-core>=2.20.1",
+    "pydantic-settings>=2.3.4",
+    "pycryptodome>=3.20.0",
+    "httpx>=0.27.2"
 ]
 
 [project.optional-dependencies]
-bitsandbytes = ["bitsandbytes==0.43.1"] # handle separately because of Apple Silicon
-blip2        = ["decord==0.6.0", "salesforce-lavis==1.0.0", "opencv-python-headless==4.5.5.64"]
-hf           = ["transformers==4.45.2", "accelerate==0.33.0", "peft==0.13.1", "datasets==3.0.1", "trl==0.11.3"]
-wolframalpha = ["wolframalpha==5.0.0"]
-whisper      = ["openai-whisper==20240930", "numba==0.60.0"]
-selenium     = ["selenium==4.18.1", "webdriver-manager==4.0.2", "chromedriver-autoinstaller==0.6.4"]
-serpapi      = ["google_search_results==2.4.2"]
-pinecone     = ["pinecone-client==4.1.0"]
-bard         = ["bardapi==1.0.0"]
-services     = ["fastapi==0.110.0", "redis==5.0.2", "uvicorn==0.27.1"]
-solver       = ["z3-solver==4.12.6.0"]
+bitsandbytes = ["bitsandbytes>=0.43.1"] # handle separately because of Apple Silicon
+blip2        = ["decord>=0.6.0", "salesforce-lavis>=1.0.0", "opencv-python-headless>=4.5.5.64"]
+hf           = ["transformers>=4.45.2", "accelerate>=0.33.0", "peft>=0.13.1", "datasets>=3.0.1", "trl>=0.11.3"]
+wolframalpha = ["wolframalpha>=5.0.0"]
+whisper      = ["openai-whisper>=20240930", "numba>=0.60.0"]
+selenium     = ["selenium>=4.18.1", "webdriver-manager>=4.0.2", "chromedriver-autoinstaller>=0.6.4"]
+serpapi      = ["google_search_results>=2.4.2"]
+pinecone     = ["pinecone-client>=4.1.0"]
+bard         = ["bardapi>=1.0.0"]
+services     = ["fastapi>=0.110.0", "redis>=5.0.2", "uvicorn>=0.27.1"]
+solver       = ["z3-solver>=4.12.6.0"]
 all          = [
     "symbolicai[hf]",
     "symbolicai[wolframalpha]",
