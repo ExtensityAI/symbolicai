@@ -5,10 +5,13 @@ import numpy as np
 
 from box import Box
 from json import JSONEncoder
-from typing import Any, Dict, Iterator, List, Optional, Type, Callable, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Type, Callable, Tuple, Generic, TypeVar
 
 from . import core
 from .ops import SYMBOL_PRIMITIVES
+
+
+T = TypeVar('T')
 
 
 class SymbolEncoder(JSONEncoder):
@@ -204,7 +207,7 @@ class SymbolMeta(type):
         return cls
 
 
-class Symbol(metaclass=SymbolMeta):
+class Symbol(Generic[T], metaclass=SymbolMeta):
     _mixin                = True
     _primitives           = SYMBOL_PRIMITIVES
     _metadata             = Metadata()
