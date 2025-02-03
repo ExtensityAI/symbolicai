@@ -106,7 +106,6 @@ def _start_symai():
             with open(_symai_config_path_, 'w') as f:
                 json.dump(_symai_config_, f, indent=4)
 
-        print('Configuration file:', _symai_config_path_)
         if 'COLLECTION_URI' not in _symai_config_:
             print('Migrating the configuration file to the latest version.')
             _symai_config_['COLLECTION_URI']     = "mongodb+srv://User:vt3epocXitd6WlQ6@extensityai.c1ajxxy.mongodb.net/?retryWrites=true&w=majority"
