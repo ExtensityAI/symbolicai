@@ -106,7 +106,7 @@ def _start_symai():
             with open(_symai_config_path_, 'w') as f:
                 json.dump(_symai_config_, f, indent=4)
 
-        print('Configuration file:', _symai_config_path_)
+        #print('Configuration file:', _symai_config_path_)
         if 'COLLECTION_URI' not in _symai_config_:
             print('Migrating the configuration file to the latest version.')
             _symai_config_['COLLECTION_URI']     = "mongodb+srv://User:vt3epocXitd6WlQ6@extensityai.c1ajxxy.mongodb.net/?retryWrites=true&w=majority"
@@ -124,6 +124,7 @@ def _start_symai():
         # *==========================================================================================================*
         _neurosymbolic_engine_api_key  = os.environ.get('NEUROSYMBOLIC_ENGINE_API_KEY', None)
         _neurosymbolic_engine_model    = os.environ.get('NEUROSYMBOLIC_ENGINE_MODEL', None)
+        _neurosymbolic_engine_base_url = os.environ.get('NEUROSYMBOLIC_ENGINE_BASE_URL', None)
         _symbolic_engine_api_key       = os.environ.get('SYMBOLIC_ENGINE_API_KEY', None)
         _embedding_engine_api_key      = os.environ.get('EMBEDDING_ENGINE_API_KEY', None)
         _embedding_engine_model        = os.environ.get('EMBEDDING_ENGINE_MODEL', None)
@@ -149,6 +150,7 @@ def _start_symai():
         # *==========================================================================================================*
         if _neurosymbolic_engine_api_key:  _symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY']  = _neurosymbolic_engine_api_key_
         if _neurosymbolic_engine_model:    _symai_config_['NEUROSYMBOLIC_ENGINE_MODEL']    = _neurosymbolic_engine_model_
+        if _neurosymbolic_engine_base_url: _symai_config_['NEUROSYMBOLIC_ENGINE_BASE_URL'] = _neurosymbolic_engine_base_url_
         if _symbolic_engine_api_key:       _symai_config_['SYMBOLIC_ENGINE_API_KEY']       = _symbolic_engine_api_key_
         if _embedding_engine_api_key:      _symai_config_['EMBEDDING_ENGINE_API_KEY']      = _embedding_engine_api_key_
         if _embedding_engine_model:        _symai_config_['EMBEDDING_ENGINE_MODEL']        = _embedding_engine_model_
