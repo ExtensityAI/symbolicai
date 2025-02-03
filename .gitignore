@@ -151,3 +151,9 @@ dist/
 bin/
 .idea
 scripts
+SymbolicAI_Installer_**.*
+entitlements.plist
+favicon.ico
+icon.ico
+icon.icns
+release_**/*
