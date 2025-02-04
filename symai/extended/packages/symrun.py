@@ -101,6 +101,11 @@ class PackageRunner():
         else:
             result = expr(*arg_values, **kwargs)
 
+        if result is not None:
+            self.console(result)
+        else:
+            self.console("Execution of {} => {} completed successfully.".format(args.alias, package))
+
         return result
 
     def c(self):
