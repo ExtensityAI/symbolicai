@@ -38,7 +38,7 @@ class Import(Expression):
         if not os.path.exists(BASE_PACKAGE_PATH):
             os.makedirs(BASE_PACKAGE_PATH)
         # Clone repository
-        git_url = f'https://github.com/{module}'
+        git_url = f'git@github.com:{module}.git'
         subprocess.check_call(['git', 'clone', git_url, f'{BASE_PACKAGE_PATH}/{module}'])
 
         # Install dependencies
@@ -46,7 +46,7 @@ class Import(Expression):
             pkg = json.load(f)
             for dependency in pkg['dependencies']:
                 # Update git_url for the dependency
-                git_url_dependency = f'https://github.com/{dependency}'
+                git_url_dependency = f'git@github.com:{dependency}.git'
                 if not os.path.exists(f'{BASE_PACKAGE_PATH}/{dependency}'):
                     subprocess.check_call(['git', 'clone', git_url_dependency, f'{BASE_PACKAGE_PATH}/{dependency}'])
 
