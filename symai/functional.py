@@ -16,7 +16,9 @@ from .backend.base import Engine, ENGINE_UNREGISTERED
 from .backend import engines
 import warnings
 
-logger = logging.getLogger('functional')
+
+logger = logging.getLogger(__name__)
+logger.propagate = False
 
 
 class ConstraintViolationException(Exception):
@@ -185,7 +187,7 @@ def _process_query_single(engine,
             result, metadata = _apply_postprocessors(outputs, argument.prop.return_constraint, post_processors, argument)
             break
         except Exception as e:
-            logging.error(f"Failed to execute query: {str(e)}")
+            logger.error(f"Failed to execute query: {str(e)}")
             traceback.print_exc()
             if _ == trials - 1:
                 result = _execute_query_fallback(func, instance, argument, default)
@@ -229,7 +231,7 @@ def _execute_query(engine, post_processors, return_constraint, argument) -> List
         try:
             res = ast.literal_eval(rsp)
         except Exception as e:
-            logging.warn(f"Failed to cast return type to {return_constraint} for {str(rsp)}")
+            logger.warn(f"Failed to cast return type to {return_constraint} for {str(rsp)}")
             res = rsp
         assert res is not None, "Return type cast failed! Check if the return type is correct or post_processors output matches desired format: " + str(rsp)
         rsp = res
@@ -320,7 +322,7 @@ def _process_query(engine,
                 return metadata.get('raw_output')
 
         except Exception as e:
-            logging.error(f"Failed to execute query: {str(e)}")
+            logger.error(f"Failed to execute query: {str(e)}")
             traceback.print_exc()
             if try_cnt < trials:
                 continue # repeat if query unsuccessful
