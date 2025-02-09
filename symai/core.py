@@ -1,13 +1,20 @@
 import functools
+import inspect
+import logging
+import traceback
 from typing import Any, Callable, Dict, List, Optional
 
 from box import Box
+from pydantic import BaseModel
 
 from . import post_processors as post
 from . import pre_processors as pre
 from . import prompts as prm
 from .functional import EngineRepository
 from .symbol import Expression, Metadata
+
+logger = logging.getLogger(__name__)
+logger.propagate = False
 
 
 class Argument(Expression):
@@ -105,7 +112,7 @@ def few_shot(prompt: str = '',
              post_processors: Optional[List[post.PostProcessor]] = None,
              **decorator_kwargs):
     """"General decorator for the neural processing engine.
-    This method is used to decorate functions which can build any expression in a examples-based way.
+
 
     Args:
         prompt (str): The prompt describing the task. Defaults to 'Summarize the content of the following text:\n'.
@@ -2102,5 +2109,151 @@ def caption(image: str,
                                 pre_processors=pre_processors,
                                 post_processors=post_processors,
                                 argument=argument)
+        return wrapper
+    return decorator
+
+
+def contract(
+        prompt: str,
+        pre_conditions: BaseModel,
+        post_conditions: BaseModel,
+        examples: Optional[prm.Prompt] = None,
+        default: Optional[object] = None,
+        **decorator_kwargs
+    ):
+    """Decorator that implements a contract for a given task. The contract enforces pre and post conditions on the task using pydantic models.
+
+    Args:
+        prompt (str): The prompt describing the task.
+        pre_conditions (BaseModel): The pre-conditions to be enforced on the task. Can have as many `@validator` methods as needed.
+        post_conditions (BaseModel): The post-conditions to be enforced on the task. Can have as many `@validator` methods as needed.
+        examples (Prompt, optional): A list of few-shot examples for the task. Augments the prompt. Defaults to None.
+        default (object, optional): The default value to be returned if the task cannot be solved. Has priority over what the fallacbk implementation returns. Defaults to None.
+        **decorator_kwargs: Additional keyword arguments.
+
+    Returns:
+        Type:
+            * If successful, returns the result of the task cast to the function return type, which is the result of the contract validating both pre and post conditions.
+            * If unsuccessful, returns a dictionary with the keys `data`, `error`, and `stack_trace`, containing:
+                * `data`: None, if no fallback implementation is provided. Otherwise, the result of the fallback implementation.
+                * `error`: The error message of the exception raised. It's a pydantic error message accessible via `.errors()`.
+                * `stack_trace`: The stack trace of the error.
+    Example:
+        ```python
+        class Int(BaseModel):
+            data: str
+
+            @field_validator('data', mode="after")
+            def validate(cls, v):
+                # must be implemented to check if the response is of the correct type
+                try:
+                    int(v)
+                    return v
+                except ValueError:
+                    raise ValueError("Could not convert response to integer.")
+
+            def cast(self):
+                # must be implemented to convert the response to the correct type
+                return int(self.data)
+
+        class PreConditions(BaseModel):
+            data: str # the input to the LLM
+
+            @field_validator('data', mode="after")
+            def has_valid_range(cls, v) -> Union[str, Exception]:
+                # let's use regex to validate that it has a range of numbers (min, max)
+                pattern = re.compile(r"\d+")
+                rng = pattern.findall(v)
+                if len(rng) != 2:
+                    raise ValueError("A valid range must have two numbers.")
+                mn, mx = rng
+                if int(mn) >= int(mx):
+                    raise ValueError("The lower bound must be less than the upper bound.")
+                return v # this can be changed and it will get passed to the next validator, essentially creating a chain of validations
+
+            @field_validator('data', mode="after")
+            def prompt_contains_keyword(cls, v) -> Union[str, Exception]:
+                if "random" in v:
+                    return v
+                raise ValueError("The prompt must contain the keyword 'random'.")
+
+        class PostConditions(BaseModel):
+            data: Int # the response of the LLM already suuccessfully type checked
+
+            @field_validator('data', mode="after")
+            def is_odd(cls, v) -> Union[bool, Exception]:
+                if v.cast() % 2 == 0:
+                    raise ValueError("The response must be an odd number.")
+                return v
+
+        class RandomGenerator(Expression):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+
+            @contract(
+                prompt="Generate a random integer between 0 and 10.",
+                pre_conditions=PreConditions,   # operate on the prompt
+                post_conditions=PostConditions, # operate on the already type checked response (so we can assume it was successfully converted to type `IsInt`)
+            )
+            def forward(self, **kwargs) -> Int:
+                # here we have some default fallback behavior if the contract fails
+                # always pass the kwargs to the function as we will add the `error` msg, the `stack trace`, and the `Argument` to the kwargs
+                logger.info("Contract failed. Returning a default fallback procedure.")
+                return Int(data="0")
+
+        expr = RandomGenerator()
+        res = expr()
+        ```
+
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(instance, *signature_args, **signature_kwargs):
+            # (0) Check if the pattern is valid
+            if not issubclass(pre_conditions, BaseModel):
+                raise ValueError("The pre-conditions model must be a subclass of pydantic.BaseModel.")
+            if not issubclass(post_conditions, BaseModel):
+                raise ValueError("The post-conditions model must be a subclass of pydantic.BaseModel.")
+            sig = inspect.signature(func)
+            return_constraint = sig.return_annotation
+            if return_constraint == inspect._empty:
+                raise ValueError("The contract requires a return type annotation.")
+
+            # (1) Validate pre-conditions
+            try:
+                pre_conditions(data=prompt)
+            except Exception as e:
+                logger.error(f"Pre-conditions failed: {str(e)}")
+                if default is not None:
+                    return dict(data=default, error=e, stack_trace=traceback.format_exc())
+                else:
+                    return dict(data=None, error=e, stack_trace=traceback.format_exc())
+
+            # (2) Execute the task
+            decorator_kwargs['prompt'] = prompt
+            decorator_kwargs['examples'] = examples
+            argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
+            result = EngineRepository.query(
+                engine='neurosymbolic',
+                instance=instance,
+                func=func,
+                default=default,
+                argument=argument
+            )
+
+            # (3) Check if type casting failed
+            if not isinstance(result, return_constraint):
+                return result # should be a dictionary with data, error, stack_trace from `functional.py`
+
+            # (4) Validate post-conditions
+            try:
+                post_conditions(data=result)
+            except Exception as e:
+                logger.error(f"Post-conditions failed: {str(e)}")
+                if default is not None:
+                    return dict(data=default, error=e, stack_trace=traceback.format_exc())
+                else:
+                    return dict(data=None, error=e, stack_trace=traceback.format_exc())
+            return result
         return wrapper
     return decorator
