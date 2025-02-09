@@ -1,21 +1,23 @@
+from __future__ import annotations
+
 import ast
-import inspect
-import traceback
 import importlib
-import pkgutil
+import inspect
 import logging
-
+import pkgutil
+import traceback
+import warnings
 from enum import Enum
-from typing import Callable, Dict, List, Optional
 from types import ModuleType
-from typing import Dict, Any, Tuple, Type
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type
 
+from box import Box
+from pydantic import BaseModel
+
+from .backend import engines
+from .backend.base import ENGINE_UNREGISTERED, Engine
 from .post_processors import PostProcessor
 from .pre_processors import PreProcessor
-from .backend.base import Engine, ENGINE_UNREGISTERED
-from .backend import engines
-import warnings
-
 
 logger = logging.getLogger(__name__)
 logger.propagate = False
@@ -32,11 +34,9 @@ class ProbabilisticBooleanMode(Enum):
 
 
 ENGINE_PROBABILISTIC_BOOLEAN_MODE = ProbabilisticBooleanMode.MEDIUM
-from .prompts import (
-    ProbabilisticBooleanModeStrict,
-    ProbabilisticBooleanModeMedium,
-    ProbabilisticBooleanModeTolerant
-)
+from .prompts import (ProbabilisticBooleanModeMedium,
+                      ProbabilisticBooleanModeStrict,
+                      ProbabilisticBooleanModeTolerant)
 
 
 def _probabilistic_bool(rsp: str, mode=ProbabilisticBooleanMode.TOLERANT) -> bool:
@@ -208,20 +208,27 @@ def _execute_query(engine, post_processors, return_constraint, argument) -> List
     if argument.prop.preview:
         return engine.preview(argument)
 
-    outputs                 = engine(argument) # currently only support single query
-    rsp                     = outputs[0][0] # unpack first query TODO: support multiple queries
-    metadata                = outputs[1]
+    outputs = engine(argument) # currently only support single query
+    rsp = outputs[0][0] # unpack first query TODO: support multiple queries
+    metadata = outputs[1]
 
-    argument.prop.outputs   = outputs
-    argument.prop.metadata  = metadata
+    argument.prop.outputs = outputs
+    argument.prop.metadata = metadata
 
     if post_processors:
         for pp in post_processors:
-            rsp             = pp(rsp, argument)
+            rsp = pp(rsp, argument)
 
     # check if return type cast
+    if return_constraint == inspect._empty:
+        # do not cast if return type is not specified
+        pass
+    elif issubclass(return_constraint, BaseModel):
+        # pydantic model
+        rsp = return_constraint(data=rsp)
     # compare string representation of return type to allow for generic duck typing of return types
-    if   str(return_constraint) == str(type(rsp)):
+    elif str(return_constraint) == str(type(rsp)):
+        # flow through if return type is the same as the output
         pass
     # check if return type is list, tuple, set, dict, use ast.literal_eval to cast
     elif return_constraint == list or \
@@ -242,11 +249,12 @@ def _execute_query(engine, post_processors, return_constraint, argument) -> List
             rsp = False
         else:
             rsp = _probabilistic_bool(rsp, mode=ENGINE_PROBABILISTIC_BOOLEAN_MODE)
-    elif return_constraint == inspect._empty:
-        pass
+    elif not isinstance(rsp, return_constraint):
+        # hard cast to return type fallback
+        rsp = return_constraint(rsp)
     else:
-        if not isinstance(rsp, return_constraint):
-            rsp = return_constraint(rsp)
+        # we should not reach here
+        raise ValueError(f"Return type {return_constraint} not supported.")
 
     # check if satisfies constraints
     for constraint in argument.prop.constraints:
@@ -256,26 +264,27 @@ def _execute_query(engine, post_processors, return_constraint, argument) -> List
     return rsp, metadata
 
 
-def _process_query(engine,
-                   instance,
-                   func:                Callable,
-                   constraints:         List[Callable]                  = [],
-                   default:             Optional[object]                = None,
-                   limit:               int                             = 1,
-                   trials:              int                             = 1,
-                   pre_processors:      Optional[List[PreProcessor]]    = None,
-                   post_processors:     Optional[List[PostProcessor]]   = None,
-                   argument                                             = None, # Argument container from core
-                   ):
+def _process_query(
+        engine: Engine,
+        instance: Any,
+        func: Callable,
+        constraints: List[Callable] = [],
+        default: Optional[object] = None,
+        limit: int = 1,
+        trials: int = 1,
+        pre_processors: Optional[List[PreProcessor]] = None,
+        post_processors: Optional[List[PostProcessor]] = None,
+        argument: Argument = None,
+    ) -> Any:
 
     if pre_processors and not isinstance(pre_processors, list):
-        pre_processors              = [pre_processors]
+        pre_processors = [pre_processors]
     if post_processors and not isinstance(post_processors, list):
-        post_processors             = [post_processors]
+        post_processors = [post_processors]
 
     # check signature for return type
-    sig                             = inspect.signature(func)
-    return_constraint               = sig._return_annotation
+    sig = inspect.signature(func)
+    return_constraint = sig._return_annotation
     assert 'typing' not in str(return_constraint), "Return type must be of base type not generic Typing object, e.g. int, str, list, etc."
 
     # prepare argument container
@@ -293,15 +302,15 @@ def _process_query(engine,
     argument.prop.post_processors   = post_processors
 
     # pre-process input with pre-processors
-    processed_input               = ''
+    processed_input = ''
     if pre_processors and not argument.prop.raw_input:
         for pp in pre_processors:
-            t                     = pp(argument)
-            processed_input      += t if t is not None else ''
+            t = pp(argument)
+            processed_input += t if t is not None else ''
     # if raw input, do not pre-process
     else:
         if argument.args and len(argument.args) > 0:
-            processed_input      += ' '.join([str(a) for a in argument.args])
+            processed_input += ' '.join([str(a) for a in argument.args])
     # if not raw input, set processed input
     if not argument.prop.raw_input:
         argument.prop.processed_input = processed_input
@@ -322,21 +331,22 @@ def _process_query(engine,
                 return metadata.get('raw_output')
 
         except Exception as e:
+            stack_trace = traceback.format_exc()
             logger.error(f"Failed to execute query: {str(e)}")
-            traceback.print_exc()
+            logger.error(f"Stack trace: {stack_trace}")
             if try_cnt < trials:
                 continue # repeat if query unsuccessful
-            # if max retries reached, return default or raise exception
             # execute default function implementation as fallback
-            # execute function or method based on self presence
-            rsp = func(instance, *argument.args, **argument.signature_kwargs)
-            # if there is also no default implementation, raise exception
-            if rsp is None and not argument.prop.default:
-                raise e # raise exception if no default and no function implementation
-            elif rsp is None: # return default if there is one
-                rsp = argument.prop.default
-
-    # return based on return type
+            rsp = func(instance, argument=argument, error=e, stack_trace=stack_trace, *argument.args, **argument.signature_kwargs)
+            if rsp is not None:
+                # fallback was implemented
+                rsp = dict(data=rsp, error=e, stack_trace=stack_trace)
+            elif argument.prop.default is not None:
+                # no fallback implementation, but default value is set
+                rsp = dict(data=argument.prop.default, error=e, stack_trace=stack_trace)
+            else:
+                # the pattern requires a fallback implementation, without it, fail on exception
+                raise e
     try:
         limit_ = argument.prop.limit if argument.prop.limit else len(rsp)
     except:
