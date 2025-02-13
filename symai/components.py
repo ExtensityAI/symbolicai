@@ -2,6 +2,7 @@ import inspect
 import json
 import os
 import re
+from abc import abstractmethod
 from collections import defaultdict
 from pathlib import Path
 from random import sample
@@ -11,6 +12,7 @@ from typing import Callable, Dict, Iterator, List, Optional, Type, Union
 import numpy as np
 from attr import dataclass
 from box import Box
+from loguru import logger
 from pydantic import BaseModel, ValidationError
 from pyvis.network import Network
 from tqdm import tqdm
@@ -19,6 +21,7 @@ from . import core, core_ext
 from .backend.settings import HOME_PATH
 from .constraints import DictFormatConstraint
 from .formatter import ParagraphFormatter
+from .models import LLMDataModel, TypeValdationError, LengthConstraint
 from .post_processors import (CodeExtractPostProcessor,
                               JsonTruncateMarkdownPostProcessor,
                               JsonTruncatePostProcessor, PostProcessor,
@@ -1031,7 +1034,7 @@ class FunctionWithUsage(Function):
 class ValidatedFunction(FunctionWithUsage):
     def __init__(
         self,
-        data_model: BaseModel = None,
+        data_model: LLMDataModel = None,
         retry_count=5,
         *args,
         **kwargs,
@@ -1055,12 +1058,45 @@ class ValidatedFunction(FunctionWithUsage):
         ).tolist()
         return seeds
 
+    def simplify_validation_errors(self, error: ValidationError) -> str:
+        """
+        Simplifies Pydantic validation errors into a concise, LLM-friendly format, including lists and nested elements.
+
+        Args:
+            error (ValidationError): The Pydantic ValidationError instance.
+
+        Returns:
+            str: A simplified and actionable error message.
+        """
+        simplified_errors = []
+        for err in error.errors():
+            # Build a human-readable field path
+            field_path = " -> ".join(
+                [str(element) for element in err["loc"]]
+            )  # Includes indices for lists, keys, etc.
+            message = err["msg"]  # Error message
+            expected_type = err.get("type", "unknown")  # Expected type (if available)
+            provided_value = err.get("ctx", {}).get(
+                "given", "unknown"
+            )  # Provided value (if available)
+
+            # Create a concise, actionable error message
+            error_message = (
+                f"Field '{field_path}': {message}. "
+                f"Expected type: {expected_type}. Provided value: {provided_value}."
+            )
+            simplified_errors.append(error_message)
+
+        # Combine all errors into a single message
+        return "\n".join(simplified_errors)
+
     def forward(self, *args, **kwargs):
         # force JSON mode
         kwargs["response_format"] = {"type": "json_object"}
         if "JSON" not in self.static_context:
             raise Exception("The static context must contain the string 'JSON'")
 
+        # forward the function
         json, usage = super().forward(*args, **kwargs)
 
         # get list of seeds for remedy (to avoid same remedy for same input)
@@ -1068,15 +1104,37 @@ class ValidatedFunction(FunctionWithUsage):
 
         # prepare remedy function
         remedy_function = FunctionWithUsage(
-            (
-                "The following string should be in JSON format but contains errors. "
-                + "Fix the errors and return a valid JSON string that is valid for the given JSON schema without changing values.\n"
-            ),
-            static_context="You are an agent for validating JSON schemas and fixing errors.",
+            """
+            [Task]
+            Fix the provided JSON string to ensure it is valid according to the schema and resolves all listed validation errors.
+
+            [Important Guidelines]
+            1. Only address the specific issues described in the validation errors.
+            2. Preserve the meaning and values of the original JSON as much as possible unless changes are necessary for schema compliance.
+            3. Ensure that the corrected JSON is both well-formatted and valid for the given schema.
+            4. Return the corrected JSON string as the output.
+            """,
+            static_context="""
+            You are tasked with fixing a string that is intended to be in **JSON format** but contains errors.
+            Your goal is to correct the errors and ensure the JSON string is valid according to a given JSON schema.
+            Follow these rules:
+
+            1. Parse the provided string and use the list of validation errors to identify what needs to be fixed.
+            2. Correct the identified errors to produce a properly formatted JSON string.
+            3. Ensure the corrected JSON complies fully with the provided JSON schema.
+            4. Preserve all original keys and values as much as possible. Only modify keys or values if they do not comply with the schema.
+            5. Only modify the structure or values if necessary to meet the schema's requirements.
+            6. Return the corrected JSON string as the output.
+
+            [Requirements]
+            - The output must be a valid, well-formatted JSON string.
+            - Do not introduce new data or alter the intent of the original content unless required for schema compliance.
+            - Ensure all changes are minimal and strictly necessary to fix the listed errors.
+            """,
             response_format={"type": "json_object"},
         )
 
-        # try to validate the JSON and fix if necessary
+        # Ensure valid JSON is returned
         result = None
         last_error = ""
         for i in range(self.retry_count):
@@ -1085,22 +1143,23 @@ class ValidatedFunction(FunctionWithUsage):
                 result = self.data_model.model_validate_json(json, strict=True)
                 break
             except ValidationError as e:
-                # in case of validation error collect and format error messages
-                error_str = ""
-                for error in e.errors():
-                    error_str += f"[ERROR] {error['msg']}: {error['loc']}\n"
-                last_error = error_str
+                # collect and format error messages
+                error_str = self.simplify_validation_errors(e)
 
-                # ask model to fix the error
-                self.print_verbose(f"[Retry {i + 1}/{self.retry_count}] ValidationError: {str(e)}")
-                remedy_function.clear()
-                remedy_function.adapt(
-                    "[[JSON Schema]]\n"
-                    + str(self.data_model.model_json_schema(mode="validation"))
-                    + "\n\n"
+                logger.debug(
+                    f"[Retry {i + 1}/{self.retry_count}] ValidationError:\n{error_str}"
                 )
-                remedy_function.adapt("[[ERRORS]]\n" + error_str + "\n")
-                json, remedy_usage = remedy_function(json, seed=remedy_seeds[i])
+
+                # adapt remedy function
+                remedy_function.clear()
+                remedy_function.adapt(f"[Original Input]\n```json\n{json}\n´´´\n")
+                remedy_function.adapt(f"[Validation Errors]\n{error_str}\n")
+                remedy_function.adapt(
+                    f"[JSON Schema]\n{self.data_model.instruct_llm()}\n"
+                )
+
+                # apply remedy function
+                json, remedy_usage = remedy_function(seed=remedy_seeds[i])
 
                 # update usage
                 usage.prompt_tokens += remedy_usage.prompt_tokens
@@ -1110,17 +1169,15 @@ class ValidatedFunction(FunctionWithUsage):
                 # update global usage
                 self.add_usage(remedy_usage)
 
+                # update last error for exception details
+                last_error = error_str
+
         if result is None:
-            raise ExceptionWithUsage(f"Failed to retrieve valid JSON: {last_error}", usage)
+            raise ExceptionWithUsage(
+                f"Failed to retrieve valid JSON: {last_error}", usage
+            )
 
         return result, usage
-
-
-@dataclass
-class LengthConstraint:
-    field_name: str
-    min_characters: int = 0
-    max_characters: int = 1000
 
 
 class LengthConstrainedFunction(ValidatedFunction):
@@ -1297,4 +1354,3 @@ class SelfPrompt(Expression):
         def _func(self, sym: Symbol, **kwargs): pass
 
         return _func(self, self._to_symbol(existing_prompt))
-

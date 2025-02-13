@@ -3,11 +3,11 @@ from __future__ import annotations
 import ast
 import importlib
 import inspect
-import logging
 import pkgutil
 import traceback
 import warnings
 from enum import Enum
+from loguru import logger
 from types import ModuleType
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type
 
@@ -18,9 +18,6 @@ from .backend import engines
 from .backend.base import ENGINE_UNREGISTERED, Engine
 from .post_processors import PostProcessor
 from .pre_processors import PreProcessor
-
-logger = logging.getLogger(__name__)
-logger.propagate = False
 
 
 class ConstraintViolationException(Exception):

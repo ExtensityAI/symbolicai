@@ -1,21 +1,21 @@
 import functools
-import traceback
-import os
+import logging
+import multiprocessing as mp
 import os
 import pickle
 import random
+import sys
 import time
-import logging
-import dill
-import multiprocessing as mp
-
-from . import __root_dir__
-from typing import Callable, List
+import traceback
 from pathlib import Path
+from typing import Callable, List
+
+import dill
+from loguru import logger
 from pathos.multiprocessing import ProcessingPool as PPool
 
+from . import __root_dir__
 from .functional import EngineRepository
-
 
 logging.getLogger("multiprocessing").setLevel(logging.ERROR)
 
@@ -189,7 +189,7 @@ def error_logging(debug: bool = False):
             try:
                 return func(*args, **kwargs)
             except Exception as e:
-                logging.error(e)
+                logger.error(e)
                 if debug:
                     # Simple message:
                     print('Function: {} call failed. Error: {}'.format(func.__name__, e))
