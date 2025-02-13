@@ -21,7 +21,7 @@ from . import core, core_ext
 from .backend.settings import HOME_PATH
 from .constraints import DictFormatConstraint
 from .formatter import ParagraphFormatter
-from .models import LLMDataModel, TypeValdationError, LengthConstraint
+from .models import LLMDataModel, TypeValidationError, LengthConstraint
 from .post_processors import (CodeExtractPostProcessor,
                               JsonTruncateMarkdownPostProcessor,
                               JsonTruncatePostProcessor, PostProcessor,
