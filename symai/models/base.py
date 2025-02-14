@@ -91,6 +91,13 @@ class LLMDataModel(BaseModel):
         pass
 
     ########################################
+    # Default remedy method
+    ########################################
+    def remedy(self):
+        """Default remedy method for the model."""
+        return None
+
+    ########################################
     # Helper methods for generating LLM instructions
     ########################################
 
