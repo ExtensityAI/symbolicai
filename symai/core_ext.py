@@ -179,6 +179,7 @@ def _cache_registry_func(
 
     return call
 
+
 def error_logging(debug: bool = False):
     '''
     Log the error of a function call.
@@ -198,3 +199,50 @@ def error_logging(debug: bool = False):
                 raise e
         return _dec
     return dec
+
+
+def deprecated(reason: str = ""):
+    """
+    Mark a class, method, or function as deprecated.
+
+    Args:
+        reason (str): Explanation of why the item is deprecated and/or what to use instead
+
+    Example usage:
+        @deprecated("Use new_function() instead")
+        def old_function(): pass
+
+        @deprecated()
+        class OldClass: pass
+
+        class MyClass:
+            @deprecated("Use new_method() instead")
+            def old_method(self): pass
+    """
+    def decorator(obj):
+        if isinstance(obj, type):
+            # If obj is a class
+            original_init = obj.__init__
+            @functools.wraps(original_init)
+            def new_init(self, *args, **kwargs):
+                logger.warning(
+                    f"{obj.__name__} is deprecated and will be removed in future versions. {reason}",
+                    category=DeprecationWarning,
+                    stacklevel=2
+                )
+                original_init(self, *args, **kwargs)
+            obj.__init__ = new_init
+            return obj
+
+        # If obj is a function or method
+        @functools.wraps(obj)
+        def wrapper(*args, **kwargs):
+            logger.warning(
+                f"{obj.__name__} is deprecated and will be removed in future versions. {reason}",
+                category=DeprecationWarning,
+                stacklevel=2
+            )
+            return obj(*args, **kwargs)
+        return wrapper
+
+    return decorator
