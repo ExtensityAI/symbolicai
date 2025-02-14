@@ -1,3 +1,8 @@
+class ExceptionWithUsage(Exception):
+    def __init__(self, message, usage):
+        super().__init__(message)
+        self.usage = usage
+
 class TypeValidationError(Exception):
     def __init__(self, violations, *args):
         super().__init__(*args)
