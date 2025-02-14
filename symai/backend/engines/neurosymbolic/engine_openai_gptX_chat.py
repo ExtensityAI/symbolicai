@@ -406,7 +406,11 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         if argument.prop.response_format:
             _rsp_fmt = argument.prop.response_format
             assert _rsp_fmt.get('type') is not None, 'Expected format `{ "type": "json_object" }`! See https://platform.openai.com/docs/api-reference/chat/create#chat-create-response_format'
-            system += f'<RESPONSE_FORMAT/>\n{_rsp_fmt["type"]}\n\n'
+            if _rsp_fmt["type"] == "json_object":
+                # OpenAI docs:
+                    # "Important: when using JSON mode, you must also instruct the model
+                    #  to produce JSON yourself via a system or user message"
+                system += f'<RESPONSE_FORMAT/>\nYou are a helpful assistant designed to output JSON.\n\n'
 
         ref = argument.prop.instance
         static_ctxt, dyn_ctxt = ref.global_context
