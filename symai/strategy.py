@@ -195,63 +195,6 @@ class SemanticValidationFunction(Function):
         *args,
         **kwargs,
     ):
-        """
-        A contract class decorator inspired by DbC principles, ensuring that the function's input and output adhere to specified data models.
-        This implementation includes retry logic to handle transient errors and gracefully handle failures.
-
-        Example:
-            class CodeSnippet(LLMDataModel):
-                code: str = Field(description="The code snippet that needs to be reviewed. It will be reviewed for security vulnerabilities, performance issues, and code complexity.")
-                context: str = Field(default="Security vulnerability audit.", description="The context of the code.")
-                language: str = Field(default="python", description="The programming language.")
-
-            class CodeReview(LLMDataModel):
-                code: CodeSnippet
-                issues: list[str] = Field(default=[], description="A list of issues found in the code.")
-                suggestions: list[str] = Field(default=[], description="A list of suggestions to improve the code.")
-                security_concerns: list[str] = Field(default=[], description="A list of security concerns found in the code.")
-                complexity_score: int = Field(default=0, ge=1, le=10, description="The complexity score of the code.")
-
-            class AdaptedCodeSnippet(LLMDataModel):
-                code: str = Field(description="The code snippet that was changed to improve security, performance, and complexity.")
-                passed: bool = Field(description="Whether the code passed the review.")
-
-            @contract(pre_remedy=False, post_remedy=True, verbose=True)
-            class CodeReviewer(Expression):
-                def __init__(self, *args, **kwargs):
-                    super().__init__(*args, **kwargs)
-
-                def forward(self, input: CodeReview, **kwargs) -> AdaptedCodeSnippet:
-                    pass
-
-                #——————————————————————————————————————————————————————————————————————————————
-                # called in the contract; must be implemented if pre_remedy is True
-                def pre(self, input: CodeReview) -> bool:
-                    return True
-
-                # called in the contract; must be implemented if post_remedy is True
-                def post(self, output: AdaptedCodeSnippet) -> bool:
-                    if output.passed:
-                        return True
-                    return False
-                #——————————————————————————————————————————————————————————————————————————————
-                @property
-                def task(self) -> str:
-                    return "You are a code review assistant and your task is to analyze the provided code. Use your knowledge of Python and its ecosystem to identify potential security vulnerabilities, performance issues, and code quality concerns. If there are any issues with the provided code, you have to rewrite it to address the identified concerns."
-
-
-            code = '''
-            import pickle
-
-            serialized_data = input("Enter serialized data: ")
-
-            deserialized_data = pickle.loads(serialized_data.encode('latin1'))  # Unsafe deserialization
-            '''
-
-            input = CodeReview(code=CodeSnippet(code=code))
-            code_reviewer = CodeReviewer()
-            res = code_reviewer(input=input)
-        """
         super().__init__(*args, **kwargs)
         self.retry_params = retry_params
         self.input_data_model = None
@@ -497,6 +440,64 @@ class contract:
         remedy_retry_params: dict[str, int | float | bool] = _default_remedy_retry_params,
         verbose: bool = False
     ):
+
+        """
+        A contract class decorator inspired by DbC principles, ensuring that the function's input and output adhere to specified data models.
+        This implementation includes retry logic to handle transient errors and gracefully handle failures.
+
+        Example:
+            class CodeSnippet(LLMDataModel):
+                code: str = Field(description="The code snippet that needs to be reviewed. It will be reviewed for security vulnerabilities, performance issues, and code complexity.")
+                context: str = Field(default="Security vulnerability audit.", description="The context of the code.")
+                language: str = Field(default="python", description="The programming language.")
+
+            class CodeReview(LLMDataModel):
+                code: CodeSnippet
+                issues: list[str] = Field(default=[], description="A list of issues found in the code.")
+                suggestions: list[str] = Field(default=[], description="A list of suggestions to improve the code.")
+                security_concerns: list[str] = Field(default=[], description="A list of security concerns found in the code.")
+                complexity_score: int = Field(default=0, ge=1, le=10, description="The complexity score of the code.")
+
+            class AdaptedCodeSnippet(LLMDataModel):
+                code: str = Field(description="The code snippet that was changed to improve security, performance, and complexity.")
+                passed: bool = Field(description="Whether the code passed the review.")
+
+            @contract(pre_remedy=False, post_remedy=True, verbose=True)
+            class CodeReviewer(Expression):
+                def __init__(self, *args, **kwargs):
+                    super().__init__(*args, **kwargs)
+
+                def forward(self, input: CodeReview, **kwargs) -> AdaptedCodeSnippet:
+                    pass
+
+                #——————————————————————————————————————————————————————————————————————————————
+                # called in the contract; must be implemented if pre_remedy is True
+                def pre(self, input: CodeReview) -> bool:
+                    return True
+
+                # called in the contract; must be implemented if post_remedy is True
+                def post(self, output: AdaptedCodeSnippet) -> bool:
+                    if output.passed:
+                        return True
+                    return False
+                #——————————————————————————————————————————————————————————————————————————————
+                @property
+                def task(self) -> str:
+                    return "You are a code review assistant and your task is to analyze the provided code. Use your knowledge of Python and its ecosystem to identify potential security vulnerabilities, performance issues, and code quality concerns. If there are any issues with the provided code, you have to rewrite it to address the identified concerns."
+
+
+            code = '''
+            import pickle
+
+            serialized_data = input("Enter serialized data: ")
+
+            deserialized_data = pickle.loads(serialized_data.encode('latin1'))  # Unsafe deserialization
+            '''
+
+            input = CodeReview(code=CodeSnippet(code=code))
+            code_reviewer = CodeReviewer()
+            res = code_reviewer(input=input)
+        """
         self.pre_remedy = pre_remedy
         self.post_remedy = post_remedy
         self.retry_params = remedy_retry_params
