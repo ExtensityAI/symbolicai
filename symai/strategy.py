@@ -500,9 +500,8 @@ class contract:
         """
         self.pre_remedy = pre_remedy
         self.post_remedy = post_remedy
-        self.retry_params = remedy_retry_params
-        self.f_type_validation_remedy = TypeValidationFunction(verbose=False, **remedy_retry_params)
-        self.f_semantic_validation_remedy = SemanticValidationFunction(verbose=False, **remedy_retry_params)
+        self.f_type_validation_remedy = TypeValidationFunction(verbose=False, retry_params=remedy_retry_params)
+        self.f_semantic_validation_remedy = SemanticValidationFunction(verbose=False, retry_params=remedy_retry_params)
 
         if not verbose:
             logger.disable(__name__)
