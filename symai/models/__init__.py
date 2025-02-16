@@ -1,2 +1,2 @@
 from .base import Const, LengthConstraint, LLMDataModel
-from .errors import ExceptionWithUsage, TypeValidationError
+from .errors import ExceptionWithUsage, TypeValidationError, SemanticValidationError
