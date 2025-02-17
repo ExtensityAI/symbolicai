@@ -8,7 +8,6 @@ from attr import has
 from beartype import beartype
 from box import Box
 from loguru import logger
-from numpy import WRAP
 from pydantic import BaseModel
 
 from . import post_processors as post
