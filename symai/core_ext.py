@@ -1,3 +1,4 @@
+import asyncio
 import functools
 import logging
 import multiprocessing as mp
@@ -75,7 +76,7 @@ def retry(
     graceful=False
 ):
     '''
-    Returns a retry decorator.
+    Returns a retry decorator for both async and sync functions.
 
     :param exceptions: an exception or a tuple of exceptions to catch. default: Exception.
     :param tries:      the maximum number of attempts. default: -1 (infinite).
@@ -84,14 +85,15 @@ def retry(
     :param backoff:    multiplier applied to delay between attempts. default: 1 (no backoff).
     :param jitter:     extra seconds added to delay between attempts. default: 0.
                        fixed if a number, random if a range tuple (min, max)
+    :param graceful:   whether to raise an exception if all attempts fail or return with None. default: False.
 
     Credits to invlpg (https://pypi.org/project/retry)
     '''
-
     def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            return _retry_func(
+        if asyncio.iscoroutinefunction(func):
+            @functools.wraps(func)
+            async def async_wrapper(*args, **kwargs):
+                return await _aretry_func(
                     functools.partial(func, *args, **kwargs),
                     exceptions=exceptions,
                     tries=tries,
@@ -101,7 +103,21 @@ def retry(
                     jitter=jitter,
                     graceful=graceful
                 )
-        return wrapper
+            return async_wrapper
+        else:
+            @functools.wraps(func)
+            def sync_wrapper(*args, **kwargs):
+                return _retry_func(
+                    functools.partial(func, *args, **kwargs),
+                    exceptions=exceptions,
+                    tries=tries,
+                    delay=delay,
+                    max_delay=max_delay,
+                    backoff=backoff,
+                    jitter=jitter,
+                    graceful=graceful
+                )
+            return sync_wrapper
     return decorator
 
 
@@ -127,6 +143,39 @@ def _retry_func(
                 raise
 
             time.sleep(_delay)
+            _delay *= backoff
+
+            if isinstance(jitter, tuple):
+                _delay += random.uniform(*jitter)
+            else:
+                _delay += jitter
+
+            if max_delay >= 0:
+                _delay = min(_delay, max_delay)
+
+
+async def _aretry_func(
+    func: callable,
+    exceptions: Exception,
+    tries: int,
+    delay: int,
+    max_delay: int,
+    backoff: int,
+    jitter: int,
+    graceful: bool
+):
+    _tries, _delay = tries, delay
+    while _tries:
+        try:
+            return await func()
+        except exceptions as e:
+            _tries -= 1
+            if not _tries:
+                if graceful:
+                    return None
+                raise
+
+            await asyncio.sleep(_delay)
             _delay *= backoff
 
             if isinstance(jitter, tuple):
