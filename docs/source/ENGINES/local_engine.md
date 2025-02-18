@@ -1,4 +1,5 @@
-# Local Neuro-Symbolic Engine
+# Local Engines
+## Local Neuro-Symbolic Engine
 
 You can use a locally hosted instance for the Neuro-Symbolic Engine. We build on top of:
 - [llama.cpp](https://github.com/ggerganov/llama.cpp/tree/master) through [llama-cpp-python](https://github.com/abetlen/llama-cpp-python?tab=readme-ov-file). Please follow the `llama-cpp-python` installation instructions. We make the assumption the user has experience running `llama.cpp` prior to using our API for local hosting.
@@ -73,7 +74,7 @@ print(sym)
 # and physical comfort and happiness to their owners, making them a much-loved member of families around the world.
 ```
 
-# Local Embedding Engine
+## Local Embedding Engine
 You can also use local embedding models through the `llama.cpp` backend. First, set the `EMBEDDING_ENGINE_MODEL` to `llamacpp`:
 
 ```json
