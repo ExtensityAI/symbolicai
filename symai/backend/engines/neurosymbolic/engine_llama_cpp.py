@@ -1,10 +1,14 @@
+import asyncio
 import json
 import logging
-import re
-from typing import List, Optional
 
+import aiohttp
+import httpx
+import nest_asyncio
 import requests
 
+from ....core import Argument
+from ....core_ext import retry
 from ....utils import CustomUserWarning
 from ...base import Engine
 from ...settings import SYMAI_CONFIG, SYMSERVER_CONFIG
@@ -19,34 +23,65 @@ class LlamaCppTokenizer:
     _server_endpoint = f"http://{SYMSERVER_CONFIG.get('--host')}:{SYMSERVER_CONFIG.get('--port')}"
 
     @staticmethod
-    def encode(text: str) -> List[int]:
-        res = requests.post(f"{LlamaCppTokenizer._server_endpoint}/extras/tokenize", json={
-            "input": text,
-        })
-
-        if res.status_code != 200:
-            raise ValueError(f"Request failed with status code: {res.status_code}")
-
-        res = res.json()
-
-        return res['tokens']
+    async def _encode(text: str) -> list[int]:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f"{LlamaCppTokenizer._server_endpoint}/extras/tokenize", json={
+                "input": text,
+            }) as res:
+                if res.status != 200:
+                    raise ValueError(f"Request failed with status code: {res.status}")
+                res = await res.json()
+                return res['tokens']
 
     @staticmethod
-    def decode(tokens: List[int]) -> str:
-        res = requests.post(f"{LlamaCppTokenizer._server_endpoint}/extras/detokenize", json={
-            "tokens": tokens,
-        })
+    def encode(text: str) -> list[int]:
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        return loop.run_until_complete(LlamaCppTokenizer._encode(text))
 
-        if res.status_code != 200:
-            raise ValueError(f"Request failed with status code: {res.status_code}")
+    @staticmethod
+    async def _decode(tokens: list[int]) -> str:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f"{LlamaCppTokenizer._server_endpoint}/extras/detokenize", json={
+                "tokens": tokens,
+            }) as res:
+                if res.status != 200:
+                    raise ValueError(f"Request failed with status code: {res.status}")
+                res = await res.json()
+                return res['text']
 
-        res = res.json()
-
-        return res['text']
+    @staticmethod
+    def decode(tokens: list[int]) -> str:
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        return loop.run_until_complete(LlamaCppTokenizer._decode(tokens))
 
 
 class LlamaCppEngine(Engine):
-    def __init__(self, model: Optional[str] = None):
+    _retry_params = {
+        'tries': 5,
+        'delay': 2,
+        'max_delay': 60,
+        'backoff': 2,
+        'jitter': (1, 5),
+        'graceful': True
+    }
+    _timeout_params = {
+        'read': None,
+        'connect': None,
+    }
+    def __init__(
+            self,
+            model: str | None = None,
+            retry_params: dict = _retry_params,
+            timeout_params: dict = _timeout_params,
+        ):
         super().__init__()
         self.config = SYMAI_CONFIG
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
@@ -58,6 +93,8 @@ class LlamaCppEngine(Engine):
             raise CustomUserWarning('You are using the llama.cpp engine, but the server endpoint is not started. Please start the server with `symserver [--args]` or run `symserver --help` to see the available options for this engine.')
         self.server_endpoint = f"http://{SYMSERVER_CONFIG.get('--host')}:{SYMSERVER_CONFIG.get('--port')}"
         self.tokenizer = LlamaCppTokenizer # backwards compatibility with how we handle tokenization, i.e. self.tokenizer().encode(...)
+        self.timeout_params = self._validate_timeout_params(timeout_params)
+        self.retry_params = self._validate_retry_params(retry_params)
 
     def id(self) -> str:
         if self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('llama'):
@@ -81,63 +118,88 @@ class LlamaCppEngine(Engine):
         #@TODO: quite non-trivial how to handle this with the llama.cpp server
         raise NotImplementedError
 
-    def forward(self, argument):
-        kwargs        = argument.kwargs
-        prompts_      = argument.prop.prepared_input
+    def _validate_timeout_params(self, timeout_params):
+        if not isinstance(timeout_params, dict):
+            raise ValueError("timeout_params must be a dictionary")
+        assert all(key in timeout_params for key in ['read', 'connect']), "Available keys: ['read', 'connect']"
+        return timeout_params
 
-        stop              = kwargs.get('stop')
-        seed              = kwargs.get('seed')
-        temperature       = kwargs.get('temperature', 0.6)
-        frequency_penalty = kwargs.get('frequency_penalty', 0)
-        presence_penalty  = kwargs.get('presence_penalty', 0)
-        top_p             = kwargs.get('top_p', 0.95)
-        min_p             = kwargs.get('min_p', 0.05)
-        n                 = kwargs.get('n', 1)
-        max_tokens        = kwargs.get('max_tokens')
-        top_logprobs      = kwargs.get('top_logprobs')
-        top_k             = kwargs.get('top_k', 40)
-        repeat_penalty    = kwargs.get('repeat_penalty', 1)
-        logits_bias       = kwargs.get('logits_bias')
-        logprobs          = kwargs.get('logprobs', False)
-        functions         = kwargs.get('functions')
-        function_call     = kwargs.get('function_call')
-        grammar           = kwargs.get('grammar')
-        except_remedy     = kwargs.get('except_remedy') #@TODO: mimic openai logic here (somehow)
+    def _validate_retry_params(self, retry_params):
+        if not isinstance(retry_params, dict):
+            raise ValueError("retry_params must be a dictionary")
+        assert all(key in retry_params for key in ['tries', 'delay', 'max_delay', 'backoff', 'jitter', 'graceful']), "Available keys: ['tries', 'delay', 'max_delay', 'backoff', 'jitter', 'graceful']"
+        return retry_params
+
+    @staticmethod
+    def _get_event_loop() -> asyncio.AbstractEventLoop:
+        """Gets or creates an event loop."""
+        try:
+            current_loop = asyncio.get_event_loop()
+            if current_loop.is_closed():
+                raise RuntimeError("Event loop is closed.")
+            return current_loop
+        except RuntimeError:
+            new_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(new_loop)
+            return new_loop
+
+    def _prepare_request_payload(self, argument: Argument) -> dict:
+        """Prepares the request payload from the argument."""
+        kwargs = argument.kwargs
+        return {
+            "messages": argument.prop.prepared_input,
+            "temperature": kwargs.get('temperature', 0.6),
+            "frequency_penalty": kwargs.get('frequency_penalty', 0),
+            "presence_penalty": kwargs.get('presence_penalty', 0),
+            "top_p": kwargs.get('top_p', 0.95),
+            "min_p": kwargs.get('min_p', 0.05),
+            "stop": kwargs.get('stop'),
+            "seed": kwargs.get('seed'),
+            "max_tokens": kwargs.get('max_tokens'),
+            "top_k": kwargs.get('top_k', 40),
+            "repeat_penalty": kwargs.get('repeat_penalty', 1),
+            "logits_bias": kwargs.get('logits_bias'),
+            "logprobs": kwargs.get('logprobs', False),
+            "functions": kwargs.get('functions'),
+            "function_call": kwargs.get('function_call'),
+            "grammar": kwargs.get('grammar')
+        }
+
+    async def _arequest(self, payload: dict) -> dict:
+        """Makes an async HTTP request to the llama.cpp server."""
+        @retry(**self.retry_params)
+        async def _make_request():
+            timeout = aiohttp.ClientTimeout(
+                sock_connect=self.timeout_params['connect'],
+                sock_read=self.timeout_params['read']
+            )
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.post(
+                    f"{self.server_endpoint}/v1/chat/completions",
+                    json=payload
+                ) as res:
+                    if res.status != 200:
+                        raise ValueError(f"Request failed with status code: {res.status}")
+                    return await res.json()
+
+        return await _make_request()
+
+    def forward(self, argument):
+        payload = self._prepare_request_payload(argument)
+
+        nest_asyncio.apply()
+        loop = self._get_event_loop()
 
         try:
-            res = requests.post(f"{self.server_endpoint}/v1/chat/completions", json={
-                "messages": prompts_,
-                "temperature": temperature,
-                "frequency_penalty": frequency_penalty,
-                "presence_penalty": presence_penalty,
-                "top_p": top_p,
-                "stop": stop,
-                "seed": seed,
-                "max_tokens": max_tokens,
-                "top_k": top_k,
-                "repeat_penalty": repeat_penalty,
-                "logits_bias": logits_bias,
-                "logprobs": logprobs,
-                "functions": functions,
-                "function_call": function_call,
-                "grammar": grammar,
-            })
-
-            if res.status_code != 200:
-                raise ValueError(f"Request failed with status code: {res.status_code}")
-
-            res = res.json()
-
+            res = loop.run_until_complete(self._arequest(payload))
         except Exception as e:
-            if except_remedy is not None:
-                res = except_remedy(self, e, argument)
-            else:
-                raise e
+            raise ValueError(f"Request failed with error: {str(e)}")
 
         metadata = {'raw_output': res}
 
-        rsp    = [r['message']['content'] for r in res['choices']]
-        output = rsp if isinstance(prompts_, list) else rsp[0]
+        output = [r['message']['content'] for r in res['choices']]
+        output = output if isinstance(argument.prop.prepared_input, list) else output[0]
+
         return output, metadata
 
     def prepare(self, argument):
@@ -176,7 +238,7 @@ class LlamaCppEngine(Engine):
         if argument.prop.payload:
             user += f"<ADDITIONAL_CONTEXT/>\n{str(payload)}\n\n"
 
-        examples: List[str] = argument.prop.examples
+        examples: list[str] = argument.prop.examples
         if examples and len(examples) > 0:
             user += f"<EXAMPLES/>\n{str(examples)}\n\n"
 
