@@ -1,13 +1,12 @@
 import logging
+from typing import Optional
+
 import numpy as np
 import openai
-
-from typing import Optional
 
 from ...base import Engine
 from ...mixin.openai import OpenAIMixin
 from ...settings import SYMAI_CONFIG
-
 
 logging.getLogger("openai").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)
@@ -41,30 +40,30 @@ class EmbeddingEngine(Engine, OpenAIMixin):
 
     def forward(self, argument):
         prepared_input = argument.prop.prepared_input
-        args           = argument.args
-        kwargs         = argument.kwargs
+        args = argument.args
+        kwargs = argument.kwargs
 
-        input_        = prepared_input if isinstance(prepared_input, list) else [prepared_input]
+        inp = prepared_input if isinstance(prepared_input, list) else [prepared_input]
         except_remedy = kwargs.get('except_remedy')
-        new_dim       = kwargs.get('new_dim')
+        new_dim = kwargs.get('new_dim')
 
         try:
-            res = openai.embeddings.create(model=self.model,
-                                           input=input_)
+            res = openai.embeddings.create(model=self.model, input=inp)
         except Exception as e:
             if except_remedy is None:
                 raise e
             callback = openai.embeddings.create
-            res = except_remedy(e, input_, callback, self, *args, **kwargs)
+            res = except_remedy(e, inp, callback, self, *args, **kwargs)
 
         if new_dim:
             mn = min(new_dim, self.embedding_dim) #@NOTE: new_dim should be less than or equal to the original embedding dim
-            rsp = [self._normalize_l2(r.embedding[:mn]) for r in res.data]
+            output = [self._normalize_l2(r.embedding[:mn]) for r in res.data]
         else:
-            rsp = [r.embedding for r in res.data]
+            output = [r.embedding for r in res.data]
 
-        metadata = {}
-        return [rsp], metadata
+        metadata = {"raw_output": res}
+
+        return [output], metadata
 
     def prepare(self, argument):
         assert not argument.prop.processed_input, "EmbeddingEngine does not support processed_input."
