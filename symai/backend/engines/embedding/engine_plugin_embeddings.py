@@ -4,7 +4,7 @@ from ...settings import SYMAI_CONFIG
 
 class PluginEmbeddingEngine(Engine):
     def id(self) -> str:
-        if not SYMAI_CONFIG['EMBEDDING_ENGINE_API_KEY'] or SYMAI_CONFIG['EMBEDDING_ENGINE_API_KEY'] == '':
+        if not SYMAI_CONFIG['EMBEDDING_ENGINE_API_KEY'] and not SYMAI_CONFIG['EMBEDDING_ENGINE_MODEL'].startswith("llama"):
             from ....functional import EngineRepository
 
             # Register the embedding engine from the plugin

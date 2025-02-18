@@ -20,14 +20,16 @@ class EmbeddingEngine(Engine, OpenAIMixin):
         super().__init__()
         logger = logging.getLogger('openai')
         logger.setLevel(logging.WARNING)
-        self.config        = SYMAI_CONFIG
-        openai.api_key     = self.config['EMBEDDING_ENGINE_API_KEY'] if api_key is None else api_key
-        self.model         = self.config['EMBEDDING_ENGINE_MODEL'] if model is None else model
-        self.max_tokens    = self.api_max_context_tokens()
+        self.config = SYMAI_CONFIG
+        if self.id() != 'embedding':
+            return # do not initialize if not embedding; avoids conflict with llama.cpp check in EngineRepository.register_from_package
+        openai.api_key = self.config['EMBEDDING_ENGINE_API_KEY'] if api_key is None else api_key
+        self.model = self.config['EMBEDDING_ENGINE_MODEL'] if model is None else model
+        self.max_tokens = self.api_max_context_tokens()
         self.embedding_dim = self.api_embedding_dims()
 
     def id(self) -> str:
-        if  self.config['EMBEDDING_ENGINE_API_KEY']:
+        if self.config.get('EMBEDDING_ENGINE_API_KEY') and self.config['EMBEDDING_ENGINE_MODEL'].startswith('text-embedding'):
             return 'embedding'
         return super().id() # default to unregistered
 
