@@ -112,19 +112,15 @@ class LlamaCppEmbeddingEngine(Engine):
         nest_asyncio.apply()
         loop = self._get_event_loop()
 
-        async def process_all_inputs(texts):
-            tasks = [self._arequest(text) for text in texts]
-            return await asyncio.gather(*tasks)
-
         try:
-            res = loop.run_until_complete(process_all_inputs(inp))
+            res = loop.run_until_complete(self._arequest(inp))
         except Exception as e:
             raise ValueError(f"Request failed with error: {str(e)}")
 
         if new_dim:
             raise NotImplementedError("new_dim is not yet supported")
 
-        output = [r["data"][0]["embedding"] for r in res]
+        output = [r["embedding"] for r in res["data"]]
         metadata = {'raw_output': res}
 
         return [output], metadata

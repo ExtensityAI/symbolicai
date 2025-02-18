@@ -72,3 +72,38 @@ print(sym)
 # allergens, deterring pests, and even reducing stress in their surroundings. Overall, it is no surprise that pets have a long history of providing both emotional
 # and physical comfort and happiness to their owners, making them a much-loved member of families around the world.
 ```
+
+# Local Embedding Engine
+You can also use local embedding models through the `llama.cpp` backend. First, set the `EMBEDDING_ENGINE_MODEL` to `llamacpp`:
+
+```json
+{
+  "EMBEDDING_ENGINE_API_KEY": "",
+  "EMBEDDING_ENGINE_MODEL": "llamacpp",
+  ...
+}
+```
+
+For instance, to use the Nomic embed text model, first download it:
+```bash
+huggingface-cli download nomic-ai/nomic-embed-text-v1.5-GGUF nomic-embed-text-v1.5.Q8_0.gguf --local-dir .
+```
+
+Then start the server with embedding-specific parameters:
+```bash
+symserver --model nomic-embed-text-v1.5.Q8_0.gguf --embedding True --n_ctx 2048 --rope_scaling_type 2 --rope_freq_scale 0.75 --n_batch 32 --port 8000 --host localhost
+```
+
+The server supports batch processing for embeddings. Here's how to use it with `symai`:
+
+```python
+from symai import Symbol
+
+# Single text embedding
+some_text = "Hello, world!"
+embedding = Symbol(some_text).embed()  # returns a list (1 x dim)
+
+# Batch processing
+some_batch_of_texts = ["Hello, world!"] * 32
+embeddings = Symbol(some_batch_of_texts).embed()  # returns a list (32 x dim)
+```
