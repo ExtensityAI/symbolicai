@@ -31,13 +31,13 @@ class LlamaCppEmbeddingEngine(Engine):
         'connect': None,
     }
 
-    def __init__(self, model: Optional[str] = None,
-                 retry_params: dict = _retry_params,
-                 timeout_params: dict = _timeout_params):
+    def __init__(
+            self,
+            retry_params: dict = _retry_params,
+            timeout_params: dict = _timeout_params
+        ):
         super().__init__()
         self.config = SYMAI_CONFIG
-        if model is not None:
-            self.config['EMBEDDING_ENGINE_MODEL'] = model
         if self.id() != 'embedding':
             return
         if not SYMSERVER_CONFIG.get('online'):
