@@ -100,69 +100,6 @@ class LLMDataModel(BaseModel):
     ########################################
     # Helper methods for generating LLM instructions
     ########################################
-
-    def print_fields(self, indent_level: int = 0) -> str:
-        """
-        Prints the fields and their values in a human-readable format with proper indentation.
-        Similar to simplify_json_schema() but shows actual values instead of schema.
-
-        Args:
-            indent_level (int): The current indentation level
-
-        Returns:
-            str: A formatted string showing field names, types and values
-        """
-        def format_value(value: Any, indent: int) -> str:
-            """Formats a single value with proper indentation."""
-            indent_str = "  " * indent
-
-            if isinstance(value, LLMDataModel):
-                # Handle nested models
-                return f"\n{value.print_fields(indent)}"
-            elif isinstance(value, list):
-                # Handle lists
-                if not value:
-                    return "[]"
-                items = "\n".join([
-                    f"{indent_str}  - {format_value(item, indent + 1).lstrip()}"
-                    for item in value
-                ])
-                return f"\n{items}"
-            elif isinstance(value, dict):
-                # Handle dictionaries
-                if not value:
-                    return "{}"
-                items = "\n".join([
-                    f"{indent_str}  {k}: {format_value(v, indent + 2).lstrip()}"
-                    for k, v in value.items()
-                ])
-                return f"\n{items}"
-            else:
-                # Handle primitive values
-                return f"{value}"
-
-        indent_str = "  " * indent_level
-        lines = []
-
-        # Add section header if present
-        if self.section_header and indent_level == 0:
-            lines.append(f"[[{self.section_header}]]")
-
-        # Process each field
-        for name, field in self.model_fields.items():
-            if name == "section_header" or getattr(field, "exclude", False):
-                continue
-
-            value = getattr(self, name, None)
-            if value is not None:
-                value_str = format_value(value, indent_level + 1)
-                if value_str.startswith('\n'):
-                    lines.append(f'{indent_str}{name}:{value_str}')
-                else:
-                    lines.append(f'{indent_str}{name}: {value_str}')
-
-        return "\n".join(lines)
-
     @classmethod
     def simplify_json_schema(model) -> str:
         """

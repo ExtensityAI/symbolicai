@@ -19,9 +19,9 @@ class TypeValidationError(Exception):
         return f"TypeValidationError({self.violations})"
 
 class SemanticValidationError(Exception):
-    def __init__(self, task: str, result: str, violations: list[str], *args):
+    def __init__(self, prompt: str, result: str, violations: list[str], *args):
         super().__init__(*args)
-        self.task = task
+        self.prompt = prompt
         self.result = result
         if violations and not isinstance(violations, list):
             violations = [violations]
@@ -30,13 +30,15 @@ class SemanticValidationError(Exception):
     def __str__(self) -> str:
         violations = "\n".join(self.violations)
         return (
-            "[[Task]]\n"
-            f"{self.task}\n"
-            "\n[[Result]]\n"
-            f"{self.result}\n"
-            "\n[[Violations]]\n"
-            f"{violations}\n"
+            "[[Prompt]]\n"
+            f"{self.prompt}"
+            "\n\n"
+            "[[Result]]\n"
+            f"{self.result}"
+            "\n\n"
+            "[[Violations]]\n"
+            f"{violations}"
         )
 
     def __repr__(self):
-        return f"SemanticValidationError({self.task}, {self.result}, {self.violations})"
+        return f"SemanticValidationError({self.prompt}, {self.result}, {self.violations})"
