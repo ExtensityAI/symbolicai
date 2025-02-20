@@ -30,7 +30,6 @@ class ValidationFunction(Function):
       • Prepare seeds
       • Pause/backoff logic
       • Error simplification
-    Child classes must define their own forward() and remedy_prompt() methods.
     """
 
     _default_retry_params = dict(
@@ -449,7 +448,114 @@ class contract:
         adhere to specified data models. This implementation includes retry logic to handle transient errors
         and gracefully handle failures.
 
-        Example usage in docstring...
+        Example:
+            ```python
+            from pydantic import Field
+            from symai import Expression
+            from symai.components import FileReader, MetadataTracker
+            from symai.models import LLMDataModel
+            from symai.strategy import contract
+
+
+            # 1) Define your data models ------------------------------------------
+            class DocumentInput(LLMDataModel):
+                """Input model containing the document text and optional domain."""
+                text: str = Field(description="The text from which we want to extract a knowledge graph.")
+                domain: str = Field(default="generic", description="Domain or topic of the text, e.g. 'legal', 'academic', 'medical'.")
+
+            class Triple(LLMDataModel):
+                """Represents a single subject-relation-object triple in a knowledge graph."""
+                subject: str
+                relation: str
+                obj: str
+
+            class KnowledgeGraph(LLMDataModel):
+                """Output model representing our extracted knowledge graph."""
+                triples: list[Triple] = Field(default=[], description="A list of subject-relation-object triples extracted from the document.")
+
+            # 2) Create the “DocToKG” class with a contract ------------------------
+            remedy_retry_params = dict(
+                    tries=15,
+                    delay=0.5,
+                    max_delay=15,
+                    jitter=0.1,
+                    backoff=2,
+                    graceful=False
+                )
+
+            @contract(
+                pre_remedy=False, # use remedy for pre-condition check
+                post_remedy=True, # use remedy for post-condition check
+                verbose=True, # enables logging info
+                remedy_retry_params=remedy_retry_params, # retry parameters for remedy function
+            )
+            class DocToKG(Expression):
+                """
+                A class to extract knowledge graph information from a text document.
+                Uses symai's contract system to ensure pre- and post-conditions checks.
+                """
+                def __init__(self, *args, **kwargs):
+                    super().__init__(*args, **kwargs)
+                    self.num_triples = 25
+
+                # Required signature
+                def forward(self, input: DocumentInput, **kwargs) -> KnowledgeGraph:
+                    return self.contract_result # None if contract failed and it will raise type error, the valid contract result of type KnowledgeGraph otherwise
+
+                # 3) Pre-conditions & Post-conditions (for the contract) -----------
+                # Required pattern (return True, otherwise raise an error; the errors guide the model to self-correct, so the feedback you provide is crucial)
+                def pre(self, input: DocumentInput) -> bool:
+                    if bool(input.text.strip()):
+                        return True
+                    else:
+                        raise ValueError("Input text is empty!")
+
+                def post(self, output: KnowledgeGraph) -> bool:
+                    for t in output.triples:
+                        if not (t.subject and t.relation and t.obj):
+                            raise ValueError(f"Triple {t} is empty!")
+                    if len(output.triples) < self.num_triples:
+                        raise ValueError(f"Knowledge graph must contain at least {self.num_triples} triples! Got {len(output.triples)}!")
+                    return True
+
+
+                # 4) Various properties ----------------
+                # The prompt is required to guide the model's behavior and ensure it produces valid output.
+                # The payload and template are optional and can be used to provide additional information to the model.
+                @property
+                def prompt(self) -> str:
+                    return (
+                        "You are an AI specialized in document analysis and knowledge graph extraction. "
+                        f"You must produce a valid list of at least {self.num_triples} subject-relation-object triples that accurately "
+                        "reflects relationships mentioned in the text, ensuring no triple is empty and "
+                        "at least one triple is present."
+                    )
+
+                @property
+                def payload(self):
+                    return "Some payload."
+
+                @property
+                def template(self):
+                    return None
+
+            # 5) Demo: run with sample text ----------------------------------------
+            if __name__ == "__main__":
+
+                reader = FileReader()
+                sample_text = reader("/Users/futurisold/Zotero/storage/MCYMG8Z2/Katranidis and Barany - 2024 - FaaF Facts as a Function for the evaluation of generated text.pdf").value[0]
+                input_data = DocumentInput(text=sample_text, domain="generic")
+                extractor = DocToKG()
+
+                try:
+                    with MetadataTracker() as tracker:
+                        result = extractor(input=input_data)
+                        print("Extraction Succeeded!\n")
+                        print("Extracted Knowledge Graph (Triples):\n", result.triples)
+                        print(tracker.usage)
+                except Exception as e:
+                    print("Extraction Failed. Reason:", str(e))
+            ```
         '''
         self.pre_remedy = pre_remedy
         self.post_remedy = post_remedy
