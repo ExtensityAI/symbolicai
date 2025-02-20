@@ -184,7 +184,7 @@ def run_setup_wizard(file_path = __root_dir__ / 'symai.config.json'):
 
 def run_server():
     _symserver_config_ = {}
-    if settings.SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL").startswith("llama"):
+    if settings.SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL").startswith("llama") or settings.SYMAI_CONFIG.get("EMBEDDING_ENGINE_MODEL").startswith("llama"):
         from .server.llama_cpp_server import llama_cpp_server
 
         command, args = llama_cpp_server()
