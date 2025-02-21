@@ -2,7 +2,9 @@
 ## Local Neuro-Symbolic Engine
 
 You can use a locally hosted instance for the Neuro-Symbolic Engine. We build on top of:
-- [llama.cpp](https://github.com/ggerganov/llama.cpp/tree/master) through [llama-cpp-python](https://github.com/abetlen/llama-cpp-python?tab=readme-ov-file). Please follow the `llama-cpp-python` installation instructions. We make the assumption the user has experience running `llama.cpp` prior to using our API for local hosting.
+- [llama.cpp](https://github.com/ggerganov/llama.cpp/tree/master) either through:
+  - Direct C++ server from llama.cpp
+  - [llama-cpp-python](https://github.com/abetlen/llama-cpp-python?tab=readme-ov-file)
 - [huggingface/transformers](https://huggingface.co/docs/transformers/en/index) through a custom FastAPI server.
 
 ### llama.cpp backend
@@ -11,11 +13,7 @@ For instance, let's suppose you want to set as a Neuro-Symbolic Engine the lates
 huggingface-cli download TheBloke/LLaMA-Pro-8B-Instruct-GGUF llama-pro-8b-instruct.Q4_K_M.gguf --local-dir .
 ```
 
-Normally, to start the server through `llama.cpp` you would run something that looks like this:
-```bash
-python -m llama_cpp.server --model ./llama-pro-8b-instruct.Q4_K_M.gguf --n_gpu_layers -1 --chat_format llama-3 --port 8000 --host localhost
-```
-With `symai`, simply set the `NEUROSYMBOLIC_ENGINE_MODEL` to `llamacpp`:
+With `symai`, first set the `NEUROSYMBOLIC_ENGINE_MODEL` to `llamacpp`:
 
 ```json
 {
@@ -24,13 +22,23 @@ With `symai`, simply set the `NEUROSYMBOLIC_ENGINE_MODEL` to `llamacpp`:
   ...
 }
 ```
-Then, run `symserver` with options available for `llama.cpp`:
+
+You can then run the server in two ways:
+
+1. Using Python bindings:
 ```bash
-symserver --model ./llama-pro-8b-instruct.Q4_K_M.gguf --n_gpu_layers -1 --chat_format llama-3 --port 8000 --host localhost
+symserver --env python --model ./llama-pro-8b-instruct.Q4_K_M.gguf --n_gpu_layers -1 --chat_format llama-3 --port 8000 --host localhost
 ```
-To see all the available options `llama.cpp` provides, run:
+
+2. Using C++ server directly:
 ```bash
-symserver --help
+symserver --env cpp --cpp-server-path /path/to/llama.cpp/server -m ./llama-pro-8b-instruct.Q4_K_M.gguf --port 8000 --host localhost
+```
+
+To see all available options, run:
+```bash
+symserver --env python --help  # for Python bindings
+symserver --env cpp --cpp-server-path /path/to/llama.cpp/server --help  # for C++ server
 ```
 
 ### HuggingFace backend
@@ -90,9 +98,16 @@ For instance, to use the Nomic embed text model, first download it:
 huggingface-cli download nomic-ai/nomic-embed-text-v1.5-GGUF nomic-embed-text-v1.5.Q8_0.gguf --local-dir .
 ```
 
-Then start the server with embedding-specific parameters:
+Then start the server with embedding-specific parameters using either:
+
+Python bindings:
 ```bash
-symserver --model nomic-embed-text-v1.5.Q8_0.gguf --embedding True --n_ctx 2048 --rope_scaling_type 2 --rope_freq_scale 0.75 --n_batch 32 --port 8000 --host localhost
+symserver --env python --model nomic-embed-text-v1.5.Q8_0.gguf --embedding True --n_ctx 2048 --rope_scaling_type 2 --rope_freq_scale 0.75 --n_batch 32 --port 8000 --host localhost
+```
+
+C++ server:
+```bash
+symserver --env cpp --cpp-server-path /path/to/llama.cpp/server  -ngl 0 -m nomic-embed-text-v1.5.Q8_0.gguf --embedding -c 8192 -b 8192 --rope-scaling yarn --rope-freq-scale .75 --port 8000 --host localhost
 ```
 
 The server supports batch processing for embeddings. Here's how to use it with `symai`:
