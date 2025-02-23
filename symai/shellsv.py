@@ -41,7 +41,7 @@ logging.getLogger("asyncio").setLevel(logging.ERROR)
 logging.getLogger("subprocess").setLevel(logging.ERROR)
 
 # load json config from home directory root
-home_path = HOME_PATH / '.symai'
+home_path = HOME_PATH
 config_path = os.path.join(home_path, 'symsh.config.json')
 # migrate config from old path
 if 'colors' not in SYMSH_CONFIG:
@@ -284,7 +284,7 @@ class FileHistory(History):
                 write("%s\n" % line)
 
 # Defining commands history
-def load_history(home_path=os.path.expanduser('~'), history_file='.bash_history'):
+def load_history(home_path=HOME_PATH, history_file='.bash_history'):
     history_file_path = os.path.join(home_path, history_file)
     history = FileHistory(history_file_path)
     return history, list(history.load_history_strings())
@@ -332,8 +332,8 @@ def disambiguate(cmds: str) -> Tuple[str, int]:
 # query language model
 def query_language_model(query: str, res=None, *args, **kwargs):
     global stateful_conversation, previous_kwargs
-    home_path = os.path.expanduser('~')
-    symai_path = os.path.join(home_path, '.symai', '.conversation_state')
+    home_path = HOME_PATH
+    symai_path = os.path.join(home_path, '.conversation_state')
     plugin = SYMSH_CONFIG.get('plugin_prefix')
 
     # check and extract kwargs from query if any
@@ -467,7 +467,7 @@ def retrieval_augmented_indexing(query: str, index_name = None, *args, **kwargs)
         # check if path contains git flag
         if path.startswith('git@'):
             overwrite = True
-            repo_path = os.path.join(os.path.expanduser('~'), '.symai', 'temp')
+            repo_path = os.path.join(home_path, 'temp')
             cloner = RepositoryCloner(repo_path=repo_path)
             url = path[4:]
             if 'http' not in url:
@@ -495,8 +495,8 @@ def retrieval_augmented_indexing(query: str, index_name = None, *args, **kwargs)
         # creates index if not exists
         DocumentRetriever(index_name=index_name, file=file, overwrite=overwrite)
 
-    home_path = os.path.expanduser('~')
-    symai_path = os.path.join(home_path, '.symai', '.conversation_state')
+    home_path = HOME_PATH
+    symai_path = os.path.join(home_path, '.conversation_state')
     os.makedirs(os.path.dirname(symai_path), exist_ok=True)
     stateful_conversation = RetrievalConversationType(auto_print=False, index_name=index_name)
     Conversation.save_conversation_state(stateful_conversation, symai_path)
@@ -516,8 +516,8 @@ def search_engine(query: str, res=None, *args, **kwargs):
         func = FunctionType(query)
         msg = func(res, payload=res)
         # write a temp dump file with the query and results
-        home_path = os.path.expanduser('~')
-        symai_path = os.path.join(home_path, '.symai', '.search_dump')
+        home_path = HOME_PATH
+        symai_path = os.path.join(home_path, '.search_dump')
         os.makedirs(os.path.dirname(symai_path), exist_ok=True)
         with open(symai_path, 'w') as f:
             f.write(f'[SEARCH_QUERY]:\n{search_query}\n[RESULTS]\n{res}\n[MESSAGE]\n{msg}')
@@ -770,8 +770,8 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
         return run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
 
 def save_conversation():
-    home_path = os.path.expanduser('~')
-    symai_path = os.path.join(home_path, '.symai', '.conversation_state')
+    home_path = HOME_PATH
+    symai_path = os.path.join(home_path, '.conversation_state')
     Conversation.save_conversation_state(stateful_conversation, symai_path)
 
 # Function to listen for user input and execute commands
@@ -875,7 +875,7 @@ def run(auto_query_on_error=False, conversation_style=None, verbose=False):
         # set show splash screen to false
         SYMSH_CONFIG['show-splash-screen'] = False
         # save config
-        _config_path =  HOME_PATH / '.symai' / 'symsh.config.json'
+        _config_path =  HOME_PATH / 'symsh.config.json'
         with open(_config_path, 'w') as f:
             json.dump(SYMSH_CONFIG, f, indent=4)
     if 'plugin_prefix' not in SYMSH_CONFIG:

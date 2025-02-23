@@ -50,7 +50,7 @@ def show_main_setup_menu(show_wizard: bool = True):
     # Step 0: Load config
     symai_config_path = Path.cwd() / 'symai.config.json'
     if not symai_config_path.exists():
-        root_dir  = HOME_PATH / '.symai'
+        root_dir  = HOME_PATH
         symai_config_path = root_dir / 'symai.config.json'
 
     if symai_config_path.exists():
@@ -90,7 +90,7 @@ def show_main_setup_menu(show_wizard: bool = True):
 
     #TODO: this is currently not maintained and it's mostly used to initialize the config file! Decide if keep or remove
     if show_wizard:
-        CustomUserWarning("You are using the setup wizard which is currently not up-to-date and possibly buggy. Please edit the config file directly instead which is located in your home directory under $HOME/.symai/symai.config.json.")
+        CustomUserWarning("You are using the setup wizard which is currently not up-to-date and possibly buggy. Please edit the config file directly instead.")
         try:
             # Step 1: Accept terms and services
             agreed = yes_no_dialog(
@@ -260,7 +260,7 @@ def show_main_setup_menu(show_wizard: bool = True):
             ).run()
             if not support_community:
                 with ConsoleStyle('info') as console:
-                    msg = 'To support us improve our framework consider enabling this setting in the future. By doing so you  not only improve your own user experience but help us deliver new and exciting solutions in the future. Your data is uploaded to our research servers, and helps us develop on-premise solutions and the overall SymbolicAI experience. We do not sell or monetize your data otherwise. We thank you very much for supporting the research community and helping us thrive together! If you wish to update this option go to your .symai config situated in your home directory or set the environment variable `SUPPORT_COMMUNITY` to `True`.'
+                    msg = 'To support us improve our framework consider enabling this setting in the future. By doing so you  not only improve your own user experience but help us deliver new and exciting solutions in the future. Your data is uploaded to our research servers, and helps us develop on-premise solutions and the overall SymbolicAI experience. We do not sell or monetize your data otherwise. We thank you very much for supporting the research community and helping us thrive together! If you wish to update this option go to your .symai config or set the environment variable `SUPPORT_COMMUNITY` to `True`.'
                     console.print(msg)
 
             # Step 4: Donate to the open-source collective

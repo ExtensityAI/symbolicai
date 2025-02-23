@@ -6,6 +6,7 @@ import shutil
 import stat
 import subprocess
 import sys
+from pathlib import Path
 
 from typing import List, Tuple, Union
 
@@ -16,7 +17,7 @@ from .backend.settings import HOME_PATH
 logging.getLogger("subprocess").setLevel(logging.ERROR)
 
 
-__root_dir__  = HOME_PATH / '.symai/packages/'
+__root_dir__  = HOME_PATH / 'packages'
 BASE_PACKAGE_MODULE = '' # use relative path
 BASE_PACKAGE_PATH = str(__root_dir__)
 sys.path.append(str(__root_dir__))

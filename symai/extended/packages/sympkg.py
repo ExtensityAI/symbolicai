@@ -6,11 +6,12 @@ import pprint
 from pathlib import Path
 
 from ...imports import Import
+from ... import config_manager
 
 
 class PackageHandler():
     def __init__(self):
-        self.package_dir = Path.home() / '.symai/packages/'
+        self.package_dir = Path(config_manager.config_dir) / 'packages'
 
         if not os.path.exists(self.package_dir):
             os.makedirs(self.package_dir)

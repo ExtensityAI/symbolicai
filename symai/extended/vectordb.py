@@ -88,7 +88,7 @@ class VectorDB(Expression):
     _default_embedding_function = None
     _default_index_dims         = 768
     _default_top_k              = 5
-    _default_storage_path       = os.path.join(os.path.expanduser("~"), ".symai", "localdb")
+    _default_storage_path       = os.path.join(HOME_PATH, "localdb")
     _default_index_name         = "dataindex"
 
     def __init__(
@@ -325,7 +325,7 @@ class VectorDB(Expression):
         """
         if storage_file is None:
             # use path to home directory by default
-            storage_path = os.path.join(os.path.expanduser("~"), ".symai", "localdb")
+            storage_path = os.path.join(HOME_PATH, "localdb")
             os.makedirs(storage_path, exist_ok=True)
             storage_file = os.path.join(storage_path, f"{self.index_name}.pkl")
 
@@ -349,7 +349,7 @@ class VectorDB(Expression):
         """
         if storage_file is None:
             # use path to home directory by default
-            storage_path = os.path.join(os.path.expanduser("~"), ".symai", "localdb")
+            storage_path = os.path.join(HOME_PATH, "localdb")
             # create dir on first load if never used
             os.makedirs(storage_path, exist_ok=True)
             storage_file = os.path.join(storage_path, f"{self.index_name}.pkl")
@@ -383,7 +383,7 @@ class VectorDB(Expression):
         index_name = index_name or self.index_name
         assert index_name, "Error: Please provide an index name to purge the database."
         # symai folder
-        symai_folder = Path(HOME_PATH) / ".symai"
+        symai_folder = Path(HOME_PATH)
         # use path to home directory by default
         storage_path = symai_folder / "localdb"
         # create dir on first load if never used
