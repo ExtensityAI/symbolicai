@@ -39,7 +39,7 @@ def llama_cpp_server():
             main_args.cpp_server_path,
             *llama_cpp_args,
         ]
-        llama_cpp_args = llama_cpp_args[1:] # Exclude the build path
+        llama_cpp_args = [arg for arg in llama_cpp_args if not arg.startswith("--embedding")] # Exclude embedding argument
     else:  # python
         command = [
             sys.executable,
