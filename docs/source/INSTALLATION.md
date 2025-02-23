@@ -111,7 +111,7 @@ The system manages three main configuration files:
 
 ### Viewing Your Configuration
 
-Before using the package, we recommend inspecting your current configuration setup using, which would create all the necessary configuration files:
+Before using the package, we recommend inspecting your current configuration setup using the command below. This will create all the necessary configuration files.
 
 ```bash
 symconfig
