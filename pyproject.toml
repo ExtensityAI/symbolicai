@@ -103,10 +103,11 @@ exclude = ["tests", "examples", "notebooks", "outputs", "assets", "app.py"]
 "GitHub"   = "https://github.com/ExtensityAI/symbolicai"
 
 [project.scripts]
-symchat   = "symai.chat:run"
-symsh     = "symai.shell:run"
+symchat = "symai.chat:run"
+symsh   = "symai.shell:run"
+sympkg  = "symai.extended.packages.sympkg:run"
+symdev  = "symai.extended.packages.symdev:run"
+symrun  = "symai.extended.packages.symrun:run"
+symconfig = "symai:display_config"
 symserver = "symai:run_server"
 symwzd    = "symai:run_setup_wizard"
-sympkg    = "symai.extended.packages.sympkg:run"
-symdev    = "symai.extended.packages.symdev:run"
-symrun    = "symai.extended.packages.symrun:run"

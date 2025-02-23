@@ -2,8 +2,15 @@ import json
 import logging
 import os
 import subprocess
+import sys
 import warnings
 from pathlib import Path
+
+from rich import print as rprint
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+from rich.tree import Tree
 
 from .backend import settings
 from .menu.screen import show_menu
@@ -22,144 +29,174 @@ logging.getLogger('pydub').setLevel(logging.ERROR)
 
 warnings.simplefilter("ignore")
 
-
 # set the environment variable for the transformers library
 os.environ['TOKENIZERS_PARALLELISM'] = "false"
 
+class SymAIConfig:
+    """Manages SymbolicAI configuration files across different environments.
+    Configuration Priority:
+    1. Debug mode (current working directory)
+    2. Python environment-specific config
+    3. User home directory config
+    """
+
+    def __init__(self):
+        """Initialize configuration paths based on current Python environment."""
+        self._env_path = Path(sys.prefix)
+        self._env_config_dir = self._env_path / '.symai'
+        self._home_config_dir = Path.home() / '.symai'
+        self._debug_dir = Path.cwd()  # Current working directory for debug mode
+
+    @property
+    def config_dir(self) -> Path:
+        """Returns the active configuration directory based on priority system."""
+        # Debug mode takes precedence
+        if (self._debug_dir / 'symai.config.json').exists():
+            return self._debug_dir
+        # Then environment config
+        if self._env_config_dir.exists():
+            return self._env_config_dir
+        # Finally home directory
+        return self._home_config_dir
+
+    def get_config_path(self, filename: str, fallback_to_home: bool = False) -> Path:
+        """Gets the config path using the priority system or forces fallback to home."""
+        debug_config = self._debug_dir / filename
+        env_config   = self._env_config_dir / filename
+        home_config  = self._home_config_dir / filename
+
+        # Check debug first (only valid for symai.config.json)
+        if filename == 'symai.config.json' and debug_config.exists():
+            return debug_config
+
+        # If forced to fallback, return home config if it exists, otherwise environment
+        if fallback_to_home:
+            return home_config if home_config.exists() else env_config
+
+        # Normal priority-based resolution
+        # If environment config doesn't exist, return that path (for creation)
+        if not env_config.exists():
+            return env_config
+        # Otherwise use environment config
+        return env_config
+
+    def load_config(self, filename: str, fallback_to_home: bool = False) -> dict:
+        """Loads JSON data from the determined config location."""
+        config_path = self.get_config_path(filename, fallback_to_home=fallback_to_home)
+        if not config_path.exists():
+            return {}
+        with open(config_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+
+    def save_config(self, filename: str, data: dict, fallback_to_home: bool = False) -> None:
+        """Saves JSON data to the determined config location."""
+        config_path = self.get_config_path(filename, fallback_to_home=fallback_to_home)
+        os.makedirs(config_path.parent, exist_ok=True)
+        with open(config_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=4)
+
+    def migrate_config(self, filename: str, updates: dict) -> None:
+        """Updates existing configuration with new fields."""
+        config = self.load_config(filename)
+        config.update(updates)
+        self.save_config(filename, config)
+
+# Create singleton instance
+config_manager = SymAIConfig()
 
 SYMAI_VERSION = "0.7.5"
 __version__   = SYMAI_VERSION
-__root_dir__  = settings.HOME_PATH / '.symai'
-
+__root_dir__  = config_manager.config_dir
 
 def _start_symai():
     global _symai_config_
     global _symsh_config_
     global _symserver_config_
 
-    # CREATE THE SYMAI FOLDER IF IT DOES NOT EXIST YET
-    # *==============================================================================================================*
-    if not os.path.exists(__root_dir__):
-        os.makedirs(__root_dir__)
+    # Create config directories if they don't exist
+    os.makedirs(config_manager._env_config_dir, exist_ok=True)
+    os.makedirs(config_manager._home_config_dir, exist_ok=True)
 
     # CREATE THE SHELL CONFIGURATION FILE IF IT DOES NOT EXIST YET
     # *==============================================================================================================*
-    _symsh_config_path_ = __root_dir__ / 'symsh.config.json'
+    _symsh_config_path_ = config_manager.get_config_path('symsh.config.json')
     if not os.path.exists(_symsh_config_path_):
-        with open(_symsh_config_path_, "w") as f:
-            json.dump({
-                "colors": {
-                    "completion-menu.completion.current": "bg:#323232 #212121",
-                    "completion-menu.completion":         "bg:#800080 #212121",
-                    "scrollbar.background":               "bg:#222222",
-                    "scrollbar.button":                   "bg:#776677",
-                    "history-completion":                 "bg:#212121 #f5f5f5",
-                    "path-completion":                    "bg:#800080 #f5f5f5",
-                    "file-completion":                    "bg:#9040b2 #f5f5f5",
-                    "history-completion-selected":        "bg:#efefef #b3d7ff",
-                    "path-completion-selected":           "bg:#efefef #b3d7ff",
-                    "file-completion-selected":           "bg:#efefef #b3d7ff"
-                },
-                "map-nt-cmd":                             True,
-                "show-splash-screen":                     True,
-                "plugin_prefix":                          None
-            }, f, indent=4)
+        config_manager.save_config('symsh.config.json', {
+            "colors": {
+                "completion-menu.completion.current": "bg:#323232 #212121",
+                "completion-menu.completion":         "bg:#800080 #212121",
+                "scrollbar.background":               "bg:#222222",
+                "scrollbar.button":                   "bg:#776677",
+                "history-completion":                 "bg:#212121 #f5f5f5",
+                "path-completion":                    "bg:#800080 #f5f5f5",
+                "file-completion":                    "bg:#9040b2 #f5f5f5",
+                "history-completion-selected":        "bg:#efefef #b3d7ff",
+                "path-completion-selected":           "bg:#efefef #b3d7ff",
+                "file-completion-selected":           "bg:#efefef #b3d7ff"
+            },
+            "map-nt-cmd":                             True,
+            "show-splash-screen":                     True,
+            "plugin_prefix":                          None
+        })
 
     # CREATE A SERVER CONFIGURATION FILE IF IT DOES NOT EXIST YET
     # *==============================================================================================================*
-    _symserver_config_path_ = __root_dir__ / 'symserver.config.json'
+    _symserver_config_path_ = config_manager.get_config_path('symserver.config.json')
     if not os.path.exists(_symserver_config_path_):
-        with open(_symserver_config_path_, "w") as f:
-            json.dump({}, f, indent=4)
+        config_manager.save_config('symserver.config.json', {})
 
-    # CHECK IF THE USER HAS A CONFIGURATION FILE IN THE CURRENT WORKING DIRECTORY (DEBUGGING MODE)
+    # Get appropriate config path (debug mode handling is now in config_manager)
+    _symai_config_path_ = config_manager.get_config_path('symai.config.json')
+
+    if not os.path.exists(_symai_config_path_):
+        setup_wizard(_symai_config_path_, show_wizard=False)
+        CustomUserWarning(f'No configuration file found for the environment. A new configuration file has been created at {_symai_config_path_}. Please configure your environment.')
+        sys.exit(1)
+
+    # Load and manage configurations
+    _symai_config_ = config_manager.load_config('symai.config.json')
+    _tmp_symai_config_ = _symai_config_.copy()
+
+    # MIGRATE THE ENVIRONMENT VARIABLES
+    # *==========================================================================================================*
+    if 'SPEECH_ENGINE_MODEL' in _symai_config_:
+        updates = {
+            'SPEECH_TO_TEXT_ENGINE_MODEL': _symai_config_['SPEECH_ENGINE_MODEL'],
+            'TEXT_TO_SPEECH_ENGINE_MODEL': "tts-1"
+        }
+        config_manager.migrate_config('symai.config.json', updates)
+        del _symai_config_['SPEECH_ENGINE_MODEL']
+        del _tmp_symai_config_['SPEECH_ENGINE_MODEL']
+
+    if 'COLLECTION_URI' not in _symai_config_:
+        updates = {
+            'COLLECTION_URI': "mongodb+srv://User:vt3epocXitd6WlQ6@extensityai.c1ajxxy.mongodb.net/?retryWrites=true&w=majority",
+            'COLLECTION_DB': "ExtensityAI",
+            'COLLECTION_STORAGE': "SymbolicAI",
+            'SUPPORT_COMMUNITY': False
+        }
+        config_manager.migrate_config('symai.config.json', updates)
+        with ConsoleStyle('info') as console:
+            msg = 'Currently you are sharing your user experience with us by uploading the data to our research server, and thereby helping us improve future models and the overall SymbolicAI experience. We thank you very much for supporting the research community! If you wish to disable the data collection option go to your .symai config situated in your home directory or set the environment variable `SUPPORT_COMMUNITY` to `False`.'
+            console.print(msg)
+
+    # POST-MIGRATION CHECKS
     # *==============================================================================================================*
-    if os.path.exists(Path.cwd() / 'symai.config.json'):
-        logging.debug('Using the configuration file in the current working directory.')
-        _symai_config_path_ = Path.cwd() / 'symai.config.json'
+    if 'TEXT_TO_SPEECH_ENGINE_API_KEY' not in _symai_config_:
+        updates = {
+            'TEXT_TO_SPEECH_ENGINE_API_KEY': _symai_config_.get('NEUROSYMBOLIC_ENGINE_API_KEY', '')
+        }
+        config_manager.migrate_config('symai.config.json', updates)
 
-    else:
-        # CREATE THE CONFIGURATION FILE IF IT DOES NOT EXIST YET WITH THE DEFAULT VALUES
-        # *==========================================================================================================*
-        _symai_config_path_ = __root_dir__ / 'symai.config.json'
-
-        if not os.path.exists(_symai_config_path_):
-            setup_wizard(_symai_config_path_, show_wizard=False)
-            CustomUserWarning('No configuration file found. A new configuration file has been created in your home directory. Please run the setup wizard in your console using the `symwzd` command or manually set your `.symai/symai.config.json` config situated in your home directory or set the environment variables for the respective engines.')
-
-        # LOAD THE CONFIGURATION FILE
-        # *==========================================================================================================*
-        with open(_symai_config_path_, 'r', encoding="utf-8") as f:
-            _symai_config_ = json.load(f)
-        _tmp_symai_config_ = _symai_config_.copy()
-
-        # MIGRATE THE ENVIRONMENT VARIABLES
-        # *==========================================================================================================*
-        if 'SPEECH_ENGINE_MODEL' in _symai_config_:
-            _symai_config_['SPEECH_TO_TEXT_ENGINE_MODEL']     = _symai_config_['SPEECH_ENGINE_MODEL']
-            _tmp_symai_config_['SPEECH_TO_TEXT_ENGINE_MODEL'] = _symai_config_['SPEECH_ENGINE_MODEL']
-            del _symai_config_['SPEECH_ENGINE_MODEL']
-            del _tmp_symai_config_['SPEECH_ENGINE_MODEL']
-            # create missing environment variable
-            _symai_config_['TEXT_TO_SPEECH_ENGINE_MODEL']     = "tts-1"
-            # save the updated configuration file
-            with open(_symai_config_path_, 'w') as f:
-                json.dump(_symai_config_, f, indent=4)
-
-        if 'COLLECTION_URI' not in _symai_config_:
-            print('Migrating the configuration file to the latest version.')
-            _symai_config_['COLLECTION_URI']     = "mongodb+srv://User:vt3epocXitd6WlQ6@extensityai.c1ajxxy.mongodb.net/?retryWrites=true&w=majority"
-            _symai_config_['COLLECTION_DB']      = "ExtensityAI"
-            _symai_config_['COLLECTION_STORAGE'] = "SymbolicAI"
-            _symai_config_['SUPPORT_COMMUNITY']  = False
-            with ConsoleStyle('info') as console:
-                msg = 'Currently you are sharing your user experience with us by uploading the data to our research server, and thereby helping us improve future models and the overall SymbolicAI experience. We thank you very much for supporting the research community! If you wish to disable the data collection option go to your .symai config situated in your home directory or set the environment variable `SUPPORT_COMMUNITY` to `False`.'
-                console.print(msg)
-            # save the updated configuration file
-            with open(_symai_config_path_, 'w') as f:
-                json.dump(_symai_config_, f, indent=4)
-
-        # VERIFY IF THE CONFIGURATION FILE HAS CHANGED AND UPDATE IT
-        # *==========================================================================================================*
-        _updated_key_ = {k: not _tmp_symai_config_[k] == _symai_config_[k] for k in _tmp_symai_config_.keys()}
-        _has_changed_ = any(_updated_key_.values())
-
-        if _has_changed_:
-            # update the symai.config.json file
-            with open(_symai_config_path_, 'w') as f:
-                json.dump(_symai_config_, f, indent=4)
-
-        # POST-MIGRATION CHECKS
-        # *==============================================================================================================*
-        # CHECK IF THE USER HAS A TEXT TO SPEECH ENGINE API KEY
-        if 'TEXT_TO_SPEECH_ENGINE_API_KEY' not in _symai_config_:
-            _symai_config_['TEXT_TO_SPEECH_ENGINE_API_KEY']     = _symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY'] if 'NEUROSYMBOLIC_ENGINE_API_KEY' in _symai_config_ else ''
-            _tmp_symai_config_['TEXT_TO_SPEECH_ENGINE_API_KEY'] = _symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY'] if 'NEUROSYMBOLIC_ENGINE_API_KEY' in _symai_config_ else ''
-            # save the updated configuration file
-            with open(_symai_config_path_, 'w') as f:
-                json.dump(_symai_config_, f, indent=4)
-
-    # LOAD THE CONFIGURATION FILE
-    # *==============================================================================================================*
-    with open(_symai_config_path_, 'r', encoding="utf-8") as f:
-        _symai_config_ = json.load(f)
-
-    # LOAD THE SHELL CONFIGURATION FILE
-    # *==============================================================================================================*
-    with open(_symsh_config_path_, 'r', encoding="utf-8") as f:
-        _symsh_config_ = json.load(f)
-
-    # LOAD THE SERVER CONFIGURATION FILE
-    # *==============================================================================================================*
-    with open(_symserver_config_path_, 'r', encoding="utf-8") as f:
-        _symserver_config_ = json.load(f)
+    # Load all configurations
+    _symai_config_ = config_manager.load_config('symai.config.json')
+    _symsh_config_ = config_manager.load_config('symsh.config.json')
+    _symserver_config_ = config_manager.load_config('symserver.config.json')
 
     # MIGRATE THE SHELL SPLASH SCREEN CONFIGURATION
     # *==============================================================================================================*
     if 'show-splash-screen' not in _symsh_config_:
-        _symsh_config_['show-splash-screen'] = True
-        with open(_symsh_config_path_, 'w') as f:
-            json.dump(_symsh_config_, f, indent=4)
+        config_manager.migrate_config('symsh.config.json', {'show-splash-screen': True})
 
     # CHECK IF THE USER HAS A NEUROSYMBOLIC API KEY
     # *==============================================================================================================*
@@ -170,15 +207,26 @@ def _start_symai():
             (
             _symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY'] is None or \
             len(_symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY']) == 0):
+            # Try to fallback to the global (home) config if environment is not home
+            if config_manager.config_dir != config_manager._home_config_dir:
+                CustomUserWarning(f"You didn't configure your environment ({config_manager.config_dir})! Falling back to the global ({config_manager._home_config_dir}) configuration if it exists.")
+                # Force loading from home
+                _symai_config_ = config_manager.load_config('symai.config.json', fallback_to_home=True)
+                _symsh_config_ = config_manager.load_config('symsh.config.json', fallback_to_home=True)
+                _symserver_config_ = config_manager.load_config('symserver.config.json', fallback_to_home=True)
 
-        CustomUserWarning('The mandatory neuro-symbolic engine is not initialized. Please set the NEUROSYMBOLIC_ENGINE_MODEL and NEUROSYMBOLIC_ENGINE_API_KEY environment variables.')
+            # If still not valid, warn and exit
+            if not _symai_config_.get('NEUROSYMBOLIC_ENGINE_API_KEY'):
+                CustomUserWarning('The mandatory neuro-symbolic engine is not initialized. Please set NEUROSYMBOLIC_ENGINE_MODEL and NEUROSYMBOLIC_ENGINE_API_KEY.')
+                sys.exit(1)
 
     settings.SYMAI_CONFIG = _symai_config_
     settings.SYMSH_CONFIG = _symsh_config_
     settings.SYMSERVER_CONFIG = _symserver_config_
 
-
-def run_setup_wizard(file_path = __root_dir__ / 'symai.config.json'):
+def run_setup_wizard(file_path = None):
+    if file_path is None:
+        file_path = config_manager.get_config_path('symai.config.json')
     setup_wizard(file_path)
 
 
@@ -191,8 +239,7 @@ def run_server():
         _symserver_config_.update(zip(args[::2], args[1::2]))
         _symserver_config_['online'] = True
 
-        with open(__root_dir__ / "symserver.config.json", "w") as f:
-            json.dump(_symserver_config_, f, indent=4)
+        config_manager.save_config("symserver.config.json", _symserver_config_)
 
         try:
             subprocess.run(command, check=True)
@@ -201,8 +248,7 @@ def run_server():
         except Exception as e:
             print(f"Error running server: {e}")
         finally:
-            with open(__root_dir__ / "symserver.config.json", "w") as f:
-                json.dump({'online': False}, f, indent=4)
+            config_manager.save_config("symserver.config.json", {'online': False})
 
     elif settings.SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL").startswith("huggingface"):
         from .server.huggingface_server import huggingface_server
@@ -211,8 +257,7 @@ def run_server():
         _symserver_config_.update(vars(args))
         _symserver_config_['online'] = True
 
-        with open(__root_dir__ / "symserver.config.json", "w") as f:
-            json.dump(_symserver_config_, f, indent=4)
+        config_manager.save_config("symserver.config.json", _symserver_config_)
 
         try:
             command(host=args.host, port=args.port)
@@ -221,10 +266,102 @@ def run_server():
         except Exception as e:
             print(f"Error running server: {e}")
         finally:
-            with open(__root_dir__ / "symserver.config.json", "w") as f:
-                json.dump({'online': False}, f, indent=4)
+            config_manager.save_config("symserver.config.json", {'online': False})
     else:
         raise CustomUserWarning("You're trying to run a local server without a valid neuro-symbolic engine model. Please set a valid model in your configuration file. Current available options are 'llamacpp' and 'huggingface'.")
+
+
+# *==============================================================================================================*
+def format_config_content(config: dict) -> str:
+    """Format config content for display, truncating API keys."""
+    formatted = {}
+    for k, v in config.items():
+        if isinstance(v, str) and ('KEY' in k or 'URI' in k) and v:
+            # Show first/last 4 chars of keys/URIs
+            formatted[k] = f"{v[:4]}...{v[-4:]}" if len(v) > 8 else v
+        else:
+            formatted[k] = v
+    return json.dumps(formatted, indent=2)
+
+def display_config():
+    """Display all configuration paths and their content."""
+
+    console = Console()
+
+    # Create header
+    console.print(Panel.fit(
+        f"[bold cyan]SymbolicAI Configuration Inspector v{__version__}[/bold cyan]",
+        border_style="cyan"
+    ))
+
+    # Create main tree
+    tree = Tree("[bold]Configuration Locations[/bold]")
+
+    # Debug config
+    debug_branch = tree.add("[yellow]Debug Mode Config (CWD)[/yellow]")
+    debug_config = config_manager._debug_dir / 'symai.config.json'
+    if debug_config.exists():
+        with open(debug_config) as f:
+            content = json.load(f)
+        debug_branch.add(f"📄 [green]{debug_config}[/green]\n{format_config_content(content)}")
+    else:
+        debug_branch.add("[dim]No debug config found[/dim]")
+
+    # Environment config
+    env_branch = tree.add("[yellow]Environment Config[/yellow]")
+    env_configs = {
+        'symai.config.json': '⚙️',
+        'symsh.config.json': '🖥️',
+        'symserver.config.json': '🌐'
+    }
+
+    for config_file, icon in env_configs.items():
+        config_path = config_manager._env_config_dir / config_file
+        if config_path.exists():
+            with open(config_path) as f:
+                content = json.load(f)
+            env_branch.add(f"{icon} [green]{config_path}[/green]\n{format_config_content(content)}")
+        else:
+            env_branch.add(f"[dim]{icon} {config_file} (not found)[/dim]")
+
+    # Home (global) config
+    home_branch = tree.add("[yellow]Home Directory Config (Global)[/yellow]")
+    for config_file, icon in env_configs.items():
+        config_path = config_manager._home_config_dir / config_file
+        if config_path.exists():
+            with open(config_path) as f:
+                content = json.load(f)
+            home_branch.add(f"{icon} [green]{config_path}[/green]\n{format_config_content(content)}")
+        else:
+            home_branch.add(f"[dim]{icon} {config_file} (not found)[/dim]")
+
+    # Active configuration summary
+    summary = Table(show_header=True, header_style="bold magenta")
+    summary.add_column("Configuration Type")
+    summary.add_column("Active Path")
+
+    active_paths = {
+        "Primary Config Dir": config_manager.config_dir,
+        "symai.config.json": config_manager.get_config_path('symai.config.json'),
+        "symsh.config.json": config_manager.get_config_path('symsh.config.json'),
+        "symserver.config.json": config_manager.get_config_path('symserver.config.json')
+    }
+
+    for config_type, path in active_paths.items():
+        summary.add_row(config_type, str(path))
+
+    # Print everything
+    console.print(tree)
+    console.print("\n[bold]Active Configuration Summary:[/bold]")
+    console.print(summary)
+
+    # Print help
+    console.print("\n[bold]Legend:[/bold]")
+    console.print("⚙️  symai.config.json (Main SymbolicAI configuration)")
+    console.print("🖥️  symsh.config.json (Shell configuration)")
+    console.print("🌐  symserver.config.json (Server configuration)")
+    console.print("\n[dim]Note: API keys and URIs are truncated for security[/dim]")
+# *==============================================================================================================*
 
 
 def setup_wizard(_symai_config_path_, show_wizard=True):
@@ -250,36 +387,34 @@ def setup_wizard(_symai_config_path_, show_wizard=True):
     _caption_engine_environment     = _user_config_['caption_engine_environment']
     _support_comminity              = _user_config_['support_community']
 
-    with open(_symai_config_path_, 'w') as f:
-        json.dump({
-            "NEUROSYMBOLIC_ENGINE_API_KEY":   _nesy_engine_api_key,
-            "NEUROSYMBOLIC_ENGINE_MODEL":     _nesy_engine_model,
-            "SYMBOLIC_ENGINE_API_KEY":        _symbolic_engine_api_key,
-            "SYMBOLIC_ENGINE":                _symbolic_engine_model,
-            "EMBEDDING_ENGINE_API_KEY":       _embedding_engine_api_key,
-            "EMBEDDING_ENGINE_MODEL":         _embedding_model,
-            "DRAWING_ENGINE_API_KEY":         _drawing_engine_api_key,
-            "DRAWING_ENGINE_MODEL":           _drawing_engine_model,
-            "VISION_ENGINE_MODEL":            _vision_engine_model,
-            "SEARCH_ENGINE_API_KEY":          _search_engine_api_key,
-            "SEARCH_ENGINE_MODEL":            _search_engine_model,
-            "OCR_ENGINE_API_KEY":             _ocr_engine_api_key,
-            "SPEECH_TO_TEXT_ENGINE_MODEL":    _speech_to_text_engine_model,
-            "TEXT_TO_SPEECH_ENGINE_API_KEY":  _text_to_speech_engine_api_key,
-            "TEXT_TO_SPEECH_ENGINE_MODEL":    _text_to_speech_engine_model,
-            "TEXT_TO_SPEECH_ENGINE_VOICE":    _text_to_speech_engine_voice,
-            "INDEXING_ENGINE_API_KEY":        _indexing_engine_api_key,
-            "INDEXING_ENGINE_ENVIRONMENT":    _indexing_engine_environment,
-            "CAPTION_ENGINE_MODEL":           _caption_engine_environment,
-            "COLLECTION_URI":                 "mongodb+srv://User:vt3epocXitd6WlQ6@extensityai.c1ajxxy.mongodb.net/?retryWrites=true&w=majority",
-            "COLLECTION_DB":                  "ExtensityAI",
-            "COLLECTION_STORAGE":             "SymbolicAI",
-            "SUPPORT_COMMUNITY":              _support_comminity
-        }, f, indent=4)
+    config_manager.save_config(_symai_config_path_, {
+        "NEUROSYMBOLIC_ENGINE_API_KEY":   _nesy_engine_api_key,
+        "NEUROSYMBOLIC_ENGINE_MODEL":     _nesy_engine_model,
+        "SYMBOLIC_ENGINE_API_KEY":        _symbolic_engine_api_key,
+        "SYMBOLIC_ENGINE":                _symbolic_engine_model,
+        "EMBEDDING_ENGINE_API_KEY":       _embedding_engine_api_key,
+        "EMBEDDING_ENGINE_MODEL":         _embedding_model,
+        "DRAWING_ENGINE_API_KEY":         _drawing_engine_api_key,
+        "DRAWING_ENGINE_MODEL":           _drawing_engine_model,
+        "VISION_ENGINE_MODEL":            _vision_engine_model,
+        "SEARCH_ENGINE_API_KEY":          _search_engine_api_key,
+        "SEARCH_ENGINE_MODEL":            _search_engine_model,
+        "OCR_ENGINE_API_KEY":             _ocr_engine_api_key,
+        "SPEECH_TO_TEXT_ENGINE_MODEL":    _speech_to_text_engine_model,
+        "TEXT_TO_SPEECH_ENGINE_API_KEY":  _text_to_speech_engine_api_key,
+        "TEXT_TO_SPEECH_ENGINE_MODEL":    _text_to_speech_engine_model,
+        "TEXT_TO_SPEECH_ENGINE_VOICE":    _text_to_speech_engine_voice,
+        "INDEXING_ENGINE_API_KEY":        _indexing_engine_api_key,
+        "INDEXING_ENGINE_ENVIRONMENT":    _indexing_engine_environment,
+        "CAPTION_ENGINE_MODEL":           _caption_engine_environment,
+        "COLLECTION_URI":                 "mongodb+srv://User:vt3epocXitd6WlQ6@extensityai.c1ajxxy.mongodb.net/?retryWrites=true&w=majority",
+        "COLLECTION_DB":                  "ExtensityAI",
+        "COLLECTION_STORAGE":             "SymbolicAI",
+        "SUPPORT_COMMUNITY":              _support_comminity
+    })
 
 
 _start_symai()
-
 
 from .backend.base import Engine
 from .components import Function, PrimitiveDisabler
@@ -290,7 +425,7 @@ from .imports import Import
 from .interfaces import Interface
 from .post_processors import PostProcessor
 from .pre_processors import PreProcessor
-from .prompts import Prompt, PromptRegistry, PromptLanguage
+from .prompts import Prompt, PromptLanguage, PromptRegistry
 from .shell import Shell
 from .strategy import Strategy
 from .symbol import Call, Expression, GlobalSymbolPrimitive, Metadata, Symbol
