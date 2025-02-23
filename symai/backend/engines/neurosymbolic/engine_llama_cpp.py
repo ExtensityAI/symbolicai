@@ -162,7 +162,8 @@ class LlamaCppEngine(Engine):
             "logprobs": kwargs.get('logprobs', False),
             "functions": kwargs.get('functions'),
             "function_call": kwargs.get('function_call'),
-            "grammar": kwargs.get('grammar')
+            "grammar": kwargs.get('grammar'),
+            "response_format": kwargs.get('response_format'),
         }
 
     async def _arequest(self, payload: dict) -> dict:
