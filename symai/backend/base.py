@@ -21,7 +21,7 @@ class Engine(ABC):
         self.collection = CollectionRepository()
         self.collection.connect()
         # create formatter
-        __root_dir__  = HOME_PATH / '.symai'
+        __root_dir__  = HOME_PATH
         os.makedirs(__root_dir__, exist_ok=True)
         __file_path__ = __root_dir__ / "engine.log"
         logging.basicConfig(filename=__file_path__, filemode="a", format='%(asctime)s %(name)s %(levelname)s %(message)s')
@@ -179,7 +179,7 @@ class BatchEngine(Engine):
 
         for arg, result, metadata in zip(arguments, results, metadata_list):
             if metadata is not None:
-                metadata['time'] = total_time / len(arguments)   
+                metadata['time'] = total_time / len(arguments)
 
             if hasattr(arg.prop.instance, '_metadata') and hasattr(arg.prop.instance._metadata, 'output_handler'):
                 output_handler = getattr(arg.prop.instance._metadata, 'output_handler', None)

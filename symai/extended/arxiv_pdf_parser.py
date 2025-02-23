@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from ..symbol import Expression, Symbol
 from .file_merger import FileMerger
+from ..backend.settings import HOME_PATH
 
 
 class ArxivPdfParser(Expression):
@@ -23,8 +24,7 @@ class ArxivPdfParser(Expression):
         pdf_urls = [f"https://arxiv.org/pdf/" + (f"{url.split('/')[-1]}.pdf" if 'pdf' not in url else {url.split('/')[-1]}) for url in urls]
 
         # Create temporary folder in the home directory
-        home_dir = os.path.expanduser("~")
-        output_path = os.path.join(home_dir, ".symai", "temp/downloads")
+        output_path = os.path.join(HOME_PATH, "temp/downloads")
         os.makedirs(output_path, exist_ok=True)
 
         pdf_files = []

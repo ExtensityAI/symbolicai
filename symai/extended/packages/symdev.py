@@ -4,11 +4,12 @@ import sys
 import argparse
 
 from pathlib import Path
+from ... import config_manager
 
 
 class PackageInitializer():
     def __init__(self):
-        self.package_dir = Path.home() / '.symai/packages/'
+        self.package_dir = Path(config_manager.config_dir) / 'packages'
 
         if not os.path.exists(self.package_dir):
             os.makedirs(self.package_dir)

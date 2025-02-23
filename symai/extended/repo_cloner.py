@@ -18,7 +18,7 @@ class RepositoryCloner(Expression):
     """
     def __init__(self, repo_path: Optional[str] = None, **kwargs):
         super().__init__(**kwargs)
-        self.repo_dir = HOME_PATH / '.symai/repos/' if repo_path is None else Path(repo_path)
+        self.repo_dir = HOME_PATH / 'repos/' if repo_path is None else Path(repo_path)
         if not self.repo_dir.exists():
             self.repo_dir.mkdir(parents=True, exist_ok=True)
 

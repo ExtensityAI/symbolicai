@@ -9,11 +9,12 @@ from typing import Optional
 from ...imports import Import
 from ...misc.console import ConsoleStyle
 from ...misc.loader import Loader
+from ... import config_manager
 
 
 class PackageRunner():
     def __init__(self):
-        self.package_dir = Path.home() / '.symai/packages/'
+        self.package_dir = Path(config_manager.config_dir) / 'packages'
         self.aliases_file = self.package_dir / 'aliases.json'
 
         if not os.path.exists(self.package_dir):
