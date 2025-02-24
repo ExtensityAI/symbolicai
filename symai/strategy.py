@@ -592,7 +592,7 @@ class contract:
             except Exception as e:
                 logger.error(f"Pre-condition validation failed: {str(e)}")
                 logger.info("Attempting remedy with semantic validation...")
-                self.f_semantic_validation_remedy.register_expected_data_model(input, attach_to="output")
+                self.f_semantic_validation_remedy.register_expected_data_model(input, attach_to="output", override=True)
                 input = self.f_semantic_validation_remedy(wrapped_self.prompt, f_semantic_conditions=[wrapped_self.pre], **remedy_kwargs)
                 logger.info("Semantic validation remedy successful")
                 return input
@@ -610,7 +610,7 @@ class contract:
         try:
             logger.info("Registering output data model for type validation...")
             step = time.time()
-            self.f_type_validation_remedy.register_data_model(output)
+            self.f_type_validation_remedy.register_data_model(output, override=True)
             output = self.f_type_validation_remedy()
             wrapped_self.contract_timing["output_type_validation"] = time.time() - step
             logger.info("Type validation successful")
@@ -626,8 +626,8 @@ class contract:
 
             logger.info("Setting up semantic validation...")
             step = time.time()
-            self.f_semantic_validation_remedy.register_expected_data_model(input, attach_to="input")
-            self.f_semantic_validation_remedy.register_expected_data_model(output, attach_to="output")
+            self.f_semantic_validation_remedy.register_expected_data_model(input, attach_to="input", override=True)
+            self.f_semantic_validation_remedy.register_expected_data_model(output, attach_to="output", override=True)
             output = self.f_semantic_validation_remedy(wrapped_self.prompt, f_semantic_conditions=[wrapped_self.post], **remedy_kwargs)
             wrapped_self.contract_timing["output_semantic_validation"] = time.time() - step
             logger.info("Semantic validation successful")
