@@ -639,7 +639,7 @@ class contract:
                 logger.info("Validating post-conditions without remedy...")
                 step = time.time()
                 res = wrapped_self.post(output)
-                wrapped_self._contract_timing["output_semantic_validation"] = time.time() - step
+                wrapped_self._contract_timing[it]["output_semantic_validation"] = time.time() - step
                 if not res:
                     logger.error("Semantic validation failed!")
                     raise Exception("Semantic validation failed!")
@@ -692,7 +692,7 @@ class contract:
                 maybe_new_input = contract_self._validate_input(wrapped_self, input, **remedy_kwargs)
                 if maybe_new_input is not None:
                     input = maybe_new_input
-                wrapped_self._contract_timing[step]["input_semantic_validation"] = time.time() - step
+                wrapped_self._contract_timing[it]["input_semantic_validation"] = time.time() - step
 
                 output = self._validate_output(wrapped_self, input, original_output_type, it, **remedy_kwargs)
                 wrapped_self.contract_successful = True
