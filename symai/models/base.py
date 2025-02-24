@@ -32,31 +32,22 @@ class LLMDataModel(BaseModel):
         Formats a single field for output. Handles nested models, lists, and dictionaries.
         """
         indent_str = " " * indent
+
         if isinstance(value, LLMDataModel):
-            # Nested model
-            nested_str = value.__str__(indent + 2).strip()
-            return f"{indent_str}{key}:\n{nested_str}" if key else nested_str
-        elif isinstance(value, list):
-            # List of items (handle nested models inside lists)
-            formatted_items = "\n".join(
-                [
-                    f"{indent_str}  - {self.format_field('', item, indent).strip()}"
-                    for item in value
-                ]
-            )
-            return f"{indent_str}{key}:\n{formatted_items}" if key else formatted_items
-        elif isinstance(value, dict):
-            # Dictionary of key-value pairs
-            formatted_items = "\n".join(
-                [
-                    f"{indent_str}  {k}: {self.format_field('', v, indent + 4).strip()}"
-                    for k, v in value.items()
-                ]
-            )
-            return f"{indent_str}{key}:\n{formatted_items}" if key else formatted_items
-        else:
-            # Primitive types
-            return f"{indent_str}{key}: {value}" if key else f"{indent_str}{value}"
+            nested_str = value.__str__(indent).strip()
+            return f"{indent_str}{key}:\n{indent_str}  {nested_str}"
+
+        if isinstance(value, list):
+            items = [f"{indent_str}  - {self.format_field('', item, indent).strip()}"
+                    for item in value]
+            return f"{indent_str}{key}:\n" + "\n".join(items)
+
+        if isinstance(value, dict):
+            items = [f"{indent_str}  {k}: {self.format_field('', v, indent).strip()}"
+                    for k, v in value.items()]
+            return f"{indent_str}{key}:\n" + "\n".join(items)
+
+        return f"{indent_str}{key}: {value}"
 
     def __str__(self, indent: int = 0) -> str:
         """
