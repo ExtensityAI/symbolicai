@@ -1,5 +1,6 @@
 import inspect
 import logging
+import time
 from pydoc import locate
 from typing import Callable
 
@@ -7,16 +8,13 @@ import numpy as np
 from beartype import beartype
 from loguru import logger
 from pydantic import BaseModel, ValidationError
+from rich.console import Console
+from rich.table import Table
 
 from .components import Function
 from .core_ext import deprecated
-from .models import (
-    ExceptionWithUsage,
-    LengthConstraint,
-    LLMDataModel,
-    SemanticValidationError,
-    TypeValidationError,
-)
+from .models import (ExceptionWithUsage, LengthConstraint, LLMDataModel,
+                     SemanticValidationError, TypeValidationError)
 from .symbol import Expression
 
 NUM_REMEDY_RETRIES = 10
@@ -202,7 +200,7 @@ class TypeValidationFunction(ValidationFunction):
 
         # Force JSON mode
         kwargs["response_format"] = {"type": "json_object"}
-        logger.info(f"Initializing type validation with JSON mode for the data model {self.data_model.simplify_json_schema()}…")
+        logger.info(f"Initializing type validation with JSON mode for the data model ```\n{self.data_model.simplify_json_schema()}\n```")
 
         # Initial guess
         json_str = super().forward(
@@ -367,9 +365,9 @@ class SemanticValidationFunction(ValidationFunction):
         # Force JSON mode
         kwargs["response_format"] = {"type": "json_object"}
         logger.info(
-            f"Initializing semantic validation for prompt '{prompt}' with type validated input "
-            f"{self.input_data_model.simplify_json_schema() if self.input_data_model else 'N/A'} "
-            f"and type validated output {self.output_data_model.simplify_json_schema()}…"
+            f"Initializing semantic validation for prompt ```\n{prompt}\n``` with type validated input "
+            f"```\n{self.input_data_model.simplify_json_schema() if self.input_data_model else 'N/A'}\n``` "
+            f"and type validated output ```\n{self.output_data_model.simplify_json_schema()}\n```…"
         )
 
         # Zero shot the task
@@ -611,8 +609,10 @@ class contract:
         logger.info("Starting output validation...")
         try:
             logger.info("Registering output data model for type validation...")
+            step = time.time()
             self.f_type_validation_remedy.register_data_model(output)
             output = self.f_type_validation_remedy()
+            wrapped_self.contract_timing["output_type_validation"] = time.time() - step
             logger.info("Type validation successful")
         except Exception as e:
             logger.error(f"Type validation failed: {str(e)}")
@@ -625,15 +625,20 @@ class contract:
                 raise Exception("Post-conditions not defined. Please define a `post` attribute if you want to enforce semantic validation through a remedy.")
 
             logger.info("Setting up semantic validation...")
+            step = time.time()
             self.f_semantic_validation_remedy.register_expected_data_model(input, attach_to="input")
             self.f_semantic_validation_remedy.register_expected_data_model(output, attach_to="output")
             output = self.f_semantic_validation_remedy(wrapped_self.prompt, f_semantic_conditions=[wrapped_self.post], **remedy_kwargs)
+            wrapped_self.contract_timing["output_semantic_validation"] = time.time() - step
             logger.info("Semantic validation successful")
             return output
         else:
             if hasattr(wrapped_self, "post"):
                 logger.info("Validating post-conditions without remedy...")
-                if not wrapped_self.post(output):
+                step = time.time()
+                res = wrapped_self.post(output)
+                wrapped_self.contract_timing["output_semantic_validation"] = time.time() - step
+                if not res:
                     logger.error("Semantic validation failed!")
                     raise Exception("Semantic validation failed!")
                 logger.info("Post-conditions passed")
@@ -654,11 +659,15 @@ class contract:
 
             wrapped_self.contract_successful = False
             wrapped_self.contract_result = None
+            wrapped_self.contract_timing = {}  # Add timing storage
             logger.info("Contract initialization complete")
 
         def wrapped_forward(wrapped_self, *args, **kwargs):
+            start_time = time.time()
             logger.info("Starting contract forward pass...")
+            step = time.time()
             original_input = contract_self._is_valid_input(*args, **kwargs)
+            wrapped_self.contract_timing["input_type_validation"] = time.time() - step
 
             remedy_kwargs = dict(
                 payload=getattr(wrapped_self, "payload", None),
@@ -676,9 +685,11 @@ class contract:
 
             try:
                 input = original_input
+                step = time.time()
                 maybe_new_input = contract_self._validate_input(wrapped_self, input, **remedy_kwargs)
                 if maybe_new_input is not None:
                     input = maybe_new_input
+                wrapped_self.contract_timing["input_semantic_validation"] = time.time() - step
 
                 output = self._validate_output(wrapped_self, input, original_output_type, **remedy_kwargs)
                 wrapped_self.contract_successful = True
@@ -687,7 +698,9 @@ class contract:
                 # Execute the original forward method
                 logger.info("Executing original forward method...")
                 kwargs['input'] = original_input
+                step = time.time()
                 output = original_forward(wrapped_self, *args, **kwargs)
+                wrapped_self.contract_timing["forward_execution"] = time.time() - step
 
                 if not isinstance(output, original_output_type):
                     logger.error(f"Output type mismatch: {type(output)}")
@@ -700,11 +713,42 @@ class contract:
                 else:
                     logger.success("Contract validation successful")
 
+            wrapped_self.contract_timing["total"] = time.time() - start_time
+            self._print_timing_summary(wrapped_self.contract_timing)
+
             return output
 
         cls.__init__ = __init__
         cls.forward = wrapped_forward
         return cls
+
+    def _print_timing_summary(self, timing: dict):
+        """Prints a formatted summary of contract execution timing using rich."""
+        console = Console()
+        table = Table(title="Contract Execution Timing Summary", show_header=True)
+        table.add_column("Operation", style="cyan")
+        table.add_column("Time (seconds)", justify="right", style="green")
+        table.add_column("Percentage", justify="right", style="yellow")
+
+        for operation, duration in timing.items():
+            if operation != "total":
+                percentage = (duration / timing["total"]) * 100
+                table.add_row(
+                    operation.replace("_", " ").title(),
+                    f"{duration:.3f}",
+                    f"{percentage:.1f}%"
+                )
+
+        table.add_row(
+            "Total",
+            f"{timing['total']:.3f}",
+            "100.0%",
+            style="bold magenta"
+        )
+
+        console.print("\n")
+        console.print(table)
+        console.print("\n")
 
 
 class BaseStrategy(TypeValidationFunction):
