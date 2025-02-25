@@ -611,10 +611,12 @@ class contract:
         logger.info("Starting output validation...")
         try:
             logger.info("Registering output data model for type validation...")
-            step = time.time()
-            self.f_type_validation_remedy.register_data_model(output, override=True)
-            output = self.f_type_validation_remedy()
-            wrapped_self._contract_timing[it]["output_type_validation"] = time.time() - step
+            try:
+                op_start = time.perf_counter()
+                self.f_type_validation_remedy.register_data_model(output, override=True)
+                output = self.f_type_validation_remedy()
+            finally:
+                wrapped_self._contract_timing[it]["output_type_validation"] = time.perf_counter() - op_start
             logger.info("Type validation successful")
         except Exception as e:
             logger.error(f"Type validation failed: {str(e)}")
@@ -627,19 +629,23 @@ class contract:
                 raise Exception("Post-conditions not defined. Please define a `post` attribute if you want to enforce semantic validation through a remedy.")
 
             logger.info("Setting up semantic validation...")
-            step = time.time()
-            self.f_semantic_validation_remedy.register_expected_data_model(input, attach_to="input", override=True)
-            self.f_semantic_validation_remedy.register_expected_data_model(output, attach_to="output", override=True)
-            output = self.f_semantic_validation_remedy(wrapped_self.prompt, f_semantic_conditions=[wrapped_self.post], **remedy_kwargs)
-            wrapped_self._contract_timing[it]["output_semantic_validation"] = time.time() - step
+            try:
+                op_start = time.perf_counter()
+                self.f_semantic_validation_remedy.register_expected_data_model(input, attach_to="input", override=True)
+                self.f_semantic_validation_remedy.register_expected_data_model(output, attach_to="output", override=True)
+                output = self.f_semantic_validation_remedy(wrapped_self.prompt, f_semantic_conditions=[wrapped_self.post], **remedy_kwargs)
+            finally:
+                wrapped_self._contract_timing[it]["output_semantic_validation"] = time.perf_counter() - op_start
             logger.info("Semantic validation successful")
             return output
         else:
             if hasattr(wrapped_self, "post"):
                 logger.info("Validating post-conditions without remedy...")
-                step = time.time()
-                res = wrapped_self.post(output)
-                wrapped_self._contract_timing[it]["output_semantic_validation"] = time.time() - step
+                try:
+                    op_start = time.perf_counter()
+                    res = wrapped_self.post(output)
+                finally:
+                    wrapped_self._contract_timing[it]["output_semantic_validation"] = time.perf_counter() - op_start
                 if not res:
                     logger.error("Semantic validation failed!")
                     raise Exception("Semantic validation failed!")
@@ -665,12 +671,14 @@ class contract:
             logger.info("Contract initialization complete")
 
         def wrapped_forward(wrapped_self, *args, **kwargs):
-            it = len(wrapped_self._contract_timing) # the len is the __call__ step
-            start_time = time.time()
+            it = len(wrapped_self._contract_timing) # the len is the __call__ op_start
+            contract_start = time.perf_counter()
             logger.info("Starting contract forward pass...")
-            step = time.time()
-            original_input = contract_self._is_valid_input(*args, **kwargs)
-            wrapped_self._contract_timing[it]["input_type_validation"] = time.time() - step
+            try:
+                op_start = time.perf_counter()
+                original_input = contract_self._is_valid_input(*args, **kwargs)
+            finally:
+                wrapped_self._contract_timing[it]["input_type_validation"] = time.perf_counter() - op_start
 
             remedy_kwargs = dict(
                 payload=getattr(wrapped_self, "payload", None),
@@ -688,11 +696,13 @@ class contract:
 
             try:
                 input = original_input
-                step = time.time()
-                maybe_new_input = contract_self._validate_input(wrapped_self, input, **remedy_kwargs)
-                if maybe_new_input is not None:
-                    input = maybe_new_input
-                wrapped_self._contract_timing[it]["input_semantic_validation"] = time.time() - step
+                try:
+                    op_start = time.perf_counter()
+                    maybe_new_input = contract_self._validate_input(wrapped_self, input, **remedy_kwargs)
+                    if maybe_new_input is not None:
+                        input = maybe_new_input
+                finally:
+                    wrapped_self._contract_timing[it]["input_semantic_validation"] = time.perf_counter() - op_start
 
                 output = self._validate_output(wrapped_self, input, original_output_type, it, **remedy_kwargs)
                 wrapped_self.contract_successful = True
@@ -701,9 +711,12 @@ class contract:
                 # Execute the original forward method
                 logger.info("Executing original forward method...")
                 kwargs['input'] = original_input
-                step = time.time()
-                output = original_forward(wrapped_self, *args, **kwargs)
-                wrapped_self._contract_timing[it]["forward_execution"] = time.time() - step
+                try:
+                    op_start = time.perf_counter()
+                    output = original_forward(wrapped_self, *args, **kwargs)
+                finally:
+                    wrapped_self._contract_timing[it]["forward_execution"] = time.perf_counter() - op_start
+                wrapped_self._contract_timing[it]["contract_execution"] = time.perf_counter() - contract_start
 
                 if not isinstance(output, original_output_type):
                     logger.error(f"Output type mismatch: {type(output)}")
@@ -716,48 +729,65 @@ class contract:
                 else:
                     logger.success("Contract validation successful")
 
-            wrapped_self._contract_timing[it]["total"] = time.time() - start_time
-
             return output
 
         def contract_perf_stats(wrapped_self):
             """Analyzes and prints timing statistics across all forward calls."""
             console = Console()
 
-            all_operations = set()
-            for timing in wrapped_self._contract_timing.values():
-                all_operations.update(timing.keys())
-
-            stats = {}
-            for op in all_operations:
-                times = [
-                    timing[op]
-                    for timing in wrapped_self._contract_timing.values()
-                    if op in timing
-                ]
-                if times:
-                    stats[op] = {
-                        'count': len(times),
-                        'total': sum(times),
-                        'mean': np.mean(times),
-                        'std': np.std(times),
-                        'min': min(times),
-                        'max': max(times)
-                    }
-
-            if not stats:
+            num_calls = len(wrapped_self._contract_timing)
+            if num_calls == 0:
+                console.print("No contract executions recorded.")
                 return {}
 
-            total_execution_time = stats['total']['total'] if 'total' in stats else sum(s['total'] for s in stats.values())
-            for op in stats:
-                if op != 'total':
+            ordered_operations = [
+                "input_type_validation",
+                "input_semantic_validation",
+                "output_type_validation",
+                "output_semantic_validation",
+                "forward_execution",
+                "contract_execution"
+            ]
+
+            stats = {}
+            for op in ordered_operations:
+                times = []
+                for timing in wrapped_self._contract_timing.values():
+                    if op in timing:
+                        times.append(timing[op])
+                    else:
+                        times.append(0.0)
+
+                non_zero_times = [t for t in times if t > 0]
+                actual_count = len(non_zero_times)
+
+                total_time = sum(times)
+                mean_time = np.mean(non_zero_times) if non_zero_times else 0
+                std_time = np.std(non_zero_times) if len(non_zero_times) > 1 else 0
+                min_time = min(non_zero_times) if non_zero_times else 0
+                max_time = max(non_zero_times) if non_zero_times else 0
+
+                stats[op] = {
+                    'count': actual_count,
+                    'total': total_time,
+                    'mean': mean_time,
+                    'std': std_time,
+                    'min': min_time,
+                    'max': max_time
+                }
+
+            total_execution_time = stats['contract_execution']['total']
+            for op in ordered_operations[:-1]:
+                if total_execution_time > 0:
                     stats[op]['percentage'] = (stats[op]['total'] / total_execution_time) * 100
+                else:
+                    stats[op]['percentage'] = 0
+            stats['contract_execution']['percentage'] = 100.0
 
             table = Table(
-                title=f"Contract Execution Summary ({len(wrapped_self._contract_timing)} Forward Calls)",
+                title=f"Contract Execution Summary ({num_calls} Forward Calls)",
                 show_header=True
             )
-
             table.add_column("Operation", style="cyan")
             table.add_column("Count", justify="right", style="blue")
             table.add_column("Total Time (s)", justify="right", style="green")
@@ -767,7 +797,7 @@ class contract:
             table.add_column("Max (s)", justify="right", style="red")
             table.add_column("% of Total", justify="right", style="cyan")
 
-            for op in sorted(all_operations - {'total'}):
+            for op in ordered_operations[:-1]:
                 s = stats[op]
                 table.add_row(
                     op.replace("_", " ").title(),
@@ -780,19 +810,18 @@ class contract:
                     f"{s['percentage']:.1f}%"
                 )
 
-            if 'total' in stats:
-                s = stats['total']
-                table.add_row(
-                    "Total Execution",
-                    str(s['count']),
-                    f"{s['total']:.3f}",
-                    f"{s['mean']:.3f}",
-                    f"{s['std']:.3f}",
-                    f"{s['min']:.3f}",
-                    f"{s['max']:.3f}",
-                    "100.0%",
-                    style="bold magenta"
-                )
+            s = stats['contract_execution']
+            table.add_row(
+                "Total Execution",
+                "N/A",
+                f"{s['total']:.3f}",
+                f"{s['mean']:.3f}",
+                f"{s['std']:.3f}",
+                f"{s['min']:.3f}",
+                f"{s['max']:.3f}",
+                "100.0%",
+                style="bold magenta"
+            )
 
             console.print("\n")
             console.print(table)
