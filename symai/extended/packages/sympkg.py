@@ -1,12 +1,13 @@
-import os
-import sys
 import argparse
+import os
 import pprint
-
+import sys
 from pathlib import Path
 
-from ...imports import Import
+from loguru import logger
+
 from ... import config_manager
+from ...imports import Import
 
 
 class PackageHandler():
@@ -25,11 +26,11 @@ class PackageHandler():
             usage='''sympkg <command> [<args>]
 
             The most commonly used sympkg commands are:
-            i   Install a new package
+            i   Install a new package (--local-path PATH, --submodules)
             r   Remove an installed package
             l   List all installed packages
-            u   Update an installed package
-            U   Update all installed packages
+            u   Update an installed package (--submodules)
+            U   Update all installed packages (--submodules)
             '''
         )
 
@@ -39,7 +40,7 @@ class PackageHandler():
             setattr(args, 'package', args.command)
             self.i(args)
         elif len(args.command) == 1 and not hasattr(self, args.command):
-            print('Unrecognized command')
+            logger.error('Unrecognized command')
             parser.print_help()
             exit(1)
         else:
@@ -48,12 +49,16 @@ class PackageHandler():
     def i(self, args = None):
         parser = argparse.ArgumentParser(
             description='Install a new package',
-            usage='sympkg i [package]'
+            usage='sympkg i [package] [--local-path PATH] [--submodules]'
         )
         parser.add_argument('package', help='Name of package to install')
+        parser.add_argument('--local-path', '-l', help='Local path to package directory')
+        parser.add_argument('--submodules', '-s', action='store_true', help='Initialize submodules for GitHub repos')
+
         if args is None:
             args = parser.parse_args(sys.argv[2:])
-        Import.install(args.package)
+
+        Import.install(args.package, args.local_path, args.submodules)
 
     def r(self):
         parser = argparse.ArgumentParser(
@@ -70,20 +75,28 @@ class PackageHandler():
     def u(self):
         parser = argparse.ArgumentParser(
             description='Update an installed package',
-            usage='sympkg u [package]'
+            usage='sympkg u [package] [--submodules]'
         )
         parser.add_argument('package', help='Name of package to update')
+        parser.add_argument('--submodules', '-s', action='store_true', help='Update submodules as well')
         args = parser.parse_args(sys.argv[2:])
-        Import.update(args.package)
+        Import.update(args.package, args.submodules)
 
     def U(self):
+        parser = argparse.ArgumentParser(
+            description='Update all installed packages',
+            usage='sympkg U [--submodules]'
+        )
+        parser.add_argument('--submodules', '-s', action='store_true', help='Update submodules as well')
+        args = parser.parse_args(sys.argv[2:])
+
         packages = Import.list_installed()
         for package in packages:
             try:
-                print(f'[UPDATE]: Updating {package}...')
-                Import.update(package)
+                logger.info(f'[UPDATE]: Updating {package}...')
+                Import.update(package, args.submodules)
             except Exception as e:
-                print(f'[SKIP]: Error updating {package}: {e}')
+                logger.error(f'[SKIP]: Error updating {package}: {e}')
 
 
 def run() -> None:

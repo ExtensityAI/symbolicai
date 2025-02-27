@@ -1,9 +1,11 @@
+import argparse
 import json
 import os
 import sys
-import argparse
-
 from pathlib import Path
+
+from loguru import logger
+
 from ... import config_manager
 
 
@@ -31,7 +33,7 @@ class PackageInitializer():
             setattr(args, 'package', args.command)
             self.c(args)
         elif len(args.command) == 1 and not hasattr(self, args.command):
-            print('Unrecognized command')
+            logger.error('Unrecognized command')
             parser.print_help()
             exit(1)
         else:
@@ -50,16 +52,16 @@ class PackageInitializer():
             username = vals[0]
             package_name = vals[1]
         except:
-            print('Invalid package name: {git_username}/{package_name}')
+            logger.error('Invalid package name: {git_username}/{package_name}')
             parser.print_help()
             exit(1)
 
         package_path = os.path.join(self.package_dir, username, package_name)
         if os.path.exists(package_path):
-            print('Package already exists')
+            logger.info('Package already exists')
             exit(1)
 
-        print('Creating package...')
+        logger.info('Creating package...')
         os.makedirs(package_path)
         os.makedirs(os.path.join(package_path, 'src'))
 
@@ -97,7 +99,7 @@ class MyExpression(Expression):
         data = self._to_symbol(data)
         self.fn.format(template=template)
         return self.fn(data, *args, **kwargs)""")
-            print('Package created successfully at: ' + package_path)
+            logger.success('Package created successfully at: ' + package_path)
 
 
 def run() -> None:

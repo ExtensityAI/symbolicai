@@ -1,15 +1,16 @@
+import argparse
 import json
 import os
 import sys
-import argparse
-
 from pathlib import Path
 from typing import Optional
 
+from loguru import logger
+
+from ... import config_manager
 from ...imports import Import
 from ...misc.console import ConsoleStyle
 from ...misc.loader import Loader
-from ... import config_manager
 
 
 class PackageRunner():
@@ -58,10 +59,10 @@ class PackageRunner():
 
     def console(self, header: str, output: Optional[object] = None):
         with ConsoleStyle('success'):
-            print(header)
+            logger.success(header)
         if output is not None:
             with ConsoleStyle('info'):
-                print(str(output))
+                logger.info(str(output))
 
     def run_alias(self):
         parser = argparse.ArgumentParser(
@@ -70,6 +71,7 @@ class PackageRunner():
         )
         parser.add_argument('alias', help='Name of alias to run')
         parser.add_argument('params', nargs=argparse.REMAINDER)
+        parser.add_argument('--submodules', '-s', action='store_true', help='Initialize submodules for GitHub repos')
         args = parser.parse_args(sys.argv[1:])
 
         aliases = self.load_aliases()
@@ -81,7 +83,7 @@ class PackageRunner():
 
         if package is None:
             with ConsoleStyle('error'):
-                print("Alias run of `{}` not found. Please check your command {}".format(args.alias, args))
+                logger.error("Alias run of `{}` not found. Please check your command {}".format(args.alias, args))
             parser.print_help()
             return
 
@@ -89,10 +91,20 @@ class PackageRunner():
         kwargs = {arg.split('=')[0]: arg.split('=')[1] for arg in args.params if '=' in arg}
 
         try:
-            expr = Import(package, **kwargs)
+            # Add submodules to kwargs if specified
+            if args.submodules:
+                kwargs['submodules'] = True
+
+            # Check if package is a local path
+            if os.path.exists(package) and os.path.isdir(package):
+                # Local path - pass directly
+                expr = Import(package, **kwargs)
+            else:
+                # GitHub reference
+                expr = Import(package, **kwargs)
         except Exception as e:
             with ConsoleStyle('error'):
-                print("Error: {} in package `{}`.\nPlease check your command {} or if package is available.".format(str(e), package, args))
+                logger.error("Error: {} in package `{}`.\nPlease check your command {} or if package is available.".format(str(e), package, args))
             parser.print_help()
             return
 
@@ -143,7 +155,7 @@ class PackageRunner():
         if args.alias in aliases:
             del aliases[args.alias]
         self.save_aliases(aliases)
-        self.console("Alias {} => {} removed.".format(args.alias, args.package))
+        self.console("Alias {} removed successfully.".format(args.alias))
 
 
 def run() -> None:
