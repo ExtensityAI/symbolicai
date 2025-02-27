@@ -11,12 +11,29 @@ To use `sympkg`, follow the steps below:
 
 The available commands are:
 
-- `i` or `install`: Install a new package. To install a package, use the following command: `sympkg i <package>`
+- `i` or `install`: Install a new package. To install a package, use the following command: `sympkg i <package> [--local-path PATH] [--submodules]`
 - `r` or `remove`: Remove an installed package. To remove a package, use the following command: `sympkg r <package>`
 - `l` or `list`: List all installed packages. To list installed packages, use the following command: `sympkg l`
-- `u` or `update`: Update an installed package. To update a package, use the following command: `sympkg u <package>`
+- `u` or `update`: Update an installed package. To update a package, use the following command: `sympkg u <package> [--submodules]`
+- `U` or `update-all`: Update all installed packages. To update all packages, use the following command: `sympkg U [--submodules]`
 
 For more information on each command, you can use the `--help` flag. For example, to get help on the `i` command, use the following command: `sympkg i --help`.
+#### Installation Options
+
+When installing packages, you can use the following options:
+
+- `--local-path PATH` or `-l PATH`: Install a package from a local directory instead of GitHub in format `<username>/<repo_name>`.
+- `--submodules` or `-s`: Initialize Git submodules when cloning a package from GitHub.
+
+Example: `sympkg i ExtensityAI/symask --submodules` or `sympkg i ExtensityAI/symask /path/to/local/package`
+
+#### Update Options
+
+When updating packages, you can use the following option:
+
+- `--submodules` or `-s`: Update Git submodules along with the main repository.
+
+Example: `sympkg u ExtensityAI/symask --submodules`
 
 Note: The package manager is based on GitHub, so you will need `git` installed to install or update packages. The packages names use the GitHub `<username>/<repo_name>` convention.
 
@@ -31,7 +48,7 @@ The Package Runner is a command-line tool that allows you to run packages via al
 To use the Package Runner, you can run the following command:
 
 ```bash
-$> symrun <alias> [<args>] | <command> <alias> [<package>]
+$> symrun <alias> [<args>] [--submodules] | <command> <alias> [<package>]
 ```
 
 The most commonly used Package Runner commands are:
@@ -49,6 +66,11 @@ The following command runs the specified `my_alias` with the provided arguments 
 
 ```bash
 $> symrun my_alias arg1 arg2 kwarg1=value1 kwarg2=value2
+```
+The following command runs the alias with the `--submodules` flag, which will initialize Git submodules if the package needs to be installed:
+
+```bash
+$> symrun my_alias arg1 arg2 --submodules
 ```
 
 The following command creates a new alias named `my_alias` that points to `<username>/<repo_name>`:
@@ -116,5 +138,5 @@ The Package Initializer creates the following files and directories:
 - `src/func.py`: Contains the main function and expression code for the package.
 
 The Package Initializer creates the package in the `.symai/packages/` directory in your home directory (`~/.symai/packages/<username>/<repo_name>`).
-Within the created package you will see the `package.json` config file defining the new package metadata and `symrun` entry point and offers the declared expression types to the `Import` class. 
+Within the created package you will see the `package.json` config file defining the new package metadata and `symrun` entry point and offers the declared expression types to the `Import` class.
 Read more about the {doc}`import class <FEATURES/import>`
