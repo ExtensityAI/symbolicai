@@ -35,7 +35,7 @@ dependencies = [
     "PyYAML>=6.0.1",
     "transformers>=4.45.2",
     "sympy>=1.12",
-    "openai>=1.13.3",
+    "openai>=1.60.0",
     "anthropic>=0.43.1",
     "pypdf>=4.3.0",
     "ipython>=8.24.0",
@@ -59,14 +59,15 @@ dependencies = [
     "pydantic-core>=2.20.1",
     "pydantic-settings>=2.3.4",
     "pycryptodome>=3.20.0",
-    "httpx>=0.27.2"
+    "httpx>=0.27.2",
+    "nest-asyncio>=1.6.0"
 ]
 
 [project.optional-dependencies]
 bitsandbytes = ["bitsandbytes>=0.43.1"] # handle separately because of Apple Silicon
 blip2        = ["decord>=0.6.0", "salesforce-lavis>=1.0.0", "opencv-python-headless>=4.5.5.64"]
 hf           = ["transformers>=4.45.2", "accelerate>=0.33.0", "peft>=0.13.1", "datasets>=3.0.1", "trl>=0.11.3"]
-llama_cpp    = ["nest-asyncio>=1.6.0", "llama-cpp-python[server]>=0.3.7"]
+llama_cpp    = ["llama-cpp-python[server]>=0.3.7"] # handle separately since this dependency may not compile and require special maintenance
 wolframalpha = ["wolframalpha>=5.0.0"]
 whisper      = ["openai-whisper>=20240930", "numba>=0.60.0"]
 selenium     = ["selenium>=4.18.1", "webdriver-manager>=4.0.2", "chromedriver-autoinstaller>=0.6.4"]
@@ -83,7 +84,6 @@ all          = [
     "symbolicai[serpapi]",
     "symbolicai[pinecone]",
     "symbolicai[bard]",
-    "symbolicai[llama_cpp]",
     "symbolicai[services]",
     "symbolicai[solver]"
 ]
