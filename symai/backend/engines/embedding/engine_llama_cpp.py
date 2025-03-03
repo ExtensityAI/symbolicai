@@ -120,7 +120,10 @@ class LlamaCppEmbeddingEngine(Engine):
         if new_dim:
             raise NotImplementedError("new_dim is not yet supported")
 
-        output = [r["embedding"] for r in res["data"]]
+        if res is not None:
+            output = [r["embedding"] for r in res["data"]]
+        else:
+            output = None
         metadata = {'raw_output': res}
 
         return [output], metadata
