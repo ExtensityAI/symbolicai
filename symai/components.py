@@ -10,6 +10,7 @@ from random import sample
 from string import ascii_lowercase, ascii_uppercase
 from threading import Lock
 from typing import Callable, Dict, Iterator, List, Optional, Type, Union
+import copy
 
 import numpy as np
 from attr import dataclass
@@ -1155,6 +1156,56 @@ class MetadataTracker(Expression):
 
         # Convert to normal dictionary
         return json.loads(json.dumps(token_details))
+
+    def _accumulate_metadata(self):
+        """Accumulates metadata across all tracked engine calls."""
+        if not self._metadata:
+            return {}
+
+        # Use first entry as base
+        first_key = next(iter(self._metadata))
+        accumulated = copy.deepcopy(self._metadata[first_key])
+
+        # Skipz first entry
+        for (_, engine_name), metadata in list(self._metadata.items())[1:]:
+            if engine_name != "GPTXChatEngine":
+                continue
+
+            # Accumulate time if it exists
+            if 'time' in metadata and 'time' in accumulated:
+                accumulated['time'] += metadata['time']
+
+            # Handle usage stats accumulation
+            if 'raw_output' in metadata and 'raw_output' in accumulated:
+                if hasattr(metadata['raw_output'], 'usage') and hasattr(accumulated['raw_output'], 'usage'):
+                    current_usage = metadata['raw_output'].usage
+                    accumulated_usage = accumulated['raw_output'].usage
+
+                    # Accumulate token counts
+                    for attr in ['completion_tokens', 'prompt_tokens', 'total_tokens']:
+                        if hasattr(current_usage, attr) and hasattr(accumulated_usage, attr):
+                            setattr(accumulated_usage, attr,
+                                    getattr(accumulated_usage, attr) + getattr(current_usage, attr))
+
+                    # Handle nested token details if they exist
+                    for detail_attr in ['completion_tokens_details', 'prompt_tokens_details']:
+                        if hasattr(current_usage, detail_attr) and hasattr(accumulated_usage, detail_attr):
+                            current_details = getattr(current_usage, detail_attr)
+                            accumulated_details = getattr(accumulated_usage, detail_attr)
+
+                            # Accumulate all numeric attributes in the details
+                            for attr in dir(current_details):
+                                if not attr.startswith('_') and hasattr(accumulated_details, attr):
+                                    current_val = getattr(current_details, attr)
+                                    accumulated_val = getattr(accumulated_details, attr)
+                                    if isinstance(current_val, (int, float)) and isinstance(accumulated_val, (int, float)):
+                                        setattr(accumulated_details, attr, accumulated_val + current_val)
+
+        return accumulated
+
+    @property
+    def metadata_acc(self) -> dict[str, Any]:
+        return self._accumulate_metadata()
 
     @property
     def metadata(self) -> list[dict[str, Any]]:
