@@ -60,7 +60,8 @@ dependencies = [
     "pydantic-settings>=2.3.4",
     "pycryptodome>=3.20.0",
     "httpx>=0.27.2",
-    "nest-asyncio>=1.6.0"
+    "nest-asyncio>=1.6.0",
+    "rich>=13.9.4"
 ]
 
 [project.optional-dependencies]
