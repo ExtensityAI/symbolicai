@@ -235,7 +235,7 @@ def _execute_query(engine, post_processors, return_constraint, argument) -> List
         try:
             res = ast.literal_eval(rsp)
         except Exception as e:
-            logger.warn(f"Failed to cast return type to {return_constraint} for {str(rsp)}")
+            logger.warning(f"Failed to cast return type to {return_constraint} for {str(rsp)}")
             res = rsp
         assert res is not None, "Return type cast failed! Check if the return type is correct or post_processors output matches desired format: " + str(rsp)
         rsp = res
