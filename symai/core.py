@@ -49,7 +49,7 @@ class Argument(Expression):
         if 'self_prompt' not in self.kwargs:
             self.prop.self_prompt = False
         if 'truncation_percentage' not in self.kwargs:
-            self.prop.truncation_percentage = 0.8
+            self.prop.truncation_percentage = None
         if 'truncation_type' not in self.kwargs:
             self.prop.truncation_type = 'head'
         if 'response_format' not in self.kwargs:
