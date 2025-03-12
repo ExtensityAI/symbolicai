@@ -4,6 +4,9 @@ import pickle
 import uuid
 import torch
 import numpy as np
+import copy
+import json
+from pydantic import ValidationError
 
 from typing import (TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Optional, Tuple,
                     Type, Union)
@@ -12,6 +15,7 @@ from .measures import calculate_frechet_distance, calculate_mmd
 from .. import core
 from .. import core_ext
 from ..prompts import Prompt
+from ..models import LLMDataModel, LengthConstraint, CustomConstraint
 
 if TYPE_CHECKING:
     from ..symbol import Expression, Symbol
@@ -1645,25 +1649,693 @@ class ExpressionHandlingPrimitives(Primitive):
     This mixin consists of functions that handle symbolic expressions - evaluations, parsing, computation and more.
     Future functionalities in this mixin might include operations to manipulate expressions, more complex evaluation techniques, etc.
     '''
-    def interpret(self, expr: Optional[str] = None, **kwargs) -> 'Symbol':
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._metadata_tracker = None
+
+    def _get_metadata_tracker(self):
+        if self._metadata_tracker is None:
+            from ..components import MetadataTracker
+            self._metadata_tracker = MetadataTracker.__new__(MetadataTracker)
+            self._metadata_tracker._metadata = {}
+            self._metadata_tracker._metadata_id = 0
+            self._metadata_tracker._trace = False
+            self._metadata_tracker._original_trace = None
+        return self._metadata_tracker
+
+    def get_metadata(self):
+        return self._metadata_tracker.metadata_acc
+
+    def get_usage(self):
+        return self._metadata_tracker.usage
+
+    def init_results(self):
+        """Ensures _accumulated_results exists, initializing if needed."""
+        if not hasattr(self, '_accumulated_results'):
+            self._accumulated_results = []
+
+    def get_results(self) -> List['Symbol']:
+        '''
+        Retrieves accumulated results from previous interpretations.
+
+        Returns:
+            List[Symbol]: List of accumulated results
+        '''
+        self.init_results()
+        return self._accumulated_results
+
+    def clear_results(self):
+        '''Clears the accumulated results'''
+        self.init_results()
+        self._accumulated_results = []
+
+    def _format_usage_stats(self, usage_obj):
+        """Formats the usage statistics into a standardized dictionary structure."""
+        return {
+            'usage': {
+                'completion_tokens': usage_obj.completion_tokens,
+                'prompt_tokens': usage_obj.prompt_tokens,
+                'total_tokens': usage_obj.total_tokens
+            },
+            'completion_breakdown': {
+                'accepted_prediction_tokens': usage_obj.completion_tokens_details.accepted_prediction_tokens,
+                'rejected_prediction_tokens': usage_obj.completion_tokens_details.rejected_prediction_tokens,
+                'audio_tokens': usage_obj.completion_tokens_details.audio_tokens,
+                'reasoning_tokens': usage_obj.completion_tokens_details.reasoning_tokens
+            },
+            'prompt_breakdown': {
+                'audio_tokens': usage_obj.prompt_tokens_details.audio_tokens,
+                'cached_tokens': usage_obj.prompt_tokens_details.cached_tokens
+            }
+        }
+
+    def _accumulate_metadata(self, prev_metadata, current_metadata):
+        """Accumulates metadata between previous and current metadata entries.
+
+        Args:
+            prev_metadata (dict): Previous metadata to accumulate from
+            current_metadata (dict): Current metadata to accumulate with
+
+        Returns:
+            dict: Accumulated metadata
+        """
+        if not prev_metadata or not current_metadata:
+            return current_metadata or prev_metadata or {}
+
+        # Create a deep copy of the current metadata as our base
+        accumulated = copy.deepcopy(current_metadata)
+
+        # Accumulate time if it exists
+        if 'time' in prev_metadata and 'time' in accumulated:
+            accumulated['time'] += prev_metadata['time']
+
+        # Handle usage stats accumulation
+        if 'raw_output' in prev_metadata and 'raw_output' in accumulated:
+            if hasattr(prev_metadata['raw_output'], 'usage') and hasattr(accumulated['raw_output'], 'usage'):
+                prev_usage = prev_metadata['raw_output'].usage
+                accumulated_usage = accumulated['raw_output'].usage
+
+                # Accumulate token counts
+                for attr in ['completion_tokens', 'prompt_tokens', 'total_tokens']:
+                    if hasattr(prev_usage, attr) and hasattr(accumulated_usage, attr):
+                        setattr(accumulated_usage, attr,
+                                getattr(accumulated_usage, attr) + getattr(prev_usage, attr))
+
+                # Handle nested token details
+                for detail_attr in ['completion_tokens_details', 'prompt_tokens_details']:
+                    if hasattr(prev_usage, detail_attr) and hasattr(accumulated_usage, detail_attr):
+                        prev_details = getattr(prev_usage, detail_attr)
+                        accumulated_details = getattr(accumulated_usage, detail_attr)
+
+                        # Accumulate all numeric attributes in the details
+                        for attr in dir(prev_details):
+                            if not attr.startswith('_') and hasattr(accumulated_details, attr):
+                                prev_val = getattr(prev_details, attr)
+                                accumulated_val = getattr(accumulated_details, attr)
+                                if isinstance(prev_val, (int, float)) and isinstance(accumulated_val, (int, float)):
+                                    setattr(accumulated_details, attr, accumulated_val + prev_val)
+
+        return accumulated
+
+    def interpret(self, prompt: Optional[str] = None, usage: bool = True, accumulate: bool = False, **kwargs) -> 'Symbol':
         '''
         Evaluates a symbolic expression using the provided engine.
         Uses the core.expression decorator to create a _func method that evaluates the given expression.
 
         Args:
-            expr (Optional[str]): The expression to evaluate. Defaults to the symbol value.
+            prompt (Optional[str]): The prompt to evaluate. Defaults to the symbol value.
+            accumulate (bool): If True, stores results for later retrieval. Defaults to False.
+            usage (bool): If True, tracks usage statistics. Defaults to False.
+            **kwargs: Additional keyword arguments for the core.interpret decorator.
 
         Returns:
             Symbol: A new symbol with the result of the expression evaluation.
         '''
-        if expr is None:
-            expr = self.value
+        if prompt is None:
+            prompt = self.value
+
+        # Propagate original input
+        input_value = getattr(self, '_input', self) if hasattr(self, '_input') else self
+
+        if usage:
+            kwargs['return_metadata'] = True
 
         @core.interpret(**kwargs)
-        def _func(_, expr: str):
+        def _func(_, prompt: str):
             pass
 
-        return self._to_type(_func(self, expr))
+        if usage:
+            # Use the metadata tracker from the input value if it exists
+            if hasattr(input_value, '_metadata_tracker') and input_value._metadata_tracker is not None:
+                tracker = input_value._metadata_tracker
+            else:
+                tracker = self._get_metadata_tracker()
+
+            with tracker as t:
+                result, metadata = _func(self, prompt)
+                result = self._to_type(result)
+
+            # Get the previous metadata if it exists
+            prev_metadata = getattr(self, 'metadata_stats', None)
+
+            # Accumulate metadata if previous exists
+            if prev_metadata:
+                result.metadata_stats = self._accumulate_metadata(prev_metadata, metadata)
+            else:
+                result.metadata_stats = metadata
+
+            # Set usage stats based on accumulated metadata
+            result.usage_stats = self._format_usage_stats(result.metadata_stats['raw_output'].usage)
+
+            # Propagate the metadata tracker to the result
+            result._metadata_tracker = tracker
+
+        else:
+            result = _func(self, prompt)
+            result = self._to_type(result)
+            # Set empty stats when usage tracking is disabled
+            result.metadata_stats = None
+            result.usage_stats = None
+
+        if accumulate:
+            input_value.init_results()
+            input_value._accumulated_results.append(result.value)
+
+        result._input = input_value
+
+        return result
+
+
+class ValidationHandlingPrimitives(Primitive):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def print_verbose(self, msg):
+        if self.verbose:
+            print(msg)
+
+    def prepare_seeds(self, num_seeds: int, **kwargs) -> list[int]:
+        seed = kwargs.get("seed") or getattr(self, "seed", 42)
+        rng = np.random.default_rng(seed)
+        return rng.integers(0, np.iinfo(np.int16).max, size=num_seeds, dtype=np.int16).tolist()
+
+    def simplify_validation_errors(self, error: ValidationError) -> str:
+        return "\n".join(
+            f"Field '{' -> '.join(str(loc) for loc in err['loc'])}': {err['msg']}. "
+            f"Expected type: {err.get('type', 'unknown')}. "
+            f"Provided value: {err.get('ctx', {}).get('given', 'unknown')}."
+            for err in error.errors()
+        )
+
+    def validate_json(self, result: 'Symbol', data_model: "LLMDataModel", retry_count: int,
+                     usage: bool = True, accumulate: bool = False, prompt: Optional[str] = None,
+                     **kwargs) -> 'Symbol':
+
+        remedy_seeds = self.prepare_seeds(retry_count, **kwargs)
+        json_validation_count = 0
+
+        static_context = """
+        [Task]
+        You are tasked with fixing a string that is intended to be in **JSON format** but contains errors.
+        Your goal is to correct the errors and ensure the JSON string is valid according to a given JSON schema.
+        Follow these rules:
+
+        1. Parse the provided string and use the list of validation errors to identify what needs to be fixed.
+        2. Correct the identified errors to produce a properly formatted JSON string.
+        3. Ensure the corrected JSON complies fully with the provided JSON schema.
+        4. Preserve all original keys and values as much as possible. Only modify keys or values if they do not comply with the schema.
+        5. Only modify the structure or values if necessary to meet the schema's requirements.
+        6. Return the corrected JSON string as the output.
+
+        [Requirements]
+        - The output must be a valid, well-formatted JSON string.
+        - Do not introduce new data or alter the intent of the original content unless required for schema compliance.
+        - Ensure all changes are minimal and strictly necessary to fix the listed errors.
+        """
+
+        if prompt:
+            result._value = prompt
+
+        self.print_verbose(f"Starting validation process with {retry_count} maximum retries...")
+
+        metadata = None
+        prev_metadata = getattr(self, 'metadata_stats', None)
+
+        last_error = ""
+        for i in range(retry_count):
+            # Convert dictionary to JSON string if needed
+            if isinstance(result.value, dict):
+                result._value = json.dumps(result.value)
+            elif isinstance(result.value, data_model):
+                result._value = result.value.model_dump_json()
+
+            # Clean the input string by removing invisible characters and whitespace
+            if isinstance(result.value, str):
+                result._value = result.value.strip()
+                # Remove any non-printable characters except for whitespace
+                result._value = ''.join(char for char in result.value
+                                      if char.isprintable() or char.isspace())
+                # Remove any "json" prefix that might appear
+                if result._value.lower().startswith('json'):
+                    result._value = result._value[4:].lstrip()
+
+            json_validation_count += 1
+            self.print_verbose(f"\nAttempt {json_validation_count}:")
+            self.print_verbose(f"Input type: {type(result.value)}")
+            self.print_verbose(f"Input value: {result.value}")
+
+            try:
+                final_result = data_model.model_validate_json(result.value, strict=True)
+                result_symbol = self._to_type(final_result)
+                result_symbol.data_model = data_model
+                result_symbol.json_validation_count = json_validation_count
+                result_symbol._input = self.input_value
+                if usage:
+                    if prev_metadata:
+                        result_symbol.metadata_stats = self._accumulate_metadata(prev_metadata, metadata)
+                    else:
+                        result_symbol.metadata_stats = metadata
+
+                    if result_symbol.metadata_stats:
+                        result_symbol.usage_stats = self._format_usage_stats(result_symbol.metadata_stats['raw_output'].usage)
+                    else:
+                        result_symbol.usage_stats = None
+
+                if accumulate:
+                    self.input_value._accumulated_results.append(result_symbol.value)
+                self.print_verbose(f"✓ Validation successful on attempt {json_validation_count}")
+
+                return result_symbol
+
+            except ValidationError as e:
+                error_str = self.simplify_validation_errors(e)
+                self.print_verbose(f"Validation errors:\n{error_str}")
+                self.print_verbose("Attempting to fix validation errors...\n")
+
+                remedy_prompt = (
+                    f"[Original Input]\n```json\n{result.value}\n```\n"
+                    f"[Validation Errors]\n{error_str}\n"
+                    f"[JSON Schema]\n{data_model.model_json_schema()}\n"
+                )
+
+                kwargs.update({
+                    'static_context': static_context,
+                    'seed': remedy_seeds[i]
+                })
+
+                # Run interpret with its own metadata tracking
+                result = self.interpret(remedy_prompt, usage=usage, accumulate=False, **kwargs)
+
+                if usage:
+                    metadata = list(dict(result._metadata_tracker.metadata).items())[-1][1]
+
+                last_error = error_str
+
+                if i < retry_count - 1:
+                    self.print_verbose("Attempting to fix validation errors...\n")
+
+        error_msg = f"Failed to retrieve valid JSON: {last_error}"
+        self.print_verbose(f"\n✗ Validation failed after {json_validation_count} attempts")
+
+        raise Exception(error_msg)
+
+    def validate(self, prompt: Optional[str] = None, data_model: "LLMDataModel" = None,
+                retry_count: int = 5, usage: bool = True, accumulate: bool = False,
+                verbose: bool = False, **kwargs) -> 'Symbol':
+        """
+        Validates a Symbol against a JSON schema, retrying with interpretation if needed.
+
+        Args:
+            data_model (LLMDataModel): The Pydantic model to validate against.
+            retry_count (int): Number of retry attempts. Defaults to 5.
+            usage (bool): Whether to track usage statistics.
+            accumulate (bool): Whether to accumulate usage statistics.
+            verbose (bool): Whether to print detailed validation progress.
+            **kwargs: Additional keyword arguments for interpretation.
+
+        Returns:
+            Symbol: The validated Symbol with usage_stats if usage=True
+        """
+
+        self.verbose = verbose
+        self.input_value = getattr(self, '_input', self) if hasattr(self, '_input') else self
+
+        if accumulate:
+            self.input_value.init_results()
+
+        if data_model is None:
+            raise ValueError("data_model parameter is required for validation")
+
+        kwargs["response_format"] = {"type": "json_object"}
+
+        return self.validate_json(self, data_model, retry_count, usage, accumulate, prompt, **kwargs)
+
+
+class ConstraintHandlingPrimitives(Primitive):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def check_constraints(self, result: Union["LLMDataModel", str], constraints: Union[List[Union["LengthConstraint", "CustomConstraint"]], "LengthConstraint", "CustomConstraint"]):
+        constraint_violations = []
+        if not isinstance(constraints, list):
+            constraints = [constraints]
+
+        for constraint in constraints:
+            if isinstance(constraint, LengthConstraint):
+                violations = self._check_length_constraint(result, constraint)
+                constraint_violations.extend(violations)
+            elif isinstance(constraint, CustomConstraint):
+                violations = self._check_custom_constraint(result, constraint)
+                constraint_violations.extend(violations)
+
+        return constraint_violations
+
+    def _check_custom_constraint(self, result: Union["LLMDataModel", str], constraint: "CustomConstraint") -> List[str]:
+        violations = []
+        content = result if isinstance(result, str) else result.model_dump_json()
+
+        # Create a validation prompt
+        validation_prompt = f"""
+        Validate if the following content meets this rule: "{constraint.rule}"
+
+        Content:
+        {content}
+
+        Respond with only "PASS" if the content meets the rule, or provide a specific explanation of why it fails.
+        """
+
+        validation_result = self.interpret(validation_prompt, temperature=0)
+        if "PASS" not in validation_result.value.upper():
+            violations.append(f"Custom constraint violation: {constraint.rule} - {validation_result.value}")
+            self.print_verbose(f"Failed custom constraint: {constraint.rule}")
+        else:
+            self.print_verbose(f"[PASS] Content passed custom constraint: {constraint.rule}")
+
+        return violations
+
+    def _check_length_constraint(self, result: Union["LLMDataModel", str], constraint: "LengthConstraint") -> List[str]:
+        constraint_violations = []
+        if not isinstance(constraint, list):
+            constraint = [constraint]
+
+        # Handle plain string input
+        if isinstance(result, str):
+            for c in constraint:
+                if not (c.min_length <= len(result) <= c.max_length):
+                    self.print_verbose(
+                        f"Text must have between {c.min_length} and {c.max_length} characters, has {len(result)}"
+                    )
+                    remedy_str = [
+                        f"The text must have between {c.min_length} and {c.max_length} characters, but has {len(result)}."
+                    ]
+                    if len(result) < c.min_length:
+                        remedy_str.append(
+                            f"Increase the length by at least {c.min_length - len(result)} characters."
+                        )
+                    elif len(result) > c.max_length:
+                        remedy_str.append(
+                            f"Decrease the length by at least {len(result) - c.max_length} characters."
+                        )
+                    constraint_violations.append(" ".join(remedy_str))
+                else:
+                    self.print_verbose(
+                        f"[PASS] Text passed length validation: {len(result)} ({c.min_length} - {c.max_length})"
+                    )
+        # Handle structured data model
+        else:
+            # Convert Pydantic model to dict if needed
+            result_dict = result.model_dump() if hasattr(result, 'model_dump') else result
+
+            for constraint in constraint:
+                # Check if this is an items constraint
+                is_items_constraint = constraint.field_name.endswith('.items')
+                field_name = constraint.field_name[:-6] if is_items_constraint else constraint.field_name
+
+                # Direct dictionary access for Pydantic models
+                if field_name in result_dict:
+                    field_value = result_dict[field_name]
+                    if isinstance(field_value, str):
+                        if not constraint.min_length <= len(field_value) <= constraint.max_length:
+                            self.print_verbose(
+                                f"Field {field_name} must have between {constraint.min_length} and {constraint.max_length} characters, has {len(field_value)}"
+                            )
+                            remedy_str = [
+                                f"The field {field_name} must have between {constraint.min_length} and {constraint.max_length} characters, but has {len(field_value)}."
+                            ]
+                            if len(field_value) < constraint.min_length:
+                                remedy_str.append(
+                                    f"Increase the length of {field_name} by at least {constraint.min_length - len(field_value)} characters."
+                                )
+                            elif len(field_value) > constraint.max_length:
+                                remedy_str.append(
+                                    f"Decrease the length of {field_name} by at least {len(field_value) - constraint.max_length} characters."
+                                )
+                            constraint_violations.append(" ".join(remedy_str))
+                        else:
+                            self.print_verbose(
+                                f"[PASS] Field {field_name} passed length validation: {len(field_value)} ({constraint.min_length} - {constraint.max_length})"
+                            )
+                    else:
+                        field_values = field_value if isinstance(field_value, list) else [field_value]
+                        # Handle list fields
+                        if is_items_constraint:
+                            # Validate each item's string length
+                            for idx, item in enumerate(field_values):
+                                if not constraint.min_length <= len(str(item)) <= constraint.max_length:
+                                    self.print_verbose(
+                                        f"Item {idx} in list field {field_name} must have between {constraint.min_length} and {constraint.max_length} characters, has {len(str(item))}"
+                                    )
+                                    remedy_str = [
+                                        f"Item {idx} in list field {field_name} must have between {constraint.min_length} and {constraint.max_length} characters, but has {len(str(item))}."
+                                    ]
+                                    if len(str(item)) < constraint.min_length:
+                                        remedy_str.append(
+                                            f"Increase the length of item {idx} by at least {constraint.min_length - len(str(item))} characters."
+                                        )
+                                    elif len(str(item)) > constraint.max_length:
+                                        remedy_str.append(
+                                            f"Decrease the length of item {idx} by at least {len(str(item)) - constraint.max_length} characters."
+                                        )
+                                    constraint_violations.append(" ".join(remedy_str))
+                                else:
+                                    self.print_verbose(
+                                        f"[PASS] Item {idx} in list field {field_name} passed length validation: {len(str(item))} ({constraint.min_length} - {constraint.max_length})"
+                                    )
+                        else:
+                            # Regular list length validation
+                            list_length = len(field_values)
+                            if not constraint.min_length <= list_length <= constraint.max_length:
+                                self.print_verbose(
+                                    f"List field {field_name} must have between {constraint.min_length} and {constraint.max_length} items, has {list_length}"
+                                )
+                                remedy_str = [
+                                    f"The list field {field_name} must have between {constraint.min_length} and {constraint.max_length} items, but has {list_length}."
+                                ]
+                                if list_length < constraint.min_length:
+                                    remedy_str.append(
+                                        f"Add at least {constraint.min_length - list_length} more items to {field_name}."
+                                    )
+                                elif list_length > constraint.max_length:
+                                    remedy_str.append(
+                                        f"Remove at least {list_length - constraint.max_length} items from {field_name}."
+                                    )
+                                constraint_violations.append(" ".join(remedy_str))
+                            else:
+                                self.print_verbose(
+                                    f"[PASS] List field {field_name} passed length validation: {list_length} items ({constraint.min_length} - {constraint.max_length})"
+                                )
+                else:
+                    raise ValueError(f"Field {field_name} not found in model")
+
+        return constraint_violations
+
+    def wrap_task(self, task: str, result: str, violations: List[str], all_constraints: List[Union["LengthConstraint", "CustomConstraint"]]):
+        def format_constraint_description(constraint):
+            if isinstance(constraint, LengthConstraint):
+                field_desc = f"field '{constraint.field_name}'" if hasattr(constraint, 'field_name') and constraint.field_name else "text"
+                return f"The {field_desc} must have between {constraint.min_length} and {constraint.max_length} characters."
+            elif isinstance(constraint, CustomConstraint):
+                return f"The content must satisfy this rule: \"{constraint.rule}\""
+            return str(constraint)
+
+        wrapped_task = [
+            "Your task was the following: \n\n" + task + "\n",
+            "Your output was the following: \n\n" + result + "\n",
+            "You must adhere to ALL of the following constraints:",
+        ]
+
+        # Add all constraints first
+        for constraint in all_constraints:
+            wrapped_task.append("- " + format_constraint_description(constraint))
+
+        # Then add specific violations
+        if violations:
+            wrapped_task.append("\nThe following constraints were violated:")
+            for constraint_violation in violations:
+                wrapped_task.append("- " + constraint_violation)
+        else:
+            wrapped_task.append("\nNo constraints were violated, but you must continue to adhere to all constraints.")
+
+        wrapped_task.append(
+            "\nFollow the original task and make sure to adhere to ALL constraints listed above."
+        )
+        return "\n".join(wrapped_task)
+
+    @classmethod
+    def _get(cls, obj, path: str):
+        value = obj
+        for i, key in enumerate(path.split(".")):
+            if isinstance(value, list):
+                try:
+                    index = int(key)
+                    if index < len(value):
+                        value = value[index]
+                    else:
+                        raise ValueError(f"Index {index} out of range in {value}")
+                except:
+                    values = []
+                    for val in value:
+                        leaf = cls.get(
+                            val, ".".join(path.split(".")[i:])
+                        )
+                        values.extend(leaf)
+                    return values
+            # Add handling for Pydantic models
+            elif hasattr(value, "model_dump"):
+                model_dict = value.model_dump()
+                if key in model_dict:
+                    value = model_dict[key]
+                else:
+                    raise ValueError(f"Key {key} not found in {value}")
+            elif isinstance(value, dict):
+                if key in value:
+                    value = value[key]
+                else:
+                    raise ValueError(f"Key {key} not found in {value}")
+            else:
+                if hasattr(value, key):
+                    value = getattr(value, key)
+                else:
+                    raise ValueError(f"Key {key} not found in {value}")
+
+        if not isinstance(value, list):
+            value = [value]
+        return value
+
+    def length_constraint(self, result: 'Symbol',
+                          constraints: Union[List[Union["LengthConstraint", "CustomConstraint"]], "LengthConstraint", "CustomConstraint"],
+                          retry_count: int = 5, usage: bool = True, accumulate: bool = False,
+                          prompt: Optional[str] = None, *args, **kwargs):
+
+        remedy_seeds = self.prepare_seeds(retry_count, **kwargs)
+        constraint_count = 0
+
+        metadata = None
+        prev_metadata = getattr(self, 'metadata_stats', None)
+
+        if prompt:
+            result._value = prompt
+
+        original_task = self.input_value.value
+        last_violation = []
+
+        # Ensure constraints is a list
+        all_constraints = constraints if isinstance(constraints, list) else [constraints]
+
+        self.print_verbose(f"Starting constraint process with {retry_count} maximum retries...")
+
+        for i in range(retry_count):
+            constraint_count += 1
+            self.print_verbose(f"\nAttempt {constraint_count}:")
+            self.print_verbose(f"Input type: {type(result.value)}")
+            self.print_verbose(f"Input value: {result.value}")
+
+            constraint_violations = self.check_constraints(result.value, all_constraints)
+            if len(constraint_violations) > 0:
+                self.print_verbose(f"Constraint violations:\n{constraint_violations}")
+                self.print_verbose("Attempting to fix constraint violations...\n")
+
+                remedy_task = self.wrap_task(
+                    original_task if isinstance(original_task, str) else original_task.model_dump_json(),
+                    result.value if isinstance(result.value, str) else result.value.model_dump_json(),
+                    constraint_violations,
+                    all_constraints  # Pass all constraints
+                )
+                kwargs.update({'seed': remedy_seeds[i]})
+
+                # Store the original type
+                original_type = type(result.value)
+
+                # Run interpret
+                result = self.interpret(remedy_task, usage=usage, accumulate=False, **kwargs)
+
+                if usage:
+                    metadata = list(dict(result._metadata_tracker.metadata).items())[-1][1]
+
+                # Convert back to original type if needed
+                if hasattr(original_type, 'model_validate_json') and isinstance(result.value, str):
+                    try:
+                        result._value = original_type.model_validate_json(result.value)
+                    except ValidationError as e:
+                        self.print_verbose(f"Failed to convert back to original type: {e}")
+                        raise
+
+                last_violation = constraint_violations
+
+                if i < retry_count - 1:
+                    self.print_verbose("Attempting to fix constraint violations...\n")
+            else:
+                # Create result symbol with metadata
+                result_symbol = result
+                result_symbol.constraint_count = constraint_count
+                result_symbol._input = self.input_value
+
+                if usage:
+                    if prev_metadata:
+                        result_symbol.metadata_stats = self._accumulate_metadata(prev_metadata, metadata)
+                    else:
+                        result_symbol.metadata_stats = metadata
+
+                    if result_symbol.metadata_stats:
+                        result_symbol.usage_stats = self._format_usage_stats(result_symbol.metadata_stats['raw_output'].usage)
+                    else:
+                        result_symbol.usage_stats = None
+
+                if accumulate:
+                    self.input_value._accumulated_results.append(result_symbol.value)
+                self.print_verbose(f"✓ Constraint validation successful on attempt {constraint_count}")
+
+                return result_symbol
+
+        error_msg = f"Failed to enforce constraints: {' | '.join(last_violation)}"
+        self.print_verbose(f"\n✗ Constraint validation failed after {constraint_count} attempts")
+        raise Exception(error_msg)
+
+    def constrain(self, constraints: Union[List[Union["LengthConstraint", "CustomConstraint"]], "LengthConstraint", "CustomConstraint"],
+                  retry_count: int = 5, usage: bool = True, accumulate: bool = False,
+                  verbose: bool = False, *args, **kwargs) -> 'Symbol':
+        """
+        Constrains a Symbol according to specified constraints, retrying with interpretation if needed.
+
+        Args:
+            constraints: Length or custom constraints to enforce.
+            retry_count (int): Number of retry attempts. Defaults to 5.
+            usage (bool): Whether to track usage statistics.
+            accumulate (bool): Whether to accumulate usage statistics.
+            verbose (bool): Whether to print detailed constraint validation progress.
+            **kwargs: Additional keyword arguments for interpretation.
+
+        Returns:
+            Symbol: The constrained Symbol with usage_stats if usage=True
+        """
+        self.verbose = verbose
+        self.input_value = getattr(self, '_input', self) if hasattr(self, '_input') else self
+
+        if accumulate:
+            self.input_value.init_results()
+
+        result = self.length_constraint(self, constraints, retry_count, usage, *args, **kwargs)
+        return result
 
 
 class DataHandlingPrimitives(Primitive):
