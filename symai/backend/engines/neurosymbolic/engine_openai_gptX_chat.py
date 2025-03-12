@@ -20,103 +20,6 @@ logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
-class TokenTruncator:
-    def __init__(self, tokenizer, max_context_tokens):
-        self.tokenizer = tokenizer
-        self.max_context_tokens = max_context_tokens
-
-    def _slice_tokens(self, tokens, new_len, truncation_type):
-        """Slice tokens based on truncation type"""
-        new_len = max(100, new_len)  # Ensure minimum token length
-        return tokens[-new_len:] if truncation_type == 'head' else tokens[:new_len] # else 'tail'
-
-    def truncate(self, prompts, truncation_percentage, truncation_type):
-        """Main truncation method"""
-        if len(prompts) != 2:
-            # Only support system and user prompts
-            return prompts
-
-        system_prompt = prompts[0]
-        user_prompt = prompts[1]
-
-        # Get token counts
-        system_tokens = Symbol(system_prompt['content']).tokens
-        user_tokens = []
-
-        if isinstance(user_prompt['content'], str):
-            # default input format
-            user_tokens.extend(Symbol(user_prompt['content']).tokens)
-        elif isinstance(user_prompt['content'], list):
-            for content_item in user_prompt['content']:
-                # image input format
-                if isinstance(content_item, dict):
-                    if content_item.get('type') == 'text':
-                        user_tokens.extend(Symbol(content_item['text']).tokens)
-                    else:
-                        # image content; return original since not supported
-                        return prompts
-                else:
-                    # unknown input format
-                    return ValueError(f"Invalid content type: {type(content_item)}. Format input according to the documentation. See https://platform.openai.com/docs/api-reference/chat/create?lang=python")
-        else:
-            # unknown input format
-            raise ValueError(f"Unknown content type: {type(user_prompt['content'])}. Format input according to the documentation. See https://platform.openai.com/docs/api-reference/chat/create?lang=python")
-
-        system_token_count = len(system_tokens)
-        user_token_count = len(user_tokens)
-        total_tokens = system_token_count + user_token_count
-
-        # Calculate maximum allowed tokens
-        max_prompt_tokens = int(self.max_context_tokens * truncation_percentage)
-
-        # If total is within limit, return original
-        if total_tokens <= max_prompt_tokens:
-            return prompts
-
-        with ConsoleStyle('alert') as console:
-            console.print(
-                f"Attempting {truncation_type} truncation to fit within {max_prompt_tokens} tokens. "
-                f"Combined prompts ({total_tokens} tokens) exceed maximum allowed tokens "
-                f"of {max_prompt_tokens} ({truncation_percentage*100:.1f}% of context). "
-                f"Remaining {self.max_context_tokens - max_prompt_tokens} tokens reserved for response."
-            )
-
-        # Calculate how much we need to reduce
-        excess_tokens = total_tokens - max_prompt_tokens
-
-        # Case 1: Only user prompt exceeds
-        if user_token_count > max_prompt_tokens/2 and system_token_count <= max_prompt_tokens/2:
-            new_user_len = max_prompt_tokens - system_token_count
-            new_user_tokens = self._slice_tokens(user_tokens, new_user_len, truncation_type)
-            return [
-                {'role': 'system', 'content': self.tokenizer.decode(system_tokens)},
-                {'role': 'user', 'content': [{'type': 'text', 'text': self.tokenizer.decode(new_user_tokens)}]}
-            ]
-
-        # Case 2: Only system prompt exceeds
-        if system_token_count > max_prompt_tokens/2 and user_token_count <= max_prompt_tokens/2:
-            new_system_len = max_prompt_tokens - user_token_count
-            new_system_tokens = self._slice_tokens(system_tokens, new_system_len, truncation_type)
-            return [
-                {'role': 'system', 'content': self.tokenizer.decode(new_system_tokens)},
-                {'role': 'user', 'content': [{'type': 'text', 'text': self.tokenizer.decode(user_tokens)}]}
-            ]
-
-        # Case 3: Both exceed - reduce proportionally
-        system_ratio = system_token_count / total_tokens
-        user_ratio = user_token_count / total_tokens
-
-        new_system_len = int(max_prompt_tokens * system_ratio)
-        new_user_len = int(max_prompt_tokens * user_ratio)
-
-        new_system_tokens = self._slice_tokens(system_tokens, new_system_len, truncation_type)
-        new_user_tokens = self._slice_tokens(user_tokens, new_user_len, truncation_type)
-
-        return [
-            {'role': 'system', 'content': self.tokenizer.decode(new_system_tokens)},
-            {'role': 'user', 'content': [{'type': 'text', 'text': self.tokenizer.decode(new_user_tokens)}]}
-        ]
-
 class InvalidRequestErrorRemedyChatStrategy:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -229,7 +132,6 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         self.max_response_tokens = self.api_max_response_tokens()
         self.seed                = None
         self.except_remedy       = None
-        self.token_truncator = TokenTruncator(self.tokenizer, self.max_context_tokens)
 
         try:
             self.client    = openai.Client(api_key=openai.api_key)
@@ -309,8 +211,106 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         val = self.compute_required_tokens(prompts)
         return min(self.max_context_tokens - val, self.max_response_tokens)
 
-    def truncate(self, prompts: list[dict], truncation_percentage: float, truncation_type: str) -> list[dict]:
-        return self.token_truncator.truncate(prompts, truncation_percentage, truncation_type)
+    def truncate(self, prompts: list[dict], truncation_percentage: float | None, truncation_type: str) -> list[dict]:
+        """Main truncation method"""
+        def _slice_tokens(tokens, new_len, truncation_type):
+            """Slice tokens based on truncation type"""
+            new_len = max(100, new_len)  # Ensure minimum token length
+            return tokens[-new_len:] if truncation_type == 'head' else tokens[:new_len] # else 'tail'
+
+        if len(prompts) != 2 and all(prompt['role'] in ['system', 'user'] for prompt in prompts):
+            # Only support system and user prompts
+            CustomUserWarning(f"Token truncation currently supports only two messages, from 'user' and 'system' (got {len(prompts)}). Returning original prompts.")
+            return prompts
+
+        if truncation_percentage is None:
+            # Calculate smart truncation percentage based on model's max messages and completion tokens
+            truncation_percentage = (self.max_context_tokens - self.max_response_tokens) / self.max_context_tokens
+
+        system_prompt = prompts[0]
+        user_prompt = prompts[1]
+
+        # Get token counts
+        system_tokens = Symbol(system_prompt['content']).tokens
+        user_tokens = []
+
+        if isinstance(user_prompt['content'], str):
+            # Default input format
+            user_tokens.extend(Symbol(user_prompt['content']).tokens)
+        elif isinstance(user_prompt['content'], list):
+            for content_item in user_prompt['content']:
+                # Image input format
+                if isinstance(content_item, dict):
+                    if content_item.get('type') == 'text':
+                        user_tokens.extend(Symbol(content_item['text']).tokens)
+                    else:
+                        # Image content; return original since not supported
+                        return prompts
+                else:
+                    # Unknown input format
+                    return ValueError(f"Invalid content type: {type(content_item)}. Format input according to the documentation. See https://platform.openai.com/docs/api-reference/chat/create?lang=python")
+        else:
+            # Unknown input format
+            raise ValueError(f"Unknown content type: {type(user_prompt['content'])}. Format input according to the documentation. See https://platform.openai.com/docs/api-reference/chat/create?lang=python")
+
+        system_token_count = len(system_tokens)
+        user_token_count = len(user_tokens)
+        artifacts = self.compute_required_tokens(prompts) - system_token_count + user_token_count
+        assert artifacts >= 0, f"Artifacts count is negative: {artifacts}! Report bug!"
+        total_tokens = system_token_count + user_token_count + artifacts
+
+        # Calculate maximum allowed tokens
+        max_prompt_tokens = int(self.max_context_tokens * truncation_percentage)
+
+        # If total is within limit, return original
+        if total_tokens <= max_prompt_tokens:
+            return prompts
+
+        CustomUserWarning(
+            f"Executing {truncation_type} truncation to fit within {max_prompt_tokens} tokens. "
+            f"Combined prompts ({total_tokens} tokens) exceed maximum allowed tokens "
+            f"of {max_prompt_tokens} ({truncation_percentage*100:.1f}% of context). "
+            f"You can control this behavior by setting 'truncation_percentage' (current: {truncation_percentage:.2f}) "
+            f"and 'truncation_type' (current: '{truncation_type}') parameters. "
+            f"Set 'truncation_percentage=1.0' to deactivate truncation (will fail if exceeding context window). "
+            f"Choose 'truncation_type' as 'head' to keep the end of prompts or 'tail' to keep the beginning."
+        )
+
+        # Case 1: Only user prompt exceeds
+        if user_token_count > max_prompt_tokens/2 and system_token_count <= max_prompt_tokens/2:
+            new_user_len = max_prompt_tokens - system_token_count
+            new_user_tokens = _slice_tokens(user_tokens, new_user_len, truncation_type)
+            return [
+                {'role': 'system', 'content': self.tokenizer.decode(system_tokens)},
+                {'role': 'user', 'content': [{'type': 'text', 'text': self.tokenizer.decode(new_user_tokens)}]}
+            ]
+
+        # Case 2: Only system prompt exceeds
+        if system_token_count > max_prompt_tokens/2 and user_token_count <= max_prompt_tokens/2:
+            new_system_len = max_prompt_tokens - user_token_count
+            new_system_tokens = _slice_tokens(system_tokens, new_system_len, truncation_type)
+            return [
+                {'role': 'system', 'content': self.tokenizer.decode(new_system_tokens)},
+                {'role': 'user', 'content': [{'type': 'text', 'text': self.tokenizer.decode(user_tokens)}]}
+            ]
+
+        # Case 3: Both exceed - reduce proportionally
+        system_ratio = system_token_count / total_tokens
+        user_ratio = user_token_count / total_tokens
+
+        new_system_len = int(max_prompt_tokens * system_ratio)
+        new_user_len = int(max_prompt_tokens * user_ratio)
+        distribute_tokens = max_prompt_tokens - new_system_len - new_user_len
+        new_system_len += distribute_tokens // 2
+        new_user_len += distribute_tokens // 2
+
+        new_system_tokens = _slice_tokens(system_tokens, new_system_len, truncation_type)
+        new_user_tokens = _slice_tokens(user_tokens, new_user_len, truncation_type)
+
+        return [
+            {'role': 'system', 'content': self.tokenizer.decode(new_system_tokens)},
+            {'role': 'user', 'content': [{'type': 'text', 'text': self.tokenizer.decode(new_user_tokens)}]}
+        ]
 
     def forward(self, argument):
         kwargs = argument.kwargs

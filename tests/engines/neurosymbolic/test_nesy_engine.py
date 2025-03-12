@@ -86,6 +86,32 @@ def test_raw_output():
     elif NEUROSYMBOLIC.startswith('gpt'):
         assert isinstance(S.value, ChatCompletion)
 
+def test_token_truncator():
+    file_path = (Path(__file__).parent.parent.parent / 'data/pg1727.txt').as_posix()
+    content = Symbol(file_path).open()
+
+    # Case 1; user exceeds
+    _ = Expression.prompt([
+        {'role': 'user', 'content': content.value},
+        {'role': 'user', 'content': "What's the most tragic event in the novel?"}
+    ])
+
+    # Case 2; system exceeds
+    _ = Expression.prompt([
+        {'role': 'system', 'content': content.value},
+        {'role': 'user', 'content': "What's the most tragic event in the novel?"}
+    ])
+
+    # Case 3; both exceed
+    _ = Expression.prompt([
+        {'role': 'system', 'content': content.value},
+        {'role': 'user', 'content': content.value + "What's the most tragic event in the novel?"}
+    ])
+
+    # Try from Symbol too
+    _ = content.query("What's the most tragic event in the novel?")
+
+    assert True
 
 if __name__ == '__main__':
     pytest.main()
