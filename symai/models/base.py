@@ -234,9 +234,7 @@ class LLMDataModel(BaseModel):
                 ]  # Use the first allowed value as the example
 
             # Handle nested BaseModel
-            if isinstance(field_annotation, type) and issubclass(
-                field_annotation, BaseModel
-            ):
+            if isinstance(origin, type) and issubclass(origin, BaseModel):
                 return LLMDataModel.generate_example_json(field_annotation)
 
             # Handle List
