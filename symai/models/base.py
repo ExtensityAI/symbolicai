@@ -9,8 +9,12 @@ from pydantic import BaseModel, Field
 @dataclass
 class LengthConstraint:
     field_name: str
-    min_length: int = 0
-    max_length: int = 1000
+    min_length: int
+    max_length: int
+
+@dataclass
+class CustomConstraint:
+    rule: str
 
 
 def Const(value: str):
