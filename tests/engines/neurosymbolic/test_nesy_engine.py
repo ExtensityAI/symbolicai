@@ -1,8 +1,10 @@
 from pathlib import Path
 
+from numpy import add
 import pytest
 
 from symai import Expression, Symbol
+from symai.components import Function
 from symai.backend.settings import SYMAI_CONFIG
 from symai.core_ext import bind
 from openai.types.chat.chat_completion import ChatCompletion
@@ -23,6 +25,7 @@ def test_init():
 
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('llama'), reason='feature not yet implemented')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('huggingface'), reason='feature not yet implemented')
+@pytest.mark.skipif(NEUROSYMBOLIC.startswith('o3-mini'), reason='feature not supported by the model')
 def test_vision():
     file = Path(__file__).parent.parent.parent.parent / 'assets' / 'images' / 'cat.jpg'
     x = Symbol(f'<<vision:{file}:>>')
@@ -42,28 +45,29 @@ def test_vision():
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('llama'), reason='llamacpp tokens computation is not yet implemented')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('huggingface'), reason='huggingface tokens computation is not yet implemented')
 def test_tokenizer():
+    admin_role = 'system' if NEUROSYMBOLIC.startswith('gpt') else 'developer'
     messages = [
         {
-            "role": "system",
+            "role": admin_role,
             "content": "You are a helpful, pattern-following assistant that translates corporate jargon into plain English.",
         },
         {
-            "role": "system",
+            "role": admin_role,
             "name": "example_user",
             "content": "New synergies will help drive top-line growth.",
         },
         {
-            "role": "system",
+            "role": admin_role,
             "name": "example_assistant",
             "content": "Things working well together will increase revenue.",
         },
         {
-            "role": "system",
+            "role": admin_role,
             "name": "example_user",
             "content": "Let's circle back when we have more bandwidth to touch base on opportunities for increased leverage.",
         },
         {
-            "role": "system",
+            "role": admin_role,
             "name": "example_assistant",
             "content": "Let's talk later when we're less busy about how to do better.",
         },
@@ -79,16 +83,45 @@ def test_tokenizer():
 
     assert api_tokens == tik_tokens
 
+@pytest.mark.skipif(NEUROSYMBOLIC.startswith('llama'), reason='feature not yet implemented')
+@pytest.mark.skipif(NEUROSYMBOLIC.startswith('huggingface'), reason='feature not yet implemented')
+@pytest.mark.skipif(NEUROSYMBOLIC.startswith('o1'), reason='feature not supported by the model')
+def test_tool_usage():
+    tools = [{
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get current temperature for a given location.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "City and country e.g. Bogotá, Colombia"
+                    }
+                },
+                "required": ["location"],
+            }
+        }
+    }]
+    fn = Function("Analyze the input request and select the most appropriate function to call from the provided options.", tools=tools)
+    res = fn("what's the temperature in Bogotá, Colombia", raw_output=True)
+    tool = None
+    if res.choices[0].finish_reason == 'tool_calls':
+        tool_name = res.choices[0].message.tool_calls[0].function.name
+    assert tool_name == 'get_weather'
+
 def test_raw_output():
     S = Expression.prompt('What is the capital of France?', raw_output=True)
     if NEUROSYMBOLIC.startswith('claude'):
         assert isinstance(S.value, Message)
-    elif NEUROSYMBOLIC.startswith('gpt'):
+    elif NEUROSYMBOLIC.startswith('gpt') or NEUROSYMBOLIC.startswith('o1') or NEUROSYMBOLIC.startswith('o3'):
         assert isinstance(S.value, ChatCompletion)
 
 def test_token_truncator():
     file_path = (Path(__file__).parent.parent.parent / 'data/pg1727.txt').as_posix()
     content = Symbol(file_path).open()
+    admin_role = 'system' if NEUROSYMBOLIC.startswith('gpt') else 'developer'
 
     # Case 1; user exceeds
     _ = Expression.prompt([
@@ -98,13 +131,13 @@ def test_token_truncator():
 
     # Case 2; system exceeds
     _ = Expression.prompt([
-        {'role': 'system', 'content': content.value},
+        {'role': admin_role, 'content': content.value},
         {'role': 'user', 'content': "What's the most tragic event in the novel?"}
     ])
 
     # Case 3; both exceed
     _ = Expression.prompt([
-        {'role': 'system', 'content': content.value},
+        {'role': admin_role, 'content': content.value},
         {'role': 'user', 'content': content.value + "What's the most tragic event in the novel?"}
     ])
 

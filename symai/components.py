@@ -1060,13 +1060,16 @@ class SelfPrompt(Expression):
         @core_ext.retry(tries=tries, delay=delay, max_delay=max_delay, backoff=backoff, jitter=jitter, graceful=graceful)
         @core.zero_shot(
             prompt=(
-                "Based on the following prompt, generate a new system prompt and a new user prompt. "
-                "The new system prompt should set up a specialized agent tailored for the user's request. "
+                "Based on the following prompt, generate a new system (or developer) prompt and a new user prompt. "
+                "The new system or developer prompt should set up a specialized agent tailored for the user's request. "
                 "If examples are provided, use them to guide the agent's behavior. "
                 "The new user prompt should contain the user's requirements. "
+                "Check if the input contains a 'system' or 'developer' key and use the same key in your output. "
                 "Only output the new prompts in JSON format as shown:\n\n"
                 "{\"system\": \"<new system prompt>\", \"user\": \"<new user prompt>\"}\n\n"
-                "Do not include any additional text."
+                "OR\n\n"
+                "{\"developer\": \"<new developer prompt>\", \"user\": \"<new user prompt>\"}\n\n"
+                "Maintain the same key structure as in the input prompt. Do not include any additional text."
             ),
             response_format={"type": "json_object"},
             post_processors=[
