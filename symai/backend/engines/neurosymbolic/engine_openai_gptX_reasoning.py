@@ -20,7 +20,7 @@ logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
-class GPTReasoningEngine(Engine, OpenAIMixin):
+class GPTXReasoningEngine(Engine, OpenAIMixin):
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         super().__init__()
         self.config = SYMAI_CONFIG
@@ -36,7 +36,6 @@ class GPTReasoningEngine(Engine, OpenAIMixin):
         self.max_context_tokens = self.api_max_context_tokens()
         self.max_response_tokens = self.api_max_response_tokens()
         self.seed = None
-        self.except_remedy = None
 
         try:
             self.client    = openai.Client(api_key=openai.api_key)
@@ -58,8 +57,6 @@ class GPTReasoningEngine(Engine, OpenAIMixin):
             self.model = kwargs['NEUROSYMBOLIC_ENGINE_MODEL']
         if 'seed' in kwargs:
             self.seed = kwargs['seed']
-        if 'except_remedy' in kwargs:
-            self.except_remedy = kwargs['except_remedy']
 
     def compute_required_tokens(self, messages):
         """Return the number of tokens used by a list of messages."""
@@ -196,62 +193,13 @@ class GPTReasoningEngine(Engine, OpenAIMixin):
             {'role': 'user', 'content': [{'type': 'text', 'text': self.tokenizer.decode(new_user_tokens)}]}
         ]
 
-    def _prepare_request_payload(self, messages, argument):
-        """Prepares the request payload from the argument."""
-        kwargs = argument.kwargs
-
-        max_tokens = kwargs.get('max_tokens', None)
-        max_completion_tokens = kwargs.get('max_completion_tokens', None)
-        remaining_tokens = self.compute_remaining_tokens(messages)
-
-        if max_tokens is not None:
-            CustomUserWarning(
-                "'max_tokens' is now deprecated in favor of 'max_completion_tokens', and is not compatible with o1 series models. "
-                "We handle this conversion by default for you for now but we won't in the future. "
-                "See: https://platform.openai.com/docs/api-reference/chat/create"
-            )
-            if max_tokens > self.max_response_tokens:
-                CustomUserWarning(
-                    f"Provided 'max_tokens' ({max_tokens}) exceeds max response tokens ({self.max_response_tokens}). "
-                    f"Truncating to {remaining_tokens} to avoid API failure."
-                )
-                kwargs['max_completion_tokens'] = remaining_tokens
-            else:
-                kwargs['max_completion_tokens'] = max_tokens
-            del kwargs['max_tokens']
-
-        if max_completion_tokens is not None:
-            if max_completion_tokens > self.max_response_tokens:
-                CustomUserWarning(
-                    f"Provided 'max_completion_tokens' ({max_completion_tokens}) exceeds max response tokens ({self.max_response_tokens}). "
-                    f"Truncating to {remaining_tokens} to avoid API failure."
-                )
-                kwargs['max_completion_tokens'] = remaining_tokens
-
-        return {
-            "messages": messages,
-            "model": kwargs.get('model', self.model),
-            "seed": kwargs.get('seed', self.seed),
-            "reasoning_effort": kwargs.get('reasoning_effort', 'medium'),
-            "max_completion_tokens": kwargs.get('max_completion_tokens'),
-            "stop": kwargs.get('stop', ''),
-            "temperature": kwargs.get('temperature', 1),
-            "frequency_penalty": kwargs.get('frequency_penalty', 0),
-            "presence_penalty": kwargs.get('presence_penalty', 0),
-            "top_p": kwargs.get('top_p', 1),
-            "n": kwargs.get('n', 1),
-            "logit_bias": kwargs.get('logit_bias'),
-            "tools": kwargs.get('tools'),
-            "tool_choice": kwargs.get('tool_choice'),
-            "response_format": kwargs.get('response_format'),
-        }
-
     def forward(self, argument):
         kwargs = argument.kwargs
         truncation_percentage = kwargs.get('truncation_percentage', argument.prop.truncation_percentage)
         truncation_type = kwargs.get('truncation_type', argument.prop.truncation_type)
         messages = self.truncate(argument.prop.prepared_input, truncation_percentage, truncation_type)
         payload = self._prepare_request_payload(messages, argument)
+        except_remedy = kwargs.get('except_remedy')
 
         try:
             res = self.client.chat.completions.create(**payload)
@@ -267,8 +215,8 @@ class GPTReasoningEngine(Engine, OpenAIMixin):
             callback = self.client.chat.completions.create
             kwargs['model'] = kwargs['model'] if 'model' in kwargs else self.model
 
-            if self.except_remedy is not None:
-                res = self.except_remedy(self, e, callback, argument)
+            if except_remedy is not None:
+                res = except_remedy(self, e, callback, argument)
             else:
                 raise e
 
@@ -425,3 +373,53 @@ class GPTReasoningEngine(Engine, OpenAIMixin):
             { "role": "developer", "content": developer },
             user_prompt,
         ]
+
+    def _prepare_request_payload(self, messages, argument):
+        """Prepares the request payload from the argument."""
+        kwargs = argument.kwargs
+
+        max_tokens = kwargs.get('max_tokens', None)
+        max_completion_tokens = kwargs.get('max_completion_tokens', None)
+        remaining_tokens = self.compute_remaining_tokens(messages)
+
+        if max_tokens is not None:
+            CustomUserWarning(
+                "'max_tokens' is now deprecated in favor of 'max_completion_tokens', and is not compatible with o1 series models. "
+                "We handle this conversion by default for you for now but we won't in the future. "
+                "See: https://platform.openai.com/docs/api-reference/chat/create"
+            )
+            if max_tokens > self.max_response_tokens:
+                CustomUserWarning(
+                    f"Provided 'max_tokens' ({max_tokens}) exceeds max response tokens ({self.max_response_tokens}). "
+                    f"Truncating to {remaining_tokens} to avoid API failure."
+                )
+                kwargs['max_completion_tokens'] = remaining_tokens
+            else:
+                kwargs['max_completion_tokens'] = max_tokens
+            del kwargs['max_tokens']
+
+        if max_completion_tokens is not None:
+            if max_completion_tokens > self.max_response_tokens:
+                CustomUserWarning(
+                    f"Provided 'max_completion_tokens' ({max_completion_tokens}) exceeds max response tokens ({self.max_response_tokens}). "
+                    f"Truncating to {remaining_tokens} to avoid API failure."
+                )
+                kwargs['max_completion_tokens'] = remaining_tokens
+
+        return {
+            "messages": messages,
+            "model": kwargs.get('model', self.model),
+            "seed": kwargs.get('seed', self.seed),
+            "reasoning_effort": kwargs.get('reasoning_effort', 'medium'),
+            "max_completion_tokens": kwargs.get('max_completion_tokens'),
+            "stop": kwargs.get('stop', ''),
+            "temperature": kwargs.get('temperature', 1),
+            "frequency_penalty": kwargs.get('frequency_penalty', 0),
+            "presence_penalty": kwargs.get('presence_penalty', 0),
+            "top_p": kwargs.get('top_p', 1),
+            "n": kwargs.get('n', 1),
+            "logit_bias": kwargs.get('logit_bias'),
+            "tools": kwargs.get('tools'),
+            "tool_choice": kwargs.get('tool_choice'),
+            "response_format": kwargs.get('response_format'),
+        }
