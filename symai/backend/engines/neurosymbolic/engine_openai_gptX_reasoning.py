@@ -38,15 +38,15 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
         self.seed = None
 
         try:
-            self.client    = openai.Client(api_key=openai.api_key)
+            self.client = openai.Client(api_key=openai.api_key)
         except Exception as e:
             raise Exception(f'Failed to initialize OpenAI client. Please check your OpenAI library version. Caused by: {e}') from e
 
     def id(self) -> str:
-        if   self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and \
-            (self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('o1') or \
-             self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('o3')):
-            return 'neurosymbolic'
+        if self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and \
+           (self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('o1') or \
+            self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('o3')):
+                return 'neurosymbolic'
         return super().id() # default to unregistered
 
     def command(self, *args, **kwargs):
@@ -322,18 +322,6 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
         if len(image_files) > 0:
             suffix = _remove_pattern(suffix)
 
-        if '[SYSTEM_INSTRUCTION::]: <<<' in suffix and argument.prop.parse_system_instructions:
-            parts = suffix.split('\n>>>\n')
-            # first parts are the developer instructions
-            c = 0
-            for i, p in enumerate(parts):
-                if 'SYSTEM_INSTRUCTION' in p:
-                    developer += f"<{p}/>\n\n"
-                    c += 1
-                else:
-                    break
-            # last part is the user input
-            suffix = '\n>>>\n'.join(parts[c:])
         user += f"{suffix}"
 
         if argument.prop.template_suffix:
@@ -352,12 +340,9 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
         if argument.prop.instance._kwargs.get('self_prompt', False) or argument.prop.self_prompt:
             self_prompter = SelfPrompt()
 
-            # fails gracefully by default to allow the user to skip the self-prompter
             res = self_prompter({'user': user, 'developer': developer})
             if res is None:
-                # skip everything in this block if the self-prompter returns None and defaults to the original prompt
-                argument.prop.prepared_input = (developer, [user_prompt])
-                return
+                raise ValueError("Self-prompting failed!")
 
             if len(image_files) > 0:
                 user_prompt = { "role": "user", "content": [

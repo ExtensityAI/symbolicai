@@ -28,13 +28,13 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
         if api_key is not None and model is not None:
             self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] = api_key
-            self.config['NEUROSYMBOLIC_ENGINE_MODEL']   = model
+            self.config['NEUROSYMBOLIC_ENGINE_MODEL'] = model
         if self.id() != 'neurosymbolic':
             return # do not initialize if not neurosymbolic; avoids conflict with llama.cpp check in EngineRepository.register_from_package
-        anthropic.api_key        = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
-        self.model               = self.config['NEUROSYMBOLIC_ENGINE_MODEL']
-        self.tokenizer           = None
-        self.max_context_tokens  = self.api_max_context_tokens()
+        anthropic.api_key = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
+        self.model = self.config['NEUROSYMBOLIC_ENGINE_MODEL']
+        self.tokenizer = None # TODO: https://docs.anthropic.com/en/docs/build-with-claude/token-counting
+        self.max_context_tokens = self.api_max_context_tokens()
         self.max_response_tokens = self.api_max_response_tokens()
         self.client = anthropic.Anthropic(api_key=anthropic.api_key)
 
@@ -181,18 +181,6 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
         if len(image_files) > 0:
             suffix = remove_pattern(suffix)
 
-        if '[SYSTEM_INSTRUCTION::]: <<<' in suffix and argument.prop.parse_system_instructions:
-            parts = suffix.split('\n>>>\n')
-            # first parts are the system instructions
-            c = 0
-            for i, p in enumerate(parts):
-                if 'SYSTEM_INSTRUCTION' in p:
-                    system += f"<{p}/>\n\n"
-                    c += 1
-                else:
-                    break
-            # last part is the user input
-            suffix = '\n>>>\n'.join(parts[c:])
         user += f"{suffix}"
 
         if argument.prop.template_suffix:
@@ -204,7 +192,6 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
                 *images,
                 { 'type': 'text', 'text': user }
             ]}
-
         else:
             user_prompt = { "role": "user", "content": user }
 
@@ -212,7 +199,6 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
         if argument.prop.instance._kwargs.get('self_prompt', False) or argument.prop.self_prompt:
             self_prompter = SelfPrompt()
 
-            # fails gracefully by default to allow the user to skip the self-prompter
             res = self_prompter({'user': user, 'system': system})
             if res is None:
                 raise ValueError("Self-prompting failed!")

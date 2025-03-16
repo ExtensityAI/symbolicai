@@ -30,23 +30,23 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             self.config['NEUROSYMBOLIC_ENGINE_MODEL']   = model
         if self.id() != 'neurosymbolic':
             return # do not initialize if not neurosymbolic; avoids conflict with llama.cpp check in EngineRepository.register_from_package
-        openai.api_key           = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
-        self.model               = self.config['NEUROSYMBOLIC_ENGINE_MODEL']
-        self.tokenizer           = tiktoken.encoding_for_model(self.model)
-        self.max_context_tokens  = self.api_max_context_tokens()
+        openai.api_key = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
+        self.model = self.config['NEUROSYMBOLIC_ENGINE_MODEL']
+        self.tokenizer = tiktoken.encoding_for_model(self.model)
+        self.max_context_tokens = self.api_max_context_tokens()
         self.max_response_tokens = self.api_max_response_tokens()
-        self.seed                = None
+        self.seed = None
 
         try:
-            self.client    = openai.Client(api_key=openai.api_key)
+            self.client = openai.Client(api_key=openai.api_key)
         except Exception as e:
             raise Exception(f'Failed to initialize OpenAI client. Please check your OpenAI library version. Caused by: {e}') from e
 
     def id(self) -> str:
-        if   self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and \
-            (self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('gpt-3.5') or \
-             self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('gpt-4')):
-            return 'neurosymbolic'
+        if self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and \
+           (self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('gpt-3.5') or \
+            self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('gpt-4')):
+                return 'neurosymbolic'
         return super().id() # default to unregistered
 
     def command(self, *args, **kwargs):
@@ -54,9 +54,9 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         if 'NEUROSYMBOLIC_ENGINE_API_KEY' in kwargs:
             openai.api_key = kwargs['NEUROSYMBOLIC_ENGINE_API_KEY']
         if 'NEUROSYMBOLIC_ENGINE_MODEL' in kwargs:
-            self.model     = kwargs['NEUROSYMBOLIC_ENGINE_MODEL']
+            self.model = kwargs['NEUROSYMBOLIC_ENGINE_MODEL']
         if 'seed' in kwargs:
-            self.seed      = kwargs['seed']
+            self.seed = kwargs['seed']
 
     def compute_required_tokens(self, messages):
         """Return the number of tokens used by a list of messages."""
@@ -349,18 +349,6 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         if len(image_files) > 0:
             suffix = remove_pattern(suffix)
 
-        if '[SYSTEM_INSTRUCTION::]: <<<' in suffix and argument.prop.parse_system_instructions:
-            parts = suffix.split('\n>>>\n')
-            # first parts are the system instructions
-            c = 0
-            for i, p in enumerate(parts):
-                if 'SYSTEM_INSTRUCTION' in p:
-                    system += f"<{p}/>\n\n"
-                    c += 1
-                else:
-                    break
-            # last part is the user input
-            suffix = '\n>>>\n'.join(parts[c:])
         user += f"{suffix}"
 
         if argument.prop.template_suffix:
@@ -389,7 +377,6 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         if argument.prop.instance._kwargs.get('self_prompt', False) or argument.prop.self_prompt:
             self_prompter = SelfPrompt()
 
-            # fails gracefully by default to allow the user to skip the self-prompter
             res = self_prompter({'user': user, 'system': system})
             if res is None:
                 raise ValueError("Self-prompting failed!")
