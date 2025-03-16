@@ -20,7 +20,7 @@ logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
-class GPTXChatEngine(Engine, OpenAIMixin):
+class GPTReasoningEngine(Engine, OpenAIMixin):
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         super().__init__()
         self.config = SYMAI_CONFIG
@@ -30,13 +30,13 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             self.config['NEUROSYMBOLIC_ENGINE_MODEL']   = model
         if self.id() != 'neurosymbolic':
             return # do not initialize if not neurosymbolic; avoids conflict with llama.cpp check in EngineRepository.register_from_package
-        openai.api_key           = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
-        self.model               = self.config['NEUROSYMBOLIC_ENGINE_MODEL']
-        self.tokenizer           = tiktoken.encoding_for_model(self.model)
-        self.max_context_tokens  = self.api_max_context_tokens()
+        openai.api_key = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
+        self.model = self.config['NEUROSYMBOLIC_ENGINE_MODEL']
+        self.tokenizer = tiktoken.encoding_for_model(self.model)
+        self.max_context_tokens = self.api_max_context_tokens()
         self.max_response_tokens = self.api_max_response_tokens()
-        self.seed                = None
-        self.except_remedy       = None
+        self.seed = None
+        self.except_remedy = None
 
         try:
             self.client    = openai.Client(api_key=openai.api_key)
@@ -45,8 +45,8 @@ class GPTXChatEngine(Engine, OpenAIMixin):
 
     def id(self) -> str:
         if   self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and \
-            (self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('gpt-3.5') or \
-             self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('gpt-4')):
+            (self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('o1') or \
+             self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('o3')):
             return 'neurosymbolic'
         return super().id() # default to unregistered
 
@@ -55,9 +55,9 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         if 'NEUROSYMBOLIC_ENGINE_API_KEY' in kwargs:
             openai.api_key = kwargs['NEUROSYMBOLIC_ENGINE_API_KEY']
         if 'NEUROSYMBOLIC_ENGINE_MODEL' in kwargs:
-            self.model     = kwargs['NEUROSYMBOLIC_ENGINE_MODEL']
+            self.model = kwargs['NEUROSYMBOLIC_ENGINE_MODEL']
         if 'seed' in kwargs:
-            self.seed      = kwargs['seed']
+            self.seed = kwargs['seed']
         if 'except_remedy' in kwargs:
             self.except_remedy = kwargs['except_remedy']
 
@@ -65,36 +65,15 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         """Return the number of tokens used by a list of messages."""
 
         if self.model in {
-            "gpt-3.5-turbo-0613",
-            "gpt-3.5-turbo-16k-0613",
-            "gpt-4-1106-preview",
-            "gpt-4-0314",
-            "gpt-4-32k-0314",
-            "gpt-4-0613",
-            "gpt-4-32k-0613",
-            "gpt-4-turbo",
-            "gpt-4o",
-            "gpt-4o-2024-11-20",
-            "gpt-4o-mini"
+            'o1',
+            'o3-mini'
             }:
             tokens_per_message = 3
             tokens_per_name = 1
-        elif self.model == "gpt-3.5-turbo-0301":
-            tokens_per_message = 4  # every message follows <|start|>{role/name}\n{content}<|end|>\n
-            tokens_per_name = -1    # if there's a name, the role is omitted
-        elif self.model == "gpt-3.5-turbo":
-            CustomUserWarning("Warning: gpt-3.5-turbo may update over time. Returning num tokens assuming gpt-3.5-turbo-0613.")
-            tokens_per_message = 3
-            tokens_per_name = 1
-            self.tokenizer = tiktoken.encoding_for_model("gpt-3.5-turbo-0613")
-        elif self.model == "gpt-4":
-            tokens_per_message = 3
-            tokens_per_name = 1
-            CustomUserWarning("Warning: gpt-4 may update over time. Returning num tokens assuming gpt-4-0613.")
-            self.tokenizer = tiktoken.encoding_for_model("gpt-4-0613")
         else:
             raise NotImplementedError(
-                f"""num_tokens_from_messages() is not implemented for model {self.model}. See https://cookbook.openai.com/examples/how_to_count_tokens_with_tiktoken for information on how messages are converted to tokens."""
+                f"'num_tokens_from_messages()' is not implemented for model {self.model}. "
+                "See https://cookbook.openai.com/examples/how_to_count_tokens_with_tiktoken for information on how messages are converted to tokens."
             )
 
         num_tokens = 0
@@ -110,7 +89,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
                 if key == "name":
                     num_tokens += tokens_per_name
         num_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
-        return num_tokens
+        return num_tokens - 1 # don't know where that extra 1 comes from
 
     def compute_remaining_tokens(self, prompts: list) -> int:
         val = self.compute_required_tokens(prompts)
@@ -123,9 +102,9 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             new_len = max(100, new_len)  # Ensure minimum token length
             return tokens[-new_len:] if truncation_type == 'head' else tokens[:new_len] # else 'tail'
 
-        if len(prompts) != 2 and all(prompt['role'] in ['system', 'user'] for prompt in prompts):
-            # Only support system and user prompts
-            CustomUserWarning(f"Token truncation currently supports only two messages, from 'user' and 'system' (got {len(prompts)}). Returning original prompts.")
+        if len(prompts) != 2 and all(prompt['role'] in ['developer', 'user'] for prompt in prompts):
+            # Only support developer and user prompts
+            CustomUserWarning(f"Token truncation currently supports only two messages, from 'user' and 'developer' (got {len(prompts)}). Returning original prompts.")
             return prompts
 
         if truncation_percentage is None:
@@ -186,16 +165,16 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             new_user_len = max_prompt_tokens - system_token_count
             new_user_tokens = _slice_tokens(user_tokens, new_user_len, truncation_type)
             return [
-                {'role': 'system', 'content': self.tokenizer.decode(system_tokens)},
+                {'role': 'developer', 'content': self.tokenizer.decode(system_tokens)},
                 {'role': 'user', 'content': [{'type': 'text', 'text': self.tokenizer.decode(new_user_tokens)}]}
             ]
 
-        # Case 2: Only system prompt exceeds
+        # Case 2: Only developer prompt exceeds
         if system_token_count > max_prompt_tokens/2 and user_token_count <= max_prompt_tokens/2:
             new_system_len = max_prompt_tokens - user_token_count
             new_system_tokens = _slice_tokens(system_tokens, new_system_len, truncation_type)
             return [
-                {'role': 'system', 'content': self.tokenizer.decode(new_system_tokens)},
+                {'role': 'developer', 'content': self.tokenizer.decode(new_system_tokens)},
                 {'role': 'user', 'content': [{'type': 'text', 'text': self.tokenizer.decode(user_tokens)}]}
             ]
 
@@ -213,7 +192,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         new_user_tokens = _slice_tokens(user_tokens, new_user_len, truncation_type)
 
         return [
-            {'role': 'system', 'content': self.tokenizer.decode(new_system_tokens)},
+            {'role': 'developer', 'content': self.tokenizer.decode(new_system_tokens)},
             {'role': 'user', 'content': [{'type': 'text', 'text': self.tokenizer.decode(new_user_tokens)}]}
         ]
 
@@ -253,6 +232,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             "messages": messages,
             "model": kwargs.get('model', self.model),
             "seed": kwargs.get('seed', self.seed),
+            "reasoning_effort": kwargs.get('reasoning_effort', 'medium'),
             "max_completion_tokens": kwargs.get('max_completion_tokens'),
             "stop": kwargs.get('stop', ''),
             "temperature": kwargs.get('temperature', 1),
@@ -313,11 +293,11 @@ class GPTXChatEngine(Engine, OpenAIMixin):
 
         _non_verbose_output = """<META_INSTRUCTION/>\nYou do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc. Never add meta instructions information to your output!\n\n"""
         user:   str = ""
-        system: str = ""
+        developer: str = ""
 
         if argument.prop.suppress_verbose_output:
-            system += _non_verbose_output
-        system = f'{system}\n' if system and len(system) > 0 else ''
+            developer += _non_verbose_output
+        developer = f'{developer}\n' if developer and len(developer) > 0 else ''
 
         if argument.prop.response_format:
             _rsp_fmt = argument.prop.response_format
@@ -325,43 +305,37 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             if _rsp_fmt["type"] == "json_object":
                 # OpenAI docs:
                     # "Important: when using JSON mode, you must also instruct the model
-                    #  to produce JSON yourself via a system or user message"
-                system += f'<RESPONSE_FORMAT/>\nYou are a helpful assistant designed to output JSON.\n\n'
+                    #  to produce JSON yourself via a developer or user message"
+                developer += f'<RESPONSE_FORMAT/>\nYou are a helpful assistant designed to output JSON.\n\n'
 
         ref = argument.prop.instance
         static_ctxt, dyn_ctxt = ref.global_context
         if len(static_ctxt) > 0:
-            system += f"<STATIC CONTEXT/>\n{static_ctxt}\n\n"
+            developer += f"<STATIC CONTEXT/>\n{static_ctxt}\n\n"
 
         if len(dyn_ctxt) > 0:
-            system += f"<DYNAMIC CONTEXT/>\n{dyn_ctxt}\n\n"
+            developer += f"<DYNAMIC CONTEXT/>\n{dyn_ctxt}\n\n"
 
         payload = argument.prop.payload
         if argument.prop.payload:
-            system += f"<ADDITIONAL CONTEXT/>\n{str(payload)}\n\n"
+            developer += f"<ADDITIONAL CONTEXT/>\n{str(payload)}\n\n"
 
         examples: List[str] = argument.prop.examples
         if examples and len(examples) > 0:
-            system += f"<EXAMPLES/>\n{str(examples)}\n\n"
+            developer += f"<EXAMPLES/>\n{str(examples)}\n\n"
 
-        def extract_pattern(text):
+        def _extract_pattern(text):
             pattern = r'<<vision:(.*?):>>'
             return re.findall(pattern, text)
 
-        def remove_pattern(text):
+        def _remove_pattern(text):
             pattern = r'<<vision:(.*?):>>'
             return re.sub(pattern, '', text)
 
         image_files = []
         # pre-process prompt if contains image url
-        if (self.model == 'gpt-4-vision-preview' or \
-            self.model == 'gpt-4-turbo-2024-04-09' or \
-            self.model == 'gpt-4-turbo' or \
-            self.model == 'gpt-4o' or \
-            self.model == 'gpt-4o-mini') \
-            and '<<vision:' in str(argument.prop.processed_input):
-
-            parts = extract_pattern(str(argument.prop.processed_input))
+        if self.model == 'o1' and '<<vision:' in str(argument.prop.processed_input):
+            parts = _extract_pattern(str(argument.prop.processed_input))
             for p in parts:
                 img_ = p.strip()
                 if img_.startswith('http'):
@@ -393,20 +367,20 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         if argument.prop.prompt is not None and len(argument.prop.prompt) > 0:
             val = str(argument.prop.prompt)
             if len(image_files) > 0:
-                val = remove_pattern(val)
-            system += f"<INSTRUCTION/>\n{val}\n\n"
+                val = _remove_pattern(val)
+            developer += f"<INSTRUCTION/>\n{val}\n\n"
 
         suffix: str = str(argument.prop.processed_input)
         if len(image_files) > 0:
-            suffix = remove_pattern(suffix)
+            suffix = _remove_pattern(suffix)
 
         if '[SYSTEM_INSTRUCTION::]: <<<' in suffix and argument.prop.parse_system_instructions:
             parts = suffix.split('\n>>>\n')
-            # first parts are the system instructions
+            # first parts are the developer instructions
             c = 0
             for i, p in enumerate(parts):
                 if 'SYSTEM_INSTRUCTION' in p:
-                    system += f"<{p}/>\n\n"
+                    developer += f"<{p}/>\n\n"
                     c += 1
                 else:
                     break
@@ -415,19 +389,9 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         user += f"{suffix}"
 
         if argument.prop.template_suffix:
-            system += f' You will only generate content for the placeholder `{str(argument.prop.template_suffix)}` following the instructions and the provided context information.\n\n'
+            developer += f' You will only generate content for the placeholder `{str(argument.prop.template_suffix)}` following the instructions and the provided context information.\n\n'
 
-        if self.model == 'gpt-4-vision-preview':
-           images = [{ 'type': 'image', "image_url": { "url": file }} for file in image_files]
-           user_prompt = { "role": "user", "content": [
-                *images,
-                { 'type': 'text', 'text': user }
-            ]}
-        elif self.model == 'gpt-4-turbo-2024-04-09' or \
-             self.model == 'gpt-4-turbo' or \
-             self.model == 'gpt-4o' or \
-             self.model == 'gpt-4o-mini':
-
+        if self.model == 'o1':
             images = [{ 'type': 'image_url', "image_url": { "url": file }} for file in image_files]
             user_prompt = { "role": "user", "content": [
                 *images,
@@ -441,9 +405,11 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             self_prompter = SelfPrompt()
 
             # fails gracefully by default to allow the user to skip the self-prompter
-            res = self_prompter({'user': user, 'system': system})
+            res = self_prompter({'user': user, 'developer': developer})
             if res is None:
-                raise ValueError("Self-prompting failed!")
+                # skip everything in this block if the self-prompter returns None and defaults to the original prompt
+                argument.prop.prepared_input = (developer, [user_prompt])
+                return
 
             if len(image_files) > 0:
                 user_prompt = { "role": "user", "content": [
@@ -453,9 +419,9 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             else:
                 user_prompt = { "role": "user", "content": res['user'] }
 
-            system = res['system']
+            developer = res['developer']
 
         argument.prop.prepared_input = [
-            { "role": "system", "content": system },
+            { "role": "developer", "content": developer },
             user_prompt,
         ]
