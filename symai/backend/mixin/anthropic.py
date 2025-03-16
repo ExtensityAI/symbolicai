@@ -1,5 +1,6 @@
 SUPPORTED_MODELS = [
     # https://docs.anthropic.com/en/docs/about-claude/models
+    'claude-3-7-sonnet-latest',
     'claude-3-5-sonnet-latest',
     'claude-3-5-haiku-latest',
     'claude-3-5-sonnet-20241022',
@@ -12,7 +13,8 @@ SUPPORTED_MODELS = [
 
 class AnthropicMixin:
     def api_max_context_tokens(self):
-        if self.model == 'claude-3-5-sonnet-latest' or \
+        if self.model == 'claude-3-7-sonnet-latest' or \
+           self.model == 'claude-3-5-sonnet-latest' or \
            self.model == 'claude-3-5-sonnet-20241022' or \
            self.model == 'claude-3-5-sonnet-20240620' or \
            self.model == 'claude-3-opus-latest' or \
@@ -22,6 +24,9 @@ class AnthropicMixin:
             return 200_000
 
     def api_max_response_tokens(self):
+        if self.model == 'claude-3-7-sonnet-latest':
+            # slightly more complicated, it varies depending on whether extended thinking is enabled
+            return (8_192, 64_000) # https://docs.anthropic.com/en/docs/about-claude/models/all-models#model-comparison-table
         if self.model == 'claude-3-5-sonnet-latest' or \
            self.model == 'claude-3-5-sonnet-20241022' or \
            self.model == 'claude-3-5-haiku-latest':
@@ -32,4 +37,3 @@ class AnthropicMixin:
            self.model == 'claude-3-sonnet-20240229' or \
            self.model == 'claude-3-haiku-20240307':
             return 4_096
-
