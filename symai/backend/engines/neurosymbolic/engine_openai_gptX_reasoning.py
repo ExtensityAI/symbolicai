@@ -407,4 +407,6 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
             "tools": kwargs.get('tools'),
             "tool_choice": kwargs.get('tool_choice'),
             "response_format": kwargs.get('response_format'),
+            "logprobs": kwargs.get('logprobs'),
+            "top_logprobs": kwargs.get('top_logprobs'),
         }
