@@ -226,6 +226,8 @@ class LLMDataModel(BaseModel):
         def resolve_field_value(field_annotation: Any) -> Any:
             """Recursively resolves the value of a field."""
             origin = get_origin(field_annotation)
+            if origin is None:
+                origin = field_annotation
 
             # Handle Literal
             if origin is Literal:
