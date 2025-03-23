@@ -1,4 +1,5 @@
 import logging
+from copy import deepcopy
 from typing import List, Optional
 
 import openai
@@ -129,7 +130,7 @@ class GPTXCompletionEngine(Engine, OpenAIMixin):
         super().__init__()
         logger = logging.getLogger('openai')
         logger.setLevel(logging.WARNING)
-        self.config = SYMAI_CONFIG
+        self.config = deepcopy(SYMAI_CONFIG)
         if self.id() != 'neurosymbolic':
             return # do not initialize if not neurosymbolic; avoids conflict with llama.cpp check in EngineRepository.register_from_package
         openai.api_key           = self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] if api_key is None else api_key

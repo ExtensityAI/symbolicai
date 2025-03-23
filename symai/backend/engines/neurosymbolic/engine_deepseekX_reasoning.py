@@ -1,5 +1,6 @@
 import logging
 import re
+from copy import deepcopy
 from typing import List, Optional
 
 from annotated_types import Not
@@ -23,7 +24,7 @@ logging.getLogger("httpcore").setLevel(logging.ERROR)
 class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         super().__init__()
-        self.config = SYMAI_CONFIG
+        self.config = deepcopy(SYMAI_CONFIG)
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
         if api_key is not None and model is not None:
             self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] = api_key

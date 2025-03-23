@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+from copy import deepcopy
 
 import aiohttp
 import httpx
@@ -83,7 +84,7 @@ class LlamaCppEngine(Engine):
             timeout_params: dict = _timeout_params,
         ):
         super().__init__()
-        self.config = SYMAI_CONFIG
+        self.config = deepcopy(SYMAI_CONFIG)
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
         if model is not None:
             self.config['NEUROSYMBOLIC_ENGINE_MODEL'] = model
