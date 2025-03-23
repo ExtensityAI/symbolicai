@@ -1,6 +1,5 @@
-SUPPORTED_MODELS = [
-    # https://docs.anthropic.com/en/docs/about-claude/models
-    'claude-3-7-sonnet-latest',
+# https://docs.anthropic.com/en/docs/about-claude/models
+SUPPORTED_CHAT_MODELS = [
     'claude-3-5-sonnet-latest',
     'claude-3-5-haiku-latest',
     'claude-3-5-sonnet-20241022',
@@ -9,6 +8,9 @@ SUPPORTED_MODELS = [
     'claude-3-opus-20240229',
     'claude-3-sonnet-20240229',
     'claude-3-haiku-20240307',
+]
+SUPPORTED_REASONING_MODELS = [
+    'claude-3-7-sonnet-latest',
 ]
 
 class AnthropicMixin:

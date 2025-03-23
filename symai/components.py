@@ -1,3 +1,4 @@
+import copy
 import inspect
 import json
 import os
@@ -10,7 +11,6 @@ from random import sample
 from string import ascii_lowercase, ascii_uppercase
 from threading import Lock
 from typing import Callable, Dict, Iterator, List, Optional, Type, Union
-import copy
 
 import numpy as np
 from attr import dataclass
@@ -1217,3 +1217,41 @@ class MetadataTracker(Expression):
     @property
     def usage(self) -> dict[str, dict[str, int]]:
         return self._accumulate_completion_token_details()
+
+
+class DynamicEngine(Expression):
+    """Context manager for dynamically switching neurosymbolic engine models."""
+    def __init__(self, model: str, api_key: str, debug: bool = False, **kwargs):
+        super().__init__()
+        self.model = model
+        self.api_key = api_key
+        self._entered = False
+        self._lock = Lock()
+        self.engine_instance = None
+
+    def __new__(cls, *args, **kwargs):
+        cls._lock = getattr(cls, '_lock', Lock())
+        with cls._lock:
+            instance = super().__new__(cls)
+            instance._metadata = {}
+            instance._metadata_id = 0
+            return instance
+
+    def __enter__(self):
+        self._entered = True
+        self.engine_instance = self._create_engine_instance()
+        return self.engine_instance
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self._entered = False
+
+    def _create_engine_instance(self):
+        """Create an engine instance based on the model name."""
+        from .backend.engines.neurosymbolic import ENGINE_MAPPING
+        try:
+            engine_class = ENGINE_MAPPING.get(self.model)
+            if engine_class is None:
+                raise ValueError(f"Unsupported model '{self.model}'")
+            return engine_class(api_key=self.api_key, model=self.model)
+        except Exception as e:
+            raise ValueError(f"Failed to create engine for model '{self.model}': {str(e)}")

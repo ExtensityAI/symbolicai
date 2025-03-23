@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+from copy import deepcopy
 from typing import List, Optional
 
 import requests
@@ -50,7 +51,7 @@ class HFTokenizer:
 class HFEngine(Engine):
     def __init__(self, model: Optional[str] = None):
         super().__init__()
-        self.config = SYMAI_CONFIG
+        self.config = deepcopy(SYMAI_CONFIG)
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
         if model is not None:
             self.config['NEUROSYMBOLIC_ENGINE_MODEL'] = model

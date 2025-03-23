@@ -1,10 +1,12 @@
 import logging
 import re
+from copy import deepcopy
 from typing import List, Optional
 
 import anthropic
 from anthropic._types import NOT_GIVEN
-from anthropic.types import ThinkingBlock, ThinkingDelta, TextBlock, TextDelta, RawContentBlockDeltaEvent, Message
+from anthropic.types import (Message, RawContentBlockDeltaEvent, TextBlock,
+                             TextDelta, ThinkingBlock, ThinkingDelta)
 
 from ....components import SelfPrompt
 from ....misc.console import ConsoleStyle
@@ -24,7 +26,7 @@ logging.getLogger("httpcore").setLevel(logging.ERROR)
 class ClaudeXReasoningEngine(Engine, AnthropicMixin):
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         super().__init__()
-        self.config = SYMAI_CONFIG
+        self.config = deepcopy(SYMAI_CONFIG)
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
         if api_key is not None and model is not None:
             self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] = api_key

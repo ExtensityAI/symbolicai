@@ -1,4 +1,4 @@
-SUPPORTED_MODELS = [
+SUPPORTED_CHAT_MODELS = [
     'davinci-002',
     'gpt-3.5-turbo',
     'gpt-3.5-turbo-16k',
@@ -12,11 +12,13 @@ SUPPORTED_MODELS = [
     'gpt-4o',
     'gpt-4o-2024-11-20',
     'gpt-4o-mini',
-    'o3-mini',
-    'o1',
     'text-embedding-ada-002',
     'text-embedding-3-small',
     'text-embedding-3-large'
+]
+SUPPORTED_REASONING_MODELS = [
+    'o3-mini',
+    'o1',
 ]
 
 

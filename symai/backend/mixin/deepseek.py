@@ -1,5 +1,6 @@
-SUPPORTED_MODELS = [
-    # https://api-docs.deepseek.com/quick_start/pricing
+# https://api-docs.deepseek.com/quick_start/pricing
+SUPPORTED_CHAT_MODELS = []
+SUPPORTED_REASONING_MODELS = [
     'deepseek-reasoner'
 ]
 
