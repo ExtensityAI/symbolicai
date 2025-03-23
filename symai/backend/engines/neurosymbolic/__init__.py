@@ -11,7 +11,6 @@ from .engine_openai_gptX_reasoning import GPTXReasoningEngine
 ENGINE_MAPPING = {
     **{model_name: ClaudeXChatEngine for model_name in ANTHROPIC_CHAT_MODELS},
     **{model_name: ClaudeXReasoningEngine for model_name in ANTHROPIC_REASONING_MODELS},
-    **{model_name: DeepSeekXReasoningEngine for model_name in DEEPSEEK_CHAT_MODELS},
     **{model_name: DeepSeekXReasoningEngine for model_name in DEEPSEEK_REASONING_MODELS},
     **{model_name: GPTXChatEngine for model_name in OPENAI_CHAT_MODELS},
     **{model_name: GPTXReasoningEngine for model_name in OPENAI_REASONING_MODELS},
