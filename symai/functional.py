@@ -505,8 +505,8 @@ class EngineRepository(object):
         for thread_id, top_frame in sys._current_frames().items():
             frame = top_frame
             while frame:
-                # Found; now check if it's active
-                for _, value in frame.f_locals.items():
+                locals_copy = frame.f_locals.copy()
+                for _, value in locals_copy.items():
                     if isinstance(value, DynamicEngine) and getattr(value, '_entered', False):
                         return value.engine_instance
                 frame = frame.f_back
