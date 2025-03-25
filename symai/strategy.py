@@ -590,7 +590,8 @@ class contract:
                 raise Exception("Pre-condition function not defined. Please define a `pre` method if you want to enforce pre-conditions through a remedy.")
             try:
                 logger.info("Attempting pre-condition validation...")
-                return wrapped_self.pre(input)
+                assert wrapped_self.pre(input)
+                return input
             except Exception as e:
                 logger.error(f"Pre-condition validation failed: {str(e)}")
                 logger.info("Attempting remedy with semantic validation...")
