@@ -4,14 +4,15 @@ import ast
 import importlib
 import inspect
 import pkgutil
+import sys
 import traceback
 import warnings
 from enum import Enum
-from loguru import logger
 from types import ModuleType
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type
 
 from box import Box
+from loguru import logger
 from pydantic import BaseModel
 
 from .backend import engines
@@ -338,22 +339,25 @@ class EngineRepository(object):
                         logger.error(f"Failed to register engine {str(attribute)}: {str(e)}")
 
     @staticmethod
-    def get(engine_name: str, *args, **kwargs) -> Engine:
+    def get(engine_name: str, *args, **kwargs):
+
         self = EngineRepository()
-        # try first time load of engine
+        # First check if we're in the context manager that dynamically changes models
+        if engine_name == "neurosymbolic":
+            engine = self.get_dynamic_engine_instance()
+            if engine is not None:
+                return engine
+
+        # Otherwise, fallback to normal lookup:
         if engine_name not in self._engines.keys():
-            # get subpackage name from engine name
             subpackage_name = engine_name.replace('-', '_')
-            # get subpackage
             subpackage = importlib.import_module(f"{engines.__package__}.{subpackage_name}", None)
-            # raise exception if subpackage is not found
             if subpackage is None:
-                raise ValueError(f"The symbolicai library does not contain the engine named {engine_name}. Verify your configuration or if you have initialized the respective engine.")
-            self._instance.register_from_package(subpackage)
+                raise ValueError(f"The symbolicai library does not contain the engine named {engine_name}.")
+            self.register_from_package(subpackage)
         engine = self._engines.get(engine_name, None)
-        # raise exception if engine is not registered
         if engine is None:
-            raise ValueError(f"No engine named {engine_name} is registered. Verify your configuration or if you have initialized the respective engine.")
+            raise ValueError(f"No engine named {engine_name} is registered.")
         return engine
 
     @staticmethod
@@ -397,3 +401,17 @@ class EngineRepository(object):
         if engine:
             return getattr(engine, property, None)
         raise ValueError(f"No engine named {engine} is registered.")
+
+    def get_dynamic_engine_instance(self):
+        from .components import DynamicEngine
+
+        # Iterate over all thread frames
+        for thread_id, top_frame in sys._current_frames().items():
+            frame = top_frame
+            while frame:
+                locals_copy = frame.f_locals.copy()
+                for _, value in locals_copy.items():
+                    if isinstance(value, DynamicEngine) and getattr(value, '_entered', False):
+                        return value.engine_instance
+                frame = frame.f_back
+        return None

@@ -6,7 +6,7 @@ from typing import List, Optional
 import anthropic
 from anthropic._types import NOT_GIVEN
 from anthropic.types import (Message, RawContentBlockDeltaEvent, TextBlock,
-                             TextDelta)
+                             TextDelta, ThinkingBlock, ThinkingDelta)
 
 from ....components import SelfPrompt
 from ....misc.console import ConsoleStyle
@@ -23,7 +23,7 @@ logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
-class ClaudeXChatEngine(Engine, AnthropicMixin):
+class ClaudeXReasoningEngine(Engine, AnthropicMixin):
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         super().__init__()
         self.config = deepcopy(SYMAI_CONFIG)
@@ -43,7 +43,7 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
     def id(self) -> str:
         if self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and \
            self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('claude') and \
-           '3-7' not in self.config.get('NEUROSYMBOLIC_ENGINE_MODEL'):
+           '3-7' in self.config.get('NEUROSYMBOLIC_ENGINE_MODEL'):
                return 'neurosymbolic'
         return super().id() # default to unregistered
 
@@ -55,6 +55,7 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
             self.model = kwargs['NEUROSYMBOLIC_ENGINE_MODEL']
 
     def compute_required_tokens(self, messages):
+        # TODO: https://docs.anthropic.com/en/api/messages-count-tokens
         raise NotImplementedError('Method not implemented.')
 
     def compute_remaining_tokens(self, prompts: list) -> int:
@@ -220,9 +221,9 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
     def _prepare_request_payload(self, argument):
         kwargs = argument.kwargs
         model = kwargs.get('model', self.model)
-        max_tokens = kwargs.get('max_tokens', self.max_response_tokens)
         stop = kwargs.get('stop', NOT_GIVEN)
         temperature = kwargs.get('temperature', 1)
+        thinking = kwargs.get('thinking', NOT_GIVEN)
         top_p = kwargs.get('top_p', NOT_GIVEN if temperature is not None else 1) #@NOTE:'You should either alter temperature or top_p, but not both.'
         top_k = kwargs.get('top_k', NOT_GIVEN)
         stream = kwargs.get('stream', NOT_GIVEN)
@@ -238,11 +239,18 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
         if stop != NOT_GIVEN:
             stop = [r'{s}' for s in stop]
 
+        # set max_tokens based on thinking
+        if thinking != NOT_GIVEN:
+            max_tokens = kwargs.get('max_tokens', self.max_response_tokens[1])
+        else:
+            max_tokens = kwargs.get('max_tokens', self.max_response_tokens[0])
+
         return {
             "model": model,
             "max_tokens": max_tokens,
             "stop_sequences": stop,
             "temperature": temperature,
+            "thinking": thinking,
             "top_p": top_p,
             "top_k": top_k,
             "stream": stream,
@@ -253,18 +261,32 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
 
     def _collect_response(self, res, stream):
         if stream:
+            thinking_content = ''
             text_content = ''
             for chunk in res:
                 if isinstance(chunk, RawContentBlockDeltaEvent):
+                    if isinstance(chunk.delta, ThinkingDelta):
+                        thinking_content += chunk.delta.thinking
+                        continue
                     if isinstance(chunk.delta, TextDelta):
                         text_content += chunk.delta.text
-            return text_content
+            return {
+                "thinking": thinking_content,
+                "text": text_content
+            }
 
         if isinstance(res, Message):
+            thinking_content = ''
             text_content = ''
             for content in res.content:
+                if isinstance(content, ThinkingBlock):
+                    thinking_content += content.thinking
+                    continue
                 if isinstance(content, TextBlock):
                     text_content += content.text
-            return text_content
+            return {
+                "thinking": thinking_content,
+                "text": text_content
+            }
 
         raise ValueError("Unexpected response type from Anthropic API")

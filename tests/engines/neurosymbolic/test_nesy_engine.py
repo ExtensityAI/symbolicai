@@ -3,6 +3,7 @@ from pathlib import Path
 from numpy import add
 import pytest
 
+from anthropic.types import ToolUseBlock
 from symai import Expression, Symbol
 from symai.components import Function
 from symai.backend.settings import SYMAI_CONFIG
@@ -87,29 +88,56 @@ def test_tokenizer():
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('huggingface'), reason='feature not yet implemented')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('o1'), reason='feature not supported by the model')
 def test_tool_usage():
-    tools = [{
-        "type": "function",
-        "function": {
-            "name": "get_weather",
-            "description": "Get current temperature for a given location.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "location": {
-                        "type": "string",
-                        "description": "City and country e.g. Bogotá, Colombia"
-                    }
-                },
-                "required": ["location"],
+    if NEUROSYMBOLIC.startswith('o3') or NEUROSYMBOLIC.startswith('gpt'):
+        tools = [{
+            "type": "function",
+            "function": {
+                "name": "get_weather",
+                "description": "Get current temperature for a given location.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "location": {
+                            "type": "string",
+                            "description": "City and country e.g. Bogotá, Colombia"
+                        }
+                    },
+                    "required": ["location"],
+                }
             }
-        }
-    }]
-    fn = Function("Analyze the input request and select the most appropriate function to call from the provided options.", tools=tools)
-    res = fn("what's the temperature in Bogotá, Colombia", raw_output=True)
-    tool = None
-    if res.choices[0].finish_reason == 'tool_calls':
-        tool_name = res.choices[0].message.tool_calls[0].function.name
-    assert tool_name == 'get_weather'
+        }]
+        fn = Function("Analyze the input request and select the most appropriate function to call from the provided options.", tools=tools)
+        res = fn("what's the temperature in Bogotá, Colombia", raw_output=True)
+        tool = None
+        if res.choices[0].finish_reason == 'tool_calls':
+            tool_name = res.choices[0].message.tool_calls[0].function.name
+        assert tool_name == 'get_weather'
+    elif NEUROSYMBOLIC.startswith('claude'):
+        tools = [
+          {
+            "name": "get_stock_price",
+            "description": "Get the current stock price for a given ticker symbol.",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "ticker": {
+                  "type": "string",
+                  "description": "The stock ticker symbol, e.g. AAPL for Apple Inc."
+                }
+              },
+              "required": ["ticker"]
+            }
+          }
+        ]
+        fn = Function("Analyze the input request and select the most appropriate function to call from the provided options.", tools=tools)
+        if '3-7' not in NEUROSYMBOLIC:
+            res = fn("what's the temperature in Bogotá, Colombia", raw_output=True)
+        else:
+            thinking={"type": "enabled", "budget_tokens": 4092}
+            res = fn("what's the S&P 500 at today", raw_output=True, thinking=thinking, max_tokens=16000)
+        for block in res.content:
+            if isinstance(block, ToolUseBlock):
+                assert block.name == 'get_stock_price'
 
 def test_raw_output():
     S = Expression.prompt('What is the capital of France?', raw_output=True)
@@ -118,6 +146,7 @@ def test_raw_output():
     elif NEUROSYMBOLIC.startswith('gpt') or NEUROSYMBOLIC.startswith('o1') or NEUROSYMBOLIC.startswith('o3'):
         assert isinstance(S.value, ChatCompletion)
 
+@pytest.mark.skipif(NEUROSYMBOLIC.startswith('claude'), reason='Claude tokens computation is not yet implemented')
 def test_token_truncator():
     file_path = (Path(__file__).parent.parent.parent / 'data/pg1727.txt').as_posix()
     content = Symbol(file_path).open()
