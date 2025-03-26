@@ -1143,7 +1143,7 @@ class MetadataTracker(Expression):
         token_details = defaultdict(lambda: defaultdict(int))
 
         for (_, engine_name), metadata in self._metadata.items():
-            if engine_name != "GPTXChatEngine":
+            if engine_name not in ("GPTXChatEngine", "GPTXReasoningEngine"):
                 logger.warning(f"Engine {engine_name} is not supported.")
                 continue
             usage = metadata["raw_output"].usage
@@ -1171,7 +1171,7 @@ class MetadataTracker(Expression):
 
         # Skipz first entry
         for (_, engine_name), metadata in list(self._metadata.items())[1:]:
-            if engine_name != "GPTXChatEngine":
+            if engine_name not in ("GPTXChatEngine", "GPTXReasoningEngine"):
                 continue
 
             # Accumulate time if it exists
