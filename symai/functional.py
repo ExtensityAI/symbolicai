@@ -135,21 +135,24 @@ def _limit_number_results(rsp: Any, argument, return_type):
 
 
 def _prepare_argument(argument: Any, engine: Any, instance: Any, func: Callable, constraints: List[Callable], default: Any, limit: int, trials: int, pre_processors: Optional[List[PreProcessor]], post_processors: Optional[List[PostProcessor]]) -> Any:
+    # check signature for return type
     sig = inspect.signature(func)
-    return_constraint = sig.return_annotation
+    return_constraint = sig._return_annotation
     assert 'typing' not in str(return_constraint), "Return type must be of base type not generic Typing object, e.g. int, str, list, etc."
 
-    argument.prop.engine = engine
-    argument.prop.instance = instance
-    argument.prop.signature = sig
-    argument.prop.func = func
-    argument.prop.constraints = constraints
+    # prepare argument container
+    argument.prop.engine            = engine
+    argument.prop.instance          = instance
+    argument.prop.instance_type     = type(instance)
+    argument.prop.signature         = sig
+    argument.prop.func              = func
+    argument.prop.constraints       = constraints
     argument.prop.return_constraint = return_constraint
-    argument.prop.default = default
-    argument.prop.limit = limit
-    argument.prop.trials = trials
-    argument.prop.pre_processors = pre_processors
-    argument.prop.post_processors = post_processors
+    argument.prop.default           = default
+    argument.prop.limit             = limit
+    argument.prop.trials            = trials
+    argument.prop.pre_processors    = pre_processors
+    argument.prop.post_processors   = post_processors
     return argument
 
 
