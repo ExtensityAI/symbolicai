@@ -46,7 +46,8 @@ class GPTXChatEngine(Engine, OpenAIMixin):
     def id(self) -> str:
         if self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and \
            (self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('gpt-3.5') or \
-            self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('gpt-4')):
+            self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('gpt-4') or \
+            self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('chatgpt-4o')):
                 return 'neurosymbolic'
         return super().id() # default to unregistered
 
@@ -73,7 +74,8 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             "gpt-4-turbo",
             "gpt-4o",
             "gpt-4o-2024-11-20",
-            "gpt-4o-mini"
+            "gpt-4o-mini",
+            "chatgpt-4o-latest"
             }:
             tokens_per_message = 3
             tokens_per_name = 1
@@ -308,7 +310,8 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             self.model == 'gpt-4-turbo-2024-04-09' or \
             self.model == 'gpt-4-turbo' or \
             self.model == 'gpt-4o' or \
-            self.model == 'gpt-4o-mini') \
+            self.model == 'gpt-4o-mini' or \
+            self.model == 'chatgpt-4o-latest') \
             and '<<vision:' in str(argument.prop.processed_input):
 
             parts = extract_pattern(str(argument.prop.processed_input))
@@ -364,7 +367,8 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         elif self.model == 'gpt-4-turbo-2024-04-09' or \
              self.model == 'gpt-4-turbo' or \
              self.model == 'gpt-4o' or \
-             self.model == 'gpt-4o-mini':
+             self.model == 'gpt-4o-mini' or \
+             self.model == 'chatgpt-4o-latest':
 
             images = [{ 'type': 'image_url', "image_url": { "url": file }} for file in image_files]
             user_prompt = { "role": "user", "content": [
@@ -429,7 +433,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
                 )
                 kwargs['max_completion_tokens'] = remaining_tokens
 
-        return {
+        payload = {
             "messages": messages,
             "model": kwargs.get('model', self.model),
             "seed": kwargs.get('seed', self.seed),
@@ -447,3 +451,9 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             "logprobs": kwargs.get('logprobs'),
             "top_logprobs": kwargs.get('top_logprobs'),
         }
+
+        if self.model == "chatgpt-4o-latest":
+            del payload['tools']
+            del payload['tool_choice']
+
+        return payload
