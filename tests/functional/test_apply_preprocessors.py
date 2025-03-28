@@ -18,9 +18,9 @@ class MockPreProcessor(PreProcessor):
 @pytest.mark.parametrize("raw_input,args,pre_processors,instance,expected", [
     (False, [], [MockPreProcessor()], "test_instance", "Processed: test_instance"),
     (True, ["arg1", "test_instance"], None, "test_instance", "arg1 test_instance"),
-    (False, [], None, "test_instance", "test_instance"),
-    (False, ["arg1", "arg2"], None, "test_instance", "test_instance"),
-    (False, [], [], "test_instance", "test_instance"),   
+    (False, [], None, "test_instance", ""),
+    (False, ["arg1", "arg2"], None, "test_instance", "arg1 arg2"),
+    (False, ["test prompt"], [], "test_instance", "test prompt"),   
 ])
 def test_apply_preprocessors(raw_input, args, pre_processors, instance, expected):
     argument = MockArgument(raw_input=raw_input, args=args)

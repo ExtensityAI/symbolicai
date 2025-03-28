@@ -247,6 +247,7 @@ def _process_query(
 
     argument = _prepare_argument(argument, engine, instance, func, constraints, default, limit, trials, pre_processors, post_processors)
     return_constraint = argument.prop.return_constraint
+    # if prep_processors is empty or none this returns an empty string and 
     processed_input = _apply_preprocessors(argument, instance, pre_processors)
     if not argument.prop.raw_input:
         argument.prop.processed_input = processed_input
