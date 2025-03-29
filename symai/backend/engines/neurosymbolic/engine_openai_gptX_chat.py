@@ -160,7 +160,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
 
         system_token_count = len(system_tokens)
         user_token_count = len(user_tokens)
-        artifacts = self.compute_required_tokens(prompts) - system_token_count + user_token_count
+        artifacts = self.compute_required_tokens(prompts) - (system_token_count + user_token_count)
         assert artifacts >= 0, f"Artifacts count is negative: {artifacts}! Report bug!"
         total_tokens = system_token_count + user_token_count + artifacts
 
@@ -180,7 +180,6 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             f"Set 'truncation_percentage=1.0' to deactivate truncation (will fail if exceeding context window). "
             f"Choose 'truncation_type' as 'head' to keep the end of prompts or 'tail' to keep the beginning."
         )
-
         # Case 1: Only user prompt exceeds
         if user_token_count > max_prompt_tokens/2 and system_token_count <= max_prompt_tokens/2:
             new_user_len = max_prompt_tokens - system_token_count

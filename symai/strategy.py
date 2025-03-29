@@ -681,9 +681,15 @@ class contract:
             finally:
                 wrapped_self._contract_timing[it]["input_type_validation"] = time.perf_counter() - op_start
 
+            maybe_payload = getattr(wrapped_self, "payload", None)
+            maybe_template = getattr(wrapped_self, "template")
+            if inspect.ismethod(maybe_template):
+                # `template` is a primitive in symbolicai case in which we actually don't have a template
+                maybe_template = None
+
             remedy_kwargs = dict(
-                payload=getattr(wrapped_self, "payload", None),
-                template_suffix=getattr(wrapped_self, "template", None)
+                payload=maybe_payload,
+                template_suffix=maybe_template
             )
 
             sig = inspect.signature(original_forward)
