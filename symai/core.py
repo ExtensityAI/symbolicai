@@ -51,7 +51,7 @@ class Argument(Expression):
         if 'truncation_percentage' not in self.kwargs:
             self.prop.truncation_percentage = None
         if 'truncation_type' not in self.kwargs:
-            self.prop.truncation_type = 'head'
+            self.prop.truncation_type = 'tail'
         if 'response_format' not in self.kwargs:
             self.prop.response_format = None
         if 'log_level' not in self.kwargs:
