@@ -137,7 +137,7 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
 
         system_token_count = len(system_tokens)
         user_token_count = len(user_tokens)
-        artifacts = self.compute_required_tokens(prompts) - system_token_count + user_token_count
+        artifacts = self.compute_required_tokens(prompts) - (system_token_count + user_token_count)
         assert artifacts >= 0, f"Artifacts count is negative: {artifacts}! Report bug!"
         total_tokens = system_token_count + user_token_count + artifacts
 
