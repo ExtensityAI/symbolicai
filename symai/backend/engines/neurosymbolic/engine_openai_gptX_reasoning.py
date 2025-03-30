@@ -107,7 +107,7 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
 
         if truncation_percentage is None:
             # Calculate smart truncation percentage based on model's max messages and completion tokens
-            truncation_percentage = (self.max_context_tokens - self.max_response_tokens) / self.max_context_tokens
+            truncation_percentage = (self.max_context_tokens - 16_384) / self.max_context_tokens
 
         system_prompt = prompts[0]
         user_prompt = prompts[1]
