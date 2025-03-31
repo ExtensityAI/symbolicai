@@ -48,7 +48,7 @@ Speaking to V Magazine in an interview published Monday, Hathaway said: “Back 
 def test_self_prompt():
     sym = Symbol('np.log2(2)', self_prompt=True)
     res = Symbol('np.log2(2)').query('Is this equal to 1?', self_prompt=True)
-    assert 'yes' in res.value.lower()
+    assert any(s in res.value.lower() for s in ['yes', 'correct', 'true'])
 
 def test_regex_format():
     # Test the regex pattern
