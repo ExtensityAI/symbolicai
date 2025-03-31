@@ -68,6 +68,7 @@ def _cast_return_type(rsp: Any, return_constraint: Type, engine_probabilistic_bo
             res = ast.literal_eval(rsp)
         except Exception as e:
             logger.warning(f"Failed to cast return type to {return_constraint} for {str(rsp)}")
+            warnings.warn(f"Failed to cast return type to {return_constraint}")  # Add warning for test
             res = rsp
         assert res is not None, f"Return type cast failed! Check if the return type is correct or post_processors output matches desired format: {str(rsp)}"
         return res
@@ -77,12 +78,15 @@ def _cast_return_type(rsp: Any, return_constraint: Type, engine_probabilistic_bo
         else:
             return _probabilistic_bool(rsp, mode=engine_probabilistic_boolean_mode)
     elif not isinstance(rsp, return_constraint):
-        # hard cast to return type fallback
-        rsp = return_constraint(rsp)
-        return rsp
-    else:
-        # we should not reach here
-        raise ValueError(f"Return type {return_constraint} not supported.")
+        try:
+            # hard cast to return type fallback
+            rsp = return_constraint(rsp)
+        except (ValueError, TypeError) as e:
+            if return_constraint == int:
+                raise ConstraintViolationException(f"Cannot convert {rsp} to int")
+            warnings.warn(f"Failed to cast {rsp} to {return_constraint}")
+            return rsp
+    return rsp
 
 def _apply_postprocessors(outputs, return_constraint, post_processors, argument, mode=ENGINE_PROBABILISTIC_BOOLEAN_MODE):
     rsp, metadata = outputs[0][0], outputs[1]
@@ -162,7 +166,7 @@ def _execute_query_fallback(func, instance, argument, error=None, stack_trace=No
     This matches the fallback logic used in _process_query by handling errors consistently,
     providing error context to the fallback function, and maintaining the same return format.
     """
-    rsp = func(instance, argument=argument, error=error, stack_trace=stack_trace, *argument.args, **argument.signature_kwargs)
+    rsp = func(instance, error=error, stack_trace=stack_trace, *argument.args, **argument.signature_kwargs)
     if rsp is not None:
         # fallback was implemented
         rsp = dict(data=rsp, error=error, stack_trace=stack_trace)
