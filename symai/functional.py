@@ -89,6 +89,9 @@ def _cast_return_type(rsp: Any, return_constraint: Type, engine_probabilistic_bo
     return rsp
 
 def _apply_postprocessors(outputs, return_constraint, post_processors, argument, mode=ENGINE_PROBABILISTIC_BOOLEAN_MODE):
+    if argument.prop.preview:
+        return outputs
+    
     rsp, metadata = outputs[0][0], outputs[1]
     argument.prop.outputs = outputs
     argument.prop.metadata = metadata
