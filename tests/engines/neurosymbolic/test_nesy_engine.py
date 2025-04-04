@@ -146,6 +146,16 @@ def test_raw_output():
     elif NEUROSYMBOLIC.startswith('gpt') or NEUROSYMBOLIC.startswith('o1') or NEUROSYMBOLIC.startswith('o3'):
         assert isinstance(S.value, ChatCompletion)
 
+def test_preview():
+    preview_function = Function(
+        "Return a JSON markdown string representation of the text, no matter what text is provided.",
+        static_context="This is a static context.",
+        dynamic_context="This is a dynamic context."
+    )
+    preview = preview_function("Hello, World!", preview=True)
+    # assert that the output property `processed_input` is as expected
+    assert preview.prop.processed_input == "Hello, World!"
+
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('claude'), reason='Claude tokens computation is not yet implemented')
 def test_token_truncator():
     file_path = (Path(__file__).parent.parent.parent / 'data/pg1727.txt').as_posix()
