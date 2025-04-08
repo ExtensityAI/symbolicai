@@ -473,7 +473,7 @@ class contract:
                 """Output model representing our extracted knowledge graph."""
                 triples: list[Triple] = Field(default=[], description="A list of subject-relation-object triples extracted from the document.")
 
-            # 2) Create the “DocToKG” class with a contract ------------------------
+            # 2) Create the "DocToKG" class with a contract ------------------------
             remedy_retry_params = dict(
                     tries=15,
                     delay=0.5,
@@ -687,10 +687,12 @@ class contract:
                 # `template` is a primitive in symbolicai case in which we actually don't have a template
                 maybe_template = None
 
-            remedy_kwargs = dict(
-                payload=maybe_payload,
-                template_suffix=maybe_template
-            )
+            # Create validation kwargs that include all original kwargs plus payload and template
+            validation_kwargs = {
+                **kwargs,
+                "payload": maybe_payload,
+                "template_suffix": maybe_template
+            }
 
             sig = inspect.signature(original_forward)
             original_output_type = sig.return_annotation
@@ -705,17 +707,17 @@ class contract:
                 input = original_input
                 try:
                     op_start = time.perf_counter()
-                    maybe_new_input = contract_self._validate_input(wrapped_self, input, **remedy_kwargs)
+                    maybe_new_input = contract_self._validate_input(wrapped_self, input, **validation_kwargs)
                     if maybe_new_input is not None:
                         input = maybe_new_input
                 finally:
                     wrapped_self._contract_timing[it]["input_semantic_validation"] = time.perf_counter() - op_start
 
-                output = self._validate_output(wrapped_self, input, original_output_type, it, **remedy_kwargs)
+                output = self._validate_output(wrapped_self, input, original_output_type, it, **validation_kwargs)
                 wrapped_self.contract_successful = True
                 wrapped_self.contract_result = output
             finally:
-                # Execute the original forward method
+                # Execute the original forward method with original kwargs
                 logger.info("Executing original forward method...")
                 kwargs['input'] = original_input
                 try:
