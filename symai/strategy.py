@@ -693,7 +693,7 @@ class contract:
                 "payload": maybe_payload,
                 "template_suffix": maybe_template
             }
-
+            validation_kwargs_filtered = {k: v for k, v in validation_kwargs.items() if k != "input"}
             sig = inspect.signature(original_forward)
             original_output_type = sig.return_annotation
             if original_output_type == inspect._empty:
@@ -707,13 +707,13 @@ class contract:
                 input = original_input
                 try:
                     op_start = time.perf_counter()
-                    maybe_new_input = contract_self._validate_input(wrapped_self, input, **validation_kwargs)
+                    maybe_new_input = contract_self._validate_input(wrapped_self, input, **validation_kwargs_filtered)
                     if maybe_new_input is not None:
                         input = maybe_new_input
                 finally:
                     wrapped_self._contract_timing[it]["input_semantic_validation"] = time.perf_counter() - op_start
 
-                output = self._validate_output(wrapped_self, input, original_output_type, it, **validation_kwargs)
+                output = self._validate_output(wrapped_self, input, original_output_type, it, **validation_kwargs_filtered)
                 wrapped_self.contract_successful = True
                 wrapped_self.contract_result = output
             finally:
