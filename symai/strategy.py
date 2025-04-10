@@ -236,7 +236,7 @@ class TypeValidationFunction(ValidationFunction):
                 context = self.remedy_prompt(json=json_str, errors=error_str)
                 self.remedy_function.clear()
                 self.remedy_function.adapt(context)
-                json_str = self.remedy_function(seed=remedy_seeds[i]).value
+                json_str = self.remedy_function(seed=remedy_seeds[i], **kwargs).value
                 logger.info("Applied remedy function with updated context!")
                 logger.info(f"New context: {self.remedy_function.dynamic_context}")
 
