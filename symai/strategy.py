@@ -615,7 +615,7 @@ class contract:
             try:
                 op_start = time.perf_counter()
                 self.f_type_validation_remedy.register_data_model(output, override=True)
-                output = self.f_type_validation_remedy()
+                output = self.f_type_validation_remedy(**remedy_kwargs)
             finally:
                 wrapped_self._contract_timing[it]["output_type_validation"] = time.perf_counter() - op_start
             logger.info("Type validation successful")
