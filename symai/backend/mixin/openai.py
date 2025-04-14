@@ -14,7 +14,10 @@ SUPPORTED_CHAT_MODELS = [
     'gpt-4o',
     'gpt-4o-2024-11-20',
     'gpt-4o-mini',
-    'chatgpt-4o-latest'
+    'chatgpt-4o-latest',
+    'gpt-4.1',
+    'gpt-4.1-mini',
+    'gpt-4.1-nano',
 ]
 SUPPORTED_REASONING_MODELS = [
     'o3-mini',
@@ -66,6 +69,10 @@ class OpenAIMixin:
         if self.model == 'o1' or \
            self.model == 'o3-mini':
                return 200_000
+        if self.model == 'gpt-4.1' or \
+           self.model == 'gpt-4.1-mini' or \
+           self.model == 'gpt-4.1-nano':
+            return 1_047_576
         raise ValueError(f'Unsupported model: {self.model}')
 
     def api_max_response_tokens(self):
@@ -88,6 +95,10 @@ class OpenAIMixin:
            self.model == 'gpt-4o-2024-11-20' or \
            self.model == 'chatgpt-4o-latest':
                return 16_384
+        if self.model == 'gpt-4.1' or \
+           self.model == 'gpt-4.1-mini' or \
+           self.model == 'gpt-4.1-nano':
+            return 32_768
         if self.model == 'o1' or \
            self.model == 'o3-mini':
                return 100_000

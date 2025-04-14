@@ -33,7 +33,11 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             return # do not initialize if not neurosymbolic; avoids conflict with llama.cpp check in EngineRepository.register_from_package
         openai.api_key = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
         self.model = self.config['NEUROSYMBOLIC_ENGINE_MODEL']
-        self.tokenizer = tiktoken.encoding_for_model(self.model)
+        try:
+            self.tokenizer = tiktoken.encoding_for_model(self.model)
+        except Exception as e:
+            CustomUserWarning(f'Failed to initialize tokenizer for model {self.model}. Please check your tiktoken library version. Caused by: {e}. We default to "o200k_base".')
+            self.tokenizer = tiktoken.get_encoding('o200k_base')
         self.max_context_tokens = self.api_max_context_tokens()
         self.max_response_tokens = self.api_max_response_tokens()
         self.seed = None
@@ -47,7 +51,8 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         if self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and \
            (self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('gpt-3.5') or \
             self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('gpt-4') or \
-            self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('chatgpt-4o')):
+            self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('chatgpt-4o') or \
+            self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('gpt-4.1')):
                 return 'neurosymbolic'
         return super().id() # default to unregistered
 
@@ -75,7 +80,10 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             "gpt-4o",
             "gpt-4o-2024-11-20",
             "gpt-4o-mini",
-            "chatgpt-4o-latest"
+            "chatgpt-4o-latest",
+            "gpt-4.1",
+            "gpt-4.1-mini",
+            "gpt-4.1-nano"
             }:
             tokens_per_message = 3
             tokens_per_name = 1
@@ -310,7 +318,10 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             self.model == 'gpt-4-turbo' or \
             self.model == 'gpt-4o' or \
             self.model == 'gpt-4o-mini' or \
-            self.model == 'chatgpt-4o-latest') \
+            self.model == 'chatgpt-4o-latest' or \
+            self.model == 'gpt-4.1' or \
+            self.model == 'gpt-4.1-mini' or \
+            self.model == 'gpt-4.1-nano') \
             and '<<vision:' in str(argument.prop.processed_input):
 
             parts = extract_pattern(str(argument.prop.processed_input))
@@ -367,7 +378,10 @@ class GPTXChatEngine(Engine, OpenAIMixin):
              self.model == 'gpt-4-turbo' or \
              self.model == 'gpt-4o' or \
              self.model == 'gpt-4o-mini' or \
-             self.model == 'chatgpt-4o-latest':
+             self.model == 'chatgpt-4o-latest' or \
+             self.model == 'gpt-4.1' or \
+             self.model == 'gpt-4.1-mini' or \
+             self.model == 'gpt-4.1-nano':
 
             images = [{ 'type': 'image_url', "image_url": { "url": file }} for file in image_files]
             user_prompt = { "role": "user", "content": [
