@@ -21,7 +21,9 @@ SUPPORTED_CHAT_MODELS = [
 ]
 SUPPORTED_REASONING_MODELS = [
     'o3-mini',
+    'o4-mini',
     'o1',
+    'o3'
 ]
 SUPPORTED_EMBEDDING_MODELS = [
     'text-embedding-ada-002',
@@ -67,7 +69,9 @@ class OpenAIMixin:
            self.model == 'chatgpt-4o-latest':
                return 128_000
         if self.model == 'o1' or \
-           self.model == 'o3-mini':
+           self.model == 'o3' or \
+           self.model == 'o3-mini' or \
+           self.model == 'o4-mini':
                return 200_000
         if self.model == 'gpt-4.1' or \
            self.model == 'gpt-4.1-mini' or \
@@ -100,7 +104,9 @@ class OpenAIMixin:
            self.model == 'gpt-4.1-nano':
             return 32_768
         if self.model == 'o1' or \
-           self.model == 'o3-mini':
+           self.model == 'o3' or \
+           self.model == 'o3-mini' or \
+           self.model == 'o4-mini':
                return 100_000
         raise ValueError(f'Unsupported model: {self.model}')
 
