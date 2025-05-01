@@ -92,13 +92,11 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
             else:
                 raise e
 
-        metadata = {'raw_output': res}
-
         reasoning_content = res.choices[0].message.reasoning_content
         content = res.choices[0].message.content
+        metadata = {'raw_output': res, 'thinking': reasoning_content}
 
-        output = {"thinking": reasoning_content, "text": content}
-        return [output], metadata
+        return [content], metadata
 
     def prepare(self, argument):
         if argument.prop.raw_input:

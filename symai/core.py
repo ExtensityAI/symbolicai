@@ -42,6 +42,8 @@ class Argument(Expression):
             self.prop.raw_input = False
         if 'raw_output' not in self.kwargs:
             self.prop.raw_output = False
+        if 'return_metadata' not in self.kwargs:
+            self.prop.return_metadata = False
         if 'logging' not in self.kwargs:
             self.prop.logging = False
         if 'verbose' not in self.kwargs:
