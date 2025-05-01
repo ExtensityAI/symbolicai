@@ -190,9 +190,9 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
 
         user += f"{suffix}"
 
-        if len(user) < 0:
+        if not len(user):
             # Anthropic doesn't allow empty user prompts; force it
-            user = " "
+            user = "N/A"
 
         if argument.prop.template_suffix:
             system += f' You will only generate content for the placeholder `{str(argument.prop.template_suffix)}` following the instructions and the provided context information.\n\n'
