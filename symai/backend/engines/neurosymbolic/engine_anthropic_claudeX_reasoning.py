@@ -90,9 +90,16 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
                 raise e
 
         metadata = {'raw_output': res}
-
         output = self._collect_response(res, stream=payload['stream'])
-        return [output], metadata
+        if len(output['thinking']) > 0:
+            # Means reasoning was enabled
+            metadata['thinking'] = output['thinking']
+
+        if argument.prop.response_format:
+            # Anthropic returns JSON in markdown format
+            output['text'] = output['text'].replace('```json', '').replace('```', '')
+
+        return [output['text']], metadata
 
     def prepare(self, argument):
         #@NOTE: OpenAI compatibility at high level

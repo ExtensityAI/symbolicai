@@ -91,6 +91,11 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
         metadata = {'raw_output': res}
 
         output = self._collect_response(res, stream=payload['stream'])
+
+        if argument.prop.response_format:
+            # Anthropic returns JSON in markdown format
+            output = output.replace('```json', '').replace('```', '')
+
         return [output], metadata
 
     def prepare(self, argument):
