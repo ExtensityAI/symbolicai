@@ -1,0 +1,1420 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>symai.shellsv &#8212; SymbolicAI</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/sphinx-book-theme.css?v=a3416100" />
+    <link rel="stylesheet" type="text/css" href="../../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../_static/documentation_options.js?v=df347da4"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/symai/shellsv';</script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="version" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">SymbolicAI</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../INTRODUCTION.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../INSTALLATION.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../QUICKSTART.html">Quick Start Guide</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../FEATURES/index.html">Features</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../FEATURES/causal_reasoning.html">🧠 Causal Reasoning</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../FEATURES/operations.html">Operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../FEATURES/expressions.html">Expressions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../FEATURES/vision.html">Vision</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../FEATURES/import.html">Module Management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../FEATURES/error_handling.html">❌ Error Handling and Debugging</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../ENGINES/index.html">Engines</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../ENGINES/neurosymbolic_engine.html">Neuro-Symbolic Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../ENGINES/symbolic_engine.html">Symbolic Engine (WolframAlpha)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../ENGINES/speech_engine.html">Speech Engine (Whisper)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../ENGINES/ocr_engine.html">OCR Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../ENGINES/search_engine.html">Search Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../ENGINES/webcrawler_engine.html">Webcrawler Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../ENGINES/drawing_engine.html">Drawing Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../ENGINES/file_engine.html">File Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../ENGINES/indexing_engine.html">Indexing Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../ENGINES/clip_engine.html">CLIP Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../ENGINES/local_engine.html">Local Engines</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../ENGINES/custom_engine.html">Custom Engine</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../TUTORIALS/index.html">Tutorials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../TUTORIALS/chatbot.html">Writing a Custom Chatbot</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../TUTORIALS/data_query.html">Querying Data with SQL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../TUTORIALS/context.html">Handling Files and Long Context Lengths</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../TUTORIALS/video_tutorials.html">Video Tutorials</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../TUTORIALS/examples.html">Example Files</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../TOOLS/index.html">Tools</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../TOOLS/shell.html">Shell Command Tool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../TOOLS/chatbot.html">Chatbot</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../TOOLS/packages.html">Packages</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../API_REF.html">API Reference</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../symai.html">symai package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../symai.backend.html">symai.backend package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../symai.backend.engines.html">symai.backend.engines package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../symai.backend.mixin.html">symai.backend.mixin package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3"><a class="reference internal" href="../../symai.collect.html">symai.collect package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../symai.extended.html">symai.extended package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../symai.extended.interfaces.html">symai.extended.interfaces package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../symai.extended.metrics.html">symai.extended.metrics package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../symai.extended.packages.html">symai.extended.packages package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../symai.extended.personas.html">symai.extended.personas package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../symai.extended.strategies.html">symai.extended.strategies package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3"><a class="reference internal" href="../../symai.formatter.html">symai.formatter package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../symai.menu.html">symai.menu package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../symai.misc.html">symai.misc package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../symai.models.html">symai.models package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../symai.ops.html">symai.ops package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../symai.server.html">symai.server package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../symai.backend.html">symai.backend package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../symai.backend.engines.html">symai.backend.engines package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../symai.backend.mixin.html">symai.backend.mixin package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="../../symai.backend.engines.html">symai.backend.engines package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../symai.backend.mixin.html">symai.backend.mixin package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../symai.collect.html">symai.collect package</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../symai.extended.html">symai.extended package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../symai.extended.interfaces.html">symai.extended.interfaces package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../symai.extended.metrics.html">symai.extended.metrics package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../symai.extended.packages.html">symai.extended.packages package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../symai.extended.personas.html">symai.extended.personas package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../symai.extended.personas.research.html">symai.extended.personas.research package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../symai.extended.personas.sales.html">symai.extended.personas.sales package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../symai.extended.personas.student.html">symai.extended.personas.student package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3"><a class="reference internal" href="../../symai.extended.strategies.html">symai.extended.strategies package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="../../symai.extended.interfaces.html">symai.extended.interfaces package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../symai.extended.metrics.html">symai.extended.metrics package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../symai.extended.packages.html">symai.extended.packages package</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../symai.extended.personas.html">symai.extended.personas package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../symai.extended.personas.research.html">symai.extended.personas.research package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../symai.extended.personas.sales.html">symai.extended.personas.sales package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../symai.extended.personas.student.html">symai.extended.personas.student package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="../../symai.extended.personas.research.html">symai.extended.personas.research package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../symai.extended.personas.sales.html">symai.extended.personas.sales package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../symai.extended.personas.student.html">symai.extended.personas.student package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../symai.extended.strategies.html">symai.extended.strategies package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../symai.formatter.html">symai.formatter package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../symai.menu.html">symai.menu package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../symai.misc.html">symai.misc package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../symai.models.html">symai.models package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../symai.ops.html">symai.ops package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../symai.server.html">symai.server package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="../../CONTRIBUTING.html">How to contribute</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../LICENSE.html">License</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item"><nav class="sidebar-indices-items" aria-labelledby="pst-indices-navigation-heading-2">
+  <p id="pst-indices-navigation-heading-2" class="sidebar-indices-items__title" role="heading" aria-level="1">Indices</p>
+  <ul class="indices-link">
+        <li class="toctree-l1">
+          <a class="reference internal"
+             href="../../genindex.html"
+             accesskey="I">General Index</a>
+        </li>
+        <li class="toctree-l1">
+          <a class="reference internal" href="../../py-modindex.html">Python Module Index</a>
+        </li>
+  </ul>
+</nav></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+<a href="https://github.com/ExtensityAI/symbolicai" target="_blank"
+   class="btn btn-sm btn-source-repository-button"
+   title="Source repository"
+   data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+
+</a>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1></h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for symai.shellsv</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">glob</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">signal</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">traceback</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Tuple</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">prompt_toolkit</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTML</span><span class="p">,</span> <span class="n">PromptSession</span><span class="p">,</span> <span class="n">print_formatted_text</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">prompt_toolkit.completion</span><span class="w"> </span><span class="kn">import</span> <span class="n">Completer</span><span class="p">,</span> <span class="n">Completion</span><span class="p">,</span> <span class="n">WordCompleter</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">prompt_toolkit.history</span><span class="w"> </span><span class="kn">import</span> <span class="n">History</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">prompt_toolkit.key_binding</span><span class="w"> </span><span class="kn">import</span> <span class="n">KeyBindings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">prompt_toolkit.keys</span><span class="w"> </span><span class="kn">import</span> <span class="n">Keys</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">prompt_toolkit.lexers</span><span class="w"> </span><span class="kn">import</span> <span class="n">PygmentsLexer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">prompt_toolkit.patch_stdout</span><span class="w"> </span><span class="kn">import</span> <span class="n">patch_stdout</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">prompt_toolkit.shortcuts</span><span class="w"> </span><span class="kn">import</span> <span class="n">CompleteStyle</span><span class="p">,</span> <span class="n">ProgressBar</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">prompt_toolkit.styles</span><span class="w"> </span><span class="kn">import</span> <span class="n">Style</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pygments.lexers.shell</span><span class="w"> </span><span class="kn">import</span> <span class="n">BashLexer</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.backend.settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">HOME_PATH</span><span class="p">,</span> <span class="n">SYMSH_CONFIG</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.components</span><span class="w"> </span><span class="kn">import</span> <span class="n">FileReader</span><span class="p">,</span> <span class="n">Function</span><span class="p">,</span> <span class="n">Indexer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.extended</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span><span class="n">ArxivPdfParser</span><span class="p">,</span> <span class="n">Conversation</span><span class="p">,</span> <span class="n">DocumentRetriever</span><span class="p">,</span>
+                       <span class="n">FileMerger</span><span class="p">,</span> <span class="n">RepositoryCloner</span><span class="p">,</span>
+                       <span class="n">RetrievalAugmentedConversation</span><span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.imports</span><span class="w"> </span><span class="kn">import</span> <span class="n">Import</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.interfaces</span><span class="w"> </span><span class="kn">import</span> <span class="n">Interface</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.menu.screen</span><span class="w"> </span><span class="kn">import</span> <span class="n">show_intro_menu</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.misc.console</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConsoleStyle</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.misc.loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">Loader</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.symbol</span><span class="w"> </span><span class="kn">import</span> <span class="n">Symbol</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;prompt_toolkit&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">)</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;asyncio&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">)</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;subprocess&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">ERROR</span><span class="p">)</span>
+
+<span class="c1"># load json config from home directory root</span>
+<span class="n">home_path</span> <span class="o">=</span> <span class="n">HOME_PATH</span>
+<span class="n">config_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">home_path</span><span class="p">,</span> <span class="s1">&#39;symsh.config.json&#39;</span><span class="p">)</span>
+<span class="c1"># migrate config from old path</span>
+<span class="k">if</span> <span class="s1">&#39;colors&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">SYMSH_CONFIG</span><span class="p">:</span>
+    <span class="n">__new_config__</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;colors&quot;</span><span class="p">:</span> <span class="n">SYMSH_CONFIG</span><span class="p">}</span>
+    <span class="c1"># add command in config</span>
+    <span class="n">SYMSH_CONFIG</span> <span class="o">=</span> <span class="n">__new_config__</span>
+    <span class="c1"># save config</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">__new_config__</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+
+<span class="c1"># make sure map-nt-cmd is in config</span>
+<span class="k">if</span> <span class="s1">&#39;map-nt-cmd&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">SYMSH_CONFIG</span><span class="p">:</span>
+    <span class="c1"># add command in config</span>
+    <span class="n">SYMSH_CONFIG</span><span class="p">[</span><span class="s1">&#39;map-nt-cmd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="c1"># save config</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">SYMSH_CONFIG</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+
+<span class="nb">print</span>                     <span class="o">=</span> <span class="n">print_formatted_text</span>
+<span class="n">FunctionType</span>              <span class="o">=</span> <span class="n">Function</span>
+<span class="n">ConversationType</span>          <span class="o">=</span> <span class="n">Conversation</span>
+<span class="n">RetrievalConversationType</span> <span class="o">=</span> <span class="n">RetrievalAugmentedConversation</span>
+<span class="n">use_styles</span>                <span class="o">=</span> <span class="kc">False</span>
+<span class="n">map_nt_cmd_enabled</span>        <span class="o">=</span> <span class="n">SYMSH_CONFIG</span><span class="p">[</span><span class="s1">&#39;map-nt-cmd&#39;</span><span class="p">]</span>
+
+<span class="n">SHELL_CONTEXT</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;[Description]</span>
+<span class="s2">This shell program is the command interpreter on the Linux systems, MacOS and Windows PowerShell.</span>
+<span class="s2">It is a program that interacts with the users in the terminal emulation window.</span>
+<span class="s2">Shell commands are instructions that instruct the system to do some action.</span>
+
+<span class="s2">[Program Instructions]</span>
+<span class="s2">If the user requests commands, you will only process user queries and return valid Linux/MacOS shell or Windows PowerShell commands and no other text.</span>
+<span class="s2">If no further specified, use as default the Linux/MacOS shell commands.</span>
+<span class="s2">If additional instructions are provided the follow the user query to produce the requested output.</span>
+<span class="s2">A well related and helpful answer with suggested improvements is preferred over &quot;I don&#39;t know&quot; or &quot;I don&#39;t understand&quot; answers or stating the obvious.</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<span class="n">stateful_conversation</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">previous_kwargs</span>       <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="supports_ansi_escape">
+<a class="viewcode-back" href="../../symai.html#symai.shellsv.supports_ansi_escape">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">supports_ansi_escape</span><span class="p">():</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">get_terminal_size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="PathCompleter">
+<a class="viewcode-back" href="../../symai.html#symai.shellsv.PathCompleter">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PathCompleter</span><span class="p">(</span><span class="n">Completer</span><span class="p">):</span>
+<div class="viewcode-block" id="PathCompleter.get_completions">
+<a class="viewcode-back" href="../../symai.html#symai.shellsv.PathCompleter.get_completions">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_completions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">document</span><span class="p">,</span> <span class="n">complete_event</span><span class="p">):</span>
+        <span class="n">complete_word</span> <span class="o">=</span> <span class="n">document</span><span class="o">.</span><span class="n">get_word_before_cursor</span><span class="p">(</span><span class="n">WORD</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">sep</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">sep</span>
+        <span class="k">if</span> <span class="n">complete_word</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;~</span><span class="si">{</span><span class="n">sep</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">):</span>
+            <span class="n">complete_word</span> <span class="o">=</span> <span class="n">FileReader</span><span class="o">.</span><span class="n">expand_user_path</span><span class="p">(</span><span class="n">complete_word</span><span class="p">)</span>
+
+        <span class="c1"># list all files and directories in current directory</span>
+        <span class="n">files</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">complete_word</span> <span class="o">+</span> <span class="s1">&#39;*&#39;</span><span class="p">))</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">files</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">dirs_</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">files_</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+            <span class="c1"># split the command into words by space (ignore escaped spaces)</span>
+            <span class="n">command_words</span> <span class="o">=</span> <span class="n">document</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">command_words</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="c1"># Calculate start position of the completion</span>
+                <span class="n">start_position</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">document</span><span class="o">.</span><span class="n">text</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">command_words</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span> <span class="o">-</span> <span class="mi">1</span>
+                <span class="n">start_position</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">start_position</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">start_position</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">document</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+            <span class="c1"># if there is a space in the file name, then escape it</span>
+            <span class="k">if</span> <span class="s1">&#39; &#39;</span> <span class="ow">in</span> <span class="n">file</span><span class="p">:</span>
+                <span class="n">file</span> <span class="o">=</span> <span class="n">file</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">,</span> <span class="s1">&#39;</span><span class="se">\\</span><span class="s1"> &#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">document</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;cd&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">document</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;mkdir&#39;</span><span class="p">))</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">file</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">file</span><span class="p">):</span>
+                <span class="n">dirs_</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">files_</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">dirs_</span><span class="p">:</span>
+            <span class="c1"># if starts with home directory, then replace it with ~</span>
+            <span class="n">d</span> <span class="o">=</span> <span class="n">FileReader</span><span class="o">.</span><span class="n">expand_user_path</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+            <span class="k">yield</span> <span class="n">Completion</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">start_position</span><span class="o">=-</span><span class="n">start_position</span><span class="p">,</span>
+                             <span class="n">style</span><span class="o">=</span><span class="s1">&#39;class:path-completion&#39;</span><span class="p">,</span>
+                             <span class="n">selected_style</span><span class="o">=</span><span class="s1">&#39;class:path-completion-selected&#39;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files_</span><span class="p">:</span>
+            <span class="c1"># if starts with home directory, then replace it with ~</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="n">FileReader</span><span class="o">.</span><span class="n">expand_user_path</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+            <span class="k">yield</span> <span class="n">Completion</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">start_position</span><span class="o">=-</span><span class="n">start_position</span><span class="p">,</span>
+                             <span class="n">style</span><span class="o">=</span><span class="s1">&#39;class:file-completion&#39;</span><span class="p">,</span>
+                             <span class="n">selected_style</span><span class="o">=</span><span class="s1">&#39;class:file-completion-selected&#39;</span><span class="p">)</span></div>
+</div>
+
+
+<div class="viewcode-block" id="HistoryCompleter">
+<a class="viewcode-back" href="../../symai.html#symai.shellsv.HistoryCompleter">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">HistoryCompleter</span><span class="p">(</span><span class="n">WordCompleter</span><span class="p">):</span>
+<div class="viewcode-block" id="HistoryCompleter.get_completions">
+<a class="viewcode-back" href="../../symai.html#symai.shellsv.HistoryCompleter.get_completions">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_completions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">document</span><span class="p">,</span> <span class="n">complete_event</span><span class="p">):</span>
+        <span class="n">completions</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_completions</span><span class="p">(</span><span class="n">document</span><span class="p">,</span> <span class="n">complete_event</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">completion</span> <span class="ow">in</span> <span class="n">completions</span><span class="p">:</span>
+            <span class="n">completion</span><span class="o">.</span><span class="n">style</span> <span class="o">=</span> <span class="s1">&#39;class:history-completion&#39;</span>
+            <span class="n">completion</span><span class="o">.</span><span class="n">selected_style</span> <span class="o">=</span> <span class="s1">&#39;class:history-completion-selected&#39;</span>
+            <span class="k">yield</span> <span class="n">completion</span></div>
+</div>
+
+
+<div class="viewcode-block" id="MergedCompleter">
+<a class="viewcode-back" href="../../symai.html#symai.shellsv.MergedCompleter">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MergedCompleter</span><span class="p">(</span><span class="n">Completer</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path_completer</span><span class="p">,</span> <span class="n">history_completer</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path_completer</span> <span class="o">=</span> <span class="n">path_completer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">history_completer</span> <span class="o">=</span> <span class="n">history_completer</span>
+
+<div class="viewcode-block" id="MergedCompleter.get_completions">
+<a class="viewcode-back" href="../../symai.html#symai.shellsv.MergedCompleter.get_completions">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_completions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">document</span><span class="p">,</span> <span class="n">complete_event</span><span class="p">):</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="n">document</span><span class="o">.</span><span class="n">text</span>
+
+        <span class="k">if</span> <span class="n">text</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;cd &#39;</span><span class="p">)</span> <span class="ow">or</span>\
+            <span class="n">text</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;ls &#39;</span><span class="p">)</span> <span class="ow">or</span>\
+            <span class="n">text</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;touch &#39;</span><span class="p">)</span> <span class="ow">or</span>\
+            <span class="n">text</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;cat &#39;</span><span class="p">)</span> <span class="ow">or</span>\
+            <span class="n">text</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;mkdir &#39;</span><span class="p">)</span> <span class="ow">or</span>\
+            <span class="n">text</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;open &#39;</span><span class="p">)</span> <span class="ow">or</span>\
+            <span class="n">text</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;rm &#39;</span><span class="p">)</span> <span class="ow">or</span>\
+            <span class="n">text</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;git &#39;</span><span class="p">)</span> <span class="ow">or</span>\
+            <span class="n">text</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;vi &#39;</span><span class="p">)</span> <span class="ow">or</span>\
+            <span class="n">text</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;nano &#39;</span><span class="p">)</span> <span class="ow">or</span>\
+            <span class="n">text</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;*&#39;</span><span class="p">)</span> <span class="ow">or</span>\
+            <span class="n">text</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;.</span><span class="se">\\</span><span class="s1">&#39;</span><span class="p">)</span> <span class="ow">or</span>\
+            <span class="n">text</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;~</span><span class="se">\\</span><span class="s1">&#39;</span><span class="p">)</span> <span class="ow">or</span>\
+            <span class="n">text</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;</span><span class="se">\\</span><span class="s1">&#39;</span><span class="p">)</span> <span class="ow">or</span>\
+            <span class="n">text</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;.</span><span class="se">\\</span><span class="s1">&#39;</span><span class="p">)</span> <span class="ow">or</span>\
+            <span class="n">text</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;~</span><span class="se">\\</span><span class="s1">&#39;</span><span class="p">)</span> <span class="ow">or</span>\
+            <span class="n">text</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\\</span><span class="s1">&#39;</span><span class="p">)</span> <span class="ow">or</span>\
+            <span class="n">text</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;./&#39;</span><span class="p">)</span> <span class="ow">or</span>\
+            <span class="n">text</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;~/&#39;</span><span class="p">)</span> <span class="ow">or</span>\
+            <span class="n">text</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">):</span>
+            <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">path_completer</span><span class="o">.</span><span class="n">get_completions</span><span class="p">(</span><span class="n">document</span><span class="p">,</span> <span class="n">complete_event</span><span class="p">)</span>
+            <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">history_completer</span><span class="o">.</span><span class="n">get_completions</span><span class="p">(</span><span class="n">document</span><span class="p">,</span> <span class="n">complete_event</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">history_completer</span><span class="o">.</span><span class="n">get_completions</span><span class="p">(</span><span class="n">document</span><span class="p">,</span> <span class="n">complete_event</span><span class="p">)</span>
+            <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">path_completer</span><span class="o">.</span><span class="n">get_completions</span><span class="p">(</span><span class="n">document</span><span class="p">,</span> <span class="n">complete_event</span><span class="p">)</span></div>
+</div>
+
+
+<span class="c1"># Create custom keybindings</span>
+<span class="n">bindings</span> <span class="o">=</span> <span class="n">KeyBindings</span><span class="p">()</span>
+<span class="n">previous_prefix</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">exec_prefix</span> <span class="o">=</span> <span class="s1">&#39;default&#39;</span>
+<span class="c1"># Get a copy of the current environment</span>
+<span class="n">default_env</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+<div class="viewcode-block" id="get_exec_prefix">
+<a class="viewcode-back" href="../../symai.html#symai.shellsv.get_exec_prefix">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_exec_prefix</span><span class="p">():</span>
+    <span class="k">return</span> <span class="n">sys</span><span class="o">.</span><span class="n">exec_prefix</span> <span class="k">if</span> <span class="n">exec_prefix</span> <span class="o">==</span> <span class="s1">&#39;default&#39;</span> <span class="k">else</span> <span class="n">exec_prefix</span></div>
+
+
+<div class="viewcode-block" id="get_conda_env">
+<a class="viewcode-back" href="../../symai.html#symai.shellsv.get_conda_env">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_conda_env</span><span class="p">():</span>
+    <span class="c1"># what conda env am I in (e.g., where is my Python process from)?</span>
+    <span class="n">ENVBIN</span> <span class="o">=</span> <span class="n">get_exec_prefix</span><span class="p">()</span>
+    <span class="n">env_name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">ENVBIN</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">env_name</span></div>
+
+
+<span class="c1"># bind to &#39;Ctrl&#39; + &#39;Space&#39;</span>
+<span class="nd">@bindings</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Keys</span><span class="o">.</span><span class="n">ControlSpace</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_</span><span class="p">(</span><span class="n">event</span><span class="p">):</span>
+    <span class="n">current_user_input</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">current_buffer</span><span class="o">.</span><span class="n">document</span><span class="o">.</span><span class="n">text</span>
+    <span class="n">func</span> <span class="o">=</span> <span class="n">FunctionType</span><span class="p">(</span><span class="n">SHELL_CONTEXT</span><span class="p">)</span>
+
+    <span class="n">bottom_toolbar</span> <span class="o">=</span> <span class="n">HTML</span><span class="p">(</span><span class="s1">&#39; &lt;b&gt;[f]&lt;/b&gt; Print &quot;f&quot; &lt;b&gt;[x]&lt;/b&gt; Abort.&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Create custom key bindings first.</span>
+    <span class="n">kb</span> <span class="o">=</span> <span class="n">KeyBindings</span><span class="p">()</span>
+
+    <span class="n">cancel</span> <span class="o">=</span> <span class="p">[</span><span class="kc">False</span><span class="p">]</span>
+    <span class="nd">@kb</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;f&#39;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_</span><span class="p">(</span><span class="n">event</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;You pressed `f`.&#39;</span><span class="p">)</span>
+
+    <span class="nd">@kb</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;x&#39;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_</span><span class="p">(</span><span class="n">event</span><span class="p">):</span>
+        <span class="s2">&quot; Send Abort (control-c) signal. &quot;</span>
+        <span class="n">cancel</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">kill</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">(),</span> <span class="n">signal</span><span class="o">.</span><span class="n">SIGINT</span><span class="p">)</span>
+
+    <span class="c1"># Use `patch_stdout`, to make sure that prints go above the</span>
+    <span class="c1"># application.</span>
+    <span class="k">with</span> <span class="n">patch_stdout</span><span class="p">():</span>
+        <span class="k">with</span> <span class="n">ProgressBar</span><span class="p">(</span><span class="n">key_bindings</span><span class="o">=</span><span class="n">kb</span><span class="p">,</span> <span class="n">bottom_toolbar</span><span class="o">=</span><span class="n">bottom_toolbar</span><span class="p">)</span> <span class="k">as</span> <span class="n">pb</span><span class="p">:</span>
+            <span class="c1"># TODO: hack to simulate progress bar of indeterminate length of an synchronous function</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">pb</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">)):</span>
+                <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">50</span> <span class="ow">and</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">70</span><span class="p">:</span>
+                    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">.01</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">60</span><span class="p">:</span>
+                    <span class="n">res</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="n">current_user_input</span><span class="p">)</span> <span class="c1"># hack to see progress bar</span>
+
+                <span class="c1"># Stop when the cancel flag has been set.</span>
+                <span class="k">if</span> <span class="n">cancel</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                    <span class="k">break</span>
+
+    <span class="k">with</span> <span class="n">ConsoleStyle</span><span class="p">(</span><span class="s1">&#39;code&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">console</span><span class="p">:</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+
+<span class="nd">@bindings</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Keys</span><span class="o">.</span><span class="n">PageUp</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_</span><span class="p">(</span><span class="n">event</span><span class="p">):</span>
+    <span class="c1"># Moving up for 5 lines</span>
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
+        <span class="n">event</span><span class="o">.</span><span class="n">current_buffer</span><span class="o">.</span><span class="n">auto_up</span><span class="p">()</span>
+
+<span class="nd">@bindings</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Keys</span><span class="o">.</span><span class="n">PageDown</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_</span><span class="p">(</span><span class="n">event</span><span class="p">):</span>
+    <span class="c1"># Moving down for 5 lines</span>
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
+        <span class="n">event</span><span class="o">.</span><span class="n">current_buffer</span><span class="o">.</span><span class="n">auto_down</span><span class="p">()</span>
+
+<div class="viewcode-block" id="FileHistory">
+<a class="viewcode-back" href="../../symai.html#symai.shellsv.FileHistory">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">FileHistory</span><span class="p">(</span><span class="n">History</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    :class:`.History` class that stores all strings in a file.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="n">filename</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+<div class="viewcode-block" id="FileHistory.load_history_strings">
+<a class="viewcode-back" href="../../symai.html#symai.shellsv.FileHistory.load_history_strings">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load_history_strings</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+        <span class="n">lines</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">):</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">lines</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+                <span class="c1"># Remove comments and empty lines.</span>
+                <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span><span class="n">line</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span> <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;#&quot;</span><span class="p">)]</span>
+                <span class="c1"># Remove whitespace at the end and \n.</span>
+                <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span><span class="n">line</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">]</span>
+                <span class="c1"># only keep unique lines</span>
+                <span class="n">lines</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="n">lines</span><span class="p">))</span>
+
+        <span class="c1"># Reverse the order, because newest items have to go first.</span>
+        <span class="k">return</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="FileHistory.store_string">
+<a class="viewcode-back" href="../../symai.html#symai.shellsv.FileHistory.store_string">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">store_string</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">string</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Save to file.</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;ab&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+
+            <span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">))</span>
+
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">string</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">):</span>
+                <span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">line</span><span class="p">)</span></div>
+</div>
+
+
+<span class="c1"># Defining commands history</span>
+<div class="viewcode-block" id="load_history">
+<a class="viewcode-back" href="../../symai.html#symai.shellsv.load_history">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_history</span><span class="p">(</span><span class="n">home_path</span><span class="o">=</span><span class="n">HOME_PATH</span><span class="p">,</span> <span class="n">history_file</span><span class="o">=</span><span class="s1">&#39;.bash_history&#39;</span><span class="p">):</span>
+    <span class="n">history_file_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">home_path</span><span class="p">,</span> <span class="n">history_file</span><span class="p">)</span>
+    <span class="n">history</span> <span class="o">=</span> <span class="n">FileHistory</span><span class="p">(</span><span class="n">history_file_path</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">history</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">history</span><span class="o">.</span><span class="n">load_history_strings</span><span class="p">())</span></div>
+
+
+<span class="c1"># Function to check if current directory is a git directory</span>
+<div class="viewcode-block" id="get_git_branch">
+<a class="viewcode-back" href="../../symai.html#symai.shellsv.get_git_branch">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_git_branch</span><span class="p">():</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">git_process</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">([</span><span class="s1">&#39;git&#39;</span><span class="p">,</span> <span class="s1">&#39;rev-parse&#39;</span><span class="p">,</span> <span class="s1">&#39;--abbrev-ref&#39;</span><span class="p">,</span> <span class="s1">&#39;HEAD&#39;</span><span class="p">],</span> <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span> <span class="n">stderr</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">)</span>
+        <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="n">git_process</span><span class="o">.</span><span class="n">communicate</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">git_process</span><span class="o">.</span><span class="n">returncode</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">stdout</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">return</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="disambiguate">
+<a class="viewcode-back" href="../../symai.html#symai.shellsv.disambiguate">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">disambiguate</span><span class="p">(</span><span class="n">cmds</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Ok, so, possible options for now:</span>
+<span class="sd">        1. query | cmd</span>
+<span class="sd">        2. query | file [file ...]</span>
+<span class="sd">        -- not supported</span>
+<span class="sd">        3. query | cmd | file</span>
+<span class="sd">        4. query | cmd cmd ...</span>
+<span class="sd">        5. query | file | cmd</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">has_at_least_one_cmd</span> <span class="o">=</span> <span class="nb">any</span><span class="p">([</span><span class="n">shutil</span><span class="o">.</span><span class="n">which</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">cmd</span> <span class="ow">in</span> <span class="n">cmds</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)])</span>
+    <span class="n">maybe_cmd</span>   <span class="o">=</span> <span class="n">cmds</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="c1"># get first command</span>
+    <span class="n">maybe_files</span> <span class="o">=</span> <span class="n">FileReader</span><span class="o">.</span><span class="n">extract_files</span><span class="p">(</span><span class="n">cmds</span><span class="p">)</span>
+    <span class="c1"># if cmd follows file(s) or file(s) follows cmd throw error as not supported</span>
+    <span class="k">if</span> <span class="n">maybe_files</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">has_at_least_one_cmd</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Cannot disambiguate commands that have both files and commands or multiple commands. Please provide correct order of commands. &#39;</span>
+                         <span class="s1">&#39;Supported are: &#39;</span>
+                         <span class="s1">&#39;query | file [file ...] (e.g. &quot;what do these files have in common?&quot; | file1 [file2 ...]) &#39;</span>
+                         <span class="s1">&#39;and &#39;</span>
+                         <span class="s1">&#39;query | cmd (e.g. &quot;what flags can I use with rg?&quot; | rg --help)&#39;</span><span class="p">)</span>
+    <span class="c1"># now check order of commands and keep correct order</span>
+    <span class="k">if</span> <span class="n">shutil</span><span class="o">.</span><span class="n">which</span><span class="p">(</span><span class="n">maybe_cmd</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">cmd_out</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">cmds</span><span class="p">,</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">cmd_out</span><span class="o">.</span><span class="n">stdout</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Command not found or failed. Error: </span><span class="si">{</span><span class="n">cmd_out</span><span class="o">.</span><span class="n">stderr</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">cmd_out</span><span class="o">.</span><span class="n">stdout</span><span class="p">,</span> <span class="mi">1</span>
+    <span class="k">if</span> <span class="n">maybe_files</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">maybe_files</span><span class="p">,</span> <span class="mi">2</span></div>
+
+
+<span class="c1"># query language model</span>
+<div class="viewcode-block" id="query_language_model">
+<a class="viewcode-back" href="../../symai.html#symai.shellsv.query_language_model">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">query_language_model</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">res</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">global</span> <span class="n">stateful_conversation</span><span class="p">,</span> <span class="n">previous_kwargs</span>
+    <span class="n">home_path</span> <span class="o">=</span> <span class="n">HOME_PATH</span>
+    <span class="n">symai_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">home_path</span><span class="p">,</span> <span class="s1">&#39;.conversation_state&#39;</span><span class="p">)</span>
+    <span class="n">plugin</span> <span class="o">=</span> <span class="n">SYMSH_CONFIG</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;plugin_prefix&#39;</span><span class="p">)</span>
+
+    <span class="c1"># check and extract kwargs from query if any</span>
+    <span class="c1"># format --kwargs key1=value1,key2=value2,key3=value3,...keyN=valueN</span>
+    <span class="k">if</span> <span class="s1">&#39;--kwargs&#39;</span> <span class="ow">in</span> <span class="n">query</span> <span class="ow">or</span> <span class="s1">&#39;-kw&#39;</span> <span class="ow">in</span> <span class="n">query</span><span class="p">:</span>
+        <span class="n">splitter</span> <span class="o">=</span> <span class="s1">&#39;--kwargs&#39;</span> <span class="k">if</span> <span class="s1">&#39;--kwargs&#39;</span> <span class="ow">in</span> <span class="n">query</span> <span class="k">else</span> <span class="s1">&#39;-kw&#39;</span>
+        <span class="c1"># check if kwargs format is last in query otherwise raise error</span>
+        <span class="n">splits</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">splitter</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">previous_kwargs</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="s1">&#39;=&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">splits</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="ow">and</span> <span class="s1">&#39;,&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">splits</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Kwargs format must be last in query.&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">previous_kwargs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="s1">&#39;=&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">splits</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="ow">and</span> <span class="s1">&#39;,&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">splits</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="c1"># use previous kwargs</span>
+            <span class="n">cmd_kwargs</span> <span class="o">=</span> <span class="n">previous_kwargs</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># remove kwargs from query</span>
+            <span class="n">query</span> <span class="o">=</span> <span class="n">splits</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="c1"># extract kwargs</span>
+            <span class="n">kwargs_str</span> <span class="o">=</span> <span class="n">splits</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="n">cmd_kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">([</span><span class="n">kw</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;=&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">kw</span> <span class="ow">in</span> <span class="n">kwargs_str</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)])</span>
+            <span class="n">cmd_kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span> <span class="n">Symbol</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span><span class="o">.</span><span class="n">ast</span><span class="p">()</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">cmd_kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+
+        <span class="n">previous_kwargs</span> <span class="o">=</span> <span class="n">cmd_kwargs</span>
+        <span class="c1"># unpack cmd_kwargs to kwargs</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">kwargs</span><span class="p">,</span> <span class="o">**</span><span class="n">cmd_kwargs</span><span class="p">}</span>
+
+    <span class="c1"># Handle stateful conversations:</span>
+    <span class="c1"># 1. If query starts with !&quot; (new conversation), create new conversation state</span>
+    <span class="c1"># 2. If query starts with .&quot; (follow-up), either:</span>
+    <span class="c1">#    - Load existing conversation state if it exists</span>
+    <span class="c1">#    - Create new conversation state if none exists</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">query</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;!&quot;&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">query</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;!&#39;&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">query</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;!`&#39;</span><span class="p">)):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">symai_path</span><span class="p">),</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">stateful_conversation</span> <span class="o">=</span> <span class="n">ConversationType</span><span class="p">(</span><span class="n">auto_print</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">ConversationType</span><span class="o">.</span><span class="n">save_conversation_state</span><span class="p">(</span><span class="n">stateful_conversation</span><span class="p">,</span> <span class="n">symai_path</span><span class="p">)</span>
+        <span class="c1"># Special case: if query starts with !&quot; and has a prefix, run the prefix command and store the output</span>
+        <span class="k">if</span> <span class="n">plugin</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">Loader</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Inference ...&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
+                <span class="n">cmd</span> <span class="o">=</span> <span class="n">query</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\&#39;</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
+                <span class="n">cmd</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;symrun </span><span class="si">{</span><span class="n">plugin</span><span class="si">}</span><span class="s2"> &#39;</span><span class="si">{</span><span class="n">cmd</span><span class="si">}</span><span class="s2">&#39; --disable-pbar&quot;</span>
+                <span class="n">cmd_out</span> <span class="o">=</span> <span class="n">run_shell_command</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">auto_query_on_error</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">stateful_conversation</span><span class="o">.</span><span class="n">store</span><span class="p">(</span><span class="n">cmd_out</span><span class="p">)</span>
+                <span class="n">ConversationType</span><span class="o">.</span><span class="n">save_conversation_state</span><span class="p">(</span><span class="n">stateful_conversation</span><span class="p">,</span> <span class="n">symai_path</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">cmd_out</span>
+    <span class="k">elif</span> <span class="n">query</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;.&quot;&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">query</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;.&#39;&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">query</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;.`&#39;</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">stateful_conversation</span> <span class="o">=</span> <span class="n">stateful_conversation</span><span class="o">.</span><span class="n">load_conversation_state</span><span class="p">(</span><span class="n">symai_path</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">ConsoleStyle</span><span class="p">(</span><span class="s1">&#39;error&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">console</span><span class="p">:</span>
+                <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s1">&#39;No conversation state found. Please start a new conversation.&#39;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">plugin</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">Loader</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Inference ...&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
+                <span class="n">query</span> <span class="o">=</span> <span class="n">query</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\&#39;</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
+                <span class="n">answer</span> <span class="o">=</span> <span class="n">stateful_conversation</span><span class="p">(</span><span class="n">query</span><span class="p">)</span><span class="o">.</span><span class="n">value</span>
+                <span class="n">cmd</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;symrun </span><span class="si">{</span><span class="n">plugin</span><span class="si">}</span><span class="s2"> &#39;</span><span class="si">{</span><span class="n">answer</span><span class="si">}</span><span class="s2">&#39; --disable-pbar&quot;</span>
+                <span class="n">cmd_out</span> <span class="o">=</span> <span class="n">run_shell_command</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">auto_query_on_error</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">stateful_conversation</span><span class="o">.</span><span class="n">store</span><span class="p">(</span><span class="n">cmd_out</span><span class="p">)</span>
+                <span class="n">ConversationType</span><span class="o">.</span><span class="n">save_conversation_state</span><span class="p">(</span><span class="n">stateful_conversation</span><span class="p">,</span> <span class="n">symai_path</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">cmd_out</span>
+    <span class="n">cmd</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="s1">&#39;|&#39;</span> <span class="ow">in</span> <span class="n">query</span><span class="p">:</span>
+        <span class="n">cmds</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;|&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cmds</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">((</span><span class="s1">&#39;Cannot disambiguate commands that have more than 1 pipes. Please provide correct order of commands. &#39;</span>
+                              <span class="s1">&#39;Supported are: &#39;</span>
+                              <span class="s1">&#39;query | file [file ...] (e.g. &quot;what do these files have in common?&quot; | file1 [file2 ...]) &#39;</span>
+                              <span class="s1">&#39;and &#39;</span>
+                              <span class="s1">&#39;query | cmd (e.g. &quot;what flags can I use with rg?&quot; | rg --help)&#39;</span><span class="p">))</span>
+        <span class="n">query</span> <span class="o">=</span> <span class="n">cmds</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">payload</span><span class="p">,</span> <span class="n">order</span> <span class="o">=</span> <span class="n">disambiguate</span><span class="p">(</span><span class="n">cmds</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+        <span class="c1"># check if we&#39;re in a stateful conversation</span>
+        <span class="n">is_stateful</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">startswith</span><span class="p">((</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="s1">&#39;!&#39;</span><span class="p">))</span> <span class="ow">and</span> <span class="nb">any</span><span class="p">(</span><span class="n">query</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}{</span><span class="n">quote</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                     <span class="k">for</span> <span class="n">prefix</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="s1">&#39;!&#39;</span><span class="p">]</span>
+                     <span class="k">for</span> <span class="n">quote</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;&quot;&#39;</span><span class="p">,</span> <span class="s2">&quot;&#39;&quot;</span><span class="p">,</span> <span class="s1">&#39;`&#39;</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="n">is_stateful</span><span class="p">:</span>
+            <span class="n">func</span> <span class="o">=</span> <span class="n">stateful_conversation</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">func</span> <span class="o">=</span> <span class="n">FunctionType</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span> <span class="k">if</span> <span class="n">order</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">ConversationType</span><span class="p">(</span><span class="n">file_link</span><span class="o">=</span><span class="n">payload</span><span class="p">,</span> <span class="n">auto_print</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">is_stateful</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">order</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">func</span><span class="o">.</span><span class="n">store</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">order</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">payload</span><span class="p">:</span>
+                    <span class="n">func</span><span class="o">.</span><span class="n">store_file</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span>  <span class="n">query</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;.&quot;&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">query</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;.&#39;&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">query</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;.`&#39;</span><span class="p">)</span> <span class="ow">or</span>\
+            <span class="n">query</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;!&quot;&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">query</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;!&#39;&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">query</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;!`&#39;</span><span class="p">):</span>
+            <span class="n">func</span> <span class="o">=</span> <span class="n">stateful_conversation</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">func</span> <span class="o">=</span> <span class="n">FunctionType</span><span class="p">(</span><span class="n">SHELL_CONTEXT</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">Loader</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Inference ...&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">res</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">query</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;[Context]</span><span class="se">\n</span><span class="si">{</span><span class="n">res</span><span class="si">}</span><span class="se">\n\n</span><span class="s2">[Query]</span><span class="se">\n</span><span class="si">{</span><span class="n">query</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">stateful_conversation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span>
+        <span class="n">query</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;.&quot;&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">query</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;.&#39;&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">query</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;.`&#39;</span><span class="p">)</span> <span class="ow">or</span>
+        <span class="n">query</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;!&quot;&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">query</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;!&#39;&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">query</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;!`&#39;</span><span class="p">)</span>
+    <span class="p">):</span>
+        <span class="n">ConversationType</span><span class="o">.</span><span class="n">save_conversation_state</span><span class="p">(</span><span class="n">stateful_conversation</span><span class="p">,</span> <span class="n">symai_path</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">msg</span></div>
+
+
+<div class="viewcode-block" id="retrieval_augmented_indexing">
+<a class="viewcode-back" href="../../symai.html#symai.shellsv.retrieval_augmented_indexing">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">retrieval_augmented_indexing</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">index_name</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">global</span> <span class="n">stateful_conversation</span>
+    <span class="n">sep</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">sep</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">query</span>
+
+    <span class="c1"># check if path contains overwrite flag</span>
+    <span class="n">overwrite</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;!&#39;</span><span class="p">):</span>
+        <span class="n">overwrite</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">path</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+
+    <span class="c1"># check if request use of specific index</span>
+    <span class="n">use_index_name</span>  <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;index:&#39;</span><span class="p">):</span>
+        <span class="n">use_index_name</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="c1"># continue conversation with specific index</span>
+        <span class="n">index_name</span>  <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;index:&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">parse_arxiv</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1"># check if path contains arxiv flag</span>
+        <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;arxiv:&#39;</span><span class="p">):</span>
+            <span class="n">parse_arxiv</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="c1"># check if path contains git flag</span>
+        <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;git@&#39;</span><span class="p">):</span>
+            <span class="n">overwrite</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">repo_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">home_path</span><span class="p">,</span> <span class="s1">&#39;temp&#39;</span><span class="p">)</span>
+            <span class="n">cloner</span> <span class="o">=</span> <span class="n">RepositoryCloner</span><span class="p">(</span><span class="n">repo_path</span><span class="o">=</span><span class="n">repo_path</span><span class="p">)</span>
+            <span class="n">url</span> <span class="o">=</span> <span class="n">path</span><span class="p">[</span><span class="mi">4</span><span class="p">:]</span>
+            <span class="k">if</span> <span class="s1">&#39;http&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">url</span><span class="p">:</span>
+                <span class="n">url</span> <span class="o">=</span> <span class="s1">&#39;https://&#39;</span> <span class="o">+</span> <span class="n">url</span>
+            <span class="n">url</span> <span class="o">=</span> <span class="n">url</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.com:&#39;</span><span class="p">,</span> <span class="s1">&#39;.com/&#39;</span><span class="p">)</span>
+            <span class="c1"># if ends with &#39;.git&#39; then remove it</span>
+            <span class="k">if</span> <span class="n">url</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.git&#39;</span><span class="p">):</span>
+                <span class="n">url</span> <span class="o">=</span> <span class="n">url</span><span class="p">[:</span><span class="o">-</span><span class="mi">4</span><span class="p">]</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="n">cloner</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+
+        <span class="c1"># merge files</span>
+        <span class="n">merger</span> <span class="o">=</span> <span class="n">FileMerger</span><span class="p">()</span>
+        <span class="n">file</span> <span class="o">=</span> <span class="n">merger</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="c1"># check if file contains arxiv pdf file and parse it</span>
+        <span class="k">if</span> <span class="n">parse_arxiv</span><span class="p">:</span>
+            <span class="n">arxiv</span> <span class="o">=</span> <span class="n">ArxivPdfParser</span><span class="p">()</span>
+            <span class="n">pdf_file</span> <span class="o">=</span> <span class="n">arxiv</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">pdf_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">file</span> <span class="o">=</span> <span class="n">file</span> <span class="o">|</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">|</span> <span class="n">pdf_file</span>
+
+        <span class="n">index_name</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">sep</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">index_name</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">index_name</span>
+        <span class="n">index_name</span> <span class="o">=</span> <span class="n">Indexer</span><span class="o">.</span><span class="n">replace_special_chars</span><span class="p">(</span><span class="n">index_name</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Indexing </span><span class="si">{</span><span class="n">index_name</span><span class="si">}</span><span class="s1"> ...&#39;</span><span class="p">)</span>
+
+        <span class="c1"># creates index if not exists</span>
+        <span class="n">DocumentRetriever</span><span class="p">(</span><span class="n">index_name</span><span class="o">=</span><span class="n">index_name</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">file</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="n">overwrite</span><span class="p">)</span>
+
+    <span class="n">home_path</span> <span class="o">=</span> <span class="n">HOME_PATH</span>
+    <span class="n">symai_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">home_path</span><span class="p">,</span> <span class="s1">&#39;.conversation_state&#39;</span><span class="p">)</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">symai_path</span><span class="p">),</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">stateful_conversation</span> <span class="o">=</span> <span class="n">RetrievalConversationType</span><span class="p">(</span><span class="n">auto_print</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">index_name</span><span class="o">=</span><span class="n">index_name</span><span class="p">)</span>
+    <span class="n">Conversation</span><span class="o">.</span><span class="n">save_conversation_state</span><span class="p">(</span><span class="n">stateful_conversation</span><span class="p">,</span> <span class="n">symai_path</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">use_index_name</span><span class="p">:</span>
+        <span class="n">message</span> <span class="o">=</span> <span class="s1">&#39;New session &#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">message</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;Repository </span><span class="si">{</span><span class="n">url</span><span class="si">}</span><span class="s1"> cloned and &#39;</span> <span class="k">if</span> <span class="n">query</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;git@&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">query</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;git:&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="sa">f</span><span class="s1">&#39;Directory </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1"> &#39;</span>
+    <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">message</span><span class="si">}</span><span class="s1">successfully indexed: </span><span class="si">{</span><span class="n">index_name</span><span class="si">}</span><span class="s1">&#39;</span>
+    <span class="k">return</span> <span class="n">msg</span></div>
+
+
+<div class="viewcode-block" id="search_engine">
+<a class="viewcode-back" href="../../symai.html#symai.shellsv.search_engine">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">search_engine</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">res</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">search</span> <span class="o">=</span> <span class="n">Interface</span><span class="p">(</span><span class="s1">&#39;serpapi&#39;</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">Loader</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Searching ...&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
+        <span class="n">search_query</span> <span class="o">=</span> <span class="n">Symbol</span><span class="p">(</span><span class="n">query</span><span class="p">)</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="s1">&#39;search engine optimized query&#39;</span><span class="p">)</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">search</span><span class="p">(</span><span class="n">search_query</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">Loader</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Inference ...&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
+        <span class="n">func</span> <span class="o">=</span> <span class="n">FunctionType</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">payload</span><span class="o">=</span><span class="n">res</span><span class="p">)</span>
+        <span class="c1"># write a temp dump file with the query and results</span>
+        <span class="n">home_path</span> <span class="o">=</span> <span class="n">HOME_PATH</span>
+        <span class="n">symai_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">home_path</span><span class="p">,</span> <span class="s1">&#39;.search_dump&#39;</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">symai_path</span><span class="p">),</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">symai_path</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;[SEARCH_QUERY]:</span><span class="se">\n</span><span class="si">{</span><span class="n">search_query</span><span class="si">}</span><span class="se">\n</span><span class="s1">[RESULTS]</span><span class="se">\n</span><span class="si">{</span><span class="n">res</span><span class="si">}</span><span class="se">\n</span><span class="s1">[MESSAGE]</span><span class="se">\n</span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">msg</span></div>
+
+
+<div class="viewcode-block" id="set_default_module">
+<a class="viewcode-back" href="../../symai.html#symai.shellsv.set_default_module">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">set_default_module</span><span class="p">(</span><span class="n">cmd</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">cmd</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;set-plugin&#39;</span><span class="p">):</span>
+        <span class="n">module</span> <span class="o">=</span> <span class="n">cmd</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;set-plugin&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="n">SYMSH_CONFIG</span><span class="p">[</span><span class="s1">&#39;plugin_prefix&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">module</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">SYMSH_CONFIG</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Default plugin set to &#39;</span><span class="si">{</span><span class="n">module</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+    <span class="k">elif</span> <span class="n">cmd</span> <span class="o">==</span> <span class="s1">&#39;unset-plugin&#39;</span><span class="p">:</span>
+        <span class="n">SYMSH_CONFIG</span><span class="p">[</span><span class="s1">&#39;plugin_prefix&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">SYMSH_CONFIG</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Default plugin unset&quot;</span>
+    <span class="k">elif</span> <span class="n">cmd</span> <span class="o">==</span> <span class="s1">&#39;get-plugin&#39;</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Default plugin is &#39;</span><span class="si">{</span><span class="n">SYMSH_CONFIG</span><span class="p">[</span><span class="s1">&#39;plugin_prefix&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+
+    <span class="k">with</span> <span class="n">ConsoleStyle</span><span class="p">(</span><span class="s1">&#39;success&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">console</span><span class="p">:</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="handle_error">
+<a class="viewcode-back" href="../../symai.html#symai.shellsv.handle_error">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">handle_error</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">res</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">auto_query_on_error</span><span class="p">):</span>
+    <span class="n">msg</span> <span class="o">=</span> <span class="n">Symbol</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span> <span class="o">|</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="se">\n</span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">res</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span>
+    <span class="k">if</span> <span class="s1">&#39;command not found&#39;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">res</span><span class="p">)</span> <span class="ow">or</span> <span class="s1">&#39;not recognized as an internal or external command&#39;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">res</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">res</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">stderr</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">stderr</span>
+        <span class="k">if</span> <span class="n">stderr</span> <span class="ow">and</span> <span class="n">auto_query_on_error</span><span class="p">:</span>
+            <span class="n">rsp</span> <span class="o">=</span> <span class="n">stderr</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">rsp</span><span class="p">)</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="n">msg</span> <span class="o">|</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="si">{</span><span class="n">rsp</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="k">if</span> <span class="s1">&#39;usage:&#39;</span> <span class="ow">in</span> <span class="n">rsp</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">cmd</span> <span class="o">=</span> <span class="n">cmd</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;usage: &#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="c1"># get man page result for command</span>
+                    <span class="n">res</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s1">&#39;man -P cat </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">cmd</span><span class="p">,</span>
+                                            <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                                            <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">)</span>
+                    <span class="n">stdout</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">stdout</span>
+                    <span class="k">if</span> <span class="n">stdout</span><span class="p">:</span>
+                        <span class="n">rsp</span> <span class="o">=</span> <span class="n">stdout</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)[:</span><span class="mi">500</span><span class="p">]</span>
+                        <span class="n">msg</span> <span class="o">=</span> <span class="n">msg</span> <span class="o">|</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="si">{</span><span class="n">rsp</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                    <span class="k">pass</span>
+
+            <span class="k">return</span> <span class="n">query_language_model</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">stdout</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">stdout</span>
+            <span class="k">if</span> <span class="n">stdout</span><span class="p">:</span>
+                <span class="n">message</span> <span class="o">=</span> <span class="n">stderr</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">message</span></div>
+
+
+<span class="c1"># run shell command</span>
+<div class="viewcode-block" id="run_shell_command">
+<a class="viewcode-back" href="../../symai.html#symai.shellsv.run_shell_command">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_shell_command</span><span class="p">(</span><span class="n">cmd</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">prev</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">auto_query_on_error</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">stdout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">stderr</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">prev</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">cmd</span> <span class="o">=</span> <span class="n">prev</span> <span class="o">+</span> <span class="s1">&#39; &amp;&amp; &#39;</span> <span class="o">+</span> <span class="n">cmd</span>
+    <span class="n">message</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">conda_env</span> <span class="o">=</span> <span class="n">get_exec_prefix</span><span class="p">()</span>
+    <span class="c1"># copy default_env</span>
+    <span class="n">new_env</span> <span class="o">=</span> <span class="n">default_env</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">exec_prefix</span> <span class="o">!=</span> <span class="s1">&#39;default&#39;</span><span class="p">:</span>
+        <span class="c1"># remove current env from PATH</span>
+        <span class="n">new_env</span><span class="p">[</span><span class="s2">&quot;PATH&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_env</span><span class="p">[</span><span class="s2">&quot;PATH&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">exec_prefix</span><span class="p">,</span> <span class="n">conda_env</span><span class="p">)</span>
+    <span class="c1"># Execute the command</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">stdout</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span> <span class="k">if</span> <span class="n">auto_query_on_error</span> <span class="k">else</span> <span class="n">stdout</span>
+        <span class="n">stderr</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span> <span class="k">if</span> <span class="n">auto_query_on_error</span> <span class="k">else</span> <span class="n">stderr</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">stdout</span><span class="o">=</span><span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span><span class="o">=</span><span class="n">stderr</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="n">new_env</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">res</span> <span class="ow">and</span> <span class="n">stdout</span> <span class="ow">and</span> <span class="n">res</span><span class="o">.</span><span class="n">stdout</span><span class="p">:</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">res</span> <span class="ow">and</span> <span class="n">stderr</span> <span class="ow">and</span> <span class="n">res</span><span class="o">.</span><span class="n">stderr</span><span class="p">:</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">FileNotFoundError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">e</span>
+    <span class="k">except</span> <span class="ne">PermissionError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">e</span>
+
+    <span class="c1"># all good</span>
+    <span class="k">if</span> <span class="n">res</span><span class="o">.</span><span class="n">returncode</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">message</span>
+    <span class="c1"># If command not found, then try to query language model</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">handle_error</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">res</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">auto_query_on_error</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="is_llm_request">
+<a class="viewcode-back" href="../../symai.html#symai.shellsv.is_llm_request">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_llm_request</span><span class="p">(</span><span class="n">cmd</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">cmd</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;&quot;&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">cmd</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;.&quot;&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">cmd</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;!&quot;&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">cmd</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;?&quot;&#39;</span><span class="p">)</span> <span class="ow">or</span>\
+           <span class="n">cmd</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;&#39;&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">cmd</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;.&#39;&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">cmd</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;!&#39;&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">cmd</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;?&#39;&quot;</span><span class="p">)</span> <span class="ow">or</span>\
+           <span class="n">cmd</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;`&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">cmd</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;.`&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">cmd</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;!`&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">cmd</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;?`&#39;</span><span class="p">)</span> <span class="ow">or</span>\
+           <span class="n">cmd</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;!(&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="map_nt_cmd">
+<a class="viewcode-back" href="../../symai.html#symai.shellsv.map_nt_cmd">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">map_nt_cmd</span><span class="p">(</span><span class="n">cmd</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">map_nt_cmd_enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;nt&#39;</span> <span class="ow">and</span> <span class="n">map_nt_cmd_enabled</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">is_llm_request</span><span class="p">(</span><span class="n">cmd</span><span class="p">):</span>
+        <span class="c1"># Mapping command replacements with regex for commands with variants</span>
+        <span class="n">cmd_mappings</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="sa">r</span><span class="s1">&#39;\bls\b(-[a-zA-Z]*)?&#39;</span>         <span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;dir \1&#39;</span><span class="p">,</span>            <span class="c1"># Maps &#39;ls&#39; with or without arguments</span>
+            <span class="sa">r</span><span class="s1">&#39;\bmv\b\s+(.*)&#39;</span>               <span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;move \1&#39;</span><span class="p">,</span>           <span class="c1"># Maps &#39;mv&#39; with any arguments</span>
+            <span class="sa">r</span><span class="s1">&#39;\bcp\b\s+(.*)&#39;</span>               <span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;copy \1&#39;</span><span class="p">,</span>           <span class="c1"># Maps &#39;cp&#39; with any arguments</span>
+            <span class="sa">r</span><span class="s1">&#39;\btouch\b\s+(.*)&#39;</span>            <span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;type nul &gt; \1&#39;</span><span class="p">,</span>     <span class="c1"># Maps &#39;touch filename&#39; to &#39;type nul &gt; filename&#39;</span>
+            <span class="sa">r</span><span class="s1">&#39;\brm\b\s+(-rf)?&#39;</span>             <span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;del \1&#39;</span><span class="p">,</span>            <span class="c1"># Maps &#39;rm&#39; and &#39;rm -rf&#39;</span>
+            <span class="sa">r</span><span class="s1">&#39;\bdiff\b\s+(.*)&#39;</span>             <span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;fc \1&#39;</span><span class="p">,</span>             <span class="c1"># Maps &#39;diff&#39; with any arguments</span>
+            <span class="sa">r</span><span class="s1">&#39;\bgrep\b\s+(.*)&#39;</span>             <span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;find \1&#39;</span><span class="p">,</span>           <span class="c1"># Maps &#39;grep&#39; with any arguments</span>
+            <span class="sa">r</span><span class="s1">&#39;\bpwd\b&#39;</span>                     <span class="p">:</span> <span class="s1">&#39;chdir&#39;</span><span class="p">,</span>              <span class="c1"># pwd has no arguments</span>
+            <span class="sa">r</span><span class="s1">&#39;\bdate\b&#39;</span>                    <span class="p">:</span> <span class="s1">&#39;time&#39;</span><span class="p">,</span>               <span class="c1"># date has no arguments</span>
+            <span class="sa">r</span><span class="s1">&#39;\bmkdir\b\s+(.*)&#39;</span>            <span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;md \1&#39;</span><span class="p">,</span>             <span class="c1"># Maps &#39;mkdir&#39; with any arguments</span>
+            <span class="sa">r</span><span class="s1">&#39;\bwhich\b\s+(.*)&#39;</span>            <span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;where \1&#39;</span><span class="p">,</span>          <span class="c1"># Maps &#39;which&#39; with any arguments</span>
+            <span class="sa">r</span><span class="s1">&#39;\b(vim|nano)\b\s+(.*)&#39;</span>       <span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;notepad \2&#39;</span><span class="p">,</span>        <span class="c1"># Maps &#39;vim&#39; or &#39;nano&#39; with any arguments</span>
+            <span class="sa">r</span><span class="s1">&#39;\b(mke2fs|mformat)\b\s+(.*)&#39;</span> <span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;format \2&#39;</span><span class="p">,</span>         <span class="c1"># Maps &#39;mke2fs&#39; or &#39;mformat&#39; with any arguments</span>
+            <span class="sa">r</span><span class="s1">&#39;\b(rm\s+-rf|rmdir)\b&#39;</span>        <span class="p">:</span> <span class="s1">&#39;rmdir /s /q&#39;</span><span class="p">,</span>        <span class="c1"># Matches &#39;rm -rf&#39; or &#39;rmdir&#39;</span>
+            <span class="sa">r</span><span class="s1">&#39;\bkill\b\s+(.*)&#39;</span>             <span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;taskkill \1&#39;</span><span class="p">,</span>       <span class="c1"># Maps &#39;kill&#39; with any arguments</span>
+            <span class="sa">r</span><span class="s1">&#39;\bps\b\s*(.*)?&#39;</span>              <span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;tasklist \1&#39;</span><span class="p">,</span>       <span class="c1"># Maps &#39;ps&#39; with any or no arguments</span>
+            <span class="sa">r</span><span class="s1">&#39;\bexport\b\s+(.*)&#39;</span>           <span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;set \1&#39;</span><span class="p">,</span>            <span class="c1"># Maps &#39;export&#39; with any arguments</span>
+            <span class="sa">r</span><span class="s1">&#39;\b(chown|chmod)\b\s+(.*)&#39;</span>    <span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;attrib +r \2&#39;</span><span class="p">,</span>      <span class="c1"># Maps &#39;chown&#39; or &#39;chmod&#39; with any arguments</span>
+            <span class="sa">r</span><span class="s1">&#39;\btraceroute\b\s+(.*)&#39;</span>       <span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;tracert \1&#39;</span><span class="p">,</span>        <span class="c1"># Maps &#39;traceroute&#39; with any arguments</span>
+            <span class="sa">r</span><span class="s1">&#39;\bcron\b\s+(.*)&#39;</span>             <span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;at \1&#39;</span><span class="p">,</span>             <span class="c1"># Maps &#39;cron&#39; with any arguments</span>
+            <span class="sa">r</span><span class="s1">&#39;\bcat\b\s+(.*)&#39;</span>              <span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;type \1&#39;</span><span class="p">,</span>           <span class="c1"># Maps &#39;cat&#39; with any arguments</span>
+            <span class="sa">r</span><span class="s1">&#39;\bdu\s+-s\b&#39;</span>                 <span class="p">:</span> <span class="s1">&#39;chkdsk&#39;</span><span class="p">,</span>             <span class="c1"># du -s has no arguments, chkdsk is closest in functionality</span>
+            <span class="sa">r</span><span class="s1">&#39;\bls\s+-R\b&#39;</span>                 <span class="p">:</span> <span class="s1">&#39;tree&#39;</span><span class="p">,</span>               <span class="c1"># ls -R has no arguments</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Remove 1:1 mappings</span>
+        <span class="n">direct_mappings</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;clear&#39;</span><span class="p">:</span> <span class="s1">&#39;cls&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;man&#39;</span>  <span class="p">:</span> <span class="s1">&#39;help&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;mem&#39;</span>  <span class="p">:</span> <span class="s1">&#39;free&#39;</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="n">cmd_mappings</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">direct_mappings</span><span class="p">)</span>
+
+        <span class="c1"># Iterate through mappings and replace commands</span>
+        <span class="k">for</span> <span class="n">linux_cmd</span><span class="p">,</span> <span class="n">windows_cmd</span> <span class="ow">in</span> <span class="n">cmd_mappings</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="c1"># copy original command</span>
+            <span class="n">original_cmd</span> <span class="o">=</span> <span class="n">cmd</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="n">linux_cmd</span><span class="p">,</span> <span class="n">windows_cmd</span><span class="p">,</span> <span class="n">cmd</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">cmd</span> <span class="o">!=</span> <span class="n">original_cmd</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;symsh &gt;&gt; command &quot;</span><span class="si">{</span><span class="n">original_cmd</span><span class="si">}</span><span class="s1">&quot; mapped to &quot;</span><span class="si">{</span><span class="n">cmd</span><span class="si">}</span><span class="s1">&quot;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">cmd</span></div>
+
+
+<div class="viewcode-block" id="process_command">
+<a class="viewcode-back" href="../../symai.html#symai.shellsv.process_command">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">process_command</span><span class="p">(</span><span class="n">cmd</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">res</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">auto_query_on_error</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="k">global</span> <span class="n">exec_prefix</span><span class="p">,</span> <span class="n">previous_prefix</span>
+
+    <span class="c1"># map commands to windows if needed</span>
+    <span class="n">cmd</span> <span class="o">=</span> <span class="n">map_nt_cmd</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">cmd</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;set-plugin&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">cmd</span> <span class="o">==</span> <span class="s1">&#39;unset-plugin&#39;</span> <span class="ow">or</span> <span class="n">cmd</span> <span class="o">==</span> <span class="s1">&#39;get-plugin&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">set_default_module</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
+
+    <span class="n">sep</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">sep</span>
+    <span class="c1"># check for &#39;&amp;&amp;&#39; to also preserve pipes &#39;|&#39; in normal shell commands</span>
+    <span class="k">if</span> <span class="s1">&#39;&quot; &amp;&amp; &#39;</span> <span class="ow">in</span> <span class="n">cmd</span> <span class="ow">or</span> <span class="s2">&quot;&#39; &amp;&amp; &quot;</span> <span class="ow">in</span> <span class="n">cmd</span> <span class="ow">or</span> <span class="s1">&#39;` &amp;&amp; &#39;</span> <span class="ow">in</span> <span class="n">cmd</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">is_llm_request</span><span class="p">(</span><span class="n">cmd</span><span class="p">):</span>
+            <span class="c1"># Process each command (the ones involving the LLM) separately</span>
+            <span class="n">cmds</span> <span class="o">=</span> <span class="n">cmd</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39; &amp;&amp; &#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">is_llm_request</span><span class="p">(</span><span class="n">cmds</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+                <span class="k">return</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;The first command must be a LLM request.&#39;</span><span class="p">)</span>
+            <span class="c1"># Process the first command as an LLM request</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="n">query_language_model</span><span class="p">(</span><span class="n">cmds</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">res</span><span class="o">=</span><span class="n">res</span><span class="p">)</span>
+            <span class="n">rest</span> <span class="o">=</span> <span class="s1">&#39; &amp;&amp; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmds</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+            <span class="k">if</span> <span class="s1">&#39;$1&#39;</span> <span class="ow">in</span> <span class="n">cmds</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+                <span class="n">res</span>  <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">res</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span> <span class="sa">r</span><span class="s1">&#39;</span><span class="se">\\</span><span class="s1">n&#39;</span><span class="p">)</span>
+                <span class="n">rest</span> <span class="o">=</span> <span class="n">rest</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;$1&#39;</span><span class="p">,</span> <span class="s1">&#39;&quot;</span><span class="si">%s</span><span class="s1">&quot;&#39;</span> <span class="o">%</span> <span class="n">res</span><span class="p">)</span>
+                <span class="n">res</span>  <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="n">rest</span>
+        <span class="c1"># If it&#39;s a normal shell command with pipes or &amp;&amp;, pass it whole</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">run_shell_command</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">prev</span><span class="o">=</span><span class="n">res</span><span class="p">,</span> <span class="n">auto_query_on_error</span><span class="o">=</span><span class="n">auto_query_on_error</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">res</span>
+
+    <span class="k">if</span> <span class="n">cmd</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;?&quot;&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">cmd</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;?&#39;&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">cmd</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;?`&#39;</span><span class="p">):</span>
+        <span class="n">cmd</span> <span class="o">=</span> <span class="n">cmd</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="k">return</span> <span class="n">search_engine</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">res</span><span class="o">=</span><span class="n">res</span><span class="p">)</span>
+
+    <span class="k">elif</span>  <span class="n">is_llm_request</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span> <span class="ow">or</span> <span class="s1">&#39;...&#39;</span> <span class="ow">in</span> <span class="n">cmd</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">query_language_model</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">res</span><span class="o">=</span><span class="n">res</span><span class="p">)</span>
+
+    <span class="k">elif</span> <span class="n">cmd</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;*&#39;</span><span class="p">):</span>
+        <span class="n">cmd</span> <span class="o">=</span> <span class="n">cmd</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="k">return</span> <span class="n">retrieval_augmented_indexing</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
+
+    <span class="k">elif</span> <span class="n">cmd</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;man symsh&#39;</span><span class="p">):</span>
+        <span class="c1"># read symsh.md file and print it</span>
+        <span class="c1"># get symsh path</span>
+        <span class="n">pkg_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))</span>
+        <span class="n">symsh_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">pkg_path</span><span class="p">,</span> <span class="s1">&#39;symsh.md&#39;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">symsh_path</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+    <span class="k">elif</span> <span class="n">cmd</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;conda activate&#39;</span><span class="p">):</span>
+        <span class="c1"># check conda execution prefix and verify if environment exists</span>
+        <span class="n">env</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">exec_prefix</span>
+        <span class="n">path_</span> <span class="o">=</span> <span class="n">sep</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">sep</span><span class="p">)[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">env_base</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">sep</span><span class="p">,</span> <span class="n">path_</span><span class="p">)</span>
+        <span class="n">req_env</span> <span class="o">=</span> <span class="n">cmd</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)[</span><span class="mi">2</span><span class="p">]</span>
+        <span class="c1"># check if environment exists</span>
+        <span class="n">env_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">env_base</span><span class="p">,</span> <span class="n">req_env</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">env_path</span><span class="p">):</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;Environment </span><span class="si">{</span><span class="n">req_env</span><span class="si">}</span><span class="s1"> does not exist!&#39;</span>
+        <span class="n">previous_prefix</span> <span class="o">=</span> <span class="n">exec_prefix</span>
+        <span class="n">exec_prefix</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">env_base</span><span class="p">,</span> <span class="n">req_env</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">exec_prefix</span>
+
+    <span class="k">elif</span> <span class="n">cmd</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;conda deactivate&#39;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">previous_prefix</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">exec_prefix</span> <span class="o">=</span> <span class="n">previous_prefix</span>
+        <span class="k">if</span> <span class="n">previous_prefix</span> <span class="o">==</span> <span class="s1">&#39;default&#39;</span><span class="p">:</span>
+            <span class="n">previous_prefix</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">get_exec_prefix</span><span class="p">()</span>
+
+    <span class="k">elif</span> <span class="n">cmd</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;conda&#39;</span><span class="p">):</span>
+        <span class="n">env</span> <span class="o">=</span> <span class="n">get_exec_prefix</span><span class="p">()</span>
+        <span class="n">env_base</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">sep</span><span class="p">,</span> <span class="o">*</span><span class="n">env</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">sep</span><span class="p">)[:</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span>
+        <span class="n">cmd</span> <span class="o">=</span> <span class="n">cmd</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;conda&#39;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">env_base</span><span class="p">,</span> <span class="s2">&quot;condabin&quot;</span><span class="p">,</span> <span class="s2">&quot;conda&quot;</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">run_shell_command</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">prev</span><span class="o">=</span><span class="n">res</span><span class="p">,</span> <span class="n">auto_query_on_error</span><span class="o">=</span><span class="n">auto_query_on_error</span><span class="p">)</span>
+
+    <span class="k">elif</span> <span class="n">cmd</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;cd&#39;</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># replace ~ with home directory</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="n">FileReader</span><span class="o">.</span><span class="n">expand_user_path</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
+            <span class="c1"># Change directory</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmd</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">:])</span>
+            <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">sep</span><span class="p">):</span>
+                <span class="n">path</span> <span class="o">=</span> <span class="n">path</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">FileNotFoundError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">e</span>
+        <span class="k">except</span> <span class="ne">PermissionError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">e</span>
+
+    <span class="k">elif</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">cmd</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># replace ~ with home directory</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="n">FileReader</span><span class="o">.</span><span class="n">expand_user_path</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
+            <span class="c1"># Change directory</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">FileNotFoundError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">e</span>
+        <span class="k">except</span> <span class="ne">PermissionError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">e</span>
+
+    <span class="k">elif</span> <span class="n">cmd</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;ll&#39;</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;nt&#39;</span><span class="p">:</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="n">cmd</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;ll&#39;</span><span class="p">,</span> <span class="s1">&#39;dir&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">run_shell_command</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">prev</span><span class="o">=</span><span class="n">res</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="n">cmd</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;ll&#39;</span><span class="p">,</span> <span class="s1">&#39;ls -la&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">run_shell_command</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">prev</span><span class="o">=</span><span class="n">res</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">run_shell_command</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">prev</span><span class="o">=</span><span class="n">res</span><span class="p">,</span> <span class="n">auto_query_on_error</span><span class="o">=</span><span class="n">auto_query_on_error</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="save_conversation">
+<a class="viewcode-back" href="../../symai.html#symai.shellsv.save_conversation">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">save_conversation</span><span class="p">():</span>
+    <span class="n">home_path</span> <span class="o">=</span> <span class="n">HOME_PATH</span>
+    <span class="n">symai_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">home_path</span><span class="p">,</span> <span class="s1">&#39;.conversation_state&#39;</span><span class="p">)</span>
+    <span class="n">Conversation</span><span class="o">.</span><span class="n">save_conversation_state</span><span class="p">(</span><span class="n">stateful_conversation</span><span class="p">,</span> <span class="n">symai_path</span><span class="p">)</span></div>
+
+
+<span class="c1"># Function to listen for user input and execute commands</span>
+<div class="viewcode-block" id="listen">
+<a class="viewcode-back" href="../../symai.html#symai.shellsv.listen">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">listen</span><span class="p">(</span><span class="n">session</span><span class="p">:</span> <span class="n">PromptSession</span><span class="p">,</span> <span class="n">word_comp</span><span class="p">:</span> <span class="n">WordCompleter</span><span class="p">,</span> <span class="n">auto_query_on_error</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="k">with</span> <span class="n">patch_stdout</span><span class="p">():</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">git_branch</span> <span class="o">=</span> <span class="n">get_git_branch</span><span class="p">()</span>
+                <span class="n">conda_env</span> <span class="o">=</span> <span class="n">get_conda_env</span><span class="p">()</span>
+                <span class="c1"># get directory from the shell</span>
+                <span class="n">cur_working_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span>
+                <span class="n">sep</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">sep</span>
+                <span class="k">if</span> <span class="n">cur_working_dir</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">sep</span><span class="p">):</span>
+                    <span class="n">cur_working_dir</span> <span class="o">=</span> <span class="n">FileReader</span><span class="o">.</span><span class="n">expand_user_path</span><span class="p">(</span><span class="n">cur_working_dir</span><span class="p">)</span>
+                <span class="n">paths</span> <span class="o">=</span> <span class="n">cur_working_dir</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">sep</span><span class="p">)</span>
+                <span class="n">prev_paths</span> <span class="o">=</span> <span class="n">sep</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">paths</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+                <span class="n">last_path</span> <span class="o">=</span> <span class="n">paths</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+                <span class="c1"># Format the prompt</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">paths</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">cur_working_dir</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">prev_paths</span><span class="si">}{</span><span class="n">sep</span><span class="si">}</span><span class="s1">&lt;b&gt;</span><span class="si">{</span><span class="n">last_path</span><span class="si">}</span><span class="s1">&lt;/b&gt;&#39;</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">cur_working_dir</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;&lt;b&gt;</span><span class="si">{</span><span class="n">last_path</span><span class="si">}</span><span class="s1">&lt;/b&gt;&#39;</span>
+
+                <span class="k">if</span> <span class="n">git_branch</span><span class="p">:</span>
+                    <span class="n">prompt</span> <span class="o">=</span> <span class="n">HTML</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&lt;ansiblue&gt;</span><span class="si">{</span><span class="n">cur_working_dir</span><span class="si">}</span><span class="s2">&lt;/ansiblue&gt;&lt;ansiwhite&gt; on git:[&lt;/ansiwhite&gt;&lt;ansigreen&gt;</span><span class="si">{</span><span class="n">git_branch</span><span class="si">}</span><span class="s2">&lt;/ansigreen&gt;&lt;ansiwhite&gt;]&lt;/ansiwhite&gt; &lt;ansiwhite&gt;conda:[&lt;/ansiwhite&gt;&lt;ansimagenta&gt;</span><span class="si">{</span><span class="n">conda_env</span><span class="si">}</span><span class="s2">&lt;/ansimagenta&gt;&lt;ansiwhite&gt;]&lt;/ansiwhite&gt; &lt;ansicyan&gt;&lt;b&gt;symsh:&lt;/b&gt; ❯&lt;/ansicyan&gt; &quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">prompt</span> <span class="o">=</span> <span class="n">HTML</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&lt;ansiblue&gt;</span><span class="si">{</span><span class="n">cur_working_dir</span><span class="si">}</span><span class="s2">&lt;/ansiblue&gt; &lt;ansiwhite&gt;conda:[&lt;/ansiwhite&gt;&lt;ansimagenta&gt;</span><span class="si">{</span><span class="n">conda_env</span><span class="si">}</span><span class="s2">&lt;/ansimagenta&gt;&lt;ansiwhite&gt;]&lt;/ansiwhite&gt; &lt;ansicyan&gt;&lt;b&gt;symsh:&lt;/b&gt; ❯&lt;/ansicyan&gt; &quot;</span><span class="p">)</span>
+
+                <span class="c1"># Read user input</span>
+                <span class="n">cmd</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">prompt</span><span class="p">(</span><span class="n">prompt</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">cmd</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;&#39;</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+                <span class="k">if</span> <span class="n">cmd</span> <span class="o">==</span> <span class="s1">&#39;quit&#39;</span> <span class="ow">or</span> <span class="n">cmd</span> <span class="o">==</span> <span class="s1">&#39;exit&#39;</span> <span class="ow">or</span> <span class="n">cmd</span> <span class="o">==</span> <span class="s1">&#39;q&#39;</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">stateful_conversation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">save_conversation</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">use_styles</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Goodbye!&#39;</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">func</span> <span class="o">=</span> <span class="n">FunctionType</span><span class="p">(</span><span class="s1">&#39;Give short goodbye&#39;</span><span class="p">)</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="n">func</span><span class="p">(</span><span class="s1">&#39;bye&#39;</span><span class="p">))</span>
+                    <span class="n">os</span><span class="o">.</span><span class="n">_exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">msg</span> <span class="o">=</span> <span class="n">process_command</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">auto_query_on_error</span><span class="o">=</span><span class="n">auto_query_on_error</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">msg</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="k">with</span> <span class="n">ConsoleStyle</span><span class="p">(</span><span class="s1">&#39;code&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">console</span><span class="p">:</span>
+                            <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+                <span class="c1"># Append the command to the word completer list</span>
+                <span class="n">word_comp</span><span class="o">.</span><span class="n">words</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
+
+            <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">()</span>
+                <span class="k">pass</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                    <span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">()</span>
+                <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="create_session">
+<a class="viewcode-back" href="../../symai.html#symai.shellsv.create_session">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_session</span><span class="p">(</span><span class="n">history</span><span class="p">,</span> <span class="n">merged_completer</span><span class="p">):</span>
+    <span class="n">colors</span> <span class="o">=</span> <span class="n">SYMSH_CONFIG</span><span class="p">[</span><span class="s1">&#39;colors&#39;</span><span class="p">]</span>
+
+    <span class="c1"># Load style</span>
+    <span class="n">style</span> <span class="o">=</span> <span class="n">Style</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">colors</span><span class="p">)</span>
+
+    <span class="c1"># Session for the auto-completion</span>
+    <span class="n">session</span> <span class="o">=</span> <span class="n">PromptSession</span><span class="p">(</span><span class="n">history</span><span class="o">=</span><span class="n">history</span><span class="p">,</span>
+                            <span class="n">completer</span><span class="o">=</span><span class="n">merged_completer</span><span class="p">,</span>
+                            <span class="n">complete_style</span><span class="o">=</span><span class="n">CompleteStyle</span><span class="o">.</span><span class="n">MULTI_COLUMN</span><span class="p">,</span>
+                            <span class="n">reserve_space_for_menu</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+                            <span class="n">style</span><span class="o">=</span><span class="n">style</span><span class="p">,</span>
+                            <span class="n">key_bindings</span><span class="o">=</span><span class="n">bindings</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">session</span></div>
+
+
+<div class="viewcode-block" id="create_completer">
+<a class="viewcode-back" href="../../symai.html#symai.shellsv.create_completer">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_completer</span><span class="p">():</span>
+    <span class="c1"># Load history</span>
+    <span class="n">history</span><span class="p">,</span> <span class="n">history_strings</span> <span class="o">=</span> <span class="n">load_history</span><span class="p">()</span>
+
+    <span class="c1"># Create your specific completers</span>
+    <span class="n">word_comp</span> <span class="o">=</span> <span class="n">HistoryCompleter</span><span class="p">(</span><span class="n">history_strings</span><span class="p">,</span> <span class="n">ignore_case</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">sentence</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">custom_completer</span> <span class="o">=</span> <span class="n">PathCompleter</span><span class="p">()</span>
+
+    <span class="c1"># Merge completers</span>
+    <span class="n">merged_completer</span> <span class="o">=</span> <span class="n">MergedCompleter</span><span class="p">(</span><span class="n">custom_completer</span><span class="p">,</span> <span class="n">word_comp</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">history</span><span class="p">,</span> <span class="n">word_comp</span><span class="p">,</span> <span class="n">merged_completer</span></div>
+
+
+<div class="viewcode-block" id="run">
+<a class="viewcode-back" href="../../symai.html#symai.shellsv.run">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">auto_query_on_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">conversation_style</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="k">global</span> <span class="n">FunctionType</span><span class="p">,</span> <span class="n">ConversationType</span><span class="p">,</span> <span class="n">RetrievalConversationType</span><span class="p">,</span> <span class="n">use_styles</span>
+    <span class="k">if</span> <span class="n">conversation_style</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">conversation_style</span> <span class="o">!=</span> <span class="s1">&#39;&#39;</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Loading style:&#39;</span><span class="p">,</span> <span class="n">conversation_style</span><span class="p">)</span>
+        <span class="n">styles_</span> <span class="o">=</span> <span class="n">Import</span><span class="o">.</span><span class="n">load_module_class</span><span class="p">(</span><span class="n">conversation_style</span><span class="p">)</span>
+        <span class="n">FunctionType</span><span class="p">,</span> <span class="n">ConversationType</span><span class="p">,</span> <span class="n">RetrievalConversationType</span> <span class="o">=</span> <span class="n">styles_</span>
+        <span class="n">use_styles</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">if</span> <span class="n">SYMSH_CONFIG</span><span class="p">[</span><span class="s1">&#39;show-splash-screen&#39;</span><span class="p">]:</span>
+        <span class="n">show_intro_menu</span><span class="p">()</span>
+        <span class="c1"># set show splash screen to false</span>
+        <span class="n">SYMSH_CONFIG</span><span class="p">[</span><span class="s1">&#39;show-splash-screen&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="c1"># save config</span>
+        <span class="n">_config_path</span> <span class="o">=</span>  <span class="n">HOME_PATH</span> <span class="o">/</span> <span class="s1">&#39;symsh.config.json&#39;</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">_config_path</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">SYMSH_CONFIG</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s1">&#39;plugin_prefix&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">SYMSH_CONFIG</span><span class="p">:</span>
+        <span class="n">SYMSH_CONFIG</span><span class="p">[</span><span class="s1">&#39;plugin_prefix&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="n">history</span><span class="p">,</span> <span class="n">word_comp</span><span class="p">,</span> <span class="n">merged_completer</span> <span class="o">=</span> <span class="n">create_completer</span><span class="p">()</span>
+    <span class="n">session</span> <span class="o">=</span> <span class="n">create_session</span><span class="p">(</span><span class="n">history</span><span class="p">,</span> <span class="n">merged_completer</span><span class="p">)</span>
+    <span class="n">listen</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">word_comp</span><span class="p">,</span> <span class="n">auto_query_on_error</span><span class="o">=</span><span class="n">auto_query_on_error</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s1">&#39;SymSH: Symbolic Shell&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--auto-query-on-error&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Automatically query the language model on error.&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--verbose&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Print verbose errors.&#39;</span><span class="p">)</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+    <span class="n">run</span><span class="p">(</span><span class="n">auto_query_on_error</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">auto_query_on_error</span><span class="p">,</span> <span class="n">conversation_style</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">conversation_style</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">verbose</span><span class="p">)</span>
+</pre></div>
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By Marius-Constantin Dinu
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2024, ExtensityAI FlexCo.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

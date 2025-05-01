@@ -1,0 +1,1281 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>symai &#8212; SymbolicAI</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/sphinx-book-theme.css?v=a3416100" />
+    <link rel="stylesheet" type="text/css" href="_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=df347da4"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'modules';</script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="version" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">SymbolicAI</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="INTRODUCTION.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="INSTALLATION.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="QUICKSTART.html">Quick Start Guide</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="FEATURES/index.html">Features</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="FEATURES/causal_reasoning.html">🧠 Causal Reasoning</a></li>
+<li class="toctree-l2"><a class="reference internal" href="FEATURES/operations.html">Operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="FEATURES/expressions.html">Expressions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="FEATURES/vision.html">Vision</a></li>
+<li class="toctree-l2"><a class="reference internal" href="FEATURES/import.html">Module Management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="FEATURES/error_handling.html">❌ Error Handling and Debugging</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="ENGINES/index.html">Engines</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="ENGINES/neurosymbolic_engine.html">Neuro-Symbolic Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ENGINES/symbolic_engine.html">Symbolic Engine (WolframAlpha)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ENGINES/speech_engine.html">Speech Engine (Whisper)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ENGINES/ocr_engine.html">OCR Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ENGINES/search_engine.html">Search Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ENGINES/webcrawler_engine.html">Webcrawler Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ENGINES/drawing_engine.html">Drawing Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ENGINES/file_engine.html">File Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ENGINES/indexing_engine.html">Indexing Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ENGINES/clip_engine.html">CLIP Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ENGINES/local_engine.html">Local Engines</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ENGINES/custom_engine.html">Custom Engine</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="TUTORIALS/index.html">Tutorials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="TUTORIALS/chatbot.html">Writing a Custom Chatbot</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TUTORIALS/data_query.html">Querying Data with SQL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TUTORIALS/context.html">Handling Files and Long Context Lengths</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TUTORIALS/video_tutorials.html">Video Tutorials</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TUTORIALS/examples.html">Example Files</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="TOOLS/index.html">Tools</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="TOOLS/shell.html">Shell Command Tool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TOOLS/chatbot.html">Chatbot</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TOOLS/packages.html">Packages</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="API_REF.html">API Reference</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="symai.html">symai package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="symai.backend.html">symai.backend package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.backend.engines.html">symai.backend.engines package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.backend.mixin.html">symai.backend.mixin package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.collect.html">symai.collect package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="symai.extended.html">symai.extended package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.extended.interfaces.html">symai.extended.interfaces package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.extended.metrics.html">symai.extended.metrics package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.extended.packages.html">symai.extended.packages package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.extended.personas.html">symai.extended.personas package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.extended.strategies.html">symai.extended.strategies package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.formatter.html">symai.formatter package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.menu.html">symai.menu package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.misc.html">symai.misc package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.models.html">symai.models package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.ops.html">symai.ops package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.server.html">symai.server package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="symai.backend.html">symai.backend package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="symai.backend.engines.html">symai.backend.engines package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.backend.mixin.html">symai.backend.mixin package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="symai.backend.engines.html">symai.backend.engines package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="symai.backend.mixin.html">symai.backend.mixin package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="symai.collect.html">symai.collect package</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="symai.extended.html">symai.extended package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="symai.extended.interfaces.html">symai.extended.interfaces package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.extended.metrics.html">symai.extended.metrics package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.extended.packages.html">symai.extended.packages package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="symai.extended.personas.html">symai.extended.personas package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.extended.personas.research.html">symai.extended.personas.research package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.extended.personas.sales.html">symai.extended.personas.sales package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.extended.personas.student.html">symai.extended.personas.student package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.extended.strategies.html">symai.extended.strategies package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="symai.extended.interfaces.html">symai.extended.interfaces package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="symai.extended.metrics.html">symai.extended.metrics package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="symai.extended.packages.html">symai.extended.packages package</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="symai.extended.personas.html">symai.extended.personas package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="symai.extended.personas.research.html">symai.extended.personas.research package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.extended.personas.sales.html">symai.extended.personas.sales package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.extended.personas.student.html">symai.extended.personas.student package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="symai.extended.personas.research.html">symai.extended.personas.research package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="symai.extended.personas.sales.html">symai.extended.personas.sales package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="symai.extended.personas.student.html">symai.extended.personas.student package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="symai.extended.strategies.html">symai.extended.strategies package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="symai.formatter.html">symai.formatter package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="symai.menu.html">symai.menu package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="symai.misc.html">symai.misc package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="symai.models.html">symai.models package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="symai.ops.html">symai.ops package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="symai.server.html">symai.server package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="CONTRIBUTING.html">How to contribute</a></li>
+<li class="toctree-l1"><a class="reference internal" href="LICENSE.html">License</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item"><nav class="sidebar-indices-items" aria-labelledby="pst-indices-navigation-heading-2">
+  <p id="pst-indices-navigation-heading-2" class="sidebar-indices-items__title" role="heading" aria-level="1">Indices</p>
+  <ul class="indices-link">
+        <li class="toctree-l1">
+          <a class="reference internal"
+             href="genindex.html"
+             accesskey="I">General Index</a>
+        </li>
+        <li class="toctree-l1">
+          <a class="reference internal" href="py-modindex.html">Python Module Index</a>
+        </li>
+  </ul>
+</nav></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+<a href="https://github.com/ExtensityAI/symbolicai" target="_blank"
+   class="btn btn-sm btn-source-repository-button"
+   title="Source repository"
+   data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+
+</a>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="_sources/modules.rst" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.rst</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>symai</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="symai">
+<h1>symai<a class="headerlink" href="#symai" title="Link to this heading">#</a></h1>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="symai.html">symai package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="symai.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="symai.backend.html">symai.backend package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.backend.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.backend.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.backend.html#module-symai.backend.base">symai.backend.base module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.backend.html#module-symai.backend.settings">symai.backend.settings module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.backend.html#module-symai.backend">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.collect.html">symai.collect package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.collect.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.collect.html#module-symai.collect.dynamic">symai.collect.dynamic module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.collect.html#module-symai.collect.pipeline">symai.collect.pipeline module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.collect.html#module-symai.collect.stats">symai.collect.stats module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.collect.html#module-symai.collect">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.extended.html">symai.extended package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.extended.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.extended.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.extended.html#module-symai.extended.api_builder">symai.extended.api_builder module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.extended.html#module-symai.extended.arxiv_pdf_parser">symai.extended.arxiv_pdf_parser module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.extended.html#module-symai.extended.bibtex_parser">symai.extended.bibtex_parser module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.extended.html#module-symai.extended.conversation">symai.extended.conversation module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.extended.html#module-symai.extended.crawler">symai.extended.crawler module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.extended.html#module-symai.extended.document">symai.extended.document module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.extended.html#module-symai.extended.file_merger">symai.extended.file_merger module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.extended.html#module-symai.extended.graph">symai.extended.graph module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.extended.html#module-symai.extended.html_style_template">symai.extended.html_style_template module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.extended.html#module-symai.extended.os_command">symai.extended.os_command module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.extended.html#module-symai.extended.repo_cloner">symai.extended.repo_cloner module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.extended.html#module-symai.extended.seo_query_optimizer">symai.extended.seo_query_optimizer module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.extended.html#module-symai.extended.solver">symai.extended.solver module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.extended.html#module-symai.extended.summarizer">symai.extended.summarizer module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.extended.html#module-symai.extended.taypan_interpreter">symai.extended.taypan_interpreter module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.extended.html#module-symai.extended.vectordb">symai.extended.vectordb module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.extended.html#module-symai.extended">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.formatter.html">symai.formatter package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.formatter.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.formatter.html#module-symai.formatter.formatter">symai.formatter.formatter module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.formatter.html#module-symai.formatter.regex">symai.formatter.regex module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.formatter.html#module-symai.formatter">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.menu.html">symai.menu package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.menu.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.menu.html#module-symai.menu.screen">symai.menu.screen module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.menu.html#module-symai.menu">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.misc.html">symai.misc package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.misc.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.misc.html#module-symai.misc.console">symai.misc.console module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.misc.html#module-symai.misc.loader">symai.misc.loader module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.misc.html#module-symai.misc">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.models.html">symai.models package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.models.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.models.html#module-symai.models.base">symai.models.base module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.models.html#module-symai.models.errors">symai.models.errors module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.models.html#module-symai.models">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.ops.html">symai.ops package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.ops.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.ops.html#module-symai.ops.measures">symai.ops.measures module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.ops.html#module-symai.ops.primitives">symai.ops.primitives module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.ops.html#module-symai.ops">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.server.html">symai.server package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.server.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.server.html#symai-server-huggingface-server-module">symai.server.huggingface_server module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.server.html#module-symai.server.llama_cpp_server">symai.server.llama_cpp_server module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.server.html#module-symai.server">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="symai.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="symai.html#module-symai.chat">symai.chat module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.chat.ChatBot"><code class="docutils literal notranslate"><span class="pre">ChatBot</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.chat.ChatBot.input"><code class="docutils literal notranslate"><span class="pre">ChatBot.input()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.chat.ChatBot.narrate"><code class="docutils literal notranslate"><span class="pre">ChatBot.narrate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.chat.ChatBot.repeat"><code class="docutils literal notranslate"><span class="pre">ChatBot.repeat()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.chat.ChatBot.static_context"><code class="docutils literal notranslate"><span class="pre">ChatBot.static_context</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.chat.SymbiaChat"><code class="docutils literal notranslate"><span class="pre">SymbiaChat</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.chat.SymbiaChat.forward"><code class="docutils literal notranslate"><span class="pre">SymbiaChat.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.chat.run"><code class="docutils literal notranslate"><span class="pre">run()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="symai.html#module-symai.components">symai.components module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.All"><code class="docutils literal notranslate"><span class="pre">All</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.All.forward"><code class="docutils literal notranslate"><span class="pre">All.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.Analyze"><code class="docutils literal notranslate"><span class="pre">Analyze</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Analyze.forward"><code class="docutils literal notranslate"><span class="pre">Analyze.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.Any"><code class="docutils literal notranslate"><span class="pre">Any</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Any.forward"><code class="docutils literal notranslate"><span class="pre">Any.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.Choice"><code class="docutils literal notranslate"><span class="pre">Choice</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Choice.forward"><code class="docutils literal notranslate"><span class="pre">Choice.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.Clean"><code class="docutils literal notranslate"><span class="pre">Clean</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Clean.forward"><code class="docutils literal notranslate"><span class="pre">Clean.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.Cluster"><code class="docutils literal notranslate"><span class="pre">Cluster</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Cluster.forward"><code class="docutils literal notranslate"><span class="pre">Cluster.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.Compose"><code class="docutils literal notranslate"><span class="pre">Compose</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Compose.forward"><code class="docutils literal notranslate"><span class="pre">Compose.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.Convert"><code class="docutils literal notranslate"><span class="pre">Convert</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Convert.forward"><code class="docutils literal notranslate"><span class="pre">Convert.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.DynamicEngine"><code class="docutils literal notranslate"><span class="pre">DynamicEngine</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.Embed"><code class="docutils literal notranslate"><span class="pre">Embed</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Embed.forward"><code class="docutils literal notranslate"><span class="pre">Embed.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.ExcludeFilter"><code class="docutils literal notranslate"><span class="pre">ExcludeFilter</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.ExcludeFilter.forward"><code class="docutils literal notranslate"><span class="pre">ExcludeFilter.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.Execute"><code class="docutils literal notranslate"><span class="pre">Execute</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Execute.forward"><code class="docutils literal notranslate"><span class="pre">Execute.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.ExpressionBuilder"><code class="docutils literal notranslate"><span class="pre">ExpressionBuilder</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.ExpressionBuilder.forward"><code class="docutils literal notranslate"><span class="pre">ExpressionBuilder.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.ExpressionBuilder.static_context"><code class="docutils literal notranslate"><span class="pre">ExpressionBuilder.static_context</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.Extract"><code class="docutils literal notranslate"><span class="pre">Extract</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Extract.forward"><code class="docutils literal notranslate"><span class="pre">Extract.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.FileQuery"><code class="docutils literal notranslate"><span class="pre">FileQuery</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.FileQuery.forward"><code class="docutils literal notranslate"><span class="pre">FileQuery.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.FileReader"><code class="docutils literal notranslate"><span class="pre">FileReader</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.FileReader.exists"><code class="docutils literal notranslate"><span class="pre">FileReader.exists()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.FileReader.expand_user_path"><code class="docutils literal notranslate"><span class="pre">FileReader.expand_user_path()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.FileReader.extract_files"><code class="docutils literal notranslate"><span class="pre">FileReader.extract_files()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.FileReader.forward"><code class="docutils literal notranslate"><span class="pre">FileReader.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.FileReader.get_files"><code class="docutils literal notranslate"><span class="pre">FileReader.get_files()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.FileReader.integrity_check"><code class="docutils literal notranslate"><span class="pre">FileReader.integrity_check()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.FileWriter"><code class="docutils literal notranslate"><span class="pre">FileWriter</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.FileWriter.forward"><code class="docutils literal notranslate"><span class="pre">FileWriter.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.Function"><code class="docutils literal notranslate"><span class="pre">Function</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Function.format"><code class="docutils literal notranslate"><span class="pre">Function.format()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Function.forward"><code class="docutils literal notranslate"><span class="pre">Function.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Function.prompt"><code class="docutils literal notranslate"><span class="pre">Function.prompt</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.FunctionWithUsage"><code class="docutils literal notranslate"><span class="pre">FunctionWithUsage</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.FunctionWithUsage.add_usage"><code class="docutils literal notranslate"><span class="pre">FunctionWithUsage.add_usage()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.FunctionWithUsage.forward"><code class="docutils literal notranslate"><span class="pre">FunctionWithUsage.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.FunctionWithUsage.get_usage"><code class="docutils literal notranslate"><span class="pre">FunctionWithUsage.get_usage()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.FunctionWithUsage.print_verbose"><code class="docutils literal notranslate"><span class="pre">FunctionWithUsage.print_verbose()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.FunctionWithUsage.reset_usage"><code class="docutils literal notranslate"><span class="pre">FunctionWithUsage.reset_usage()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.GraphViz"><code class="docutils literal notranslate"><span class="pre">GraphViz</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.GraphViz.forward"><code class="docutils literal notranslate"><span class="pre">GraphViz.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.InContextClassification"><code class="docutils literal notranslate"><span class="pre">InContextClassification</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.InContextClassification.forward"><code class="docutils literal notranslate"><span class="pre">InContextClassification.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.IncludeFilter"><code class="docutils literal notranslate"><span class="pre">IncludeFilter</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.IncludeFilter.forward"><code class="docutils literal notranslate"><span class="pre">IncludeFilter.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.Indexer"><code class="docutils literal notranslate"><span class="pre">Indexer</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Indexer.DEFAULT"><code class="docutils literal notranslate"><span class="pre">Indexer.DEFAULT</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Indexer.exists"><code class="docutils literal notranslate"><span class="pre">Indexer.exists()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Indexer.forward"><code class="docutils literal notranslate"><span class="pre">Indexer.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Indexer.register"><code class="docutils literal notranslate"><span class="pre">Indexer.register()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Indexer.replace_special_chars"><code class="docutils literal notranslate"><span class="pre">Indexer.replace_special_chars()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.JsonParser"><code class="docutils literal notranslate"><span class="pre">JsonParser</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.JsonParser.forward"><code class="docutils literal notranslate"><span class="pre">JsonParser.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.Lambda"><code class="docutils literal notranslate"><span class="pre">Lambda</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Lambda.forward"><code class="docutils literal notranslate"><span class="pre">Lambda.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.Log"><code class="docutils literal notranslate"><span class="pre">Log</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Log.forward"><code class="docutils literal notranslate"><span class="pre">Log.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.Map"><code class="docutils literal notranslate"><span class="pre">Map</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Map.forward"><code class="docutils literal notranslate"><span class="pre">Map.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.MetadataTracker"><code class="docutils literal notranslate"><span class="pre">MetadataTracker</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.MetadataTracker.metadata"><code class="docutils literal notranslate"><span class="pre">MetadataTracker.metadata</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.MetadataTracker.metadata_acc"><code class="docutils literal notranslate"><span class="pre">MetadataTracker.metadata_acc</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.MetadataTracker.usage"><code class="docutils literal notranslate"><span class="pre">MetadataTracker.usage</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.Metric"><code class="docutils literal notranslate"><span class="pre">Metric</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Metric.forward"><code class="docutils literal notranslate"><span class="pre">Metric.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.Outline"><code class="docutils literal notranslate"><span class="pre">Outline</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Outline.forward"><code class="docutils literal notranslate"><span class="pre">Outline.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.Output"><code class="docutils literal notranslate"><span class="pre">Output</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Output.forward"><code class="docutils literal notranslate"><span class="pre">Output.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.Parallel"><code class="docutils literal notranslate"><span class="pre">Parallel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Parallel.forward"><code class="docutils literal notranslate"><span class="pre">Parallel.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.PrepareData"><code class="docutils literal notranslate"><span class="pre">PrepareData</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.PrepareData.PrepareDataPreProcessor"><code class="docutils literal notranslate"><span class="pre">PrepareData.PrepareDataPreProcessor</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.PrepareData.static_context"><code class="docutils literal notranslate"><span class="pre">PrepareData.static_context</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.PrimitiveDisabler"><code class="docutils literal notranslate"><span class="pre">PrimitiveDisabler</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.Query"><code class="docutils literal notranslate"><span class="pre">Query</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Query.forward"><code class="docutils literal notranslate"><span class="pre">Query.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.RuntimeExpression"><code class="docutils literal notranslate"><span class="pre">RuntimeExpression</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.RuntimeExpression.forward"><code class="docutils literal notranslate"><span class="pre">RuntimeExpression.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.SelfPrompt"><code class="docutils literal notranslate"><span class="pre">SelfPrompt</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.SelfPrompt.forward"><code class="docutils literal notranslate"><span class="pre">SelfPrompt.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.Sequence"><code class="docutils literal notranslate"><span class="pre">Sequence</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Sequence.forward"><code class="docutils literal notranslate"><span class="pre">Sequence.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.SimilarityClassification"><code class="docutils literal notranslate"><span class="pre">SimilarityClassification</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.SimilarityClassification.forward"><code class="docutils literal notranslate"><span class="pre">SimilarityClassification.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.Stream"><code class="docutils literal notranslate"><span class="pre">Stream</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Stream.forward"><code class="docutils literal notranslate"><span class="pre">Stream.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.Style"><code class="docutils literal notranslate"><span class="pre">Style</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Style.forward"><code class="docutils literal notranslate"><span class="pre">Style.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.Template"><code class="docutils literal notranslate"><span class="pre">Template</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Template.forward"><code class="docutils literal notranslate"><span class="pre">Template.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.Trace"><code class="docutils literal notranslate"><span class="pre">Trace</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Trace.forward"><code class="docutils literal notranslate"><span class="pre">Trace.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.TrackerTraceable"><code class="docutils literal notranslate"><span class="pre">TrackerTraceable</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.Translate"><code class="docutils literal notranslate"><span class="pre">Translate</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Translate.forward"><code class="docutils literal notranslate"><span class="pre">Translate.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.components.Try"><code class="docutils literal notranslate"><span class="pre">Try</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.components.Try.forward"><code class="docutils literal notranslate"><span class="pre">Try.forward()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="symai.html#module-symai.constraints">symai.constraints module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.constraints.DictFormatConstraint"><code class="docutils literal notranslate"><span class="pre">DictFormatConstraint</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.constraints.DictFormatConstraint.check_keys"><code class="docutils literal notranslate"><span class="pre">DictFormatConstraint.check_keys()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="symai.html#module-symai.core">symai.core module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.Argument"><code class="docutils literal notranslate"><span class="pre">Argument</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.core.Argument.value"><code class="docutils literal notranslate"><span class="pre">Argument.value</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.analyze"><code class="docutils literal notranslate"><span class="pre">analyze()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.caption"><code class="docutils literal notranslate"><span class="pre">caption()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.case"><code class="docutils literal notranslate"><span class="pre">case()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.clean"><code class="docutils literal notranslate"><span class="pre">clean()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.cluster"><code class="docutils literal notranslate"><span class="pre">cluster()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.code"><code class="docutils literal notranslate"><span class="pre">code()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.combine"><code class="docutils literal notranslate"><span class="pre">combine()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.command"><code class="docutils literal notranslate"><span class="pre">command()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.compare"><code class="docutils literal notranslate"><span class="pre">compare()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.compose"><code class="docutils literal notranslate"><span class="pre">compose()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.contains"><code class="docutils literal notranslate"><span class="pre">contains()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.convert"><code class="docutils literal notranslate"><span class="pre">convert()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.correct"><code class="docutils literal notranslate"><span class="pre">correct()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.delitem"><code class="docutils literal notranslate"><span class="pre">delitem()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.dictionary"><code class="docutils literal notranslate"><span class="pre">dictionary()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.draw"><code class="docutils literal notranslate"><span class="pre">draw()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.embed"><code class="docutils literal notranslate"><span class="pre">embed()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.equals"><code class="docutils literal notranslate"><span class="pre">equals()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.execute"><code class="docutils literal notranslate"><span class="pre">execute()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.expand"><code class="docutils literal notranslate"><span class="pre">expand()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.expression"><code class="docutils literal notranslate"><span class="pre">expression()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.extract"><code class="docutils literal notranslate"><span class="pre">extract()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.fetch"><code class="docutils literal notranslate"><span class="pre">fetch()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.few_shot"><code class="docutils literal notranslate"><span class="pre">few_shot()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.filtering"><code class="docutils literal notranslate"><span class="pre">filtering()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.foreach"><code class="docutils literal notranslate"><span class="pre">foreach()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.getitem"><code class="docutils literal notranslate"><span class="pre">getitem()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.include"><code class="docutils literal notranslate"><span class="pre">include()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.index"><code class="docutils literal notranslate"><span class="pre">index()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.interpret"><code class="docutils literal notranslate"><span class="pre">interpret()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.invert"><code class="docutils literal notranslate"><span class="pre">invert()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.isinstanceof"><code class="docutils literal notranslate"><span class="pre">isinstanceof()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.listing"><code class="docutils literal notranslate"><span class="pre">listing()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.logic"><code class="docutils literal notranslate"><span class="pre">logic()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.modify"><code class="docutils literal notranslate"><span class="pre">modify()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.negate"><code class="docutils literal notranslate"><span class="pre">negate()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.notify"><code class="docutils literal notranslate"><span class="pre">notify()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.ocr"><code class="docutils literal notranslate"><span class="pre">ocr()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.opening"><code class="docutils literal notranslate"><span class="pre">opening()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.outline"><code class="docutils literal notranslate"><span class="pre">outline()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.output"><code class="docutils literal notranslate"><span class="pre">output()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.prompt"><code class="docutils literal notranslate"><span class="pre">prompt()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.query"><code class="docutils literal notranslate"><span class="pre">query()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.rank"><code class="docutils literal notranslate"><span class="pre">rank()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.register"><code class="docutils literal notranslate"><span class="pre">register()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.replace"><code class="docutils literal notranslate"><span class="pre">replace()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.search"><code class="docutils literal notranslate"><span class="pre">search()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.setitem"><code class="docutils literal notranslate"><span class="pre">setitem()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.simulate"><code class="docutils literal notranslate"><span class="pre">simulate()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.speech_to_text"><code class="docutils literal notranslate"><span class="pre">speech_to_text()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.style"><code class="docutils literal notranslate"><span class="pre">style()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.sufficient"><code class="docutils literal notranslate"><span class="pre">sufficient()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.summarize"><code class="docutils literal notranslate"><span class="pre">summarize()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.text_to_speech"><code class="docutils literal notranslate"><span class="pre">text_to_speech()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.text_vision"><code class="docutils literal notranslate"><span class="pre">text_vision()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.transcribe"><code class="docutils literal notranslate"><span class="pre">transcribe()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.translate"><code class="docutils literal notranslate"><span class="pre">translate()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.tune"><code class="docutils literal notranslate"><span class="pre">tune()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.unique"><code class="docutils literal notranslate"><span class="pre">unique()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.userinput"><code class="docutils literal notranslate"><span class="pre">userinput()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core.zero_shot"><code class="docutils literal notranslate"><span class="pre">zero_shot()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="symai.html#module-symai.core_ext">symai.core_ext module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core_ext.bind"><code class="docutils literal notranslate"><span class="pre">bind()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core_ext.cache"><code class="docutils literal notranslate"><span class="pre">cache()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core_ext.deprecated"><code class="docutils literal notranslate"><span class="pre">deprecated()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core_ext.error_logging"><code class="docutils literal notranslate"><span class="pre">error_logging()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core_ext.parallel"><code class="docutils literal notranslate"><span class="pre">parallel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.core_ext.retry"><code class="docutils literal notranslate"><span class="pre">retry()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="symai.html#module-symai.exceptions">symai.exceptions module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.exceptions.ConstraintViolationException"><code class="docutils literal notranslate"><span class="pre">ConstraintViolationException</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.exceptions.InvalidPropertyException"><code class="docutils literal notranslate"><span class="pre">InvalidPropertyException</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.exceptions.TemplatePropertyException"><code class="docutils literal notranslate"><span class="pre">TemplatePropertyException</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="symai.html#module-symai.functional">symai.functional module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.functional.ConstraintViolationException"><code class="docutils literal notranslate"><span class="pre">ConstraintViolationException</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.functional.EngineRepository"><code class="docutils literal notranslate"><span class="pre">EngineRepository</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.functional.EngineRepository.bind_property"><code class="docutils literal notranslate"><span class="pre">EngineRepository.bind_property()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.functional.EngineRepository.command"><code class="docutils literal notranslate"><span class="pre">EngineRepository.command()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.functional.EngineRepository.get"><code class="docutils literal notranslate"><span class="pre">EngineRepository.get()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.functional.EngineRepository.get_dynamic_engine_instance"><code class="docutils literal notranslate"><span class="pre">EngineRepository.get_dynamic_engine_instance()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.functional.EngineRepository.list"><code class="docutils literal notranslate"><span class="pre">EngineRepository.list()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.functional.EngineRepository.query"><code class="docutils literal notranslate"><span class="pre">EngineRepository.query()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.functional.EngineRepository.register"><code class="docutils literal notranslate"><span class="pre">EngineRepository.register()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.functional.EngineRepository.register_from_package"><code class="docutils literal notranslate"><span class="pre">EngineRepository.register_from_package()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.functional.EngineRepository.register_from_plugin"><code class="docutils literal notranslate"><span class="pre">EngineRepository.register_from_plugin()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.functional.ProbabilisticBooleanMode"><code class="docutils literal notranslate"><span class="pre">ProbabilisticBooleanMode</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.functional.ProbabilisticBooleanMode.MEDIUM"><code class="docutils literal notranslate"><span class="pre">ProbabilisticBooleanMode.MEDIUM</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.functional.ProbabilisticBooleanMode.STRICT"><code class="docutils literal notranslate"><span class="pre">ProbabilisticBooleanMode.STRICT</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.functional.ProbabilisticBooleanMode.TOLERANT"><code class="docutils literal notranslate"><span class="pre">ProbabilisticBooleanMode.TOLERANT</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="symai.html#module-symai.imports">symai.imports module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.imports.Import"><code class="docutils literal notranslate"><span class="pre">Import</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.imports.Import.exists"><code class="docutils literal notranslate"><span class="pre">Import.exists()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.imports.Import.get_from_github"><code class="docutils literal notranslate"><span class="pre">Import.get_from_github()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.imports.Import.get_from_local"><code class="docutils literal notranslate"><span class="pre">Import.get_from_local()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.imports.Import.install"><code class="docutils literal notranslate"><span class="pre">Import.install()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.imports.Import.list_installed"><code class="docutils literal notranslate"><span class="pre">Import.list_installed()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.imports.Import.load_expression"><code class="docutils literal notranslate"><span class="pre">Import.load_expression()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.imports.Import.load_module_class"><code class="docutils literal notranslate"><span class="pre">Import.load_module_class()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.imports.Import.remove"><code class="docutils literal notranslate"><span class="pre">Import.remove()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.imports.Import.update"><code class="docutils literal notranslate"><span class="pre">Import.update()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="symai.html#module-symai.interfaces">symai.interfaces module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.interfaces.Interface"><code class="docutils literal notranslate"><span class="pre">Interface</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.interfaces.Interface.load_module_class"><code class="docutils literal notranslate"><span class="pre">Interface.load_module_class()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="symai.html#module-symai.memory">symai.memory module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.memory.Memory"><code class="docutils literal notranslate"><span class="pre">Memory</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.memory.Memory.forget"><code class="docutils literal notranslate"><span class="pre">Memory.forget()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.memory.Memory.forward"><code class="docutils literal notranslate"><span class="pre">Memory.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.memory.Memory.recall"><code class="docutils literal notranslate"><span class="pre">Memory.recall()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.memory.Memory.store"><code class="docutils literal notranslate"><span class="pre">Memory.store()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.memory.SlidingWindowListMemory"><code class="docutils literal notranslate"><span class="pre">SlidingWindowListMemory</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.memory.SlidingWindowListMemory.forget"><code class="docutils literal notranslate"><span class="pre">SlidingWindowListMemory.forget()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.memory.SlidingWindowListMemory.recall"><code class="docutils literal notranslate"><span class="pre">SlidingWindowListMemory.recall()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.memory.SlidingWindowListMemory.store"><code class="docutils literal notranslate"><span class="pre">SlidingWindowListMemory.store()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.memory.SlidingWindowStringConcatMemory"><code class="docutils literal notranslate"><span class="pre">SlidingWindowStringConcatMemory</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.memory.SlidingWindowStringConcatMemory.drop"><code class="docutils literal notranslate"><span class="pre">SlidingWindowStringConcatMemory.drop()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.memory.SlidingWindowStringConcatMemory.forget"><code class="docutils literal notranslate"><span class="pre">SlidingWindowStringConcatMemory.forget()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.memory.SlidingWindowStringConcatMemory.history"><code class="docutils literal notranslate"><span class="pre">SlidingWindowStringConcatMemory.history()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.memory.SlidingWindowStringConcatMemory.max_tokens"><code class="docutils literal notranslate"><span class="pre">SlidingWindowStringConcatMemory.max_tokens()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.memory.SlidingWindowStringConcatMemory.recall"><code class="docutils literal notranslate"><span class="pre">SlidingWindowStringConcatMemory.recall()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.memory.SlidingWindowStringConcatMemory.store"><code class="docutils literal notranslate"><span class="pre">SlidingWindowStringConcatMemory.store()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.memory.VectorDatabaseMemory"><code class="docutils literal notranslate"><span class="pre">VectorDatabaseMemory</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.memory.VectorDatabaseMemory.recall"><code class="docutils literal notranslate"><span class="pre">VectorDatabaseMemory.recall()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.memory.VectorDatabaseMemory.store"><code class="docutils literal notranslate"><span class="pre">VectorDatabaseMemory.store()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="symai.html#module-symai.post_processors">symai.post_processors module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.post_processors.ASTPostProcessor"><code class="docutils literal notranslate"><span class="pre">ASTPostProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.post_processors.CaseInsensitivePostProcessor"><code class="docutils literal notranslate"><span class="pre">CaseInsensitivePostProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.post_processors.ClusterPostProcessor"><code class="docutils literal notranslate"><span class="pre">ClusterPostProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.post_processors.CodeExtractPostProcessor"><code class="docutils literal notranslate"><span class="pre">CodeExtractPostProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.post_processors.ConfirmToBoolPostProcessor"><code class="docutils literal notranslate"><span class="pre">ConfirmToBoolPostProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.post_processors.ConsolePostProcessor"><code class="docutils literal notranslate"><span class="pre">ConsolePostProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.post_processors.ExpandFunctionPostProcessor"><code class="docutils literal notranslate"><span class="pre">ExpandFunctionPostProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.post_processors.JsonTruncateMarkdownPostProcessor"><code class="docutils literal notranslate"><span class="pre">JsonTruncateMarkdownPostProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.post_processors.JsonTruncatePostProcessor"><code class="docutils literal notranslate"><span class="pre">JsonTruncatePostProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.post_processors.NotifySubscriberPostProcessor"><code class="docutils literal notranslate"><span class="pre">NotifySubscriberPostProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.post_processors.PostProcessor"><code class="docutils literal notranslate"><span class="pre">PostProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.post_processors.SplitNewLinePostProcessor"><code class="docutils literal notranslate"><span class="pre">SplitNewLinePostProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.post_processors.SplitPipePostProcessor"><code class="docutils literal notranslate"><span class="pre">SplitPipePostProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.post_processors.StripPostProcessor"><code class="docutils literal notranslate"><span class="pre">StripPostProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.post_processors.TakeLastPostProcessor"><code class="docutils literal notranslate"><span class="pre">TakeLastPostProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.post_processors.TemplatePostProcessor"><code class="docutils literal notranslate"><span class="pre">TemplatePostProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.post_processors.WolframAlphaPostProcessor"><code class="docutils literal notranslate"><span class="pre">WolframAlphaPostProcessor</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="symai.html#module-symai.pre_processors">symai.pre_processors module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.ArgsPreProcessor"><code class="docutils literal notranslate"><span class="pre">ArgsPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.ArgsToInputPreProcessor"><code class="docutils literal notranslate"><span class="pre">ArgsToInputPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.ArrowMessagePreProcessor"><code class="docutils literal notranslate"><span class="pre">ArrowMessagePreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.CleanTextMessagePreProcessor"><code class="docutils literal notranslate"><span class="pre">CleanTextMessagePreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.ClusterPreProcessor"><code class="docutils literal notranslate"><span class="pre">ClusterPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.CombinePreProcessor"><code class="docutils literal notranslate"><span class="pre">CombinePreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.ComparePreProcessor"><code class="docutils literal notranslate"><span class="pre">ComparePreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.ConsoleInputPreProcessor"><code class="docutils literal notranslate"><span class="pre">ConsoleInputPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.ConsolePreProcessor"><code class="docutils literal notranslate"><span class="pre">ConsolePreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.ContainsPreProcessor"><code class="docutils literal notranslate"><span class="pre">ContainsPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.CorrectionPreProcessor"><code class="docutils literal notranslate"><span class="pre">CorrectionPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.CrawlPatternPreProcessor"><code class="docutils literal notranslate"><span class="pre">CrawlPatternPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.DataTemplatePreProcessor"><code class="docutils literal notranslate"><span class="pre">DataTemplatePreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.DeleteIndexPreProcessor"><code class="docutils literal notranslate"><span class="pre">DeleteIndexPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.EnumPreProcessor"><code class="docutils literal notranslate"><span class="pre">EnumPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.EqualsPreProcessor"><code class="docutils literal notranslate"><span class="pre">EqualsPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.ExceptionPreProcessor"><code class="docutils literal notranslate"><span class="pre">ExceptionPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.ExpandFunctionPreProcessor"><code class="docutils literal notranslate"><span class="pre">ExpandFunctionPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.ExtractPatternPreProcessor"><code class="docutils literal notranslate"><span class="pre">ExtractPatternPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.FilterPreProcessor"><code class="docutils literal notranslate"><span class="pre">FilterPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.ForEachPreProcessor"><code class="docutils literal notranslate"><span class="pre">ForEachPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.FormatPreProcessor"><code class="docutils literal notranslate"><span class="pre">FormatPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.GenerateCodePreProcessor"><code class="docutils literal notranslate"><span class="pre">GenerateCodePreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.GenerateTextPreProcessor"><code class="docutils literal notranslate"><span class="pre">GenerateTextPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.IncludePreProcessor"><code class="docutils literal notranslate"><span class="pre">IncludePreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.IndexPreProcessor"><code class="docutils literal notranslate"><span class="pre">IndexPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.InterpretExpressionPreProcessor"><code class="docutils literal notranslate"><span class="pre">InterpretExpressionPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.IsInstanceOfPreProcessor"><code class="docutils literal notranslate"><span class="pre">IsInstanceOfPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.JsonPreProcessor"><code class="docutils literal notranslate"><span class="pre">JsonPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.LanguagePreProcessor"><code class="docutils literal notranslate"><span class="pre">LanguagePreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.ListPreProcessor"><code class="docutils literal notranslate"><span class="pre">ListPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.LogicExpressionPreProcessor"><code class="docutils literal notranslate"><span class="pre">LogicExpressionPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.MapPreProcessor"><code class="docutils literal notranslate"><span class="pre">MapPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.ModifyPreProcessor"><code class="docutils literal notranslate"><span class="pre">ModifyPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.NegatePreProcessor"><code class="docutils literal notranslate"><span class="pre">NegatePreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.PreProcessor"><code class="docutils literal notranslate"><span class="pre">PreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.PredictionMessagePreProcessor"><code class="docutils literal notranslate"><span class="pre">PredictionMessagePreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.PromptPreProcessor"><code class="docutils literal notranslate"><span class="pre">PromptPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.QueryPreProcessor"><code class="docutils literal notranslate"><span class="pre">QueryPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.RankPreProcessor"><code class="docutils literal notranslate"><span class="pre">RankPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.RawInputPreProcessor"><code class="docutils literal notranslate"><span class="pre">RawInputPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.ReplacePreProcessor"><code class="docutils literal notranslate"><span class="pre">ReplacePreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.SelfToInputPreProcessor"><code class="docutils literal notranslate"><span class="pre">SelfToInputPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.SemanticMappingPreProcessor"><code class="docutils literal notranslate"><span class="pre">SemanticMappingPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.SetIndexPreProcessor"><code class="docutils literal notranslate"><span class="pre">SetIndexPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.SimpleSymbolicExpressionPreProcessor"><code class="docutils literal notranslate"><span class="pre">SimpleSymbolicExpressionPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.SimulateCodePreProcessor"><code class="docutils literal notranslate"><span class="pre">SimulateCodePreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.StylePreProcessor"><code class="docutils literal notranslate"><span class="pre">StylePreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.SufficientInformationPreProcessor"><code class="docutils literal notranslate"><span class="pre">SufficientInformationPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.SummaryPreProcessing"><code class="docutils literal notranslate"><span class="pre">SummaryPreProcessing</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.TemplatePreProcessor"><code class="docutils literal notranslate"><span class="pre">TemplatePreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.TextFormatPreProcessor"><code class="docutils literal notranslate"><span class="pre">TextFormatPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.TextMessagePreProcessor"><code class="docutils literal notranslate"><span class="pre">TextMessagePreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.TextToOutlinePreProcessor"><code class="docutils literal notranslate"><span class="pre">TextToOutlinePreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.TranscriptionPreProcessor"><code class="docutils literal notranslate"><span class="pre">TranscriptionPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.UniquePreProcessor"><code class="docutils literal notranslate"><span class="pre">UniquePreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.UnwrapListSymbolsPreProcessor"><code class="docutils literal notranslate"><span class="pre">UnwrapListSymbolsPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.pre_processors.ValuePreProcessor"><code class="docutils literal notranslate"><span class="pre">ValuePreProcessor</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="symai.html#module-symai.processor">symai.processor module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.processor.ProcessorPipeline"><code class="docutils literal notranslate"><span class="pre">ProcessorPipeline</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="symai.html#module-symai.prompts">symai.prompts module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.CleanText"><code class="docutils literal notranslate"><span class="pre">CleanText</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.CombineText"><code class="docutils literal notranslate"><span class="pre">CombineText</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.CompareValues"><code class="docutils literal notranslate"><span class="pre">CompareValues</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.ContainsValue"><code class="docutils literal notranslate"><span class="pre">ContainsValue</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.ExceptionMapping"><code class="docutils literal notranslate"><span class="pre">ExceptionMapping</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.ExecutionCorrection"><code class="docutils literal notranslate"><span class="pre">ExecutionCorrection</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.ExpandFunction"><code class="docutils literal notranslate"><span class="pre">ExpandFunction</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.ExtractPattern"><code class="docutils literal notranslate"><span class="pre">ExtractPattern</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.FewShotPattern"><code class="docutils literal notranslate"><span class="pre">FewShotPattern</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.Filter"><code class="docutils literal notranslate"><span class="pre">Filter</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.ForEach"><code class="docutils literal notranslate"><span class="pre">ForEach</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.Format"><code class="docutils literal notranslate"><span class="pre">Format</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.FuzzyEquals"><code class="docutils literal notranslate"><span class="pre">FuzzyEquals</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.GenerateCode"><code class="docutils literal notranslate"><span class="pre">GenerateCode</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.GenerateText"><code class="docutils literal notranslate"><span class="pre">GenerateText</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.IncludeText"><code class="docutils literal notranslate"><span class="pre">IncludeText</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.Index"><code class="docutils literal notranslate"><span class="pre">Index</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.InvertExpression"><code class="docutils literal notranslate"><span class="pre">InvertExpression</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.IsInstanceOf"><code class="docutils literal notranslate"><span class="pre">IsInstanceOf</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.JsonPromptTemplate"><code class="docutils literal notranslate"><span class="pre">JsonPromptTemplate</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.ListObjects"><code class="docutils literal notranslate"><span class="pre">ListObjects</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.LogicExpression"><code class="docutils literal notranslate"><span class="pre">LogicExpression</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.MapContent"><code class="docutils literal notranslate"><span class="pre">MapContent</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.MemoryCapabilities"><code class="docutils literal notranslate"><span class="pre">MemoryCapabilities</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.ModelName"><code class="docutils literal notranslate"><span class="pre">ModelName</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.prompts.ModelName.ALL"><code class="docutils literal notranslate"><span class="pre">ModelName.ALL</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.Modify"><code class="docutils literal notranslate"><span class="pre">Modify</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.NegateStatement"><code class="docutils literal notranslate"><span class="pre">NegateStatement</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.Prompt"><code class="docutils literal notranslate"><span class="pre">Prompt</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.prompts.Prompt.append"><code class="docutils literal notranslate"><span class="pre">Prompt.append()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.prompts.Prompt.clear"><code class="docutils literal notranslate"><span class="pre">Prompt.clear()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.prompts.Prompt.remove"><code class="docutils literal notranslate"><span class="pre">Prompt.remove()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.prompts.Prompt.stop_token"><code class="docutils literal notranslate"><span class="pre">Prompt.stop_token</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.prompts.Prompt.value"><code class="docutils literal notranslate"><span class="pre">Prompt.value</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.PromptLanguage"><code class="docutils literal notranslate"><span class="pre">PromptLanguage</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.prompts.PromptLanguage.ENGLISH"><code class="docutils literal notranslate"><span class="pre">PromptLanguage.ENGLISH</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.prompts.PromptLanguage.GERMAN"><code class="docutils literal notranslate"><span class="pre">PromptLanguage.GERMAN</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.prompts.PromptLanguage.SPANISH"><code class="docutils literal notranslate"><span class="pre">PromptLanguage.SPANISH</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.PromptRegistry"><code class="docutils literal notranslate"><span class="pre">PromptRegistry</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.prompts.PromptRegistry.default_language"><code class="docutils literal notranslate"><span class="pre">PromptRegistry.default_language</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.prompts.PromptRegistry.default_model"><code class="docutils literal notranslate"><span class="pre">PromptRegistry.default_model</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.prompts.PromptRegistry.has_instruction"><code class="docutils literal notranslate"><span class="pre">PromptRegistry.has_instruction()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.prompts.PromptRegistry.has_tag"><code class="docutils literal notranslate"><span class="pre">PromptRegistry.has_tag()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.prompts.PromptRegistry.has_value"><code class="docutils literal notranslate"><span class="pre">PromptRegistry.has_value()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.prompts.PromptRegistry.instruction"><code class="docutils literal notranslate"><span class="pre">PromptRegistry.instruction()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.prompts.PromptRegistry.model_fallback"><code class="docutils literal notranslate"><span class="pre">PromptRegistry.model_fallback</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.prompts.PromptRegistry.register_instruction"><code class="docutils literal notranslate"><span class="pre">PromptRegistry.register_instruction()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.prompts.PromptRegistry.register_tag"><code class="docutils literal notranslate"><span class="pre">PromptRegistry.register_tag()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.prompts.PromptRegistry.register_value"><code class="docutils literal notranslate"><span class="pre">PromptRegistry.register_value()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.prompts.PromptRegistry.tag"><code class="docutils literal notranslate"><span class="pre">PromptRegistry.tag()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.prompts.PromptRegistry.value"><code class="docutils literal notranslate"><span class="pre">PromptRegistry.value()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.RankList"><code class="docutils literal notranslate"><span class="pre">RankList</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.RemoveIndex"><code class="docutils literal notranslate"><span class="pre">RemoveIndex</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.ReplaceText"><code class="docutils literal notranslate"><span class="pre">ReplaceText</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.SemanticMapping"><code class="docutils literal notranslate"><span class="pre">SemanticMapping</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.SetIndex"><code class="docutils literal notranslate"><span class="pre">SetIndex</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.SimpleSymbolicExpression"><code class="docutils literal notranslate"><span class="pre">SimpleSymbolicExpression</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.SimulateCode"><code class="docutils literal notranslate"><span class="pre">SimulateCode</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.SufficientInformation"><code class="docutils literal notranslate"><span class="pre">SufficientInformation</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.SymbiaCapabilities"><code class="docutils literal notranslate"><span class="pre">SymbiaCapabilities</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.TextToOutline"><code class="docutils literal notranslate"><span class="pre">TextToOutline</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.Transcription"><code class="docutils literal notranslate"><span class="pre">Transcription</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.prompts.UniqueKey"><code class="docutils literal notranslate"><span class="pre">UniqueKey</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="symai.html#module-symai.shell">symai.shell module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.shell.Shell"><code class="docutils literal notranslate"><span class="pre">Shell</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.shell.Shell.forward"><code class="docutils literal notranslate"><span class="pre">Shell.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.shell.Shell.static_context"><code class="docutils literal notranslate"><span class="pre">Shell.static_context</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.shell.ShellPreProcessor"><code class="docutils literal notranslate"><span class="pre">ShellPreProcessor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.shell.process_query"><code class="docutils literal notranslate"><span class="pre">process_query()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.shell.run"><code class="docutils literal notranslate"><span class="pre">run()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="symai.html#module-symai.shellsv">symai.shellsv module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.shellsv.FileHistory"><code class="docutils literal notranslate"><span class="pre">FileHistory</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.shellsv.FileHistory.load_history_strings"><code class="docutils literal notranslate"><span class="pre">FileHistory.load_history_strings()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.shellsv.FileHistory.store_string"><code class="docutils literal notranslate"><span class="pre">FileHistory.store_string()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.shellsv.HistoryCompleter"><code class="docutils literal notranslate"><span class="pre">HistoryCompleter</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.shellsv.HistoryCompleter.get_completions"><code class="docutils literal notranslate"><span class="pre">HistoryCompleter.get_completions()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.shellsv.MergedCompleter"><code class="docutils literal notranslate"><span class="pre">MergedCompleter</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.shellsv.MergedCompleter.get_completions"><code class="docutils literal notranslate"><span class="pre">MergedCompleter.get_completions()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.shellsv.PathCompleter"><code class="docutils literal notranslate"><span class="pre">PathCompleter</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.shellsv.PathCompleter.get_completions"><code class="docutils literal notranslate"><span class="pre">PathCompleter.get_completions()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.shellsv.create_completer"><code class="docutils literal notranslate"><span class="pre">create_completer()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.shellsv.create_session"><code class="docutils literal notranslate"><span class="pre">create_session()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.shellsv.disambiguate"><code class="docutils literal notranslate"><span class="pre">disambiguate()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.shellsv.get_conda_env"><code class="docutils literal notranslate"><span class="pre">get_conda_env()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.shellsv.get_exec_prefix"><code class="docutils literal notranslate"><span class="pre">get_exec_prefix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.shellsv.get_git_branch"><code class="docutils literal notranslate"><span class="pre">get_git_branch()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.shellsv.handle_error"><code class="docutils literal notranslate"><span class="pre">handle_error()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.shellsv.is_llm_request"><code class="docutils literal notranslate"><span class="pre">is_llm_request()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.shellsv.listen"><code class="docutils literal notranslate"><span class="pre">listen()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.shellsv.load_history"><code class="docutils literal notranslate"><span class="pre">load_history()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.shellsv.map_nt_cmd"><code class="docutils literal notranslate"><span class="pre">map_nt_cmd()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.shellsv.process_command"><code class="docutils literal notranslate"><span class="pre">process_command()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.shellsv.query_language_model"><code class="docutils literal notranslate"><span class="pre">query_language_model()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.shellsv.retrieval_augmented_indexing"><code class="docutils literal notranslate"><span class="pre">retrieval_augmented_indexing()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.shellsv.run"><code class="docutils literal notranslate"><span class="pre">run()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.shellsv.run_shell_command"><code class="docutils literal notranslate"><span class="pre">run_shell_command()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.shellsv.save_conversation"><code class="docutils literal notranslate"><span class="pre">save_conversation()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.shellsv.search_engine"><code class="docutils literal notranslate"><span class="pre">search_engine()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.shellsv.set_default_module"><code class="docutils literal notranslate"><span class="pre">set_default_module()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.shellsv.supports_ansi_escape"><code class="docutils literal notranslate"><span class="pre">supports_ansi_escape()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="symai.html#module-symai.strategy">symai.strategy module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.strategy.BaseStrategy"><code class="docutils literal notranslate"><span class="pre">BaseStrategy</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.strategy.BaseStrategy.forward"><code class="docutils literal notranslate"><span class="pre">BaseStrategy.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.strategy.BaseStrategy.payload"><code class="docutils literal notranslate"><span class="pre">BaseStrategy.payload</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.strategy.BaseStrategy.static_context"><code class="docutils literal notranslate"><span class="pre">BaseStrategy.static_context</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.strategy.BaseStrategy.template"><code class="docutils literal notranslate"><span class="pre">BaseStrategy.template</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.strategy.SemanticValidationFunction"><code class="docutils literal notranslate"><span class="pre">SemanticValidationFunction</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.strategy.SemanticValidationFunction.forward"><code class="docutils literal notranslate"><span class="pre">SemanticValidationFunction.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.strategy.SemanticValidationFunction.register_expected_data_model"><code class="docutils literal notranslate"><span class="pre">SemanticValidationFunction.register_expected_data_model()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.strategy.SemanticValidationFunction.remedy_prompt"><code class="docutils literal notranslate"><span class="pre">SemanticValidationFunction.remedy_prompt()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.strategy.SemanticValidationFunction.zero_shot_prompt"><code class="docutils literal notranslate"><span class="pre">SemanticValidationFunction.zero_shot_prompt()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.strategy.Strategy"><code class="docutils literal notranslate"><span class="pre">Strategy</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.strategy.TypeValidationFunction"><code class="docutils literal notranslate"><span class="pre">TypeValidationFunction</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.strategy.TypeValidationFunction.forward"><code class="docutils literal notranslate"><span class="pre">TypeValidationFunction.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.strategy.TypeValidationFunction.register_data_model"><code class="docutils literal notranslate"><span class="pre">TypeValidationFunction.register_data_model()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.strategy.TypeValidationFunction.remedy_prompt"><code class="docutils literal notranslate"><span class="pre">TypeValidationFunction.remedy_prompt()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.strategy.ValidationFunction"><code class="docutils literal notranslate"><span class="pre">ValidationFunction</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.strategy.ValidationFunction.forward"><code class="docutils literal notranslate"><span class="pre">ValidationFunction.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.strategy.ValidationFunction.prepare_seeds"><code class="docutils literal notranslate"><span class="pre">ValidationFunction.prepare_seeds()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.strategy.ValidationFunction.remedy_prompt"><code class="docutils literal notranslate"><span class="pre">ValidationFunction.remedy_prompt()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.strategy.ValidationFunction.simplify_validation_errors"><code class="docutils literal notranslate"><span class="pre">ValidationFunction.simplify_validation_errors()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.strategy.contract"><code class="docutils literal notranslate"><span class="pre">contract</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="symai.html#module-symai.symbol">symai.symbol module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.symbol.Call"><code class="docutils literal notranslate"><span class="pre">Call</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.symbol.Expression"><code class="docutils literal notranslate"><span class="pre">Expression</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Expression.command"><code class="docutils literal notranslate"><span class="pre">Expression.command()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Expression.copy"><code class="docutils literal notranslate"><span class="pre">Expression.copy()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Expression.forward"><code class="docutils literal notranslate"><span class="pre">Expression.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Expression.prompt"><code class="docutils literal notranslate"><span class="pre">Expression.prompt()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Expression.register"><code class="docutils literal notranslate"><span class="pre">Expression.register()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Expression.serialize"><code class="docutils literal notranslate"><span class="pre">Expression.serialize()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Expression.sym_return_type"><code class="docutils literal notranslate"><span class="pre">Expression.sym_return_type</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.symbol.ExpressionEncoder"><code class="docutils literal notranslate"><span class="pre">ExpressionEncoder</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.ExpressionEncoder.default"><code class="docutils literal notranslate"><span class="pre">ExpressionEncoder.default()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.symbol.GlobalSymbolPrimitive"><code class="docutils literal notranslate"><span class="pre">GlobalSymbolPrimitive</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.symbol.Linker"><code class="docutils literal notranslate"><span class="pre">Linker</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Linker.find"><code class="docutils literal notranslate"><span class="pre">Linker.find()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Linker.keys"><code class="docutils literal notranslate"><span class="pre">Linker.keys()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Linker.values"><code class="docutils literal notranslate"><span class="pre">Linker.values()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.symbol.Metadata"><code class="docutils literal notranslate"><span class="pre">Metadata</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Metadata.keys"><code class="docutils literal notranslate"><span class="pre">Metadata.keys</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.symbol.PropertyReservedError"><code class="docutils literal notranslate"><span class="pre">PropertyReservedError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.symbol.Result"><code class="docutils literal notranslate"><span class="pre">Result</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Result.value"><code class="docutils literal notranslate"><span class="pre">Result.value</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.symbol.Symbol"><code class="docutils literal notranslate"><span class="pre">Symbol</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Symbol.adapt"><code class="docutils literal notranslate"><span class="pre">Symbol.adapt()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Symbol.children"><code class="docutils literal notranslate"><span class="pre">Symbol.children</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Symbol.clear"><code class="docutils literal notranslate"><span class="pre">Symbol.clear()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Symbol.dynamic_context"><code class="docutils literal notranslate"><span class="pre">Symbol.dynamic_context</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Symbol.edges"><code class="docutils literal notranslate"><span class="pre">Symbol.edges</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Symbol.global_context"><code class="docutils literal notranslate"><span class="pre">Symbol.global_context</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Symbol.graph"><code class="docutils literal notranslate"><span class="pre">Symbol.graph</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Symbol.json"><code class="docutils literal notranslate"><span class="pre">Symbol.json()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Symbol.linker"><code class="docutils literal notranslate"><span class="pre">Symbol.linker</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Symbol.metadata"><code class="docutils literal notranslate"><span class="pre">Symbol.metadata</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Symbol.nodes"><code class="docutils literal notranslate"><span class="pre">Symbol.nodes</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Symbol.parent"><code class="docutils literal notranslate"><span class="pre">Symbol.parent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Symbol.primitive"><code class="docutils literal notranslate"><span class="pre">Symbol.primitive()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Symbol.root"><code class="docutils literal notranslate"><span class="pre">Symbol.root</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Symbol.serialize"><code class="docutils literal notranslate"><span class="pre">Symbol.serialize()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Symbol.shape"><code class="docutils literal notranslate"><span class="pre">Symbol.shape</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Symbol.static_context"><code class="docutils literal notranslate"><span class="pre">Symbol.static_context</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Symbol.symbols"><code class="docutils literal notranslate"><span class="pre">Symbol.symbols()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.Symbol.value"><code class="docutils literal notranslate"><span class="pre">Symbol.value</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.symbol.SymbolEncoder"><code class="docutils literal notranslate"><span class="pre">SymbolEncoder</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="symai.html#symai.symbol.SymbolEncoder.default"><code class="docutils literal notranslate"><span class="pre">SymbolEncoder.default()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.symbol.SymbolMeta"><code class="docutils literal notranslate"><span class="pre">SymbolMeta</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="symai.html#module-symai.utils">symai.utils module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.utils.Args"><code class="docutils literal notranslate"><span class="pre">Args</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.utils.CustomUserWarning"><code class="docutils literal notranslate"><span class="pre">CustomUserWarning</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.utils.deprecated"><code class="docutils literal notranslate"><span class="pre">deprecated()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.utils.encode_image_local"><code class="docutils literal notranslate"><span class="pre">encode_image_local()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.utils.encode_image_url"><code class="docutils literal notranslate"><span class="pre">encode_image_url()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.utils.encode_media_frames"><code class="docutils literal notranslate"><span class="pre">encode_media_frames()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.utils.format_bytes"><code class="docutils literal notranslate"><span class="pre">format_bytes()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.utils.ignore_exception"><code class="docutils literal notranslate"><span class="pre">ignore_exception()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.utils.prep_as_str"><code class="docutils literal notranslate"><span class="pre">prep_as_str()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.utils.toggle_test"><code class="docutils literal notranslate"><span class="pre">toggle_test()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="symai.html#module-symai">Module contents</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.display_config"><code class="docutils literal notranslate"><span class="pre">display_config()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.format_config_content"><code class="docutils literal notranslate"><span class="pre">format_config_content()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.run_server"><code class="docutils literal notranslate"><span class="pre">run_server()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.run_setup_wizard"><code class="docutils literal notranslate"><span class="pre">run_setup_wizard()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="symai.html#symai.setup_wizard"><code class="docutils literal notranslate"><span class="pre">setup_wizard()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By Marius-Constantin Dinu
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2024, ExtensityAI FlexCo.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

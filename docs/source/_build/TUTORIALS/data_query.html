@@ -1,0 +1,600 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Querying Data with SQL &#8212; SymbolicAI</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=a3416100" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=df347da4"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'TUTORIALS/data_query';</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Handling Files and Long Context Lengths" href="context.html" />
+    <link rel="prev" title="Writing a Custom Chatbot" href="chatbot.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="version" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">SymbolicAI</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../INTRODUCTION.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../INSTALLATION.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../QUICKSTART.html">Quick Start Guide</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../FEATURES/index.html">Features</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../FEATURES/causal_reasoning.html">🧠 Causal Reasoning</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../FEATURES/operations.html">Operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../FEATURES/expressions.html">Expressions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../FEATURES/vision.html">Vision</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../FEATURES/import.html">Module Management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../FEATURES/error_handling.html">❌ Error Handling and Debugging</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../ENGINES/index.html">Engines</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/neurosymbolic_engine.html">Neuro-Symbolic Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/symbolic_engine.html">Symbolic Engine (WolframAlpha)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/speech_engine.html">Speech Engine (Whisper)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/ocr_engine.html">OCR Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/search_engine.html">Search Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/webcrawler_engine.html">Webcrawler Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/drawing_engine.html">Drawing Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/file_engine.html">File Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/indexing_engine.html">Indexing Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/clip_engine.html">CLIP Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/local_engine.html">Local Engines</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/custom_engine.html">Custom Engine</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">Tutorials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="chatbot.html">Writing a Custom Chatbot</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Querying Data with SQL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="context.html">Handling Files and Long Context Lengths</a></li>
+<li class="toctree-l2"><a class="reference internal" href="video_tutorials.html">Video Tutorials</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html">Example Files</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../TOOLS/index.html">Tools</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../TOOLS/shell.html">Shell Command Tool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../TOOLS/chatbot.html">Chatbot</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../TOOLS/packages.html">Packages</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../API_REF.html">API Reference</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../symai.html">symai package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../symai.backend.html">symai.backend package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="../symai.backend.engines.html">symai.backend.engines package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../symai.backend.mixin.html">symai.backend.mixin package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.collect.html">symai.collect package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../symai.extended.html">symai.extended package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.interfaces.html">symai.extended.interfaces package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.metrics.html">symai.extended.metrics package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.packages.html">symai.extended.packages package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.personas.html">symai.extended.personas package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.strategies.html">symai.extended.strategies package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.formatter.html">symai.formatter package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.menu.html">symai.menu package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.misc.html">symai.misc package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.models.html">symai.models package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.ops.html">symai.ops package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.server.html">symai.server package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../symai.backend.html">symai.backend package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../symai.backend.engines.html">symai.backend.engines package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.backend.mixin.html">symai.backend.mixin package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.backend.engines.html">symai.backend.engines package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.backend.mixin.html">symai.backend.mixin package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.collect.html">symai.collect package</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../symai.extended.html">symai.extended package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../symai.extended.interfaces.html">symai.extended.interfaces package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.extended.metrics.html">symai.extended.metrics package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.extended.packages.html">symai.extended.packages package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../symai.extended.personas.html">symai.extended.personas package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.personas.research.html">symai.extended.personas.research package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.personas.sales.html">symai.extended.personas.sales package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.personas.student.html">symai.extended.personas.student package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.extended.strategies.html">symai.extended.strategies package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.extended.interfaces.html">symai.extended.interfaces package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.extended.metrics.html">symai.extended.metrics package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.extended.packages.html">symai.extended.packages package</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../symai.extended.personas.html">symai.extended.personas package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../symai.extended.personas.research.html">symai.extended.personas.research package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.extended.personas.sales.html">symai.extended.personas.sales package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.extended.personas.student.html">symai.extended.personas.student package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.extended.personas.research.html">symai.extended.personas.research package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.extended.personas.sales.html">symai.extended.personas.sales package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.extended.personas.student.html">symai.extended.personas.student package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.extended.strategies.html">symai.extended.strategies package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.formatter.html">symai.formatter package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.menu.html">symai.menu package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.misc.html">symai.misc package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.models.html">symai.models package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.ops.html">symai.ops package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.server.html">symai.server package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="../CONTRIBUTING.html">How to contribute</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../LICENSE.html">License</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item"><nav class="sidebar-indices-items" aria-labelledby="pst-indices-navigation-heading-2">
+  <p id="pst-indices-navigation-heading-2" class="sidebar-indices-items__title" role="heading" aria-level="1">Indices</p>
+  <ul class="indices-link">
+        <li class="toctree-l1">
+          <a class="reference internal"
+             href="../genindex.html"
+             accesskey="I">General Index</a>
+        </li>
+        <li class="toctree-l1">
+          <a class="reference internal" href="../py-modindex.html">Python Module Index</a>
+        </li>
+  </ul>
+</nav></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+<a href="https://github.com/ExtensityAI/symbolicai" target="_blank"
+   class="btn btn-sm btn-source-repository-button"
+   title="Source repository"
+   data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+
+</a>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../_sources/TUTORIALS/data_query.md" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.md</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>Querying Data with SQL</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="querying-data-with-sql">
+<h1>Querying Data with SQL<a class="headerlink" href="#querying-data-with-sql" title="Link to this heading">#</a></h1>
+<p>Click here for <a class="reference external" href="https://github.com/ExtensityAI/symbolicai/blob/main/notebooks/Queries.ipynb">interactive notebook</a></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">())</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">symai</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">IPython.display</span><span class="w"> </span><span class="kn">import</span> <span class="n">display</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">examples.sql</span><span class="w"> </span><span class="kn">import</span> <span class="n">SQL</span>
+<span class="n">sql</span> <span class="o">=</span> <span class="n">SQL</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">SQL</span></code> expression is defined and passes as a global context the syntax of the SQL language. The SQL expression is then used to generate queries based on the given context. We can then use the generated queries to get data from a database.
+The following query is sent to the neural computation engine and creates a query based on the given context:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">val</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_fun</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="k">global</span> <span class="n">val</span>
+    <span class="n">val</span> <span class="o">=</span> <span class="n">x</span>
+<span class="n">Symbol</span><span class="o">.</span><span class="n">_metadata</span><span class="o">.</span><span class="n">input_handler</span> <span class="o">=</span> <span class="n">_fun</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">Symbol</span><span class="p">(</span><span class="s1">&#39;I have this class&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="s1">&#39;German&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">q</span> <span class="o">=</span> <span class="n">sql</span><span class="p">(</span><span class="s1">&#39;Select all users above the age of 30 from the Members table.&#39;</span><span class="p">);</span> 
+<span class="n">display</span><span class="p">(</span><span class="n">q</span><span class="p">)</span> <span class="c1"># SELECT * FROM Members WHERE age &gt; 30</span>
+</pre></div>
+</div>
+<p>We can now try to further manipulate the result by asking the model to incorporate additional information, such as filtering to a specific time range:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">res</span> <span class="o">=</span> <span class="n">q</span> <span class="o">&lt;&lt;</span> <span class="s1">&#39;and limit the query to the last 10 minutes&#39;</span>
+<span class="n">display</span><span class="p">(</span><span class="n">res</span><span class="p">)</span> <span class="c1"># SELECT * FROM Members WHERE age &gt; 30 AND timestamp &gt; NOW() - INTERVAL 10 MINUTE</span>
+</pre></div>
+</div>
+<p>We can also try to remove unwanted fields from the generated query. Notice how the model tries to remove not only the given statement but attributes associated with them:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">res</span> <span class="o">-=</span> <span class="s1">&#39; AND ...&#39;</span>
+<span class="n">display</span><span class="p">(</span><span class="n">res</span><span class="p">)</span> <span class="c1"># SELECT * FROM Members WHERE age &gt; 30</span>
+</pre></div>
+</div>
+<p>And we can now even convert our query to other familiar domain specific languages, such as <code class="docutils literal notranslate"><span class="pre">SQL</span></code> or <code class="docutils literal notranslate"><span class="pre">ActiveRecord</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sql_res</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span><span class="s2">&quot;ActiveRecord&quot;</span><span class="p">)</span>
+<span class="n">display</span><span class="p">(</span><span class="n">sql_res</span><span class="p">)</span> <span class="c1"># Members.where(&quot;age &gt; ?&quot;, 30)</span>
+</pre></div>
+</div>
+<p>To wrap things up, we might want to go back full circle and ask the model to generate again the explanation based on the given query:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">answer_doc</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;What does this query do?&quot;</span><span class="p">)</span>
+<span class="n">display</span><span class="p">(</span><span class="n">answer_doc</span><span class="p">)</span>
+<span class="c1"># The given SQL query retrieves all records from a table named `Members` where two conditions are met:</span>
+<span class="c1"># 1. The `age` column of a member record must be greater than 30. </span>
+<span class="c1"># 2. The `timestamp` column of a member record must be more recent than (or within) </span>
+<span class="c1"># the last 10 minutes from the current time. More specifically: - `SELECT *` indicates that it will </span>
+<span class="c1"># fetch all columns for the qualifying rows. - `FROM Members` specifies the table from which to fetch</span>
+<span class="c1">#  the data. - `WHERE` introduces the conditions to filter which rows should be returned. - `age &gt; 30`</span>
+<span class="c1">#  filters the records to only include those where the age column value is greater than 30. - `AND` </span>
+<span class="c1"># combines multiple conditions, meaning a record must meet all the specified conditions to be included. </span>
+<span class="c1"># - `timestamp &gt; NOW() - INTERVAL 10 MINUTE` checks for records with a timestamp within the last 10 </span>
+<span class="c1"># minutes. `NOW()` is a function that returns the current datetime. `INTERVAL 10 MINUTE` specifies a </span>
+<span class="c1"># time interval of 10 minutes. By subtracting this interval from the current time, the query creates a </span>
+<span class="c1"># datetime value that is 10 minutes before now. The condition `timestamp &gt;` selects all records where </span>
+<span class="c1"># the `timestamp` is more recent than that calculated time. This query would be useful for identifying </span>
+<span class="c1"># active, older members (above 30 years old) who have engaged with the system or performed an action </span>
+<span class="c1"># that updates their `timestamp` within the last 10 minutes.</span>
+</pre></div>
+</div>
+<p>Ask it in natural language to modify the query:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">answer</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;How can you limit the number of results to 30 for an SQL query?&quot;</span><span class="p">)</span>
+<span class="n">display</span><span class="p">(</span><span class="n">answer</span><span class="p">)</span>
+<span class="c1"># To limit the number of results to 30 for an SQL query, you can use the `LIMIT` clause in your SQL </span>
+<span class="c1"># statement. The `LIMIT` clause restricts the number of rows returned by the query. Here&#39;s how you modify </span>
+<span class="c1"># your given SQL query to limit the results to 30: ```sql SELECT * FROM Members WHERE age &gt; 30 LIMIT 30;```</span>
+<span class="c1"># This query will retrieve a maximum of 30 records from the &#39;Members&#39; table where the &#39;age&#39; column value is greater than 30.</span>
+</pre></div>
+</div>
+<p>Even translate the explanation to a different language on the fly:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">locale</span> <span class="o">=</span> <span class="n">Symbol</span><span class="p">(</span><span class="n">answer_doc</span><span class="p">)</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="s1">&#39;German&#39;</span><span class="p">)</span>
+<span class="n">display</span><span class="p">(</span><span class="n">locale</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Fixing the query on the fly if something goes wrong or the user quickly wants to adapt a query:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sql</span><span class="o">.</span><span class="n">adapt</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="s2">&quot;&quot;&quot;Explanation: Never allow SELECT *, always use LIMIT to a max of x &lt;= 50 entries, where x is the user specified limit.&quot;&quot;&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">res</span> <span class="o">=</span> <span class="n">sql</span><span class="p">(</span><span class="s1">&#39;Select all users above the age of 30 from the Members table.&#39;</span><span class="p">)</span>
+<span class="n">display</span><span class="p">(</span><span class="n">res</span><span class="p">)</span> <span class="c1"># SELECT * FROM Members WHERE age &gt; 30 LIMIT 50</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sql</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">res</span> <span class="o">=</span> <span class="n">sql</span><span class="p">(</span><span class="s1">&#39;Select all users above the age of 30 from the Members table.&#39;</span><span class="p">)</span>
+<span class="n">display</span><span class="p">(</span><span class="n">res</span><span class="p">)</span> <span class="c1"># SELECT * FROM Members WHERE age &gt; 30</span>
+</pre></div>
+</div>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="chatbot.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Writing a Custom Chatbot</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="context.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Handling Files and Long Context Lengths</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By Marius-Constantin Dinu
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2024, ExtensityAI FlexCo.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

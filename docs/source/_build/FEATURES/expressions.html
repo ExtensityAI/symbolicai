@@ -1,0 +1,589 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Expressions &#8212; SymbolicAI</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=a3416100" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=df347da4"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'FEATURES/expressions';</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Vision" href="vision.html" />
+    <link rel="prev" title="Operations" href="operations.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="version" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">SymbolicAI</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../INTRODUCTION.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../INSTALLATION.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../QUICKSTART.html">Quick Start Guide</a></li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">Features</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="causal_reasoning.html">🧠 Causal Reasoning</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations.html">Operations</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Expressions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="vision.html">Vision</a></li>
+<li class="toctree-l2"><a class="reference internal" href="import.html">Module Management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="error_handling.html">❌ Error Handling and Debugging</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../ENGINES/index.html">Engines</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/neurosymbolic_engine.html">Neuro-Symbolic Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/symbolic_engine.html">Symbolic Engine (WolframAlpha)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/speech_engine.html">Speech Engine (Whisper)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/ocr_engine.html">OCR Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/search_engine.html">Search Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/webcrawler_engine.html">Webcrawler Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/drawing_engine.html">Drawing Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/file_engine.html">File Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/indexing_engine.html">Indexing Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/clip_engine.html">CLIP Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/local_engine.html">Local Engines</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/custom_engine.html">Custom Engine</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../TUTORIALS/index.html">Tutorials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../TUTORIALS/chatbot.html">Writing a Custom Chatbot</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../TUTORIALS/data_query.html">Querying Data with SQL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../TUTORIALS/context.html">Handling Files and Long Context Lengths</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../TUTORIALS/video_tutorials.html">Video Tutorials</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../TUTORIALS/examples.html">Example Files</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../TOOLS/index.html">Tools</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../TOOLS/shell.html">Shell Command Tool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../TOOLS/chatbot.html">Chatbot</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../TOOLS/packages.html">Packages</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../API_REF.html">API Reference</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../symai.html">symai package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../symai.backend.html">symai.backend package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="../symai.backend.engines.html">symai.backend.engines package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../symai.backend.mixin.html">symai.backend.mixin package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.collect.html">symai.collect package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../symai.extended.html">symai.extended package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.interfaces.html">symai.extended.interfaces package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.metrics.html">symai.extended.metrics package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.packages.html">symai.extended.packages package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.personas.html">symai.extended.personas package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.strategies.html">symai.extended.strategies package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.formatter.html">symai.formatter package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.menu.html">symai.menu package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.misc.html">symai.misc package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.models.html">symai.models package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.ops.html">symai.ops package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.server.html">symai.server package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../symai.backend.html">symai.backend package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../symai.backend.engines.html">symai.backend.engines package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.backend.mixin.html">symai.backend.mixin package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.backend.engines.html">symai.backend.engines package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.backend.mixin.html">symai.backend.mixin package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.collect.html">symai.collect package</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../symai.extended.html">symai.extended package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../symai.extended.interfaces.html">symai.extended.interfaces package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.extended.metrics.html">symai.extended.metrics package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.extended.packages.html">symai.extended.packages package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../symai.extended.personas.html">symai.extended.personas package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.personas.research.html">symai.extended.personas.research package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.personas.sales.html">symai.extended.personas.sales package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.personas.student.html">symai.extended.personas.student package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.extended.strategies.html">symai.extended.strategies package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.extended.interfaces.html">symai.extended.interfaces package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.extended.metrics.html">symai.extended.metrics package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.extended.packages.html">symai.extended.packages package</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../symai.extended.personas.html">symai.extended.personas package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../symai.extended.personas.research.html">symai.extended.personas.research package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.extended.personas.sales.html">symai.extended.personas.sales package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.extended.personas.student.html">symai.extended.personas.student package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.extended.personas.research.html">symai.extended.personas.research package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.extended.personas.sales.html">symai.extended.personas.sales package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.extended.personas.student.html">symai.extended.personas.student package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.extended.strategies.html">symai.extended.strategies package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.formatter.html">symai.formatter package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.menu.html">symai.menu package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.misc.html">symai.misc package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.models.html">symai.models package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.ops.html">symai.ops package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.server.html">symai.server package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="../CONTRIBUTING.html">How to contribute</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../LICENSE.html">License</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item"><nav class="sidebar-indices-items" aria-labelledby="pst-indices-navigation-heading-2">
+  <p id="pst-indices-navigation-heading-2" class="sidebar-indices-items__title" role="heading" aria-level="1">Indices</p>
+  <ul class="indices-link">
+        <li class="toctree-l1">
+          <a class="reference internal"
+             href="../genindex.html"
+             accesskey="I">General Index</a>
+        </li>
+        <li class="toctree-l1">
+          <a class="reference internal" href="../py-modindex.html">Python Module Index</a>
+        </li>
+  </ul>
+</nav></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+<a href="https://github.com/ExtensityAI/symbolicai" target="_blank"
+   class="btn btn-sm btn-source-repository-button"
+   title="Source repository"
+   data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+
+</a>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../_sources/FEATURES/expressions.md" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.md</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>Expressions</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#sequence-expressions">Sequence expressions</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#stream-expressions">Stream expressions</a></li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="expressions">
+<h1>Expressions<a class="headerlink" href="#expressions" title="Link to this heading">#</a></h1>
+<p>An <code class="docutils literal notranslate"><span class="pre">Expression</span></code> is a non-terminal symbol that can be further evaluated. It inherits all the properties from the Symbol class and overrides the <code class="docutils literal notranslate"><span class="pre">__call__</span></code> method to evaluate its expressions or values. All other expressions are derived from the <code class="docutils literal notranslate"><span class="pre">Expression</span></code> class, which also adds additional capabilities, such as the ability to <code class="docutils literal notranslate"><span class="pre">fetch</span></code> data from URLs, <code class="docutils literal notranslate"><span class="pre">search</span></code> on the internet, or <code class="docutils literal notranslate"><span class="pre">open</span></code> files. These operations are specifically separated from the <code class="docutils literal notranslate"><span class="pre">Symbol</span></code> class as they do not use the <code class="docutils literal notranslate"><span class="pre">value</span></code> attribute of the Symbol class.</p>
+<p>SymbolicAI’s API closely follows best practices and ideas from <code class="docutils literal notranslate"><span class="pre">PyTorch</span></code>, allowing the creation of complex expressions by combining multiple expressions as a computational graph. Each Expression has its own <code class="docutils literal notranslate"><span class="pre">forward</span></code> method that needs to be overridden. The <code class="docutils literal notranslate"><span class="pre">forward</span></code> method is used to define the behavior of the expression. It is called by the <code class="docutils literal notranslate"><span class="pre">__call__</span></code> method, which is inherited from the <code class="docutils literal notranslate"><span class="pre">Expression</span></code> base class. The <code class="docutils literal notranslate"><span class="pre">__call__</span></code> method evaluates an expression and returns the result from the implemented <code class="docutils literal notranslate"><span class="pre">forward</span></code> method. This design pattern evaluates expressions in a lazy manner, meaning the expression is only evaluated when its result is needed. It is an essential feature that allows us to chain complex expressions together. Numerous helpful expressions can be imported from the <code class="docutils literal notranslate"><span class="pre">symai.components</span></code> file.</p>
+<p>Other important properties inherited from the Symbol class include <code class="docutils literal notranslate"><span class="pre">sym_return_type</span></code> and <code class="docutils literal notranslate"><span class="pre">static_context</span></code>. These two properties define the context in which the current Expression operates, as described in the <a class="reference internal" href="#prompt-design"><span class="xref myst">Prompt Design</span></a> section. The <code class="docutils literal notranslate"><span class="pre">static_context</span></code> influences all operations of the current Expression sub-class. The <code class="docutils literal notranslate"><span class="pre">sym_return_type</span></code> ensures that after evaluating an Expression, we obtain the desired return object type. It is usually implemented to return the current type but can be set to return a different type.</p>
+<p>Expressions may have more complex structures and can be further sub-classed, as shown in the <code class="docutils literal notranslate"><span class="pre">Sequence</span></code> expression example in the following figure:</p>
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img2.png" width="720px">
+<p>A Sequence expression can hold multiple expressions evaluated at runtime.</p>
+<section id="sequence-expressions">
+<h2>Sequence expressions<a class="headerlink" href="#sequence-expressions" title="Link to this heading">#</a></h2>
+<p>Here is an example of defining a Sequence expression:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># First import all expressions</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">symai.components</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="c1"># Define a sequence of expressions</span>
+<span class="n">Sequence</span><span class="p">(</span>
+    <span class="n">Clean</span><span class="p">(),</span>
+    <span class="n">Translate</span><span class="p">(),</span>
+    <span class="n">Outline</span><span class="p">(),</span>
+    <span class="n">Compose</span><span class="p">(</span><span class="s1">&#39;Compose news:&#39;</span><span class="p">),</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="stream-expressions">
+<h2>Stream expressions<a class="headerlink" href="#stream-expressions" title="Link to this heading">#</a></h2>
+<p>As previously mentioned, we can create contextualized prompts to define the behavior of operations on our neural engine. However, this limits the available context size due to GPT-3 Davinci’s context length constraint of 4097 tokens. This issue can be addressed using the <code class="docutils literal notranslate"><span class="pre">Stream</span></code> processing expression, which opens a data stream and performs chunk-based operations on the input stream.</p>
+<p>A Stream expression can be wrapped around other expressions. For example, the chunks can be processed with a <code class="docutils literal notranslate"><span class="pre">Sequence</span></code> expression that allows multiple chained operations in a sequential manner. Here is an example of defining a Stream expression:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">Stream</span><span class="p">(</span><span class="n">Sequence</span><span class="p">(</span>
+    <span class="n">Clean</span><span class="p">(),</span>
+    <span class="n">Translate</span><span class="p">(),</span>
+    <span class="n">Outline</span><span class="p">(),</span>
+    <span class="n">Embed</span><span class="p">()</span>
+<span class="p">))</span>
+</pre></div>
+</div>
+<p>The example above opens a stream, passes a <code class="docutils literal notranslate"><span class="pre">Sequence</span></code> object which cleans, translates, outlines, and embeds the input. Internally, the stream operation estimates the available model context size and breaks the long input text into smaller chunks, which are passed to the inner expression. The returned object type is a <code class="docutils literal notranslate"><span class="pre">generator</span></code>.</p>
+<p>This approach has the drawback of processing chunks independently, meaning there is no shared context or information among chunks. To address this issue, the <code class="docutils literal notranslate"><span class="pre">Cluster</span></code> expression can be used, where the independent chunks are merged based on their similarity, as illustrated in the following figure:</p>
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img6.png" width="720px">
+<p>In the illustrated example, all individual chunks are merged by clustering the information within each chunk. It consolidates contextually related information, merging them meaningfully. The clustered information can then be labeled by streaming through the content of each cluster and extracting the most relevant labels, providing interpretable node summaries.</p>
+<p>The full example is shown below:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span> <span class="o">=</span> <span class="n">Stream</span><span class="p">(</span><span class="n">Sequence</span><span class="p">(</span>
+    <span class="n">Clean</span><span class="p">(),</span>
+    <span class="n">Translate</span><span class="p">(),</span>
+    <span class="n">Outline</span><span class="p">(),</span>
+<span class="p">))</span>
+<span class="n">sym</span> <span class="o">=</span> <span class="n">Symbol</span><span class="p">(</span><span class="s1">&#39;&lt;some long text&gt;&#39;</span><span class="p">)</span>
+<span class="n">res</span> <span class="o">=</span> <span class="n">Symbol</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">stream</span><span class="p">(</span><span class="n">sym</span><span class="p">)))</span>
+<span class="n">expr</span> <span class="o">=</span> <span class="n">Cluster</span><span class="p">()</span>
+<span class="n">expr</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Next, we could recursively repeat this process on each summary node, building a hierarchical clustering structure. Since each Node resembles a summarized subset of the original information, we can use the summary as an index. The resulting tree can then be used to navigate and retrieve the original information, transforming the large data stream problem into a search problem.</p>
+<p>Alternatively, vector-based similarity search can be used to find similar nodes. Libraries such as <a class="reference external" href="https://github.com/spotify/annoy">Annoy</a>, <a class="reference external" href="https://github.com/facebookresearch/faiss">Faiss</a>, or <a class="reference external" href="https://github.com/milvus-io/milvus">Milvus</a> can be employed for searching in a vector space.</p>
+</section>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="operations.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Operations</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="vision.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Vision</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#sequence-expressions">Sequence expressions</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#stream-expressions">Stream expressions</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By Marius-Constantin Dinu
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2024, ExtensityAI FlexCo.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>
