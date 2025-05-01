@@ -1,0 +1,689 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Packages &#8212; SymbolicAI</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=a3416100" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=df347da4"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'TOOLS/packages';</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="API Reference" href="../API_REF.html" />
+    <link rel="prev" title="Chatbot" href="chatbot.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="version" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">SymbolicAI</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../INTRODUCTION.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../INSTALLATION.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../QUICKSTART.html">Quick Start Guide</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../FEATURES/index.html">Features</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../FEATURES/causal_reasoning.html">🧠 Causal Reasoning</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../FEATURES/operations.html">Operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../FEATURES/expressions.html">Expressions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../FEATURES/vision.html">Vision</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../FEATURES/import.html">Module Management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../FEATURES/error_handling.html">❌ Error Handling and Debugging</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../ENGINES/index.html">Engines</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/neurosymbolic_engine.html">Neuro-Symbolic Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/symbolic_engine.html">Symbolic Engine (WolframAlpha)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/speech_engine.html">Speech Engine (Whisper)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/ocr_engine.html">OCR Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/search_engine.html">Search Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/webcrawler_engine.html">Webcrawler Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/drawing_engine.html">Drawing Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/file_engine.html">File Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/indexing_engine.html">Indexing Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/clip_engine.html">CLIP Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/local_engine.html">Local Engines</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/custom_engine.html">Custom Engine</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../TUTORIALS/index.html">Tutorials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../TUTORIALS/chatbot.html">Writing a Custom Chatbot</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../TUTORIALS/data_query.html">Querying Data with SQL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../TUTORIALS/context.html">Handling Files and Long Context Lengths</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../TUTORIALS/video_tutorials.html">Video Tutorials</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../TUTORIALS/examples.html">Example Files</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">Tools</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="shell.html">Shell Command Tool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chatbot.html">Chatbot</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Packages</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../API_REF.html">API Reference</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../symai.html">symai package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../symai.backend.html">symai.backend package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="../symai.backend.engines.html">symai.backend.engines package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../symai.backend.mixin.html">symai.backend.mixin package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.collect.html">symai.collect package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../symai.extended.html">symai.extended package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.interfaces.html">symai.extended.interfaces package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.metrics.html">symai.extended.metrics package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.packages.html">symai.extended.packages package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.personas.html">symai.extended.personas package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.strategies.html">symai.extended.strategies package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.formatter.html">symai.formatter package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.menu.html">symai.menu package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.misc.html">symai.misc package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.models.html">symai.models package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.ops.html">symai.ops package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.server.html">symai.server package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../symai.backend.html">symai.backend package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../symai.backend.engines.html">symai.backend.engines package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.backend.mixin.html">symai.backend.mixin package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.backend.engines.html">symai.backend.engines package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.backend.mixin.html">symai.backend.mixin package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.collect.html">symai.collect package</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../symai.extended.html">symai.extended package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../symai.extended.interfaces.html">symai.extended.interfaces package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.extended.metrics.html">symai.extended.metrics package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.extended.packages.html">symai.extended.packages package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../symai.extended.personas.html">symai.extended.personas package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.personas.research.html">symai.extended.personas.research package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.personas.sales.html">symai.extended.personas.sales package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.personas.student.html">symai.extended.personas.student package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.extended.strategies.html">symai.extended.strategies package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.extended.interfaces.html">symai.extended.interfaces package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.extended.metrics.html">symai.extended.metrics package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.extended.packages.html">symai.extended.packages package</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../symai.extended.personas.html">symai.extended.personas package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../symai.extended.personas.research.html">symai.extended.personas.research package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.extended.personas.sales.html">symai.extended.personas.sales package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.extended.personas.student.html">symai.extended.personas.student package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.extended.personas.research.html">symai.extended.personas.research package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.extended.personas.sales.html">symai.extended.personas.sales package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.extended.personas.student.html">symai.extended.personas.student package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.extended.strategies.html">symai.extended.strategies package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.formatter.html">symai.formatter package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.menu.html">symai.menu package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.misc.html">symai.misc package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.models.html">symai.models package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.ops.html">symai.ops package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.server.html">symai.server package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="../CONTRIBUTING.html">How to contribute</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../LICENSE.html">License</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item"><nav class="sidebar-indices-items" aria-labelledby="pst-indices-navigation-heading-2">
+  <p id="pst-indices-navigation-heading-2" class="sidebar-indices-items__title" role="heading" aria-level="1">Indices</p>
+  <ul class="indices-link">
+        <li class="toctree-l1">
+          <a class="reference internal"
+             href="../genindex.html"
+             accesskey="I">General Index</a>
+        </li>
+        <li class="toctree-l1">
+          <a class="reference internal" href="../py-modindex.html">Python Module Index</a>
+        </li>
+  </ul>
+</nav></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+<a href="https://github.com/ExtensityAI/symbolicai" target="_blank"
+   class="btn btn-sm btn-source-repository-button"
+   title="Source repository"
+   data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+
+</a>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../_sources/TOOLS/packages.md" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.md</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>Packages</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#package-manager">📦 Package Manager</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#installation-options">Installation Options</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#update-options">Update Options</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#package-runner">📦 Package Runner</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#usage">Usage</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#examples">Examples</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#alias-file">Alias File</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#package-initializer">📦 Package Initializer</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">Usage</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">Examples</a></li>
+</ul>
+</li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="packages">
+<h1>Packages<a class="headerlink" href="#packages" title="Link to this heading">#</a></h1>
+<section id="package-manager">
+<h2>📦 Package Manager<a class="headerlink" href="#package-manager" title="Link to this heading">#</a></h2>
+<p>We provide a package manager called <code class="docutils literal notranslate"><span class="pre">sympkg</span></code> that allows you to manage extensions from the command line. With <code class="docutils literal notranslate"><span class="pre">sympkg</span></code>, you can install, remove, list installed packages, or update a module.</p>
+<p>To use <code class="docutils literal notranslate"><span class="pre">sympkg</span></code>, follow the steps below:</p>
+<ol class="arabic simple">
+<li><p>Open your terminal or PowerShell.</p></li>
+<li><p>Run the following command: <code class="docutils literal notranslate"><span class="pre">sympkg</span> <span class="pre">&lt;command&gt;</span> <span class="pre">[&lt;args&gt;]</span></code></p></li>
+</ol>
+<p>The available commands are:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">i</span></code> or <code class="docutils literal notranslate"><span class="pre">install</span></code>: Install a new package. To install a package, use the following command: <code class="docutils literal notranslate"><span class="pre">sympkg</span> <span class="pre">i</span> <span class="pre">&lt;package&gt;</span> <span class="pre">[--local-path</span> <span class="pre">PATH]</span> <span class="pre">[--submodules]</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">r</span></code> or <code class="docutils literal notranslate"><span class="pre">remove</span></code>: Remove an installed package. To remove a package, use the following command: <code class="docutils literal notranslate"><span class="pre">sympkg</span> <span class="pre">r</span> <span class="pre">&lt;package&gt;</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">l</span></code> or <code class="docutils literal notranslate"><span class="pre">list</span></code>: List all installed packages. To list installed packages, use the following command: <code class="docutils literal notranslate"><span class="pre">sympkg</span> <span class="pre">l</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">u</span></code> or <code class="docutils literal notranslate"><span class="pre">update</span></code>: Update an installed package. To update a package, use the following command: <code class="docutils literal notranslate"><span class="pre">sympkg</span> <span class="pre">u</span> <span class="pre">&lt;package&gt;</span> <span class="pre">[--submodules]</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">U</span></code> or <code class="docutils literal notranslate"><span class="pre">update-all</span></code>: Update all installed packages. To update all packages, use the following command: <code class="docutils literal notranslate"><span class="pre">sympkg</span> <span class="pre">U</span> <span class="pre">[--submodules]</span></code></p></li>
+</ul>
+<p>For more information on each command, you can use the <code class="docutils literal notranslate"><span class="pre">--help</span></code> flag. For example, to get help on the <code class="docutils literal notranslate"><span class="pre">i</span></code> command, use the following command: <code class="docutils literal notranslate"><span class="pre">sympkg</span> <span class="pre">i</span> <span class="pre">--help</span></code>.</p>
+<section id="installation-options">
+<h3>Installation Options<a class="headerlink" href="#installation-options" title="Link to this heading">#</a></h3>
+<p>When installing packages, you can use the following options:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--local-path</span> <span class="pre">PATH</span></code> or <code class="docutils literal notranslate"><span class="pre">-l</span> <span class="pre">PATH</span></code>: Install a package from a local directory instead of GitHub in format <code class="docutils literal notranslate"><span class="pre">&lt;username&gt;/&lt;repo_name&gt;</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--submodules</span></code> or <code class="docutils literal notranslate"><span class="pre">-s</span></code>: Initialize Git submodules when cloning a package from GitHub.</p></li>
+</ul>
+<p>Example: <code class="docutils literal notranslate"><span class="pre">sympkg</span> <span class="pre">i</span> <span class="pre">ExtensityAI/symask</span> <span class="pre">--submodules</span></code> or <code class="docutils literal notranslate"><span class="pre">sympkg</span> <span class="pre">i</span> <span class="pre">ExtensityAI/symask</span> <span class="pre">/path/to/local/package</span></code></p>
+</section>
+<section id="update-options">
+<h3>Update Options<a class="headerlink" href="#update-options" title="Link to this heading">#</a></h3>
+<p>When updating packages, you can use the following option:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--submodules</span></code> or <code class="docutils literal notranslate"><span class="pre">-s</span></code>: Update Git submodules along with the main repository.</p></li>
+</ul>
+<p>Example: <code class="docutils literal notranslate"><span class="pre">sympkg</span> <span class="pre">u</span> <span class="pre">ExtensityAI/symask</span> <span class="pre">--submodules</span></code></p>
+<p>Note: The package manager is based on GitHub, so you will need <code class="docutils literal notranslate"><span class="pre">git</span></code> installed to install or update packages. The packages names use the GitHub <code class="docutils literal notranslate"><span class="pre">&lt;username&gt;/&lt;repo_name&gt;</span></code> convention.</p>
+<p>Happy package managing!</p>
+</section>
+</section>
+<section id="package-runner">
+<h2>📦 Package Runner<a class="headerlink" href="#package-runner" title="Link to this heading">#</a></h2>
+<p>The Package Runner is a command-line tool that allows you to run packages via alias names. It provides a convenient way to execute commands or functions defined in packages. You can access the Package Runner by using the <code class="docutils literal notranslate"><span class="pre">symrun</span></code> command in your terminal or PowerShell.</p>
+<section id="usage">
+<h3>Usage<a class="headerlink" href="#usage" title="Link to this heading">#</a></h3>
+<p>To use the Package Runner, you can run the following command:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$&gt;<span class="w"> </span>symrun<span class="w"> </span>&lt;alias&gt;<span class="w"> </span><span class="o">[</span>&lt;args&gt;<span class="o">]</span><span class="w"> </span><span class="o">[</span>--submodules<span class="o">]</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>&lt;command&gt;<span class="w"> </span>&lt;alias&gt;<span class="w"> </span><span class="o">[</span>&lt;package&gt;<span class="o">]</span>
+</pre></div>
+</div>
+<p>The most commonly used Package Runner commands are:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;alias&gt;</span> <span class="pre">[&lt;args&gt;]</span></code>: Run an alias</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">c</span> <span class="pre">&lt;alias&gt;</span> <span class="pre">&lt;package&gt;</span></code>: Create a new alias</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">l</span></code>: List all aliases</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">r</span> <span class="pre">&lt;alias&gt;</span></code>: Remove an alias</p></li>
+</ul>
+</section>
+<section id="examples">
+<h3>Examples<a class="headerlink" href="#examples" title="Link to this heading">#</a></h3>
+<p>Here are a few examples to illustrate how to use the Package Runner:</p>
+<p>The following command runs the specified <code class="docutils literal notranslate"><span class="pre">my_alias</span></code> with the provided arguments <code class="docutils literal notranslate"><span class="pre">arg1</span></code>, <code class="docutils literal notranslate"><span class="pre">arg2</span></code>, <code class="docutils literal notranslate"><span class="pre">kwarg1</span></code> and <code class="docutils literal notranslate"><span class="pre">kwarg2</span></code>, where <code class="docutils literal notranslate"><span class="pre">arg1</span></code> and <code class="docutils literal notranslate"><span class="pre">arg2</span></code> are considered as *args parameter and <code class="docutils literal notranslate"><span class="pre">kwarg1</span></code> and <code class="docutils literal notranslate"><span class="pre">kwarg1</span></code> **kwargs key-value arguments. These arguments will be passed on to the executable expression within the expression.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$&gt;<span class="w"> </span>symrun<span class="w"> </span>my_alias<span class="w"> </span>arg1<span class="w"> </span>arg2<span class="w"> </span><span class="nv">kwarg1</span><span class="o">=</span>value1<span class="w"> </span><span class="nv">kwarg2</span><span class="o">=</span>value2
+</pre></div>
+</div>
+<p>The following command runs the alias with the <code class="docutils literal notranslate"><span class="pre">--submodules</span></code> flag, which will initialize Git submodules if the package needs to be installed:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$&gt;<span class="w"> </span>symrun<span class="w"> </span>my_alias<span class="w"> </span>arg1<span class="w"> </span>arg2<span class="w"> </span>--submodules
+</pre></div>
+</div>
+<p>The following command creates a new alias named <code class="docutils literal notranslate"><span class="pre">my_alias</span></code> that points to <code class="docutils literal notranslate"><span class="pre">&lt;username&gt;/&lt;repo_name&gt;</span></code>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$&gt;<span class="w"> </span>symrun<span class="w"> </span>c<span class="w"> </span>my_alias<span class="w"> </span>&lt;username&gt;/&lt;repo_name&gt;
+</pre></div>
+</div>
+<p>The following command lists all the aliases that have been created:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$&gt;<span class="w"> </span>symrun<span class="w"> </span>l
+</pre></div>
+</div>
+<p>The following command removes the alias named <code class="docutils literal notranslate"><span class="pre">my_alias</span></code>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$&gt;<span class="w"> </span>symrun<span class="w"> </span>r<span class="w"> </span>my_alias
+</pre></div>
+</div>
+</section>
+<section id="alias-file">
+<h3>Alias File<a class="headerlink" href="#alias-file" title="Link to this heading">#</a></h3>
+<p>The Package Runner stores aliases in a JSON file named <code class="docutils literal notranslate"><span class="pre">aliases.json</span></code>. This file is located in the <code class="docutils literal notranslate"><span class="pre">.symai/packages/</span></code> directory in your home directory (<code class="docutils literal notranslate"><span class="pre">~/.symai/packages/</span></code>). You can view the contents of this file to see the existing aliases.</p>
+<p>Here is an example how to use the <code class="docutils literal notranslate"><span class="pre">sympkg</span></code> and <code class="docutils literal notranslate"><span class="pre">symrun</span></code> via shell:
+<img alt="Demo Usage of symask" src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/screen1.jpeg" /></p>
+<blockquote>
+<div><p>[NOTE]: If the alias specified cannot be found in the alias file, the Package Runner will attempt to run the command as a package. If the package is not found or an error occurs during execution, an appropriate error message will be displayed.</p>
+</div></blockquote>
+<p>That’s it! You now have a basic understanding of how to use the Package Runner provided to run packages and aliases from the command line.</p>
+</section>
+</section>
+<section id="package-initializer">
+<h2>📦 Package Initializer<a class="headerlink" href="#package-initializer" title="Link to this heading">#</a></h2>
+<p>The Package Initializer is a command-line tool provided that allows developers to create new GitHub packages from the command line. It automates the process of setting up a new package directory structure and files. You can access the Package Initializer by using the <code class="docutils literal notranslate"><span class="pre">symdev</span></code> command in your terminal or PowerShell.</p>
+<section id="id1">
+<h3>Usage<a class="headerlink" href="#id1" title="Link to this heading">#</a></h3>
+<p>To use the Package Initializer, you can run the following command:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$&gt;<span class="w"> </span>symdev<span class="w"> </span>c<span class="w"> </span>&lt;username&gt;/&lt;repo_name&gt;
+</pre></div>
+</div>
+<p>The most commonly used Package Initializer command is:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">c</span> <span class="pre">&lt;username&gt;/&lt;repo_name&gt;</span></code>: Create a new package</p></li>
+</ul>
+</section>
+<section id="id2">
+<h3>Examples<a class="headerlink" href="#id2" title="Link to this heading">#</a></h3>
+<p>Here is an example to illustrate how to use the Package Initializer:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$&gt;<span class="w"> </span>symdev<span class="w"> </span>c<span class="w"> </span>symdev/my_package
+</pre></div>
+</div>
+<p>This command creates a new package named <code class="docutils literal notranslate"><span class="pre">my_package</span></code> under the GitHub username <code class="docutils literal notranslate"><span class="pre">symdev</span></code>.</p>
+<p>The Package Initializer creates the following files and directories:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">.gitignore</span></code>: Specifies files and directories that should be ignored by Git.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">LICENSE</span></code>: Contains the license information for the package.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">README.md</span></code>: Contains the description and documentation for the package.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">requirements.txt</span></code>: Lists the packages and dependencies required by the package.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">package.json</span></code>: Provides metadata for the package, including version, name, description, and expressions.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">src/func.py</span></code>: Contains the main function and expression code for the package.</p></li>
+</ul>
+<p>The Package Initializer creates the package in the <code class="docutils literal notranslate"><span class="pre">.symai/packages/</span></code> directory in your home directory (<code class="docutils literal notranslate"><span class="pre">~/.symai/packages/&lt;username&gt;/&lt;repo_name&gt;</span></code>).
+Within the created package you will see the <code class="docutils literal notranslate"><span class="pre">package.json</span></code> config file defining the new package metadata and <code class="docutils literal notranslate"><span class="pre">symrun</span></code> entry point and offers the declared expression types to the <code class="docutils literal notranslate"><span class="pre">Import</span></code> class.
+Read more about the <span class="xref std std-doc">import class</span></p>
+</section>
+</section>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="chatbot.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Chatbot</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="../API_REF.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">API Reference</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#package-manager">📦 Package Manager</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#installation-options">Installation Options</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#update-options">Update Options</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#package-runner">📦 Package Runner</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#usage">Usage</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#examples">Examples</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#alias-file">Alias File</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#package-initializer">📦 Package Initializer</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">Usage</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">Examples</a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By Marius-Constantin Dinu
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2024, ExtensityAI FlexCo.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

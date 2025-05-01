@@ -1,0 +1,661 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Operations &#8212; SymbolicAI</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=a3416100" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=df347da4"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'FEATURES/operations';</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Expressions" href="expressions.html" />
+    <link rel="prev" title="🧠 Causal Reasoning" href="causal_reasoning.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="version" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">SymbolicAI</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../INTRODUCTION.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../INSTALLATION.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../QUICKSTART.html">Quick Start Guide</a></li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">Features</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="causal_reasoning.html">🧠 Causal Reasoning</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="expressions.html">Expressions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="vision.html">Vision</a></li>
+<li class="toctree-l2"><a class="reference internal" href="import.html">Module Management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="error_handling.html">❌ Error Handling and Debugging</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../ENGINES/index.html">Engines</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/neurosymbolic_engine.html">Neuro-Symbolic Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/symbolic_engine.html">Symbolic Engine (WolframAlpha)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/speech_engine.html">Speech Engine (Whisper)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/ocr_engine.html">OCR Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/search_engine.html">Search Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/webcrawler_engine.html">Webcrawler Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/drawing_engine.html">Drawing Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/file_engine.html">File Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/indexing_engine.html">Indexing Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/clip_engine.html">CLIP Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/local_engine.html">Local Engines</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ENGINES/custom_engine.html">Custom Engine</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../TUTORIALS/index.html">Tutorials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../TUTORIALS/chatbot.html">Writing a Custom Chatbot</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../TUTORIALS/data_query.html">Querying Data with SQL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../TUTORIALS/context.html">Handling Files and Long Context Lengths</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../TUTORIALS/video_tutorials.html">Video Tutorials</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../TUTORIALS/examples.html">Example Files</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../TOOLS/index.html">Tools</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../TOOLS/shell.html">Shell Command Tool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../TOOLS/chatbot.html">Chatbot</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../TOOLS/packages.html">Packages</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../API_REF.html">API Reference</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../symai.html">symai package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../symai.backend.html">symai.backend package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="../symai.backend.engines.html">symai.backend.engines package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../symai.backend.mixin.html">symai.backend.mixin package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.collect.html">symai.collect package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../symai.extended.html">symai.extended package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.interfaces.html">symai.extended.interfaces package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.metrics.html">symai.extended.metrics package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.packages.html">symai.extended.packages package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.personas.html">symai.extended.personas package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.strategies.html">symai.extended.strategies package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.formatter.html">symai.formatter package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.menu.html">symai.menu package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.misc.html">symai.misc package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.models.html">symai.models package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.ops.html">symai.ops package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.server.html">symai.server package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../symai.backend.html">symai.backend package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../symai.backend.engines.html">symai.backend.engines package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.backend.mixin.html">symai.backend.mixin package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.backend.engines.html">symai.backend.engines package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.backend.mixin.html">symai.backend.mixin package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.collect.html">symai.collect package</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../symai.extended.html">symai.extended package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../symai.extended.interfaces.html">symai.extended.interfaces package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.extended.metrics.html">symai.extended.metrics package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.extended.packages.html">symai.extended.packages package</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../symai.extended.personas.html">symai.extended.personas package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.personas.research.html">symai.extended.personas.research package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.personas.sales.html">symai.extended.personas.sales package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../symai.extended.personas.student.html">symai.extended.personas.student package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.extended.strategies.html">symai.extended.strategies package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.extended.interfaces.html">symai.extended.interfaces package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.extended.metrics.html">symai.extended.metrics package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.extended.packages.html">symai.extended.packages package</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../symai.extended.personas.html">symai.extended.personas package</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../symai.extended.personas.research.html">symai.extended.personas.research package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.extended.personas.sales.html">symai.extended.personas.sales package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../symai.extended.personas.student.html">symai.extended.personas.student package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.extended.personas.research.html">symai.extended.personas.research package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.extended.personas.sales.html">symai.extended.personas.sales package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.extended.personas.student.html">symai.extended.personas.student package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.extended.strategies.html">symai.extended.strategies package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.formatter.html">symai.formatter package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.menu.html">symai.menu package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.misc.html">symai.misc package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.models.html">symai.models package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.ops.html">symai.ops package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../symai.server.html">symai.server package</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="../CONTRIBUTING.html">How to contribute</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../LICENSE.html">License</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item"><nav class="sidebar-indices-items" aria-labelledby="pst-indices-navigation-heading-2">
+  <p id="pst-indices-navigation-heading-2" class="sidebar-indices-items__title" role="heading" aria-level="1">Indices</p>
+  <ul class="indices-link">
+        <li class="toctree-l1">
+          <a class="reference internal"
+             href="../genindex.html"
+             accesskey="I">General Index</a>
+        </li>
+        <li class="toctree-l1">
+          <a class="reference internal" href="../py-modindex.html">Python Module Index</a>
+        </li>
+  </ul>
+</nav></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+<a href="https://github.com/ExtensityAI/symbolicai" target="_blank"
+   class="btn btn-sm btn-source-repository-button"
+   title="Source repository"
+   data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+
+</a>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../_sources/FEATURES/operations.md" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.md</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>Operations</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#custom-operations">Custom Operations</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#few-shot-operations">Few-Shot Operations</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#prompt-design">Prompt Design</a></li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="operations">
+<h1>Operations<a class="headerlink" href="#operations" title="Link to this heading">#</a></h1>
+<p>Operations form the core of our framework and serve as the building blocks of our API. These operations define the behavior of symbols by acting as contextualized functions that accept a <code class="docutils literal notranslate"><span class="pre">Symbol</span></code> object and send it to the neuro-symbolic engine for evaluation. Operations then return one or multiple new objects, which primarily consist of new symbols but may include other types as well. Polymorphism plays a crucial role in operations, allowing them to be applied to various data types such as strings, integers, floats, and lists, with different behaviors based on the object instance.</p>
+<p>Operations are executed using the <code class="docutils literal notranslate"><span class="pre">Symbol</span></code> object’s <code class="docutils literal notranslate"><span class="pre">value</span></code> attribute, which contains the original data type converted into a string representation and sent to the engine for processing. As a result, all values are represented as strings, requiring custom objects to define a suitable <code class="docutils literal notranslate"><span class="pre">__str__</span></code> method for conversion while preserving the object’s semantics.</p>
+<p>Inheritance is another essential aspect of our API, which is built on the <code class="docutils literal notranslate"><span class="pre">Symbol</span></code> class as its base. All operations are inherited from this class, offering an easy way to add custom operations by subclassing <code class="docutils literal notranslate"><span class="pre">Symbol</span></code> while maintaining access to basic operations without complicated syntax or redundant functionality. Subclassing the <code class="docutils literal notranslate"><span class="pre">Symbol</span></code> class allows for the creation of contextualized operations with unique constraints and prompt designs by simply overriding the relevant methods. However, it is recommended to subclass the <code class="docutils literal notranslate"><span class="pre">Expression</span></code> class for additional functionality.</p>
+<p>Defining custom operations can be done through overriding existing Python methods and providing a custom prompt object with example code. Here is an example of creating a custom <code class="docutils literal notranslate"><span class="pre">==</span></code> operation by overriding the <code class="docutils literal notranslate"><span class="pre">__eq__</span></code> method:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Demo</span><span class="p">(</span><span class="n">ai</span><span class="o">.</span><span class="n">Symbol</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="nd">@ai</span><span class="o">.</span><span class="n">equals</span><span class="p">(</span><span class="n">examples</span><span class="o">=</span><span class="n">ai</span><span class="o">.</span><span class="n">Prompt</span><span class="p">([</span>
+              <span class="s2">&quot;1 == &#39;ONE&#39; =&gt;True&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;&#39;six&#39; == 7 =&gt;False&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;&#39;Acht&#39; == &#39;eight&#39; =&gt;True&quot;</span><span class="p">,</span>
+              <span class="o">...</span>
+          <span class="p">])</span>
+        <span class="p">)</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">_func</span><span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span> <span class="c1"># default behavior on failure</span>
+        <span class="k">return</span> <span class="n">_func</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Basic operations in <code class="docutils literal notranslate"><span class="pre">Symbol</span></code> are implemented by defining local functions and decorating them with corresponding operation decorators from the <code class="docutils literal notranslate"><span class="pre">symai/core.py</span></code> file, a collection of predefined operation decorators that can be applied rapidly to any function. Using local functions instead of decorating main methods directly avoids unnecessary communication with the neural engine and allows for default behavior implementation. It also helps cast operation return types to symbols or derived classes, using the <code class="docutils literal notranslate"><span class="pre">self.sym_return_type(...)</span></code> method for contextualized behavior based on the determined return type. More details can be found in the <a class="reference external" href="https://github.com/ExtensityAI/symbolicai/blob/main/symai/symbol.py"><code class="docutils literal notranslate"><span class="pre">Symbol</span></code> class</a>.</p>
+<p>The following section demonstrates that most operations in <code class="docutils literal notranslate"><span class="pre">symai/core.py</span></code> are derived from the more general <code class="docutils literal notranslate"><span class="pre">few_shot</span></code> decorator.</p>
+<section id="custom-operations">
+<span id="custom-operations-section"></span><h2>Custom Operations<a class="headerlink" href="#custom-operations" title="Link to this heading">#</a></h2>
+<p>Defining custom operations is also possible, such as creating an operation to generate a random integer between 0 and 10:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Demo</span><span class="p">(</span><span class="n">ai</span><span class="o">.</span><span class="n">Expression</span><span class="p">):</span>
+    <span class="nd">@ai</span><span class="o">.</span><span class="n">zero_shot</span><span class="p">(</span><span class="n">prompt</span><span class="o">=</span><span class="s2">&quot;Generate a random integer between 0 and 10.&quot;</span><span class="p">,</span>
+                  <span class="n">constraints</span><span class="o">=</span><span class="p">[</span>
+                      <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">,</span>
+                      <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="o">&lt;=</span> <span class="mi">10</span>
+                  <span class="p">])</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_random_int</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+<span class="n">demo</span> <span class="o">=</span> <span class="n">Demo</span><span class="p">()</span>
+<span class="n">random_int</span> <span class="o">=</span> <span class="n">demo</span><span class="o">.</span><span class="n">get_random_int</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">random_int</span><span class="p">)</span>  <span class="c1"># Output: A random integer between 0 and 10</span>
+</pre></div>
+</div>
+<p>The Symbolic API employs Python <code class="docutils literal notranslate"><span class="pre">Decorators</span></code> to define operations, utilizing the <code class="docutils literal notranslate"><span class="pre">&#64;ai.zero_shot</span></code> decorator to create custom operations that do not require demonstration examples when the prompt is self-explanatory. In this example, the <code class="docutils literal notranslate"><span class="pre">zero_shot</span></code> decorator accepts two arguments: <code class="docutils literal notranslate"><span class="pre">prompt</span></code> and <code class="docutils literal notranslate"><span class="pre">constraints</span></code>. The former defines the prompt dictating the desired operation behavior, while the latter establishes validation constraints for the computed outcome, ensuring it meets expectations.</p>
+<p>If a constraint is not satisfied, the implementation will utilize the specified <code class="docutils literal notranslate"><span class="pre">default</span></code> fallback or default value. If neither is provided, the Symbolic API will raise a <code class="docutils literal notranslate"><span class="pre">ConstraintViolationException</span></code>. The return type is set to <code class="docutils literal notranslate"><span class="pre">int</span></code> in this example, so the value from the wrapped function will be of type int. The implementation uses auto-casting to a user-specified return data type, and if casting fails, the Symbolic API will raise a <code class="docutils literal notranslate"><span class="pre">ValueError</span></code>. If no return type is specified, the return type defaults to <code class="docutils literal notranslate"><span class="pre">Any</span></code>.</p>
+</section>
+<section id="few-shot-operations">
+<h2>Few-Shot Operations<a class="headerlink" href="#few-shot-operations" title="Link to this heading">#</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">&#64;ai.few_shot</span></code> decorator is a generalized version of the <code class="docutils literal notranslate"><span class="pre">&#64;ai.zero_shot</span></code> decorator, used to define custom operations that require demonstration examples. To provide a clearer understanding, we present the function signature of the <code class="docutils literal notranslate"><span class="pre">few_shot</span></code> decorator:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">few_shot</span><span class="p">(</span><span class="n">prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+             <span class="n">examples</span><span class="p">:</span> <span class="n">Prompt</span><span class="p">,</span>
+             <span class="n">constraints</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Callable</span><span class="p">]</span> <span class="o">=</span> <span class="p">[],</span>
+             <span class="n">default</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">object</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+             <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+             <span class="n">pre_processors</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">PreProcessor</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+             <span class="n">post_processors</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">PostProcessor</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+             <span class="o">**</span><span class="n">decorator_kwargs</span><span class="p">):</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">prompt</span></code> and <code class="docutils literal notranslate"><span class="pre">constraints</span></code> attributes behave similarly to those in the <code class="docutils literal notranslate"><span class="pre">zero_shot</span></code> decorator. The <code class="docutils literal notranslate"><span class="pre">examples</span></code> and <code class="docutils literal notranslate"><span class="pre">limit</span></code> arguments are new. The <code class="docutils literal notranslate"><span class="pre">examples</span></code> argument defines a list of demonstrations used to condition the neural computation engine, while the <code class="docutils literal notranslate"><span class="pre">limit</span></code> argument specifies the maximum number of examples returned, given that there are more results. The <code class="docutils literal notranslate"><span class="pre">pre_processors</span></code> argument accepts a list of <code class="docutils literal notranslate"><span class="pre">PreProcessor</span></code> objects for pre-processing input before it’s fed into the neural computation engine. The <code class="docutils literal notranslate"><span class="pre">post_processors</span></code> argument accepts a list of <code class="docutils literal notranslate"><span class="pre">PostProcessor</span></code> objects for post-processing output before returning it to the user. Lastly, the <code class="docutils literal notranslate"><span class="pre">decorator_kwargs</span></code> argument passes additional arguments from the decorator kwargs, which are streamlined towards the neural computation engine and other engines.</p>
+<p>To provide a more comprehensive understanding of our conceptual implementation, refer to the flow diagram below, containing the most important classes:</p>
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img9.png" width="600px">
+<p>The colors indicate logical groups of data processing steps. <code class="docutils literal notranslate"><span class="pre">Yellow</span></code> represents input and output data, <code class="docutils literal notranslate"><span class="pre">blue</span></code> shows places where one can customize or prepare the input of the engine, <code class="docutils literal notranslate"><span class="pre">green</span></code> indicates post-processing steps of the engine response, <code class="docutils literal notranslate"><span class="pre">red</span></code> displays the application of constraints (including attempted casting of the <code class="docutils literal notranslate"><span class="pre">return</span> <span class="pre">type</span> <span class="pre">signature</span></code> if specified in the decorated method), and <code class="docutils literal notranslate"><span class="pre">grey</span></code> denotes the custom method defining all properties, thus having access to all the previously mentioned objects.</p>
+<p>To conclude this section, here is an example of how to write a custom Japanese name generator using our <code class="docutils literal notranslate"><span class="pre">&#64;ai.zero_shot</span></code> decorator:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">symai</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ai</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Demo</span><span class="p">(</span><span class="n">ai</span><span class="o">.</span><span class="n">Symbol</span><span class="p">):</span>
+    <span class="nd">@ai</span><span class="o">.</span><span class="n">few_shot</span><span class="p">(</span><span class="n">prompt</span><span class="o">=</span><span class="s2">&quot;Generate Japanese names: &quot;</span><span class="p">,</span>
+                 <span class="n">examples</span><span class="o">=</span><span class="n">ai</span><span class="o">.</span><span class="n">Prompt</span><span class="p">(</span>
+                   <span class="p">[</span><span class="s2">&quot;愛子&quot;</span><span class="p">,</span> <span class="s2">&quot;和花&quot;</span><span class="p">,</span> <span class="s2">&quot;一郎&quot;</span><span class="p">,</span> <span class="s2">&quot;和枝&quot;</span><span class="p">]</span>
+                 <span class="p">),</span>
+                 <span class="n">limit</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                 <span class="n">constraints</span><span class="o">=</span><span class="p">[</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">])</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_japanese_names</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="s1">&#39;愛子&#39;</span><span class="p">,</span> <span class="s1">&#39;和花&#39;</span><span class="p">]</span> <span class="c1"># dummy implementation</span>
+</pre></div>
+</div>
+<p>If the neural computation engine cannot compute the desired outcome, it will revert to the <code class="docutils literal notranslate"><span class="pre">default</span></code> implementation or default value. If no default implementation or value is found, the method call will raise an exception.</p>
+</section>
+<section id="prompt-design">
+<h2>Prompt Design<a class="headerlink" href="#prompt-design" title="Link to this heading">#</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">Prompt</span></code> class is used to perform all the above operations. Acting as a container for information required to define a specific operation, the <code class="docutils literal notranslate"><span class="pre">Prompt</span></code> class also serves as the base class for all other Prompt classes.</p>
+<p>Here’s an example of defining a <code class="docutils literal notranslate"><span class="pre">Prompt</span></code> to enforce the neural computation engine to compare two values:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">CompareValues</span><span class="p">(</span><span class="n">ai</span><span class="o">.</span><span class="n">Prompt</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ai</span><span class="o">.</span><span class="n">Prompt</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">([</span>
+            <span class="s2">&quot;4 &gt; 88 =&gt;False&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;-inf &lt; 0 =&gt;True&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;inf &gt; 0 =&gt;True&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;4 &gt; 3 =&gt;True&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;1 &lt; &#39;four&#39; =&gt;True&quot;</span><span class="p">,</span>
+            <span class="o">...</span>
+        <span class="p">])</span>
+</pre></div>
+</div>
+<p>When calling the <code class="docutils literal notranslate"><span class="pre">&lt;=</span></code> operation on two Symbols, the neural computation engine evaluates the symbols in the context of the <code class="docutils literal notranslate"><span class="pre">CompareValues</span></code> prompt.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">res</span> <span class="o">=</span> <span class="n">ai</span><span class="o">.</span><span class="n">Symbol</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">ai</span><span class="o">.</span><span class="n">Symbol</span><span class="p">(</span><span class="s1">&#39;one&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This statement evaluates to <code class="docutils literal notranslate"><span class="pre">True</span></code> since the fuzzy compare operation conditions the engine to compare the two Symbols based on their semantic meaning.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>:<span class="o">[</span>Output<span class="o">]</span>:
+True
+</pre></div>
+</div>
+<p>In general, the semantics of Symbol operations may vary depending on the context hierarchy of the expression class and the operations used. To better illustrate this, we display our conceptual prompt design in the following figure:</p>
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img4.png" width="350px">
+<p>The figure illustrates the hierarchical prompt design as a container for information provided to the neural computation engine to define a task-specific operation. The <code class="docutils literal notranslate"><span class="pre">yellow</span></code> and <code class="docutils literal notranslate"><span class="pre">green</span></code> highlighted boxes indicate mandatory string placements, dashed boxes represent optional placeholders, and the <code class="docutils literal notranslate"><span class="pre">red</span></code> box marks the starting point of model prediction.</p>
+<p>Three main prompt designs are considered: <code class="docutils literal notranslate"><span class="pre">Context-based</span> <span class="pre">Prompts</span></code>, <code class="docutils literal notranslate"><span class="pre">Operational</span> <span class="pre">Prompts</span></code>, and <code class="docutils literal notranslate"><span class="pre">Templates</span></code>. Prompts can be curated either by inheritance or composition. For example, <code class="docutils literal notranslate"><span class="pre">Static</span> <span class="pre">Context</span></code> can be defined by inheriting the <code class="docutils literal notranslate"><span class="pre">Expression</span></code> class and overriding the <code class="docutils literal notranslate"><span class="pre">static_context</span></code> property. An <code class="docutils literal notranslate"><span class="pre">Operation</span></code> and <code class="docutils literal notranslate"><span class="pre">Template</span></code> prompt can be created by providing a <code class="docutils literal notranslate"><span class="pre">PreProcessor</span></code> to modify input data.</p>
+<p>Each prompt concept is explained in more detail below:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">Context-based</span> <span class="pre">Prompts</span> <span class="pre">(Static,</span> <span class="pre">Dynamic,</span> <span class="pre">and</span> <span class="pre">Payload)</span></code> are considered optional and can be defined either statically (by subclassing the Expression class and overriding the <code class="docutils literal notranslate"><span class="pre">static_context</span></code> property) or at runtime (by updating the <code class="docutils literal notranslate"><span class="pre">dynamic_context</span></code> property or passing <code class="docutils literal notranslate"><span class="pre">payload</span></code> kwargs to a method). As an example of using the <code class="docutils literal notranslate"><span class="pre">payload</span></code> kwargs via method signature:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># creating a query to ask if an issue was resolved or not</span>
+<span class="n">sym</span> <span class="o">=</span> <span class="n">Symbol</span><span class="p">(</span><span class="s2">&quot;&lt;some-community-conversation&gt;&quot;</span><span class="p">)</span>
+<span class="n">q</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;Was the issue resolved?&quot;</span><span class="p">)</span>
+<span class="c1"># write manual condition to check if the issue was resolved</span>
+<span class="k">if</span> <span class="s1">&#39;not resolved&#39;</span> <span class="ow">in</span> <span class="n">q</span><span class="p">:</span>
+    <span class="c1"># do a new query but payload the previous query answer to the new query</span>
+    <span class="n">sym</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;What was the resolution?&quot;</span><span class="p">,</span> <span class="n">payload</span><span class="o">=</span><span class="n">q</span><span class="p">)</span>
+    <span class="o">...</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="k">pass</span> <span class="c1"># all good</span>
+</pre></div>
+</div>
+<p>Regardless of how the context is set, the contextualized prompt defines the desired behavior of Expression operations. For example, one can operate within a domain-specific language context without having to override each base class method. See more details <span class="xref std std-doc">here</span>.</p>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Operation</span></code> prompts define the behavior of atomic operations and are mandatory to express the nature of such operations. For example, the <code class="docutils literal notranslate"><span class="pre">+</span></code> operation is used to add two Symbols together, so its prompt explains this behavior. <code class="docutils literal notranslate"><span class="pre">Examples</span></code> provide an optional structure giving the neural computation engine a set of demonstrations used to condition it properly. For instance, the <code class="docutils literal notranslate"><span class="pre">+</span></code> operation prompt can be conditioned on adding numbers by providing demonstrations like <code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">+</span> <span class="pre">1</span> <span class="pre">=</span> <span class="pre">2</span></code>, <code class="docutils literal notranslate"><span class="pre">2</span> <span class="pre">+</span> <span class="pre">2</span> <span class="pre">=</span> <span class="pre">4</span></code>, etc.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Template</span></code> prompts are optional and encapsulate the resulting prediction to enforce a specific format. For example, to generate HTML tags, one can use the curated <code class="docutils literal notranslate"><span class="pre">&lt;html&gt;{{placeholder}}&lt;/html&gt;</span></code> template. This template ensures that the neural computation engine starts the generation process within the context of an HTML tag format, avoiding the production of irrelevant descriptions regarding its task.</p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="causal_reasoning.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">🧠 Causal Reasoning</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="expressions.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Expressions</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#custom-operations">Custom Operations</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#few-shot-operations">Few-Shot Operations</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#prompt-design">Prompt Design</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By Marius-Constantin Dinu
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2024, ExtensityAI FlexCo.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>
