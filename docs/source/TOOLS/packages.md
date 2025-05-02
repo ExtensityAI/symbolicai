@@ -1,6 +1,6 @@
 # Packages
 
-### 📦 Package Manager
+## 📦 Package Manager
 
 We provide a package manager called `sympkg` that allows you to manage extensions from the command line. With `sympkg`, you can install, remove, list installed packages, or update a module.
 
@@ -18,7 +18,8 @@ The available commands are:
 - `U` or `update-all`: Update all installed packages. To update all packages, use the following command: `sympkg U [--submodules]`
 
 For more information on each command, you can use the `--help` flag. For example, to get help on the `i` command, use the following command: `sympkg i --help`.
-#### Installation Options
+
+### Installation Options
 
 When installing packages, you can use the following options:
 
@@ -27,7 +28,7 @@ When installing packages, you can use the following options:
 
 Example: `sympkg i ExtensityAI/symask --submodules` or `sympkg i ExtensityAI/symask /path/to/local/package`
 
-#### Update Options
+### Update Options
 
 When updating packages, you can use the following option:
 
@@ -39,11 +40,11 @@ Note: The package manager is based on GitHub, so you will need `git` installed t
 
 Happy package managing!
 
-### 📦 Package Runner
+## 📦 Package Runner
 
 The Package Runner is a command-line tool that allows you to run packages via alias names. It provides a convenient way to execute commands or functions defined in packages. You can access the Package Runner by using the `symrun` command in your terminal or PowerShell.
 
-#### Usage
+### Usage
 
 To use the Package Runner, you can run the following command:
 
@@ -58,7 +59,7 @@ The most commonly used Package Runner commands are:
 - `l`: List all aliases
 - `r <alias>`: Remove an alias
 
-#### Examples
+### Examples
 
 Here are a few examples to illustrate how to use the Package Runner:
 
@@ -91,7 +92,7 @@ The following command removes the alias named `my_alias`:
 $> symrun r my_alias
 ```
 
-#### Alias File
+### Alias File
 
 The Package Runner stores aliases in a JSON file named `aliases.json`. This file is located in the `.symai/packages/` directory in your home directory (`~/.symai/packages/`). You can view the contents of this file to see the existing aliases.
 
@@ -102,11 +103,11 @@ Here is an example how to use the `sympkg` and `symrun` via shell:
 
 That's it! You now have a basic understanding of how to use the Package Runner provided to run packages and aliases from the command line.
 
-### 📦 Package Initializer
+## 📦 Package Initializer
 
 The Package Initializer is a command-line tool provided that allows developers to create new GitHub packages from the command line. It automates the process of setting up a new package directory structure and files. You can access the Package Initializer by using the `symdev` command in your terminal or PowerShell.
 
-#### Usage
+### Usage
 
 To use the Package Initializer, you can run the following command:
 
@@ -118,7 +119,7 @@ The most commonly used Package Initializer command is:
 
 - `c <username>/<repo_name>`: Create a new package
 
-#### Examples
+### Examples
 
 Here is an example to illustrate how to use the Package Initializer:
 
@@ -139,4 +140,4 @@ The Package Initializer creates the following files and directories:
 
 The Package Initializer creates the package in the `.symai/packages/` directory in your home directory (`~/.symai/packages/<username>/<repo_name>`).
 Within the created package you will see the `package.json` config file defining the new package metadata and `symrun` entry point and offers the declared expression types to the `Import` class.
-Read more about the {doc}`import class <FEATURES/import>`
+Read more about the {doc}`Import class <../FEATURES/import>`
