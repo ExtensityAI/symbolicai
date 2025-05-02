@@ -4,7 +4,7 @@ sphinx-autodocgen
 sphinx-rst-builder
 sphinx-book-theme
 autodoc-pydantic
-sphinx-code-include=
+sphinx-code-include
 myst-parser
 myst-nb
 symbolicai[all]
