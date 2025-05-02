@@ -1,0 +1,5 @@
+root: symbolicai/docs/source/
+
+structure:
+  readme: INTRODUCTION.md
+  summary: SUMMARY.md
