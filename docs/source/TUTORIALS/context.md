@@ -19,13 +19,13 @@ In the following example we show how we can extract news from a particular websi
 If we repeat this process, we now get a way of building up a hierarchical cluster with labels as entry points to allow information retrieval from our new data structure.
 To make manners more concrete, lets take a look at how to build up a news generator. Let us first start by importing some pre-defined string constants. These constants are used to define how the text is processed and how we desire the output to be formatted.
 
-### News Generator
+## News Generator
 
 ```python
 from examples.news import HEADER_STYLE_DESCRIPTION, HTML_TEMPLATE, HTML_STREAM_STYLE_DESCRIPTION
 ```
 
-We sub-class the `Expression` class and define the `__init__` implementation. Similar to PyTorch we can define the graph in the `__init__` method and then call the `forward` method to compute the result. Afterwards, the data from the web URL is streamed through a `Sequence` of operations. This cleans the text from all the clutter such as `\n`, `\t`, etc. and then extracts the news from the text. 
+We sub-class the `Expression` class and define the `__init__` implementation. Similar to PyTorch we can define the graph in the `__init__` method and then call the `forward` method to compute the result. Afterwards, the data from the web URL is streamed through a `Sequence` of operations. This cleans the text from all the clutter such as `\n`, `\t`, etc. and then extracts the news from the text.
 The news are then filtered and re-composed. The resulting news texts are then clustered and the clusters are labeled. The labeled clusters are then recombined to return a rendered HTML format.
 
 ```python
@@ -118,7 +118,7 @@ path = os.path.abspath('results/news.html')
 res.save(path, replace=False)
 ```
 
-### Streaming over a PDF File
+## Streaming over a PDF File
 
 Another example is to read in a PDF file and extract the text from it to create a website based on its content.
 

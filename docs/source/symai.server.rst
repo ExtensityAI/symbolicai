@@ -4,21 +4,18 @@ symai.server package
 Submodules
 ----------
 
-symai.server.huggingface\_server module
----------------------------------------
+Server Modules
+--------------
 
-.. automodule:: symai.server.huggingface_server
-   :members:
-   :undoc-members:
-   :show-inheritance:
+The symai.server package provides server implementations for running local models:
 
-symai.server.llama\_cpp\_server module
---------------------------------------
+**huggingface_server**
+    A FastAPI server implementation for running HuggingFace models.
+    For usage details, see the :doc:`Local Engine Documentation </ENGINES/local_engine>`.
 
-.. automodule:: symai.server.llama_cpp_server
-   :members:
-   :undoc-members:
-   :show-inheritance:
+**llama_cpp_server**
+    A server implementation for running llama.cpp models.
+    For usage details, see the :doc:`Local Engine Documentation </ENGINES/local_engine>`.
 
 Module contents
 ---------------

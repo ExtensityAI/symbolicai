@@ -28,10 +28,10 @@ symai.extended.interfaces.console module
    :undoc-members:
    :show-inheritance:
 
-symai.extended.interfaces.dall\_e module
-----------------------------------------
+symai.extended.interfaces.gpt\_image module
+-------------------------------------------
 
-.. automodule:: symai.extended.interfaces.dall_e
+.. automodule:: symai.extended.interfaces.gpt_image
    :members:
    :undoc-members:
    :show-inheritance:
