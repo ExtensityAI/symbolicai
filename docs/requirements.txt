@@ -1,3 +1,4 @@
+pycryptodomex
 toml
 sphinx
 sphinx-autodocgen
