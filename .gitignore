@@ -159,3 +159,4 @@ release_**/*
 packages/ExtensityAI/LightRAG-symai
 sympkg
 symsh
+.bash_history
