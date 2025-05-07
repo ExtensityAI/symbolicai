@@ -98,7 +98,7 @@ version = {attr = "symai.SYMAI_VERSION"}
 "*" = ["*.json", "*.md", "*.pytxt"]
 
 [tool.setuptools.packages.find]
-include = ["symai"]
+include = ["symai*"]
 exclude = ["tests", "examples", "notebooks", "outputs", "assets", "app.py"]
 
 [project.urls]

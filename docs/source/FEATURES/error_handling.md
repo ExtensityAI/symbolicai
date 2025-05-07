@@ -58,7 +58,7 @@ expr = Log(Trace(news))
 res = expr()
 ```
 
-See {doc}`here <TUTORIALS/context>` for more information and full news summary code.
+See {doc}`here <../TUTORIALS/context>` for more information and full news summary code.
 
 Here is the corresponding StackTrace of the model:
 

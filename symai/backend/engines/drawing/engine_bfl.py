@@ -1,15 +1,14 @@
 import logging
+import tempfile
 import time
-import requests
-
 from typing import Optional
 
+import requests
+
+from ....symbol import Result
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
-from ....symbol import Result
 
-
-logging.getLogger("openai").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)
 logging.getLogger("urllib").setLevel(logging.ERROR)
 logging.getLogger("httpx").setLevel(logging.ERROR)
@@ -20,8 +19,13 @@ class FluxResult(Result):
     def __init__(self, value, **kwargs):
         super().__init__(value, **kwargs)
         # unpack the result
-        if value.get('status') == "Ready":
-            self._value = value.get('result').get('sample')
+        path = tempfile.NamedTemporaryFile(suffix=".png", delete=False).name
+        url = value.get('result').get('sample')
+        request = requests.get(url, allow_redirects=True)
+        request.raise_for_status()
+        with open(path, "wb") as f:
+            f.write(request.content)
+        self._value = [path]
 
 
 class DrawingEngine(Engine):
@@ -30,8 +34,6 @@ class DrawingEngine(Engine):
         self.config = SYMAI_CONFIG
         self.api_key = self.config['DRAWING_ENGINE_API_KEY'] if api_key is None else api_key
         self.model = self.config['DRAWING_ENGINE_MODEL'] if model is None else model
-        logger = logging.getLogger('openai')
-        logger.setLevel(logging.WARNING)
 
     def id(self) -> str:
         if  self.config['DRAWING_ENGINE_API_KEY'] and self.config['DRAWING_ENGINE_MODEL'].startswith("flux"):
@@ -41,7 +43,7 @@ class DrawingEngine(Engine):
     def command(self, *args, **kwargs):
         super().command(*args, **kwargs)
         if 'DRAWING_ENGINE_API_KEY' in kwargs:
-            openai.api_key = kwargs['DRAWING_ENGINE_API_KEY']
+            self.api_key = kwargs['DRAWING_ENGINE_API_KEY']
         if 'DRAWING_ENGINE_MODEL' in kwargs:
             self.model = kwargs['DRAWING_ENGINE_MODEL']
 
@@ -70,40 +72,43 @@ class DrawingEngine(Engine):
             'prompt': prompt,
             'width': width,
             'height': height,
-            'steps': steps,
-            'prompt_upsampling': prompt_upsampling,
+            'num_inference_steps': steps,
+            'guidance_scale': guidance,
             'seed': seed,
-            'guidance': guidance,
             'safety_tolerance': safety_tolerance,
-            'interval': interval,
-            'output_format': output_format,
         }
+        # drop any None values so Flux API won't return 500
+        payload = {k: v for k, v in payload.items() if v is not None}
 
         if kwargs.get('operation') == 'create':
             try:
                 response = requests.post(
-                    f'https://api.bfl.ml/v1/{self.model}',
+                    f'https://api.us1.bfl.ai/v1/{self.model}',
                     headers=headers,
                     json=payload
-                ).json()
-
-                request_id = response.get("id")
+                )
+                # fail early on HTTP errors
+                response.raise_for_status()
+                data = response.json()
+                request_id = data.get("id")
                 if not request_id:
-                    raise Exception("Failed to get request ID!")
+                    raise Exception(f"Failed to get request ID! Response payload: {data}")
 
                 while True:
                     time.sleep(5)
+
                     result = requests.get(
-                        'https://api.bfl.ml/v1/get_result',
+                        'https://api.us1.bfl.ai/v1/get_result',
                         headers=headers,
                         params={'id': request_id}
-                    ).json()
+                    )
+
+                    result.raise_for_status()
+                    result = result.json()
 
                     if result["status"] == "Ready":
                         rsp = FluxResult(result)
                         break
-                    else:
-                        raise Exception(f"Failed to get result: {result}")
 
             except Exception as e:
                 if except_remedy is None:

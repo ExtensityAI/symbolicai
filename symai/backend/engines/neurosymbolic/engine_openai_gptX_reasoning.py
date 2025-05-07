@@ -33,7 +33,11 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
             return # do not initialize if not neurosymbolic; avoids conflict with llama.cpp check in EngineRepository.register_from_package
         openai.api_key = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
         self.model = self.config['NEUROSYMBOLIC_ENGINE_MODEL']
-        self.tokenizer = tiktoken.encoding_for_model(self.model)
+        try:
+            self.tokenizer = tiktoken.encoding_for_model(self.model)
+        except Exception as e:
+            CustomUserWarning(f'Failed to initialize tokenizer for model {self.model}. Please check your tiktoken library version. Another reason could be that OpenAI did not yet provide support for this model. Caused by: {e}. We default to "o200k_base".')
+            self.tokenizer = tiktoken.get_encoding('o200k_base')
         self.max_context_tokens = self.api_max_context_tokens()
         self.max_response_tokens = self.api_max_response_tokens()
         self.seed = None
@@ -46,7 +50,8 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
     def id(self) -> str:
         if self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and \
            (self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('o1') or \
-            self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('o3')):
+            self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('o3') or \
+            self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('o4')):
                 return 'neurosymbolic'
         return super().id() # default to unregistered
 
@@ -64,7 +69,9 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
 
         if self.model in {
             'o1',
-            'o3-mini'
+            'o3',
+            'o3-mini',
+            'o4-mini',
             }:
             tokens_per_message = 3
             tokens_per_name = 1
@@ -392,7 +399,7 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
                 )
                 kwargs['max_completion_tokens'] = remaining_tokens
 
-        return {
+        payload = {
             "messages": messages,
             "model": kwargs.get('model', self.model),
             "seed": kwargs.get('seed', self.seed),
@@ -409,3 +416,8 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
             "tool_choice": kwargs.get('tool_choice'),
             "response_format": kwargs.get('response_format'),
         }
+
+        if self.model == "o4-mini" or self.model == "o3":
+            del payload["stop"]
+
+        return payload

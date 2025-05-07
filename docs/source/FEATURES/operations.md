@@ -1,5 +1,6 @@
 # Operations
 
+## Overview
 Operations form the core of our framework and serve as the building blocks of our API. These operations define the behavior of symbols by acting as contextualized functions that accept a `Symbol` object and send it to the neuro-symbolic engine for evaluation. Operations then return one or multiple new objects, which primarily consist of new symbols but may include other types as well. Polymorphism plays a crucial role in operations, allowing them to be applied to various data types such as strings, integers, floats, and lists, with different behaviors based on the object instance.
 
 Operations are executed using the `Symbol` object's `value` attribute, which contains the original data type converted into a string representation and sent to the engine for processing. As a result, all values are represented as strings, requiring custom objects to define a suitable `__str__` method for conversion while preserving the object's semantics.
@@ -23,12 +24,15 @@ class Demo(ai.Symbol):
         return _func(self, other)
 ```
 
+## Basic Implementation
+
 Basic operations in `Symbol` are implemented by defining local functions and decorating them with corresponding operation decorators from the `symai/core.py` file, a collection of predefined operation decorators that can be applied rapidly to any function. Using local functions instead of decorating main methods directly avoids unnecessary communication with the neural engine and allows for default behavior implementation. It also helps cast operation return types to symbols or derived classes, using the `self.sym_return_type(...)` method for contextualized behavior based on the determined return type. More details can be found in the [`Symbol` class](https://github.com/ExtensityAI/symbolicai/blob/main/symai/symbol.py).
 
 The following section demonstrates that most operations in `symai/core.py` are derived from the more general `few_shot` decorator.
 
-(custom-operations-section)=
-### Custom Operations
+## Operation Types
+
+### {#custom-operations} Custom Operations
 
 Defining custom operations is also possible, such as creating an operation to generate a random integer between 0 and 10:
 
@@ -91,7 +95,7 @@ class Demo(ai.Symbol):
 
 If the neural computation engine cannot compute the desired outcome, it will revert to the `default` implementation or default value. If no default implementation or value is found, the method call will raise an exception.
 
-## Prompt Design
+## {#prompt-design} Prompt Design
 
 The `Prompt` class is used to perform all the above operations. Acting as a container for information required to define a specific operation, the `Prompt` class also serves as the base class for all other Prompt classes.
 
@@ -148,7 +152,7 @@ Each prompt concept is explained in more detail below:
       pass # all good
   ```
 
-  Regardless of how the context is set, the contextualized prompt defines the desired behavior of Expression operations. For example, one can operate within a domain-specific language context without having to override each base class method. See more details {doc}`here <TUTORIALS/data_query>`.
+  Regardless of how the context is set, the contextualized prompt defines the desired behavior of Expression operations. For example, one can operate within a domain-specific language context without having to override each base class method. See more details {doc}`here <../TUTORIALS/data_query>`.
 
 - `Operation` prompts define the behavior of atomic operations and are mandatory to express the nature of such operations. For example, the `+` operation is used to add two Symbols together, so its prompt explains this behavior. `Examples` provide an optional structure giving the neural computation engine a set of demonstrations used to condition it properly. For instance, the `+` operation prompt can be conditioned on adding numbers by providing demonstrations like `1 + 1 = 2`, `2 + 2 = 4`, etc.
 

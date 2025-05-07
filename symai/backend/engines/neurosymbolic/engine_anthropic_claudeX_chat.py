@@ -91,6 +91,11 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
         metadata = {'raw_output': res}
 
         output = self._collect_response(res, stream=payload['stream'])
+
+        if argument.prop.response_format:
+            # Anthropic returns JSON in markdown format
+            output = output.replace('```json', '').replace('```', '')
+
         return [output], metadata
 
     def prepare(self, argument):
@@ -184,6 +189,10 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
             suffix = remove_pattern(suffix)
 
         user += f"{suffix}"
+
+        if not len(user):
+            # Anthropic doesn't allow empty user prompts; force it
+            user = "N/A"
 
         if argument.prop.template_suffix:
             system += f' You will only generate content for the placeholder `{str(argument.prop.template_suffix)}` following the instructions and the provided context information.\n\n'
