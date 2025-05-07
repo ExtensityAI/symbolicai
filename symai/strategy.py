@@ -199,7 +199,6 @@ class TypeValidationFunction(ValidationFunction):
     def forward(self, *args, **kwargs):
         if self.data_model is None:
             raise ValueError("Data model is not registered. Please register the data model before calling the `forward` method.")
-        validation_context = kwargs.pop('validation_context', {})
         # Force JSON mode
         kwargs["response_format"] = {"type": "json_object"}
         logger.info(f"Initializing type validation with JSON mode for the data model ```\n{self.data_model.simplify_json_schema()}\n```")
@@ -221,7 +220,7 @@ class TypeValidationFunction(ValidationFunction):
             try:
                 logger.info(f"Attempt {i+1}/{self.retry_params['tries']}: Attempting type validation…")
                 # Try to validate against provided data model
-                result = self.data_model.model_validate_json(json_str, strict=True, context = validation_context)
+                result = self.data_model.model_validate_json(json_str, strict=True)
                 logger.info("Type validation successful!")
                 break
             except ValidationError as e:
