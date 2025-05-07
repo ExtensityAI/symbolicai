@@ -363,7 +363,7 @@ class SemanticValidationFunction(ValidationFunction):
     def forward(self, prompt: str, f_semantic_conditions: list[Callable], *args, **kwargs):
         if self.output_data_model is None:
             raise ValueError("While the input data model is optional, the output data model must be provided. Please register it before calling the `forward` method.")
-
+        validation_context = kwargs.pop('validation_context', {})
         # Force JSON mode
         kwargs["response_format"] = {"type": "json_object"}
         logger.info(
@@ -386,7 +386,7 @@ class SemanticValidationFunction(ValidationFunction):
         for i in range(self.retry_params["tries"]):
             logger.info(f"Attempt {i+1}/{self.retry_params['tries']}: Attempting semantic validation…")
             try:
-                result = self.output_data_model.model_validate_json(json_str, strict=True)
+                result = self.output_data_model.model_validate_json(json_str, strict=True, context = validation_context)
                 if not all(f(result) for f in f_semantic_conditions):
                     raise ValueError("Semantic validation failed!")
                 break
