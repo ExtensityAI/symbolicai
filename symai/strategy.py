@@ -150,11 +150,11 @@ class ValidationFunction(Function):
         Child classes typically override this to include additional context needed for correction.
         """
         raise NotImplementedError("Each child class needs its own remedy_prompt implementation.")
-        
+
     def display_panel(self, content, title, border_style="cyan", style="#f0eee6", padding=(1,2)):
         """
         Display content in a rich panel with consistent formatting.
-        
+
         Args:
             content: The content to display in the panel
             title: The title of the panel
@@ -496,7 +496,7 @@ class contract:
         self,
         pre_remedy: bool = False,
         post_remedy: bool = True,
-        accumulate_errors: bool = True,
+        accumulate_errors: bool = False,
         verbose: bool = False,
         remedy_retry_params: dict[str, int | float | bool] = _default_remedy_retry_params,
     ):
