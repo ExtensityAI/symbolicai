@@ -54,6 +54,7 @@ class ValidationFunction(Function):
         if retry_params is None:
             retry_params = self._default_retry_params
         self.retry_params = retry_params
+        self.console = Console()
 
         # Standard remedy function for JSON correction:
         self.remedy_function = Function(
@@ -149,6 +150,21 @@ class ValidationFunction(Function):
         Child classes typically override this to include additional context needed for correction.
         """
         raise NotImplementedError("Each child class needs its own remedy_prompt implementation.")
+        
+    def display_panel(self, content, title, border_style="cyan", style="#f0eee6", padding=(1,2)):
+        """
+        Display content in a rich panel with consistent formatting.
+        
+        Args:
+            content: The content to display in the panel
+            title: The title of the panel
+            border_style: Color of the panel border (default: "cyan")
+            style: Style of the panel content (default: "#f0eee6")
+            padding: Padding for the panel (default: (1,2))
+        """
+        body = escape(content)
+        panel = Panel.fit(body, title=title, padding=padding, border_style=border_style, style=style)
+        self.console.print(panel)
 
     def forward(self, *args, **kwargs):
         return super().forward(*args, **kwargs) # Just propagate to Function
@@ -172,7 +188,6 @@ class TypeValidationFunction(ValidationFunction):
         self.data_model = None
         self.accumulate_errors = accumulate_errors
         self.verbose = verbose
-        self.console = Console()
 
     def register_data_model(self, data_model: LLMDataModel, override=False):
         if self.data_model is not None and not override:
@@ -209,9 +224,10 @@ The JSON must conform to this schema:
         kwargs["response_format"] = {"type": "json_object"}
         logger.info(f"Initializing type validation…")
         if self.verbose:
-            body = escape(self.data_model.simplify_json_schema())
-            panel = Panel.fit(body, title="Data Model (simplified schema)", padding=(1,2), border_style="cyan", style="#f0eee6")
-            self.console.print(panel)
+            self.display_panel(
+                self.data_model.simplify_json_schema(),
+                title="Data Model (simplified schema)"
+            )
 
         # Initial guess
         json_str = super().forward(
@@ -240,9 +256,11 @@ The JSON must conform to this schema:
                 error_str = self.simplify_validation_errors(e)
                 logger.error(f"Type validation errors identified!")
                 if self.verbose:
-                    body = escape("\n".join(errors) if self.accumulate_errors else error_str)
-                    panel = Panel.fit(body, title=f"Type Validation Errors ({'accumulated errors' if self.accumulate_errors else 'last error'})", padding=(1,2), border_style="red", style="#f0eee6")
-                    self.console.print(panel)
+                    self.display_panel(
+                        "\n".join(errors) if self.accumulate_errors else error_str,
+                        title=f"Type Validation Errors ({'accumulated errors' if self.accumulate_errors else 'last error'})",
+                        border_style="red"
+                    )
 
                 errors.append(error_str)
 
@@ -254,9 +272,10 @@ The JSON must conform to this schema:
                 json_str = self.remedy_function(seed=remedy_seeds[i], **kwargs).value
                 logger.info("Applied remedy function with updated context!")
                 if self.verbose:
-                    body = escape(self.remedy_function.dynamic_context)
-                    panel = Panel.fit(body, title="New Context", padding=(1,2), border_style="cyan", style="#f0eee6")
-                    self.console.print(panel)
+                    self.display_panel(
+                        self.remedy_function.dynamic_context,
+                        title="New Context"
+                    )
 
         if result is None:
             logger.error(f"All type validation attempts failed!")
@@ -288,7 +307,6 @@ class SemanticValidationFunction(ValidationFunction):
         self.output_data_model = None
         self.accumulate_errors = accumulate_errors
         self.verbose = verbose
-        self.console = Console()
 
     def register_expected_data_model(self, data_model: LLMDataModel, attach_to: str, override: bool = False):
         assert attach_to in ["input", "output"], f"Invalid attach_to value: {attach_to}; must be either 'input' or 'output'"
@@ -395,8 +413,7 @@ Important guidelines:
                 ("Input data model", self.input_data_model.simplify_json_schema() if self.input_data_model else 'N/A'),
                 ("Output data model", self.output_data_model.simplify_json_schema()),
             ]:
-                panel = Panel.fit(escape(body), title=label, padding=(1,2), border_style="cyan", style="#f0eee6")
-                self.console.print(panel)
+                self.display_panel(body, title=label)
 
         # Zero shot the task
         context = self.zero_shot_prompt(prompt=prompt)
@@ -428,9 +445,11 @@ Important guidelines:
 
                 logger.error(f"Semantic validation errors identified!")
                 if self.verbose:
-                    body = escape("\n".join(errors) if self.accumulate_errors else error_str)
-                    panel = Panel.fit(body, title=f"Semantic Validation Errors ({'accumulated errors' if self.accumulate_errors else 'last error'})", padding=(1,2), border_style="red", style="#f0eee6")
-                    self.console.print(panel)
+                    self.display_panel(
+                        "\n".join(errors) if self.accumulate_errors else error_str,
+                        title=f"Semantic Validation Errors ({'accumulated errors' if self.accumulate_errors else 'last error'})",
+                        border_style="red"
+                    )
 
                 # Update remedy function context
                 logger.info("Updating remedy function context…")
@@ -442,9 +461,10 @@ Important guidelines:
                 json_str = self.remedy_function(seed=remedy_seeds[i], **kwargs).value
                 logger.info("Applied remedy function with updated context!")
                 if self.verbose:
-                    body = escape(self.remedy_function.dynamic_context)
-                    panel = Panel.fit(body, title="New Context", padding=(1,2), border_style="cyan", style="#f0eee6")
-                    self.console.print(panel)
+                    self.display_panel(
+                        self.remedy_function.dynamic_context,
+                        title="New Context"
+                    )
 
         if result is None or not all(f(result) for f in f_semantic_conditions):
             logger.error(f"All semantic validation attempts failed!")
