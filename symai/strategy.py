@@ -11,7 +11,9 @@ from beartype import beartype
 from loguru import logger
 from pydantic import BaseModel, ValidationError
 from rich.console import Console
+from rich.panel import Panel
 from rich.table import Table
+from rich.markup import escape
 
 from .components import Function
 from .core_ext import deprecated
@@ -161,12 +163,16 @@ class TypeValidationFunction(ValidationFunction):
     def __init__(
         self,
         retry_params: dict[str, int | float | bool] = ValidationFunction._default_retry_params,
+        accumulate_errors: bool = False,
         verbose: bool = False,
         *args,
         **kwargs,
     ):
         super().__init__(retry_params=retry_params, verbose=verbose, *args, **kwargs)
         self.data_model = None
+        self.accumulate_errors = accumulate_errors
+        self.verbose = verbose
+        self.console = Console()
 
     def register_data_model(self, data_model: LLMDataModel, override=False):
         if self.data_model is not None and not override:
@@ -177,31 +183,35 @@ class TypeValidationFunction(ValidationFunction):
         """
         Override of base remedy_prompt giving specific context and instructions.
         """
-        return (
-            "The original JSON input was:\n"
-            "<original_input>\n"
-            "```json\n"
-            f"{json}\n"
-            "```\n"
-            "</original_input>\n"
-            "\n\n"
-            "During type validation, the following errors were found:\n"
-            "<validation_errors>\n"
-            f"{errors}\n"
-            "</validation_errors>\n"
-            "\n\n"
-            "The JSON must conform to this schema:\n"
-            "<json_schema>\n"
-            f"{self.data_model.instruct_llm()}\n"
-            "</json_schema>\n"
-        )
+        return f"""
+The original JSON input was:
+<original_input>
+```json
+{json}
+```
+</original_input>
+
+During type validation, the following errors were found:
+<validation_errors>
+{errors}
+</validation_errors>
+
+The JSON must conform to this schema:
+<json_schema>
+{self.data_model.instruct_llm()}
+</json_schema>
+"""
 
     def forward(self, *args, **kwargs):
         if self.data_model is None:
             raise ValueError("Data model is not registered. Please register the data model before calling the `forward` method.")
         # Force JSON mode
         kwargs["response_format"] = {"type": "json_object"}
-        logger.info(f"Initializing type validation with JSON mode for the data model ```\n{self.data_model.simplify_json_schema()}\n```")
+        logger.info(f"Initializing type validation…")
+        if self.verbose:
+            body = escape(self.data_model.simplify_json_schema())
+            panel = Panel.fit(body, title="Data Model (simplified schema)", padding=(1,2), border_style="cyan", style="#f0eee6")
+            self.console.print(panel)
 
         # Initial guess
         json_str = super().forward(
@@ -214,38 +224,48 @@ class TypeValidationFunction(ValidationFunction):
         logger.info(f"Prepared {len(remedy_seeds)} remedy seeds for type validation attempts…")
 
         result = None
-        last_error = ""
+        errors = []
 
         for i in range(self.retry_params["tries"]):
             try:
                 logger.info(f"Attempt {i+1}/{self.retry_params['tries']}: Attempting type validation…")
                 # Try to validate against provided data model
                 result = self.data_model.model_validate_json(json_str, strict=True)
-                logger.info("Type validation successful!")
                 break
             except ValidationError as e:
                 logger.info(f"Type validation attempt {i+1} failed, pausing before retry…")
+
                 self._pause()
 
                 error_str = self.simplify_validation_errors(e)
-                logger.info(f"Type validation errors identified: {error_str}!")
+                logger.error(f"Type validation errors identified!")
+                if self.verbose:
+                    body = escape("\n".join(errors) if self.accumulate_errors else error_str)
+                    panel = Panel.fit(body, title=f"Type Validation Errors ({'accumulated errors' if self.accumulate_errors else 'last error'})", padding=(1,2), border_style="red", style="#f0eee6")
+                    self.console.print(panel)
+
+                errors.append(error_str)
 
                 # Change the dynamic context of the remedy function to account for the errors
                 logger.info("Updating remedy function context…")
-                context = self.remedy_prompt(json=json_str, errors=error_str)
+                context = self.remedy_prompt(json=json_str, errors="\n".join(errors) if self.accumulate_errors else error_str)
                 self.remedy_function.clear()
                 self.remedy_function.adapt(context)
                 json_str = self.remedy_function(seed=remedy_seeds[i], **kwargs).value
                 logger.info("Applied remedy function with updated context!")
-                logger.info(f"New context: {self.remedy_function.dynamic_context}")
-
-                last_error = error_str
+                if self.verbose:
+                    body = escape(self.remedy_function.dynamic_context)
+                    panel = Panel.fit(body, title="New Context", padding=(1,2), border_style="cyan", style="#f0eee6")
+                    self.console.print(panel)
 
         if result is None:
-            logger.info(f"All type validation attempts failed. Last error: {last_error}!")
-            raise TypeValidationError(f"Failed to retrieve valid JSON: {last_error}!")
+            logger.error(f"All type validation attempts failed!")
+            raise TypeValidationError(f"Failed to retrieve valid JSON!")
 
-        logger.info("Type validation completed successfully!")
+        logger.success("Type validation completed successfully!")
+        # Clear artifacts from the remedy function
+        self.remedy_function.clear()
+
         return result
 
 
@@ -258,6 +278,7 @@ class SemanticValidationFunction(ValidationFunction):
     def __init__(
         self,
         retry_params: dict[str, int | float | bool] = ValidationFunction._default_retry_params,
+        accumulate_errors: bool = False,
         verbose: bool = False,
         *args,
         **kwargs,
@@ -265,6 +286,9 @@ class SemanticValidationFunction(ValidationFunction):
         super().__init__(retry_params=retry_params, verbose=verbose, *args, **kwargs)
         self.input_data_model = None
         self.output_data_model = None
+        self.accumulate_errors = accumulate_errors
+        self.verbose = verbose
+        self.console = Console()
 
     def register_expected_data_model(self, data_model: LLMDataModel, attach_to: str, override: bool = False):
         assert attach_to in ["input", "output"], f"Invalid attach_to value: {attach_to}; must be either 'input' or 'output'"
@@ -278,86 +302,85 @@ class SemanticValidationFunction(ValidationFunction):
             self.output_data_model = data_model
 
     def remedy_prompt(self, prompt: str, output: str, errors: str):
-        """
-        Override of base remedy_prompt providing instructions for fixing semantic validation errors.
-        """
-        return (
-            "You are an expert in semantic validation. Your goal is to validate the output data model based on the prompt, "
-            "the errors, and the output that produced the errors, and if given, the input data model and the input.\n"
-            "Your prompt was:\n"
-            "<prompt>\n"
-            f"{prompt}\n"
-            "</prompt>"
-            "\n\n"
-            "The input data model is:\n"
-            "<input_data_model>\n"
-            f"{self.input_data_model.simplify_json_schema() if self.input_data_model is not None else 'N/A'}\n"
-            "</input_data_model>"
-            "\n\n"
-            "The given input was:\n"
-            "<input>\n"
-            f"{str(self.input_data_model) if self.input_data_model is not None else 'N/A'}\n"
-            "</input>"
-            "\n\n"
-            "The output data model is:\n"
-            "<output_data_model>\n"
-            f"{self.output_data_model.instruct_llm()}\n"
-            "</output_data_model>"
-            "\n\n"
-            "You've lastly generated the following output:\n"
-            "<output>\n"
-            f"{output}\n"
-            "</output>"
-            "\n\n"
-            "During the semantic validation, the output was found to have the following errors:\n"
-            "<errors>\n"
-            f"{errors}\n"
-            "</errors>"
-            "\n\n"
-            "You need to:\n"
-            "1. Correct the provided output to address **all listed validation errors**.\n"
-            "2. Ensure the corrected output adheres strictly to the requirements of the **original prompt**.\n"
-            "3. Preserve the intended meaning and structure of the original prompt wherever possible.\n"
-            "\n\n"
-            "Important guidelines:\n"
-            "</guidelines>\n"
-            "- The result of the task must be the output data model.\n"
-            "- Focus only on fixing the listed validation errors without introducing new errors or unnecessary changes.\n"
-            "- Ensure the revised output is clear, accurate, and fully compliant with the original prompt.\n"
-            "- Maintain proper formatting and any required conventions specified in the original prompt."
-            "</guidelines>"
-        )
+        """Override of base remedy_prompt providing instructions for fixing semantic validation errors."""
+        return f"""
+You are an expert in semantic validation. Your goal is to validate the output data model based on the prompt, the errors, and the output that produced the errors, and if given, the input data model and the input.
+
+Your prompt was:
+<prompt>
+{prompt}
+</prompt>
+
+The input data model is:
+<input_data_model>
+{self.input_data_model.simplify_json_schema() if self.input_data_model is not None else 'N/A'}
+</input_data_model>
+
+The given input was:
+<input>
+{str(self.input_data_model) if self.input_data_model is not None else 'N/A'}
+</input>
+
+The output data model is:
+<output_data_model>
+{self.output_data_model.instruct_llm()}
+</output_data_model>
+
+You've lastly generated the following output:
+<output>
+{output}
+</output>
+
+During the semantic validation, the output was found to have the following errors:
+<errors>
+{errors}
+</errors>
+
+You need to:
+1. Correct the provided output to address **all listed validation errors**.
+2. Ensure the corrected output adheres strictly to the requirements of the **original prompt**.
+3. Preserve the intended meaning and structure of the original prompt wherever possible.
+
+Important guidelines:
+</guidelines>
+- The result of the task must be the output data model.
+- Focus only on fixing the listed validation errors without introducing new errors or unnecessary changes.
+- Ensure the revised output is clear, accurate, and fully compliant with the original prompt.
+- Maintain proper formatting and any required conventions specified in the original prompt.
+</guidelines>
+"""
 
     def zero_shot_prompt(self, prompt: str) -> str:
-        return (
-            "You are given the following prompt:\n"
-            "<prompt>\n"
-            f"{prompt}\n"
-            "</prompt>"
-            "\n\n"
-            "The input data model is:\n"
-            "<input_data_model>\n"
-            f"{self.input_data_model.simplify_json_schema() if self.input_data_model is not None else 'N/A'}\n"
-            "</input_data_model>"
-            "\n\n"
-            "The given input is:\n"
-            "<input>\n"
-            f"{str(self.input_data_model) if self.input_data_model is not None else 'N/A'}\n"
-            "</input>"
-            "\n\n"
-            "The output data model is:\n"
-            "<output_data_model>\n"
-            f"{self.output_data_model.instruct_llm()}\n"
-            "</output_data_model>"
-            "\n\n"
-            "Important guidelines:\n"
-            "</guidelines>\n"
-            "- The result of the task must be the output data model.\n"
-            "- Focus only on fixing the listed validation errors without introducing new errors or unnecessary changes.\n"
-            "- Ensure the revised output is clear, accurate, and fully compliant with the original prompt.\n"
-            "- Maintain proper formatting and any required conventions specified in the original prompt."
-            "</guidelines>"
-        )
+        """We try to zero-shot the task, maybe we're lucky!"""
+        return f"""
+You are given the following prompt:
+<prompt>
+{prompt}
+</prompt>
+
+The input data model is:
+<input_data_model>
+{self.input_data_model.simplify_json_schema() if self.input_data_model is not None else 'N/A'}
+</input_data_model>
+
+The given input is:
+<input>
+{str(self.input_data_model) if self.input_data_model is not None else 'N/A'}
+</input>
+
+The output data model is:
+<output_data_model>
+{self.output_data_model.instruct_llm()}
+</output_data_model>
+
+Important guidelines:
+</guidelines>
+- The result of the task must be the output data model.
+- Focus only on fixing the listed validation errors without introducing new errors or unnecessary changes.
+- Ensure the revised output is clear, accurate, and fully compliant with the original prompt.
+- Maintain proper formatting and any required conventions specified in the original prompt.
+</guidelines>
+"""
 
     def forward(self, prompt: str, f_semantic_conditions: list[Callable], *args, **kwargs):
         if self.output_data_model is None:
@@ -365,11 +388,15 @@ class SemanticValidationFunction(ValidationFunction):
         validation_context = kwargs.pop('validation_context', {})
         # Force JSON mode
         kwargs["response_format"] = {"type": "json_object"}
-        logger.info(
-            f"Initializing semantic validation for prompt ```\n{prompt}\n``` with type validated input "
-            f"```\n{self.input_data_model.simplify_json_schema() if self.input_data_model else 'N/A'}\n``` "
-            f"and type validated output ```\n{self.output_data_model.simplify_json_schema()}\n```…"
-        )
+        logger.info("Initializing semantic validation…")
+        if self.verbose:
+            for label, body in [
+                ("Prompt", prompt),
+                ("Input data model", self.input_data_model.simplify_json_schema() if self.input_data_model else 'N/A'),
+                ("Output data model", self.output_data_model.simplify_json_schema()),
+            ]:
+                panel = Panel.fit(escape(body), title=label, padding=(1,2), border_style="cyan", style="#f0eee6")
+                self.console.print(panel)
 
         # Zero shot the task
         context = self.zero_shot_prompt(prompt=prompt)
@@ -379,9 +406,7 @@ class SemanticValidationFunction(ValidationFunction):
         logger.info(f"Prepared {len(remedy_seeds)} remedy seeds for semantic validation attempts…")
 
         result = None
-        last_error = None
         errors = []
-
         for i in range(self.retry_params["tries"]):
             logger.info(f"Attempt {i+1}/{self.retry_params['tries']}: Attempting semantic validation…")
             try:
@@ -390,37 +415,49 @@ class SemanticValidationFunction(ValidationFunction):
                     raise ValueError("Semantic validation failed!")
                 break
             except Exception as e:
-                logger.error(f"Attempt {i+1} failed with error: {e}")
+                logger.info(f"Semantic validation attempt {i+1} failed, pausing before retry…")
+
                 self._pause()
 
                 if isinstance(e, ValidationError):
                     error_str = self.simplify_validation_errors(e)
-                    logger.info(f"The following errors were identified: {error_str}")
                 else:
                     error_str = str(e)
-                    logger.info(f"The following error was identified: {error_str}")
+
                 errors.append(error_str)
+
+                logger.error(f"Semantic validation errors identified!")
+                if self.verbose:
+                    body = escape("\n".join(errors) if self.accumulate_errors else error_str)
+                    panel = Panel.fit(body, title=f"Semantic Validation Errors ({'accumulated errors' if self.accumulate_errors else 'last error'})", padding=(1,2), border_style="red", style="#f0eee6")
+                    self.console.print(panel)
 
                 # Update remedy function context
                 logger.info("Updating remedy function context…")
-                context = self.remedy_prompt(prompt=prompt, output=json_str, errors="\n".join(errors))
+                context = self.remedy_prompt(prompt=prompt, output=json_str, errors="\n".join(errors) if self.accumulate_errors else error_str)
                 self.remedy_function.clear()
                 self.remedy_function.adapt(context)
+
+                # Apply the remedy function
                 json_str = self.remedy_function(seed=remedy_seeds[i], **kwargs).value
                 logger.info("Applied remedy function with updated context!")
-                logger.info(f"New context: {self.remedy_function.dynamic_context}")
-
-                last_error = error_str
+                if self.verbose:
+                    body = escape(self.remedy_function.dynamic_context)
+                    panel = Panel.fit(body, title="New Context", padding=(1,2), border_style="cyan", style="#f0eee6")
+                    self.console.print(panel)
 
         if result is None or not all(f(result) for f in f_semantic_conditions):
-            logger.info(f"Semantic validation attempts failed. Last error: {last_error}")
+            logger.error(f"All semantic validation attempts failed!")
             raise SemanticValidationError(
                 prompt=prompt,
                 result=json_str,
                 violations=errors,
             )
 
-        logger.info("Semantic validation completed successfully!")
+        logger.success("Semantic validation completed successfully!")
+        # Clear artifacts from the remedy function
+        self.remedy_function.clear()
+
         return result
 
 
@@ -439,127 +476,19 @@ class contract:
         self,
         pre_remedy: bool = False,
         post_remedy: bool = True,
+        accumulate_errors: bool = True,
+        verbose: bool = False,
         remedy_retry_params: dict[str, int | float | bool] = _default_remedy_retry_params,
-        verbose: bool = False
     ):
         '''
-        A contract class decorator inspired by DbC principles, ensuring that the function's input and output
-        adhere to specified data models. This implementation includes retry logic to handle transient errors
-        and gracefully handle failures.
-
-        Example:
-            ```python
-            from pydantic import Field
-            from symai import Expression
-            from symai.components import FileReader, MetadataTracker
-            from symai.models import LLMDataModel
-            from symai.strategy import contract
-
-
-            # 1) Define your data models ------------------------------------------
-            class DocumentInput(LLMDataModel):
-                """Input model containing the document text and optional domain."""
-                text: str = Field(description="The text from which we want to extract a knowledge graph.")
-                domain: str = Field(default="generic", description="Domain or topic of the text, e.g. 'legal', 'academic', 'medical'.")
-
-            class Triple(LLMDataModel):
-                """Represents a single subject-relation-object triple in a knowledge graph."""
-                subject: str
-                relation: str
-                obj: str
-
-            class KnowledgeGraph(LLMDataModel):
-                """Output model representing our extracted knowledge graph."""
-                triples: list[Triple] = Field(default=[], description="A list of subject-relation-object triples extracted from the document.")
-
-            # 2) Create the "DocToKG" class with a contract ------------------------
-            remedy_retry_params = dict(
-                    tries=15,
-                    delay=0.5,
-                    max_delay=15,
-                    jitter=0.1,
-                    backoff=2,
-                    graceful=False
-                )
-
-            @contract(
-                pre_remedy=False, # use remedy for pre-condition check
-                post_remedy=True, # use remedy for post-condition check
-                verbose=True, # enables logging info
-                remedy_retry_params=remedy_retry_params, # retry parameters for remedy function
-            )
-            class DocToKG(Expression):
-                """
-                A class to extract knowledge graph information from a text document.
-                Uses symai's contract system to ensure pre- and post-conditions checks.
-                """
-                def __init__(self, *args, **kwargs):
-                    super().__init__(*args, **kwargs)
-                    self.num_triples = 25
-
-                # Required signature
-                def forward(self, input: DocumentInput, **kwargs) -> KnowledgeGraph:
-                    return self.contract_result # None if contract failed and it will raise type error, the valid contract result of type KnowledgeGraph otherwise
-
-                # 3) Pre-conditions & Post-conditions (for the contract) -----------
-                # Required pattern (return True, otherwise raise an error; the errors guide the model to self-correct, so the feedback you provide is crucial)
-                def pre(self, input: DocumentInput) -> bool:
-                    if bool(input.text.strip()):
-                        return True
-                    else:
-                        raise ValueError("Input text is empty!")
-
-                def post(self, output: KnowledgeGraph) -> bool:
-                    for t in output.triples:
-                        if not (t.subject and t.relation and t.obj):
-                            raise ValueError(f"Triple {t} is empty!")
-                    if len(output.triples) < self.num_triples:
-                        raise ValueError(f"Knowledge graph must contain at least {self.num_triples} triples! Got {len(output.triples)}!")
-                    return True
-
-
-                # 4) Various properties ----------------
-                # The prompt is required to guide the model's behavior and ensure it produces valid output.
-                # The payload and template are optional and can be used to provide additional information to the model.
-                @property
-                def prompt(self) -> str:
-                    return (
-                        "You are an AI specialized in document analysis and knowledge graph extraction. "
-                        f"You must produce a valid list of at least {self.num_triples} subject-relation-object triples that accurately "
-                        "reflects relationships mentioned in the text, ensuring no triple is empty and "
-                        "at least one triple is present."
-                    )
-
-                @property
-                def payload(self):
-                    return "Some payload."
-
-                @property
-                def template(self):
-                    return None
-
-            # 5) Demo: run with sample text ----------------------------------------
-            if __name__ == "__main__":
-
-                reader = FileReader()
-                sample_text = reader("/Users/futurisold/Zotero/storage/MCYMG8Z2/Katranidis and Barany - 2024 - FaaF Facts as a Function for the evaluation of generated text.pdf").value[0]
-                input_data = DocumentInput(text=sample_text, domain="generic")
-                extractor = DocToKG()
-
-                try:
-                    with MetadataTracker() as tracker:
-                        result = extractor(input=input_data)
-                        print("Extraction Succeeded!\n")
-                        print("Extracted Knowledge Graph (Triples):\n", result.triples)
-                        print(tracker.usage)
-                except Exception as e:
-                    print("Extraction Failed. Reason:", str(e))
-            ```
+        A contract class decorator inspired by DbC principles. It ensures that the function's input and output
+        adhere to specified data models both syntactically and semantically. This implementation includes retry
+        logic to handle transient errors and gracefully handle failures.
         '''
         self.pre_remedy = pre_remedy
         self.post_remedy = post_remedy
-        self.f_type_validation_remedy = TypeValidationFunction(verbose=False, retry_params=remedy_retry_params)
-        self.f_semantic_validation_remedy = SemanticValidationFunction(verbose=False, retry_params=remedy_retry_params)
+        self.f_type_validation_remedy = TypeValidationFunction(accumulate_errors=accumulate_errors, verbose=verbose, retry_params=remedy_retry_params)
+        self.f_semantic_validation_remedy = SemanticValidationFunction(accumulate_errors=accumulate_errors, verbose=verbose, retry_params=remedy_retry_params)
 
         if not verbose:
             logger.disable(__name__)
