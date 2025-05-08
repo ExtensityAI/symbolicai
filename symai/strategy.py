@@ -226,7 +226,7 @@ The JSON must conform to this schema:
         if self.verbose:
             self.display_panel(
                 self.data_model.simplify_json_schema(),
-                title="Data Model (simplified schema)"
+                title="Data Model"
             )
 
         # Initial guess
@@ -456,15 +456,15 @@ Important guidelines:
                 context = self.remedy_prompt(prompt=prompt, output=json_str, errors="\n".join(errors) if self.accumulate_errors else error_str)
                 self.remedy_function.clear()
                 self.remedy_function.adapt(context)
-
-                # Apply the remedy function
-                json_str = self.remedy_function(seed=remedy_seeds[i], **kwargs).value
-                logger.info("Applied remedy function with updated context!")
                 if self.verbose:
                     self.display_panel(
                         self.remedy_function.dynamic_context,
                         title="New Context"
                     )
+
+                # Apply the remedy function
+                json_str = self.remedy_function(seed=remedy_seeds[i], **kwargs).value
+                logger.info("Applied remedy function with updated context!")
 
         if result is None or not all(f(result) for f in f_semantic_conditions):
             logger.error(f"All semantic validation attempts failed!")
@@ -516,10 +516,10 @@ class contract:
             logger.enable(__name__)
 
     def _is_valid_input(self, *args, **kwargs):
-        logger.info("Validating input arguments...")
+        logger.info("Validating input argument...")
         if args:
             logger.error("Positional arguments detected!")
-            raise ValueError("Positional arguments are not allowed. Please use keyword arguments instead.")
+            raise ValueError("Positional arguments are not allowed! Please use keyword arguments instead.")
         input = kwargs.pop("input")
         if input is None:
             logger.error("No input argument provided!")
@@ -527,46 +527,53 @@ class contract:
         if not isinstance(input, LLMDataModel):
             logger.error(f"Invalid input type: {type(input)}")
             raise TypeError(f"Expected input to be of type `LLMDataModel`, got {type(input)}")
-        logger.info("Input validation successful")
+        logger.success("Input argument validated successfully!")
         return input
 
-    def _validate_input(self, wrapped_self, input, **remedy_kwargs):
+    def _validate_input(self, wrapped_self, input, it, **remedy_kwargs):
+        logger.info("Starting input validation...")
         if self.pre_remedy:
             logger.info("Validating pre-conditions with remedy...")
             if not hasattr(wrapped_self, 'pre'):
                 logger.error("Pre-condition function not defined!")
                 raise Exception("Pre-condition function not defined. Please define a `pre` method if you want to enforce pre-conditions through a remedy.")
+
             try:
-                logger.info("Attempting pre-condition validation...")
                 assert wrapped_self.pre(input)
+                logger.success("Pre-condition validation successful!")
                 return input
             except Exception as e:
-                logger.error(f"Pre-condition validation failed: {str(e)}")
-                logger.info("Attempting remedy with semantic validation...")
-                self.f_semantic_validation_remedy.register_expected_data_model(input, attach_to="output", override=True)
-                input = self.f_semantic_validation_remedy(wrapped_self.prompt, f_semantic_conditions=[wrapped_self.pre], **remedy_kwargs)
-                logger.info("Semantic validation remedy successful")
+                logger.error("Pre-condition validation failed!")
+                try:
+                    op_start = time.perf_counter()
+                    self.f_semantic_validation_remedy.register_expected_data_model(input, attach_to="output", override=True)
+                    input = self.f_semantic_validation_remedy(wrapped_self.prompt, f_semantic_conditions=[wrapped_self.pre], **remedy_kwargs)
+                finally:
+                    wrapped_self._contract_timing[it]["input_semantic_validation"] = time.perf_counter() - op_start
                 return input
         else:
             if hasattr(wrapped_self, 'pre'):
                 logger.info("Validating pre-conditions without remedy...")
-                if not wrapped_self.pre(input):
-                    logger.error("Pre-conditions failed!")
-                    raise Exception("Pre-conditions failed!")
-                logger.info("Pre-conditions passed")
+                try:
+                    op_start = time.perf_counter()
+                    res = wrapped_self.pre(input)
+                finally:
+                    wrapped_self._contract_timing[it]["input_semantic_validation"] = time.perf_counter() - op_start
+                if not res:
+                    logger.error("Pre-condition validation failed!")
+                    raise Exception("Pre-condition validation failed!")
+                logger.success("Pre-condition validation successful!")
                 return
 
     def _validate_output(self, wrapped_self, input, output, it, **remedy_kwargs):
         logger.info("Starting output validation...")
         try:
-            logger.info("Registering output data model for type validation...")
             try:
                 op_start = time.perf_counter()
                 self.f_type_validation_remedy.register_data_model(output, override=True)
                 output = self.f_type_validation_remedy(**remedy_kwargs)
             finally:
                 wrapped_self._contract_timing[it]["output_type_validation"] = time.perf_counter() - op_start
-            logger.info("Type validation successful")
         except Exception as e:
             logger.error(f"Type validation failed: {str(e)}")
             raise Exception("Type validation failed! Couldn't create a data model matching the output data model.")
@@ -574,18 +581,24 @@ class contract:
         if self.post_remedy:
             logger.info("Validating post-conditions with remedy...")
             if not hasattr(wrapped_self, "post"):
-                logger.error("Post-conditions not defined!")
-                raise Exception("Post-conditions not defined. Please define a `post` attribute if you want to enforce semantic validation through a remedy.")
+                logger.error("Post-condition function not defined!")
+                raise Exception("Post-condition function not defined. Please define a `post` method if you want to enforce post-conditions through a remedy.")
 
-            logger.info("Setting up semantic validation...")
             try:
+                try:
+                    assert wrapped_self.post(output)
+                    logger.success("Post-condition validation successful!")
+                    return output
+                except Exception as e:
+                    logger.error("Post-condition validation failed!")
+
                 op_start = time.perf_counter()
                 self.f_semantic_validation_remedy.register_expected_data_model(input, attach_to="input", override=True)
                 self.f_semantic_validation_remedy.register_expected_data_model(output, attach_to="output", override=True)
                 output = self.f_semantic_validation_remedy(wrapped_self.prompt, f_semantic_conditions=[wrapped_self.post], **remedy_kwargs)
             finally:
                 wrapped_self._contract_timing[it]["output_semantic_validation"] = time.perf_counter() - op_start
-            logger.info("Semantic validation successful")
+            logger.success("Post-condition validation successful!")
             return output
         else:
             if hasattr(wrapped_self, "post"):
@@ -596,13 +609,12 @@ class contract:
                 finally:
                     wrapped_self._contract_timing[it]["output_semantic_validation"] = time.perf_counter() - op_start
                 if not res:
-                    logger.error("Semantic validation failed!")
-                    raise Exception("Semantic validation failed!")
-                logger.info("Post-conditions passed")
+                    logger.error("Post-condition validation failed!")
+                    raise Exception("Post-condition validation failed!")
+                logger.success("Post-condition validation successful!")
                 return
 
     def __call__(self, cls):
-        contract_self = self
         original_init = cls.__init__
         original_forward = cls.forward
 
@@ -617,15 +629,15 @@ class contract:
             wrapped_self.contract_successful = False
             wrapped_self.contract_result = None
             wrapped_self._contract_timing = defaultdict(dict)
-            logger.info("Contract initialization complete")
+            logger.info("Contract initialization complete!")
 
         def wrapped_forward(wrapped_self, *args, **kwargs):
             it = len(wrapped_self._contract_timing) # the len is the __call__ op_start
             contract_start = time.perf_counter()
-            logger.info("Starting contract forward pass...")
+            logger.info("Starting contract execution...")
             try:
                 op_start = time.perf_counter()
-                original_input = contract_self._is_valid_input(*args, **kwargs)
+                original_input = self._is_valid_input(*args, **kwargs)
             finally:
                 wrapped_self._contract_timing[it]["input_type_validation"] = time.perf_counter() - op_start
 
@@ -653,13 +665,9 @@ class contract:
 
             try:
                 input = original_input
-                try:
-                    op_start = time.perf_counter()
-                    maybe_new_input = contract_self._validate_input(wrapped_self, input, **validation_kwargs_filtered)
-                    if maybe_new_input is not None:
-                        input = maybe_new_input
-                finally:
-                    wrapped_self._contract_timing[it]["input_semantic_validation"] = time.perf_counter() - op_start
+                maybe_new_input = self._validate_input(wrapped_self, input, it, **validation_kwargs_filtered)
+                if maybe_new_input is not None:
+                    input = maybe_new_input
 
                 output = self._validate_output(wrapped_self, input, original_output_type, it, **validation_kwargs_filtered)
                 wrapped_self.contract_successful = True
@@ -682,9 +690,9 @@ class contract:
                         f"but got {type(output)}! Forward method must return an instance of {original_output_type}!"
                     )
                 if not wrapped_self.contract_successful:
-                    logger.warning("Contract validation failed, checking output type...")
+                    logger.warning("Contract validation failed!")
                 else:
-                    logger.success("Contract validation successful")
+                    logger.success("Contract validation successful!")
 
             return output
 
