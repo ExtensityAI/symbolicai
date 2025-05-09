@@ -554,15 +554,19 @@ class contract:
         else:
             if hasattr(wrapped_self, 'pre'):
                 logger.info("Validating pre-conditions without remedy...")
+                op_start = time.perf_counter()
                 try:
-                    op_start = time.perf_counter()
-                    res = wrapped_self.pre(input)
+                    wrapped_self.pre(input) # Call pre; if it fails, it should raise an exception.
+                except Exception as e:
+                    # pre() itself raised an exception
+                    logger.error(f"Pre-condition validation failed (exception in pre): {str(e)}")
+                    # Raise the consistent failure exception, chaining the original for context
+                    raise Exception("Pre-condition validation failed!") from e
                 finally:
                     wrapped_self._contract_timing[it]["input_semantic_validation"] = time.perf_counter() - op_start
-                if not res:
-                    logger.error("Pre-condition validation failed!")
-                    raise Exception("Pre-condition validation failed!")
+
                 logger.success("Pre-condition validation successful!")
+                # On success for pre_remedy=False, return None, as input is not modified.
                 return
 
     def _validate_output(self, wrapped_self, input, output, it, **remedy_kwargs):
@@ -614,6 +618,62 @@ class contract:
                 logger.success("Post-condition validation successful!")
                 return
 
+    def _act(self, wrapped_self, input, it, **act_kwargs):
+        act_method = getattr(wrapped_self, 'act', None)
+        if callable(act_method):
+            logger.info(f"Executing 'act' method on {wrapped_self.__class__.__name__}…")
+
+            # Validate act_method signature
+            try:
+                act_sig = inspect.signature(act_method)
+                act_params_list = list(act_sig.parameters.values())
+            except ValueError:
+                raise TypeError(f"Cannot inspect signature of 'act' method on {wrapped_self.__class__.__name__}.")
+
+            # Validate input parameter type
+            if len(act_params_list) <= 1:  # Need at least self and one input parameter
+                raise TypeError(f"'act' method on {wrapped_self.__class__.__name__} must accept at least one input parameter after 'self'.")
+
+            # Find the input parameter named 'input'
+            input_param = None
+            for param in act_params_list:
+                if param.name == 'input' and param.kind in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY):
+                    input_param = param
+                    break
+
+            if input_param is None:
+                raise TypeError(f"'act' method on {wrapped_self.__class__.__name__} must have a parameter named 'input'.")
+
+            act_input_annotation = input_param.annotation
+            if act_input_annotation == inspect.Parameter.empty:
+                raise TypeError(f"The input parameter '{input_param.name}' of 'act' method on {wrapped_self.__class__.__name__} must have a type annotation.")
+
+            if not (inspect.isclass(act_input_annotation) and issubclass(act_input_annotation, LLMDataModel)):
+                raise TypeError(f"The input type annotation for 'act' method on {wrapped_self.__class__.__name__} must be a subclass of LLMDataModel.")
+
+            # Validate return type
+            act_return_annotation = act_sig.return_annotation
+            if act_return_annotation == inspect.Signature.empty:
+                raise TypeError(f"'act' method on {wrapped_self.__class__.__name__} must have a return type annotation.")
+
+            if not (inspect.isclass(act_return_annotation) and issubclass(act_return_annotation, LLMDataModel)):
+                raise TypeError(f"The return type annotation '{act_return_annotation}' for 'act' method on {wrapped_self.__class__.__name__} must be a subclass of LLMDataModel.")
+
+            try:
+                op_start_act = time.perf_counter()
+                act_output = act_method(input, **act_kwargs)
+            finally:
+                wrapped_self._contract_timing[it]["act_execution"] = time.perf_counter() - op_start_act
+
+            # Validate act output type
+            if not isinstance(act_output, act_return_annotation):
+                raise TypeError(f"'act' method returned {type(act_output).__name__}, expected {act_return_annotation.__name__}.")
+
+            logger.success("'act' method executed successfully!")
+            return act_output
+        # Propagate the input if no act method is defined
+        return input
+
     def __call__(self, cls):
         original_init = cls.__init__
         original_forward = cls.forward
@@ -654,6 +714,8 @@ class contract:
                 "template_suffix": maybe_template
             }
             validation_kwargs_filtered = {k: v for k, v in validation_kwargs.items() if k != "input"}
+            act_kwargs = {k: v for k, v in kwargs.items() if k != 'input'}
+
             sig = inspect.signature(original_forward)
             original_output_type = sig.return_annotation
             if original_output_type == inspect._empty:
@@ -663,22 +725,46 @@ class contract:
                 logger.error(f"Invalid return type: {original_output_type}")
                 raise ValueError("The return type annotation must be a subclass of `LLMDataModel`.")
 
+            final_output = None
             try:
-                input = original_input
-                maybe_new_input = self._validate_input(wrapped_self, input, it, **validation_kwargs_filtered)
+                # 1. Start with original input and apply pre-validation
+                current_input = original_input
+                maybe_new_input = self._validate_input(wrapped_self, current_input, it, **validation_kwargs_filtered)
                 if maybe_new_input is not None:
-                    input = maybe_new_input
+                    current_input = maybe_new_input
 
-                output = self._validate_output(wrapped_self, input, original_output_type, it, **validation_kwargs_filtered)
+                # 2. Check if 'act' method exists and execute it
+                current_input = self._act(wrapped_self, current_input, it, **act_kwargs)
+
+                # 3. Validate output type and prepare for original_forward
+                output = self._validate_output(wrapped_self, current_input, original_output_type, it, **validation_kwargs_filtered)
                 wrapped_self.contract_successful = True
                 wrapped_self.contract_result = output
+                final_output = output # Output from the successful contract path
+
+            except Exception as e:
+                logger.error(f"Contract execution failed in main path: {str(e)}")
+                wrapped_self.contract_successful = False
+                # contract_result remains None or its value before the exception.
+                # final_output remains None or its value before the exception.
+                # The finally block's execution of original_forward will determine the actual returned value.
             finally:
-                # Execute the original forward method with original kwargs
+                # Execute the original forward method with appropriate input
                 logger.info("Executing original forward method...")
-                kwargs['input'] = original_input
+
+                # If contract was successful, use the processed input (after pre-validation and act, both optional)
+                # `current_input` at this stage is the result of the try block's processing up to the point of exception,
+                # or the full processing if successful.
+                # If contract failed, use original_input (fallback).
+                forward_input = current_input if wrapped_self.contract_successful else original_input
+
+                # Prepare kwargs for original_forward
+                forward_kwargs = kwargs.copy()
+                forward_kwargs['input'] = forward_input
+
                 try:
                     op_start = time.perf_counter()
-                    output = original_forward(wrapped_self, *args, **kwargs)
+                    output = original_forward(wrapped_self, **forward_kwargs)
                 finally:
                     wrapped_self._contract_timing[it]["forward_execution"] = time.perf_counter() - op_start
                 wrapped_self._contract_timing[it]["contract_execution"] = time.perf_counter() - contract_start
@@ -694,7 +780,9 @@ class contract:
                 else:
                     logger.success("Contract validation successful!")
 
-            return output
+                # Use the output from original_forward
+                final_output = output
+            return final_output
 
         def contract_perf_stats(wrapped_self):
             """Analyzes and prints timing statistics across all forward calls."""
@@ -708,6 +796,7 @@ class contract:
             ordered_operations = [
                 "input_type_validation",
                 "input_semantic_validation",
+                "act_execution",
                 "output_type_validation",
                 "output_semantic_validation",
                 "forward_execution",
