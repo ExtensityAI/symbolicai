@@ -21,6 +21,7 @@
 ## Features
 * [Operations](FEATURES/operations.md)
 * [Expressions](FEATURES/expressions.md)
+* [Contracts](FEATURES/contracts.md)
 * [Causal Reasoning](FEATURES/causal_reasoning.md)
 * [Error Handling](FEATURES/error_handling.md)
 * [Vision](FEATURES/vision.md)

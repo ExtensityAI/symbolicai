@@ -203,7 +203,7 @@ class TestTripletExtractor(Expression):
 
 # Tests
 def test_triplet_extractor_basic():
-    """Test basic functionality of the triplet extractor with act"""
+    """Test basic functionality of the triplet extractor with act (the happy path!)"""
     # Create a simple ontology
     ontology = SimpleOntology(classes=[
         OntologyClass(name="Algorithm"),
@@ -387,7 +387,7 @@ def test_act_signature_validation():
             return input.text
         def forward(self, **kwargs) -> KGState:
             return KGState()
-            
+
     dummy_ontology = SimpleOntology(classes=[OntologyClass(name="Test")])
     dummy_input = TripletExtractorInput(text="test", ontology=dummy_ontology)
 
@@ -410,7 +410,7 @@ def test_act_signature_validation():
     contract_bswit = BadActSignatureWrongInputType()
     contract_bswit(input=dummy_input)
     assert not contract_bswit.contract_successful
-    
+
     contract_bswrt = BadActSignatureWrongReturnType()
     contract_bswrt(input=dummy_input)
     assert not contract_bswrt.contract_successful
@@ -425,23 +425,23 @@ def test_act_contract_flow():
             super().__init__()
             self.flow_log = []
         @property
-        def prompt(self) -> str: 
+        def prompt(self) -> str:
             self.flow_log.append("prompt_accessed")
             return "test prompt for flow"
-        def pre(self, input: TripletExtractorInput) -> bool: 
+        def pre(self, input: TripletExtractorInput) -> bool:
             self.flow_log.append("pre_called")
             return True
         def act(self, input: TripletExtractorInput, **kwargs) -> IntermediateAnalysisResult:
             self.flow_log.append("act_called")
             return IntermediateAnalysisResult(analyzed_text=input.text, confidence_threshold=0.7)
-        def post(self, output: KGState) -> bool: 
+        def post(self, output: KGState) -> bool:
             self.flow_log.append("post_called")
             # output is the KGState instance created by _validate_output based on LLM response
             # For this flow test, we just care it's called.
             return True
         def forward(self, input: TripletExtractorInput, **kwargs) -> KGState:
             self.flow_log.append("original_forward_called")
-            if self.contract_result is None: 
+            if self.contract_result is None:
                 # This indicates contract failed before _validate_output set contract_result,
                 # or _validate_output itself failed to produce a valid result.
                 # For a successful flow, contract_result should be set.
@@ -453,7 +453,7 @@ def test_act_contract_flow():
     test_contract_instance_precise = FlowTestContractPrecise()
     dummy_ontology = SimpleOntology(classes=[OntologyClass(name="Test")])
     dummy_input_data = TripletExtractorInput(text="flow test text", ontology=dummy_ontology)
-    
+
     # In a real scenario with pre_remedy=True and post_remedy=True,
     # _validate_input and _validate_output in strategy.py would use the prompt.
     # _validate_output would create/validate the KGState (final output type) using an LLM call.
@@ -473,32 +473,26 @@ def test_act_contract_flow():
     # 4. prompt_accessed (by _validate_output due to post_remedy=True, assuming it uses prompt)
     # 5. post_called (by _validate_output)
     # 6. original_forward_called (by wrapped_forward in finally block)
-    
+
     # Check the sequence
     assert "pre_called" in test_contract_instance_precise.flow_log
     assert "act_called" in test_contract_instance_precise.flow_log
     assert "post_called" in test_contract_instance_precise.flow_log
     assert "original_forward_called" in test_contract_instance_precise.flow_log
-    
-    # Check relative order
-    if "pre_called" in test_contract_instance_precise.flow_log and \
-       "act_called" in test_contract_instance_precise.flow_log:
-        assert test_contract_instance_precise.flow_log.index("pre_called") < \
-               test_contract_instance_precise.flow_log.index("act_called")
-               
-    if "act_called" in test_contract_instance_precise.flow_log and \
-       "post_called" in test_contract_instance_precise.flow_log:
-        # Note: 'post_called' is called within _validate_output. Prompt access by _validate_output
-        # might happen before or after calling 'post', depending on _validate_output's internal logic.
-        # For this test, we simplify and just check act before post.
-        assert test_contract_instance_precise.flow_log.index("act_called") < \
-               test_contract_instance_precise.flow_log.index("post_called")
 
-    if "post_called" in test_contract_instance_precise.flow_log and \
-       "original_forward_called" in test_contract_instance_precise.flow_log:
-        assert test_contract_instance_precise.flow_log.index("post_called") < \
-               test_contract_instance_precise.flow_log.index("original_forward_called")
-    
+    # Check relative order
+    assert test_contract_instance_precise.flow_log.index("pre_called") < \
+            test_contract_instance_precise.flow_log.index("act_called")
+
+    # Note: 'post_called' is called within _validate_output. Prompt access by _validate_output
+    # might happen before or after calling 'post', depending on _validate_output's internal logic.
+    # For this test, we simplify and just check act before post.
+    assert test_contract_instance_precise.flow_log.index("act_called") < \
+            test_contract_instance_precise.flow_log.index("post_called")
+
+    assert test_contract_instance_precise.flow_log.index("post_called") < \
+            test_contract_instance_precise.flow_log.index("original_forward_called")
+
     # Verify prompt access. Exact number of calls depends on strategy.py internal logic.
     assert test_contract_instance_precise.flow_log.count("prompt_accessed") >= 1
 
@@ -537,7 +531,7 @@ def test_act_contract_state_interaction():
             # Post-condition uses the updated threshold from act
             if output.triplets:
                 for triplet in output.triplets:
-                    if triplet.confidence < self.custom_threshold: 
+                    if triplet.confidence < self.custom_threshold:
                         raise ValueError(f"Post-condition failed: Confidence {triplet.confidence} < {self.custom_threshold}")
             return True
 
@@ -548,10 +542,10 @@ def test_act_contract_state_interaction():
                                                  predicate=Relationship(name="created_due_to_failure"),
                                                  object=Entity(name=input.text[:10]), # Use original input for fallback
                                                  confidence=0.1)])
-            
+
             if self.contract_result is None: # Should ideally not happen if contract_successful
                  raise ValueError("Contract successful but contract_result is None in forward!")
-            
+
             return self.contract_result
 
     contract_instance = StateInteractionContract()
@@ -561,15 +555,14 @@ def test_act_contract_state_interaction():
     # For this to pass, _validate_output (which calls post) must be "aware" of an LLM producing
     # a KGState with triplets that meet the new threshold of 0.9.
     # Without a mock LLM, we assume _validate_output can produce such a result if prompted correctly.
-    # Let's test a scenario where the input itself contains state that `post` can validate against.
     input_data_pass = TripletExtractorInput(
         text="Test_Pass_State_Interaction",
         ontology=dummy_ontology,
         # Simulate an incoming state that, if returned by LLM, would pass the post-condition
         state=KGState(triplets=[Triplet(subject=Entity(name="S"), predicate=Relationship(name="P"), object=Entity(name="O"), confidence=0.95)])
     )
-    # We rely on the actual contract mechanisms. If the LLM (or TypeValidationFunction)
-    # happens to return triplets like those in `input_data_pass.state` (or an empty list), it might pass.
+    # We rely on the actual contract mechanisms. If the LLM happens to return
+    # triplets like those in `input_data_pass.state` (or an empty list), it might pass.
     # This test is more of an integration style for state due to LLM dependency.
     # For a more controlled unit test, one might need to mock the LLM response within _validate_output.
     try:
@@ -590,27 +583,27 @@ def test_act_contract_state_interaction():
     # Case 2: Act itself fails
     contract_instance_fail_act = StateInteractionContract() # Re-initialize for a clean state
     input_data_fail_act = TripletExtractorInput(text="fail_act", ontology=dummy_ontology)
-        
+
     # The RuntimeError from `act` will be caught by `wrapped_forward`.
     # `contract_successful` will be False.
     # The `finally` block in `wrapped_forward` will call `original_forward` (StateInteractionContract.forward).
     # StateInteractionContract.forward will execute its fallback logic.
-        
+
     fallback_result_from_act_failure = contract_instance_fail_act(input=input_data_fail_act)
-        
+
     # Verify fallback output
     assert fallback_result_from_act_failure.triplets[0].subject.name == "Fallback"
     assert fallback_result_from_act_failure.triplets[0].object.name == "fail_act"[:10] # Original input text used in fallback
-        
+
     # After the error in `act`, check state that should not have been changed by the aborted `act` call.
     # In StateInteractionContract, `act` raises RuntimeError BEFORE `self.custom_threshold` is changed from 0.5 to 0.9.
     assert contract_instance_fail_act.custom_threshold == 0.5
-        
+
     # Verify contract_successful is False
     assert not contract_instance_fail_act.contract_successful
 
     # Reset state for next test part
-    contract_instance.custom_threshold = 0.5 
+    contract_instance.custom_threshold = 0.5
     contract_instance.contract_successful = False # Reset for clarity
     contract_instance.contract_result = None
 
@@ -621,7 +614,7 @@ def test_act_contract_state_interaction():
     # If remedy succeeds, input is modified, flow continues.
     # If remedy fails, the exception from `SemanticValidationFunction` propagates.
     # This exception is caught by `wrapped_forward`, `contract_successful=False`. Fallback.
-    
+
     # For a simpler test of pre-failure leading to fallback, use pre_remedy=False.
     @contract(pre_remedy=False, post_remedy=False, verbose=True)
     class StateInteractionNoRemedyPreFail(Expression):
@@ -629,28 +622,28 @@ def test_act_contract_state_interaction():
         @property
         def prompt(self) -> str: return "test" # Not used with remedy=False
         def pre(self, input: TripletExtractorInput) -> bool:
-            if input.text == "fail_pre_direct": 
+            if input.text == "fail_pre_direct":
                 # With pre_remedy=False, returning False or raising will cause _validate_input to raise.
-                raise ValueError("Direct pre fail") 
+                raise ValueError("Direct pre fail")
             return True
         # Define act and post to satisfy contract requirements, though not central to this test part
-        def act(self, input: TripletExtractorInput, **kwargs) -> IntermediateAnalysisResult: 
+        def act(self, input: TripletExtractorInput, **kwargs) -> IntermediateAnalysisResult:
             return IntermediateAnalysisResult(analyzed_text=input.text)
-        def post(self, output: KGState) -> bool: 
+        def post(self, output: KGState) -> bool:
             return True
         def forward(self, input: TripletExtractorInput, **kwargs) -> KGState: # input here is original_input
             if not self.contract_successful and self.contract_result is None: # Fallback
-                return KGState(triplets=[Triplet(subject=Entity(name="FallbackDirectPreFail"), 
-                                                 predicate=Relationship(name="P"), 
-                                                 object=Entity(name=input.text[:10]), 
+                return KGState(triplets=[Triplet(subject=Entity(name="FallbackDirectPreFail"),
+                                                 predicate=Relationship(name="P"),
+                                                 object=Entity(name=input.text[:10]),
                                                  confidence=0.1)])
             # This path should not be taken if pre-failed and fallback occurred.
             if self.contract_result is None: raise ValueError("Contract result none in forward for success path");
             return self.contract_result
-            
+
     contract_no_remedy_pre = StateInteractionNoRemedyPreFail()
     input_fail_pre_direct = TripletExtractorInput(text="fail_pre_direct", ontology=dummy_ontology)
-    
+
     # `_validate_input` (with pre_remedy=False) will raise Exception if pre returns False/raises.
     # This exception is caught by `wrapped_forward`, `contract_successful` becomes False.
     # `original_forward` (StateInteractionNoRemedyPreFail.forward) is called with original_input.
@@ -670,7 +663,7 @@ def test_contract_result_propagation():
             self.intermediate_text_from_act = None
 
         @property
-        def prompt(self) -> str: 
+        def prompt(self) -> str:
             # This prompt will be used by _validate_output (specifically by TypeValidationFunction/SemanticValidationFunction)
             # It should demonstrate using the output of the 'act' method.
             # The `current_input` to _validate_output in strategy.py IS the output of `_act`.
@@ -707,14 +700,14 @@ def test_contract_result_propagation():
 
             if self.contract_result is None:
                 raise ValueError("Contract.contract_result was None in forward (success path)!")
-            
-            assert isinstance(self.contract_result, KGState) 
+
+            assert isinstance(self.contract_result, KGState)
             return self.contract_result
 
     contract_instance = ResultPropagationContract()
     dummy_ontology = SimpleOntology(classes=[OntologyClass(name="Test")]) # Not used by this contract's prompt directly
     input_data = TripletExtractorInput(text="propagate_test_text", ontology=dummy_ontology)
-    
+
     # This call will use the real _validate_output, which involves an LLM call
     # using the prompt defined in ResultPropagationContract.
     # The prompt will be formatted with data from the IntermediateAnalysisResult returned by `act`.
@@ -723,7 +716,7 @@ def test_contract_result_propagation():
 
     assert isinstance(result, KGState)
     assert contract_instance.contract_successful # Check that the main path was successful
-    
+
     # We can't easily assert specific content of `result.triplets` without a mock LLM,
     # as it depends on the real LLM's interpretation of the prompt.
     # However, if `post_remedy=True` and `post` passes, and `verbose=True` in contract,
