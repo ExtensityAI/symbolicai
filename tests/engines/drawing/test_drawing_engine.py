@@ -55,7 +55,7 @@ def test_gpt_image_edit(model, quality):
         model=model,
         image_path=img_path,
         n=1,
-        size=512,
+        size=1024,
         quality=quality,
     )
 

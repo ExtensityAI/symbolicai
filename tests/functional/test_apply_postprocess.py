@@ -18,7 +18,8 @@ class MockProp:
         self.constraints = []
         self.outputs = None
         self.metadata = None
-        self.raw_output = None 
+        self.raw_output = None
+        self.preview = False
 
 
 class MockPostProcessor(PostProcessor):
@@ -164,3 +165,19 @@ def test_postprocess_response_with_list_return_constraint():
     assert isinstance(result, list)
     assert metadata is None
 
+
+def test_postprocess_response_with_preview_mode():
+    outputs_tuple = (["hello"], {"some_meta": "data"})
+    return_constraint = int  # This should be ignored in preview mode
+    post_processors = [MockPostProcessor()] # This should be ignored
+    argument = MockArgument()
+    argument.prop.outputs = outputs_tuple
+    argument.prop.preview = True
+    argument.prop.constraints = [always_false] # This should be ignored
+
+    outputs_param_to_function = (["raw_input_string"], {"meta": "info"})
+
+    result = _apply_postprocessors(outputs_param_to_function, return_constraint, post_processors, argument, ProbabilisticBooleanMode.MEDIUM)
+
+    # In preview mode, the function should return the `outputs` argument directly.
+    assert result == outputs_param_to_function
