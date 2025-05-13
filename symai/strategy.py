@@ -194,47 +194,60 @@ class TypeValidationFunction(ValidationFunction):
             raise ValueError("Data model already registered. If you want to override it, set `override=True`.")
         self.data_model = data_model
 
-    def remedy_prompt(self, json: str, errors: str):
-        """
-        Override of base remedy_prompt giving specific context and instructions.
-        """
+    def remedy_prompt(self, prompt: str | None, json: str, errors: str) -> str:
+        """Override of base remedy_prompt giving specific context and instructions."""
         return f"""
+Your prompt was:
+<prompt>
+{prompt if prompt else 'N/A'}
+</prompt>
+
 The original JSON input was:
 <original_input>
-```json
 {json}
-```
 </original_input>
-
-During type validation, the following errors were found:
-<validation_errors>
-{errors}
-</validation_errors>
 
 The JSON must conform to this schema:
 <json_schema>
 {self.data_model.instruct_llm()}
 </json_schema>
+
+During type validation, the following errors were found:
+<validation_errors>
+{errors}
+</validation_errors>
 """
 
-    def forward(self, *args, **kwargs):
+    def zero_shot_prompt(self, prompt: str | None) -> str:
+        """We try to zero-shot the task, maybe we're lucky!"""
+        return f"""
+You are given the following prompt:
+<prompt>
+{prompt if prompt else 'N/A'}
+</prompt>
+
+Return a valid type according to the following JSON schema:
+<json_schema>
+{self.data_model.instruct_llm()}
+</json_schema>
+"""
+
+    def forward(self, prompt: str | None, *args, **kwargs):
         if self.data_model is None:
             raise ValueError("Data model is not registered. Please register the data model before calling the `forward` method.")
         # Force JSON mode
         kwargs["response_format"] = {"type": "json_object"}
         logger.info(f"Initializing type validation…")
         if self.verbose:
-            self.display_panel(
-                self.data_model.simplify_json_schema(),
-                title="Data Model"
-            )
+            for label, body in [
+                ("Prompt", prompt if prompt else 'N/A'),
+                ("Data Model", self.data_model.simplify_json_schema()),
+            ]:
+                self.display_panel(body, title=label)
 
-        # Initial guess
-        json_str = super().forward(
-            f"Return a valid type according to the following JSON schema:\n{self.data_model.simplify_json_schema()}",
-            *args,
-            **kwargs
-        ).value
+        # Zero shot the task
+        context = self.zero_shot_prompt(prompt=prompt)
+        json_str = super().forward(context, *args, **kwargs).value
 
         remedy_seeds = self.prepare_seeds(self.retry_params["tries"], **kwargs)
         logger.info(f"Prepared {len(remedy_seeds)} remedy seeds for type validation attempts…")
@@ -266,7 +279,7 @@ The JSON must conform to this schema:
 
                 # Change the dynamic context of the remedy function to account for the errors
                 logger.info("Updating remedy function context…")
-                context = self.remedy_prompt(json=json_str, errors="\n".join(errors) if self.accumulate_errors else error_str)
+                context = self.remedy_prompt(prompt=prompt, json=json_str, errors="\n".join(errors) if self.accumulate_errors else error_str)
                 self.remedy_function.clear()
                 self.remedy_function.adapt(context)
                 json_str = self.remedy_function(seed=remedy_seeds[i], **kwargs).value
@@ -319,7 +332,7 @@ class SemanticValidationFunction(ValidationFunction):
                 raise ValueError("There is already a data model attached to the output. If you want to override it, set `override=True`.")
             self.output_data_model = data_model
 
-    def remedy_prompt(self, prompt: str, output: str, errors: str):
+    def remedy_prompt(self, prompt: str, output: str, errors: str) -> str:
         """Override of base remedy_prompt providing instructions for fixing semantic validation errors."""
         return f"""
 You are an expert in semantic validation. Your goal is to validate the output data model based on the prompt, the errors, and the output that produced the errors, and if given, the input data model and the input.
@@ -570,7 +583,7 @@ class contract:
             type_start = time.perf_counter()
             try:
                 self.f_type_validation_remedy.register_data_model(output, override=True)
-                output = self.f_type_validation_remedy(**remedy_kwargs)
+                output = self.f_type_validation_remedy(wrapped_self.prompt, **remedy_kwargs)
             finally:
                 wrapped_self._contract_timing[it]["output_type_validation"] = time.perf_counter() - type_start
         except Exception as e:
