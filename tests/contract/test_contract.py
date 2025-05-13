@@ -1,14 +1,19 @@
-import pytest
-from pathlib import Path
 import json
-from typing import List, Optional
-from pydantic import Field
 import logging
+import time
+from pathlib import Path
+from typing import List, Optional
+
+import numpy as np
+import pytest
+from pydantic import Field
+from rich.console import Console
+from rich.table import Table
 
 from symai import Expression
+from symai.components import MetadataTracker
 from symai.models import LLMDataModel
 from symai.strategy import contract
-from symai.components import MetadataTracker
 
 
 class Entity(LLMDataModel):
@@ -723,10 +728,104 @@ def test_contract_result_propagation():
     # logs would show the LLM call and the data flow.
     # The `post` method above includes a log if it finds evidence.
     logging.info(f"Resulting KG for propagation test: {result.model_dump_json(indent=2)}")
+
     if result.triplets and contract_instance.intermediate_text_from_act:
         found_evidence = any(contract_instance.intermediate_text_from_act[:5] in t.subject.name for t in result.triplets)
         logging.info(f"Evidence of 'act' data in final result: {found_evidence}")
-        # assert found_evidence # This assertion is LLM-dependent
+
+
+def test_contract_perf_stats():
+    """Test the contract_perf_stats method correctly tracks and reports timing statistics."""
+
+    class PerfStatsInput(LLMDataModel):
+        text: str = Field(description="Input text for performance testing")
+
+    class PerfStatsOutput(LLMDataModel):
+        processed_text: str = Field(description="Processed text output")
+
+    @contract(pre_remedy=True, post_remedy=True, verbose=True)
+    class PerfStatsTestContract(Expression):
+        def __init__(self):
+            super().__init__()
+            self.sleep_time = 0.01  # Default sleep time in seconds
+
+        @property
+        def prompt(self) -> str:
+            return "performance stats test prompt"
+
+        def pre(self, input: PerfStatsInput) -> bool:
+            time.sleep(self.sleep_time)
+            return True
+
+        def act(self, input: PerfStatsInput, **kwargs) -> PerfStatsOutput:
+            time.sleep(self.sleep_time * 2)
+            return PerfStatsOutput(processed_text=f"Processed: {input.text}")
+
+        def post(self, output: PerfStatsOutput) -> bool:
+            time.sleep(self.sleep_time) * 3
+            return True
+
+        def forward(self, input: PerfStatsInput, **kwargs) -> PerfStatsOutput:
+            time.sleep(self.sleep_time)
+            return self.contract_result if self.contract_result else PerfStatsOutput(processed_text=f"Original: {input.text}")
+
+    contract_instance = PerfStatsTestContract()
+
+    input_texts = ["test1", "test2", "test3"]
+    sleep_times = [0.01, 0.02, 0.03]
+
+    for i, (input_text, sleep_time) in enumerate(zip(input_texts, sleep_times)):
+        contract_instance.sleep_time = sleep_time
+        input_model = PerfStatsInput(text=input_text)
+        result = contract_instance(input=input_model)
+        assert isinstance(result, PerfStatsOutput)
+        assert result.processed_text, "Processed text should not be empty"
+
+    stats = contract_instance.contract_perf_stats()
+
+    expected_operations = [
+        "input_type_validation",
+        "input_semantic_validation",
+        "act_execution",
+        "output_type_validation",
+        "output_semantic_validation",
+        "forward_execution",
+        "contract_execution"
+    ]
+
+    for op in expected_operations:
+        assert op in stats, f"Operation {op} missing from stats"
+
+    assert "overhead" in stats, f"Overhead tracking missing from stats"
+
+    assert stats["act_execution"]["count"] == 3
+
+    for op in ["act_execution", "contract_execution"]:
+        if stats[op]["count"] > 1:
+            assert stats[op]["min"] <= stats[op]["mean"] <= stats[op]["max"], f"Statistics for {op} are inconsistent"
+
+    for op in expected_operations:
+        if stats[op]["count"] > 0:
+            if stats[op]["count"] > 1:
+                assert stats[op]["min"] <= stats[op]["mean"] <= stats[op]["max"], f"Statistics for {op} are inconsistent"
+
+            assert stats[op]["total"] >= 0
+            assert stats[op]["mean"] >= 0
+            assert stats[op]["min"] >= 0
+            assert stats[op]["max"] >= 0
+            assert stats[op]["std"] >= 0
+
+    if stats["contract_execution"]["total"] > 0:
+        tracked_ops = expected_operations[:-1]  # Exclude contract_execution
+        total_percentage = sum(stats[op]["percentage"] for op in tracked_ops) + stats["overhead"]["percentage"]
+        # Should be very close to 100%
+        assert abs(total_percentage - 100.0) < 0.1, "Percentages including overhead should sum to 100%"
+
+        # Verify overhead calculation
+        tracked_time = sum(stats[op]["total"] for op in tracked_ops)
+        total_time = stats["contract_execution"]["total"]
+        calculated_overhead = total_time - tracked_time
+        assert abs(calculated_overhead - stats["overhead"]["total"]) < 0.001, "Overhead calculation is incorrect"
 
 
 if __name__ == "__main__":

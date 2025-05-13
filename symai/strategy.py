@@ -538,46 +538,41 @@ class contract:
                 logger.error("Pre-condition function not defined!")
                 raise Exception("Pre-condition function not defined. Please define a `pre` method if you want to enforce pre-conditions through a remedy.")
 
+            semantic_start = time.perf_counter()
             try:
                 assert wrapped_self.pre(input)
                 logger.success("Pre-condition validation successful!")
                 return input
             except Exception as e:
                 logger.error("Pre-condition validation failed!")
-                try:
-                    op_start = time.perf_counter()
-                    self.f_semantic_validation_remedy.register_expected_data_model(input, attach_to="output", override=True)
-                    input = self.f_semantic_validation_remedy(wrapped_self.prompt, f_semantic_conditions=[wrapped_self.pre], **remedy_kwargs)
-                finally:
-                    wrapped_self._contract_timing[it]["input_semantic_validation"] = time.perf_counter() - op_start
-                return input
+                self.f_semantic_validation_remedy.register_expected_data_model(input, attach_to="output", override=True)
+                input = self.f_semantic_validation_remedy(wrapped_self.prompt, f_semantic_conditions=[wrapped_self.pre], **remedy_kwargs)
+            finally:
+                wrapped_self._contract_timing[it]["input_semantic_validation"] = time.perf_counter() - semantic_start
+            return input
         else:
             if hasattr(wrapped_self, 'pre'):
                 logger.info("Validating pre-conditions without remedy...")
-                op_start = time.perf_counter()
+                semantic_start = time.perf_counter()
                 try:
-                    wrapped_self.pre(input) # Call pre; if it fails, it should raise an exception.
+                    assert wrapped_self.pre(input)
                 except Exception as e:
-                    # pre() itself raised an exception
                     logger.error(f"Pre-condition validation failed (exception in pre): {str(e)}")
-                    # Raise the consistent failure exception, chaining the original for context
-                    raise Exception("Pre-condition validation failed!") from e
+                    raise Exception(f"Pre-condition validation failed!\n{str(e)}")
                 finally:
-                    wrapped_self._contract_timing[it]["input_semantic_validation"] = time.perf_counter() - op_start
-
+                    wrapped_self._contract_timing[it]["input_semantic_validation"] = time.perf_counter() - semantic_start
                 logger.success("Pre-condition validation successful!")
-                # On success for pre_remedy=False, return None, as input is not modified.
                 return
 
     def _validate_output(self, wrapped_self, input, output, it, **remedy_kwargs):
         logger.info("Starting output validation...")
         try:
+            type_start = time.perf_counter()
             try:
-                op_start = time.perf_counter()
                 self.f_type_validation_remedy.register_data_model(output, override=True)
                 output = self.f_type_validation_remedy(**remedy_kwargs)
             finally:
-                wrapped_self._contract_timing[it]["output_type_validation"] = time.perf_counter() - op_start
+                wrapped_self._contract_timing[it]["output_type_validation"] = time.perf_counter() - type_start
         except Exception as e:
             logger.error(f"Type validation failed: {str(e)}")
             raise Exception("Type validation failed! Couldn't create a data model matching the output data model.")
@@ -588,33 +583,31 @@ class contract:
                 logger.error("Post-condition function not defined!")
                 raise Exception("Post-condition function not defined. Please define a `post` method if you want to enforce post-conditions through a remedy.")
 
+            semantic_start = time.perf_counter()
             try:
-                try:
-                    assert wrapped_self.post(output)
-                    logger.success("Post-condition validation successful!")
-                    return output
-                except Exception as e:
-                    logger.error("Post-condition validation failed!")
-
-                op_start = time.perf_counter()
+                assert wrapped_self.post(output)
+                logger.success("Post-condition validation successful!")
+                return output
+            except Exception as e:
+                logger.error("Post-condition validation failed!")
                 self.f_semantic_validation_remedy.register_expected_data_model(input, attach_to="input", override=True)
                 self.f_semantic_validation_remedy.register_expected_data_model(output, attach_to="output", override=True)
                 output = self.f_semantic_validation_remedy(wrapped_self.prompt, f_semantic_conditions=[wrapped_self.post], **remedy_kwargs)
             finally:
-                wrapped_self._contract_timing[it]["output_semantic_validation"] = time.perf_counter() - op_start
+                wrapped_self._contract_timing[it]["output_semantic_validation"] = time.perf_counter() - semantic_start
             logger.success("Post-condition validation successful!")
             return output
         else:
             if hasattr(wrapped_self, "post"):
                 logger.info("Validating post-conditions without remedy...")
+                semantic_start = time.perf_counter()
                 try:
-                    op_start = time.perf_counter()
-                    res = wrapped_self.post(output)
-                finally:
-                    wrapped_self._contract_timing[it]["output_semantic_validation"] = time.perf_counter() - op_start
-                if not res:
+                    assert wrapped_self.post(output)
+                except Exception as e:
                     logger.error("Post-condition validation failed!")
-                    raise Exception("Post-condition validation failed!")
+                    raise Exception(f"Post-condition validation failed!\n{str(e)}")
+                finally:
+                    wrapped_self._contract_timing[it]["output_semantic_validation"] = time.perf_counter() - semantic_start
                 logger.success("Post-condition validation successful!")
                 return
 
@@ -836,6 +829,21 @@ class contract:
                     stats[op]['percentage'] = (stats[op]['total'] / total_execution_time) * 100
                 else:
                     stats[op]['percentage'] = 0
+
+            sum_tracked_times = sum(stats[op]['total'] for op in ordered_operations[:-1])
+            overhead_time = total_execution_time - sum_tracked_times
+            overhead_percentage = (overhead_time / total_execution_time) * 100 if total_execution_time > 0 else 0
+
+            stats['overhead'] = {
+                'count': num_calls,
+                'total': overhead_time,
+                'mean': overhead_time / num_calls if num_calls > 0 else 0,
+                'std': 0,
+                'min': 0,
+                'max': 0,
+                'percentage': overhead_percentage
+            }
+
             stats['contract_execution']['percentage'] = 100.0
 
             table = Table(
@@ -863,6 +871,19 @@ class contract:
                     f"{s['max']:.3f}",
                     f"{s['percentage']:.1f}%"
                 )
+
+            s = stats['overhead']
+            table.add_row(
+                "Overhead",
+                str(s['count']),
+                f"{s['total']:.3f}",
+                f"{s['mean']:.3f}",
+                f"{s['std']:.3f}",
+                f"{s['min']:.3f}",
+                f"{s['max']:.3f}",
+                f"{s['percentage']:.1f}%",
+                style="bold blue"
+            )
 
             s = stats['contract_execution']
             table.add_row(
