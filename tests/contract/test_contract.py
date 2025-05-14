@@ -775,7 +775,6 @@ def test_contract_perf_stats():
         assert result.processed_text, "Processed text should not be empty"
 
     stats = contract_instance.contract_perf_stats()
-    breakpoint()
 
     expected_operations = [
         "input_validation",

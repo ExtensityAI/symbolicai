@@ -446,19 +446,19 @@ class contract:
 
     def _validate_output(self, wrapped_self, input, output, it, **remedy_kwargs):
         logger.info("Starting output validation...")
+        self.f_type_validation_remedy.register_expected_data_model(input, attach_to="input", override=True)
+        self.f_type_validation_remedy.register_expected_data_model(output, attach_to="output", override=True)
+
+        op_start = time.perf_counter()
         try:
             logger.info("Getting a valid output type...")
-
-            op_start = time.perf_counter()
-            try:
-                self.f_type_validation_remedy.register_expected_data_model(output, attach_to="output", override=True)
-                output = self.f_type_validation_remedy(wrapped_self.prompt, **remedy_kwargs)
-            finally:
-                wrapped_self._contract_timing[it]["output_validation"] = time.perf_counter() - op_start
-            logger.success("Type successfully created!")
+            output = self.f_type_validation_remedy(wrapped_self.prompt, **remedy_kwargs)
         except Exception as e:
             logger.error(f"Type creation failed: {str(e)}")
             raise Exception("Couldn't create a data model matching the output data model.")
+        finally:
+            wrapped_self._contract_timing[it]["output_validation"] = time.perf_counter() - op_start
+        logger.success("Type successfully created!")
 
         if self.post_remedy:
             logger.info("Validating post-conditions with remedy...")
@@ -473,8 +473,6 @@ class contract:
                 return output
             except Exception as e:
                 logger.error("Post-condition validation failed!")
-                self.f_type_validation_remedy.register_expected_data_model(input, attach_to="input", override=True)
-                self.f_type_validation_remedy.register_expected_data_model(output, attach_to="output", override=True)
                 output = self.f_type_validation_remedy(wrapped_self.prompt, f_semantic_conditions=[wrapped_self.post], **remedy_kwargs)
             finally:
                 wrapped_self._contract_timing[it]["output_validation"] += (time.perf_counter() - op_start)
