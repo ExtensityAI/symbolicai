@@ -18,7 +18,7 @@ from rich.markup import escape
 from .components import Function
 from .core_ext import deprecated
 from .models import (ExceptionWithUsage, LengthConstraint, LLMDataModel,
-                     SemanticValidationError, TypeValidationError)
+                     TypeValidationError)
 from .symbol import Expression
 
 NUM_REMEDY_RETRIES = 10
@@ -172,141 +172,11 @@ class ValidationFunction(Function):
 
 class TypeValidationFunction(ValidationFunction):
     """
-    TypeValidationFunction ensures the output is valid JSON matching a specific data model (LLMDataModel).
-    If validation fails, it attempts to fix it up to a certain number of retries.
+    Performs type validation on an output, ensuring it conforms to a specified
+    Pydantic data model. It can also optionally perform semantic validation
+    if a user provides a callable designed to semantically validate the
+    structure of the type-validated data.
     """
-
-    def __init__(
-        self,
-        retry_params: dict[str, int | float | bool] = ValidationFunction._default_retry_params,
-        accumulate_errors: bool = False,
-        verbose: bool = False,
-        *args,
-        **kwargs,
-    ):
-        super().__init__(retry_params=retry_params, verbose=verbose, *args, **kwargs)
-        self.data_model = None
-        self.accumulate_errors = accumulate_errors
-        self.verbose = verbose
-
-    def register_data_model(self, data_model: LLMDataModel, override=False):
-        if self.data_model is not None and not override:
-            raise ValueError("Data model already registered. If you want to override it, set `override=True`.")
-        self.data_model = data_model
-
-    def remedy_prompt(self, prompt: str | None, json: str, errors: str) -> str:
-        """Override of base remedy_prompt giving specific context and instructions."""
-        return f"""
-Your prompt was:
-<prompt>
-{prompt if prompt else 'N/A'}
-</prompt>
-
-The original JSON input was:
-<original_input>
-{json}
-</original_input>
-
-The JSON must conform to this schema:
-<json_schema>
-{self.data_model.instruct_llm()}
-</json_schema>
-
-During type validation, the following errors were found:
-<validation_errors>
-{errors}
-</validation_errors>
-"""
-
-    def zero_shot_prompt(self, prompt: str | None) -> str:
-        """We try to zero-shot the task, maybe we're lucky!"""
-        return f"""
-You are given the following prompt:
-<prompt>
-{prompt if prompt else 'N/A'}
-</prompt>
-
-Return a valid type according to the following JSON schema:
-<json_schema>
-{self.data_model.instruct_llm()}
-</json_schema>
-"""
-
-    def forward(self, prompt: str | None, *args, **kwargs):
-        if self.data_model is None:
-            raise ValueError("Data model is not registered. Please register the data model before calling the `forward` method.")
-        # Force JSON mode
-        kwargs["response_format"] = {"type": "json_object"}
-        logger.info(f"Initializing type validation…")
-        if self.verbose:
-            for label, body in [
-                ("Prompt", prompt if prompt else 'N/A'),
-                ("Data Model", self.data_model.simplify_json_schema()),
-            ]:
-                self.display_panel(body, title=label)
-
-        # Zero shot the task
-        context = self.zero_shot_prompt(prompt=prompt)
-        json_str = super().forward(context, *args, **kwargs).value
-
-        remedy_seeds = self.prepare_seeds(self.retry_params["tries"], **kwargs)
-        logger.info(f"Prepared {len(remedy_seeds)} remedy seeds for type validation attempts…")
-
-        result = None
-        errors = []
-
-        for i in range(self.retry_params["tries"]):
-            try:
-                logger.info(f"Attempt {i+1}/{self.retry_params['tries']}: Attempting type validation…")
-                # Try to validate against provided data model
-                result = self.data_model.model_validate_json(json_str, strict=True)
-                break
-            except ValidationError as e:
-                logger.info(f"Type validation attempt {i+1} failed, pausing before retry…")
-
-                self._pause()
-
-                error_str = self.simplify_validation_errors(e)
-                logger.error(f"Type validation errors identified!")
-                if self.verbose:
-                    self.display_panel(
-                        "\n".join(errors) if self.accumulate_errors else error_str,
-                        title=f"Type Validation Errors ({'accumulated errors' if self.accumulate_errors else 'last error'})",
-                        border_style="red"
-                    )
-
-                errors.append(error_str)
-
-                # Change the dynamic context of the remedy function to account for the errors
-                logger.info("Updating remedy function context…")
-                context = self.remedy_prompt(prompt=prompt, json=json_str, errors="\n".join(errors) if self.accumulate_errors else error_str)
-                self.remedy_function.clear()
-                self.remedy_function.adapt(context)
-                json_str = self.remedy_function(seed=remedy_seeds[i], **kwargs).value
-                logger.info("Applied remedy function with updated context!")
-                if self.verbose:
-                    self.display_panel(
-                        self.remedy_function.dynamic_context,
-                        title="New Context"
-                    )
-
-        if result is None:
-            logger.error(f"All type validation attempts failed!")
-            raise TypeValidationError(f"Failed to retrieve valid JSON!")
-
-        logger.success("Type validation completed successfully!")
-        # Clear artifacts from the remedy function
-        self.remedy_function.clear()
-
-        return result
-
-
-class SemanticValidationFunction(ValidationFunction):
-    """
-    SemanticValidationFunction ensures that the final JSON (which conforms to the data schema)
-    also passes additional semantic checks defined by user-provided conditions.
-    """
-
     def __init__(
         self,
         retry_params: dict[str, int | float | bool] = ValidationFunction._default_retry_params,
@@ -407,19 +277,18 @@ The output data model is:
 Important guidelines:
 </guidelines>
 - The result of the task must be the output data model.
-- Focus only on fixing the listed validation errors without introducing new errors or unnecessary changes.
 - Ensure the revised output is clear, accurate, and fully compliant with the original prompt.
 - Maintain proper formatting and any required conventions specified in the original prompt.
 </guidelines>
 """
 
-    def forward(self, prompt: str, f_semantic_conditions: list[Callable], *args, **kwargs):
+    def forward(self, prompt: str, f_semantic_conditions: list[Callable] | None = None, *args, **kwargs):
         if self.output_data_model is None:
             raise ValueError("While the input data model is optional, the output data model must be provided. Please register it before calling the `forward` method.")
         validation_context = kwargs.pop('validation_context', {})
         # Force JSON mode
         kwargs["response_format"] = {"type": "json_object"}
-        logger.info("Initializing semantic validation…")
+        logger.info("Initializing validation…")
         if self.verbose:
             for label, body in [
                 ("Prompt", prompt),
@@ -433,19 +302,20 @@ Important guidelines:
         json_str = super().forward(context, *args, **kwargs).value
 
         remedy_seeds = self.prepare_seeds(self.retry_params["tries"], **kwargs)
-        logger.info(f"Prepared {len(remedy_seeds)} remedy seeds for semantic validation attempts…")
+        logger.info(f"Prepared {len(remedy_seeds)} remedy seeds for validation attempts…")
 
         result = None
         errors = []
         for i in range(self.retry_params["tries"]):
-            logger.info(f"Attempt {i+1}/{self.retry_params['tries']}: Attempting semantic validation…")
+            logger.info(f"Attempt {i+1}/{self.retry_params['tries']}: Attempting validation…")
             try:
                 result = self.output_data_model.model_validate_json(json_str, strict=True, context = validation_context)
-                if not all(f(result) for f in f_semantic_conditions):
-                    raise ValueError("Semantic validation failed!")
+                if f_semantic_conditions is not None:
+                    if not all(f(result) for f in f_semantic_conditions):
+                        raise ValueError("Semantic validation failed!")
                 break
             except Exception as e:
-                logger.info(f"Semantic validation attempt {i+1} failed, pausing before retry…")
+                logger.info(f"Validation attempt {i+1} failed, pausing before retry…")
 
                 self._pause()
 
@@ -456,11 +326,11 @@ Important guidelines:
 
                 errors.append(error_str)
 
-                logger.error(f"Semantic validation errors identified!")
+                logger.error(f"Validation errors identified!")
                 if self.verbose:
                     self.display_panel(
                         "\n".join(errors) if self.accumulate_errors else error_str,
-                        title=f"Semantic Validation Errors ({'accumulated errors' if self.accumulate_errors else 'last error'})",
+                        title=f"Validation Errors ({'accumulated errors' if self.accumulate_errors else 'last error'})",
                         border_style="red"
                     )
 
@@ -479,15 +349,15 @@ Important guidelines:
                 json_str = self.remedy_function(seed=remedy_seeds[i], **kwargs).value
                 logger.info("Applied remedy function with updated context!")
 
-        if result is None or not all(f(result) for f in f_semantic_conditions):
-            logger.error(f"All semantic validation attempts failed!")
-            raise SemanticValidationError(
+        if result is None:
+            logger.error(f"All validation attempts failed!")
+            raise TypeValidationError(
                 prompt=prompt,
                 result=json_str,
                 violations=errors,
             )
 
-        logger.success("Semantic validation completed successfully!")
+        logger.success("Validation completed successfully!")
         # Clear artifacts from the remedy function
         self.remedy_function.clear()
 
@@ -521,27 +391,23 @@ class contract:
         self.pre_remedy = pre_remedy
         self.post_remedy = post_remedy
         self.f_type_validation_remedy = TypeValidationFunction(accumulate_errors=accumulate_errors, verbose=verbose, retry_params=remedy_retry_params)
-        self.f_semantic_validation_remedy = SemanticValidationFunction(accumulate_errors=accumulate_errors, verbose=verbose, retry_params=remedy_retry_params)
 
         if not verbose:
             logger.disable(__name__)
         else:
             logger.enable(__name__)
 
-    def _is_valid_input(self, *args, **kwargs):
-        logger.info("Validating input argument...")
+    def _is_valid_input(self, input, *args, **kwargs):
         if args:
             logger.error("Positional arguments detected!")
             raise ValueError("Positional arguments are not allowed! Please use keyword arguments instead.")
-        input = kwargs.pop("input")
         if input is None:
-            logger.error("No input argument provided!")
+            logger.error("No `input` argument provided!")
             raise ValueError("Please provide an `input` argument.")
         if not isinstance(input, LLMDataModel):
             logger.error(f"Invalid input type: {type(input)}")
             raise TypeError(f"Expected input to be of type `LLMDataModel`, got {type(input)}")
-        logger.success("Input argument validated successfully!")
-        return input
+        return True
 
     def _validate_input(self, wrapped_self, input, it, **remedy_kwargs):
         logger.info("Starting input validation...")
@@ -551,44 +417,48 @@ class contract:
                 logger.error("Pre-condition function not defined!")
                 raise Exception("Pre-condition function not defined. Please define a `pre` method if you want to enforce pre-conditions through a remedy.")
 
-            semantic_start = time.perf_counter()
+            op_start = time.perf_counter()
             try:
                 assert wrapped_self.pre(input)
                 logger.success("Pre-condition validation successful!")
                 return input
             except Exception as e:
                 logger.error("Pre-condition validation failed!")
-                self.f_semantic_validation_remedy.register_expected_data_model(input, attach_to="output", override=True)
-                input = self.f_semantic_validation_remedy(wrapped_self.prompt, f_semantic_conditions=[wrapped_self.pre], **remedy_kwargs)
+                self.f_type_validation_remedy.register_expected_data_model(input, attach_to="output", override=True)
+                input = self.f_type_validation_remedy(wrapped_self.prompt, f_semantic_conditions=[wrapped_self.pre], **remedy_kwargs)
             finally:
-                wrapped_self._contract_timing[it]["input_semantic_validation"] = time.perf_counter() - semantic_start
+                wrapped_self._contract_timing[it]["input_validation"] = time.perf_counter() - op_start
             return input
         else:
             if hasattr(wrapped_self, 'pre'):
                 logger.info("Validating pre-conditions without remedy...")
-                semantic_start = time.perf_counter()
+                op_start = time.perf_counter()
                 try:
                     assert wrapped_self.pre(input)
                 except Exception as e:
                     logger.error(f"Pre-condition validation failed (exception in pre): {str(e)}")
                     raise Exception(f"Pre-condition validation failed!\n{str(e)}")
                 finally:
-                    wrapped_self._contract_timing[it]["input_semantic_validation"] = time.perf_counter() - semantic_start
+                    wrapped_self._contract_timing[it]["input_validation"] = time.perf_counter() - op_start
                 logger.success("Pre-condition validation successful!")
                 return
+        logger.info("Skip; no pre-condition validation was required!")
 
     def _validate_output(self, wrapped_self, input, output, it, **remedy_kwargs):
         logger.info("Starting output validation...")
         try:
-            type_start = time.perf_counter()
+            logger.info("Getting a valid output type...")
+
+            op_start = time.perf_counter()
             try:
-                self.f_type_validation_remedy.register_data_model(output, override=True)
+                self.f_type_validation_remedy.register_expected_data_model(output, attach_to="output", override=True)
                 output = self.f_type_validation_remedy(wrapped_self.prompt, **remedy_kwargs)
             finally:
-                wrapped_self._contract_timing[it]["output_type_validation"] = time.perf_counter() - type_start
+                wrapped_self._contract_timing[it]["output_validation"] = time.perf_counter() - op_start
+            logger.success("Type successfully created!")
         except Exception as e:
-            logger.error(f"Type validation failed: {str(e)}")
-            raise Exception("Type validation failed! Couldn't create a data model matching the output data model.")
+            logger.error(f"Type creation failed: {str(e)}")
+            raise Exception("Couldn't create a data model matching the output data model.")
 
         if self.post_remedy:
             logger.info("Validating post-conditions with remedy...")
@@ -596,33 +466,34 @@ class contract:
                 logger.error("Post-condition function not defined!")
                 raise Exception("Post-condition function not defined. Please define a `post` method if you want to enforce post-conditions through a remedy.")
 
-            semantic_start = time.perf_counter()
+            op_start = time.perf_counter()
             try:
                 assert wrapped_self.post(output)
                 logger.success("Post-condition validation successful!")
                 return output
             except Exception as e:
                 logger.error("Post-condition validation failed!")
-                self.f_semantic_validation_remedy.register_expected_data_model(input, attach_to="input", override=True)
-                self.f_semantic_validation_remedy.register_expected_data_model(output, attach_to="output", override=True)
-                output = self.f_semantic_validation_remedy(wrapped_self.prompt, f_semantic_conditions=[wrapped_self.post], **remedy_kwargs)
+                self.f_type_validation_remedy.register_expected_data_model(input, attach_to="input", override=True)
+                self.f_type_validation_remedy.register_expected_data_model(output, attach_to="output", override=True)
+                output = self.f_type_validation_remedy(wrapped_self.prompt, f_semantic_conditions=[wrapped_self.post], **remedy_kwargs)
             finally:
-                wrapped_self._contract_timing[it]["output_semantic_validation"] = time.perf_counter() - semantic_start
+                wrapped_self._contract_timing[it]["output_validation"] += (time.perf_counter() - op_start)
             logger.success("Post-condition validation successful!")
             return output
         else:
             if hasattr(wrapped_self, "post"):
                 logger.info("Validating post-conditions without remedy...")
-                semantic_start = time.perf_counter()
+                op_start = time.perf_counter()
                 try:
                     assert wrapped_self.post(output)
                 except Exception as e:
                     logger.error("Post-condition validation failed!")
                     raise Exception(f"Post-condition validation failed!\n{str(e)}")
                 finally:
-                    wrapped_self._contract_timing[it]["output_semantic_validation"] = time.perf_counter() - semantic_start
+                    wrapped_self._contract_timing[it]["output_validation"] = time.perf_counter() - op_start
                 logger.success("Post-condition validation successful!")
                 return
+        logger.info("Skip; no post-condition validation was required!")
 
     def _act(self, wrapped_self, input, it, **act_kwargs):
         act_method = getattr(wrapped_self, 'act', None)
@@ -690,7 +561,7 @@ class contract:
 
             if not hasattr(wrapped_self, "prompt"):
                 logger.error("Prompt attribute not defined!")
-                raise Exception("Prompt not defined. Please define a `prompt` attribute to enforce semantic validation.")
+                raise Exception("Please define a static `prompt` attribute that describes what the contract must do.")
 
             wrapped_self.contract_successful = False
             wrapped_self.contract_result = None
@@ -701,12 +572,9 @@ class contract:
             it = len(wrapped_self._contract_timing) # the len is the __call__ op_start
             contract_start = time.perf_counter()
             logger.info("Starting contract execution...")
-            try:
-                op_start = time.perf_counter()
-                original_input = self._is_valid_input(*args, **kwargs)
-            finally:
-                wrapped_self._contract_timing[it]["input_type_validation"] = time.perf_counter() - op_start
-
+            # We first check if the input is valid
+            input = kwargs.pop("input", None)
+            assert self._is_valid_input(input)
             maybe_payload = getattr(wrapped_self, "payload", None)
             maybe_template = getattr(wrapped_self, "template")
             if inspect.ismethod(maybe_template):
@@ -719,34 +587,31 @@ class contract:
                 "payload": maybe_payload,
                 "template_suffix": maybe_template
             }
-            validation_kwargs_filtered = {k: v for k, v in validation_kwargs.items() if k != "input"}
-            act_kwargs = {k: v for k, v in kwargs.items() if k != 'input'}
 
             sig = inspect.signature(original_forward)
-            original_output_type = sig.return_annotation
-            if original_output_type == inspect._empty:
+            output_type = sig.return_annotation
+            if output_type == inspect._empty:
                 logger.error("Missing return type annotation!")
                 raise ValueError("The contract requires a return type annotation.")
-            if not issubclass(original_output_type, LLMDataModel):
-                logger.error(f"Invalid return type: {original_output_type}")
+            if not issubclass(output_type, LLMDataModel):
+                logger.error(f"Invalid return type: {output_type}")
                 raise ValueError("The return type annotation must be a subclass of `LLMDataModel`.")
 
-            final_output = None
+            output = None
+            current_input = input
             try:
                 # 1. Start with original input and apply pre-validation
-                current_input = original_input
-                maybe_new_input = self._validate_input(wrapped_self, current_input, it, **validation_kwargs_filtered)
+                maybe_new_input = self._validate_input(wrapped_self, current_input, it, **validation_kwargs)
                 if maybe_new_input is not None:
                     current_input = maybe_new_input
 
                 # 2. Check if 'act' method exists and execute it
-                current_input = self._act(wrapped_self, current_input, it, **act_kwargs)
+                current_input = self._act(wrapped_self, current_input, it, **validation_kwargs)
 
                 # 3. Validate output type and prepare for original_forward
-                output = self._validate_output(wrapped_self, current_input, original_output_type, it, **validation_kwargs_filtered)
+                output = self._validate_output(wrapped_self, current_input, output_type, it, **validation_kwargs)
                 wrapped_self.contract_successful = True
                 wrapped_self.contract_result = output
-                final_output = output # Output from the successful contract path
 
             except Exception as e:
                 logger.error(f"Contract execution failed in main path: {str(e)}")
@@ -762,7 +627,7 @@ class contract:
                 # `current_input` at this stage is the result of the try block's processing up to the point of exception,
                 # or the full processing if successful.
                 # If contract failed, use original_input (fallback).
-                forward_input = current_input if wrapped_self.contract_successful else original_input
+                forward_input = current_input if wrapped_self.contract_successful else input
 
                 # Prepare kwargs for original_forward
                 forward_kwargs = kwargs.copy()
@@ -775,20 +640,17 @@ class contract:
                     wrapped_self._contract_timing[it]["forward_execution"] = time.perf_counter() - op_start
                 wrapped_self._contract_timing[it]["contract_execution"] = time.perf_counter() - contract_start
 
-                if not isinstance(output, original_output_type):
+                if not isinstance(output, output_type):
                     logger.error(f"Output type mismatch: {type(output)}")
                     raise TypeError(
-                        f"Expected output to be an instance of {original_output_type}, "
-                        f"but got {type(output)}! Forward method must return an instance of {original_output_type}!"
+                        f"Expected output to be an instance of {output_type}, "
+                        f"but got {type(output)}! Forward method must return an instance of {output_type}!"
                     )
                 if not wrapped_self.contract_successful:
                     logger.warning("Contract validation failed!")
                 else:
                     logger.success("Contract validation successful!")
-
-                # Use the output from original_forward
-                final_output = output
-            return final_output
+            return output
 
         def contract_perf_stats(wrapped_self):
             """Analyzes and prints timing statistics across all forward calls."""
@@ -800,11 +662,9 @@ class contract:
                 return {}
 
             ordered_operations = [
-                "input_type_validation",
-                "input_semantic_validation",
+                "input_validation",
                 "act_execution",
-                "output_type_validation",
-                "output_semantic_validation",
+                "output_validation",
                 "forward_execution",
                 "contract_execution"
             ]
@@ -930,7 +790,7 @@ class BaseStrategy(TypeValidationFunction):
             retry_params=dict(tries=NUM_REMEDY_RETRIES, delay=0.5, max_delay=15, backoff=2, jitter=0.1, graceful=False),
             **kwargs,
         )
-        super().register_data_model(data_model)
+        super().register_expected_data_model(data_model, attach_to="output")
         self.logger = logging.getLogger(__name__)
 
     def __enter__(self):

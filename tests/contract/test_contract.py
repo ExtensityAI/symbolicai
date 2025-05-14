@@ -614,13 +614,6 @@ def test_act_contract_state_interaction():
 
 
     # Case 3: Pre-condition fails (with pre_remedy=True), test fallback if remedy fails.
-    # This is hard to test reliably without mocking the SemanticValidationFunction (remedy LLM).
-    # If `pre` raises ValueError, `_validate_input` calls `SemanticValidationFunction`.
-    # If remedy succeeds, input is modified, flow continues.
-    # If remedy fails, the exception from `SemanticValidationFunction` propagates.
-    # This exception is caught by `wrapped_forward`, `contract_successful=False`. Fallback.
-
-    # For a simpler test of pre-failure leading to fallback, use pre_remedy=False.
     @contract(pre_remedy=False, post_remedy=False, verbose=True)
     class StateInteractionNoRemedyPreFail(Expression):
         def __init__(self): super().__init__()
@@ -669,7 +662,7 @@ def test_contract_result_propagation():
 
         @property
         def prompt(self) -> str:
-            # This prompt will be used by _validate_output (specifically by TypeValidationFunction/SemanticValidationFunction)
+            # This prompt will be used by _validate_output
             # It should demonstrate using the output of the 'act' method.
             # The `current_input` to _validate_output in strategy.py IS the output of `_act`.
             # So, if act returns IntermediateAnalysisResult, then {{analyzed_text}} should be available.
@@ -754,19 +747,19 @@ def test_contract_perf_stats():
             return "performance stats test prompt"
 
         def pre(self, input: PerfStatsInput) -> bool:
-            time.sleep(self.sleep_time)
+            time.sleep(self.sleep_time + 1)
             return True
 
         def act(self, input: PerfStatsInput, **kwargs) -> PerfStatsOutput:
-            time.sleep(self.sleep_time * 2)
+            time.sleep(self.sleep_time + 2)
             return PerfStatsOutput(processed_text=f"Processed: {input.text}")
 
         def post(self, output: PerfStatsOutput) -> bool:
-            time.sleep(self.sleep_time) * 3
+            time.sleep(self.sleep_time + 3)
             return True
 
         def forward(self, input: PerfStatsInput, **kwargs) -> PerfStatsOutput:
-            time.sleep(self.sleep_time)
+            time.sleep(self.sleep_time + 1)
             return self.contract_result if self.contract_result else PerfStatsOutput(processed_text=f"Original: {input.text}")
 
     contract_instance = PerfStatsTestContract()
@@ -782,13 +775,12 @@ def test_contract_perf_stats():
         assert result.processed_text, "Processed text should not be empty"
 
     stats = contract_instance.contract_perf_stats()
+    breakpoint()
 
     expected_operations = [
-        "input_type_validation",
-        "input_semantic_validation",
+        "input_validation",
         "act_execution",
-        "output_type_validation",
-        "output_semantic_validation",
+        "output_validation",
         "forward_execution",
         "contract_execution"
     ]
