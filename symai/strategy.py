@@ -495,59 +495,33 @@ class contract:
 
     def _act(self, wrapped_self, input, it, **act_kwargs):
         act_method = getattr(wrapped_self, 'act', None)
-        if callable(act_method):
-            logger.info(f"Executing 'act' method on {wrapped_self.__class__.__name__}…")
+        if not callable(act_method):
+            # Propagate the input if no act method is defined
+            return input
 
-            # Validate act_method signature
-            try:
-                act_sig = inspect.signature(act_method)
-                act_params_list = list(act_sig.parameters.values())
-            except ValueError:
-                raise TypeError(f"Cannot inspect signature of 'act' method on {wrapped_self.__class__.__name__}.")
+        logger.info(f"Executing 'act' method on {wrapped_self.__class__.__name__}…")
 
-            # Validate input parameter type
-            if len(act_params_list) <= 1:  # Need at least self and one input parameter
-                raise TypeError(f"'act' method on {wrapped_self.__class__.__name__} must accept at least one input parameter after 'self'.")
+        act_sig = inspect.signature(act_method)
+        act_params_list = list(act_sig.parameters.values())
 
-            # Find the input parameter named 'input'
-            input_param = None
-            for param in act_params_list:
-                if param.name == 'input' and param.kind in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY):
-                    input_param = param
-                    break
+        if len(act_params_list) <= 1:
+            raise TypeError(f"'act' method on {wrapped_self.__class__.__name__} must accept at least one input parameter after 'self'.")
 
-            if input_param is None:
-                raise TypeError(f"'act' method on {wrapped_self.__class__.__name__} must have a parameter named 'input'.")
+        op_start = time.perf_counter()
+        try:
+            act_output = act_method(input, **act_kwargs)
+        except Exception as e:
+            logger.error(f"'act' method execution failed: {str(e)}")
+            raise Exception(f"'act' method execution failed!\n{str(e)}")
+        finally:
+            wrapped_self._contract_timing[it]["act_execution"] = time.perf_counter() - op_start
 
-            act_input_annotation = input_param.annotation
-            if act_input_annotation == inspect.Parameter.empty:
-                raise TypeError(f"The input parameter '{input_param.name}' of 'act' method on {wrapped_self.__class__.__name__} must have a type annotation.")
+        if act_sig.return_annotation != inspect.Signature.empty and inspect.isclass(act_sig.return_annotation):
+            if not isinstance(act_output, act_sig.return_annotation):
+                raise TypeError(f"'act' method returned {type(act_output).__name__}, expected {act_sig.return_annotation.__name__}.")
 
-            if not (inspect.isclass(act_input_annotation) and issubclass(act_input_annotation, LLMDataModel)):
-                raise TypeError(f"The input type annotation for 'act' method on {wrapped_self.__class__.__name__} must be a subclass of LLMDataModel.")
-
-            # Validate return type
-            act_return_annotation = act_sig.return_annotation
-            if act_return_annotation == inspect.Signature.empty:
-                raise TypeError(f"'act' method on {wrapped_self.__class__.__name__} must have a return type annotation.")
-
-            if not (inspect.isclass(act_return_annotation) and issubclass(act_return_annotation, LLMDataModel)):
-                raise TypeError(f"The return type annotation '{act_return_annotation}' for 'act' method on {wrapped_self.__class__.__name__} must be a subclass of LLMDataModel.")
-
-            try:
-                op_start_act = time.perf_counter()
-                act_output = act_method(input, **act_kwargs)
-            finally:
-                wrapped_self._contract_timing[it]["act_execution"] = time.perf_counter() - op_start_act
-
-            # Validate act output type
-            if not isinstance(act_output, act_return_annotation):
-                raise TypeError(f"'act' method returned {type(act_output).__name__}, expected {act_return_annotation.__name__}.")
-
-            logger.success("'act' method executed successfully!")
-            return act_output
-        # Propagate the input if no act method is defined
-        return input
+        logger.success("'act' method executed successfully!")
+        return act_output
 
     def __call__(self, cls):
         original_init = cls.__init__
