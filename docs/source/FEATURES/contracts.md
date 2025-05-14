@@ -81,7 +81,7 @@ class MyContractedClass(Expression):
 
 ### 2. Input and Output Data Models
 
-Your contract's core logic (especially `pre`, `act`, `post`, and `forward`) will operate on instances of `LLMDataModel`. Define these models using Pydantic syntax. Crucially, use `Field(description="...")` for your model attributes, as these descriptions are used to generate more effective prompts for the LLM.
+Your contract's core logic (especially `pre`, `act`, `post`, and `forward`) will operate on instances of `LLMDataModel`. Define these models using Pydantic syntax. Crucially, use `Field(description=\"...\")` for your model attributes, as these descriptions are used to generate more effective prompts for the LLM. Always use descriptive `Field(description=\"...\")` for your type data models, as these descriptions are crucial for guiding the LLM effectively during validation and generation steps. Rich descriptions help the `TypeValidationFunction` understand the semantic intent of each field, leading to better error messages and more accurate data generation when remedies are active.
 
 ```python
 from pydantic import Field
@@ -101,7 +101,7 @@ class MyOutput(LLMDataModel):
 
 ### 3. The `prompt` Property
 
-Your class must define a `prompt` property that returns a string. This prompt provides the high-level instructions or context to the LLM for the main task your class is designed to perform. It's particularly used by `SemanticValidationFunction` during the input (`pre_remedy`) and output (`post_remedy`) validation and remediation phases.
+Your class must define a `prompt` property that returns a string. This prompt provides the high-level instructions or context to the LLM for the main task your class is designed to perform. It's particularly used by `TypeValidationFunction` (when semantic checks are guided by `pre`/`post` conditions and remedies are active) during the input (`pre_remedy`) and output (`post_remedy`) validation and remediation phases.
 
 ```python
     @property
@@ -109,9 +109,11 @@ Your class must define a `prompt` property that returns a string. This prompt pr
         return "You are an expert assistant. Given the input text, process it and return a concise summary."
 ```
 
+**Important Note on Prompts:** A contract's `prompt` should be considered fixed. Its role is to describe the fundamental task the contract must perform and should not mutate during the lifetime of the contract instance or based on specific inputs. If you have dynamic instructions or data that changes with each call, this should not be part of the `prompt` string itself. Instead, create a state object or pass such dynamic information as part of your input data model (e.g., a field named `dynamic_instruction` or similar). The `prompt` defines *what* the contract does in general, while the input provides the specific data for *that particular execution*.
+
 ### Error Accumulation (`accumulate_errors`)
 
-The `accumulate_errors` parameter (default: `False`) in the `@contract` decorator influences how the underlying validation and remediation functions (`TypeValidationFunction` and `SemanticValidationFunction`) handle repeated failures during the remedy process.
+The `accumulate_errors` parameter (default: `False`) in the `@contract` decorator influences how the underlying `TypeValidationFunction` (which handles both type and semantic validation, including remedies) handles repeated failures during the remedy process.
 
 *   **When `accumulate_errors = True`**:
     If a validation (e.g., a `post`-condition) fails, and a remedy attempt also fails, the error message from this failed remedy attempt is stored. If subsequent remedy attempts also fail, their error messages are appended to the list of previous errors. This accumulated list of errors is then provided as part of the context to the LLM in the next retry.
@@ -232,6 +234,22 @@ This is your class's original `forward` method, containing the primary logic. Th
         final_result.result += " (Forward processed)" # Example of further work
         return final_result
 ```
+
+### Ensuring Meaningful Output: The Importance of `pre` and `post` Conditions
+
+It's quite easy to end up with a meaningless, "gibberish" object if you never really validate its contents. The role of `pre` and `post` conditions is exactly that: to ensure not just the shape but also the substance of your data.
+
+Before, the system might have returned a dummy filler object by default, even before the prompt was passed into the type-validation function. Now, while the prompt is wired through that function and the object should populate more sensibly, a core principle remains:
+
+> If the `post` method doesn't fail – either because no `ValueError` was thrown or because you skipped all semantic checks (e.g., by simply having `post` return `True`) – the contract will happily hand you back whatever came out of the type-validation step.
+
+Since the `TypeValidationFunction` (which handles the type-validation step) primarily enforces "is this a valid instance of the target type?" and doesn't inherently care what the fields contain beyond basic type conformance, you might get dummy values or inadequately populated fields unless you specify richer constraints.
+
+So, if your `LLMDataModel` types lack meaningful `Field(description="...")` attributes and your `prompt` isn't explicit enough, you might just get randomness or minimally populated objects. This is expected behavior. The contract pattern isn't broken; it's doing exactly what you told it to: validate shape, and substance *only if you explicitly define checks for it*.
+
+To illustrate, say you want a non-trivial `title: str` in your output object, but you never write a `post` check to validate its content (e.g., `if not output.title or len(output.title) < 10: raise ValueError("Title is missing or too short")`). In such a case, you might keep receiving a placeholder string or an inadequately generated title. While passing the main prompt into the `TypeValidationFunction` helps it try to generate something relevant, without a `post`-condition to enforce your specific requirements, you might still see undesirable behavior.
+
+**In short: the contract pattern is doing its job. If you want substance, you must codify those semantic rules in your `LLMDataModel` field descriptions and, critically, in your `pre` and `post` validation checks.**
 
 ## Contract Execution Flow
 

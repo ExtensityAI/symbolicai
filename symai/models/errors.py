@@ -6,19 +6,6 @@ class ExceptionWithUsage(Exception):
         self.usage = usage
 
 class TypeValidationError(Exception):
-    def __init__(self, violations, *args):
-        super().__init__(*args)
-        if violations and not isinstance(violations, list):
-            violations = [violations]
-        self.violations = violations
-
-    def __str__(self):
-        return "\n".join(self.violations)
-
-    def __repr__(self):
-        return f"TypeValidationError({self.violations})"
-
-class SemanticValidationError(Exception):
     def __init__(self, prompt: str, result: str, violations: list[str], *args):
         super().__init__(*args)
         self.prompt = prompt
@@ -41,4 +28,4 @@ class SemanticValidationError(Exception):
         )
 
     def __repr__(self):
-        return f"SemanticValidationError({self.prompt}, {self.result}, {self.violations})"
+        return f"TypeValidationError({self.prompt}, {self.result}, {self.violations})"
