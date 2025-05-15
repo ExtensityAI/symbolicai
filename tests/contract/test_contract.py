@@ -11,7 +11,6 @@ from rich.console import Console
 from rich.table import Table
 
 from symai import Expression
-from symai.components import MetadataTracker
 from symai.models import LLMDataModel
 from symai.strategy import contract
 
@@ -224,8 +223,7 @@ def test_triplet_extractor_basic():
         ontology=ontology
     )
 
-    with MetadataTracker() as tracker:
-        result = extractor(input=input_data)
+    result = extractor(input=input_data)
 
     # Verify result structure
     assert isinstance(result, KGState)
@@ -338,8 +336,7 @@ def test_act_transformation():
     assert not isinstance(act_result, TripletExtractorInput)
 
     # Now test through the contract
-    with MetadataTracker() as tracker:
-        contract_result = extractor(input=input_data)
+    contract_result = extractor(input=input_data)
 
     # Result from contract should be KGState
     assert isinstance(contract_result, KGState)
@@ -468,8 +465,7 @@ def test_act_contract_flow():
 
     # We are not mocking LLM calls here, so the actual KGState might be empty or default.
     # The important part is the sequence of method calls.
-    with MetadataTracker() as tracker: # To allow LLM calls if not mocked
-        result = test_contract_instance_precise(input=dummy_input_data)
+    result = test_contract_instance_precise(input=dummy_input_data)
 
     # Expected order:
     # 1. prompt_accessed (by _validate_input due to pre_remedy=True)
@@ -709,8 +705,7 @@ def test_contract_result_propagation():
     # This call will use the real _validate_output, which involves an LLM call
     # using the prompt defined in ResultPropagationContract.
     # The prompt will be formatted with data from the IntermediateAnalysisResult returned by `act`.
-    with MetadataTracker() as tracker:
-        result = contract_instance(input=input_data)
+    result = contract_instance(input=input_data)
 
     assert isinstance(result, KGState)
     assert contract_instance.contract_successful # Check that the main path was successful
@@ -817,6 +812,101 @@ def test_contract_perf_stats():
         total_time = stats["contract_execution"]["total"]
         calculated_overhead = total_time - tracked_time
         assert abs(calculated_overhead - stats["overhead"]["total"]) < 0.001, "Overhead calculation is incorrect"
+
+
+def test_act_state_modification_without_input_change():
+    class StateModificationInput(LLMDataModel):
+        value: str = Field(description="Input value")
+
+    class StateModificationOutput(LLMDataModel):
+        value: str = Field(description="Output value")
+
+    @contract(pre_remedy=True, post_remedy=True, verbose=True)
+    class StateModificationContract(Expression):
+        def __init__(self):
+            super().__init__()
+            self.state_counter = 0
+            self.last_input_value = None
+            self.method_calls = []
+
+        @property
+        def prompt(self) -> str:
+            self.method_calls.append("prompt_accessed")
+            return "Test contract that modifies state without changing input"
+
+        def pre(self, input: StateModificationInput) -> bool:
+            self.method_calls.append("pre_called")
+            return True
+
+        def act(self, input: StateModificationInput, **kwargs) -> StateModificationInput:
+            self.method_calls.append("act_called")
+            # Modify internal state
+            self.state_counter += 1
+            self.last_input_value = input.value
+
+            # Store the input object's identity to verify it's the same object throughout
+            self.original_input_id = id(input)
+
+            # Return the input unchanged - this tests that we don't need
+            # to create a new object when we just want to modify state
+            return input
+
+        def post(self, output: StateModificationOutput) -> bool:
+            self.method_calls.append("post_called")
+            return True
+
+        def forward(self, input: StateModificationInput, **kwargs) -> StateModificationOutput:
+            self.method_calls.append("forward_called")
+            # Verify that the input received in forward is the same object that went through act
+            # This confirms proper input propagation through the contract mechanism
+            self.input_preserved = (id(input) == self.original_input_id)
+
+            # In a successful contract flow, contract_result should be set
+            # For this test, we want to use the validated input but create our own output
+            return StateModificationOutput(value=input.value)
+
+    # Create test input
+    test_input = StateModificationInput(value="test_value")
+
+    # Create contract instance
+    contract_instance = StateModificationContract()
+
+    # Initial state should be zero
+    assert contract_instance.state_counter == 0
+    assert contract_instance.last_input_value is None
+
+    # Call the contract
+    result = contract_instance(input=test_input)
+
+    # Verify the execution flow
+    assert "pre_called" in contract_instance.method_calls
+    assert "act_called" in contract_instance.method_calls
+    assert "post_called" in contract_instance.method_calls
+    assert "forward_called" in contract_instance.method_calls
+
+    # Check the correct ordering of method calls
+    assert contract_instance.method_calls.index("pre_called") < contract_instance.method_calls.index("act_called")
+    assert contract_instance.method_calls.index("act_called") < contract_instance.method_calls.index("post_called")
+    assert contract_instance.method_calls.index("post_called") < contract_instance.method_calls.index("forward_called")
+
+    # Verify that the state was modified by the act method
+    assert contract_instance.state_counter == 1
+    assert contract_instance.last_input_value == "test_value"
+
+    # Verify that the input object was preserved throughout the contract execution
+    # This is a key test for our refactored _act method, ensuring it properly
+    # propagates the exact same input object without creating new instances
+    assert contract_instance.input_preserved, "Input object identity was not preserved through the contract flow"
+
+    # Verify that the output has the expected value
+    assert isinstance(result, StateModificationOutput)
+    assert result.value == "test_value"
+
+    # Call the contract again to verify state accumulation
+    result = contract_instance(input=test_input)
+
+    # State counter should have been incremented again
+    assert contract_instance.state_counter == 2
 
 
 if __name__ == "__main__":
