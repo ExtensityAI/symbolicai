@@ -57,21 +57,24 @@ class PerplexityEngine(Engine):
             "max_tokens": kwargs.get('max_tokens', None),
             "temperature": kwargs.get('temperature', 0.2),
             "top_p": kwargs.get('top_p', 0.9),
-            "return_citations": kwargs.get('return_citations', True),
-            "search_domain_filter": kwargs.get('search_domain_filter', ["perplexity.ai"]),
+            "search_domain_filter": kwargs.get('search_domain_filter', []),
             "return_images": kwargs.get('return_images', False),
             "return_related_questions": kwargs.get('return_related_questions', False),
             "search_recency_filter": kwargs.get('search_recency_filter', "month"),
             "top_k": kwargs.get('top_k', 0),
             "stream": kwargs.get('stream', False),
             "presence_penalty": kwargs.get('presence_penalty', 0),
-            "frequency_penalty": kwargs.get('frequency_penalty', 1)
+            "frequency_penalty": kwargs.get('frequency_penalty', 1),
+            "response_format": kwargs.get('response_format', None)
         }
+        web_search_options = kwargs.get('web_search_options', None)
+        if web_search_options is not None:
+            payload["web_search_options"] = web_search_options
+
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
         }
-
         res = requests.post("https://api.perplexity.ai/chat/completions", json=payload, headers=headers)
         res = SearchResult(res.json())
 
@@ -82,7 +85,8 @@ class PerplexityEngine(Engine):
         return output, metadata
 
     def prepare(self, argument):
-        system_message = "Be precise and informative." if argument.kwargs.get('system_message') is None else argument.kwargs.get('system_message')
+        system_message = "You are a helpful AI assistant. Be precise and informative." if argument.kwargs.get('system_message') is None else argument.kwargs.get('system_message')
+
         res = [
             {
                 "role": "system",
