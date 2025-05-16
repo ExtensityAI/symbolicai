@@ -17,7 +17,11 @@ logging.getLogger("httpcore").setLevel(logging.ERROR)
 class SearchResult(Result):
     def __init__(self, value, **kwargs) -> None:
         super().__init__(value, **kwargs)
-        self._value = value['choices'][0]['message']['content']
+        try:
+            self._value = value['choices'][0]['message']['content']
+        except (KeyError, IndexError, TypeError) as e:
+            error_msg = value.get('error', {}).get('message', f"API response error: {str(e)}")
+            self._value = f"Error processing search result: {error_msg}"
 
     def __str__(self) -> str:
         json_str = json.dumps(self.raw, indent=2)
