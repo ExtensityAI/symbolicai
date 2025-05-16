@@ -36,7 +36,6 @@ def test_perplexity_basic_query(perplexity_interface):
     """Test a basic query to Perplexity."""
     query = "What is the capital of France?"
     res = perplexity_interface(query)
-    breakpoint()
     assert isinstance(res, SearchResult), "Response should be a SearchResult instance."
     assert res._value is not None, "Response value should not be None."
     assert isinstance(res._value, str), "Response value should be a string."
