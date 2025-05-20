@@ -1142,19 +1142,28 @@ class MetadataTracker(Expression):
         token_details = defaultdict(lambda: defaultdict(int))
 
         for (_, engine_name), metadata in self._metadata.items():
-            if engine_name not in ("GPTXChatEngine", "GPTXReasoningEngine"):
+            if engine_name in ("GPTXChatEngine", "GPTXReasoningEngine"):
+                usage = metadata["raw_output"].usage
+                token_details["usage"]["completion_tokens"] += usage.completion_tokens
+                token_details["usage"]["prompt_tokens"] += usage.prompt_tokens
+                token_details["usage"]["total_tokens"] += usage.total_tokens
+                token_details["completion_breakdown"]["accepted_prediction_tokens"] += usage.completion_tokens_details.accepted_prediction_tokens
+                token_details["completion_breakdown"]["rejected_prediction_tokens"] += usage.completion_tokens_details.rejected_prediction_tokens
+                token_details["completion_breakdown"]["audio_tokens"] += usage.completion_tokens_details.audio_tokens
+                token_details["completion_breakdown"]["reasoning_tokens"] += usage.completion_tokens_details.reasoning_tokens
+                token_details["prompt_breakdown"]["audio_tokens"] += usage.prompt_tokens_details.audio_tokens
+                token_details["prompt_breakdown"]["cached_tokens"] += usage.prompt_tokens_details.cached_tokens
+            elif engine_name == "OpenAISearchEngine":
+                usage = metadata["raw_output"].usage
+                token_details["usage"]["prompt_tokens"] += usage.input_tokens
+                token_details["usage"]["completion_tokens"] += usage.output_tokens
+                token_details["usage"]["total_tokens"] += usage.total_tokens
+                token_details["prompt_breakdown"]["cached_tokens"] += usage.input_tokens_details.get("cached_tokens", 0)
+                token_details["completion_breakdown"]["reasoning_tokens"] += usage.output_tokens_details.get("reasoning_tokens", 0)
+            else:
                 logger.warning(f"Engine {engine_name} is not supported.")
                 continue
-            usage = metadata["raw_output"].usage
-            token_details["usage"]["completion_tokens"] += usage.completion_tokens
-            token_details["usage"]["prompt_tokens"] += usage.prompt_tokens
-            token_details["usage"]["total_tokens"] += usage.total_tokens
-            token_details["completion_breakdown"]["accepted_prediction_tokens"] += usage.completion_tokens_details.accepted_prediction_tokens
-            token_details["completion_breakdown"]["rejected_prediction_tokens"] += usage.completion_tokens_details.rejected_prediction_tokens
-            token_details["completion_breakdown"]["audio_tokens"] += usage.completion_tokens_details.audio_tokens
-            token_details["completion_breakdown"]["reasoning_tokens"] += usage.completion_tokens_details.reasoning_tokens
-            token_details["prompt_breakdown"]["audio_tokens"] += usage.prompt_tokens_details.audio_tokens
-            token_details["prompt_breakdown"]["cached_tokens"] += usage.prompt_tokens_details.cached_tokens
+
 
         # Convert to normal dictionary
         return json.loads(json.dumps(token_details))
