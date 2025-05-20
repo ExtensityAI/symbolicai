@@ -41,7 +41,7 @@ class LlamaCppEmbeddingEngine(Engine):
         if self.id() != 'embedding':
             return
         if not SYMSERVER_CONFIG.get('online'):
-            raise CustomUserWarning('You are using the llama.cpp embedding engine, but the server endpoint is not started. Please start the server with `symserver [--args]`.')
+            CustomUserWarning('You are using the llama.cpp embedding engine, but the server endpoint is not started. Please start the server with `symserver [--args]`.', raise_with=ValueError)
 
         self.server_endpoint = f"http://{SYMSERVER_CONFIG.get('--host')}:{SYMSERVER_CONFIG.get('--port')}"
         self.timeout_params = self._validate_timeout_params(timeout_params)

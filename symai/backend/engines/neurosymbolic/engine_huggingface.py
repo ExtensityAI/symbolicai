@@ -58,7 +58,7 @@ class HFEngine(Engine):
         if self.id() != 'neurosymbolic':
             return
         if not SYMSERVER_CONFIG.get('online'):
-            raise CustomUserWarning('You are using the huggingface engine, but the server endpoint is not started. Please start the server with `symserver [--args]` or run `symserver --help` to see the available options for this engine.')
+            CustomUserWarning('You are using the huggingface engine, but the server endpoint is not started. Please start the server with `symserver [--args]` or run `symserver --help` to see the available options for this engine.', raise_with=ValueError)
         self.server_endpoint = f"http://{SYMSERVER_CONFIG.get('host')}:{SYMSERVER_CONFIG.get('port')}"
         self.tokenizer = HFTokenizer # backwards compatibility with how we handle tokenization, i.e. self.tokenizer().encode(...)
 

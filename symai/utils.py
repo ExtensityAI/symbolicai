@@ -132,7 +132,7 @@ class Args:
 
 
 class CustomUserWarning:
-    def __init__(self, message: str, stacklevel: int = 1) -> None:
+    def __init__(self, message: str, stacklevel: int = 1, raise_with: Exception | None = None) -> None:
         if os.environ.get('SYMAI_WARNINGS', '1') == '1':
             caller   = inspect.getframeinfo(inspect.stack()[stacklevel][0])
             lineno   = caller.lineno
@@ -140,6 +140,8 @@ class CustomUserWarning:
             filename = filename[filename.find('symbolicai'):]
             with ConsoleStyle('warn') as console:
                 console.print(f"{filename}:{lineno}: {UserWarning.__name__}: {message}")
+            if raise_with is not None:
+                raise raise_with(message)
 
 
 # Function to format bytes to a human-readable string
