@@ -17,19 +17,25 @@ logging.getLogger("httpcore").setLevel(logging.ERROR)
 class SearchResult(Result):
     def __init__(self, value, **kwargs) -> None:
         super().__init__(value, **kwargs)
+        if value.get('error'):
+            CustomUserWarning(value['error'], raise_with=ValueError)
         try:
             self._value = value['choices'][0]['message']['content']
-        except (KeyError, IndexError, TypeError) as e:
-            error_msg = value.get('error', {}).get('message', f"API response error: {str(e)}")
-            self._value = f"Error processing search result: {error_msg}"
+        except Exception as e:
+            self._value = None
+            CustomUserWarning(f"Failed to parse response: {e}", raise_with=ValueError)
 
     def __str__(self) -> str:
-        json_str = json.dumps(self.raw, indent=2)
-        return json_str
+        try:
+            return json.dumps(self.raw, indent=2)
+        except TypeError:
+            return str(self.raw)
 
     def _repr_html_(self) -> str:
-        json_str = json.dumps(self.raw, indent=2)
-        return json_str
+        try:
+            return f"<pre>{json.dumps(self.raw, indent=2)}</pre>"
+        except TypeError:
+            return f"<pre>{str(self.raw)}</pre>"
 
 
 class PerplexityEngine(Engine):
@@ -83,8 +89,7 @@ class PerplexityEngine(Engine):
         res = SearchResult(res.json())
 
         metadata = {"raw_output": res.raw}
-        output   = res if isinstance(messages, list) else res[0]
-        output   = [output]
+        output   = [res]
 
         return output, metadata
 

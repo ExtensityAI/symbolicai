@@ -9,13 +9,13 @@ from symai import Interface
 from symai.backend.engines.search.engine_perplexity import SearchResult
 from symai.backend.settings import SYMAI_CONFIG
 
-API_KEY_AVAILABLE = bool(SYMAI_CONFIG.get('SEARCH_ENGINE_API_KEY', None))
-MODEL_IS_SONAR = SYMAI_CONFIG.get('SEARCH_ENGINE_MODEL', '').startswith('sonar')
+API_KEY = bool(SYMAI_CONFIG.get('SEARCH_ENGINE_API_KEY', None))
+MODEL = SYMAI_CONFIG.get('SEARCH_ENGINE_MODEL', '').startswith('sonar')
 
 pytestmark = [
     pytest.mark.searchengine,
-    pytest.mark.skipif(not API_KEY_AVAILABLE, reason="SEARCH_ENGINE_API_KEY not configured or missing."),
-    pytest.mark.skipif(not MODEL_IS_SONAR, reason="SEARCH_ENGINE_MODEL is not 'sonar' or sonar-compatible.")
+    pytest.mark.skipif(not API_KEY, reason="SEARCH_ENGINE_API_KEY not configured or missing."),
+    pytest.mark.skipif(not MODEL, reason="SEARCH_ENGINE_MODEL is not 'sonar' or sonar-compatible.")
 ]
 
 try:
