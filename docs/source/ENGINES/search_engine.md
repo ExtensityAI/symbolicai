@@ -58,3 +58,59 @@ Please note that the system_message is optional and can be used to provide conte
     …
 }
 ```
+
+Additionally, we can use OpenAI's search capabilities to answer queries and get citations for the information:
+
+```python
+from symai.interfaces import Interface
+search = Interface("openai_search")
+res = search('Who is Nicusor Dan?')
+```
+
+```bash
+:Output:
+"As of May 20, 2025, the acting president of Romania is Ilie Bolojan. He assumed this role on February 12, 2025, following the resignation of Klaus Iohannis. Bolojan, a member of the National Liberal Party, previously served as the president of the Senate and the mayor of Oradea. [1]\n\nRomania held a presidential election on May 18, 2025, in which Nicușor Dan, the current mayor of Bucharest, was elected as the new president. Dan, an independent candidate endorsed by several pro-European Union parties, won the election with 53.6% of the vote, defeating nationalist candidate George Simion. [2] He is expected to be inaugurated as president in the near future.\n\n\n## Nicușor Dan's Victory in Romanian Presidential Election:\n- [3]\n- [4]\n- [5] "
+```
+
+The OpenAI search engine returns a `SearchResult` object that includes citations for the information. You can access these citations using:
+
+```python
+citations = res.get_citations()
+```
+
+The engine supports various customization options, such as specifying user location and timezone:
+
+```python
+# Search with user location
+res = search("What are popular tourist attractions nearby?",
+             user_location={
+                 "type": "approximate",
+                 "country": "US",
+                 "city": "New York",
+                 "region": "New York"
+             })
+
+# Search with timezone
+res = search("What local events are happening today?",
+             user_location={
+                 "type": "approximate",
+                 "country": "JP",
+                 "city": "Tokyo",
+                 "region": "Tokyo",
+                 "timezone": "Asia/Tokyo"
+             })
+
+# Control the amount of search context
+res = search("Explain quantum computing developments", search_context_size="high")
+```
+
+Here's how to configure the OpenAI search engine:
+
+```bash
+{
+    …
+    "SEARCH_ENGINE_API_KEY": "sk-…",
+    "SEARCH_ENGINE_MODEL": "gpt-4.1-mini",
+    …
+}
+```
