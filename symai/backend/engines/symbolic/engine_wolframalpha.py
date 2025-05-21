@@ -24,9 +24,10 @@ class WolframResult(Result):
 class WolframAlphaEngine(Engine):
     def __init__(self, api_key: Optional[str] = None):
         super().__init__()
-        self.config  = SYMAI_CONFIG
+        self.config = SYMAI_CONFIG
         self.api_key = self.config['SYMBOLIC_ENGINE_API_KEY'] if api_key is None else api_key
-        self.client  = None
+        self.client = None
+        self.name = self.__class__.__name__
 
     def id(self) -> str:
         if self.config['SYMBOLIC_ENGINE_API_KEY']:

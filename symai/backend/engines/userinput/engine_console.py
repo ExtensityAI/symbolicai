@@ -6,13 +6,14 @@ from ...base import Engine
 class UserInputEngine(Engine):
     def __init__(self):
         super().__init__()
+        self.name = self.__class__.__name__
 
     def id(self) -> str:
         return 'userinput'
 
     def forward(self, argument):
-        msg           = argument.prop.prepared_input
-        kwargs        = argument.kwargs
+        msg = argument.prop.prepared_input
+        kwargs = argument.kwargs
 
         mock = kwargs['mock'] if 'mock' in kwargs else False
         if mock: # mock user input
@@ -27,4 +28,4 @@ class UserInputEngine(Engine):
 
     def prepare(self, argument):
         # here the prompt marks the user input message
-        argument.prop.prepared_input  = str(argument.prop.processed_input)
+        argument.prop.prepared_input = str(argument.prop.processed_input)

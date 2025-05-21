@@ -25,6 +25,7 @@ class TextContainer:
 class FileEngine(Engine):
     def __init__(self):
         super().__init__()
+        self.name = self.__class__.__name__
 
     def id(self) -> str:
         return 'files'

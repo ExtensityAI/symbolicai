@@ -14,12 +14,13 @@ from ....symbol import Result
 class TTSEngine(Engine):
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         super().__init__()
-        self.config   = SYMAI_CONFIG
-        self.api_key  = self.config['TEXT_TO_SPEECH_ENGINE_API_KEY'] if api_key is None else api_key
+        self.config = SYMAI_CONFIG
+        self.api_key = self.config['TEXT_TO_SPEECH_ENGINE_API_KEY'] if api_key is None else api_key
         self.model_id = self.config['TEXT_TO_SPEECH_ENGINE_MODEL'] if model is None else model
-        self.tokens   = []
-        self.text     = []
-        self.client   = OpenAI(api_key=self.api_key)
+        self.tokens = []
+        self.text = []
+        self.client = OpenAI(api_key=self.api_key)
+        self.name = self.__class__.__name__
 
     def id(self) -> str:
         if self.config['TEXT_TO_SPEECH_ENGINE_API_KEY']:

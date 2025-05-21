@@ -33,6 +33,7 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
             return # do not initialize if not neurosymbolic; avoids conflict with llama.cpp check in EngineRepository.register_from_package
         self.api_key = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
         self.model = self.config['NEUROSYMBOLIC_ENGINE_MODEL']
+        self.name = self.__class__.__name__
         self.tokenizer = None
         self.max_context_tokens = self.api_max_context_tokens()
         self.max_response_tokens = self.api_max_response_tokens()

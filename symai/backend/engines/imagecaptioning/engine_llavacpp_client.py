@@ -44,10 +44,11 @@ class LLaMACppClientEngine(Engine):
         super().__init__()
         logger = logging.getLogger('nesy_client')
         logger.setLevel(logging.WARNING)
-        self.config     = SYMAI_CONFIG
-        self.host       = host
-        self.port       = port
-        self.timeout    = timeout
+        self.config = SYMAI_CONFIG
+        self.host = host
+        self.port = port
+        self.timeout = timeout
+        self.name = self.__class__.__name__
 
     def id(self) -> str:
         if  self.config['CAPTION_ENGINE_MODEL'] and \

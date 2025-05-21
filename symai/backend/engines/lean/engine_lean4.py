@@ -10,7 +10,7 @@ from ....symbol import Result
 class LeanResult(Result):
     """
     Represents the result of executing a Lean code snippet.
-    
+
     Attributes:
         _value (Dict[str, str]): A dictionary containing the output of the Lean execution.
     """
@@ -36,12 +36,12 @@ class LeanEngine(Engine):
         docker_client (docker.DockerClient): The Docker client used to manage containers.
         container (docker.models.containers.Container): The Docker container used for executing Lean code.
     """
-    
+
     def __init__(
-        self, 
-        ssh_host: str = 'localhost', 
-        ssh_port: int = 2222, 
-        ssh_user: str = 'root', 
+        self,
+        ssh_host: str = 'localhost',
+        ssh_port: int = 2222,
+        ssh_user: str = 'root',
         ssh_key_path: str = '~/.ssh/id_rsa'
     ) -> None:
         """
@@ -60,6 +60,7 @@ class LeanEngine(Engine):
         self.ssh_key_path: str = os.path.expanduser(ssh_key_path)
         self.docker_client: docker.DockerClient = docker.from_env()
         self.container: docker.models.containers.Container = self._ensure_container()
+        self.name = self.__class__.__name__
         self._setup_ssh()
 
     def id(self) -> str:
@@ -79,7 +80,7 @@ class LeanEngine(Engine):
             docker.models.containers.Container: The Docker container instance used for Lean code execution.
         """
         container_name: str = "lean-container"
-        
+
         try:
             existing_container: docker.models.containers.Container = self.docker_client.containers.get(container_name)
             existing_container.remove(force=True)
@@ -116,7 +117,7 @@ class LeanEngine(Engine):
         os.remove(dockerfile_path)
 
         container: docker.models.containers.Container = self.docker_client.containers.run(
-            image.id, 
+            image.id,
             detach=True,
             name=container_name,
             ports={'22/tcp': self.ssh_port}

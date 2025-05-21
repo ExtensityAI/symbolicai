@@ -27,6 +27,7 @@ class OCREngine(Engine):
         self.headers = {
             "apikey": self.config['OCR_ENGINE_API_KEY'] if api_key is None else api_key
         }
+        self.name = self.__class__.__name__
 
     def id(self) -> str:
         if self.config['OCR_ENGINE_API_KEY']:
@@ -66,4 +67,3 @@ class OCREngine(Engine):
         assert not argument.prop.processed_input, "OCREngine does not support processed_input."
         image  = str(argument.prop.image)
         argument.prop.prepared_input = image
-

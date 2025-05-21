@@ -33,6 +33,7 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
             return # do not initialize if not neurosymbolic; avoids conflict with llama.cpp check in EngineRepository.register_from_package
         openai.api_key = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
         self.model = self.config['NEUROSYMBOLIC_ENGINE_MODEL']
+        self.name = self.__class__.__name__
         try:
             self.tokenizer = tiktoken.encoding_for_model(self.model)
         except Exception as e:

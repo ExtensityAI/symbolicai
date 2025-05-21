@@ -80,13 +80,14 @@ except ImportError:
 class WhisperEngine(Engine):
     def __init__(self, model: Optional[str] = None):
         super().__init__()
-        self.config       = SYMAI_CONFIG
-        self.model        = None # lazy loading
-        self.model_id     = self.config['SPEECH_TO_TEXT_ENGINE_MODEL'] if model is None else model
+        self.config = SYMAI_CONFIG
+        self.model = None # lazy loading
+        self.model_id = self.config['SPEECH_TO_TEXT_ENGINE_MODEL'] if model is None else model
         self.old_model_id = self.config['SPEECH_TO_TEXT_ENGINE_MODEL'] if model is None else model
-        self.tokens       = []
-        self.text         = []
-        self.formatter    = WhisperTimestampsFormatter()
+        self.tokens = []
+        self.text = []
+        self.formatter = WhisperTimestampsFormatter()
+        self.name = self.__class__.__name__
 
     def id(self) -> str:
         if self.config['SPEECH_TO_TEXT_ENGINE_MODEL']:

@@ -31,6 +31,7 @@ class SeleniumEngine(Engine):
         super().__init__()
         self.debug = debug
         self.driver_handler = None
+        self.name = self.__class__.__name__
 
     def _init_crawler_engine(self):
         self.driver_handler = connect_browsers(debug=False, proxy=None)

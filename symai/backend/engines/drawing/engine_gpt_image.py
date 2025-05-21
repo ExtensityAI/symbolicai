@@ -69,6 +69,7 @@ class GPTImageEngine(Engine):
             if model is None
             else model
         )
+        self.name = self.__class__.__name__
         # quiet OpenAI's internal logger
         log = logging.getLogger("openai")
         log.setLevel(logging.WARNING)

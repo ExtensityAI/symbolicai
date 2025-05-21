@@ -98,15 +98,16 @@ class VectorDBIndexEngine(Engine):
             **kwargs
         ):
         super().__init__()
-        self.index_name     = index_name
-        self.index_dims     = index_dims
-        self.index_top_k    = index_top_k
-        self.index_metric   = index_metric
-        self.storage_file   = index_storage_file
-        self.model          = None
+        self.index_name = index_name
+        self.index_dims = index_dims
+        self.index_top_k = index_top_k
+        self.index_metric = index_metric
+        self.storage_file = index_storage_file
+        self.model = None
         # Initialize an instance of VectorDB
         # Note that embedding_function and vectors are not passed as VectorDB will compute it on the fly
         self.index = index_dict
+        self.name = self.__class__.__name__
 
     def id(self) -> str:
         if not SYMAI_CONFIG['INDEXING_ENGINE_API_KEY'] or SYMAI_CONFIG['INDEXING_ENGINE_API_KEY'] == '':
