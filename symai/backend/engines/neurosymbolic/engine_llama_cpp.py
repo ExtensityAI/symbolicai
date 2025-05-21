@@ -96,6 +96,7 @@ class LlamaCppEngine(Engine):
         self.tokenizer = LlamaCppTokenizer # backwards compatibility with how we handle tokenization, i.e. self.tokenizer().encode(...)
         self.timeout_params = self._validate_timeout_params(timeout_params)
         self.retry_params = self._validate_retry_params(retry_params)
+        self.name = self.__class__.__name__
 
     def id(self) -> str:
         if self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('llama'):

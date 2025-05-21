@@ -41,6 +41,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         self.max_context_tokens = self.api_max_context_tokens()
         self.max_response_tokens = self.api_max_response_tokens()
         self.seed = None
+        self.name = self.__class__.__name__
 
         try:
             self.client = openai.Client(api_key=openai.api_key)

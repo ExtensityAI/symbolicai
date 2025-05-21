@@ -26,10 +26,10 @@ def chunks(iterable, batch_size=100):
 class PineconeResult(Result):
     def __init__(self, res, query: str, embedding: list, **kwargs):
         super().__init__(res, **kwargs)
-        self.raw                 = res
-        self._query              = query
-        self._value              = self._process(res)
-        self._metadata.raw       = embedding
+        self.raw = res
+        self._query = query
+        self._value = self._process(res)
+        self._metadata.raw = embedding
 
     def _process(self, res):
         if not res:
@@ -118,21 +118,22 @@ class PineconeIndexEngine(Engine):
             jitter=_default_retry_jitter,
         ):
         super().__init__()
-        self.index_name     = index_name
-        self.index_dims     = index_dims
-        self.index_top_k    = index_top_k
-        self.index_values   = index_values
+        self.index_name = index_name
+        self.index_dims = index_dims
+        self.index_top_k = index_top_k
+        self.index_values = index_values
         self.index_metadata = index_metadata
-        self.index_metric   = index_metric
-        self.api_key        = api_key
-        self.environment    = environment
-        self.tries          = tries
-        self.delay          = delay
-        self.max_delay      = max_delay
-        self.backoff        = backoff
-        self.jitter         = jitter
-        self.index          = None
-        self.pinecone       = None
+        self.index_metric = index_metric
+        self.api_key = api_key
+        self.environment = environment
+        self.tries = tries
+        self.delay = delay
+        self.max_delay = max_delay
+        self.backoff = backoff
+        self.jitter = jitter
+        self.index = None
+        self.pinecone = None
+        self.name = self.__class__.__name__
 
     def id(self) -> str:
         if SYMAI_CONFIG['INDEXING_ENGINE_API_KEY']:

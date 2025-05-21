@@ -34,6 +34,7 @@ class DrawingEngine(Engine):
         self.config = SYMAI_CONFIG
         self.api_key = self.config['DRAWING_ENGINE_API_KEY'] if api_key is None else api_key
         self.model = self.config['DRAWING_ENGINE_MODEL'] if model is None else model
+        self.name = self.__class__.__name__
 
     def id(self) -> str:
         if  self.config['DRAWING_ENGINE_API_KEY'] and self.config['DRAWING_ENGINE_MODEL'].startswith("flux"):

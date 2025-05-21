@@ -17,17 +17,18 @@ from ...settings import SYMAI_CONFIG
 class Blip2Engine(Engine):
     def __init__(self):
         super().__init__()
-        self.config         = SYMAI_CONFIG
-        ids                 = self.config['CAPTION_ENGINE_MODEL'].split('/')
+        self.config = SYMAI_CONFIG
+        ids = self.config['CAPTION_ENGINE_MODEL'].split('/')
         if len(ids) != 2:
             # return unregistered engine
             return
-        self.name_id        = ids[0]
-        self.model_id       = ids[1]
-        self.model          = None  # lazy loading
+        self.name_id = ids[0]
+        self.model_id = ids[1]
+        self.model = None  # lazy loading
         self.vis_processors = None  # lazy loading
         self.txt_processors = None  # lazy loading
-        self.device         = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.name = self.__class__.__name__
 
     def id(self) -> str:
         if  self.config['CAPTION_ENGINE_MODEL'] and \

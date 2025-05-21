@@ -44,6 +44,7 @@ class PerplexityEngine(Engine):
         self.config = SYMAI_CONFIG
         self.api_key = self.config['SEARCH_ENGINE_API_KEY']
         self.model = self.config['SEARCH_ENGINE_MODEL']
+        self.name = self.__class__.__name__
 
     def id(self) -> str:
         if self.config.get('SEARCH_ENGINE_API_KEY') and self.config.get('SEARCH_ENGINE_MODEL').startswith("sonar"):

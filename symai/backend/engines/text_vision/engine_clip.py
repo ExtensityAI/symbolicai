@@ -18,12 +18,12 @@ logging.getLogger("PIL").setLevel(logging.WARNING)
 class CLIPEngine(Engine):
     def __init__(self, model: Optional[str] = None):
         super().__init__()
-        self.model        =  None # lazy loading
+        self.model =  None # lazy loading
         self.preprocessor = None # lazy loading
-
-        self.config       = SYMAI_CONFIG
-        self.model_id     = self.config['VISION_ENGINE_MODEL'] if model is None else model
+        self.config = SYMAI_CONFIG
+        self.model_id = self.config['VISION_ENGINE_MODEL'] if model is None else model
         self.old_model_id = self.config['VISION_ENGINE_MODEL'] if model is None else model
+        self.name = self.__class__.__name__
 
     def id(self) -> str:
         if self.config['VISION_ENGINE_MODEL']:
@@ -39,11 +39,11 @@ class CLIPEngine(Engine):
         images = []
         if not isinstance(image, (list, tuple)):
             image = [image]
-                      
+
         for img in image:
             if isinstance(img, bytes):
                 images.append(Image.open(BytesIO(img)))
-            elif isinstance(img, str):            
+            elif isinstance(img, str):
                 if img.startswith('http'):
                     image_ = requests.get(img, stream=True).raw
                 else:
@@ -89,4 +89,3 @@ class CLIPEngine(Engine):
         image_url  = argument.kwargs['image'] if 'image' in kwargs else None
         text       = argument.kwargs['text']  if 'text'  in kwargs else None
         argument.prop.prepared_input = (image_url, text)
-

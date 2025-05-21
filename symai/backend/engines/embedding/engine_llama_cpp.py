@@ -46,6 +46,7 @@ class LlamaCppEmbeddingEngine(Engine):
         self.server_endpoint = f"http://{SYMSERVER_CONFIG.get('--host')}:{SYMSERVER_CONFIG.get('--port')}"
         self.timeout_params = self._validate_timeout_params(timeout_params)
         self.retry_params = self._validate_retry_params(retry_params)
+        self.name = self.__class__.__name__
 
     def id(self) -> str:
         if self.config.get('EMBEDDING_ENGINE_MODEL') and self.config.get('EMBEDDING_ENGINE_MODEL').startswith('llama'):

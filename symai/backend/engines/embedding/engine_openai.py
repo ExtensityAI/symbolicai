@@ -27,6 +27,7 @@ class EmbeddingEngine(Engine, OpenAIMixin):
         self.model = self.config['EMBEDDING_ENGINE_MODEL'] if model is None else model
         self.max_tokens = self.api_max_context_tokens()
         self.embedding_dim = self.api_embedding_dims()
+        self.name = self.__class__.__name__
 
     def id(self) -> str:
         if self.config.get('EMBEDDING_ENGINE_API_KEY') and self.config['EMBEDDING_ENGINE_MODEL'].startswith('text-embedding'):
