@@ -16,11 +16,12 @@ NEUROSYMBOLIC_ENGINE = SYMAI_CONFIG.get('NEUROSYMBOLIC_ENGINE_MODEL', '') in OPE
 SEARCH_ENGINE = SYMAI_CONFIG.get('SEARCH_ENGINE_MODEL', '') in OPENAI_CHAT_MODELS + OPENAI_REASONING_MODELS
 
 
-def estimate_cost(info: dict, pricing: dict) -> float:
+def estimate_cost(info: RuntimeInfo, pricing: dict) -> float:
     input_cost = (info.prompt_tokens - info.cached_tokens) * pricing.get("input", 0)
     cached_input_cost = info.cached_tokens * pricing.get("cached_input", 0)
     output_cost = info.completion_tokens * pricing.get("output", 0)
-    return input_cost + cached_input_cost + output_cost
+    call_cost = info.total_calls * pricing.get("calls", 0)
+    return input_cost + cached_input_cost + output_cost + call_cost
 
 
 @pytest.mark.skipif(not NEUROSYMBOLIC_ENGINE and not SEARCH_ENGINE, reason="Tested only for OpenAI backend for now.")
@@ -34,22 +35,25 @@ def test_metadata_tracker_with_runtimeinfo():
     end_time = time.perf_counter()
     assert res.value is not None and search_res.value is not None, "Expected some non-None output from the query."
 
-    dummy_pricing = {
-        "GPTXChatEngine": {
-            "input": 0.000002,
-            "cached_input": 0.000001,
-            "output": 0.000002
+    pricing = {
+        ("GPTXChatEngine", "gpt-4.1"): {
+            "input": 2. / 1e6,
+            "cached_input": 0.5 / 1e6,
+            "output": 8. / 1e6
         },
-        "GPTXSearchEngine": {
-            "input": 0.000002,
-            "cached_input": 0.000001,
-            "output": 0.000002
+        ("GPTXSearchEngine", "gpt-4.1-mini"): {
+            "input": 0.40 / 1e6,
+            "cached_input": 0.10 / 1e6,
+            "output": 1.6 / 1e6,
+            "calls": 27.5 / 1e3
         }
     }
+
     usage_per_engine = RuntimeInfo.from_tracker(tracker, 0)
-    usage = RuntimeInfo(0, 0, 0, 0, 0, 0, 0) # total_elapsed_time, prompt_tokens, completion_tokens, reasoning_tokens, cached_tokens, total_tokens, cost_estimate
-    for engine_name, data in usage_per_engine.items():
-        usage += RuntimeInfo.estimate_cost(data, estimate_cost, pricing=dummy_pricing[engine_name])
+    # total_elapsed_time, prompt_tokens, completion_tokens, reasoning_tokens, cached_tokens, total_calls, total_tokens, cost_estimate
+    usage = RuntimeInfo(0, 0, 0, 0, 0, 0, 0, 0)
+    for (engine_name, model_name), data in usage_per_engine.items():
+        usage += RuntimeInfo.estimate_cost(data, estimate_cost, pricing=pricing[(engine_name, model_name)])
     # Add total elapsed time to the actual elapsed time
     usage.total_elapsed_time = end_time - start_time
 
@@ -60,6 +64,7 @@ def test_metadata_tracker_with_runtimeinfo():
     assert usage.cost_estimate > 0, "Expected cost estimate to be greater than 0."
     assert usage.cached_tokens == 0, "Expected cached tokens to be 0."
     assert usage.reasoning_tokens == 0, "Expected reasoning tokens to be 0."
+    assert usage.total_calls == 2, "Expected total_calls to be 2 (one for query, one for search)."
 
 
 def test_disable_primitives():
@@ -131,3 +136,40 @@ def test_dynamic_engine_switching():
     outside_engine2 = EngineRepository.get('neurosymbolic')
     assert outside_engine2 != dynamic_engine2.engine_instance, \
         "Should revert to a different engine outside dynamic_engine2 context."
+
+
+{
+    ('GPTXChatEngine', 'gpt-4.1'):
+        RuntimeInfo(
+            total_elapsed_time=0,
+            prompt_tokens=37,
+            completion_tokens=123,
+            reasoning_tokens=0,
+            cached_tokens=0,
+            total_calls=1,
+            total_tokens=160,
+            cost_estimate=0
+        ),
+    ('GPTXSearchEngine', 'gpt-4.1-mini'):
+        RuntimeInfo(
+            total_elapsed_time=0,
+            prompt_tokens=324,
+            completion_tokens=180,
+            reasoning_tokens=0,
+            cached_tokens=0,
+            total_calls=1,
+            total_tokens=504,
+            cost_estimate=0
+            )
+}
+
+RuntimeInfo(
+    total_elapsed_time=12.500008333008736,
+    prompt_tokens=361,
+    completion_tokens=303,
+    reasoning_tokens=0,
+    cached_tokens=0,
+    total_calls=2,
+    total_tokens=664,
+    cost_estimate=0.0289756
+)

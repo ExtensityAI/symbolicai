@@ -168,6 +168,7 @@ class RuntimeInfo:
     completion_tokens: int
     reasoning_tokens: int
     cached_tokens: int
+    total_calls: int
     total_tokens: int
     cost_estimate: float
 
@@ -189,6 +190,9 @@ class RuntimeInfo:
         add_reasoning_tokens = (
             other.reasoning_tokens if hasattr(other, "reasoning_tokens") else 0
         )
+        add_total_calls = (
+            other.total_calls if hasattr(other, "total_calls") else 0
+        )
 
         return RuntimeInfo(
             total_elapsed_time=self.total_elapsed_time + add_elapsed_time,
@@ -196,6 +200,7 @@ class RuntimeInfo:
             completion_tokens=self.completion_tokens + add_completion_tokens,
             reasoning_tokens=self.reasoning_tokens + add_reasoning_tokens,
             cached_tokens=self.cached_tokens + add_cached_tokens,
+            total_calls=self.total_calls + add_total_calls,
             total_tokens=self.total_tokens + add_total_tokens,
             cost_estimate=self.cost_estimate + add_cost_estimate,
         )
@@ -208,26 +213,27 @@ class RuntimeInfo:
             except Exception as e:
                 raise e
                 CustomUserWarning(f"Failed to parse metadata; returning empty RuntimeInfo: {e}")
-                return RuntimeInfo(0, 0, 0, 0, 0, 0, 0)
-        return RuntimeInfo(0, 0, 0, 0, 0, 0, 0)
+                return RuntimeInfo(0, 0, 0, 0, 0, 0, 0, 0)
+        return RuntimeInfo(0, 0, 0, 0, 0, 0, 0, 0)
 
     @staticmethod
     def from_usage_stats(usage_stats: dict | None, total_elapsed_time: float = 0):
         if usage_stats is not None:
             usage_per_engine = {}
-            for engine_name, data in usage_stats.items():
+            for (engine_name, model_name), data in usage_stats.items():
                 data = Box(data)
-                usage_per_engine[engine_name] = RuntimeInfo(
+                usage_per_engine[(engine_name, model_name)] = RuntimeInfo(
                     total_elapsed_time=total_elapsed_time,
                     prompt_tokens=data.usage.prompt_tokens,
                     completion_tokens=data.usage.completion_tokens,
                     reasoning_tokens=getattr(data.usage, 'reasoning_tokens', 0),
                     cached_tokens=data.prompt_breakdown.cached_tokens,
+                    total_calls=data.usage.total_calls,
                     total_tokens=data.usage.total_tokens,
                     cost_estimate=0, # Placeholder for cost estimate
                 )
             return usage_per_engine
-        return RuntimeInfo(0, 0, 0, 0, 0, 0, 0)
+        return RuntimeInfo(0, 0, 0, 0, 0, 0, 0, 0)
 
     @staticmethod
     def estimate_cost(info: RuntimeInfo, f_pricing: callable, **kwargs) -> RuntimeInfo:
@@ -237,6 +243,7 @@ class RuntimeInfo:
             completion_tokens=info.completion_tokens,
             reasoning_tokens=info.reasoning_tokens,
             cached_tokens=info.cached_tokens,
+            total_calls=info.total_calls,
             total_tokens=info.total_tokens,
             cost_estimate=f_pricing(info, **kwargs),
         )
