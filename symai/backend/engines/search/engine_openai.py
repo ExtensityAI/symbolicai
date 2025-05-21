@@ -75,7 +75,7 @@ class SearchResult(Result):
         return self._citations
 
 
-class OpenAISearchEngine(Engine):
+class GPTXSearchEngine(Engine):
     def __init__(self):
         super().__init__()
         self.config = SYMAI_CONFIG

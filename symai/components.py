@@ -1137,33 +1137,33 @@ class MetadataTracker(Expression):
     def _accumulate_completion_token_details(self):
         """Parses the return object and accumulates completion token details per token type"""
         if not self._metadata:
-            raise ValueError("No metadata available to generate usage details.")
+            CustomUserWarning("No metadata available to generate usage details.")
+            return {}
 
-        token_details = defaultdict(lambda: defaultdict(int))
+        token_details = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
 
         for (_, engine_name), metadata in self._metadata.items():
             if engine_name in ("GPTXChatEngine", "GPTXReasoningEngine"):
                 usage = metadata["raw_output"].usage
-                token_details["usage"]["completion_tokens"] += usage.completion_tokens
-                token_details["usage"]["prompt_tokens"] += usage.prompt_tokens
-                token_details["usage"]["total_tokens"] += usage.total_tokens
-                token_details["completion_breakdown"]["accepted_prediction_tokens"] += usage.completion_tokens_details.accepted_prediction_tokens
-                token_details["completion_breakdown"]["rejected_prediction_tokens"] += usage.completion_tokens_details.rejected_prediction_tokens
-                token_details["completion_breakdown"]["audio_tokens"] += usage.completion_tokens_details.audio_tokens
-                token_details["completion_breakdown"]["reasoning_tokens"] += usage.completion_tokens_details.reasoning_tokens
-                token_details["prompt_breakdown"]["audio_tokens"] += usage.prompt_tokens_details.audio_tokens
-                token_details["prompt_breakdown"]["cached_tokens"] += usage.prompt_tokens_details.cached_tokens
-            elif engine_name == "OpenAISearchEngine":
+                token_details[engine_name]["usage"]["completion_tokens"] += usage.completion_tokens
+                token_details[engine_name]["usage"]["prompt_tokens"] += usage.prompt_tokens
+                token_details[engine_name]["usage"]["total_tokens"] += usage.total_tokens
+                token_details[engine_name]["completion_breakdown"]["accepted_prediction_tokens"] += usage.completion_tokens_details.accepted_prediction_tokens
+                token_details[engine_name]["completion_breakdown"]["rejected_prediction_tokens"] += usage.completion_tokens_details.rejected_prediction_tokens
+                token_details[engine_name]["completion_breakdown"]["audio_tokens"] += usage.completion_tokens_details.audio_tokens
+                token_details[engine_name]["completion_breakdown"]["reasoning_tokens"] += usage.completion_tokens_details.reasoning_tokens
+                token_details[engine_name]["prompt_breakdown"]["audio_tokens"] += usage.prompt_tokens_details.audio_tokens
+                token_details[engine_name]["prompt_breakdown"]["cached_tokens"] += usage.prompt_tokens_details.cached_tokens
+            elif engine_name == "GPTXSearchEngine":
                 usage = metadata["raw_output"].usage
-                token_details["usage"]["prompt_tokens"] += usage.input_tokens
-                token_details["usage"]["completion_tokens"] += usage.output_tokens
-                token_details["usage"]["total_tokens"] += usage.total_tokens
-                token_details["prompt_breakdown"]["cached_tokens"] += usage.input_tokens_details.get("cached_tokens", 0)
-                token_details["completion_breakdown"]["reasoning_tokens"] += usage.output_tokens_details.get("reasoning_tokens", 0)
+                token_details[engine_name]["usage"]["prompt_tokens"] += usage.input_tokens
+                token_details[engine_name]["usage"]["completion_tokens"] += usage.output_tokens
+                token_details[engine_name]["usage"]["total_tokens"] += usage.total_tokens
+                token_details[engine_name]["prompt_breakdown"]["cached_tokens"] += usage.input_tokens_details.get("cached_tokens", 0)
+                token_details[engine_name]["completion_breakdown"]["reasoning_tokens"] += usage.output_tokens_details.get("reasoning_tokens", 0)
             else:
                 logger.warning(f"Engine {engine_name} is not supported.")
                 continue
-
 
         # Convert to normal dictionary
         return json.loads(json.dumps(token_details))
@@ -1171,6 +1171,7 @@ class MetadataTracker(Expression):
     def _accumulate_metadata(self):
         """Accumulates metadata across all tracked engine calls."""
         if not self._metadata:
+            CustomUserWarning("No metadata available to generate usage details.")
             return {}
 
         # Use first entry as base
@@ -1179,7 +1180,7 @@ class MetadataTracker(Expression):
 
         # Skipz first entry
         for (_, engine_name), metadata in list(self._metadata.items())[1:]:
-            if engine_name not in ("GPTXChatEngine", "GPTXReasoningEngine"):
+            if engine_name not in ("GPTXChatEngine", "GPTXReasoningEngine", "GPTXSearchEngine"):
                 continue
 
             # Accumulate time if it exists
@@ -1215,15 +1216,15 @@ class MetadataTracker(Expression):
         return accumulated
 
     @property
-    def metadata_acc(self) -> dict[str, Any]:
+    def metadata_acc(self) -> dict:
         return self._accumulate_metadata()
 
     @property
-    def metadata(self) -> list[dict[str, Any]]:
+    def metadata(self) -> list[dict]:
         return self._metadata
 
     @property
-    def usage(self) -> dict[str, dict[str, int]]:
+    def usage(self) -> dict[str, dict]:
         return self._accumulate_completion_token_details()
 
 

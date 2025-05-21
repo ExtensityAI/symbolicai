@@ -14,7 +14,7 @@ API_KEY = bool(SYMAI_CONFIG.get('SEARCH_ENGINE_API_KEY', None))
 MODEL = SYMAI_CONFIG.get('SEARCH_ENGINE_MODEL', '') in OPENAI_CHAT_MODELS + OPENAI_REASONING_MODELS
 
 pytestmark = [
-    pytest.mark.searchengine,
+    pytest.mark.search_engine,
     pytest.mark.skipif(not API_KEY, reason="SEARCH_ENGINE_API_KEY not configured or missing."),
     pytest.mark.skipif(not MODEL, reason="SEARCH_ENGINE_MODEL is not OpenAI chat model.")
 ]
