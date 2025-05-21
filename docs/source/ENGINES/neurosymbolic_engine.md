@@ -234,7 +234,15 @@ if NEUROSYMBOLIC_ENGINE_IS_OPENAI and SEARCH_ENGINE_IS_OPENAI:
     usage_per_engine = RuntimeInfo.from_tracker(tracker, 0)
 
     # Initialize an empty RuntimeInfo object to aggregate totals
-    aggregated_usage = RuntimeInfo(total_elapsed_time=0, prompt_tokens=0, completion_tokens=0, total_tokens=0, cost_estimate=0, cached_tokens=0)
+    aggregated_usage = RuntimeInfo(
+        total_elapsed_time=0,
+        prompt_tokens=0,
+        completion_tokens=0,
+        reasoning_tokens=0,
+        cached_tokens=0,
+        total_tokens=0,
+        cost_estimate=0
+    )
     for engine_name, engine_data in usage_per_engine.items():
         if engine_name in dummy_pricing:
             # Estimate cost for this specific engine

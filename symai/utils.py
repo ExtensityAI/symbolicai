@@ -166,9 +166,10 @@ class RuntimeInfo:
     total_elapsed_time: float
     prompt_tokens: int
     completion_tokens: int
+    reasoning_tokens: int
+    cached_tokens: int
     total_tokens: int
     cost_estimate: float
-    cached_tokens: int
 
     def __add__(self, other):
         add_elapsed_time = other.total_elapsed_time if hasattr(other, "total_elapsed_time") else 0
@@ -185,14 +186,18 @@ class RuntimeInfo:
         add_cached_tokens = (
             other.cached_tokens if hasattr(other, "cached_tokens") else 0
         )
+        add_reasoning_tokens = (
+            other.reasoning_tokens if hasattr(other, "reasoning_tokens") else 0
+        )
 
         return RuntimeInfo(
             total_elapsed_time=self.total_elapsed_time + add_elapsed_time,
             prompt_tokens=self.prompt_tokens + add_prompt_tokens,
             completion_tokens=self.completion_tokens + add_completion_tokens,
+            reasoning_tokens=self.reasoning_tokens + add_reasoning_tokens,
+            cached_tokens=self.cached_tokens + add_cached_tokens,
             total_tokens=self.total_tokens + add_total_tokens,
             cost_estimate=self.cost_estimate + add_cost_estimate,
-            cached_tokens=self.cached_tokens + add_cached_tokens,
         )
 
     @staticmethod
@@ -203,8 +208,8 @@ class RuntimeInfo:
             except Exception as e:
                 raise e
                 CustomUserWarning(f"Failed to parse metadata; returning empty RuntimeInfo: {e}")
-                return RuntimeInfo(0, 0, 0, 0, 0, 0)
-        return RuntimeInfo(0, 0, 0, 0, 0, 0)
+                return RuntimeInfo(0, 0, 0, 0, 0, 0, 0)
+        return RuntimeInfo(0, 0, 0, 0, 0, 0, 0)
 
     @staticmethod
     def from_usage_stats(usage_stats: dict | None, total_elapsed_time: float = 0):
@@ -216,12 +221,13 @@ class RuntimeInfo:
                     total_elapsed_time=total_elapsed_time,
                     prompt_tokens=data.usage.prompt_tokens,
                     completion_tokens=data.usage.completion_tokens,
+                    reasoning_tokens=getattr(data.usage, 'reasoning_tokens', 0),
+                    cached_tokens=data.prompt_breakdown.cached_tokens,
                     total_tokens=data.usage.total_tokens,
                     cost_estimate=0, # Placeholder for cost estimate
-                    cached_tokens=data.prompt_breakdown.cached_tokens,
                 )
             return usage_per_engine
-        return RuntimeInfo(0, 0, 0, 0, 0, 0)
+        return RuntimeInfo(0, 0, 0, 0, 0, 0, 0)
 
     @staticmethod
     def estimate_cost(info: RuntimeInfo, f_pricing: callable, **kwargs) -> RuntimeInfo:
@@ -229,7 +235,8 @@ class RuntimeInfo:
             total_elapsed_time=info.total_elapsed_time,
             prompt_tokens=info.prompt_tokens,
             completion_tokens=info.completion_tokens,
+            reasoning_tokens=info.reasoning_tokens,
+            cached_tokens=info.cached_tokens,
             total_tokens=info.total_tokens,
             cost_estimate=f_pricing(info, **kwargs),
-            cached_tokens=info.cached_tokens,
         )
