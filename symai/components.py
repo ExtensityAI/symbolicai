@@ -1129,7 +1129,8 @@ class MetadataTracker(Expression):
                 isinstance(frame.f_locals['self'], Engine)):
                 _, metadata = arg  # arg contains return value on 'return' event
                 engine_name = frame.f_locals['self'].__class__.__name__
-                self._metadata[(self._metadata_id, engine_name)] = metadata
+                model_name = frame.f_locals['self'].model
+                self._metadata[(self._metadata_id, engine_name, model_name)] = metadata
                 self._metadata_id += 1
 
         return self._trace_calls
@@ -1144,37 +1145,40 @@ class MetadataTracker(Expression):
 
         # Note on try/except:
         # The unpacking shouldn't fail; if it fails, it's likely the API response format has changed and we need to know that ASAP
-        for (_, engine_name), metadata in self._metadata.items():
+        for (_, engine_name, model_name), metadata in self._metadata.items():
             if engine_name in ("GPTXChatEngine", "GPTXReasoningEngine"):
                 try:
                     usage = metadata["raw_output"].usage
-                    token_details[engine_name]["usage"]["completion_tokens"] += usage.completion_tokens
-                    token_details[engine_name]["usage"]["prompt_tokens"] += usage.prompt_tokens
-                    token_details[engine_name]["usage"]["total_tokens"] += usage.total_tokens
-                    token_details[engine_name]["completion_breakdown"]["accepted_prediction_tokens"] += usage.completion_tokens_details.accepted_prediction_tokens
-                    token_details[engine_name]["completion_breakdown"]["rejected_prediction_tokens"] += usage.completion_tokens_details.rejected_prediction_tokens
-                    token_details[engine_name]["completion_breakdown"]["audio_tokens"] += usage.completion_tokens_details.audio_tokens
-                    token_details[engine_name]["completion_breakdown"]["reasoning_tokens"] += usage.completion_tokens_details.reasoning_tokens
-                    token_details[engine_name]["prompt_breakdown"]["audio_tokens"] += usage.prompt_tokens_details.audio_tokens
-                    token_details[engine_name]["prompt_breakdown"]["cached_tokens"] += usage.prompt_tokens_details.cached_tokens
+                    token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += usage.completion_tokens
+                    token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += usage.prompt_tokens
+                    token_details[(engine_name, model_name)]["usage"]["total_tokens"] += usage.total_tokens
+                    token_details[(engine_name, model_name)]["usage"]["total_calls"] += 1
+                    token_details[(engine_name, model_name)]["completion_breakdown"]["accepted_prediction_tokens"] += usage.completion_tokens_details.accepted_prediction_tokens
+                    token_details[(engine_name, model_name)]["completion_breakdown"]["rejected_prediction_tokens"] += usage.completion_tokens_details.rejected_prediction_tokens
+                    token_details[(engine_name, model_name)]["completion_breakdown"]["audio_tokens"] += usage.completion_tokens_details.audio_tokens
+                    token_details[(engine_name, model_name)]["completion_breakdown"]["reasoning_tokens"] += usage.completion_tokens_details.reasoning_tokens
+                    token_details[(engine_name, model_name)]["prompt_breakdown"]["audio_tokens"] += usage.prompt_tokens_details.audio_tokens
+                    token_details[(engine_name, model_name)]["prompt_breakdown"]["cached_tokens"] += usage.prompt_tokens_details.cached_tokens
                 except Exception as e:
                     CustomUserWarning(f"Failed to parse metadata for {engine_name}: {e}", raise_with=AttributeError)
             elif engine_name == "GPTXSearchEngine":
                 try:
                     usage = metadata["raw_output"].usage
-                    token_details[engine_name]["usage"]["prompt_tokens"] += usage.input_tokens
-                    token_details[engine_name]["usage"]["completion_tokens"] += usage.output_tokens
-                    token_details[engine_name]["usage"]["total_tokens"] += usage.total_tokens
-                    token_details[engine_name]["prompt_breakdown"]["cached_tokens"] += usage.input_tokens_details.cached_tokens
-                    token_details[engine_name]["completion_breakdown"]["reasoning_tokens"] += usage.output_tokens_details.reasoning_tokens
+                    token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += usage.input_tokens
+                    token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += usage.output_tokens
+                    token_details[(engine_name, model_name)]["usage"]["total_tokens"] += usage.total_tokens
+                    token_details[(engine_name, model_name)]["usage"]["total_calls"] += 1
+                    token_details[(engine_name, model_name)]["prompt_breakdown"]["cached_tokens"] += usage.input_tokens_details.cached_tokens
+                    token_details[(engine_name, model_name)]["completion_breakdown"]["reasoning_tokens"] += usage.output_tokens_details.reasoning_tokens
                 except Exception as e:
                     CustomUserWarning(f"Failed to parse metadata for {engine_name}: {e}", raise_with=AttributeError)
             else:
-                logger.warning(f"Engine {engine_name} is not supported.")
+                logger.warning(f"Tracking {engine_name} is not supported.")
                 continue
 
         # Convert to normal dictionary
-        return json.loads(json.dumps(token_details))
+        # return json.loads(json.dumps(token_details))
+        return {k: json.loads(json.dumps(v)) for k, v in token_details.items()}
 
     def _accumulate_metadata(self):
         """Accumulates metadata across all tracked engine calls."""

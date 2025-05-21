@@ -174,7 +174,7 @@ For Claude / llama.cpp / HuggingFace, skip token‐comparison tests as they are 
 For more detailed tracking of API calls, token usage, and estimating costs, you can use the `MetadataTracker` in conjunction with `RuntimeInfo`. This is particularly useful for monitoring multiple calls within a specific code block.
 > Note: we only track OpenAI models for now (chat and search).
 
-`MetadataTracker` collects metadata from engine calls made within its context. `RuntimeInfo` then processes this raw metadata to provide a summary of token counts, elapsed time, and an estimated cost if pricing information is provided.
+`MetadataTracker` collects metadata from engine calls made within its context. `RuntimeInfo` then processes this raw metadata to provide a summary of token counts, number of API calls, elapsed time, and an estimated cost if pricing information is provided.
 
 Here's an example of how to use them:
 
@@ -188,16 +188,17 @@ from symai.backend.settings import SYMAI_CONFIG
 # This is a simplified cost estimation function.
 # It's called for each engine's usage data.
 def estimate_cost_for_engine(info: RuntimeInfo, pricing: dict) -> float:
-    # Cost calculation including cached tokens.
-    # Assumes 'pricing' dict contains 'input', 'cached_input', 'output' keys.
+    # Cost calculation including cached tokens and per-call costs.
+    # Assumes 'pricing' dict contains 'input', 'cached_input', 'output', and optionally 'calls' keys.
     input_cost = (info.prompt_tokens - info.cached_tokens) * pricing.get("input", 0)
     cached_input_cost = info.cached_tokens * pricing.get("cached_input", 0)
     output_cost = info.completion_tokens * pricing.get("output", 0)
-    return input_cost + cached_input_cost + output_cost
+    call_cost = info.total_calls * pricing.get("calls", 0)  # Cost for the number of API calls
+    return input_cost + cached_input_cost + output_cost + call_cost
 
 # This check is illustrative; adapt as needed for your environment.
 NEUROSYMBOLIC_ENGINE_IS_OPENAI = 'gpt' in SYMAI_CONFIG.get('NEUROSYMBOLIC_ENGINE_MODEL', '').lower()
-SEARCH_ENGINE_IS_OPENAI = 'openai' in SYMAI_CONFIG.get('SEARCH_ENGINE_MODEL', '').lower()
+SEARCH_ENGINE_IS_OPENAI = 'gpt' in SYMAI_CONFIG.get('SEARCH_ENGINE_MODEL', '').lower()
 
 if NEUROSYMBOLIC_ENGINE_IS_OPENAI and SEARCH_ENGINE_IS_OPENAI:
     sym = Symbol("This is a context sentence.")
@@ -211,25 +212,27 @@ if NEUROSYMBOLIC_ENGINE_IS_OPENAI and SEARCH_ENGINE_IS_OPENAI:
     end_time = time.perf_counter()
 
     # Dummy pricing for cost estimation.
-    # Keys (e.g., "GPTXChatEngine", "GPTXSearchEngine") should match the engine names
-    # that appear in the tracker.usage dictionary. These names depend on your SYMAI_CONFIG.
+    # Keys are tuples of (engine_name, model_id) and should match the keys
+    # that appear in the tracker.usage dictionary. These depend on your SYMAI_CONFIG
+    # and the models used by the engines.
     dummy_pricing = {
-        "GPTXChatEngine": { # Example name for the engine used by sym.query()
+        ("GPTXChatEngine", "gpt-model-A"): { # Example: engine used by sym.query() and its model
             "input": 0.000002,
             "cached_input": 0.000001,
             "output": 0.000002
         },
-        "GPTXSearchEngine": { # Example name for the engine used by Interface('openai_search')
+        ("GPTXSearchEngine", "gpt-model-B"): { # Example: engine used by Interface('openai_search') and its model
             "input": 0.000002,
             "cached_input": 0.000001,
-            "output": 0.000002
+            "output": 0.000002,
+            "calls": 0.0001 # Cost per API call
         }
-        # Add other engines and their pricing if used.
+        # Add other (engine_name, model_id) tuples and their pricing if used.
     }
 
     # Process collected data:
-    # RuntimeInfo.from_tracker returns a dictionary where keys are engine names
-    # and values are RuntimeInfo objects for each engine.
+    # RuntimeInfo.from_tracker returns a dictionary where keys are (engine_name, model_id) tuples
+    # and values are RuntimeInfo objects for each engine-model combination.
     # We pass 0 for total_elapsed_time initially, as it's set for the aggregated sum later.
     usage_per_engine = RuntimeInfo.from_tracker(tracker, 0)
 
@@ -240,13 +243,15 @@ if NEUROSYMBOLIC_ENGINE_IS_OPENAI and SEARCH_ENGINE_IS_OPENAI:
         completion_tokens=0,
         reasoning_tokens=0,
         cached_tokens=0,
+        total_calls=0,
         total_tokens=0,
         cost_estimate=0
     )
-    for engine_name, engine_data in usage_per_engine.items():
-        if engine_name in dummy_pricing:
-            # Estimate cost for this specific engine
-            engine_data_with_cost = RuntimeInfo.estimate_cost(engine_data, estimate_cost_for_engine, pricing=dummy_pricing[engine_name])
+    for (engine_name, model_id), engine_data in usage_per_engine.items():
+        pricing_key = (engine_name, model_id)
+        if pricing_key in dummy_pricing:
+            # Estimate cost for this specific engine and model
+            engine_data_with_cost = RuntimeInfo.estimate_cost(engine_data, estimate_cost_for_engine, pricing=dummy_pricing[pricing_key])
             aggregated_usage += engine_data_with_cost # Aggregate data
     # Set the total elapsed time for the aggregated object
     aggregated_usage.total_elapsed_time = end_time - start_time
