@@ -1,13 +1,18 @@
+from __future__ import annotations
+
 import base64
 import inspect
 import json
 import os
 import warnings
+from dataclasses import dataclass
 
 import cv2
 import httpx
 import numpy as np
+from box import Box
 from PIL import Image
+from transformers.models.detr.image_processing_detr_fast import defaultdict
 
 from .misc.console import ConsoleStyle
 
@@ -154,3 +159,77 @@ def format_bytes(bytes):
         return f"{bytes / 1048576:.2f} MB"
     else:
         return f"{bytes / 1073741824:.2f} GB"
+
+
+@dataclass
+class RuntimeInfo:
+    total_elapsed_time: float
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    cost_estimate: float
+    cached_tokens: int
+
+    def __add__(self, other):
+        add_elapsed_time = other.total_elapsed_time if hasattr(other, "total_elapsed_time") else 0
+        add_prompt_tokens = (
+            other.prompt_tokens if hasattr(other, "prompt_tokens") else 0
+        )
+        add_completion_tokens = (
+            other.completion_tokens if hasattr(other, "completion_tokens") else 0
+        )
+        add_total_tokens = other.total_tokens if hasattr(other, "total_tokens") else 0
+        add_cost_estimate = (
+            other.cost_estimate if hasattr(other, "cost_estimate") else 0
+        )
+        add_cached_tokens = (
+            other.cached_tokens if hasattr(other, "cached_tokens") else 0
+        )
+
+        return RuntimeInfo(
+            total_elapsed_time=self.total_elapsed_time + add_elapsed_time,
+            prompt_tokens=self.prompt_tokens + add_prompt_tokens,
+            completion_tokens=self.completion_tokens + add_completion_tokens,
+            total_tokens=self.total_tokens + add_total_tokens,
+            cost_estimate=self.cost_estimate + add_cost_estimate,
+            cached_tokens=self.cached_tokens + add_cached_tokens,
+        )
+
+    @staticmethod
+    def from_tracker(tracker: 'MetadataTracker', total_elapsed_time: float = 0):
+        if len(tracker.metadata) > 0:
+            try:
+                return RuntimeInfo.from_usage_stats(tracker.usage, total_elapsed_time)
+            except Exception as e:
+                raise e
+                CustomUserWarning(f"Failed to parse metadata; returning empty RuntimeInfo: {e}")
+                return RuntimeInfo(0, 0, 0, 0, 0, 0)
+        return RuntimeInfo(0, 0, 0, 0, 0, 0)
+
+    @staticmethod
+    def from_usage_stats(usage_stats: dict | None, total_elapsed_time: float = 0):
+        if usage_stats is not None:
+            usage_per_engine = {}
+            for engine_name, data in usage_stats.items():
+                data = Box(data)
+                usage_per_engine[engine_name] = RuntimeInfo(
+                    total_elapsed_time=total_elapsed_time,
+                    prompt_tokens=data.usage.prompt_tokens,
+                    completion_tokens=data.usage.completion_tokens,
+                    total_tokens=data.usage.total_tokens,
+                    cost_estimate=0, # Placeholder for cost estimate
+                    cached_tokens=data.prompt_breakdown.cached_tokens,
+                )
+            return usage_per_engine
+        return RuntimeInfo(0, 0, 0, 0, 0, 0)
+
+    @staticmethod
+    def estimate_cost(info: RuntimeInfo, f_pricing: callable, **kwargs) -> RuntimeInfo:
+        return RuntimeInfo(
+            total_elapsed_time=info.total_elapsed_time,
+            prompt_tokens=info.prompt_tokens,
+            completion_tokens=info.completion_tokens,
+            total_tokens=info.total_tokens,
+            cost_estimate=f_pricing(info, **kwargs),
+            cached_tokens=info.cached_tokens,
+        )
