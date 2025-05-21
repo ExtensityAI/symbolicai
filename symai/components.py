@@ -1176,9 +1176,8 @@ class MetadataTracker(Expression):
                 logger.warning(f"Tracking {engine_name} is not supported.")
                 continue
 
-        # Convert to normal dictionary
-        # return json.loads(json.dumps(token_details))
-        return {k: json.loads(json.dumps(v)) for k, v in token_details.items()}
+        # Convert to normal dict
+        return {**token_details}
 
     def _accumulate_metadata(self):
         """Accumulates metadata across all tracked engine calls."""
