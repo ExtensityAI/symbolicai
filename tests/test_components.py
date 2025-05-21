@@ -47,7 +47,7 @@ def test_metadata_tracker_with_runtimeinfo():
         }
     }
     usage_per_engine = RuntimeInfo.from_tracker(tracker, 0)
-    usage = RuntimeInfo(0, 0, 0, 0, 0, 0)
+    usage = RuntimeInfo(0, 0, 0, 0, 0, 0, 0) # total_elapsed_time, prompt_tokens, completion_tokens, reasoning_tokens, cached_tokens, total_tokens, cost_estimate
     for engine_name, data in usage_per_engine.items():
         usage += RuntimeInfo.estimate_cost(data, estimate_cost, pricing=dummy_pricing[engine_name])
     # Add total elapsed time to the actual elapsed time
@@ -59,6 +59,7 @@ def test_metadata_tracker_with_runtimeinfo():
     assert usage.total_tokens > 0, "Expected total tokens to be greater than 0."
     assert usage.cost_estimate > 0, "Expected cost estimate to be greater than 0."
     assert usage.cached_tokens == 0, "Expected cached tokens to be 0."
+    assert usage.reasoning_tokens == 0, "Expected reasoning tokens to be 0."
 
 
 def test_disable_primitives():

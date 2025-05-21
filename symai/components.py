@@ -1142,25 +1142,33 @@ class MetadataTracker(Expression):
 
         token_details = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
 
+        # Note on try/except:
+        # The unpacking shouldn't fail; if it fails, it's likely the API response format has changed and we need to know that ASAP
         for (_, engine_name), metadata in self._metadata.items():
             if engine_name in ("GPTXChatEngine", "GPTXReasoningEngine"):
-                usage = metadata["raw_output"].usage
-                token_details[engine_name]["usage"]["completion_tokens"] += usage.completion_tokens
-                token_details[engine_name]["usage"]["prompt_tokens"] += usage.prompt_tokens
-                token_details[engine_name]["usage"]["total_tokens"] += usage.total_tokens
-                token_details[engine_name]["completion_breakdown"]["accepted_prediction_tokens"] += usage.completion_tokens_details.accepted_prediction_tokens
-                token_details[engine_name]["completion_breakdown"]["rejected_prediction_tokens"] += usage.completion_tokens_details.rejected_prediction_tokens
-                token_details[engine_name]["completion_breakdown"]["audio_tokens"] += usage.completion_tokens_details.audio_tokens
-                token_details[engine_name]["completion_breakdown"]["reasoning_tokens"] += usage.completion_tokens_details.reasoning_tokens
-                token_details[engine_name]["prompt_breakdown"]["audio_tokens"] += usage.prompt_tokens_details.audio_tokens
-                token_details[engine_name]["prompt_breakdown"]["cached_tokens"] += usage.prompt_tokens_details.cached_tokens
+                try:
+                    usage = metadata["raw_output"].usage
+                    token_details[engine_name]["usage"]["completion_tokens"] += usage.completion_tokens
+                    token_details[engine_name]["usage"]["prompt_tokens"] += usage.prompt_tokens
+                    token_details[engine_name]["usage"]["total_tokens"] += usage.total_tokens
+                    token_details[engine_name]["completion_breakdown"]["accepted_prediction_tokens"] += usage.completion_tokens_details.accepted_prediction_tokens
+                    token_details[engine_name]["completion_breakdown"]["rejected_prediction_tokens"] += usage.completion_tokens_details.rejected_prediction_tokens
+                    token_details[engine_name]["completion_breakdown"]["audio_tokens"] += usage.completion_tokens_details.audio_tokens
+                    token_details[engine_name]["completion_breakdown"]["reasoning_tokens"] += usage.completion_tokens_details.reasoning_tokens
+                    token_details[engine_name]["prompt_breakdown"]["audio_tokens"] += usage.prompt_tokens_details.audio_tokens
+                    token_details[engine_name]["prompt_breakdown"]["cached_tokens"] += usage.prompt_tokens_details.cached_tokens
+                except Exception as e:
+                    CustomUserWarning(f"Failed to parse metadata for {engine_name}: {e}", raise_with=AttributeError)
             elif engine_name == "GPTXSearchEngine":
-                usage = metadata["raw_output"].usage
-                token_details[engine_name]["usage"]["prompt_tokens"] += usage.input_tokens
-                token_details[engine_name]["usage"]["completion_tokens"] += usage.output_tokens
-                token_details[engine_name]["usage"]["total_tokens"] += usage.total_tokens
-                token_details[engine_name]["prompt_breakdown"]["cached_tokens"] += usage.input_tokens_details.get("cached_tokens", 0)
-                token_details[engine_name]["completion_breakdown"]["reasoning_tokens"] += usage.output_tokens_details.get("reasoning_tokens", 0)
+                try:
+                    usage = metadata["raw_output"].usage
+                    token_details[engine_name]["usage"]["prompt_tokens"] += usage.input_tokens
+                    token_details[engine_name]["usage"]["completion_tokens"] += usage.output_tokens
+                    token_details[engine_name]["usage"]["total_tokens"] += usage.total_tokens
+                    token_details[engine_name]["prompt_breakdown"]["cached_tokens"] += usage.input_tokens_details.cached_tokens
+                    token_details[engine_name]["completion_breakdown"]["reasoning_tokens"] += usage.output_tokens_details.reasoning_tokens
+                except Exception as e:
+                    CustomUserWarning(f"Failed to parse metadata for {engine_name}: {e}", raise_with=AttributeError)
             else:
                 logger.warning(f"Engine {engine_name} is not supported.")
                 continue
