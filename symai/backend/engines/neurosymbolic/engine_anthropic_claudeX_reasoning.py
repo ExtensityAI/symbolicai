@@ -44,7 +44,8 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
     def id(self) -> str:
         if self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and \
            self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('claude') and \
-           '3-7' in self.config.get('NEUROSYMBOLIC_ENGINE_MODEL'):
+           ('3-7' in self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') or \
+            '4-0' in self.config.get('NEUROSYMBOLIC_ENGINE_MODEL')):
                return 'neurosymbolic'
         return super().id() # default to unregistered
 
@@ -214,7 +215,11 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         if argument.prop.instance._kwargs.get('self_prompt', False) or argument.prop.self_prompt:
             self_prompter = SelfPrompt()
 
-            res = self_prompter({'user': user, 'system': system})
+            res = self_prompter(
+                {'user': user, 'system': system},
+                max_tokens=argument.kwargs.get('max_tokens', self.max_response_tokens),
+                thinking=argument.kwargs.get('thinking', NOT_GIVEN),
+            )
             if res is None:
                 raise ValueError("Self-prompting failed!")
 
@@ -242,6 +247,7 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         tools = kwargs.get('tools', NOT_GIVEN)
         tool_choice = kwargs.get('tool_choice', NOT_GIVEN)
         metadata_anthropic = kwargs.get('metadata', NOT_GIVEN)
+        max_tokens = kwargs.get('max_tokens', self.max_response_tokens)
 
         if stop != NOT_GIVEN and type(stop) != list:
             stop = [stop]
@@ -250,12 +256,6 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         #       E.g. when we use defaults in core.py, i.e. stop=['\n']
         if stop != NOT_GIVEN:
             stop = [r'{s}' for s in stop]
-
-        # set max_tokens based on thinking
-        if thinking != NOT_GIVEN:
-            max_tokens = kwargs.get('max_tokens', self.max_response_tokens[1])
-        else:
-            max_tokens = kwargs.get('max_tokens', self.max_response_tokens[0])
 
         return {
             "model": model,

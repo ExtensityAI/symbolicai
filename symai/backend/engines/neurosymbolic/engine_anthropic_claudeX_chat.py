@@ -44,7 +44,8 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
     def id(self) -> str:
         if self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and \
            self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('claude') and \
-           '3-7' not in self.config.get('NEUROSYMBOLIC_ENGINE_MODEL'):
+           ('3-7' not in self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and \
+            '4-0' not in self.config.get('NEUROSYMBOLIC_ENGINE_MODEL')):
                return 'neurosymbolic'
         return super().id() # default to unregistered
 
