@@ -1073,9 +1073,10 @@ class SelfPrompt(Expression):
             response_format={"type": "json_object"},
             post_processors=[
                 lambda res, _: json.loads(res),
-            ]
+            ],
+            **kwargs
         )
-        def _func(self, sym: Symbol, **kwargs): pass
+        def _func(self, sym: Symbol): pass
 
         return _func(self, self._to_symbol(existing_prompt))
 
