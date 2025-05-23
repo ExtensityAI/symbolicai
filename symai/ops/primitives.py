@@ -1651,23 +1651,6 @@ class ExpressionHandlingPrimitives(Primitive):
     '''
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._metadata_tracker = None
-
-    def _get_metadata_tracker(self):
-        if self._metadata_tracker is None:
-            from ..components import MetadataTracker
-            self._metadata_tracker = MetadataTracker.__new__(MetadataTracker)
-            self._metadata_tracker._metadata = {}
-            self._metadata_tracker._metadata_id = 0
-            self._metadata_tracker._trace = False
-            self._metadata_tracker._original_trace = None
-        return self._metadata_tracker
-
-    def get_metadata(self):
-        return self._metadata_tracker.metadata_acc
-
-    def get_usage(self):
-        return self._metadata_tracker.usage
 
     def init_results(self):
         """Ensures _accumulated_results exists, initializing if needed."""
@@ -1689,75 +1672,7 @@ class ExpressionHandlingPrimitives(Primitive):
         self.init_results()
         self._accumulated_results = []
 
-    def _format_usage_stats(self, usage_obj):
-        """Formats the usage statistics into a standardized dictionary structure."""
-        return {
-            'usage': {
-                'completion_tokens': usage_obj.completion_tokens,
-                'prompt_tokens': usage_obj.prompt_tokens,
-                'total_tokens': usage_obj.total_tokens
-            },
-            'completion_breakdown': {
-                'accepted_prediction_tokens': usage_obj.completion_tokens_details.accepted_prediction_tokens,
-                'rejected_prediction_tokens': usage_obj.completion_tokens_details.rejected_prediction_tokens,
-                'audio_tokens': usage_obj.completion_tokens_details.audio_tokens,
-                'reasoning_tokens': usage_obj.completion_tokens_details.reasoning_tokens
-            },
-            'prompt_breakdown': {
-                'audio_tokens': usage_obj.prompt_tokens_details.audio_tokens,
-                'cached_tokens': usage_obj.prompt_tokens_details.cached_tokens
-            }
-        }
-
-    def _accumulate_metadata(self, prev_metadata, current_metadata):
-        """Accumulates metadata between previous and current metadata entries.
-
-        Args:
-            prev_metadata (dict): Previous metadata to accumulate from
-            current_metadata (dict): Current metadata to accumulate with
-
-        Returns:
-            dict: Accumulated metadata
-        """
-        if not prev_metadata or not current_metadata:
-            return current_metadata or prev_metadata or {}
-
-        # Create a deep copy of the current metadata as our base
-        accumulated = copy.deepcopy(current_metadata)
-
-        # Accumulate time if it exists
-        if 'time' in prev_metadata and 'time' in accumulated:
-            accumulated['time'] += prev_metadata['time']
-
-        # Handle usage stats accumulation
-        if 'raw_output' in prev_metadata and 'raw_output' in accumulated:
-            if hasattr(prev_metadata['raw_output'], 'usage') and hasattr(accumulated['raw_output'], 'usage'):
-                prev_usage = prev_metadata['raw_output'].usage
-                accumulated_usage = accumulated['raw_output'].usage
-
-                # Accumulate token counts
-                for attr in ['completion_tokens', 'prompt_tokens', 'total_tokens']:
-                    if hasattr(prev_usage, attr) and hasattr(accumulated_usage, attr):
-                        setattr(accumulated_usage, attr,
-                                getattr(accumulated_usage, attr) + getattr(prev_usage, attr))
-
-                # Handle nested token details
-                for detail_attr in ['completion_tokens_details', 'prompt_tokens_details']:
-                    if hasattr(prev_usage, detail_attr) and hasattr(accumulated_usage, detail_attr):
-                        prev_details = getattr(prev_usage, detail_attr)
-                        accumulated_details = getattr(accumulated_usage, detail_attr)
-
-                        # Accumulate all numeric attributes in the details
-                        for attr in dir(prev_details):
-                            if not attr.startswith('_') and hasattr(accumulated_details, attr):
-                                prev_val = getattr(prev_details, attr)
-                                accumulated_val = getattr(accumulated_details, attr)
-                                if isinstance(prev_val, (int, float)) and isinstance(accumulated_val, (int, float)):
-                                    setattr(accumulated_details, attr, accumulated_val + prev_val)
-
-        return accumulated
-
-    def interpret(self, prompt: Optional[str] = None, usage: bool = True, accumulate: bool = False, **kwargs) -> 'Symbol':
+    def interpret(self, prompt: Optional[str] = None, accumulate: bool = False, **kwargs) -> 'Symbol':
         '''
         Evaluates a symbolic expression using the provided engine.
         Uses the core.expression decorator to create a _func method that evaluates the given expression.
@@ -1765,7 +1680,6 @@ class ExpressionHandlingPrimitives(Primitive):
         Args:
             prompt (Optional[str]): The prompt to evaluate. Defaults to the symbol value.
             accumulate (bool): If True, stores results for later retrieval. Defaults to False.
-            usage (bool): If True, tracks usage statistics. Defaults to False.
             **kwargs: Additional keyword arguments for the core.interpret decorator.
 
         Returns:
@@ -1777,52 +1691,18 @@ class ExpressionHandlingPrimitives(Primitive):
         # Propagate original input
         input_value = getattr(self, '_input', self) if hasattr(self, '_input') else self
 
-        if usage:
-            kwargs['return_metadata'] = True
-
         @core.interpret(**kwargs)
         def _func(_, prompt: str):
             pass
 
-        if usage:
-            # Use the metadata tracker from the input value if it exists
-            if hasattr(input_value, '_metadata_tracker') and input_value._metadata_tracker is not None:
-                tracker = input_value._metadata_tracker
-            else:
-                tracker = self._get_metadata_tracker()
-
-            with tracker as t:
-                result, metadata = _func(self, prompt)
-                result = self._to_type(result)
-
-            # Get the previous metadata if it exists
-            prev_metadata = getattr(self, 'metadata_stats', None)
-
-            # Accumulate metadata if previous exists
-            if prev_metadata:
-                result.metadata_stats = self._accumulate_metadata(prev_metadata, metadata)
-            else:
-                result.metadata_stats = metadata
-
-            # Set usage stats based on accumulated metadata
-            result.usage_stats = self._format_usage_stats(result.metadata_stats['raw_output'].usage)
-
-            # Propagate the metadata tracker to the result
-            result._metadata_tracker = tracker
-
-        else:
-            result = _func(self, prompt)
-            result = self._to_type(result)
-            # Set empty stats when usage tracking is disabled
-            result.metadata_stats = None
-            result.usage_stats = None
+        result = _func(self, prompt)
+        result = self._to_type(result)
 
         if accumulate:
             input_value.init_results()
             input_value._accumulated_results.append(result.value)
 
         result._input = input_value
-
         return result
 
 
@@ -1848,9 +1728,7 @@ class ValidationHandlingPrimitives(Primitive):
         )
 
     def validate_json(self, result: 'Symbol', data_model: "LLMDataModel", retry_count: int,
-                     usage: bool = True, accumulate: bool = False, prompt: Optional[str] = None,
-                     **kwargs) -> 'Symbol':
-
+                     accumulate: bool = False, prompt: Optional[str] = None, **kwargs) -> 'Symbol':
         remedy_seeds = self.prepare_seeds(retry_count, **kwargs)
         json_validation_count = 0
 
@@ -1877,9 +1755,6 @@ class ValidationHandlingPrimitives(Primitive):
             result._value = prompt
 
         self.print_verbose(f"Starting validation process with {retry_count} maximum retries...")
-
-        metadata = None
-        prev_metadata = getattr(self, 'metadata_stats', None)
 
         last_error = ""
         for i in range(retry_count):
@@ -1910,16 +1785,6 @@ class ValidationHandlingPrimitives(Primitive):
                 result_symbol.data_model = data_model
                 result_symbol.json_validation_count = json_validation_count
                 result_symbol._input = self.input_value
-                if usage:
-                    if prev_metadata:
-                        result_symbol.metadata_stats = self._accumulate_metadata(prev_metadata, metadata)
-                    else:
-                        result_symbol.metadata_stats = metadata
-
-                    if result_symbol.metadata_stats:
-                        result_symbol.usage_stats = self._format_usage_stats(result_symbol.metadata_stats['raw_output'].usage)
-                    else:
-                        result_symbol.usage_stats = None
 
                 if accumulate:
                     self.input_value._accumulated_results.append(result_symbol.value)
@@ -1944,11 +1809,7 @@ class ValidationHandlingPrimitives(Primitive):
                 })
 
                 # Run interpret with its own metadata tracking
-                result = self.interpret(remedy_prompt, usage=usage, accumulate=False, **kwargs)
-
-                if usage:
-                    metadata = list(dict(result._metadata_tracker.metadata).items())[-1][1]
-
+                result = self.interpret(remedy_prompt, accumulate=False, **kwargs)
                 last_error = error_str
 
                 if i < retry_count - 1:
@@ -1956,11 +1817,10 @@ class ValidationHandlingPrimitives(Primitive):
 
         error_msg = f"Failed to retrieve valid JSON: {last_error}"
         self.print_verbose(f"\n✗ Validation failed after {json_validation_count} attempts")
-
         raise Exception(error_msg)
 
     def validate(self, prompt: Optional[str] = None, data_model: "LLMDataModel" = None,
-                retry_count: int = 5, usage: bool = True, accumulate: bool = False,
+                retry_count: int = 5, accumulate: bool = False,
                 verbose: bool = False, **kwargs) -> 'Symbol':
         """
         Validates a Symbol against a JSON schema, retrying with interpretation if needed.
@@ -1968,15 +1828,13 @@ class ValidationHandlingPrimitives(Primitive):
         Args:
             data_model (LLMDataModel): The Pydantic model to validate against.
             retry_count (int): Number of retry attempts. Defaults to 5.
-            usage (bool): Whether to track usage statistics.
-            accumulate (bool): Whether to accumulate usage statistics.
+            accumulate (bool): Whether to accumulate results.
             verbose (bool): Whether to print detailed validation progress.
             **kwargs: Additional keyword arguments for interpretation.
 
         Returns:
-            Symbol: The validated Symbol with usage_stats if usage=True
+            Symbol: The validated Symbol
         """
-
         self.verbose = verbose
         self.input_value = getattr(self, '_input', self) if hasattr(self, '_input') else self
 
@@ -1988,7 +1846,7 @@ class ValidationHandlingPrimitives(Primitive):
 
         kwargs["response_format"] = {"type": "json_object"}
 
-        return self.validate_json(self, data_model, retry_count, usage, accumulate, prompt, **kwargs)
+        return self.validate_json(self, data_model, retry_count, accumulate, prompt, **kwargs)
 
 
 class ConstraintHandlingPrimitives(Primitive):
@@ -2224,14 +2082,11 @@ class ConstraintHandlingPrimitives(Primitive):
 
     def length_constraint(self, result: 'Symbol',
                           constraints: Union[List[Union["LengthConstraint", "CustomConstraint"]], "LengthConstraint", "CustomConstraint"],
-                          retry_count: int = 5, usage: bool = True, accumulate: bool = False,
+                          retry_count: int = 5, accumulate: bool = False,
                           prompt: Optional[str] = None, *args, **kwargs):
 
         remedy_seeds = self.prepare_seeds(retry_count, **kwargs)
         constraint_count = 0
-
-        metadata = None
-        prev_metadata = getattr(self, 'metadata_stats', None)
 
         if prompt:
             result._value = prompt
@@ -2265,12 +2120,7 @@ class ConstraintHandlingPrimitives(Primitive):
 
                 # Store the original type
                 original_type = type(result.value)
-
-                # Run interpret
-                result = self.interpret(remedy_task, usage=usage, accumulate=False, **kwargs)
-
-                if usage:
-                    metadata = list(dict(result._metadata_tracker.metadata).items())[-1][1]
+                result = self.interpret(remedy_task, accumulate=False, **kwargs)
 
                 # Convert back to original type if needed
                 if hasattr(original_type, 'model_validate_json') and isinstance(result.value, str):
@@ -2285,21 +2135,9 @@ class ConstraintHandlingPrimitives(Primitive):
                 if i < retry_count - 1:
                     self.print_verbose("Attempting to fix constraint violations...\n")
             else:
-                # Create result symbol with metadata
                 result_symbol = result
                 result_symbol.constraint_count = constraint_count
                 result_symbol._input = self.input_value
-
-                if usage:
-                    if prev_metadata:
-                        result_symbol.metadata_stats = self._accumulate_metadata(prev_metadata, metadata)
-                    else:
-                        result_symbol.metadata_stats = metadata
-
-                    if result_symbol.metadata_stats:
-                        result_symbol.usage_stats = self._format_usage_stats(result_symbol.metadata_stats['raw_output'].usage)
-                    else:
-                        result_symbol.usage_stats = None
 
                 if accumulate:
                     self.input_value._accumulated_results.append(result_symbol.value)
@@ -2312,7 +2150,7 @@ class ConstraintHandlingPrimitives(Primitive):
         raise Exception(error_msg)
 
     def constrain(self, constraints: Union[List[Union["LengthConstraint", "CustomConstraint"]], "LengthConstraint", "CustomConstraint"],
-                  retry_count: int = 5, usage: bool = True, accumulate: bool = False,
+                  retry_count: int = 5, accumulate: bool = False,
                   verbose: bool = False, *args, **kwargs) -> 'Symbol':
         """
         Constrains a Symbol according to specified constraints, retrying with interpretation if needed.
@@ -2320,13 +2158,12 @@ class ConstraintHandlingPrimitives(Primitive):
         Args:
             constraints: Length or custom constraints to enforce.
             retry_count (int): Number of retry attempts. Defaults to 5.
-            usage (bool): Whether to track usage statistics.
-            accumulate (bool): Whether to accumulate usage statistics.
+            accumulate (bool): Whether to accumulate results.
             verbose (bool): Whether to print detailed constraint validation progress.
             **kwargs: Additional keyword arguments for interpretation.
 
         Returns:
-            Symbol: The constrained Symbol with usage_stats if usage=True
+            Symbol: The constrained Symbol
         """
         self.verbose = verbose
         self.input_value = getattr(self, '_input', self) if hasattr(self, '_input') else self
@@ -2334,7 +2171,7 @@ class ConstraintHandlingPrimitives(Primitive):
         if accumulate:
             self.input_value.init_results()
 
-        result = self.length_constraint(self, constraints, retry_count, usage, *args, **kwargs)
+        result = self.length_constraint(self, constraints, retry_count, accumulate, *args, **kwargs)
         return result
 
 
