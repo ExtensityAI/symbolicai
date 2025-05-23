@@ -191,11 +191,17 @@ class PromptRegistry:
             self._prompt_instructions[model][lang][key] = instruction
 
     def register_tag(
-        self, lang: PromptLanguage, key, tag, model: ModelName = ModelName.ALL
+        self, lang: PromptLanguage, key, tag, model: ModelName = ModelName.ALL, delimiters=None
     ):
         with self._lock:
             model, lang = self._init_model_lang(model, lang)
-            self._prompt_tags[model][lang][key] = tag
+            if delimiters is not None:
+                self._prompt_tags[model][lang][key] = {
+                    'tag': tag,
+                    'delimiters': delimiters
+                }
+            else:
+                self._prompt_tags[model][lang][key] = tag
 
     def value(
         self, key, model: ModelName = ModelName.ALL, lang: PromptLanguage = None
@@ -210,10 +216,20 @@ class PromptRegistry:
     def tag(
         self, key, model: ModelName = ModelName.ALL, lang: PromptLanguage = None, format=True
     ) -> str:
+        tag_data = self._retrieve_value(self._prompt_tags, model, lang, key)
+
+        if isinstance(tag_data, dict):
+            tag_value = tag_data['tag']
+            if format:
+                prefix, suffix = tag_data['delimiters']
+                return f"{prefix}{tag_value}{suffix}"
+            else:
+                return tag_value
+
         if format:
-            return f"{self._tag_prefix}{self._retrieve_value(self._prompt_tags, model, lang, key)}{self._tag_suffix}"
+            return f"{self._tag_prefix}{tag_data}{self._tag_suffix}"
         else:
-            return self._retrieve_value(self._prompt_tags, model, lang, key)
+            return tag_data
 
     def has_value(
         self, key, model: ModelName = ModelName.ALL, lang: PromptLanguage = None
