@@ -13,13 +13,19 @@ from anthropic.types.message import Message
 
 
 NEUROSYMBOLIC = SYMAI_CONFIG.get('NEUROSYMBOLIC_ENGINE_MODEL')
+CLAUDE_THINKING = {"type": "enabled", "budget_tokens": 1024}
+CLAUDE_MAX_TOKENS = 4092 # Limit this, otherwise: "ValueError: Streaming is strongly recommended for operations that may take longer than 10 minutes."
 
 @bind(engine='neurosymbolic', property='compute_required_tokens')(lambda: 0)
 def _compute_required_tokens(): pass
 
 def test_init():
     x = Symbol('This is a test!')
-    x.query('What is this?')
+
+    if all(id not in NEUROSYMBOLIC for id in ['3-7', '4-0']):
+        x.query('What is this?')
+    else:
+        x.query('What is this?', max_tokens=CLAUDE_MAX_TOKENS, thinking=CLAUDE_THINKING, raw_output=True)
 
     # if no errors are raised, then the test is successful
     assert True
@@ -30,14 +36,21 @@ def test_init():
 def test_vision():
     file = Path(__file__).parent.parent.parent.parent / 'assets' / 'images' / 'cat.jpg'
     x = Symbol(f'<<vision:{file}:>>')
-    res = x.query('What is in the image?')
+    if all(id not in NEUROSYMBOLIC for id in ['3-7', '4-0']):
+        res = x.query('What is in the image?')
+    else:
+        res = x.query('What is in the image?', max_tokens=CLAUDE_MAX_TOKENS, thinking=CLAUDE_THINKING)
 
     # it makes sense here to explicitly check if there is a cat; we are testing the vision component
     assert 'cat' in res.value
 
     file = 'https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/cat.jpg'
     x = Symbol(f'<<vision:{file}:>>')
-    res = x.query('What is in the image?')
+
+    if all(id not in NEUROSYMBOLIC for id in ['3-7', '4-0']):
+        res = x.query('What is in the image?')
+    else:
+        res = x.query('What is in the image?', max_tokens=CLAUDE_MAX_TOKENS, thinking=CLAUDE_THINKING)
 
     # same check but for url
     assert 'cat' in res.value
@@ -130,20 +143,23 @@ def test_tool_usage():
           }
         ]
         fn = Function("Analyze the input request and select the most appropriate function to call from the provided options.", tools=tools)
-        if '3-7' not in NEUROSYMBOLIC:
+        if all(id not in NEUROSYMBOLIC for id in ['3-7', '4-0']):
             res = fn("what's the temperature in Bogotá, Colombia", raw_output=True)
         else:
-            thinking={"type": "enabled", "budget_tokens": 4092}
-            res = fn("what's the S&P 500 at today", raw_output=True, thinking=thinking, max_tokens=16000)
+            res = fn("what's the S&P 500 at today", raw_output=True, max_tokens=CLAUDE_MAX_TOKENS, thinking=CLAUDE_THINKING)
         for block in res.content:
             if isinstance(block, ToolUseBlock):
                 assert block.name == 'get_stock_price'
 
 def test_raw_output():
-    S = Expression.prompt('What is the capital of France?', raw_output=True)
     if NEUROSYMBOLIC.startswith('claude'):
+        if all(id not in NEUROSYMBOLIC for id in ['3-7', '4-0']):
+            S = Expression.prompt('What is the capital of France?', raw_output=True)
+        else:
+            S = Expression.prompt('What is the capital of France?', raw_output=True, max_tokens=CLAUDE_MAX_TOKENS, thinking=CLAUDE_THINKING)
         assert isinstance(S.value, Message)
     elif NEUROSYMBOLIC.startswith('gpt') or NEUROSYMBOLIC.startswith('o1') or NEUROSYMBOLIC.startswith('o3'):
+        S = Expression.prompt('What is the capital of France?', raw_output=True)
         assert isinstance(S.value, ChatCompletion)
 
 def test_preview():
