@@ -145,8 +145,9 @@ class CustomUserWarning:
             filename = filename[filename.find('symbolicai'):]
             with ConsoleStyle('warn') as console:
                 console.print(f"{filename}:{lineno}: {UserWarning.__name__}: {message}")
-            if raise_with is not None:
-                raise raise_with(message)
+        # Always raise the warning if raise_with is provided
+        if raise_with is not None:
+            raise raise_with(message)
 
 
 # Function to format bytes to a human-readable string
