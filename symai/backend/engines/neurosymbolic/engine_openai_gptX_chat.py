@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 from copy import deepcopy
@@ -46,7 +47,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         try:
             self.client = openai.Client(api_key=openai.api_key)
         except Exception as e:
-            raise Exception(f'Failed to initialize OpenAI client. Please check your OpenAI library version. Caused by: {e}') from e
+            CustomUserWarning(f'Failed to initialize OpenAI client. Please check your OpenAI library version. Caused by: {e}', raise_with=ValueError)
 
     def id(self) -> str:
         if self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and \
@@ -102,8 +103,9 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             CustomUserWarning("Warning: gpt-4 may update over time. Returning num tokens assuming gpt-4-0613.")
             self.tokenizer = tiktoken.encoding_for_model("gpt-4-0613")
         else:
-            raise NotImplementedError(
-                f"""num_tokens_from_messages() is not implemented for model {self.model}. See https://cookbook.openai.com/examples/how_to_count_tokens_with_tiktoken for information on how messages are converted to tokens."""
+            CustomUserWarning(
+                f"""num_tokens_from_messages() is not implemented for model {self.model}. See https://cookbook.openai.com/examples/how_to_count_tokens_with_tiktoken for information on how messages are converted to tokens.""",
+                raise_with=NotImplementedError
             )
 
         num_tokens = 0
@@ -165,7 +167,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
                     return ValueError(f"Invalid content type: {type(content_item)}. Format input according to the documentation. See https://platform.openai.com/docs/api-reference/chat/create?lang=python")
         else:
             # Unknown input format
-            raise ValueError(f"Unknown content type: {type(user_prompt['content'])}. Format input according to the documentation. See https://platform.openai.com/docs/api-reference/chat/create?lang=python")
+            CustomUserWarning(f"Unknown content type: {type(user_prompt['content'])}. Format input according to the documentation. See https://platform.openai.com/docs/api-reference/chat/create?lang=python", raise_with=ValueError)
 
         system_token_count = len(system_tokens)
         user_token_count = len(user_tokens)
@@ -241,7 +243,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
                 msg = 'OpenAI API key is not set. Please set it in the config file or pass it as an argument to the command method.'
                 logging.error(msg)
                 if self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] is None or self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] == '':
-                    raise Exception(msg) from e
+                    CustomUserWarning(msg, raise_with=ValueError)
                 openai.api_key = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
 
             callback = self.client.chat.completions.create
@@ -250,9 +252,11 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             if except_remedy is not None:
                 res = except_remedy(self, e, callback, argument)
             else:
-                raise e
+                CustomUserWarning('An error occurred while calling the OpenAI API. Please check your API key and model name.', raise_with=ValueError)
 
         metadata = {'raw_output': res}
+        if payload.get('tools'):
+            metadata = self._process_function_calls(res, metadata)
         output = [r.message.content for r in res.choices]
 
         return output, metadata
@@ -260,7 +264,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
     def prepare(self, argument):
         if argument.prop.raw_input:
             if not argument.prop.processed_input:
-                raise ValueError('Need to provide a prompt instruction to the engine if raw_input is enabled.')
+                CustomUserWarning('Need to provide a prompt instruction to the engine if raw_input is enabled.', raise_with=ValueError)
             value = argument.prop.processed_input
             # convert to dict if not already
             if type(value) != list:
@@ -339,7 +343,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
                         max_used_frames, img_ = img_.split(':')
                         max_used_frames = int(max_used_frames)
                         if max_used_frames < 1 or max_used_frames > max_frames_spacing:
-                            raise ValueError(f"Invalid max_used_frames value: {max_used_frames}. Expected value between 1 and {max_frames_spacing}")
+                            CustomUserWarning(f"Invalid max_used_frames value: {max_used_frames}. Expected value between 1 and {max_frames_spacing}", raise_with=ValueError)
                     buffer, ext = encode_media_frames(img_)
                     if len(buffer) > 1:
                         step = len(buffer) // max_frames_spacing # max frames spacing
@@ -397,7 +401,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
 
             res = self_prompter({'user': user, 'system': system})
             if res is None:
-                raise ValueError("Self-prompting failed!")
+                CustomUserWarning("Self-prompting failed!", raise_with=ValueError)
 
             if len(image_files) > 0:
                 user_prompt = { "role": "user", "content": [
@@ -413,6 +417,28 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             { "role": "system", "content": system },
             user_prompt,
         ]
+
+    def _process_function_calls(self, res, metadata):
+        hit = False
+        if hasattr(res, 'choices') and res.choices:
+            choice = res.choices[0]
+            if hasattr(choice, 'message') and choice.message:
+                if hasattr(choice.message, 'tool_calls') and choice.message.tool_calls:
+                    for tool_call in choice.message.tool_calls:
+                        if hasattr(tool_call, 'function') and tool_call.function:
+                            if hit:
+                                CustomUserWarning("Multiple function calls detected in the response but only the first one will be processed.")
+                                break
+                            try:
+                                args_dict = json.loads(tool_call.function.arguments)
+                            except json.JSONDecodeError:
+                                args_dict = {}
+                            metadata['function_call'] = {
+                                'name': tool_call.function.name,
+                                'arguments': args_dict
+                            }
+                            hit = True
+        return metadata
 
     def _prepare_request_payload(self, messages, argument):
         """Prepares the request payload from the argument."""
