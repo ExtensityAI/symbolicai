@@ -151,34 +151,19 @@ def test_tool_usage():
             if isinstance(block, ToolUseBlock):
                 assert block.name == 'get_stock_price'
     elif NEUROSYMBOLIC.startswith('gemini'):
-        tools = [{
-            "name": "get_current_temperature",
-            "description": "Gets the current temperature for a given location.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "location": {
-                        "type": "string",
-                        "description": "The city name, e.g. San Francisco",
-                    },
-                },
-                "required": ["location"],
-            }
-        }]
-        fn = Function("Analyze the input request and select the most appropriate function to call from the provided options.", tools=tools)
-        res = fn("what's the temperature in London?", raw_output=True)
-        # Verify function call in metadata
-        assert 'function_call' in res.prop.metadata
-        assert res.prop.metadata['function_call']['name'] == 'get_current_temperature'
-        # Verify arguments contain London
-        assert 'location' in res.prop.metadata['function_call']['arguments']
-        assert 'london' in res.prop.metadata['function_call']['arguments']['location'].lower()
+        def get_capital(country: str | None = None) -> str:
+            """Gets the capital city of a given country."""
+            return "Paris"
 
-        # Test non-raw function calling
-        fn_regular = Function("Analyze the input request and select the most appropriate function to call from the provided options.", tools=tools)
-        res_regular = fn_regular("what's the temperature in Paris?")
-        # The response should mention function call information
-        assert 'function_call' in res_regular.value or 'get_current_temperature' in res_regular.value
+        tools = [get_capital]
+        fn = Function("Analyze the input request and select the most appropriate function to call from the provided options.", tools=tools)
+        res, metadata = fn("What's the capital of France?", raw_output=True, return_metadata=True)
+        breakpoint()
+
+        assert 'function_call' in metadata
+        assert metadata['function_call']['name'] == 'get_capital'
+        assert 'country' in metadata['function_call']['arguments']
+        assert 'france' in metadata['function_call']['arguments']['country'].lower()
 
 def test_raw_output():
     if NEUROSYMBOLIC.startswith('claude'):

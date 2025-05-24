@@ -69,7 +69,6 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
     def _handle_document_content(self, content: str):
         """Handle document content by uploading to Gemini"""
         try:
-            # Extract document path from content
             pattern = r'<<document:(.*?):>>'
             matches = re.findall(pattern, content)
             if not matches:
@@ -77,11 +76,9 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
 
             doc_path = matches[0].strip()
             if doc_path.startswith('http'):
-                # Handle URL documents
                 CustomUserWarning("URL documents not yet supported for Gemini")
                 return None
             else:
-                # Upload local document
                 uploaded_file = genai.upload_file(doc_path)
                 return uploaded_file
         except Exception as e:
@@ -99,33 +96,25 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
 
             try:
                 if img_src.startswith('data:image'):
-                    # Handle base64 data URIs
                     header, encoded = img_src.split(',', 1)
                     mime_type = header.split(';')[0].split(':')[1]
-                    image_bytes = base64.b64decode(encoded) # base64 must be imported
+                    image_bytes = base64.b64decode(encoded)
                     image_parts.append(genai.types.Part(inline_data=genai.types.Blob(mime_type=mime_type, data=image_bytes)))
 
                 elif img_src.startswith('http://') or img_src.startswith('https://'):
-                    # Fetch the image content from the URL
                     response = requests.get(img_src, timeout=10) # 10 seconds timeout
-                    response.raise_for_status() # Raise an exception for bad status codes
+                    response.raise_for_status()
 
                     image_bytes = response.content
-                    # Use Content-Type header from response; fallback if not present
                     mime_type = response.headers.get('Content-Type', 'application/octet-stream')
 
-                    # Ensure it's a supported image type, or let downstream handle if API is flexible
                     if not mime_type.startswith('image/'):
                         CustomUserWarning(f"URL content type '{mime_type}' does not appear to be an image for: {img_src}. Attempting to use anyway.")
-                        # If strict type checking needed, could skip or raise here.
-                        # For now, we pass it through.
 
                     image_parts.append(genai.types.Part(inline_data=genai.types.Blob(mime_type=mime_type, data=image_bytes)))
 
                 elif img_src.startswith('frames:'):
-                    # Handle 'frames:' prefixed paths
                     temp_path = img_src.replace('frames:', '')
-                    # Basic split, assuming format 'max_frames:path'
                     parts = temp_path.split(':', 1)
                     if len(parts) != 2:
                         CustomUserWarning(f"Invalid 'frames:' format: {img_src}")
@@ -137,19 +126,16 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
                         CustomUserWarning(f"Invalid max_frames number in 'frames:' format: {img_src}")
                         continue
 
-                    # encode_media_frames must be available from symai.utils
                     frame_buffers, ext = encode_media_frames(actual_path)
 
-                    # Determine MIME type from extension
                     mime_type = f'image/{ext.lower()}' if ext else 'application/octet-stream'
-                    if ext and ext.lower() == 'jpg': # Handle jpg case explicitly for jpeg
+                    if ext and ext.lower() == 'jpg':
                         mime_type = 'image/jpeg'
 
                     if not frame_buffers:
                         CustomUserWarning(f"encode_media_frames returned no frames for: {actual_path}")
                         continue
 
-                    # Original code had max_frames_spacing = 50, used to calculate step
                     step = max(1, len(frame_buffers) // 50)
                     indices = list(range(0, len(frame_buffers), step))[:max_used_frames]
 
@@ -157,17 +143,15 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
                         if i_idx < len(frame_buffers):
                            image_bytes = frame_buffers[i_idx]
                            image_parts.append(genai.types.Part(inline_data=genai.types.Blob(mime_type=mime_type, data=image_bytes)))
-                        # No else needed here as indices are derived from len(frame_buffers)
 
                 else:
                     # Handle local file paths
-                    local_file_path = Path(img_src) # Path must be imported from pathlib
+                    local_file_path = Path(img_src)
                     if not local_file_path.is_file():
                         CustomUserWarning(f"Local image file not found: {img_src}")
                         continue
 
                     image_bytes = local_file_path.read_bytes()
-                    # mimetypes must be imported
                     mime_type, _ = mimetypes.guess_type(local_file_path)
                     if mime_type is None: # Fallback MIME type determination
                         file_ext = local_file_path.suffix.lower().lstrip('.')
@@ -175,16 +159,12 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
                         elif file_ext == 'png': mime_type = 'image/png'
                         elif file_ext == 'gif': mime_type = 'image/gif'
                         elif file_ext == 'webp': mime_type = 'image/webp'
-                        # Add more common types if needed
-                        else: mime_type = 'application/octet-stream' # Default fallback
+                        else: mime_type = 'application/octet-stream'
 
                     image_parts.append(genai.types.Part(inline_data=genai.types.Blob(mime_type=mime_type, data=image_bytes)))
 
             except Exception as e:
-                # Log the full exception for better debugging if needed
-                # import traceback
-                # logging.error(f"Error processing image source '{img_src}': {traceback.format_exc()}")
-                CustomUserWarning(f"Failed to process image source '{img_src}'. Error: {type(e).__name__} - {e}")
+                CustomUserWarning(f"Failed to process image source '{img_src}'. Error: {str(e)}", raise_with=ValueError)
 
         return image_parts
 
@@ -309,17 +289,15 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
             if payload.get('thinking_config'):
                 generation_config.thinking_config = payload['thinking_config']
 
-            generate_params = {
-                "model": kwargs.get('model', self.model),
-                'contents': contents,
-                'config': generation_config,
-            }
-
-            # Add tools configuration if tools are provided
             if payload.get('tools'):
-                generate_params['tools'] = payload['tools']
+                generation_config.tools = payload['tools']
+                generation_config.automatic_function_calling=payload['automatic_function_calling']
 
-            res = self.client.models.generate_content(**generate_params)
+            res = self.client.models.generate_content(
+                model=kwargs.get('model', self.model),
+                contents=contents,
+                config=generation_config
+            )
 
         except Exception as e:
             if self.api_key is None or self.api_key == '':
@@ -341,8 +319,8 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
         if output['thinking']:
             metadata['thinking'] = output['thinking']
 
-        # Process any function calls in the response
-        metadata, output = self._process_function_calls(res, metadata, output, kwargs)
+        if payload.get('tools'):
+            metadata = self._process_function_calls(res, metadata)
 
         if argument.prop.response_format:
             # Safely remove JSON markdown formatting if present
@@ -352,26 +330,20 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
 
         return [output['text']], metadata
 
-    def _process_function_calls(self, res, metadata, output, kwargs):
+    def _process_function_calls(self, res, metadata):
+        # Extract function call from Gemini response and add to metadata
         if hasattr(res, 'candidates') and res.candidates:
-            for candidate in res.candidates:
-                if hasattr(candidate, 'content') and candidate.content and hasattr(candidate.content, 'parts'):
-                    for part in candidate.content.parts:
-                        if hasattr(part, 'function_call') and part.function_call:
-                            try:
-                                # Extract function call details
-                                arguments = part.function_call.args
-
-                                # Store function call in metadata
-                                metadata['function_call'] = {
-                                    'name': part.function_call.name,
-                                    'arguments': arguments
-                                }
-                            except Exception as e:
-                                logging.warning(f"Error processing function call: {e}")
-                            break
-
-        return metadata, output
+            candidate = res.candidates[0]
+            if hasattr(candidate, 'content') and candidate.content:
+                for part in candidate.content.parts:
+                    if hasattr(part, 'function_call') and part.function_call:
+                        func_call = part.function_call
+                        metadata['function_call'] = {
+                            'name': func_call.name,
+                            'arguments': func_call.args
+                        }
+                        break
+        return metadata
 
     def prepare(self, argument):
         if argument.prop.raw_input:
@@ -446,17 +418,13 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
             user_content = res['user']
             system_content = res['system']
 
-        # Prepare content for Gemini
         contents = []
 
-        # Add system message if present
         if system_content.strip():
             contents.append(system_content.strip())
 
-        # Add media content
         contents.extend(media_content)
 
-        # Add user content
         if user_content.strip():
             contents.append(user_content.strip())
 
@@ -476,54 +444,28 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
 
         thinking_arg = kwargs.get('thinking', None)
         if thinking_arg and isinstance(thinking_arg, dict) and thinking_arg.get("enabled") is True:
-            # Based on user's example: types.ThinkingConfig(include_thoughts=True)
-            # The 'thinking_arg' could be expanded to pass more specific config to ThinkingConfig if needed.
             payload['thinking_config'] = types.ThinkingConfig(include_thoughts=True)
 
         response_format = kwargs.get('response_format', None)
         if response_format and response_format.get('type') == 'json_object':
             payload['response_mime_type'] = 'application/json'
 
-        # Process tools if provided
-        tools_arg = kwargs.get('tools')
-        if tools_arg:
-            try:
-                converted_tools = self._convert_tools_format(tools_arg)
-                if converted_tools:
-                    payload['tools'] = converted_tools
-            except Exception as e:
-                logging.warning(f"Error setting up tools: {e}")
+        tools = kwargs.get('tools')
+        if tools:
+            payload['tools'] = tools
+            payload['automatic_function_calling'] = types.AutomaticFunctionCallingConfig(
+                disable=kwargs.get('automatic_function_calling', True)
+            )
 
         return payload
 
     def _convert_tools_format(self, tools):
-        if isinstance(tools, types.Tool):
-            return tools
+        if not isinstance(tools, list):
+            tools = [tools]
 
-        if isinstance(tools, list):
-            function_declarations = []
-            for tool in tools:
-                try:
-                    if tool.get('type') == 'function' and 'function' in tool:
-                        function_info = tool['function']
-                        function_declarations.append(function_info)
-                    # Handle Claude-style format
-                    elif 'name' in tool and 'input_schema' in tool:
-                        # Convert Claude format to Gemini format
-                        function_info = {
-                            'name': tool['name'],
-                            'description': tool.get('description', ''),
-                            'parameters': tool['input_schema']
-                        }
-                        function_declarations.append(function_info)
-                    # Handle direct function declaration format
-                    elif 'name' in tool and 'parameters' in tool:
-                        function_declarations.append(tool)
-                except Exception as e:
-                    logging.warning(f"Error converting tool format: {e}")
-                    continue
+        valid = [t for t in tools if callable(t)]
+        if len(valid) < len(tools):
+            CustomUserWarning("Some tools were ignored because they are not Python callables.")
+        return valid
 
-            if function_declarations:
-                return types.Tool(function_declarations=function_declarations)
-
-        return types.Tool(function_declarations=[])
+        CustomUserWarning(f"Tools argument must be a callable or list of callables, got: {tools}", raise_with=ValueError)
