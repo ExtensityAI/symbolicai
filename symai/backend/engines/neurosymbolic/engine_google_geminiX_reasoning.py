@@ -1,13 +1,13 @@
-import logging
-import io
-import re
-from copy import deepcopy
 import base64
+import io
+import logging
 import mimetypes
-from pathlib import Path
+import re
 import urllib.parse
-import requests
+from copy import deepcopy
+from pathlib import Path
 
+import requests
 from google import genai
 from google.genai import types
 
@@ -272,9 +272,15 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
 
     def forward(self, argument):
         kwargs = argument.kwargs
-        contents = argument.prop.prepared_input
+        system, prompt = argument.prop.prepared_input
         payload = self._prepare_request_payload(argument)
         except_remedy = kwargs.get('except_remedy')
+
+        contents = []
+        for msg in prompt:
+            role = msg['role']
+            parts_list = msg['content']
+            contents.append(types.Content(role=role, parts=parts_list))
 
         try:
             generation_config = types.GenerateContentConfig(
@@ -285,6 +291,9 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
                 stop_sequences=payload.get('stop_sequences'),
                 response_mime_type=payload.get('response_mime_type', 'text/plain'),
             )
+
+            if payload.get('system_instruction'):
+                generation_config.system_instruction = payload['system_instruction']
 
             if payload.get('thinking_config'):
                 generation_config.thinking_config = payload['thinking_config']
@@ -314,35 +323,40 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
                 CustomUserWarning(f"Error during generation: {str(e)}", raise_with=ValueError)
 
         metadata = {'raw_output': res}
+        if payload.get('tools'):
+            metadata = self._process_function_calls(res, metadata)
+
+        if kwargs.get('raw_output', False):
+            return [res], metadata
+
         output = self._collect_response(res)
 
         if output['thinking']:
             metadata['thinking'] = output['thinking']
 
-        if payload.get('tools'):
-            metadata = self._process_function_calls(res, metadata)
-
+        processed_text = output['text']
         if argument.prop.response_format:
             # Safely remove JSON markdown formatting if present
-            text_content = output['text']
-            text_content = text_content.replace('```json', '').replace('```', '')
-            output['text'] = text_content
+            processed_text = processed_text.replace('```json', '').replace('```', '')
 
-        return [output['text']], metadata
+        return [processed_text], metadata
 
     def _process_function_calls(self, res, metadata):
-        # Extract function call from Gemini response and add to metadata
+        hit = False
         if hasattr(res, 'candidates') and res.candidates:
             candidate = res.candidates[0]
             if hasattr(candidate, 'content') and candidate.content:
                 for part in candidate.content.parts:
                     if hasattr(part, 'function_call') and part.function_call:
+                        if hit:
+                            CustomUserWarning("Multiple function calls detected in the response but only the first one will be processed.")
+                            break
                         func_call = part.function_call
                         metadata['function_call'] = {
                             'name': func_call.name,
                             'arguments': func_call.args
                         }
-                        break
+                        hit = True
         return metadata
 
     def prepare(self, argument):
@@ -350,16 +364,51 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
             if not argument.prop.processed_input:
                 CustomUserWarning('Need to provide a prompt instruction to the engine if `raw_input` is enabled!', raise_with=ValueError)
 
-            content = argument.prop.processed_input
-            if isinstance(content, str):
-                content = [content]
-            argument.prop.prepared_input = content
+            raw_prompt_data = argument.prop.processed_input
+            messages_for_api = []
+            system_instruction = None
+
+            if isinstance(raw_prompt_data, str):
+                normalized_prompts = [{'role': 'user', 'content': raw_prompt_data}]
+            elif isinstance(raw_prompt_data, dict):
+                normalized_prompts = [raw_prompt_data]
+            elif isinstance(raw_prompt_data, list):
+                for item in raw_prompt_data:
+                    if not isinstance(item, dict):
+                        CustomUserWarning(f"Invalid item in raw_input list: {item}. Expected dict.", raise_with=ValueError)
+                normalized_prompts = raw_prompt_data
+            else:
+                CustomUserWarning(f"Unsupported type for raw_input: {type(raw_prompt_data)}. Expected str, dict, or list of dicts.", raise_with=ValueError)
+
+            temp_non_system_messages = []
+            for msg_dict in normalized_prompts:
+                role = msg_dict.get('role')
+                content = msg_dict.get('content')
+
+                if role is None or content is None:
+                    CustomUserWarning(f"Message in raw_input is missing 'role' or 'content': {msg_dict}", raise_with=ValueError)
+                if not isinstance(content, str):
+                    CustomUserWarning(f"Message content for role '{role}' in raw_input must be a string. Found type: {type(content)} for content: {content}", raise_with=ValueError)
+                if role == 'system':
+                    if system_instruction is not None:
+                        CustomUserWarning('Only one system instruction is allowed in raw_input mode!', raise_with=ValueError)
+                    system_instruction = content
+                else:
+                    temp_non_system_messages.append({'role': role, 'content': content})
+
+            for msg_dict in temp_non_system_messages:
+                messages_for_api.append({
+                    'role': msg_dict['role'],
+                    'content': [genai.types.Part(text=msg_dict['content'])]
+                })
+
+            argument.prop.prepared_input = system_instruction, messages_for_api
             return
 
         _non_verbose_output = """<META_INSTRUCTION/>\nYou do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc. Never add meta instructions information to your output!\n\n"""
 
-        system_content = ""
         user_content = ""
+        system_content = ""
 
         if argument.prop.suppress_verbose_output:
             system_content += _non_verbose_output
@@ -418,17 +467,17 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
             user_content = res['user']
             system_content = res['system']
 
-        contents = []
-
-        if system_content.strip():
-            contents.append(system_content.strip())
-
-        contents.extend(media_content)
-
+        all_user_content = []
+        all_user_content.extend(media_content) #
         if user_content.strip():
-            contents.append(user_content.strip())
+            all_user_content.append(genai.types.Part(text=user_content.strip()))
 
-        argument.prop.prepared_input = contents
+        if not all_user_content:
+            all_user_content = [genai.types.Part(text="N/A")]
+
+        user_prompt = {'role': 'user', 'content': all_user_content}
+
+        argument.prop.prepared_input = (system_content, [user_prompt])
 
     def _prepare_request_payload(self, argument):
         kwargs = argument.kwargs
@@ -441,6 +490,10 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
             "stop_sequences": kwargs.get('stop', None),
             "stream": kwargs.get('stream', False),
         }
+
+        system, _ = argument.prop.prepared_input
+        if system and system.strip():
+            payload['system_instruction'] = system.strip()
 
         thinking_arg = kwargs.get('thinking', None)
         if thinking_arg and isinstance(thinking_arg, dict) and thinking_arg.get("enabled") is True:
