@@ -150,6 +150,35 @@ def test_tool_usage():
         for block in res.content:
             if isinstance(block, ToolUseBlock):
                 assert block.name == 'get_stock_price'
+    elif NEUROSYMBOLIC.startswith('gemini'):
+        tools = [{
+            "name": "get_current_temperature",
+            "description": "Gets the current temperature for a given location.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "The city name, e.g. San Francisco",
+                    },
+                },
+                "required": ["location"],
+            }
+        }]
+        fn = Function("Analyze the input request and select the most appropriate function to call from the provided options.", tools=tools)
+        res = fn("what's the temperature in London?", raw_output=True)
+        # Verify function call in metadata
+        assert 'function_call' in res.prop.metadata
+        assert res.prop.metadata['function_call']['name'] == 'get_current_temperature'
+        # Verify arguments contain London
+        assert 'location' in res.prop.metadata['function_call']['arguments']
+        assert 'london' in res.prop.metadata['function_call']['arguments']['location'].lower()
+
+        # Test non-raw function calling
+        fn_regular = Function("Analyze the input request and select the most appropriate function to call from the provided options.", tools=tools)
+        res_regular = fn_regular("what's the temperature in Paris?")
+        # The response should mention function call information
+        assert 'function_call' in res_regular.value or 'get_current_temperature' in res_regular.value
 
 def test_raw_output():
     if NEUROSYMBOLIC.startswith('claude'):
@@ -161,6 +190,9 @@ def test_raw_output():
     elif NEUROSYMBOLIC.startswith('gpt') or NEUROSYMBOLIC.startswith('o1') or NEUROSYMBOLIC.startswith('o3'):
         S = Expression.prompt('What is the capital of France?', raw_output=True)
         assert isinstance(S.value, ChatCompletion)
+    elif NEUROSYMBOLIC.startswith('gemini'):
+        S = Expression.prompt('What is the capital of France?', raw_output=True)
+        assert isinstance(S.value, str)
 
 def test_preview():
     preview_function = Function(
