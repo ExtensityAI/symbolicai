@@ -251,7 +251,14 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         model = kwargs.get('model', self.model)
         stop = kwargs.get('stop', NOT_GIVEN)
         temperature = kwargs.get('temperature', 1)
-        thinking = kwargs.get('thinking', NOT_GIVEN)
+        thinking_arg = kwargs.get('thinking', NOT_GIVEN)
+        thinking = NOT_GIVEN
+        if thinking_arg and isinstance(thinking_arg, dict):
+            # Enable thinking by default when dict is provided
+            thinking = {
+                "type": "enabled",
+                "budget_tokens": thinking_arg.get("budget_tokens", 1024)
+            }
         top_p = kwargs.get('top_p', NOT_GIVEN if temperature is not None else 1) #@NOTE:'You should either alter temperature or top_p, but not both.'
         top_k = kwargs.get('top_k', NOT_GIVEN)
         stream = kwargs.get('stream', True) # Do NOT remove this default value! Getting tons of API errors because they can't process requests >10m

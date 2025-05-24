@@ -13,7 +13,7 @@ from symai.formatter.formatter import CHUNK_REGEX
 from symai.utils import format_bytes
 
 NEUROSYMBOLIC = SYMAI_CONFIG.get('NEUROSYMBOLIC_ENGINE_MODEL')
-CLAUDE_THINKING = {"type": "enabled", "budget_tokens": 1024}
+CLAUDE_THINKING = {"budget_tokens": 1024}
 CLAUDE_MAX_TOKENS = 4092 # Limit this, otherwise: "ValueError: Streaming is strongly recommended for operations that may take longer than 10 minutes."
 
 @pytest.mark.mandatory

@@ -292,10 +292,11 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
             candidate = res.candidates[0]
             if hasattr(candidate, 'content') and candidate.content:
                 for part in candidate.content.parts:
-                    if hasattr(part, 'thinking') and part.thinking:
-                        thinking_content += part.thinking
-                    elif hasattr(part, 'text') and part.text:
-                        text_content += part.text
+                    if hasattr(part, 'text') and part.text:
+                        if hasattr(part, 'thought') and part.thought:
+                            thinking_content += part.text
+                        else:
+                            text_content += part.text
 
         return {
             "thinking": thinking_content,
@@ -541,8 +542,9 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
             payload['system_instruction'] = system.strip()
 
         thinking_arg = kwargs.get('thinking', None)
-        if thinking_arg and isinstance(thinking_arg, dict) and thinking_arg.get("enabled") is True:
-            payload['thinking_config'] = types.ThinkingConfig(include_thoughts=True)
+        if thinking_arg and isinstance(thinking_arg, dict):
+            thinking_budget = thinking_arg.get("thinking_budget", 1024)
+            payload['thinking_config'] = types.ThinkingConfig(include_thoughts=True, thinking_budget=thinking_budget)
 
         response_format = kwargs.get('response_format', None)
         if response_format and response_format.get('type') == 'json_object':
