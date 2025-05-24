@@ -42,7 +42,7 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
         try:
             self.client = OpenAI(api_key=self.api_key, base_url="https://api.deepseek.com")
         except Exception as e:
-            raise Exception(f'Failed to initialize the client. Please check your library version. Caused by: {e}') from e
+            CustomUserWarning(f'Failed to initialize the DeepSeek client. Please check your library version. Caused by: {e}', raise_with=RuntimeError)
 
     def id(self) -> str:
         if self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and \
@@ -60,13 +60,13 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
             self.seed = kwargs['seed']
 
     def compute_required_tokens(self, messages):
-        raise NotImplementedError('Method not implemented.')
+        CustomUserWarning('Method "compute_required_tokens" not implemented for DeepSeekXReasoningEngine.', raise_with=NotImplementedError)
 
     def compute_remaining_tokens(self, prompts: list) -> int:
-        raise NotImplementedError('Method not implemented.')
+        CustomUserWarning('Method "compute_remaining_tokens" not implemented for DeepSeekXReasoningEngine.', raise_with=NotImplementedError)
 
     def truncate(self, prompts: list[dict], truncation_percentage: float | None, truncation_type: str) -> list[dict]:
-        raise NotImplementedError('Method not implemented.')
+        CustomUserWarning('Method "truncate" not implemented for DeepSeekXReasoningEngine.', raise_with=NotImplementedError)
 
     def forward(self, argument):
         kwargs = argument.kwargs
@@ -79,10 +79,10 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
 
         except Exception as e:
             if self.api_key is None or self.api_key == '':
-                msg = 'OpenAI API key is not set. Please set it in the config file or pass it as an argument to the command method.'
+                msg = 'DeepSeek API key is not set. Please set it in the config file or pass it as an argument to the command method.'
                 logging.error(msg)
                 if self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] is None or self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] == '':
-                    raise Exception(msg) from e
+                    CustomUserWarning(msg, raise_with=ValueError)
                 self.api_key = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
 
             callback = self.client.chat.completions.create
@@ -91,7 +91,7 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
             if except_remedy is not None:
                 res = except_remedy(self, e, callback, argument)
             else:
-                raise e
+                CustomUserWarning(f"DeepSeek API request failed. Original error: {e}", raise_with=ValueError)
 
         reasoning_content = res.choices[0].message.reasoning_content
         content = res.choices[0].message.content
@@ -102,7 +102,7 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
     def prepare(self, argument):
         if argument.prop.raw_input:
             if not argument.prop.processed_input:
-                raise ValueError('Need to provide a prompt instruction to the engine if raw_input is enabled.')
+                CustomUserWarning('A prompt instruction is required for DeepSeekXReasoningEngine when raw_input is enabled.', raise_with=ValueError)
             value = argument.prop.processed_input
             # convert to dict if not already
             if type(value) != list:
@@ -153,7 +153,7 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
 
             res = self_prompter({'user': user, 'system': system})
             if res is None:
-                raise ValueError("Self-prompting failed!")
+                CustomUserWarning("Self-prompting failed for DeepSeekXReasoningEngine.", raise_with=ValueError)
 
             user_prompt = { "role": "user", "content": res['user'] }
             system = res['system']
