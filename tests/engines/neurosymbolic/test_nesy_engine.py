@@ -10,7 +10,7 @@ from symai.backend.settings import SYMAI_CONFIG
 from symai.core_ext import bind
 from openai.types.chat.chat_completion import ChatCompletion
 from anthropic.types.message import Message
-
+from google.genai import types # Import for Gemini types
 
 NEUROSYMBOLIC = SYMAI_CONFIG.get('NEUROSYMBOLIC_ENGINE_MODEL')
 CLAUDE_THINKING = {"type": "enabled", "budget_tokens": 1024}
@@ -151,6 +151,7 @@ def test_tool_usage():
             if isinstance(block, ToolUseBlock):
                 assert block.name == 'get_stock_price'
     elif NEUROSYMBOLIC.startswith('gemini'):
+        # Test case 1: Callable Python function
         def get_capital(country: str | None = None) -> str:
             """Gets the capital city of a given country."""
             return "Paris"
@@ -158,12 +159,36 @@ def test_tool_usage():
         tools = [get_capital]
         fn = Function("Analyze the input request and select the most appropriate function to call from the provided options.", tools=tools)
         res, metadata = fn("What's the capital of France?", raw_output=True, return_metadata=True)
-        breakpoint()
 
         assert 'function_call' in metadata
         assert metadata['function_call']['name'] == 'get_capital'
         assert 'country' in metadata['function_call']['arguments']
         assert 'france' in metadata['function_call']['arguments']['country'].lower()
+
+        # Test case 2: google.genai.types.Tool format
+        fn_decl = types.FunctionDeclaration(
+            name='get_current_weather',
+            description='Get the current weather in a given location',
+            parameters=types.Schema(
+                type='OBJECT',
+                properties={
+                    'location': types.Schema(
+                        type='STRING',
+                        description='The city and state, e.g. San Francisco, CA',
+                    ),
+                },
+                required=['location'],
+            ),
+        )
+
+        tools = [fn_decl]
+        fn = Function("Analyze the input request and select the most appropriate function to call from the provided options.", tools=tools)
+        res, metadata = fn("What is the weather like in Boston?", raw_output=True, return_metadata=True)
+
+        assert 'function_call' in metadata
+        assert metadata['function_call']['name'] == 'get_current_weather'
+        assert 'location' in metadata['function_call']['arguments']
+        assert 'boston' in metadata['function_call']['arguments']['location'].lower()
 
 def test_raw_output():
     if NEUROSYMBOLIC.startswith('claude'):
