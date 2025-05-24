@@ -11,8 +11,11 @@ from rich.console import Console
 from rich.table import Table
 
 from symai import Expression
+from symai.backend.settings import SYMAI_CONFIG
 from symai.models import LLMDataModel
 from symai.strategy import contract
+
+NEUROSYMBOLIC = SYMAI_CONFIG.get('NEUROSYMBOLIC_ENGINE_MODEL')
 
 
 class Entity(LLMDataModel):
@@ -206,6 +209,7 @@ class TestTripletExtractor(Expression):
 
 
 # Tests
+@pytest.mark.mandatory
 def test_triplet_extractor_basic():
     """Test basic functionality of the triplet extractor with act (the happy path!)"""
     # Create a simple ontology
@@ -236,6 +240,7 @@ def test_triplet_extractor_basic():
     assert len(extractor.analysis_history) == 1
 
 
+@pytest.mark.mandatory
 def test_triplet_extractor_state_persistence():
     """Test that state is maintained across multiple calls"""
     ontology = SimpleOntology(classes=[
@@ -275,6 +280,7 @@ def test_triplet_extractor_state_persistence():
     assert extractor.get_triplet_count() >= original_triplet_count
 
 
+@pytest.mark.mandatory
 def test_triplet_extractor_with_multiple_texts():
     """Test processing multiple texts with the same extractor"""
     ontology = SimpleOntology(classes=[
@@ -314,6 +320,7 @@ def test_triplet_extractor_with_multiple_texts():
     assert len(extractor.analysis_history) == len(texts)
 
 
+@pytest.mark.mandatory
 def test_act_transformation():
     """Test that act transforms input to a different type that's used by the LLM"""
     ontology = SimpleOntology(classes=[OntologyClass(name="ML")])
@@ -342,6 +349,7 @@ def test_act_transformation():
     assert isinstance(contract_result, KGState)
 
 
+@pytest.mark.mandatory
 def test_act_signature_validation():
     """Test that contract properly validates act method signature"""
 
@@ -418,6 +426,7 @@ def test_act_signature_validation():
     assert not contract_bswrt.contract_successful
 
 
+@pytest.mark.mandatory
 def test_act_contract_flow():
     """Test how act affects the contract's execution flow"""
 
@@ -498,6 +507,7 @@ def test_act_contract_flow():
     assert test_contract_instance_precise.flow_log.count("prompt_accessed") >= 1
 
 
+@pytest.mark.mandatory
 def test_act_contract_state_interaction():
     """Test how act's state changes affect contract validation and error handling"""
 
@@ -647,6 +657,7 @@ def test_act_contract_state_interaction():
     assert not contract_no_remedy_pre.contract_successful
 
 
+@pytest.mark.mandatory
 def test_contract_result_propagation():
     """Test that contract_result is properly set by _validate_output and used by forward"""
 
@@ -722,6 +733,7 @@ def test_contract_result_propagation():
         logging.info(f"Evidence of 'act' data in final result: {found_evidence}")
 
 
+@pytest.mark.mandatory
 def test_contract_perf_stats():
     """Test the contract_perf_stats method correctly tracks and reports timing statistics."""
 
@@ -814,6 +826,7 @@ def test_contract_perf_stats():
         assert abs(calculated_overhead - stats["overhead"]["total"]) < 0.001, "Overhead calculation is incorrect"
 
 
+@pytest.mark.mandatory
 def test_act_state_modification_without_input_change():
     class StateModificationInput(LLMDataModel):
         value: str = Field(description="Input value")

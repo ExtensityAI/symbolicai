@@ -1,10 +1,9 @@
 import pytest
 from box import Box
 
-from symai.functional import _execute_query_fallback, _execute_query
-from symai.core import Argument
 from symai import Symbol
-from box import Box
+from symai.core import Argument
+from symai.functional import _execute_query, _execute_query_fallback
 
 
 def test_successful_execution():
