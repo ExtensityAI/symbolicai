@@ -2,7 +2,7 @@
 
 This guide will help you get started with SymbolicAI, demonstrating basic usage and key features.
 
-**Note**: the most accurate documentation is the code, so be sure to check the tests. Look for the `mandatory` mark since those are the features that must be implemented by all engines and are guaranteed to work.
+**Note**: the most accurate documentation is the _code_, so be sure to check out the tests. Look for the `mandatory` mark since those are the features that were tested and are guaranteed to work.
 
 To start, import the library by using:
 
