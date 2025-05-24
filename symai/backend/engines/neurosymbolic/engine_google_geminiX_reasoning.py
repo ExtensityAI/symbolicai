@@ -26,6 +26,13 @@ logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
+class TokenizerWrapper:
+    def __init__(self, compute_tokens_func):
+        self.compute_tokens_func = compute_tokens_func
+
+    def encode(self, text: str) -> int:
+        return self.compute_tokens_func([{"role": "user", "content": text}])
+
 class GeminiXReasoningEngine(Engine, GoogleMixin):
     def __init__(self, api_key: str | None = None, model: str | None = None):
         super().__init__()
@@ -40,7 +47,7 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
         self.api_key = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
         self.model = self.config['NEUROSYMBOLIC_ENGINE_MODEL']
         self.name = self.__class__.__name__
-        self.tokenizer = None # TODO: Implement token counting for Gemini
+        self.tokenizer = TokenizerWrapper(self.compute_required_tokens)
         self.max_context_tokens = self.api_max_context_tokens()
         self.max_response_tokens = self.api_max_response_tokens()
         self.client = genai.Client(api_key=self.api_key)
@@ -60,8 +67,33 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
             self.model = kwargs['NEUROSYMBOLIC_ENGINE_MODEL']
             self.client = genai.GenerativeModel(model_name=self.model)
 
-    def compute_required_tokens(self, messages):
-        CustomUserWarning("Token counting not implemented for Gemini", raise_with=NotImplementedError)
+    def compute_required_tokens(self, messages: list[dict]) -> int:
+        api_contents: list[types.Content] = []
+
+        for msg_dict in messages:
+            role = msg_dict.get('role')
+            content_str = str(msg_dict.get('content', ''))
+
+            current_message_api_parts: list[types.Part] = []
+            image_api_parts = self._handle_image_content(content_str)
+            current_message_api_parts.extend(image_api_parts)
+
+            text_only_content = self._remove_media_patterns(content_str)
+            if text_only_content:
+                current_message_api_parts.append(types.Part(text=text_only_content))
+
+            if current_message_api_parts:
+                api_contents.append(types.Content(role=role, parts=current_message_api_parts))
+
+        if not api_contents:
+            return 0
+
+        try:
+            count_response = self.client.models.count_tokens(model=self.model, contents=api_contents)
+            return count_response.total_tokens
+        except Exception as e:
+            logging.error(f"Gemini count_tokens failed: {e}")
+            CustomUserWarning(f"Error counting tokens for Gemini: {str(e)}", raise_with=RuntimeError)
 
     def compute_remaining_tokens(self, prompts: list) -> int:
         CustomUserWarning("Token counting not implemented for Gemini", raise_with=NotImplementedError)
@@ -397,10 +429,23 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
                     temp_non_system_messages.append({'role': role, 'content': content})
 
             for msg_dict in temp_non_system_messages:
-                messages_for_api.append({
-                    'role': msg_dict['role'],
-                    'content': [genai.types.Part(text=msg_dict['content'])]
-                })
+                content_str = str(msg_dict.get('content', ''))
+
+                current_message_api_parts: list[types.Part] = []
+
+                image_api_parts = self._handle_image_content(content_str)
+                if image_api_parts:
+                    current_message_api_parts.extend(image_api_parts)
+
+                text_only_content = self._remove_media_patterns(content_str)
+                if text_only_content:
+                    current_message_api_parts.append(types.Part(text=text_only_content))
+
+                if current_message_api_parts:
+                    messages_for_api.append({
+                        'role': msg_dict['role'],
+                        'content': current_message_api_parts
+                    })
 
             argument.prop.prepared_input = system_instruction, messages_for_api
             return

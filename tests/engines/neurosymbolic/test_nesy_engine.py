@@ -60,44 +60,36 @@ def test_vision():
 
 @pytest.mark.mandatory
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('claude'), reason='Claude tokens computation is not yet implemented')
-@pytest.mark.skipif(NEUROSYMBOLIC.startswith('gemini'), reason='Gemini tokens computation is not yet implemented')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('llama'), reason='llamacpp tokens computation is not yet implemented')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('huggingface'), reason='huggingface tokens computation is not yet implemented')
 def test_tokenizer():
-    admin_role = 'system' if NEUROSYMBOLIC.startswith('gpt') else 'developer'
-    messages = [
-        {
-            "role": admin_role,
-            "content": "You are a helpful, pattern-following assistant that translates corporate jargon into plain English.",
-        },
-        {
-            "role": admin_role,
-            "name": "example_user",
-            "content": "New synergies will help drive top-line growth.",
-        },
-        {
-            "role": admin_role,
-            "name": "example_assistant",
-            "content": "Things working well together will increase revenue.",
-        },
-        {
-            "role": admin_role,
-            "name": "example_user",
-            "content": "Let's circle back when we have more bandwidth to touch base on opportunities for increased leverage.",
-        },
-        {
-            "role": admin_role,
-            "name": "example_assistant",
-            "content": "Let's talk later when we're less busy about how to do better.",
-        },
-        {
-            "role": "user",
-            "content": "This late pivot means we don't have time to boil the ocean for the client deliverable.",
-        },
-    ]
+    if NEUROSYMBOLIC.startswith('gemini'):
+        messages = [
+            {"role": "system", "content": "You are a helpful, pattern-following assistant that translates corporate jargon into plain English."},
+            {"role": "user", "content": "New synergies will help drive top-line growth."},
+            {"role": "model", "content": "Things working well together will increase revenue."},
+            {"role": "user", "content": "Let's circle back when we have more bandwidth to touch base on opportunities for increased leverage."},
+            {"role": "model", "content": "Let's talk later when we're less busy about how to do better."},
+            {"role": "user", "content": "This late pivot means we don't have time to boil the ocean for the client deliverable."}
+        ]
+    else:
+        admin_role = 'system' if NEUROSYMBOLIC.startswith('gpt') else 'developer'
+        messages = [
+            {"role": admin_role, "content": "You are a helpful, pattern-following assistant that translates corporate jargon into plain English."},
+            {"role": admin_role, "name": "example_user", "content": "New synergies will help drive top-line growth."},
+            {"role": admin_role, "name": "example_assistant", "content": "Things working well together will increase revenue."},
+            {"role": admin_role, "name": "example_user", "content": "Let's circle back when we have more bandwidth to touch base on opportunities for increased leverage."},
+            {"role": admin_role, "name": "example_assistant", "content": "Let's talk later when we're less busy about how to do better."},
+            {"role": "user", "content": "This late pivot means we don't have time to boil the ocean for the client deliverable."}
+        ]
 
     response = Expression.prompt(messages, raw_output=True)
-    api_tokens = response.usage.prompt_tokens
+
+    if NEUROSYMBOLIC.startswith('gemini'):
+        api_tokens = response.usage_metadata.prompt_token_count
+    else:
+        api_tokens = response.usage.prompt_tokens
+
     tik_tokens = _compute_required_tokens(messages)
 
     assert api_tokens == tik_tokens
