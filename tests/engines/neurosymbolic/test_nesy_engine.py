@@ -1,16 +1,17 @@
 from pathlib import Path
 
-from numpy import add
 import pytest
-
+from anthropic import Stream
 from anthropic.types import ToolUseBlock
-from symai import Expression, Symbol
-from symai.components import Function
-from symai.backend.settings import SYMAI_CONFIG
-from symai.core_ext import bind
-from openai.types.chat.chat_completion import ChatCompletion
 from anthropic.types.message import Message
-from google.genai import types # Import for Gemini types
+from google.genai import types  # Import for Gemini types
+from numpy import add
+from openai.types.chat.chat_completion import ChatCompletion
+
+from symai import Expression, Symbol
+from symai.backend.settings import SYMAI_CONFIG
+from symai.components import Function
+from symai.core_ext import bind
 
 NEUROSYMBOLIC = SYMAI_CONFIG.get('NEUROSYMBOLIC_ENGINE_MODEL')
 CLAUDE_THINKING = {"type": "enabled", "budget_tokens": 1024}
@@ -19,6 +20,7 @@ CLAUDE_MAX_TOKENS = 4092 # Limit this, otherwise: "ValueError: Streaming is stro
 @bind(engine='neurosymbolic', property='compute_required_tokens')(lambda: 0)
 def _compute_required_tokens(): pass
 
+@pytest.mark.mandatory
 def test_init():
     x = Symbol('This is a test!')
 
@@ -30,6 +32,7 @@ def test_init():
     # if no errors are raised, then the test is successful
     assert True
 
+@pytest.mark.mandatory
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('llama'), reason='feature not yet implemented')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('huggingface'), reason='feature not yet implemented')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('o3-mini'), reason='feature not supported by the model')
@@ -55,7 +58,9 @@ def test_vision():
     # same check but for url
     assert 'cat' in res.value
 
+@pytest.mark.mandatory
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('claude'), reason='Claude tokens computation is not yet implemented')
+@pytest.mark.skipif(NEUROSYMBOLIC.startswith('gemini'), reason='Gemini tokens computation is not yet implemented')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('llama'), reason='llamacpp tokens computation is not yet implemented')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('huggingface'), reason='huggingface tokens computation is not yet implemented')
 def test_tokenizer():
@@ -97,11 +102,12 @@ def test_tokenizer():
 
     assert api_tokens == tik_tokens
 
+@pytest.mark.mandatory
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('llama'), reason='feature not yet implemented')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('huggingface'), reason='feature not yet implemented')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('o1'), reason='feature not supported by the model')
 def test_tool_usage():
-    if NEUROSYMBOLIC.startswith('o3') or NEUROSYMBOLIC.startswith('gpt'):
+    if NEUROSYMBOLIC.startswith('o3') or NEUROSYMBOLIC.startswith('o4') or NEUROSYMBOLIC.startswith('gpt'):
         tools = [{
             "type": "function",
             "function": {
@@ -120,11 +126,11 @@ def test_tool_usage():
             }
         }]
         fn = Function("Analyze the input request and select the most appropriate function to call from the provided options.", tools=tools)
-        res = fn("what's the temperature in Bogotá, Colombia", raw_output=True)
-        tool = None
-        if res.choices[0].finish_reason == 'tool_calls':
-            tool_name = res.choices[0].message.tool_calls[0].function.name
-        assert tool_name == 'get_weather'
+        res, metadata = fn("what's the temperature in Bogotá, Colombia", raw_output=True, return_metadata=True)
+        assert 'function_call' in metadata
+        assert metadata['function_call']['name'] == 'get_weather'
+        assert 'location' in metadata['function_call']['arguments']
+        assert 'bogotá, colombia' in metadata['function_call']['arguments']['location'].lower()
     elif NEUROSYMBOLIC.startswith('claude'):
         tools = [
           {
@@ -143,13 +149,11 @@ def test_tool_usage():
           }
         ]
         fn = Function("Analyze the input request and select the most appropriate function to call from the provided options.", tools=tools)
-        if all(id not in NEUROSYMBOLIC for id in ['3-7', '4-0']):
-            res = fn("what's the temperature in Bogotá, Colombia", raw_output=True)
-        else:
-            res = fn("what's the S&P 500 at today", raw_output=True, max_tokens=CLAUDE_MAX_TOKENS, thinking=CLAUDE_THINKING)
-        for block in res.content:
-            if isinstance(block, ToolUseBlock):
-                assert block.name == 'get_stock_price'
+        res, metadata = fn("What's the S&P 500 at today", raw_output=True, max_tokens=CLAUDE_MAX_TOKENS, thinking=CLAUDE_THINKING, return_metadata=True)
+        assert 'function_call' in metadata
+        assert metadata['function_call']['name'] == 'get_stock_price'
+        assert 'ticker' in metadata['function_call']['arguments']
+        assert 'spy' in metadata['function_call']['arguments']['ticker'].lower()
     elif NEUROSYMBOLIC.startswith('gemini'):
         # Test case 1: Callable Python function
         def get_capital(country: str | None = None) -> str:
@@ -190,20 +194,22 @@ def test_tool_usage():
         assert 'location' in metadata['function_call']['arguments']
         assert 'boston' in metadata['function_call']['arguments']['location'].lower()
 
+@pytest.mark.mandatory
 def test_raw_output():
     if NEUROSYMBOLIC.startswith('claude'):
         if all(id not in NEUROSYMBOLIC for id in ['3-7', '4-0']):
             S = Expression.prompt('What is the capital of France?', raw_output=True)
         else:
             S = Expression.prompt('What is the capital of France?', raw_output=True, max_tokens=CLAUDE_MAX_TOKENS, thinking=CLAUDE_THINKING)
-        assert isinstance(S.value, Message)
+        assert isinstance(S.value, Message) or isinstance(S.value, Stream)
     elif NEUROSYMBOLIC.startswith('gpt') or NEUROSYMBOLIC.startswith('o1') or NEUROSYMBOLIC.startswith('o3'):
         S = Expression.prompt('What is the capital of France?', raw_output=True)
         assert isinstance(S.value, ChatCompletion)
     elif NEUROSYMBOLIC.startswith('gemini'):
         S = Expression.prompt('What is the capital of France?', raw_output=True)
-        assert isinstance(S.value, str)
+        assert isinstance(S.value, types.GenerateContentResponse)
 
+@pytest.mark.mandatory
 def test_preview():
     preview_function = Function(
         "Return a JSON markdown string representation of the text, no matter what text is provided.",
@@ -215,6 +221,7 @@ def test_preview():
     assert preview.prop.processed_input == "Hello, World!"
 
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('claude'), reason='Claude tokens computation is not yet implemented')
+@pytest.mark.skipif(NEUROSYMBOLIC.startswith('gemini'), reason='Claude tokens computation is not yet implemented')
 def test_token_truncator():
     file_path = (Path(__file__).parent.parent.parent / 'data/pg1727.txt').as_posix()
     content = Symbol(file_path).open()

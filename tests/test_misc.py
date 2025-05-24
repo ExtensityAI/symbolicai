@@ -1,25 +1,30 @@
 import json
+import re
 import sys
 import time
-import psutil
-import re
 
+import psutil
 import pytest
 
-from symai.components import FileReader
 from symai import Expression, Symbol
 from symai.backend.settings import SYMAI_CONFIG
-from symai.utils import format_bytes
+from symai.components import FileReader
 from symai.formatter.formatter import CHUNK_REGEX
+from symai.utils import format_bytes
 
 NEUROSYMBOLIC = SYMAI_CONFIG.get('NEUROSYMBOLIC_ENGINE_MODEL')
 CLAUDE_THINKING = {"type": "enabled", "budget_tokens": 1024}
 CLAUDE_MAX_TOKENS = 4092 # Limit this, otherwise: "ValueError: Streaming is strongly recommended for operations that may take longer than 10 minutes."
 
+@pytest.mark.mandatory
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('llama'), reason='llamacpp JSON format not yet supported')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('huggingface'), reason='huggingface JSON format not yet supported')
 def test_json_format():
-    admin_role = 'system' if (NEUROSYMBOLIC.startswith('gpt') or NEUROSYMBOLIC.startswith('claude')) else 'developer'
+    admin_role = 'system' if \
+        (NEUROSYMBOLIC.startswith('gpt') or
+         NEUROSYMBOLIC.startswith('claude') or
+         NEUROSYMBOLIC.startswith('gemini'))  \
+         else 'developer'
     if all(id not in NEUROSYMBOLIC for id in ['3-7', '4-0']):
         res = Expression.prompt(
             message=[
@@ -45,6 +50,7 @@ def test_json_format():
     res = json.loads(res.value)
     assert res == target
 
+@pytest.mark.mandatory
 def test_fill_format():
     text = '''
 Oscar-winning actress Anne Hathaway has said that she had to kiss a series of actors during the audition process in the 2000s to “test for chemistry” on camera.
@@ -62,6 +68,7 @@ Speaking to V Magazine in an interview published Monday, Hathaway said: “Back 
         res = S.query("Fill in the text.", template_suffix="{{fill}}", max_tokens=CLAUDE_MAX_TOKENS, thinking=CLAUDE_THINKING)
     assert "{{fill}}" not in S.value.replace("{{fill}}", res.value)
 
+@pytest.mark.mandatory
 def test_self_prompt():
     if all(id not in NEUROSYMBOLIC for id in ['3-7', '4-0']):
         sym = Symbol('np.log2(2)', self_prompt=True)
