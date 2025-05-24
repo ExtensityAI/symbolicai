@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 from copy import deepcopy
@@ -5,8 +6,11 @@ from typing import List, Optional
 
 import anthropic
 from anthropic._types import NOT_GIVEN
-from anthropic.types import (Message, RawContentBlockDeltaEvent, TextBlock,
-                             TextDelta)
+from anthropic.types import (InputJSONDelta, Message,
+                             RawContentBlockDeltaEvent,
+                             RawContentBlockStartEvent,
+                             RawContentBlockStopEvent, TextBlock, TextDelta,
+                             ToolUseBlock)
 
 from ....components import SelfPrompt
 from ....misc.console import ConsoleStyle
@@ -90,15 +94,19 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
             else:
                 raise e
 
-        metadata = {'raw_output': res}
+        metadata = {'raw_output': res} # For streamed responses, `res` is the iterator
 
-        output = self._collect_response(res, stream=payload['stream'])
+        response_data = self._collect_response(res, stream=payload['stream'])
 
+        if response_data.get('function_call'):
+            metadata['function_call'] = response_data['function_call']
+
+        text_output = response_data.get('text', '')
         if argument.prop.response_format:
             # Anthropic returns JSON in markdown format
-            output = output.replace('```json', '').replace('```', '')
+            text_output = text_output.replace('```json', '').replace('```', '')
 
-        return [output], metadata
+        return [text_output], metadata
 
     def prepare(self, argument):
         #@NOTE: OpenAI compatibility at high level
@@ -133,6 +141,7 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
         if argument.prop.response_format:
             _rsp_fmt = argument.prop.response_format
             assert _rsp_fmt.get('type') is not None, 'Response format type is required! Expected format `{"type": str}`! The str value will be passed to the engine. Refer to the Anthropic documentation for more information: https://docs.anthropic.com/en/docs/test-and-evaluate/strengthen-guardrails/increase-consistency#example-standardizing-customer-feedback'
+            system += _non_verbose_output
             system += f'<RESPONSE_FORMAT/>\n{_rsp_fmt["type"]}\n\n'
 
         ref = argument.prop.instance
@@ -236,7 +245,7 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
         temperature = kwargs.get('temperature', 1)
         top_p = kwargs.get('top_p', NOT_GIVEN if temperature is not None else 1) #@NOTE:'You should either alter temperature or top_p, but not both.'
         top_k = kwargs.get('top_k', NOT_GIVEN)
-        stream = kwargs.get('stream', NOT_GIVEN)
+        stream = kwargs.get('stream', True) # Do NOT remove this default value! Getting tons of API errors because they can't process requests >10m
         tools = kwargs.get('tools', NOT_GIVEN)
         tool_choice = kwargs.get('tool_choice', NOT_GIVEN)
         metadata_anthropic = kwargs.get('metadata', NOT_GIVEN)
@@ -265,17 +274,68 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
     def _collect_response(self, res, stream):
         if stream:
             text_content = ''
+            tool_calls_raw = []
+            active_tool_calls = {}
+
             for chunk in res:
-                if isinstance(chunk, RawContentBlockDeltaEvent):
+                if isinstance(chunk, RawContentBlockStartEvent):
+                    if isinstance(chunk.content_block, ToolUseBlock):
+                        active_tool_calls[chunk.index] = {
+                            'id': chunk.content_block.id,
+                            'name': chunk.content_block.name,
+                            'input_json_str': ""
+                        }
+                elif isinstance(chunk, RawContentBlockDeltaEvent):
                     if isinstance(chunk.delta, TextDelta):
                         text_content += chunk.delta.text
-            return text_content
+                    elif isinstance(chunk.delta, InputJSONDelta):
+                        if chunk.index in active_tool_calls:
+                            active_tool_calls[chunk.index]['input_json_str'] += chunk.delta.partial_json
+                elif isinstance(chunk, RawContentBlockStopEvent):
+                    if chunk.index in active_tool_calls:
+                        tool_call_info = active_tool_calls.pop(chunk.index)
+                        try:
+                            tool_call_info['input'] = json.loads(tool_call_info['input_json_str'])
+                        except json.JSONDecodeError as e:
+                            logging.error(f"Failed to parse JSON for tool call {tool_call_info['name']}: {e}. Raw JSON: '{tool_call_info['input_json_str']}'")
+                            tool_call_info['input'] = {}
+                        tool_calls_raw.append(tool_call_info)
 
+            function_call_data = None
+            if tool_calls_raw:
+                if len(tool_calls_raw) > 1:
+                    CustomUserWarning("Multiple tool calls detected in the stream but only the first one will be processed.")
+                function_call_data = {
+                    'name': tool_calls_raw[0]['name'],
+                    'arguments': tool_calls_raw[0]['input']
+                }
+
+            return {
+                "text": text_content,
+                "function_call": function_call_data
+            }
+
+        # Non-streamed response (res is a Message object)
         if isinstance(res, Message):
             text_content = ''
-            for content in res.content:
-                if isinstance(content, TextBlock):
-                    text_content += content.text
-            return text_content
+            function_call_data = None
+            hit_tool_use = False
 
-        raise ValueError("Unexpected response type from Anthropic API")
+            for content_block in res.content:
+                if isinstance(content_block, TextBlock):
+                    text_content += content_block.text
+                elif isinstance(content_block, ToolUseBlock):
+                    if hit_tool_use:
+                        CustomUserWarning("Multiple tool use blocks detected in the response but only the first one will be processed.")
+                    else:
+                        function_call_data = {
+                            'name': content_block.name,
+                            'arguments': content_block.input
+                        }
+                        hit_tool_use = True
+            return {
+                "text": text_content,
+                "function_call": function_call_data
+            }
+
+        CustomUserWarning(f"Unexpected response type from Anthropic API: {type(res)}", raise_with=ValueError)

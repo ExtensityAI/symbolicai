@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 from copy import deepcopy
@@ -5,8 +6,11 @@ from typing import List, Optional
 
 import anthropic
 from anthropic._types import NOT_GIVEN
-from anthropic.types import (Message, RawContentBlockDeltaEvent, TextBlock,
-                             TextDelta, ThinkingBlock, ThinkingDelta)
+from anthropic.types import (InputJSONDelta, Message,
+                             RawContentBlockDeltaEvent,
+                             RawContentBlockStartEvent,
+                             RawContentBlockStopEvent, TextBlock, TextDelta,
+                             ThinkingBlock, ThinkingDelta, ToolUseBlock)
 
 from ....components import SelfPrompt
 from ....misc.console import ConsoleStyle
@@ -58,10 +62,10 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
 
     def compute_required_tokens(self, messages):
         # TODO: https://docs.anthropic.com/en/api/messages-count-tokens
-        raise NotImplementedError('Method not implemented.')
+        CustomUserWarning('Method not implemented.', raise_with=NotImplementedError)
 
     def compute_remaining_tokens(self, prompts: list) -> int:
-        raise NotImplementedError('Method not implemented.')
+        CustomUserWarning('Method not implemented.', raise_with=NotImplementedError)
 
     def forward(self, argument):
         kwargs = argument.kwargs
@@ -80,7 +84,7 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
                 msg = 'Anthropic API key is not set. Please set it in the config file or pass it as an argument to the command method.'
                 logging.error(msg)
                 if self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] is None or self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] == '':
-                    raise Exception(msg) from e
+                    CustomUserWarning(msg, raise_with=ValueError)
                 anthropic.api_key = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
 
             callback = self.client.messages.create
@@ -89,25 +93,29 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
             if except_remedy is not None:
                 res = except_remedy(self, e, callback, argument)
             else:
-                raise e
+                CustomUserWarning(f"Anthropic API request failed: {e}", raise_with=ValueError)
 
-        metadata = {'raw_output': res}
-        output = self._collect_response(res, stream=payload['stream'])
-        if len(output['thinking']) > 0:
-            # Means reasoning was enabled
-            metadata['thinking'] = output['thinking']
+        response_data = self._collect_response(res, stream=payload['stream'])
+        metadata = {'raw_output': res} # For streamed responses, `res` is the iterator
 
+        if response_data.get('function_call'):
+            metadata['function_call'] = response_data['function_call']
+
+        if response_data.get('thinking') and len(response_data['thinking']) > 0:
+            metadata['thinking'] = response_data['thinking']
+
+        text_output = response_data.get('text', '')
         if argument.prop.response_format:
             # Anthropic returns JSON in markdown format
-            output['text'] = output['text'].replace('```json', '').replace('```', '')
+            text_output = text_output.replace('```json', '').replace('```', '')
 
-        return [output['text']], metadata
+        return [text_output], metadata
 
     def prepare(self, argument):
         #@NOTE: OpenAI compatibility at high level
         if argument.prop.raw_input:
             if not argument.prop.processed_input:
-                raise ValueError('Need to provide a prompt instruction to the engine if `raw_input` is enabled!')
+                CustomUserWarning('A prompt instruction is required for `raw_input` mode.', raise_with=ValueError)
             system = NOT_GIVEN
             prompt = argument.prop.processed_input
             if type(prompt) != list:
@@ -115,8 +123,9 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
                     prompt = {'role': 'user', 'content': str(prompt)}
                 prompt = [prompt]
             if len(prompt) > 1:
-                # assert there are not more than 1 system instruction
-                assert len([p for p in prompt if p['role'] == 'system']) <= 1, 'Only one system instruction is allowed!'
+                # check for more than 1 system instruction
+                if not (len([p for p in prompt if p['role'] == 'system']) <= 1):
+                    CustomUserWarning('Only one system instruction is allowed in the prompt list.', raise_with=AssertionError)
                 for p in prompt:
                     if p['role'] == 'system':
                         system = p['content']
@@ -135,7 +144,9 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
 
         if argument.prop.response_format:
             _rsp_fmt = argument.prop.response_format
-            assert _rsp_fmt.get('type') is not None, 'Response format type is required! Expected format `{"type": str}`! The str value will be passed to the engine. Refer to the Anthropic documentation for more information: https://docs.anthropic.com/en/docs/test-and-evaluate/strengthen-guardrails/increase-consistency#example-standardizing-customer-feedback'
+            if not (_rsp_fmt.get('type') is not None):
+                CustomUserWarning('Response format type is required! Expected format `{"type": "json_object"}` or other supported types. Refer to Anthropic documentation for details.', raise_with=AssertionError)
+            system += _non_verbose_output
             system += f'<RESPONSE_FORMAT/>\n{_rsp_fmt["type"]}\n\n'
 
         ref = argument.prop.instance
@@ -221,7 +232,7 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
                 thinking=argument.kwargs.get('thinking', NOT_GIVEN),
             )
             if res is None:
-                raise ValueError("Self-prompting failed!")
+                CustomUserWarning("Self-prompting failed to return a response.", raise_with=ValueError)
 
             if len(image_files) > 0:
                 user_prompt = { "role": "user", "content": [
@@ -243,7 +254,7 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         thinking = kwargs.get('thinking', NOT_GIVEN)
         top_p = kwargs.get('top_p', NOT_GIVEN if temperature is not None else 1) #@NOTE:'You should either alter temperature or top_p, but not both.'
         top_k = kwargs.get('top_k', NOT_GIVEN)
-        stream = kwargs.get('stream', NOT_GIVEN)
+        stream = kwargs.get('stream', True) # Do NOT remove this default value! Getting tons of API errors because they can't process requests >10m
         tools = kwargs.get('tools', NOT_GIVEN)
         tool_choice = kwargs.get('tool_choice', NOT_GIVEN)
         metadata_anthropic = kwargs.get('metadata', NOT_GIVEN)
@@ -275,30 +286,75 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         if stream:
             thinking_content = ''
             text_content = ''
+            tool_calls_raw = []
+            active_tool_calls = {}
+
             for chunk in res:
-                if isinstance(chunk, RawContentBlockDeltaEvent):
+                if isinstance(chunk, RawContentBlockStartEvent):
+                    if isinstance(chunk.content_block, ToolUseBlock):
+                        active_tool_calls[chunk.index] = {
+                            'id': chunk.content_block.id,
+                            'name': chunk.content_block.name,
+                            'input_json_str': ""
+                        }
+                elif isinstance(chunk, RawContentBlockDeltaEvent):
                     if isinstance(chunk.delta, ThinkingDelta):
                         thinking_content += chunk.delta.thinking
-                        continue
-                    if isinstance(chunk.delta, TextDelta):
+                    elif isinstance(chunk.delta, TextDelta):
                         text_content += chunk.delta.text
+                    elif isinstance(chunk.delta, InputJSONDelta):
+                        if chunk.index in active_tool_calls:
+                            active_tool_calls[chunk.index]['input_json_str'] += chunk.delta.partial_json
+                elif isinstance(chunk, RawContentBlockStopEvent):
+                    if chunk.index in active_tool_calls:
+                        tool_call_info = active_tool_calls.pop(chunk.index)
+                        try:
+                            tool_call_info['input'] = json.loads(tool_call_info['input_json_str'])
+                        except json.JSONDecodeError as e:
+                            logging.error(f"Failed to parse JSON for tool call {tool_call_info['name']}: {e}. Raw JSON: '{tool_call_info['input_json_str']}'")
+                            tool_call_info['input'] = {}
+                        tool_calls_raw.append(tool_call_info)
+
+            function_call_data = None
+            if tool_calls_raw:
+                if len(tool_calls_raw) > 1:
+                    CustomUserWarning("Multiple tool calls detected in the stream but only the first one will be processed.")
+                function_call_data = {
+                    'name': tool_calls_raw[0]['name'],
+                    'arguments': tool_calls_raw[0]['input']
+                }
+
             return {
                 "thinking": thinking_content,
-                "text": text_content
+                "text": text_content,
+                "function_call": function_call_data
             }
 
+        # Non-streamed response (res is a Message object)
         if isinstance(res, Message):
             thinking_content = ''
             text_content = ''
-            for content in res.content:
-                if isinstance(content, ThinkingBlock):
-                    thinking_content += content.thinking
-                    continue
-                if isinstance(content, TextBlock):
-                    text_content += content.text
+            function_call_data = None
+            hit = False
+
+            for content_block in res.content:
+                if isinstance(content_block, ThinkingBlock):
+                    thinking_content += content_block.thinking
+                elif isinstance(content_block, TextBlock):
+                    text_content += content_block.text
+                elif isinstance(content_block, ToolUseBlock):
+                    if hit:
+                        CustomUserWarning("Multiple tool use blocks detected in the response but only the first one will be processed.")
+                    else:
+                        function_call_data = {
+                            'name': content_block.name,
+                            'arguments': content_block.input
+                        }
+                        hit = True
             return {
                 "thinking": thinking_content,
-                "text": text_content
+                "text": text_content,
+                "function_call": function_call_data
             }
 
-        raise ValueError("Unexpected response type from Anthropic API")
+        CustomUserWarning(f"Unexpected response type from Anthropic API: {type(res)}", raise_with=ValueError)
