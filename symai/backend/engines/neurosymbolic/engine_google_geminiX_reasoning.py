@@ -452,7 +452,7 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
 
         tools = kwargs.get('tools')
         if tools:
-            payload['tools'] = tools
+            payload['tools'] = self._convert_tools_format(tools)
             payload['automatic_function_calling'] = types.AutomaticFunctionCallingConfig(
                 disable=kwargs.get('automatic_function_calling', True)
             )
@@ -460,12 +460,22 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
         return payload
 
     def _convert_tools_format(self, tools):
+        if tools is None:
+            return None
+
         if not isinstance(tools, list):
             tools = [tools]
 
-        valid = [t for t in tools if callable(t)]
-        if len(valid) < len(tools):
-            CustomUserWarning("Some tools were ignored because they are not Python callables.")
-        return valid
+        processed_tools = []
+        for tool_item in tools:
+            if callable(tool_item):
+                processed_tools.append(tool_item)
+            elif isinstance(tool_item, types.FunctionDeclaration):
+                processed_tools.append(types.Tool(function_declarations=[tool_item]))
+            else:
+                CustomUserWarning(f"Ignoring invalid tool format. Expected a callable, google.genai.types.Tool, or google.genai.types.FunctionDeclaration: {tool_item}")
 
-        CustomUserWarning(f"Tools argument must be a callable or list of callables, got: {tools}", raise_with=ValueError)
+        if not processed_tools:
+            return None
+
+        return processed_tools
