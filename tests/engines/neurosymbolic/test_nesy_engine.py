@@ -14,8 +14,9 @@ from symai.components import Function
 from symai.core_ext import bind
 
 NEUROSYMBOLIC = SYMAI_CONFIG.get('NEUROSYMBOLIC_ENGINE_MODEL')
-CLAUDE_THINKING = {"type": "enabled", "budget_tokens": 1024}
-CLAUDE_MAX_TOKENS = 4092 # Limit this, otherwise: "ValueError: Streaming is strongly recommended for operations that may take longer than 10 minutes."
+CLAUDE_THINKING = {"budget_tokens": 1024}
+GEMINI_THINKING = {"thinking_budget": 1024}
+CLAUDE_MAX_TOKENS = 4092
 
 @bind(engine='neurosymbolic', property='compute_required_tokens')(lambda: 0)
 def _compute_required_tokens(): pass
@@ -154,7 +155,7 @@ def test_tool_usage():
 
         tools = [get_capital]
         fn = Function("Analyze the input request and select the most appropriate function to call from the provided options.", tools=tools)
-        res, metadata = fn("What's the capital of France?", raw_output=True, return_metadata=True)
+        res, metadata = fn("What's the capital of France?", raw_output=True, thinking=GEMINI_THINKING, return_metadata=True)
 
         assert 'function_call' in metadata
         assert metadata['function_call']['name'] == 'get_capital'
@@ -179,7 +180,7 @@ def test_tool_usage():
 
         tools = [fn_decl]
         fn = Function("Analyze the input request and select the most appropriate function to call from the provided options.", tools=tools)
-        res, metadata = fn("What is the weather like in Boston?", raw_output=True, return_metadata=True)
+        res, metadata = fn("What is the weather like in Boston?", raw_output=True, thinking=GEMINI_THINKING, return_metadata=True)
 
         assert 'function_call' in metadata
         assert metadata['function_call']['name'] == 'get_current_weather'

@@ -95,9 +95,9 @@ assert blocks[0].name == "get_stock_price"
 
 ---
 
-## Thinking Trace (Claude & Deepseek)
+## Thinking Trace (Claude, Gemini & Deepseek)
 
-Some engines (Anthropic’s Claude, Deepseek) can return an internal **thinking trace** that shows how they arrived at an answer. To get it, you must:
+Some engines (Anthropic's Claude, Google's Gemini, Deepseek) can return an internal **thinking trace** that shows how they arrived at an answer. To get it, you must:
 
 1. Pass `return_metadata=True`.
 2. Pass a `thinking=` configuration if required.
@@ -108,7 +108,7 @@ Some engines (Anthropic’s Claude, Deepseek) can return an internal **thinking 
 ```python
 from symai import Symbol
 
-thinking = {"type": "enabled", "budget_tokens": 4092}
+thinking = {"budget_tokens": 4092}
 
 res, metadata = Symbol("Topic: Disneyland") \
     .query(
@@ -116,6 +116,23 @@ res, metadata = Symbol("Topic: Disneyland") \
       return_metadata=True,
       thinking=thinking,
       max_tokens=16_000
+    )
+print(res.value)
+print(metadata["thinking"])
+```
+
+### Gemini (Google)
+
+```python
+from symai import Symbol
+
+thinking = {"thinking_budget": 1024}
+
+res, metadata = Symbol("Topic: Disneyland") \
+    .query(
+      "Write a dystopic take on the topic.",
+      return_metadata=True,
+      thinking=thinking
     )
 print(res.value)
 print(metadata["thinking"])
