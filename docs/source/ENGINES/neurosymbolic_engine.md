@@ -169,7 +169,14 @@ data = json.loads(resp.value)
 
 The default pipeline will automatically estimate token usage and truncate conversation as needed.
 On GPT-family backends, raw API usage in `response.usage` matches what `symai` computes.
-For Claude / Gemini / llama.cpp / HuggingFace, skip token‐comparison tests as they are not uniformly supported yet.
+For Gemini, an API call is made to retrieve token counts.
+For Claude / llama.cpp / HuggingFace, skip token‐comparison tests as they are not uniformly supported yet.
+
+If a tokenizer is available for the current engine, you can easily count tokens in a string via `Symbol`:
+```python
+string = "Hello, World!"
+print(Symbol(string).tokens)
+```
 
 ### Tracking Usage and Estimating Costs with `MetadataTracker`
 
