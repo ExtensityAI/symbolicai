@@ -230,9 +230,8 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
                 raise e
 
         metadata = {'raw_output': res}
+        output = [r.message.content for r in res.choices]
 
-        rsp    = [r.message.content for r in res.choices]
-        output = rsp if isinstance(messages, list) else rsp[0]
         return output, metadata
 
     def prepare(self, argument):
