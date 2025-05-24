@@ -30,7 +30,7 @@ class LlamaCppTokenizer:
                 "input": text,
             }) as res:
                 if res.status != 200:
-                    raise ValueError(f"Request failed with status code: {res.status}")
+                    CustomUserWarning(f"Request failed with status code: {res.status}", raise_with=ValueError)
                 res = await res.json()
                 return res['tokens']
 
@@ -50,7 +50,7 @@ class LlamaCppTokenizer:
                 "tokens": tokens,
             }) as res:
                 if res.status != 200:
-                    raise ValueError(f"Request failed with status code: {res.status}")
+                    CustomUserWarning(f"Request failed with status code: {res.status}", raise_with=ValueError)
                 res = await res.json()
                 return res['text']
 
@@ -114,21 +114,21 @@ class LlamaCppEngine(Engine):
 
     def compute_required_tokens(self, messages) -> int:
         #@TODO: quite non-trivial how to handle this with the llama.cpp server
-        raise NotImplementedError
+        CustomUserWarning('Not implemented for llama.cpp!', raise_with=NotImplementedError)
 
     def compute_remaining_tokens(self, prompts: list) -> int:
         #@TODO: quite non-trivial how to handle this with the llama.cpp server
-        raise NotImplementedError
+        CustomUserWarning('Not implemented for llama.cpp!', raise_with=NotImplementedError)
 
     def _validate_timeout_params(self, timeout_params):
         if not isinstance(timeout_params, dict):
-            raise ValueError("timeout_params must be a dictionary")
+            CustomUserWarning("timeout_params must be a dictionary", raise_with=ValueError)
         assert all(key in timeout_params for key in ['read', 'connect']), "Available keys: ['read', 'connect']"
         return timeout_params
 
     def _validate_retry_params(self, retry_params):
         if not isinstance(retry_params, dict):
-            raise ValueError("retry_params must be a dictionary")
+            CustomUserWarning("retry_params must be a dictionary", raise_with=ValueError)
         assert all(key in retry_params for key in ['tries', 'delay', 'max_delay', 'backoff', 'jitter', 'graceful']), "Available keys: ['tries', 'delay', 'max_delay', 'backoff', 'jitter', 'graceful']"
         return retry_params
 
@@ -138,7 +138,7 @@ class LlamaCppEngine(Engine):
         try:
             current_loop = asyncio.get_event_loop()
             if current_loop.is_closed():
-                raise RuntimeError("Event loop is closed.")
+                CustomUserWarning("Event loop is closed.", raise_with=RuntimeError)
             return current_loop
         except RuntimeError:
             new_loop = asyncio.new_event_loop()
@@ -182,7 +182,7 @@ class LlamaCppEngine(Engine):
                     json=payload
                 ) as res:
                     if res.status != 200:
-                        raise ValueError(f"Request failed with status code: {res.status}")
+                        CustomUserWarning(f"Request failed with status code: {res.status}", raise_with=ValueError)
                     return await res.json()
 
         return await _make_request()
@@ -196,7 +196,7 @@ class LlamaCppEngine(Engine):
         try:
             res = loop.run_until_complete(self._arequest(payload))
         except Exception as e:
-            raise ValueError(f"Request failed with error: {str(e)}")
+            CustomUserWarning(f"Request failed with error: {str(e)}", raise_with=ValueError)
 
         metadata = {'raw_output': res}
 
@@ -208,7 +208,7 @@ class LlamaCppEngine(Engine):
     def prepare(self, argument):
         if argument.prop.raw_input:
             if not argument.prop.processed_input:
-                raise ValueError('Need to provide a prompt instruction to the engine if raw_input is enabled.')
+                CustomUserWarning('Need to provide a prompt instruction to the engine if raw_input is enabled.', raise_with=ValueError)
             value = argument.prop.processed_input
             if type(value) != list:
                 if type(value) != dict:

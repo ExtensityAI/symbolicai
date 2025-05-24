@@ -27,7 +27,7 @@ class HFTokenizer:
         })
 
         if res.status_code != 200:
-            raise ValueError(f"Request failed with status code: {res.status_code}")
+            CustomUserWarning(f"Request failed with status code: {res.status_code}", raise_with=ValueError)
 
         res = res.json()
 
@@ -41,7 +41,7 @@ class HFTokenizer:
         })
 
         if res.status_code != 200:
-            raise ValueError(f"Request failed with status code: {res.status_code}")
+            CustomUserWarning(f"Request failed with status code: {res.status_code}", raise_with=ValueError)
 
         res = res.json()
 
@@ -78,11 +78,9 @@ class HFEngine(Engine):
             self.except_remedy = kwargs['except_remedy']
 
     def compute_required_tokens(self, messages) -> int:
-        raise NotImplementedError
-
+        CustomUserWarning('Not implemented for HFEngine. Please use the tokenizer directly to compute tokens.', raise_with=NotImplementedError)
     def compute_remaining_tokens(self, prompts: list) -> int:
-        raise NotImplementedError
-
+        CustomUserWarning('Not implemented for HFEngine. Please use the tokenizer directly to compute tokens.', raise_with=NotImplementedError)
     def forward(self, argument):
         kwargs  = argument.kwargs
         prompts = argument.prop.prepared_input
@@ -119,7 +117,7 @@ class HFEngine(Engine):
             })
 
             if res.status_code != 200:
-                raise ValueError(f"Request failed with status code: {res.status_code}")
+                CustomUserWarning(f"Request failed with status code: {res.status_code}", raise_with=ValueError)
 
             res = res.json()
 
@@ -127,7 +125,7 @@ class HFEngine(Engine):
             if except_remedy is not None:
                 res = except_remedy(self, e, argument)
             else:
-                raise e
+                CustomUserWarning(f"Request failed with exception: {str(e)}", raise_with=ValueError)
 
         metadata = {'raw_output': res}
 
@@ -138,7 +136,7 @@ class HFEngine(Engine):
     def prepare(self, argument):
         if argument.prop.raw_input:
             if not argument.prop.processed_input:
-                raise ValueError('Need to provide a prompt instruction to the engine if raw_input is enabled.')
+                CustomUserWarning('Need to provide a prompt instruction to the engine if raw_input is enabled.', raise_with=ValueError)
             value = argument.prop.processed_input
             if type(value) != list:
                 if type(value) != dict:
