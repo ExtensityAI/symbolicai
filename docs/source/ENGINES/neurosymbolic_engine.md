@@ -1,12 +1,14 @@
 # Neuro-Symbolic Engine
 
 The **neuro-symbolic** engine is our generic wrapper around large language models (LLMs) that support prompts, function/tool calls, vision tokens, token‐counting/truncation, etc.
-Depending on which backend you configure (OpenAI/GPT, Claude, Deepseek, llama.cpp, HuggingFace, …), a few things must be handled differently:
+Depending on which backend you configure (OpenAI/GPT, Claude, Gemini, Deepseek, llama.cpp, HuggingFace, …), a few things must be handled differently:
 
 * GPT-family (OpenAI) and most backends accept the usual `max_tokens`, `temperature`, etc., out of the box.
-* Claude (Anthropic) and Deepseek can return an internal “thinking trace” when you enable it.
+* Claude (Anthropic), Gemini (Google), and Deepseek can return an internal “thinking trace” when you enable it.
 * Local engines (llamacpp, HuggingFace) do *not* yet support token counting, JSON format enforcement, or vision inputs in the same way.
 * Token‐truncation and streaming are handled automatically but may vary in behavior by engine.
+
+**Note**: the most accurate documentation is the _code_, so be sure to check out the tests. Look for the `mandatory` mark since those are the features that were tested and are guaranteed to work.
 
 ---
 
@@ -27,7 +29,7 @@ Under the hood this uses the `neurosymbolic` engine.
 
 ## Raw LLM Response
 
-If you need the raw LLM objects (e.g. `openai.ChatCompletion` or `anthropic.types.Message`), use `raw_output=True`:
+If you need the raw LLM objects (e.g. `openai.ChatCompletion`, `anthropic.types.Message`/`anthropic.Stream`, or `google.genai.types.GenerateContentResponse`), use `raw_output=True`:
 
 ```python
 from symai import Expression
@@ -40,7 +42,7 @@ raw = Expression.prompt("What is the capital of France?", raw_output=True)
 
 ## Function/Tool Calls
 
-Models that support function calls (OpenAI GPT-4, Claude, …) can dispatch to your `symai.components.Function` definitions:
+Models that support function calls (OpenAI GPT-4, Claude, Gemini, …) can dispatch to your `symai.components.Function` definitions:
 
 ```python
 from symai.components import Function
@@ -167,7 +169,7 @@ data = json.loads(resp.value)
 
 The default pipeline will automatically estimate token usage and truncate conversation as needed.
 On GPT-family backends, raw API usage in `response.usage` matches what `symai` computes.
-For Claude / llama.cpp / HuggingFace, skip token‐comparison tests as they are not uniformly supported yet.
+For Claude / Gemini / llama.cpp / HuggingFace, skip token‐comparison tests as they are not uniformly supported yet.
 
 ### Tracking Usage and Estimating Costs with `MetadataTracker`
 
@@ -324,4 +326,4 @@ By tweaking flags such as `return_metadata`, `raw_output`, `preview`, and `think
 - feed in vision data,
 - and let `symai` manage token‐truncation automatically.
 
-Refer to the individual engine docs (OpenAI, Claude, Deepseek, llama.cpp, HuggingFace) for any model-specific quirks.
+Refer to the individual engine docs (OpenAI, Claude, Gemini, Deepseek, llama.cpp, HuggingFace) for any model-specific quirks.
