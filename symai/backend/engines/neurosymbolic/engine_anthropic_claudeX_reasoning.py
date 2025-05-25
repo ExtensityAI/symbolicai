@@ -254,7 +254,6 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         thinking_arg = kwargs.get('thinking', NOT_GIVEN)
         thinking = NOT_GIVEN
         if thinking_arg and isinstance(thinking_arg, dict):
-            # Enable thinking by default when dict is provided
             thinking = {
                 "type": "enabled",
                 "budget_tokens": thinking_arg.get("budget_tokens", 1024)

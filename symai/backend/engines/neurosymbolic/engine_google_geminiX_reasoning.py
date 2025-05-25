@@ -19,7 +19,8 @@ from ...base import Engine
 from ...mixin.google import GoogleMixin
 from ...settings import SYMAI_CONFIG
 
-logging.getLogger("google").setLevel(logging.ERROR)
+logging.getLogger("google.genai").setLevel(logging.ERROR)
+logging.getLogger("google_genai").propagate = False
 logging.getLogger("requests").setLevel(logging.ERROR)
 logging.getLogger("urllib").setLevel(logging.ERROR)
 logging.getLogger("httpx").setLevel(logging.ERROR)
@@ -67,23 +68,29 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
             self.model = kwargs['NEUROSYMBOLIC_ENGINE_MODEL']
             self.client = genai.GenerativeModel(model_name=self.model)
 
-    def compute_required_tokens(self, messages: list[dict]) -> int:
+    def compute_required_tokens(self, messages) -> int:
         api_contents: list[types.Content] = []
 
-        for msg_dict in messages:
-            role = msg_dict.get('role')
-            content_str = str(msg_dict.get('content', ''))
+        for msg in messages:
+            if not isinstance(msg, list):
+                msg = [msg]
+            for part in msg:
+                if isinstance(part, str):
+                    role = 'user'
+                    content_str = part
+                elif isinstance(part, dict):
+                    role = part.get('role')
+                    content_str = str(part.get('content', ''))
+                current_message_api_parts: list[types.Part] = []
+                image_api_parts = self._handle_image_content(content_str)
+                current_message_api_parts.extend(image_api_parts)
 
-            current_message_api_parts: list[types.Part] = []
-            image_api_parts = self._handle_image_content(content_str)
-            current_message_api_parts.extend(image_api_parts)
+                text_only_content = self._remove_media_patterns(content_str)
+                if text_only_content:
+                    current_message_api_parts.append(types.Part(text=text_only_content))
 
-            text_only_content = self._remove_media_patterns(content_str)
-            if text_only_content:
-                current_message_api_parts.append(types.Part(text=text_only_content))
-
-            if current_message_api_parts:
-                api_contents.append(types.Content(role=role, parts=current_message_api_parts))
+                if current_message_api_parts:
+                    api_contents.append(types.Content(role=role, parts=current_message_api_parts))
 
         if not api_contents:
             return 0
@@ -414,12 +421,12 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
                 CustomUserWarning(f"Unsupported type for raw_input: {type(raw_prompt_data)}. Expected str, dict, or list of dicts.", raise_with=ValueError)
 
             temp_non_system_messages = []
-            for msg_dict in normalized_prompts:
-                role = msg_dict.get('role')
-                content = msg_dict.get('content')
+            for msg in normalized_prompts:
+                role = msg.get('role')
+                content = msg.get('content')
 
                 if role is None or content is None:
-                    CustomUserWarning(f"Message in raw_input is missing 'role' or 'content': {msg_dict}", raise_with=ValueError)
+                    CustomUserWarning(f"Message in raw_input is missing 'role' or 'content': {msg}", raise_with=ValueError)
                 if not isinstance(content, str):
                     CustomUserWarning(f"Message content for role '{role}' in raw_input must be a string. Found type: {type(content)} for content: {content}", raise_with=ValueError)
                 if role == 'system':
@@ -429,8 +436,8 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
                 else:
                     temp_non_system_messages.append({'role': role, 'content': content})
 
-            for msg_dict in temp_non_system_messages:
-                content_str = str(msg_dict.get('content', ''))
+            for msg in temp_non_system_messages:
+                content_str = str(msg.get('content', ''))
 
                 current_message_api_parts: list[types.Part] = []
 
@@ -444,7 +451,7 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
 
                 if current_message_api_parts:
                     messages_for_api.append({
-                        'role': msg_dict['role'],
+                        'role': msg['role'],
                         'content': current_message_api_parts
                     })
 
