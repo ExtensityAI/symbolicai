@@ -29,7 +29,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
         if api_key is not None and model is not None:
             self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] = api_key
-            self.config['NEUROSYMBOLIC_ENGINE_MODEL']   = model
+            self.config['NEUROSYMBOLIC_ENGINE_MODEL'] = model
         if self.id() != 'neurosymbolic':
             return # do not initialize if not neurosymbolic; avoids conflict with llama.cpp check in EngineRepository.register_from_package
         openai.api_key = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
