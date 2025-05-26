@@ -66,6 +66,38 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
     def compute_remaining_tokens(self, prompts: list) -> int:
         raise NotImplementedError('Method not implemented.')
 
+    def _handle_image_content(self, content: str) -> list:
+        """Handle image content by processing vision patterns and returning image file data."""
+        def extract_pattern(text):
+            pattern = r'<<vision:(.*?):>>'
+            return re.findall(pattern, text)
+
+        image_files = []
+        if '<<vision:' in content:
+            parts = extract_pattern(content)
+            for p in parts:
+                img_ = p.strip()
+                max_frames_spacing = 50
+                max_used_frames = 10
+                buffer, ext = encode_media_frames(img_)
+                if len(buffer) > 1:
+                    step = len(buffer) // max_frames_spacing # max frames spacing
+                    frames = []
+                    indices = list(range(0, len(buffer), step))[:max_used_frames]
+                    for i in indices:
+                        frames.append({'data': buffer[i], 'media_type': f'image/{ext}', 'type': 'base64'})
+                    image_files.extend(frames)
+                elif len(buffer) == 1:
+                    image_files.append({'data': buffer[0], 'media_type': f'image/{ext}', 'type': 'base64'})
+                else:
+                    CustomUserWarning(f'No frames found for image!')
+        return image_files
+
+    def _remove_vision_pattern(self, text: str) -> str:
+        """Remove vision patterns from text."""
+        pattern = r'<<vision:(.*?):>>'
+        return re.sub(pattern, '', text)
+
     def forward(self, argument):
         kwargs = argument.kwargs
         system, messages = argument.prop.prepared_input
@@ -160,44 +192,17 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
         if examples and len(examples) > 0:
             system += f"<EXAMPLES/>\n{str(examples)}\n\n"
 
-        def extract_pattern(text):
-            pattern = r'<<vision:(.*?):>>'
-            return re.findall(pattern, text)
-
-        def remove_pattern(text):
-            pattern = r'<<vision:(.*?):>>'
-            return re.sub(pattern, '', text)
-
-        image_files = []
-        # pre-process prompt if contains image url
-        if '<<vision:' in str(argument.prop.processed_input):
-            parts = extract_pattern(str(argument.prop.processed_input))
-            for p in parts:
-                img_ = p.strip()
-                max_frames_spacing = 50
-                max_used_frames = 10
-                buffer, ext = encode_media_frames(img_)
-                if len(buffer) > 1:
-                    step = len(buffer) // max_frames_spacing # max frames spacing
-                    frames = []
-                    indices = list(range(0, len(buffer), step))[:max_used_frames]
-                    for i in indices:
-                        frames.append({'data': buffer[i], 'media_type': f'image/{ext}', 'type': 'base64'})
-                    image_files.extend(frames)
-                elif len(buffer) == 1:
-                    image_files.append({'data': buffer[0], 'media_type': f'image/{ext}', 'type': 'base64'})
-                else:
-                    CustomUserWarning(f'No frames found for image!')
+        image_files = self._handle_image_content(str(argument.prop.processed_input))
 
         if argument.prop.prompt is not None and len(argument.prop.prompt) > 0:
             val = str(argument.prop.prompt)
             if len(image_files) > 0:
-                val = remove_pattern(val)
+                val = self._remove_vision_pattern(val)
             system += f"<INSTRUCTION/>\n{val}\n\n"
 
         suffix: str = str(argument.prop.processed_input)
         if len(image_files) > 0:
-            suffix = remove_pattern(suffix)
+            suffix = self._remove_vision_pattern(suffix)
 
         user += f"{suffix}"
 
