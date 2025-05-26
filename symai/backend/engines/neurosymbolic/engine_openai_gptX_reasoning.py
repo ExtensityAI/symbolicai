@@ -103,6 +103,50 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
         val = self.compute_required_tokens(prompts)
         return min(self.max_context_tokens - val, self.max_response_tokens)
 
+    def _handle_image_content(self, content: str) -> list:
+        """Handle image content by processing vision patterns and returning image file data."""
+        def _extract_pattern(text):
+            pattern = r'<<vision:(.*?):>>'
+            return re.findall(pattern, text)
+
+        image_files = []
+        # pre-process prompt if contains image url
+        if self.model == 'o1' and '<<vision:' in content:
+            parts = _extract_pattern(content)
+            for p in parts:
+                img_ = p.strip()
+                if img_.startswith('http'):
+                    image_files.append(img_)
+                elif img_.startswith('data:image'):
+                    image_files.append(img_)
+                else:
+                    max_frames_spacing = 50
+                    max_used_frames = 10
+                    if img_.startswith('frames:'):
+                        img_ = img_.replace('frames:', '')
+                        max_used_frames, img_ = img_.split(':')
+                        max_used_frames = int(max_used_frames)
+                        if max_used_frames < 1 or max_used_frames > max_frames_spacing:
+                            CustomUserWarning(f"Invalid max_used_frames value: {max_used_frames}. Expected value between 1 and {max_frames_spacing}", raise_with=ValueError)
+                    buffer, ext = encode_media_frames(img_)
+                    if len(buffer) > 1:
+                        step = len(buffer) // max_frames_spacing # max frames spacing
+                        frames = []
+                        indices = list(range(0, len(buffer), step))[:max_used_frames]
+                        for i in indices:
+                            frames.append(f"data:image/{ext};base64,{buffer[i]}")
+                        image_files.extend(frames)
+                    elif len(buffer) == 1:
+                        image_files.append(f"data:image/{ext};base64,{buffer[0]}")
+                    else:
+                        print('No frames found or error in encoding frames')
+        return image_files
+
+    def _remove_vision_pattern(self, text: str) -> str:
+        """Remove vision patterns from text."""
+        pattern = r'<<vision:(.*?):>>'
+        return re.sub(pattern, '', text)
+
     def truncate(self, prompts: list[dict], truncation_percentage: float | None, truncation_type: str) -> list[dict]:
         """Main truncation method"""
         def _slice_tokens(tokens, new_len, truncation_type):
@@ -283,54 +327,17 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
         if examples and len(examples) > 0:
             developer += f"<EXAMPLES/>\n{str(examples)}\n\n"
 
-        def _extract_pattern(text):
-            pattern = r'<<vision:(.*?):>>'
-            return re.findall(pattern, text)
-
-        def _remove_pattern(text):
-            pattern = r'<<vision:(.*?):>>'
-            return re.sub(pattern, '', text)
-
-        image_files = []
-        # pre-process prompt if contains image url
-        if self.model == 'o1' and '<<vision:' in str(argument.prop.processed_input):
-            parts = _extract_pattern(str(argument.prop.processed_input))
-            for p in parts:
-                img_ = p.strip()
-                if img_.startswith('http'):
-                    image_files.append(img_)
-                elif img_.startswith('data:image'):
-                    image_files.append(img_)
-                else:
-                    max_frames_spacing = 50
-                    max_used_frames = 10
-                    if img_.startswith('frames:'):
-                        CustomUserWarningimg_ = img_.split(':', )
-                        max_used_frames = int(max_used_frames)
-                        if max_used_frames < 1 or max_used_frames > max_frames_spacing:
-                            CustomUserWarning(f"Invalid max_used_frames value: {max_used_frames}. Expected value between 1 and {max_frames_spacing}", raise_with=ValueError)
-                    buffer, ext = encode_media_frames(img_)
-                    if len(buffer) > 1:
-                        step = len(buffer) // max_frames_spacing # max frames spacing
-                        frames = []
-                        indices = list(range(0, len(buffer), step))[:max_used_frames]
-                        for i in indices:
-                            frames.append(f"data:image/{ext};base64,{buffer[i]}")
-                        image_files.extend(frames)
-                    elif len(buffer) == 1:
-                        image_files.append(f"data:image/{ext};base64,{buffer[0]}")
-                    else:
-                        print('No frames found or error in encoding frames')
+        image_files = self._handle_image_content(str(argument.prop.processed_input))
 
         if argument.prop.prompt is not None and len(argument.prop.prompt) > 0:
             val = str(argument.prop.prompt)
             if len(image_files) > 0:
-                val = _remove_pattern(val)
+                val = self._remove_vision_pattern(val)
             developer += f"<INSTRUCTION/>\n{val}\n\n"
 
         suffix: str = str(argument.prop.processed_input)
         if len(image_files) > 0:
-            suffix = _remove_pattern(suffix)
+            suffix = self._remove_vision_pattern(suffix)
 
         user += f"{suffix}"
 
