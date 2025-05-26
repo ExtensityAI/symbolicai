@@ -281,17 +281,20 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
 
         return output, metadata
 
+    def _prepare_raw_input(self, argument):
+        if not argument.prop.processed_input:
+            CustomUserWarning('Need to provide a prompt instruction to the engine if raw_input is enabled.', raise_with=ValueError)
+        value = argument.prop.processed_input
+        # convert to dict if not already
+        if type(value) != list:
+            if type(value) != dict:
+                value = {'role': 'user', 'content': str(value)}
+            value = [value]
+        return value
+
     def prepare(self, argument):
         if argument.prop.raw_input:
-            if not argument.prop.processed_input:
-                CustomUserWarning('Need to provide a prompt instruction to the engine if raw_input is enabled.', raise_with=ValueError)
-            value = argument.prop.processed_input
-            # convert to dict if not already
-            if type(value) != list:
-                if type(value) != dict:
-                    value = {'role': 'user', 'content': str(value)}
-                value = [value]
-            argument.prop.prepared_input = value
+            argument.prop.prepared_input = self._prepare_raw_input(argument)
             return
 
         _non_verbose_output = """<META_INSTRUCTION/>\nYou do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc. Never add meta instructions information to your output!\n\n"""

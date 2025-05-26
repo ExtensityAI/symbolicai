@@ -399,63 +399,67 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
                         hit = True
         return metadata
 
-    def prepare(self, argument):
-        if argument.prop.raw_input:
-            if not argument.prop.processed_input:
-                CustomUserWarning('Need to provide a prompt instruction to the engine if `raw_input` is enabled!', raise_with=ValueError)
+    def _prepare_raw_input(self, argument):
+        if not argument.prop.processed_input:
+            CustomUserWarning('Need to provide a prompt instruction to the engine if `raw_input` is enabled!', raise_with=ValueError)
 
-            raw_prompt_data = argument.prop.processed_input
-            messages_for_api = []
-            system_instruction = None
+        raw_prompt_data = argument.prop.processed_input
+        messages_for_api = []
+        system_instruction = None
 
-            if isinstance(raw_prompt_data, str):
-                normalized_prompts = [{'role': 'user', 'content': raw_prompt_data}]
-            elif isinstance(raw_prompt_data, dict):
-                normalized_prompts = [raw_prompt_data]
-            elif isinstance(raw_prompt_data, list):
-                for item in raw_prompt_data:
-                    if not isinstance(item, dict):
-                        CustomUserWarning(f"Invalid item in raw_input list: {item}. Expected dict.", raise_with=ValueError)
-                normalized_prompts = raw_prompt_data
+        if isinstance(raw_prompt_data, str):
+            normalized_prompts = [{'role': 'user', 'content': raw_prompt_data}]
+        elif isinstance(raw_prompt_data, dict):
+            normalized_prompts = [raw_prompt_data]
+        elif isinstance(raw_prompt_data, list):
+            for item in raw_prompt_data:
+                if not isinstance(item, dict):
+                    CustomUserWarning(f"Invalid item in raw_input list: {item}. Expected dict.", raise_with=ValueError)
+            normalized_prompts = raw_prompt_data
+        else:
+            CustomUserWarning(f"Unsupported type for raw_input: {type(raw_prompt_data)}. Expected str, dict, or list of dicts.", raise_with=ValueError)
+
+        temp_non_system_messages = []
+        for msg in normalized_prompts:
+            role = msg.get('role')
+            content = msg.get('content')
+
+            if role is None or content is None:
+                CustomUserWarning(f"Message in raw_input is missing 'role' or 'content': {msg}", raise_with=ValueError)
+            if not isinstance(content, str):
+                CustomUserWarning(f"Message content for role '{role}' in raw_input must be a string. Found type: {type(content)} for content: {content}", raise_with=ValueError)
+            if role == 'system':
+                if system_instruction is not None:
+                    CustomUserWarning('Only one system instruction is allowed in raw_input mode!', raise_with=ValueError)
+                system_instruction = content
             else:
-                CustomUserWarning(f"Unsupported type for raw_input: {type(raw_prompt_data)}. Expected str, dict, or list of dicts.", raise_with=ValueError)
+                temp_non_system_messages.append({'role': role, 'content': content})
 
-            temp_non_system_messages = []
-            for msg in normalized_prompts:
-                role = msg.get('role')
-                content = msg.get('content')
+        for msg in temp_non_system_messages:
+            content_str = str(msg.get('content', ''))
 
-                if role is None or content is None:
-                    CustomUserWarning(f"Message in raw_input is missing 'role' or 'content': {msg}", raise_with=ValueError)
-                if not isinstance(content, str):
-                    CustomUserWarning(f"Message content for role '{role}' in raw_input must be a string. Found type: {type(content)} for content: {content}", raise_with=ValueError)
-                if role == 'system':
-                    if system_instruction is not None:
-                        CustomUserWarning('Only one system instruction is allowed in raw_input mode!', raise_with=ValueError)
-                    system_instruction = content
-                else:
-                    temp_non_system_messages.append({'role': role, 'content': content})
+            current_message_api_parts: list[types.Part] = []
 
-            for msg in temp_non_system_messages:
-                content_str = str(msg.get('content', ''))
+            image_api_parts = self._handle_image_content(content_str)
+            if image_api_parts:
+                current_message_api_parts.extend(image_api_parts)
 
-                current_message_api_parts: list[types.Part] = []
+            text_only_content = self._remove_media_patterns(content_str)
+            if text_only_content:
+                current_message_api_parts.append(types.Part(text=text_only_content))
 
-                image_api_parts = self._handle_image_content(content_str)
-                if image_api_parts:
-                    current_message_api_parts.extend(image_api_parts)
+            if current_message_api_parts:
+                messages_for_api.append({
+                    'role': msg['role'],
+                    'content': current_message_api_parts
+                })
 
-                text_only_content = self._remove_media_patterns(content_str)
-                if text_only_content:
-                    current_message_api_parts.append(types.Part(text=text_only_content))
+        return system_instruction, messages_for_api
 
-                if current_message_api_parts:
-                    messages_for_api.append({
-                        'role': msg['role'],
-                        'content': current_message_api_parts
-                    })
-
-            argument.prop.prepared_input = system_instruction, messages_for_api
+    def prepare(self, argument):
+        #@NOTE: OpenAI compatibility at high level
+        if argument.prop.raw_input:
+            argument.prop.prepared_input = self._prepare_raw_input(argument)
             return
 
         _non_verbose_output = """<META_INSTRUCTION/>\nYou do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc. Never add meta instructions information to your output!\n\n"""
