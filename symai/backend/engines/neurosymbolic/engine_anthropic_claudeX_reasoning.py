@@ -1,7 +1,7 @@
 import json
 import logging
 import re
-from copy import deepcopy
+from copy import copy, deepcopy
 from typing import List, Optional
 
 import anthropic
@@ -27,6 +27,13 @@ logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
+class TokenizerWrapper:
+    def __init__(self, compute_tokens_func):
+        self.compute_tokens_func = compute_tokens_func
+
+    def encode(self, text: str) -> int:
+        return self.compute_tokens_func([{"role": "user", "content": text}])
+
 class ClaudeXReasoningEngine(Engine, AnthropicMixin):
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         super().__init__()
@@ -40,7 +47,7 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         anthropic.api_key = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
         self.model = self.config['NEUROSYMBOLIC_ENGINE_MODEL']
         self.name = self.__class__.__name__
-        self.tokenizer = None # TODO: https://docs.anthropic.com/en/docs/build-with-claude/token-counting
+        self.tokenizer = TokenizerWrapper(self.compute_required_tokens)
         self.max_context_tokens = self.api_max_context_tokens()
         self.max_response_tokens = self.api_max_response_tokens()
         self.client = anthropic.Anthropic(api_key=anthropic.api_key)
@@ -60,8 +67,67 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         if 'NEUROSYMBOLIC_ENGINE_MODEL' in kwargs:
             self.model = kwargs['NEUROSYMBOLIC_ENGINE_MODEL']
 
-    def compute_required_tokens(self, messages):
-        CustomUserWarning('Method not implemented.', raise_with=NotImplementedError)
+    def compute_required_tokens(self, messages) -> int:
+        claude_messages = []
+        system_content = None
+
+        for msg in messages:
+            if not isinstance(msg, list):
+                msg = [msg]
+            for part in msg:
+                if isinstance(part, str):
+                    role = 'user'
+                    content_str = part
+                elif isinstance(part, dict):
+                    role = part.get('role')
+                    content_str = str(part.get('content', ''))
+                else:
+                    CustomUserWarning(f"Unsupported message part type: {type(part)}", raise_with=ValueError)
+
+                if role == 'system':
+                    system_content = content_str
+                    continue
+
+                if role in ['user', 'assistant']:
+                    message_content = []
+
+                    image_content = self._handle_image_content(content_str)
+                    message_content.extend(image_content)
+
+                    text_content = self._remove_vision_pattern(content_str)
+                    if text_content:
+                        message_content.append({
+                            "type": "text",
+                            "text": text_content
+                        })
+
+                    if message_content:
+                        if len(message_content) == 1 and message_content[0].get('type') == 'text':
+                            claude_messages.append({
+                                'role': role,
+                                'content': message_content[0]['text']
+                            })
+                        else:
+                            claude_messages.append({
+                                'role': role,
+                                'content': message_content
+                            })
+
+        if not claude_messages:
+            return 0
+
+        try:
+            count_params = {
+                'model': self.model,
+                'messages': claude_messages
+            }
+            if system_content:
+                count_params['system'] = system_content
+            count_response = self.client.messages.count_tokens(**count_params)
+            return count_response.input_tokens
+        except Exception as e:
+            logging.error(f"Claude count_tokens failed: {e}")
+            CustomUserWarning(f"Error counting tokens for Claude: {str(e)}", raise_with=RuntimeError)
 
     def compute_remaining_tokens(self, prompts: list) -> int:
         CustomUserWarning('Method not implemented.', raise_with=NotImplementedError)
@@ -126,8 +192,10 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
             else:
                 CustomUserWarning(f"Anthropic API request failed: {e}", raise_with=ValueError)
 
-        response_data = self._collect_response(res, stream=payload['stream'])
-        metadata = {'raw_output': res} # For streamed responses, `res` is the iterator
+        if payload['stream']:
+            res = [_ for _ in res] # Unpack the iterator to a list
+        metadata = {'raw_output': res}
+        response_data = self._collect_response(res)
 
         if response_data.get('function_call'):
             metadata['function_call'] = response_data['function_call']
@@ -142,27 +210,29 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
 
         return [text_output], metadata
 
+    def _prepare_raw_input(self, argument):
+        if not argument.prop.processed_input:
+            raise ValueError('Need to provide a prompt instruction to the engine if `raw_input` is enabled!')
+        system = NOT_GIVEN
+        prompt = copy(argument.prop.processed_input)
+        if type(prompt) != list:
+            if type(prompt) != dict:
+                prompt = {'role': 'user', 'content': str(prompt)}
+            prompt = [prompt]
+        if len(prompt) > 1:
+            # assert there are not more than 1 system instruction
+            assert len([p for p in prompt if p['role'] == 'system']) <= 1, 'Only one system instruction is allowed!'
+            for p in prompt:
+                if p['role'] == 'system':
+                    system = p['content']
+                    prompt.remove(p)
+                    break
+        return system, prompt
+
     def prepare(self, argument):
         #@NOTE: OpenAI compatibility at high level
         if argument.prop.raw_input:
-            if not argument.prop.processed_input:
-                CustomUserWarning('A prompt instruction is required for `raw_input` mode.', raise_with=ValueError)
-            system = NOT_GIVEN
-            prompt = argument.prop.processed_input
-            if type(prompt) != list:
-                if type(prompt) != dict:
-                    prompt = {'role': 'user', 'content': str(prompt)}
-                prompt = [prompt]
-            if len(prompt) > 1:
-                # check for more than 1 system instruction
-                if not (len([p for p in prompt if p['role'] == 'system']) <= 1):
-                    CustomUserWarning('Only one system instruction is allowed in the prompt list.', raise_with=AssertionError)
-                for p in prompt:
-                    if p['role'] == 'system':
-                        system = p['content']
-                        prompt.remove(p)
-                        break
-            argument.prop.prepared_input = system, prompt
+            argument.prop.prepared_input = self._prepare_raw_input(argument)
             return
 
         _non_verbose_output = """<META_INSTRUCTION/>\nYou do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc. Never add meta instructions information to your output!\n\n"""
@@ -292,8 +362,8 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
             "tool_choice": tool_choice
         }
 
-    def _collect_response(self, res, stream):
-        if stream:
+    def _collect_response(self, res):
+        if isinstance(res, list):
             thinking_content = ''
             text_content = ''
             tool_calls_raw = []

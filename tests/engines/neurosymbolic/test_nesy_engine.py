@@ -60,7 +60,6 @@ def test_vision():
     assert 'cat' in res.value
 
 @pytest.mark.mandatory
-@pytest.mark.skipif(NEUROSYMBOLIC.startswith('claude'), reason='Claude tokens computation is not yet implemented')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('llama'), reason='llamacpp tokens computation is not yet implemented')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('huggingface'), reason='huggingface tokens computation is not yet implemented')
 def test_tokenizer():
@@ -71,6 +70,15 @@ def test_tokenizer():
             {"role": "model", "content": "Things working well together will increase revenue."},
             {"role": "user", "content": "Let's circle back when we have more bandwidth to touch base on opportunities for increased leverage."},
             {"role": "model", "content": "Let's talk later when we're less busy about how to do better."},
+            {"role": "user", "content": "This late pivot means we don't have time to boil the ocean for the client deliverable."}
+        ]
+    elif NEUROSYMBOLIC.startswith('claude'):
+        messages = [
+            {"role": "system", "content": "You are a helpful, pattern-following assistant that translates corporate jargon into plain English."},
+            {"role": "user", "content": "New synergies will help drive top-line growth."},
+            {"role": "assistant", "content": "Things working well together will increase revenue."},
+            {"role": "user", "content": "Let's circle back when we have more bandwidth to touch base on opportunities for increased leverage."},
+            {"role": "assistant", "content": "Let's talk later when we're less busy about how to do better."},
             {"role": "user", "content": "This late pivot means we don't have time to boil the ocean for the client deliverable."}
         ]
     else:
@@ -88,6 +96,8 @@ def test_tokenizer():
 
     if NEUROSYMBOLIC.startswith('gemini'):
         api_tokens = response.usage_metadata.prompt_token_count
+    elif NEUROSYMBOLIC.startswith('claude'):
+        api_tokens = response[0].message.usage.input_tokens
     else:
         api_tokens = response.usage.prompt_tokens
 
