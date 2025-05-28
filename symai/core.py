@@ -707,7 +707,7 @@ def correct(context: str,
 
 def translate(language: str = 'English',
               default: str = "Sorry, I do not understand the given language.",
-              prompt: str = "Translate the following text into {}:\n",
+              prompt: str = "Your task is to translate and **only** translate the text into {}:\n",
               examples: Optional[prm.Prompt] = None,
               constraints: List[Callable] = [],
               pre_processors: Optional[List[pre.PreProcessor]] = [pre.LanguagePreProcessor()],
