@@ -158,7 +158,7 @@ class Sequence(TrackerTraceable):
 
 
 class Parallel(Expression):
-    def __init__(self, *expr: List[Expression], sequential: bool = False, **kwargs):
+    def __init__(self, *expr: List[Expression | Callable], sequential: bool = False, **kwargs):
         super().__init__(**kwargs)
         self.sequential: bool       = sequential
         self.expr: List[Expression] = expr

@@ -111,11 +111,9 @@ class GPTXSearchEngine(Engine):
         payload = {
             "model": self.model,
             "input": messages,
-            "tools": [tool_definition]
+            "tools": [tool_definition],
+            "tool_choice": {"type": "web_search_preview"} # force the use of web search tool
         }
-
-        if kwargs.get('force_tool_choice', False) and tool_definition.get('type'):
-            payload['tool_choice'] = {"type": tool_definition['type']}
 
         headers = {
             "Authorization": f"Bearer {self.api_key}",
