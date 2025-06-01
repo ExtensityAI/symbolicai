@@ -123,6 +123,13 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
             system += _non_verbose_output
         system = f'{system}\n' if system and len(system) > 0 else ''
 
+        if argument.prop.response_format:
+            _rsp_fmt = argument.prop.response_format
+            if not (_rsp_fmt.get('type') is not None):
+                CustomUserWarning('Response format type is required! Expected format `{"type": "json_object"}` or other supported types.', raise_with=AssertionError)
+            system += _non_verbose_output
+            system += f'<RESPONSE_FORMAT/>\n{_rsp_fmt["type"]}\n\n'
+
         ref = argument.prop.instance
         static_ctxt, dyn_ctxt = ref.global_context
         if len(static_ctxt) > 0:
