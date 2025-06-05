@@ -1,8 +1,9 @@
 # https://ai.google.dev/gemini-api/docs/models/gemini
 SUPPORTED_CHAT_MODELS = []
 SUPPORTED_REASONING_MODELS = [
-    'gemini-2.5-pro-preview-05-06',
-    'gemini-2.5-flash-preview-05-20',
+    # Check the latest snapshots; ie. *-06-05, etc
+    'gemini-2.5-pro-preview-',
+    'gemini-2.5-flash-preview-',
 ]
 
 class GoogleMixin:
