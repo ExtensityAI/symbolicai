@@ -108,6 +108,7 @@ class GPTXSearchEngine(Engine):
         if search_context_size:
             tool_definition['search_context_size'] = search_context_size
 
+        self.model = kwargs.get('model', self.model) # Important for MetadataTracker to work correctly
         payload = {
             "model": self.model,
             "input": messages,
