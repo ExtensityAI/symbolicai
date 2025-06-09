@@ -5,6 +5,7 @@ from ...symbol import Expression
 class console(Expression):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.name = self.__class__.__name__
 
     def __call__(self, *args, **kwargs) -> "console":
         kwargs['handler'] = lambda x: print(*x['args'])

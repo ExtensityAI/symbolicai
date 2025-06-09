@@ -7,6 +7,7 @@ class pinecone(Expression):
     def __init__(self, index_name = PineconeIndexEngine._default_index_name, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.index_name = index_name
+        self.name = self.__class__.__name__
 
     def __call__(self, stmt: str, operation: str = "search", index_name = None, **kwargs) -> PineconeResult:
         stmt  = self._to_symbol(stmt)

@@ -6,6 +6,7 @@ from ...backend.engines.search.engine_serpapi import SearchResult
 class serpapi(Expression):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.name = self.__class__.__name__
 
     def __call__(self, query: Symbol, **kwargs) -> SearchResult:
         query = self._to_symbol(query)

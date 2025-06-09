@@ -5,6 +5,7 @@ from ...symbol import Expression
 class input(Expression):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.name = self.__class__.__name__
 
     def __call__(self, message: str = "Please add more information", **kwargs) -> "input":
         @core.userinput(**kwargs)
