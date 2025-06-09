@@ -504,7 +504,7 @@ class contract:
         act_sig = inspect.signature(act_method)
         act_params_list = list(act_sig.parameters.values())
 
-        if len(act_params_list) <= 1:
+        if not len(act_params_list) > 1:
             raise TypeError(f"'act' method on {wrapped_self.__class__.__name__} must accept at least one input parameter after 'self'.")
 
         op_start = time.perf_counter()
