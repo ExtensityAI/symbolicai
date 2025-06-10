@@ -35,7 +35,7 @@ os.environ['TOKENIZERS_PARALLELISM'] = "false"
 # Create singleton instance
 config_manager = settings.SymAIConfig()
 
-SYMAI_VERSION = "0.12.0"
+SYMAI_VERSION = "0.12.1"
 __version__   = SYMAI_VERSION
 __root_dir__  = config_manager.config_dir
 
