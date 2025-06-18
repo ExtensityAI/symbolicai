@@ -1,4 +1,5 @@
 import asyncio
+import atexit
 import functools
 import logging
 import multiprocessing as mp
@@ -7,6 +8,7 @@ import pickle
 import random
 import sys
 import time
+import threading
 import traceback
 from pathlib import Path
 from typing import Callable, List
@@ -20,22 +22,43 @@ from .functional import EngineRepository
 
 logging.getLogger("multiprocessing").setLevel(logging.ERROR)
 
+# -----------------------------------------------------------
+# Global registry so we create **one** pool and reuse it
+# -----------------------------------------------------------
+_pool_registry: dict[int, mp.pool.Pool] = {}
+_pool_lock = threading.Lock()
+
+def _get_pool(workers: int) -> mp.pool.Pool:
+    pool = _pool_registry.get(workers)
+    if pool is not None:
+        return pool
+    with _pool_lock:
+        pool = _pool_registry.get(workers)
+        if pool is None:
+            pool = mp.Pool(processes=workers)
+            _pool_registry[workers] = pool
+    return pool
+
+@atexit.register
+def _shutdown_pools() -> None:
+    for pool in _pool_registry.values():
+        pool.close()
+        pool.join()
 
 def _run_in_process(expr, func, args, kwargs):
-    # Unpickling the expression using dill
     expr = dill.loads(expr)
     func = dill.loads(func)
     return func(expr, *args, **kwargs)
 
 def _parallel(func: Callable, expressions: List[Callable], worker: int = mp.cpu_count() // 2):
+    pickled_exprs = [dill.dumps(expr) for expr in expressions]
+    pickled_func  = dill.dumps(func)
+    pool = _get_pool(worker)
     def proxy_function(*args, **kwargs):
-        # Pickle the expressions using dill
-        pickled_exprs = [dill.dumps(expr) for expr in expressions]
-        pickled_func = dill.dumps(func)
-        with mp.Pool(processes=worker) as pool:
-            # We map the _run_in_process function to each pickled expression
-            results = pool.starmap(_run_in_process, [(expr, pickled_func, args, kwargs) for expr in pickled_exprs])
-        return results
+        return pool.starmap(
+                _run_in_process,
+                [(expr, pickled_func, args, kwargs) for expr in pickled_exprs]
+            )
     return proxy_function
 
 # Decorator
