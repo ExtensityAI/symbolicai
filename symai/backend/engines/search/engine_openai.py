@@ -1,6 +1,7 @@
 import json
 import logging
 import requests
+from copy import deepcopy
 from dataclasses import dataclass
 
 from ....symbol import Result
@@ -76,9 +77,12 @@ class SearchResult(Result):
 
 
 class GPTXSearchEngine(Engine):
-    def __init__(self):
+    def __init__(self, api_key: str | None = None, model: str | None = None):
         super().__init__()
-        self.config = SYMAI_CONFIG
+        self.config = deepcopy(SYMAI_CONFIG)
+        if api_key is not None and model is not None:
+            self.config['SEARCH_ENGINE_API_KEY'] = api_key
+            self.config['SEARCH_ENGINE_MODEL']   = model
         self.api_key = self.config.get('SEARCH_ENGINE_API_KEY')
         self.model = self.config.get('SEARCH_ENGINE_MODEL', 'gpt-4.1') # Default to gpt-4.1 as per docs
         self.name = self.__class__.__name__
