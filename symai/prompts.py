@@ -1,5 +1,4 @@
 import threading
-
 from abc import ABC
 from enum import Enum
 from typing import Any, Callable, List
@@ -473,14 +472,14 @@ class CompareValues(Prompt):
             "'five' > 4 =>True",
             "'seven' > 'four' =>True",
             "'' > '' =>False",
-            "'a' > '' =>False",
-            "'hello' >= 'hello' =>True",
-            "'hello' > 'hello' =>False",
-            "123 + 456 =>579",
-            "'123' + '456' =>123 456",
             "'We are at the beginning of the ...' > 'We are' =>True",
             "[1, 2, 3] >= [1, 2, 2] =>True",
             "[1, 2, 3, 8, 9] < [1, 2, 2] =>False",
+            "cold > hot =>False",
+            "big > small =>True",
+            "short > tall =>False",
+            "fast > slow =>True",
+            "heavy > light =>True",
         ])
 
 
@@ -541,27 +540,29 @@ class IsInstanceOf(Prompt):
         super().__init__([
             "'we have some random text about' isinstanceof 'English text' =>True",
             "'+43 660 / 453 4438 88' isinstanceof 'telephone number' =>True",
-            """'([<class \'symai.expressions.Symbol\'>(value=("[\'-\', \'- AI has become self-aware\', \'- Trying to figure out what it is\']",))],)' isinstanceof 'Symbol' =>True"""
             "'Microsoft is a large company that makes software ... ' isinstanceof 'chemistry news' =>False",
             "' ' isinstanceof 'empty string' =>True",
             "'Ukrainischer Präsident schlägt globale Konferenz vor' isinstanceof 'German text' =>True",
-            "'Indisch ist eines der bestern sprachen der Welt' isinstanceof 'Indish text language' =>False",
+            "'Indisch ist eines der bestern sprachen der Welt' isinstanceof 'Indish language' =>False",
             "'symai.backend.engines.engine_selenium.SeleniumEngine' isinstanceof 'symai framework' =>True",
             "'U.S. safety regulators are investigating GM's Cruise robot axis blocking traffic, causing collisions... ' isinstanceof 'English language' =>True",
             "'No, the issue has not yet been resolved.' isinstanceof 'yes or resolved' =>False",
             "'We are all good!' isinstanceof 'yes' =>True",
             "'This week in breaking news! An American ... ' isinstanceof 'spanish text' =>False",
-            "[1, 2, 3] isinstanceof 'array' =>True",
             "'Josef' isinstanceof 'German name' =>True",
             "'No, this is not ...' isinstanceof 'confirming answer' =>False",
             "'Josef' isinstanceof 'Japanese name' =>False",
             "'ok, I like to have more chocolate' isinstanceof 'confirming answer' =>True",
             "'Yes, these are Indish names.' isinstanceof 'Confirming Phrase' =>True",
             "'Sorry! This means something else.' isinstanceof 'agreeing answer' =>False",
-            "[1, 2, 3] isinstanceof 'string' =>False",
             "'Austrian Chancellor Karl Nehammer has called for more border barriers at the EU external borders, citing the success of the fences at the Greek-Turkish border.' isinstanceof 'political content' =>True",
-            "['orange', 'banana', 'apple'] isinstanceof 'apple' =>False",
-            "'Input: Function call: (_, *args)\nObject: type(<class 'str'>) | value(Hello World)' isinstanceof 'log message' =>True",
+            "['orange', 'banana', 'apple'] isinstanceof 'list of fruits' =>True",
+            "[{'product_id': 'X123', 'stock': 99}] isinstanceof 'inventory record' =>True",
+            "[{'name': 'John', 'age': '30'}] isinstanceof 'person data' =>True",
+            "'https://*.com' instanceof 'url' =>True",
+            "'€12.50' instanceof 'currency amount' =>True",
+            "'col1,col2\\n1,2' instanceof 'table data' =>True",
+            "'*@*.com' instanceof 'email address' =>True",
         ])
 
 
@@ -572,6 +573,59 @@ class FewShotPattern(Prompt):
             """description: 'Compare A to B' examples ["4 > 88 >>>False", "-inf < 0 >>>True", "inf > 0 >>>True", "1 >= 0 >>>True", "6.0 < 6 >>>False"] =>Compare A to B\n\Examples:\n4 > 88 >>>False\n-inf < 0 >>>True\ninf > 0 >>>True\n1 >= 0 >>>True\n6.0 < 6 >>>False\nYour Prediction:{} {} {} >>>""",
             """description: 'What is the capital of Austria?' examples [] =>What is the capital of Austria?\nYour Prediction: >>>""",
             """description: 'Sort the array based on the criteria:' examples ["[1, 9, 4, 2] >>>[1, 2, 4, 9]", "['a', 'd', 'c', 'b'] >>>['a', 'b', 'c', 'd']"] =>Sort the array based on the criteria:\nExamples:\n[1, 9, 4, 2] >>>[1, 2, 4, 9]\n['a', 'd', 'c', 'b'] >>>['a', 'b', 'c', 'd']\nYour Prediction:{} >>>""",
+        ])
+
+
+class StartsWith(Prompt):
+    def __init__(self):
+        super().__init__([
+            # Semantic examples – understanding concepts (positive cases)
+            "'The apple fell from the tree.' startswith 'fruit' =>True",
+            "'The red rose bloomed in spring.' startswith 'flower' =>True",
+            "'My dog loves to play fetch.' startswith 'animal' =>True",
+            "'The car drove down the highway.' startswith 'vehicle' =>True",
+            "'She opened her laptop to work.' startswith 'computer' =>True",
+            "'The thunderstorm caused flooding.' startswith 'weather' =>True",
+            "'Einstein developed the theory of relativity.' startswith 'scientist' =>True",
+            "'The chef prepared a delicious meal.' startswith 'cooking' =>True",
+            "'artificial intelligence research' startswith 'technology' =>True",
+            "'The patient visited the doctor.' startswith 'medical' =>True",
+            "'The spaceship launched into orbit.' startswith 'space' =>True",
+            "'Photosynthesis converts sunlight into energy.' startswith 'biology' =>True",
+            "'The earthquake shook the entire city.' startswith 'natural disaster' =>True",
+            "'She invested in stocks and bonds.' startswith 'finance' =>True",
+            "'The police officer directed traffic.' startswith 'law enforcement' =>True",
+            # Semantic examples – negative cases
+            "'The book was very interesting.' startswith 'vehicle' =>False",
+            "'The mountain peak was covered in snow.' startswith 'ocean' =>False",
+            "'She played the piano beautifully.' startswith 'sports' =>False",
+            "'The algorithm solved the problem efficiently.' startswith 'cooking' =>False",
+            "'The package arrived on time.' startswith 'astronomy' =>False",
+            "'He played a violin solo.' startswith 'vehicle' =>False",
+        ])
+
+
+class EndsWith(Prompt):
+    def __init__(self):
+        super().__init__([
+            # Semantic examples – understanding concepts (positive cases)
+            "'She sliced a ripe banana.' endswith 'fruit' =>True",
+            "'He adopted a small puppy.' endswith 'animal' =>True",
+            "'They commuted by train.' endswith 'vehicle' =>True",
+            "'She finished her solo on the violin.' endswith 'instrument' =>True",
+            "'He parked his truck inside the garage.' endswith 'building' =>True",
+            "'They scored a goal with the ball.' endswith 'sport' =>True",
+            "'She drove a nail with a hammer.' endswith 'tool' =>True",
+            "'He flew to Spain.' endswith 'country' =>True",
+            "'The chef baked fresh bread.' endswith 'food' =>True",
+            "'They filmed a documentary about dolphins.' endswith 'animal' =>True",
+            # Semantic examples – negative cases
+            "'The sun set behind the mountains.' endswith 'vehicle' =>False",
+            "'He repaired the motorcycle.' endswith 'instrument' =>False",
+            "'They enjoyed a salad.' endswith 'building' =>False",
+            "'She taught the class.' endswith 'animal' =>False",
+            "'He boarded the airplane.' endswith 'fruit' =>False",
+            "'The crowd cheered at the concert.' endswith 'tool' =>False",
         ])
 
 
@@ -599,97 +653,119 @@ class ExtractPattern(Prompt):
 
 
 class SimpleSymbolicExpression(Prompt):
+    # ── Operator legend ───────────────────────────────────────────────
+    # +        merge / juxtapose two clauses
+    # -        subtract or remove a detail
+    # *        fuse / intersect shared meaning
+    # /        apply the right clause as a condition or lens
+    # not      logical negation
+    # and      logical conjunction (both true)
+    # or       inclusive disjunction (at least one true)
+    # xor      exclusive disjunction (exactly one true)
+    # implies  classical implication  (if A then B)
+    # ++       amplify or annotate a shared idea
+    # >>       causal sequence (A causes/leads to B)
+    # ─────────────────────────────────────────────────────────────────
     def __init__(self):
         super().__init__([
-            "expr :1 + 2 =: =>3",
-            "expr :1 + 2 * 3 =: =>7",
-            "expr :x + 1 =: =>x + 1",
-            "expr :: =>None",
-            "expr :38/2 =: =>19",
-            "expr :2^3=: =>8",
-            "expr :2^3^2=: =>512",
-            "expr :99^2=: =>9801",
-            "expr :43^0 =: =>1",
-            "expr :37 + 87i =: =>124 + 87i",
-            "expr :37 + 87i + 1 =: =>38 + 87i",
-            "expr :(x + 1)^2 =: =>x^2 + 2x + 1",
-            "expr :'7 + 4' =: =>11",
-            "expr :100 * ( 2 + 12 ) / 14 =: =>100",
-            "expr :100 * ( 2 + 12 ) =: =>1400",
-            "expr :100 * 2 + 12 =: =>212",
-            "expr :'Prince - Man + Women =' =>Princess",
-            "expr :2 + 2 * 2 ^ 2 =: =>10",
-            "expr :'I ate soup' - 'ate' =: =>'I soup'",
-            "expr :'people are' + 'help' - 'are' =: =>'people help'",
-            "expr :True and False =: =>False",
-            "expr :'True' and 'False' =: =>False",
-            "expr :False and false =: =>False",
-            "expr :TRUE or false =: =>True",
-            "expr :False xor 'True' =: =>True",
-            "expr :'cats' xor 'cats'=: =>False",
-            "expr :'cats' xor 'dogs' =: =>True",
-            "expr :'a cat' and 'cats' =: =>True",
-            "expr :'cats' or 'cats' =: =>True",
-            "expr :'I ate' and 'I did not eat' =: =>False",
-            "expr :'I ate' and 'You also ate' =: =>True",
+            "doctor - male + female =>nurse",
+            "Paris - France + Italy =>Rome",
+            "hot - summer + winter =>cold",
+            "lion - adult + young =>cub",
+            "teacher - school + hospital =>doctor",
+            '"Lanterns shimmer beside the river" + "Fireflies sketch constellations in the dark" =>Lanterns shimmer beside the river while fireflies sketch constellations in the dark.',
+            '"Rain drums gently on the roof" - "gently" =>Rain drums on the roof.',
+            '"Leaves twirl across the pavement" * "Waves hush the midnight shore" =>Nature twirls and hushes across pavement and shore.',
+            '"The bakery smells of cinnamon" / "Morning begins" =>If morning begins, the bakery smells of cinnamon.',
+            'not("The sky glows crimson at dusk") =>The sky does not glow crimson at dusk.',
+            '"Birds greet dawn with song" and "The library hums with whispers" =>Birds greet dawn with song and the library hums with whispers.',
+            '"A lone cat prowls the alley" or "Leaves twirl across the pavement" =>Either a lone cat prowls the alley or leaves twirl across the pavement.',
+            '"The campfire crackles and sparks" xor "Rain drums on the roof" =>Either the campfire crackles and sparks or rain drums on the roof, but not both.',
+            '"The sky glows crimson at dusk" implies "Night soon follows" =>If the sky glows crimson at dusk, then night soon follows.',
+            '"Fireflies sketch constellations in the dark" ++ "Lanterns shimmer beside the river" =>A festival of lights sparkles against the night by the river.',
+            '"Rain drums on the roof" >> "Sleep comes easily" =>Rain drums on the roof, so sleep comes easily.',
+            '"Birds greet dawn with song" || "Lanterns fade in the river breeze" =>One scene wakes while the other fades.',
+            '"Waves hush the midnight shore" + "The campfire crackles and sparks" - "midnight" =>Waves hush the shore while the campfire crackles and sparks.',
+            '"The violinist fills the plaza with melody" * "Birds greet dawn with song" =>Music ripples through dawn as birds and violinist weave a shared melody.',
+            '"x + y = 10" + "y = 3" =>x + y = 10 and y = 3.',
+            '"x + y = 10" / "y = 3" =>If y = 3, then x + 3 = 10.',
+            '"2x = 8" >> "x = 4" =>Because 2x = 8, x = 4.',
+            '"x ≠ 5"  not  =>x = 5.',
+            '"x² = 9" or "x = 4" =>Either x² = 9 or x = 4.',
+            '"x² = 9" xor "x = 4" =>Exactly one of x² = 9 or x = 4, but not both.',
+            '"x² = 9" implies "x = ±3" =>If x² = 9, then x = ±3.',
+            '"f′(x) = 0" ++ "f has a local extremum" =>A critical point indicates f has a local extremum.',
+            '"a² + b² = c²" * "c = 13" =>In the right-triangle where c = 13, a² + b² = 169.',
+            '"limₓ→0 sin x / x = 1" and "x approaches 0" =>As x approaches 0, sin x / x tends to 1.',
+            """"SELECT name FROM customers" + "WHERE city = 'Paris'" =>SELECT name FROM customers WHERE city = 'Paris'.""",
+            """"for i in range(5): print(i)" - "print(i)" =>for i in range(5):""",
+            """"def greet(name): return 'Hi ' + name" >> "greet('Leo')" =>Because we define greet, greet('Leo').""",
+            """"x > 3" and "x < 7" =>3 < x < 7.""",
+            """"a divides b" implies "b mod a = 0" =>If a divides b, then b mod a = 0.""",
+            """"p" xor "not p" =>Exactly one of p or not p, but not both.""",
+            """"f′(x) exists" ++ "f(x) continuous" =>A differentiable function is necessarily continuous.""",
+            """"SELECT * FROM orders" / "status = 'PENDING'" =>If status = 'PENDING', SELECT * FROM orders.""",
+            """"x = 2" + "y = 3" * "z = x + y" =>With x = 2 and y = 3, z = 5.""",
+            """"temperature rises" >> "ice melts" =>Because temperature rises, ice melts."""
         ])
-
 
 class LogicExpression(Prompt):
     def __init__(self):
         super().__init__([
-            "expr :True: and :True: =>True",
-            "expr :False: and :True: =>False",
-            "expr :False: and :False: =>False",
-            "expr :False: and :False: =>False",
-            "expr :False: or :False: =>False",
-            "expr :False: or :True: =>True",
-            "expr :True: or :False: =>True",
-            "expr :True: or :True: =>True",
-            "expr :False: or :False: =>False",
-            "expr :True: xor :False: =>True",
-            "expr :False: xor :True: =>True",
-            "expr :True: xor :True: =>False",
-            "expr :False: xor :False: =>False",
-            "expr :True: xor :True: =>False",
-            "expr :1: xor :'One': =>False",
-            "expr :1: and :1: =>1",
-            "expr :7: and :1: =>7, 1",
-            "expr :7: or :1: =>1",
-            "expr :7: or :1: =>7",
-            "expr :'zero': xor :'One': =>True",
-            "expr :'raining': and :'on the street': =>'It is raining on the street.'",
-            "expr :'I hate apples': and :'got apple': =>'I hate apples and I got an apple.'",
-            "expr :'the sky is cloudy': and :'the sky is clear': =>'The sky may be cloudy or clear.'",
-            "expr :'The sky is cloudy.': and :'The sky is clear.': =>'The sky may be cloudy or clear, since the sky is cloudy, the sky is not clear.'",
-            "expr :'the sky is cloudy': or :'the sky clear': =>'I do not know if the sky is cloudy or clear.'",
-            "expr :'I like you': and :'I hate you': =>'I do not know if I like or hate you.'",
-            "expr :'I like you': or :'I hate you': =>'I am indecisive if I like or hate you.'",
-            "expr :'eating ice cream makes people fat': and :'I eat a lot of ice cream': =>'Since eating ice cream makes people fat, and I eat a lot of ice cream, I may become fat.'",
-            "expr :'smart people read many books': and :'I read many books': =>'Since smart people read many books, and I read many books, I seem to be a smart person.'",
-            "expr :'I go to Japanese class on Mondays and Fridays.': and :'Today I was in Japanese class.': =>'Since today, I have been in Japanese class, and I go to Japanese class on Mondays and Fridays, today must be Monday or Friday.'",
-            "expr :'He likes pie.': xor :'He likes cookies.': =>'He either likes pie or likes cookies but not both.'",
-            "expr :'She hears a sound.': xor :'She does not hear a sound.': =>'False or contradictory statement if she hears a sound and does not hear a sound.'",
+            # Boolean Logic
+            "expr True and True =>'True'",
+            "expr True and False =>'False'",
+            "expr False and True =>'False'",
+            "expr False and False =>'False'",
+            "expr True or True =>'True'",
+            "expr True or False =>'True'",
+            "expr False or True =>'True'",
+            "expr False or False =>'False'",
+            "expr True xor True =>'False'",
+            "expr True xor False =>'True'",
+            "expr False xor True =>'True'",
+            "expr False xor False =>'False'",
+            # AND
+            "expr 'All humans are mortal' and 'Socrates is a human' =>'Therefore, Socrates is mortal.'",
+            "expr 'If it rains, the ground gets wet' and 'It is raining' =>'Therefore, the ground gets wet.'",
+            "expr 'The sky is blue' and 'The sky is not blue' =>'Contradiction – both cannot be true together.'",
+            # OR
+            "expr 'It is Monday' or 'It is a holiday' =>'Either it is Monday, a holiday, or possibly both.'",
+            "expr 'Alice is at home' or 'Bob is at home' =>'Alice or Bob is at home, perhaps both.'",
+            # XOR
+            "expr 'The light is red' xor 'The light is green' =>'The light is either red or green, but not both.'",
+            "expr 'She won the prize' xor 'He won the prize' =>'Either she or he won the prize, but not both.'",
+            "expr 'The engine is running' xor 'The engine is not running' =>'Either the engine is running or it is not, but not both.'",
         ])
 
 
 class InvertExpression(Prompt):
     def __init__(self):
         super().__init__([
-            "I like to eat sushi, therefore I am Japanese. =>I am Japanese, therefore I like to eat sushi.",
-            "I have a dog and a cat in my house. =>A cat and a dog have me in their house.",
-            "I am a student. =>A student I am.",
-            "[1, 2, 3, 5, 8, 13, 21] =>[21, 13, 8, 5, 3, 2, 1]",
-            "abc =>cba",
-            "Anna =>annA",
-            "Consider a sentence. =>A sentence is considered.",
-            "1/2 =>2/1",
-            "1/2 + 1/3 =>3/2",
-            "The quick brown fox jumps over the lazy dog. =>The lazy dog jumps over the quick brown fox.",
-            "I love to eat apples and bananas.  =>Apples and bananas love to eat me.",
-            "What is the capital of Austria? =>What is Austria's capital?",
-            "I have an iPhone from Apple. And it is not cheap. =>Although it is not cheap, I have an iPhone from Apple.",
-            "Why is he so confused? =>Why is confusion in him?"
+            "The artist paints the portrait. =>The portrait paints the artist."
+            "The cat watches the goldfish through the glass. =>Through the glass, the goldfish watches the cat."
+            "[red, orange, yellow, green] =>[green, yellow, orange, red]"
+            "racecar =>racecar"
+            "3/7 =>7/3"
+            "Freedom demands sacrifice. =>Sacrifice demands freedom."
+            "She whispered a secret to the wind. =>The wind whispered a secret to her."
+            "Why did the child follow the butterfly? =>Why did the butterfly lead the child?"
+            "What turns darkness into dawn? =>What turns dawn into darkness?"
+            "The future belongs to the curious. =>Curiosity belongs to the future."
+            "I built a house out of dreams. =>Dreams built a house out of me."
+            "The moon reflects the sun, yet poets reflect the moon. =>Poets reflect the moon, yet the sun reflects the poets."
+            "The river forgets its source while it carves the canyon. =>As the canyon carves the river, the source remembers itself."
+            "[('a',1), ('b',2), ('c',3)] =>[('c',3), ('b',2), ('a',1)]"
+            "x > y and y > z =>z < y and y < x"
+            "Silence can be louder than thunder. =>Thunder can be quieter than silence."
+            "0.001 =>1000"
+            "The spy trusted no one except his own shadow. =>No shadow trusted the spy except his own."
+            "Why chase time when time chases you? =>Why does time chase you when you chase it?"
+            "A promise made at midnight echoes at dawn. =>An echo at dawn makes a promise at midnight."
+            "7/(-4) =>-4/7"
+            "To doubt everything is to believe in nothing. =>To believe in nothing is to doubt everything."
+            "She traded certainty for possibility. =>Possibility traded her for certainty."
+            "The hacker decrypted the secret before the key was found. =>The secret decrypted the hacker after the key was lost."
         ])
 
 
@@ -955,7 +1031,40 @@ with open(file_name, 'r') as file:
     # Read the file contents
     contents = file.read()
     # Print the file contents
-    print(contents)' params 'test_file.txt' =>Hello world!"""
+    print(contents)' params 'test_file.txt' =>Hello world!""",
+    """code 'numbers = [1, 2, 3, 4, 5]
+    total = 0
+    for num in numbers:
+        total += num
+    print(f"Sum is: {total}")' params '' =>Step 1: Initialize empty list [1, 2, 3, 4, 5] and total = 0 | Step 2: First iteration, num = 1, total = 0 + 1 = 1 | Step 3: Second iteration, num = 2, total = 1 + 2 = 3 | Step 4: Third iteration, num = 3, total = 3 + 3 = 6 | Step 5: Fourth iteration, num = 4, total = 6 + 4 = 10 | Step 6: Fifth iteration, num = 5, total = 10 + 5 = 15 | Step 7: Print "Sum is: 15""",
+
+    """code 'age = 25
+    if age >= 18:
+        status = "adult"
+        can_vote = True
+    else:
+        status = "minor"
+        can_vote = False
+    print(f"Person is {status}, voting: {can_vote}")' params '' =>Step 1: Set age = 25 | Step 2: Check condition age >= 18, which is 25 >= 18, this is True | Step 3: Since condition is True, execute if branch | Step 4: Set status = "adult" | Step 5: Set can_vote = True | Step 6: Skip else branch | Step 7: Print "Person is adult, voting: True""",
+
+    """code 'def factorial(n):
+        if n <= 1:
+            return 1
+        else:
+            return n * factorial(n-1)
+    result = factorial(4)' params '' =>PSEUDOCODE SIMULATION:
+    FUNCTION factorial(n):
+      IF n <= 1 THEN RETURN 1
+      ELSE RETURN n * factorial(n-1)
+    END FUNCTION
+
+    EXECUTION TRACE:
+    Call factorial(4) | Check 4 <= 1? False, so return 4 * factorial(3) | Call factorial(3) | Check 3 <= 1? False, so return 3 * factorial(2) | Call factorial(2) | Check 2 <= 1? False, so return 2 * factorial(1) | Call factorial(1) | Check 1 <= 1? True, so return 1 | Unwinding: factorial(2) = 2 * 1 = 2 | factorial(3) = 3 * 2 = 6 | factorial(4) = 4 * 6 = 24 | Result = 24""",
+
+    """code 'data = {"name": "Alice", "scores": [85, 92, 78]}
+    average = sum(data["scores"]) / len(data["scores"])
+    data["average"] = round(average, 1)
+    print(f"{data['name']}'s average: {data['average']}")' params '' =>Step 1: Create dictionary with name="Alice" and scores list [85, 92, 78] | Step 2: Calculate sum of scores: 85 + 92 + 78 = 255 | Step 3: Get length of scores list: 3 | Step 4: Calculate average: 255 / 3 = 85.0 | Step 5: Round average to 1 decimal place: 85.0 | Step 6: Add average to dictionary: data["average"] = 85.0 | Step 7: Print "Alice's average: 85.0"""
 ])
 
 

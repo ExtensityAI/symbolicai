@@ -1,14 +1,13 @@
-import torch
-import re
 import json
-import numpy as np
-
-from typing import Any, Optional, Union, List, Type, Tuple, Callable
+import re
 from json import JSONEncoder
+from typing import Any, Callable, List, Optional, Tuple, Type, Union
 
-from ..ops.primitives import ArithmeticPrimitives
+import numpy as np
+import torch
+
+from ..ops.primitives import OperatorPrimitives
 from ..symbol import Symbol
-
 
 SPECIAL_CONSTANT = '__aggregate_'
 EXCLUDE_LIST     = ['_ipython_canary_method_should_not_exist_', '__custom_documentations__']
@@ -73,17 +72,15 @@ class Aggregator(Symbol):
 
     def __new__(cls, *args,
             mixin: Optional[bool] = None,
-            primitives: Optional[List[Type]] = [ArithmeticPrimitives], # only inherit arithmetic primitives
+            primitives: Optional[List[Type]] = [OperatorPrimitives], # only inherit arithmetic primitives
             callables: Optional[List[Tuple[str, Callable]]] = None,
-            only_nesy: bool = False,
-            iterate_nesy: bool = False,
+            semantic: bool = False,
             **kwargs) -> "Symbol":
         return super().__new__(cls, *args,
                          mixin=mixin,
                          primitives=primitives,
                          callables=callables,
-                         only_nesy=only_nesy,
-                         iterate_nesy=iterate_nesy,
+                         semantic=semantic,
                          **kwargs)
 
     def __getattr__(self, name):
@@ -383,4 +380,3 @@ class Aggregator(Symbol):
     def max(self, axis=0):
         # Get the maximum of the entries of the aggregator
         return np.max(self.entries, axis=axis)
-

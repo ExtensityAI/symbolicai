@@ -1,5 +1,5 @@
-from ...base import Engine
 from ....symbol import Result
+from ...base import Engine
 
 
 def full_stack():
@@ -66,11 +66,10 @@ class PythonEngine(Engine):
         return 'execute'
 
     def forward(self, argument):
-        code          = argument.prop.prepared_input
-        kwargs        = argument.kwargs
-
-        globals_      = kwargs['globals'] if 'globals' in kwargs else {}
-        locals_       = kwargs['locals']  if 'locals'  in kwargs else {}
+        code = argument.prop.prepared_input
+        kwargs = argument.kwargs
+        globals_ = kwargs['globals'] if 'globals' in kwargs else {}
+        locals_ = kwargs['locals']  if 'locals'  in kwargs else {}
         input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
         if input_handler:
             input_handler((code,))

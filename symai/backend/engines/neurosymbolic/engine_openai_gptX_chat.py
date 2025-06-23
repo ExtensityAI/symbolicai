@@ -37,7 +37,6 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         try:
             self.tokenizer = tiktoken.encoding_for_model(self.model)
         except Exception as e:
-            CustomUserWarning(f'Failed to initialize tokenizer for model {self.model}. Please check your tiktoken library version. Another reason could be that OpenAI did not yet provide support for this model. Caused by: {e}. We default to "o200k_base".')
             self.tokenizer = tiktoken.get_encoding('o200k_base')
         self.max_context_tokens = self.api_max_context_tokens()
         self.max_response_tokens = self.api_max_response_tokens()

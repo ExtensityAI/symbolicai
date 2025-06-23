@@ -1,7 +1,7 @@
 from .primitives import *
 
 SYMBOL_PRIMITIVES = [
-    ArithmeticPrimitives,
+    OperatorPrimitives,
     IterationPrimitives,
     ValueHandlingPrimitives,
     StringHelperPrimitives,
