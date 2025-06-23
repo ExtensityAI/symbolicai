@@ -1423,7 +1423,7 @@ class StringHelperPrimitives(Primitive):
     '''
     This mixin contains functions that provide additional help for symbols or their values.
     '''
-    def split(self, delimiter: str, **kwargs) -> list['Symbol']:
+    def split(self, delimiter: str, **kwargs) -> 'Symbol':
         '''
         Splits the symbol value by a specified delimiter.
         Uses the core.split decorator to create a _func method that splits the symbol value by the specified delimiter.
@@ -1434,10 +1434,9 @@ class StringHelperPrimitives(Primitive):
         Returns:
             Symbol: A new symbol with the split value.
         '''
-        assert isinstance(delimiter, str),  f'delimiter must be a string, got {type(delimiter)}'
+        assert isinstance(delimiter, str), f'delimiter must be a string, got {type(delimiter)}'
         assert isinstance(self.value, str), f'self.value must be a string, got {type(self.value)}'
-        symbols = self.symbols(*self.value.split(delimiter))
-        return symbols
+        return self._to_type([*self.value.split(delimiter)])
 
     def join(self, delimiter: str = ' ', **kwargs) -> 'Symbol':
         '''
@@ -1449,13 +1448,9 @@ class StringHelperPrimitives(Primitive):
         Returns:
             Symbol: A new symbol with the joined str value.
         '''
-        if isinstance(self.value, str):
-            # Special case for string joining to forward the original join method
-            return self.value.join(delimiter)
-
-        assert isinstance(self.value, Iterable),  f'value must be an iterable, got {type(self.value)}'
+        assert isinstance(delimiter, str),f'delimiter must be a string, got {type(delimiter)}'
+        assert isinstance(self.value, Iterable), f'value must be an iterable, got {type(self.value)}'
         return self._to_type(delimiter.join(self.value))
-
 
     def startswith(self, prefix: str, **kwargs) -> bool:
         '''
