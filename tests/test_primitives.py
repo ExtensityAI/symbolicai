@@ -18,6 +18,7 @@ _C = {
     "reset":  "\033[0m",
 }
 
+@pytest.mark.mandatory
 def display_op(before: Any, after: Any, op: str, type: str):
     def _w(x: Any) -> Any:
         return x.value if isinstance(x, Symbol) else x
@@ -28,6 +29,7 @@ def display_op(before: Any, after: Any, op: str, type: str):
         f"{_C['green']}{_w(after)}{_C['reset']}"
     )
 
+@pytest.mark.mandatory
 def test_syn_sem_pr():
     """Test the CastingPrimitives class methods."""
 
@@ -59,6 +61,7 @@ def test_syn_sem_pr():
     assert sym not in lst.syn
     assert sym in lst
 
+@pytest.mark.mandatory
 def test_negate_op():
     """Test the OperatorPrimitives class methods."""
 
@@ -96,6 +99,7 @@ def test_negate_op():
     sym_str_negative = Symbol('This is not correct.', semantic=True) # or can be converted to a semantic symbol with ".sym" method
     display_op(sym_str_negative, ~sym_str_negative, "~", "semantic")
 
+@pytest.mark.mandatory
 def test_contains_op():
     """Test the OperatorPrimitives class methods."""
 
@@ -113,6 +117,7 @@ def test_contains_op():
     display_op(f"'{sym_list_syn}' contains '{other1}'", other1 in sym_list_syn, "in", "syntactic")
     display_op(f"'{sym_list_sem}' contains '{other2}'", other2 in sym_list_sem, "in", "semantic")
 
+@pytest.mark.mandatory
 def test_equals_op():
     """Test the OperatorPrimitives class methods."""
 
@@ -160,6 +165,7 @@ def test_equals_op():
     assert not (sym_list1 == sym_list3)
     display_op(f"{sym_list2} == {sym_list3}", sym_list2 == sym_list3, "==", "semantic")
 
+@pytest.mark.mandatory
 def test_not_equals_op():
     """Test the OperatorPrimitives class methods."""
 
@@ -207,6 +213,7 @@ def test_not_equals_op():
     assert sym_list1 != sym_list3
     display_op(f"{sym_list2} != {sym_list3}", sym_list2 != sym_list3, "!=", "semantic")
 
+@pytest.mark.mandatory
 def test_comparison_op():
     """Test the OperatorPrimitives class methods."""
 
@@ -287,6 +294,7 @@ def test_comparison_op():
     regular_num = 45
     display_op(f"'{sym_word_num}' > {regular_num}", sym_word_num > regular_num, ">", "semantic")
 
+@pytest.mark.mandatory
 def test_invert_op():
     """Test the OperatorPrimitives class methods."""
 
@@ -337,6 +345,7 @@ def test_invert_op():
     sym_mixed_sem = Symbol('This is definitely false.', semantic=True)
     display_op(f"'{sym_mixed_sem}'", ~sym_mixed_sem.syn, "~", "syntactic")
 
+@pytest.mark.mandatory
 def test_shift_op():
     """Test the OperatorPrimitives class methods."""
 
@@ -415,6 +424,7 @@ def test_shift_op():
     assert chained_result == 8
     display_op(f"1 << 2 << 1", chained_result, "<<", "syntactic")
 
+@pytest.mark.mandatory
 def test_bitwise_logical_op():
     """Test the OperatorPrimitives class methods."""
 
@@ -554,6 +564,7 @@ def test_bitwise_logical_op():
     exclusive_diagnosis = hypothesis1.sem ^ hypothesis2
     display_op(f"'{hypothesis1}' ^ '{hypothesis2}'", exclusive_diagnosis, "^", "semantic")
 
+@pytest.mark.mandatory
 def test_arithmetic_op():
     """Test the OperatorPrimitives class methods."""
 
@@ -616,6 +627,7 @@ def test_arithmetic_op():
     strong_statement = weak_statement.sem - 'weak' + 'strong'
     display_op(f"'{weak_statement}' - 'weak' + 'strong'", strong_statement, "- +", "semantic")
 
+@pytest.mark.mandatory
 def test_string_concatenation_op():
     """Test the OperatorPrimitives class methods."""
 
@@ -658,6 +670,7 @@ def test_string_concatenation_op():
     assert result_empty == 'Content'
     display_op(f"'{empty_sym}' @ '{text_sym}'", result_empty, "@", "syntactic")
 
+@pytest.mark.mandatory
 def test_division_power_modulo_multiply_op():
     """Test the OperatorPrimitives class methods."""
 
@@ -737,6 +750,7 @@ def test_division_power_modulo_multiply_op():
     assert split_by_dash.value == expected_dash
     display_op(f"'{sym_sentence}' / '-'", split_by_dash, "/", "syntactic")
 
+@pytest.mark.mandatory
 def test_casting_pr():
     """Test the CastingPrimitives class methods."""
 
@@ -863,6 +877,7 @@ def test_casting_pr():
     assert ast_none is None
     display_op(f"['{sym_none_str}'].ast()", ast_none, "ast", "syntactic")
 
+@pytest.mark.mandatory
 def test_iteration_pr():
     """Test the IterationPrimitives class methods."""
 
@@ -974,6 +989,7 @@ def test_iteration_pr():
     assert nested_access == [1, 2, 3]
     display_op(f"{sym_mixed}['numbers']", nested_access, "getitem", "syntactic")
 
+@pytest.mark.mandatory
 def test_string_helper_pr():
     """Test the StringHelperPrimitives class methods."""
 
@@ -1127,6 +1143,7 @@ def test_string_helper_pr():
     display_op(f"[{sym_apple_syntactic}].startswith('fruit')", syntactic_result, "startswith", "syntactic")
     display_op(f"[{sym_apple_semantic}].startswith('fruit')", semantic_result, "startswith", "semantic")
 
+@pytest.mark.mandatory
 def test_comparison_pr():
     """Test the ComparisonPrimitives class methods."""
 
@@ -1217,6 +1234,7 @@ def test_comparison_pr():
     semantic_contains = sym_semantic.contains('animal')
     display_op(f"[{sym_semantic}].contains('animal')", semantic_contains, "contains", "semantic")
 
+@pytest.mark.mandatory
 def test_interpret_pr():
     """Test the ExpressionHandlingPrimitives class methods."""
 
@@ -1288,6 +1306,7 @@ def test_interpret_pr():
     result_multi2 = sym_analogy.interpret()
     assert result_multi1._input == result_multi2._input, "Both results should reference same input"
 
+@pytest.mark.mandatory
 def test_data_handling_pr():
     """Test the DataHandlingPrimitives class methods."""
 
@@ -1363,6 +1382,7 @@ def test_data_handling_pr():
     combined = sym_first.combine("Second part of the content.")
     display_op(f"[{sym_first}].combine('Second part of the content.')", combined, "combine", "semantic")
 
+@pytest.mark.mandatory
 def test_uniqueness_pr():
     """Test the UniquenessPrimitives class methods."""
 
@@ -1395,6 +1415,7 @@ def test_uniqueness_pr():
     story_composed = sym_story_elements.compose()
     display_op(f"[\n{sym_story_elements}\n].compose()", f"\n{story_composed}\n", "compose", "semantic")
 
+@pytest.mark.mandatory
 def test_pattern_matching_pr():
     """Test the PatternMatchingPrimitives class methods."""
 
@@ -1485,6 +1506,7 @@ def test_pattern_matching_pr():
     sentiment_choice = sym_sentiment.choice(cases=sentiment_cases, default="neutral")
     display_op(f"[{sym_sentiment}].choice({sentiment_cases}, default='neutral')", sentiment_choice, "choice", "semantic")
 
+@pytest.mark.mandatory
 def test_query_handling_pr():
     """Test the QueryHandlingPrimitives class methods."""
 
@@ -1580,6 +1602,7 @@ def test_query_handling_pr():
     confident_transcribed = sym_casual.transcribe("make it more confident and decisive")
     display_op(f"[{sym_casual}].transcribe('make it more confident and decisive')", confident_transcribed, "transcribe", "semantic")
 
+@pytest.mark.mandatory
 def test_execution_control_pr():
     """Test the ExecutionControlPrimitives class methods."""
 
@@ -1720,6 +1743,7 @@ def test_execution_control_pr():
     except Exception as e:
         print(f"Ftry test encountered issue: {e}")
 
+@pytest.mark.mandatory
 def test_dict_handling_pr():
     """Test the DictHandlingPrimitives class methods."""
 
@@ -1811,6 +1835,7 @@ def test_dict_handling_pr():
     product_dict = sym_products.dict("organize products by category and price range")
     display_op(f"[\n{sym_products}\n].dict('organize products by category and price range')", f"\n{product_dict}\n", "dict", "semantic")
 
+@pytest.mark.mandatory
 def test_template_styling_pr():
     """Test the TemplateStylingPrimitives class methods."""
 
@@ -1914,6 +1939,7 @@ def test_template_styling_pr():
     assert str(multi_templated) == expected_multi
     display_op(f"[{sym_multi}].template('{multi_template}')", multi_templated, "template", "syntactic")
 
+@pytest.mark.mandatory
 @pytest.mark.skipif(not SYMAI_CONFIG.get('EMBEDDING_ENGINE_MODEL', False) and not SYMAI_CONFIG.get('EMBEDDING_ENGINE_API_KEY', False), reason="Embedding engine not configured!")
 def test_data_clustering_pr():
     """Test the DataClusteringPrimitives class methods."""
@@ -1947,6 +1973,7 @@ def test_data_clustering_pr():
     clustered_categories = sym_categories.cluster()
     display_op(f"[{sym_categories}].cluster()", clustered_categories, "cluster", "semantic")
 
+@pytest.mark.mandatory
 @pytest.mark.skipif(not SYMAI_CONFIG.get('EMBEDDING_ENGINE_MODEL', False) and not SYMAI_CONFIG.get('EMBEDDING_ENGINE_API_KEY', False), reason="Embedding engine not configured!")
 def test_embedding_pr():
     """Test the EmbeddingPrimitives class methods."""
@@ -2030,6 +2057,7 @@ def test_embedding_pr():
         display_op(f"[{sym_invalid}].zip()", f"ValueError: {str(e)}", "zip", "syntactic")
         assert "Expected id to be a string" in str(e)
 
+@pytest.mark.mandatory
 def test_io_handling_pr():
     """Test the IOHandlingPrimitives class methods."""
 
@@ -2071,6 +2099,7 @@ def test_io_handling_pr():
     assert callable(getattr(sym_no_path, 'input')), "input should be callable"
     display_op(f"Symbol().input()", "input method is callable (requires interaction)", "input", "syntactic")
 
+@pytest.mark.mandatory
 def test_persistence_pr():
     """Test the PersistencePrimitives class methods."""
     import pickle
@@ -2180,6 +2209,7 @@ def test_persistence_pr():
     except Exception as e:
         display_op(f"Symbol('{sym_math}').expand()", f"Error (expected if LLM not configured): {type(e).__name__}", "expand", "semantic")
 
+@pytest.mark.mandatory
 def test_output_handling_pr():
     """Test the OutputHandlingPrimitives class methods."""
 

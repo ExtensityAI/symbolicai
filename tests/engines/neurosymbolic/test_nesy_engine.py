@@ -167,7 +167,7 @@ def test_tool_usage():
         fn = Function("Analyze the input request and select the most appropriate function to call from the provided options.", tools=tools)
         res, metadata = fn("What's the capital of France?", raw_output=True, thinking=GEMINI_THINKING, return_metadata=True)
 
-        assert 'function_call' in metadata
+        assert 'function_call' in metadata, 'Could fail if the function call is not recognized by the model; retry.'
         assert metadata['function_call']['name'] == 'get_capital'
         assert 'country' in metadata['function_call']['arguments']
         assert 'france' in metadata['function_call']['arguments']['country'].lower()
