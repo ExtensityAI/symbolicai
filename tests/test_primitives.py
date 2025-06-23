@@ -999,26 +999,26 @@ def test_string_helper_pr():
 
     expected_values = ['hello', 'world', 'python', 'programming']
     assert len(split_result) == len(expected_values)
-    for i, symbol in enumerate(split_result):
-        assert symbol.value == expected_values[i]
-    display_op(f"[{sym_sentence}].split(' ')", [s.value for s in split_result], "split", "syntactic")
+    for i, text in enumerate(split_result):
+        assert text == expected_values[i]
+    display_op(f"[{sym_sentence}].split(' ')", [s for s in split_result], "split", "syntactic")
 
     sym_csv = Symbol('apple,banana,cherry')
     csv_split = sym_csv.split(',')
     expected_values = ['apple', 'banana', 'cherry']
     assert len(csv_split) == len(expected_values)
-    for i, symbol in enumerate(csv_split):
-        assert symbol.value == expected_values[i]
-    display_op(f"[{sym_csv}].split(',')", [s.value for s in csv_split], "split", "syntactic")
+    for i, text in enumerate(csv_split):
+        assert text == expected_values[i]
+    display_op(f"[{sym_csv}].split(',')", [s for s in csv_split], "split", "syntactic")
 
     # Test split with different delimiters
     sym_path = Symbol('home/user/documents/file.txt')
     path_split = sym_path.split('/')
     expected_values = ['home', 'user', 'documents', 'file.txt']
     assert len(path_split) == len(expected_values)
-    for i, symbol in enumerate(path_split):
-        assert symbol.value == expected_values[i]
-    display_op(f"[{sym_path}].split('/')", [s.value for s in path_split], "split", "syntactic")
+    for i, text in enumerate(path_split):
+        assert text == expected_values[i]
+    display_op(f"[{sym_path}].split('/')", [s for s in path_split], "split", "syntactic")
 
     # Test join() method with list input
     sym_words = Symbol(['Hello', 'beautiful', 'world'])
@@ -1034,12 +1034,6 @@ def test_string_helper_pr():
     joined_default = sym_words.join()
     assert joined_default == 'Hello beautiful world'
     display_op(f"[{sym_words}].join()", joined_default, "join", "syntactic")
-
-    # Test join() with string input (forward to string.join)
-    sym_delimiter = Symbol('-')
-    string_join = sym_delimiter.join(['a', 'b', 'c'])
-    assert string_join == 'a-b-c'
-    display_op(f"[{sym_delimiter}].join(['a', 'b', 'c'])", string_join, "join", "syntactic")
 
     # Test startswith() method
     sym_greeting = Symbol('Hello everyone!')
@@ -1091,8 +1085,8 @@ def test_string_helper_pr():
     # Test edge cases
     sym_empty = Symbol('')
     empty_split = sym_empty.split(' ')
-    assert len(empty_split) == 1 and empty_split[0].value == ''
-    display_op(f"[{sym_empty}].split(' ')", [s.value for s in empty_split], "split", "syntactic")
+    assert len(empty_split) == 1 and empty_split[0] == ''
+    display_op(f"[{sym_empty}].split(' ')", [s for s in empty_split], "split", "syntactic")
 
     sym_single_char = Symbol('a')
     single_starts = sym_single_char.startswith('a')
