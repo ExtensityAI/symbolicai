@@ -1,15 +1,15 @@
-import json
 import copy
 import html
-import numpy as np
-
-from box import Box
+import json
 from json import JSONEncoder
-from typing import Any, Dict, Iterator, List, Optional, Type, Callable, Tuple, Generic, TypeVar
+from typing import (Any, Callable, Dict, Generic, Iterator, List, Optional,
+                    Tuple, Type, TypeVar)
+
+import numpy as np
+from box import Box
 
 from . import core
 from .ops import SYMBOL_PRIMITIVES
-
 
 T = TypeVar('T')
 
@@ -326,19 +326,17 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
                 mixin: Optional[bool] = None,
                 primitives: Optional[List[Type]] = None,
                 callables: Optional[List[Tuple[str, Callable]]] = None,
-                only_nesy: bool = False,
-                iterate_nesy: bool = False,
+                semantic: bool = False,
                 **kwargs) -> "Symbol":
         '''
         Create a new Symbol instance.
 
         Args:
             *args: Variable length argument list.
-            mixin (Optional[bool]): Whether to mix in the SymbolArithmeticPrimitives class. Defaults to None.
+            mixin (Optional[bool]): Whether to mix in the SymbolOperatorPrimitives class. Defaults to None.
             primitives (Optional[List[Type]]): A list of primitive classes to mix in. Defaults to None.
             callables (Optional[List[Callable]]): A list of dynamic primitive functions to mix in. Defaults to None.
-            only_nesy (bool): Whether to only use neuro-symbolic function or first check for type specific shortcut and the neuro-symbolic function. Defaults to False.
-            iterate_nesy (bool): Whether to allow to iterate over iterables for neuro-symbolic values. Defaults to False.
+            semantic (bool): Whether or not the symbol should be semantic; enforces the use of a neuro-symbolic engine. Defaults to False.
             **kwargs: Arbitrary keyword arguments.
 
         Returns:
@@ -359,18 +357,14 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
             'mixin': use_mixin,
             'primitives': primitives,
             'callables': callables,
-            'only_nesy': only_nesy,
-            'iterate_nesy': iterate_nesy,
+            'semantic': semantic,
             **kwargs
         }
         # configure standard primitives
         if use_mixin and standard_primitives:
-            # disable shortcut matches for all primitives
-            if only_nesy:
-                obj.__disable_shortcut_matches__ = True
             # allow to iterate over iterables for neuro-symbolic values
-            if iterate_nesy:
-                obj.__nesy_iteration_primitives__ = True
+            if semantic:
+                obj.__semantic__ = True
         # If metatype has additional runtime primitives, add them to the instance
         if Symbol._metadata._primitives is not None:
             for prim_name in list(Symbol._metadata._primitives.keys()):
@@ -496,7 +490,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
 
         Args:
             base_cls (Type): The base class of the Symbol.
-            use_mixin (bool): Whether to mix in the SymbolArithmeticPrimitives class.
+            use_mixin (bool): Whether to mix in the SymbolOperatorPrimitives class.
             primitives_info (List[Tuple[Type, str]]): A list of primitive classes and their names.
 
         Returns:
@@ -855,22 +849,6 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
             tuple: The shape of the value of the Symbol.
         '''
         return self.value.shape
-
-    def __bool__(self) -> bool:
-        '''
-        Get the boolean value of the Symbol.
-        If the Symbol's value is of type 'bool', the method returns the boolean value, otherwise it returns False.
-
-        Returns:
-            bool: The boolean value of the Symbol.
-        '''
-        val = False
-        if isinstance(self.value, bool):
-            val = self.value
-        elif self.value is not None:
-            val = True if self.value else False
-
-        return val
 
     def __str__(self) -> str:
         '''

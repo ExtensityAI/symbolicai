@@ -4,14 +4,15 @@ from ...base import Engine
 class OutputEngine(Engine):
     def __init__(self):
         super().__init__()
+        self.name = self.__class__.__name__
 
     def id(self) -> str:
         return 'output'
 
     def forward(self, argument):
         expr, processed, args, kwargs  = argument.prop.prepared_input
-        res    = None
-        args   = [] if args is None else args
+        res = None
+        args = [] if args is None else args
         kwargs = {} if kwargs is None else kwargs
         if expr:
             if processed:

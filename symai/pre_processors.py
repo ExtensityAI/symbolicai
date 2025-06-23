@@ -44,7 +44,7 @@ class InterpretExpressionPreProcessor(PreProcessor):
         assert len(argument.args) >= 1
         val = str(argument.args[0])
         val = val.replace('self', str(argument.prop.instance))
-        return f"{val}"
+        return f"{val} =>"
 
 
 class IndexPreProcessor(PreProcessor):
@@ -143,6 +143,22 @@ class ContainsPreProcessor(PreProcessor):
         return f"{b} in {a} =>"
 
 
+class StartsWithPreProcessor(PreProcessor):
+    def __call__(self, argument) -> Any:
+        assert len(argument.args) == 1
+        a = prep_as_str(argument.prop.instance)
+        b = prep_as_str(argument.args[0])
+        return f"{a} startswith {b} =>"
+
+
+class EndsWithPreProcessor(PreProcessor):
+    def __call__(self, argument) -> Any:
+        assert len(argument.args) == 1
+        a = prep_as_str(argument.prop.instance)
+        b = prep_as_str(argument.args[0])
+        return f"{a} endswith {b} =>"
+
+
 class IsInstanceOfPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
         assert len(argument.args) == 1
@@ -184,7 +200,7 @@ class SemanticMappingPreProcessor(PreProcessor):
 
 class SimulateCodePreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
-        val = argument.args[0] if len(argument.args) >= 0 else ''
+        val = argument.args[0] if len(argument.args) > 0 else ''
         return f"code '{str(argument.prop.instance)}' params '{str(val)}' =>"
 
 
@@ -339,8 +355,27 @@ class ConsolePreProcessor(PreProcessor):
         self.skip = skip if skip is not None else []
 
     def __call__(self, argument) -> Any:
-        object_ = f"args: {argument.args}\nkwargs: {argument.kwargs}"
+        # _func is called as: _func(self, self.value, *method_args, **method_kwargs)
+        # argument.args[0] == symbol value, argument.prop.instance == Symbol object
+        if argument.args:
+            symbol_obj   = argument.prop.instance
+            symbol_value = argument.args[0]
+            method_args  = argument.args[1:]
+            object_ = f"symbol_value: {repr(symbol_value)}"
+
+            # kwargs passed at Symbol-construction time (e.g. test_kwarg=…)
+            if symbol_obj._kwargs:
+                object_ += f"\nsymbol_kwargs: {symbol_obj._kwargs}"
+
+            if method_args:
+                object_ += f"\nmethod_args: {method_args}"
+            if argument.kwargs:
+                object_ += f"\nmethod_kwargs: {argument.kwargs}"
+        else:
+            object_ = f"args: {argument.args}\nkwargs: {argument.kwargs}"
         return object_
+
+
 
 
 class LanguagePreProcessor(PreProcessor):
@@ -458,4 +493,3 @@ class ArrowMessagePreProcessor(PreProcessor):
 class ValuePreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
         return f'{str(argument.prop.instance)}'
-
