@@ -374,6 +374,18 @@ class Filter(Prompt):
             ])
 
 
+class MapExpression(Prompt):
+    def __init__(self):
+        super().__init__([
+            "text '['apple', 'banana', 'kiwi', 'cat']' all fruits should become dogs =>['dog', 'dog', 'dog', 'cat']",
+            "text 'this is a string' convert vowels to numbers =>'th1s 1s 4 str1ng'",
+            "text '('small', 'tiny', 'huge', 'enormous')' convert size adjectives to numbers 1-10 =>'(2, 1, 8, 10)'",
+            "text '{'happy', 'sad', 'angry', 'joyful'}' convert emotions to colors =>'{'yellow', 'blue', 'red', 'gold'}'",
+            "text '{'item1': 'apple', 'item2': 'banana', 'item3': 'cat'}' convert fruits to vegetables =>'{'item1': 'carrot', 'item2': 'broccoli', 'item3': 'cat'}'",
+            "text '[10, 20, 30, 40]' double each number =>'[20, 40, 60, 80]'",
+            "text 'HELLO' make consonants lowercase =>'hEllO'"
+        ])
+
 
 class SemanticMapping(Prompt):
     def __init__(self):

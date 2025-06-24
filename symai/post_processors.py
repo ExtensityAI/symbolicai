@@ -155,9 +155,27 @@ class ASTPostProcessor(PostProcessor):
     def __call__(self, response, argument) -> Any:
         try:
             val = ast.literal_eval(response.strip())
-            return val
+            return self._recursive_parse(val)
         except:
             return response
+
+    def _recursive_parse(self, obj):
+        """Recursively parse nested structures, converting string representations to actual types."""
+        if isinstance(obj, str):
+            try:
+                return self._recursive_parse(ast.literal_eval(obj))
+            except:
+                return obj
+        elif isinstance(obj, list):
+            return [self._recursive_parse(item) for item in obj]
+        elif isinstance(obj, tuple):
+            return tuple(self._recursive_parse(item) for item in obj)
+        elif isinstance(obj, set):
+            return {self._recursive_parse(item) for item in obj}
+        elif isinstance(obj, dict):
+            return {key: self._recursive_parse(value) for key, value in obj.items()}
+        else:
+            return obj
 
 
 class ConsolePostProcessor(PostProcessor):

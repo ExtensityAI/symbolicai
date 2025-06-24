@@ -333,6 +333,30 @@ def filtering(criteria: str,
                     post_processors=post_processors,
                     **decorator_kwargs)
 
+
+def map(instruction: str,
+       default: str | None = None,
+       prompt: str = "Transform each element in the input based on the instruction. Preserve container type and elements that don't match the instruction:\n",
+       examples: prm.Prompt = prm.MapExpression(),
+       constraints: list[Callable] = [],
+       limit: int | None = 1,
+       stop: str | None = None,
+       pre_processors: list[pre.PreProcessor] | None = [pre.MapExpressionPreProcessor()],
+       post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor(), post.ASTPostProcessor()],
+       **decorator_kwargs):
+    """Semantic mapping operation that applies an instruction to each element in an iterable."""
+    return few_shot(prompt=prompt,
+                    examples=examples,
+                    constraints=constraints,
+                    default=default,
+                    limit=limit,
+                    stop=stop,
+                    context=instruction,
+                    pre_processors=pre_processors,
+                    post_processors=post_processors,
+                    **decorator_kwargs)
+
+
 def notify(subscriber: Dict[str, Callable],
            default: Optional[object] = None,
            prompt: str = "List the semantically related topics:\n",
