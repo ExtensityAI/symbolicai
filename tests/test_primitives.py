@@ -2158,7 +2158,7 @@ def test_persistence_pr():
     try:
         sym_replace = Symbol("new content")
         sym_replace.save(base_path, serialize=False, replace=False)
-        display_op(f"Symbol('{sym_replace}').save(existing_file, replace=False)", "created new file with suffix", "save", "syntactic")
+        display_op(f"Symbol('{sym_replace}').save(existing_file, serialize=False, replace=False)", "created new file with suffix", "save", "syntactic")
 
         # Should create a file with _0 suffix
         expected_new_path = base_path.replace('.txt', '_0.txt')
@@ -2174,6 +2174,29 @@ def test_persistence_pr():
     finally:
         if os.path.exists(base_path):
             os.unlink(base_path)
+
+    # Test save() with replace=True - should overwrite existing file
+    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as tmp_file:
+        replace_base_path = tmp_file.name
+        tmp_file.write("original content")
+
+    try:
+        sym_replace_true = Symbol("overwritten content")
+        sym_replace_true.save(replace_base_path, serialize=False, replace=True)
+        display_op(f"Symbol('{sym_replace_true}').save(existing_file, serialize=False, replace=True)", "overwritten existing file", "save", "syntactic")
+
+        # Should overwrite the original file, not create a new one
+        with open(replace_base_path, 'r') as f:
+            content = f.read()
+        assert content == str(sym_replace_true), "File content should be overwritten"
+
+        # Verify that no _0 suffix file was created
+        expected_suffix_path = replace_base_path.replace('.txt', '_0.txt')
+        assert not os.path.exists(expected_suffix_path), "No suffix file should be created when replace=True"
+
+    finally:
+        if os.path.exists(replace_base_path):
+            os.unlink(replace_base_path)
 
     # Test expand() method functionality
     sym_expand = Symbol("Calculate the fibonacci sequence up to 10 numbers")
