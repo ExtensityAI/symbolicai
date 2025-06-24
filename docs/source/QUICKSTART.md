@@ -4,6 +4,8 @@ This guide will help you get started with SymbolicAI, demonstrating basic usage 
 
 **Note**: the most accurate documentation is the _code_, so be sure to check out the tests. Look for the `mandatory` mark since those are the features that were tested and are guaranteed to work.
 
+For more detailed information about usage, refer to the materials available [here](https://extensityai.gitbook.io/symbolicai/features/contracts) and [here](https://extensityai.gitbook.io/symbolicai/features/primitives).
+
 To start, import the library by using:
 
 ```python
@@ -18,7 +20,7 @@ Our `Symbolic API` is based on object-oriented and compositional design patterns
 # Create a Symbol
 S = Symbol("Welcome to our tutorial.")
 # Translate the Symbol
-print(S.translate('German') # Output: Willkommen zu unserem Tutorial.
+print(S.translate('German')) # Output: Willkommen zu unserem Tutorial.
 ```
 
 ### Ranking Objects
@@ -59,7 +61,7 @@ We can also subtract sentences from one another, where our operations condition 
 
 ```python
 # Sentence manipulation
-S = Symbol('Hello my enemy') - 'enemy' + 'friend'
+S = Symbol('Hello my enemy').sem - 'enemy' + 'friend'
 print(S)  # Output: Hello my friend
 ```
 
@@ -71,8 +73,9 @@ In this example, we perform a fuzzy comparison between two numerical objects. Th
 
 ```python
 # Fuzzy comparison
-S = Symbol('3.1415...')
-print(S == np.pi)  # Output: True
+# # Fuzzy comparison
+S = Symbol('3.14159...', semantic=True)
+print(S == 'π')  # Output: True
 ```
 
 ### 🧠 Causal Reasoning
@@ -80,24 +83,10 @@ print(S == np.pi)  # Output: True
 The main goal of our framework is to enable reasoning capabilities on top of the statistical inference of Language Models (LMs). As a result, our `Symbol` objects offers operations to perform deductive reasoning expressions. One such operation involves defining rules that describe the causal relationship between symbols. The following example demonstrates how the `&` operator is overloaded to compute the logical implication of two symbols.
 
 ```python
-S1 = Symbol('The horn only sounds on Sundays.', only_nesy=True)
+S1 = Symbol('The horn only sounds on Sundays.', semantic=True)
 S2 = Symbol('I hear the horn.')
-
-(S1 & S2).extract('answer') # Since I hear the horn, and the horn only sounds on Sundays, it must be Sunday.
+res = S1 & S2 # Therefore, it is Sunday.
 ```
-> **Note**: The first symbol (e.g., `S1`) needs to have the `only_nesy` flag set to `True` for logical operators. This is because, without this flag, the logical operators default to string concatenation. While we didn't find a better way to handle meta-overloading in Python, this flag allows us to use operators like `'A' & 'B' & 'C'` to produce `'ABC'` or `'A' | 'B' | 'C'` to result in `'A B C'`. This syntactic sugar is essential for our use case.
-
-The current `&` operation overloads the `and` logical operator and sends `few-shot` prompts to the neural computation engine for statement evaluation. However, we can define more sophisticated logical operators for `and`, `or`, and `xor` using formal proof statements. Additionally, the neural engines can parse data structures prior to expression evaluation. Users can also define custom operations for more complex and robust logical operations, including constraints to validate outcomes and ensure desired behavior.
 
 ### 🪜 Next Steps
-
-This quick start guide covers the basics of SymbolicAI. We also provide an interactive [notebook](https://github.com/ExtensityAI/symbolicai/blob/main/notebooks/Basics.ipynb) that reiterates these basics. For more detailed information and advanced usage explore the topics and tutorials listed below.
-
-* More in-depth guides: {doc}`Tutorials <TUTORIALS/index>`
-* Using different neuro-symbolic engines: {doc}`Engines <ENGINES/index>`
-* Advanced causal reasoning: {doc}`Causal Reasoning <FEATURES/causal_reasoning>`
-* Using operations to customize and define api behavior: {doc}`Operations <FEATURES/operations>`
-* Using expressions to create complex behaviors: {doc}`Expressions <FEATURES/expressions>`
-* Managing modules and imports: {doc}`Import Class <FEATURES/import>`
-* Error handling and debugging: {doc}`Error Handling and Debugging <FEATURES/error_handling>`
-* Built-in tools: {doc}`Tools <TOOLS/index>`
+Now, there are tools like DeepWiki that provide better documentation than we could ever write, and we don’t want to compete with that; we'll correct it where it's plain wrong. Please go read SymbolicAI's DeepWiki [page](https://deepwiki.com/ExtensityAI/symbolicai/). There's a lot of interesting stuff in there. Last but not least, check out our [paper](https://arxiv.org/abs/2402.00854) that describes the framework in detail. If you like watching videos, we have a series of tutorials that you can find [here](https://extensityai.gitbook.io/symbolicai/tutorials/video_tutorials).

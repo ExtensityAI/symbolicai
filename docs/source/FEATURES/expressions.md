@@ -1,5 +1,12 @@
 # Expressions
 
+---
+
+## ⚠️  Outdated or Deprecated Documentation ⚠️
+This documentation is outdated and may not reflect the current state of the SymbolicAI library. This page might be revived or deleted entirely as we continue our development. We recommend using more modern tools that infer the documentation from the code itself, such as [DeepWiki](https://deepwiki.com/ExtensityAI/symbolicai). This will ensure you have the most accurate and up-to-date information and give you a better picture of the current state of the library.
+
+---
+
 ## Overview
 An `Expression` is a non-terminal symbol that can be further evaluated. It inherits all the properties from the Symbol class and overrides the `__call__` method to evaluate its expressions or values. All other expressions are derived from the `Expression` class, which also adds additional capabilities, such as the ability to `fetch` data from URLs, `search` on the internet, or `open` files. These operations are specifically separated from the `Symbol` class as they do not use the `value` attribute of the Symbol class.
 

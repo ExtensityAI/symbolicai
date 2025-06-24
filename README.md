@@ -1,21 +1,115 @@
-# **SymbolicAI**
+# **SymbolicAI: A neuro-symbolic perspective on LLMs**
 <img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/refs/heads/main/assets/images/banner.png">
 
-### **A Neuro-Symbolic Perspective on Large Language Models (LLMs)**
+[![Documentation](https://img.shields.io/badge/Documentation-blue?style=for-the-badge)](https://extensityai.gitbook.io/symbolicai)
+[![Arxiv](https://img.shields.io/badge/Paper-32758e?style=for-the-badge)](https://arxiv.org/abs/2402.00854)
+[![DeepWiki](https://img.shields.io/badge/DeepWiki-yellow?style=for-the-badge)](https://deepwiki.com/ExtensityAI/symbolicai)
+[![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg?style=for-the-badge)](https://opensource.org/licenses/BSD-3-Clause)
+[![Contributions](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=for-the-badge)](https://github.com/ExtensityAI/symbolicai/issues)
 
-*Building applications with LLMs at the core using our `Symbolic API` facilitates the integration of classical and differentiable programming in Python.*
-
-[![Documentation](https://img.shields.io/badge/Full%20Documentation-orange)](https://extensityai.gitbook.io/symbolicai) [![Arxiv](https://img.shields.io/badge/SymbolicAI%20Paper-blue)](https://arxiv.org/abs/2402.00854)
-
-[![PyPI version](https://badge.fury.io/py/symbolicai.svg)](https://badge.fury.io/py/symbolicai) [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause) [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/dinumariusc.svg?style=social&label=Follow%20%40DinuMariusC)](https://twitter.com/DinuMariusC) [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/symbolicapi.svg?style=social&label=Follow%20%40ExtensityAI)](https://twitter.com/ExtensityAI)
-[![Twitter](https://img.shields.io/twitter/url/https/twitter.com/futurisold.svg?style=social&label=Follow%20%40futurisold)](https://x.com/futurisold)[![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/ExtensityAI/symbolicai/issues)
-[![Discord](https://img.shields.io/discord/768087161878085643?label=Discord&logo=Discord&logoColor=white)](https://discord.gg/QYMNnh9ra8) [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FXpitfire%2Fsymbolicai&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)](https://hits.seeyoufarm.com) [![GitHub forks](https://img.shields.io/github/forks/ExtensityAI/symbolicai.svg?style=social&label=Fork&maxAge=2592000)](https://GitHub.com/ExtensityAI/symbolicai) [![GitHub stars](https://img.shields.io/github/stars/ExtensityAI/symbolicai.svg?style=social&label=Star&maxAge=2592000)](https://GitHub.com/ExtensityAI/symbolicai/stargazers/)
+[![Twitter](https://img.shields.io/twitter/url/https/twitter.com/dinumariusc.svg?style=social&label=@DinuMariusC)](https://twitter.com/DinuMariusC) [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/symbolicapi.svg?style=social&label=@ExtensityAI)](https://twitter.com/ExtensityAI)
+[![Twitter](https://img.shields.io/twitter/url/https/twitter.com/futurisold.svg?style=social&label=@futurisold)](https://x.com/futurisold)
 
 <img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/preview.gif">
 
 ## What is SymbolicAI?
 
-Conceptually, SymbolicAI is a framework that leverages machine learning – specifically LLMs – as its foundation, and composes operations based on task-specific prompting. We adopt a divide-and-conquer approach to break down a complex problem into smaller, more manageable problems. Consequently, each operation addresses a simpler task. By reassembling these operations, we can resolve the complex problem. Moreover, our design principles enable us to transition seamlessly between differentiable and classical programming, allowing us to harness the power of both paradigms.
+SymbolicAI is a **neuro-symbolic** framework, combining classical Python programming with the differentiable, programmable nature of LLMs. In this README, we'll introduce two key concepts that define SymbolicAI: **primitives** and **contracts**.
+
+### Primitives
+At the core of SymbolicAI are `Symbol` objects—each one comes with a set of tiny, composable operations that feel like native Python. Think of them as your building blocks for semantic reasoning. Right now, we support a wide range of primitives:
+
+| Primitive/Operator | Category         | Syntactic | Semantic | Description |
+|--------------------|-----------------|:---------:|:--------:|-------------|
+| `.sem` / `.syn`    | Casting         | ✓         | ✓        | Switches a symbol between syntactic (literal) and semantic (neuro-symbolic) behavior. |
+| `==`               | Comparison      | ✓         | ✓        | Tests for equality. Syntactic: literal match. Semantic: fuzzy/conceptual equivalence (e.g. 'Hi' == 'Hello'). |
+| `!=`               | Comparison      | ✓         | ✓        | Tests for inequality. Syntactic: literal not equal. Semantic: non-equivalence or opposite concepts. |
+| `>`                | Comparison      | ✓         | ✓        | Greater-than. Syntactic: numeric/string compare. Semantic: abstract comparison (e.g. 'hot' > 'warm'). |
+| `<`                | Comparison      | ✓         | ✓        | Less-than. Syntactic: numeric/string compare. Semantic: abstract ordering (e.g. 'cat' < 'dog'). |
+| `>=`               | Comparison      | ✓         | ✓        | Greater or equal. Syntactic or conceptual. |
+| `<=`               | Comparison      | ✓         | ✓        | Less or equal. Syntactic or conceptual. |
+| `in`               | Membership      | ✓         | ✓        | Syntactic: element in list/string. Semantic: membership by meaning (e.g. 'fruit' in ['apple', ...]). |
+| `~`                | Invert   | ✓         | ✓        | Negation: Syntactic: logical NOT/bitwise invert. Semantic: conceptual inversion (e.g. 'True' ➔ 'False', 'I am happy.' ➔ 'Happiness is me.'). |
+| `+`                | Arithmetic      | ✓         | ✓        | Syntactic: numeric/string/list addition. Semantic: meaningful composition, blending, or conceptual merge. |
+| `-`                | Arithmetic      | ✓         | ✓        | Syntactic: subtraction/negate. Semantic: replacement or conceptual opposition. |
+| `*`                | Arithmetic      | ✓         |         | Syntactic: multiplication/repeat. Semantic: expand or strengthen meaning. |
+| `@`                | Arithmetic      | ✓         |         | Sytactic: string concatenation. |
+| `/`                | Arithmetic      | ✓         |         | Syntactic: division. On strings, it splits the string based on delimiter (e.g. `Symbol('a b') / ' '` -> `['a', 'b']`))). |
+| `//`               | Arithmetic      | ✓         |         | Floor division. |
+| `%`                | Arithmetic      | ✓         |         | Modulo. Semantic: find remainder or part, can be used creatively over concepts. |
+| `**`               | Arithmetic      | ✓         |         | Power operation. Semantic: (hypernym or intensifier, depending on domain). |
+| `&`                | Logical/Bitwise | ✓         | ✓        | Syntactic: bitwise/logical AND. Semantic: logical conjunction, inference, e.g., context merge. |
+| `\|`                | Logical/Bitwise | ✓         | ✓        | Syntactic: bitwise/logical OR. Semantic: conceptual alternative/option. |
+| `^`                | Logical/Bitwise | ✓         | ✓        | Syntactic: bitwise XOR. Semantic: exclusive option/concept distinction. |
+| `<<`               | Shift           | ✓         | ✓        | Syntactic: left-shift (integers). Semantic: prepend or rearrange meaning/order. |
+| `>>`               | Shift           | ✓         | ✓        | Syntactic: right-shift (integers). Semantic: append or rearrange meaning/order. |
+| `+=`, `-=`, `*=`, `/=`, `//=`, `%=`, `**=` | In-place Arithmetic | ✓ | ✓ | In-place enhanced assignment, some syntactic and some semantic (see above). |
+| `&=`, `\|=`, `^=`   | In-place Logical| ✓         | ✓        | In-place enhanced bitwise/logical assignment, both syntactic and semantic. |
+| `.cast(type)`, `.to(type)` | Casting         | ✓         |         | Cast to a specified type (e.g., int, float, str). |
+| `.str()`, `.int()`, `.float()`, `.bool()` | Casting    |          |         | Cast to basic types. |
+| `.ast()`             | Casting           | ✓         |         | Parse a Python literal string into a native object. |
+| `symbol[index]`, `symbol[start:stop]` | Iteration   | ✓         | ✓        | Get item or slice (list, tuple, dict, numpy array). |
+| `symbol[index] = value` | Iteration        | ✓         | ✓        | Set item or slice. |
+| `del symbol[index]`      | Iteration        | ✓         | ✓        | Delete item or key. |
+| `.split(delimiter)`      | String Helper    | ✓         |         | Split a string or sequence into a list. |
+| `.join(delimiter)`      | String Helper    | ✓         |         | Join a list of strings into a string. |
+| `.startswith(prefix)`    | String Helper    | ✓         | ✓        | Check if a string starts with given prefix (in both modes). |
+| `.endswith(suffix)`      | String Helper    | ✓         | ✓        | Check if a string ends with given suffix (in both modes). |
+| `.equals(string, context?)` | Comparison     |           | ✓        | Semantic/contextual equality beyond `==`. |
+| `.contains(element)`         | Comparison      |           | ✓        | Semantic contains beyond `in`. |
+| `.isinstanceof(query)` | Comparison     |           | ✓        | Semantic type checking. |
+| `.interpret(prompt, accumulate?)`| Expression Handling |        | ✓ | Interpret prompts/expressions|
+| `.get_results()`        | Expression Handling |     ✓     |       | Retrieve accumulated interpretation results. |
+| `.clear_results()`        | Expression Handling |    ✓      |        | Clear accumulated interpretation results. |
+| `.clean()`                | Data Handling   |           | ✓        | Clean text (remove extra whitespace, newlines, tabs). |
+| `.summarize(context?)`    | Data Handling   |           | ✓        | Summarize text (optionally with context). |
+| `.outline()`              | Data Handling   |           | ✓        | Generate outline from structured text. |
+| `.filter(criteria, include?)` | Data Handling |   | ✓        | Filter text by criteria (exclude/include). |
+| `.map(instruction, prompt?)`                  | Data Handling    |         | ✓        | Semantic mapping over iterables. |
+| `.modify(changes)`        | Data Handling   |           | ✓        | Apply modifications according to prompt. |
+| `.replace(old, new)`      | Data Handling   |          | ✓        | Replace substrings in data. |
+| `.remove(information)`           | Data Handling   |           | ✓        | Remove specified text. |
+| `.include(information)`          | Data Handling   |           | ✓        | Include additional information. |
+| `.combine(information)`          | Data Handling   |           | ✓        | Combine with another text fragment. |
+| `.unique(keys?)`          | Uniqueness      |           | ✓        | Extract unique elements or entries. |
+| `.compose()`              | Uniqueness      |           | ✓        | Compose a coherent narrative. |
+| `.rank(measure?, order?)`   | Pattern Matching|           | ✓        | Rank items by a given measure/order. |
+| `.extract(pattern)`       | Pattern Matching|           | ✓        | Extract info matching a pattern. |
+| `.correct(context, exception)` | Pattern Matching |      | ✓        | Correct code/text based on prompt/exception. |
+| `.translate(language)` | Pattern Matching |         | ✓ | Translate text into another language. |
+| `.choice(cases, default)` | Pattern Matching|           | ✓        | Select best match from provided cases. |
+| `.query(context, prompt?, examples?)`  | Query Handling  |           | ✓        | Query structured data with a question or prompt. |
+| `.convert(format)`        | Query Handling  |           | ✓        | Convert data to specified format (YAML, XML, etc.). |
+| `.transcribe(modify)` | Query Handling |          | ✓        | Transcribe/reword text per instructions. |
+| `.analyze(exception, query?)` | Execution Control |      | ✓        | Analyze code execution and exceptions. |
+| `.execute()`, `.fexecute()` | Execution Control |       | ✓        | Execute code (with fallback). |
+| `.simulate()`             | Execution Control |         | ✓        | Simulate code or process semantically. |
+| `.sufficient(query)`   | Execution Control |         | ✓        | Check if information is sufficient. |
+| `.list(condition)`         | Execution Control |         | ✓        | List items matching criteria. |
+| `.foreach(condition, apply)`| Execution Control |         | ✓        | Apply action to each element. |
+| `.stream(expr, token_ratio)` | Execution Control |      | ✓        | Stream-process large inputs. |
+| `.ftry(expr, retries)`    | Execution Control |         | ✓        | Fault-tolerant execution with retries. |
+| `.dict(context, **kwargs)` | Dict Handling    |         | ✓        | Convert text/list into a dict semantically. |
+| `.template(template, placeholder?)` | Template Styling |    ✓  | | Fill in placeholders in a template string. |
+| `.style(description, libraries?) | Template Styling |        | ✓ | Style text/code (e.g., syntax highlighting). |
+| `.cluster(**clustering_kwargs?)`              | Data Clustering  |         | ✓        | Cluster data into groups semantically. (uses sklearn's DBSCAN)|
+| `.embed()`                | Embedding        |         | ✓        | Generate embeddings for text/data. |
+| `.embedding`              | Embedding        |         | ✓        | Retrieve embeddings as a numpy array. |
+| `.similarity(other, metric?, normalize?)` | Embedding    |         | ✓        | Compute similarity between embeddings. |
+| `.distance(other, kernel?)`  | Embedding     |         | ✓        | Compute distance between embeddings. |
+| `.zip()`                  | Embedding        |         | ✓        | Package id, embedding, query into tuples. |
+| `.open(path?)`             | IO Handling      | ✓       |         | Open a file and read its contents. |
+| `.input(message?)`                | IO Handling      | ✓       |         | Read user input interactively. |
+| `.save(path, serialize?, replace?)` | Persistence | ✓ |  | Save a symbol to file (pickle/text). |
+| `.load(path)`             | Persistence      | ✓       |         | Load a symbol from file. |
+| `.expand()`               | Persistence      |         | ✓        | Generate and attach code based on prompt. |
+| `.output()` | Output Handling | ✓    | | Handle/capture output with handler. |
+
+If you want to see how these primitives are used in practice, check out the docs [here](https://extensityai.gitbook.io/symbolicai/features/primitives).
+
+### Contracts
+
+They say LLMs hallucinate—but your code can't afford to. That's exactly why SymbolicAI brings **Design by Contract** principles into the world of LLMs. Instead of relying solely on post-hoc testing, contracts help build correctness directly into your design. All you need is some data models and a decorator. Read more about contracts [here](https://deepwiki.com/ExtensityAI/symbolicai/7.1-contract-validation-system) and [here](https://extensityai.gitbook.io/symbolicai/features/contracts).
 
 ## Installation
 
@@ -231,111 +325,13 @@ With these steps completed, you should be ready to start using SymbolicAI in you
 > **[NOTE]**: Our framework allows you to support us train models for local usage by enabling the data collection feature. On application startup we show the terms of services and you can activate or disable this community feature. We do not share or sell your data to 3rd parties and only use the data for research purposes and to improve your user experience. To change this setting open the `symai.config.json` and turn it on/off by setting the `SUPPORT_COMMUNITY` property to `True/False` via the config file or the respective environment variable.
 > **[NOTE]**: By default, the user warnings are enabled. To disable them, export `SYMAI_WARNINGS=0` in your environment variables.
 
-## Quick Start Guide
+### 🪜 Next Steps
 
-This guide will help you get started with SymbolicAI, demonstrating basic usage and key features.
-
-To start, import the library by using:
-
-```python
-from symai import Symbol
-```
-
-### Creating and Manipulating Symbols
-
-Our `Symbolic API` is based on object-oriented and compositional design patterns. The `Symbol` class serves as the base class for all functional operations, and in the context of symbolic programming (fully resolved expressions), we refer to it as a terminal symbol. The Symbol class contains helpful operations that can be interpreted as expressions to manipulate its content and evaluate new Symbols `<class 'symai.expressions.Symbol'>`.
-
-```python
-# Create a Symbol
-S = Symbol("Welcome to our tutorial.")
-# Translate the Symbol
-print(S.translate('German') # Output: Willkommen zu unserem Tutorial.
-```
-
-#### Ranking Objects
-
-Our API can also execute basic data-agnostic operations like `filter`, `rank`, or `extract` patterns. For instance, we can rank a list of numbers:
-
-```python
-# Ranking objects
-import numpy as np
-
-S = Symbol(np.array([1, 2, 3, 4, 5, 6, 7]))
-print(S.rank(measure='numerical', order='descending')) # Output: ['7', '6', '5', '4', '3', '2', '1']
-```
-
-#### Evaluating Expressions
-
-Evaluations are resolved in the language domain and by best effort. We showcase this on the example of [word2vec](https://arxiv.org/abs/1301.3781).
-
-**Word2Vec** generates dense vector representations of words by training a shallow neural network to predict a word based on its neighbors in a text corpus. These resulting vectors are then employed in numerous natural language processing applications, such as sentiment analysis, text classification, and clustering.
-
-In the example below, we can observe how operations on word embeddings (colored boxes) are performed. Words are tokenized and mapped to a vector space where semantic operations can be executed using vector arithmetic.
-
-<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img3.png" width="450px">
-
-Similar to word2vec, we aim to perform contextualized operations on different symbols. However, as opposed to operating in vector space, we work in the natural language domain. This provides us the ability to perform arithmetic on words, sentences, paragraphs, etc., and verify the results in a human-readable format.
-
-The following examples display how to evaluate such an expression using a string representation:
-
-```python
-# Word analogy
-S = Symbol('King - Man + Women').interpret()
-print(S)  # Output: Queen
-```
-
-#### Dynamic Casting
-
-We can also subtract sentences from one another, where our operations condition the neural computation engine to evaluate the Symbols by their best effort. In the subsequent example, it identifies that the word `enemy` is present in the sentence, so it deletes it and replaces it with the word `friend` (which is added):
-
-```python
-# Sentence manipulation
-S = Symbol('Hello my enemy') - 'enemy' + 'friend'
-print(S)  # Output: Hello my friend
-```
-
-Additionally, the API performs dynamic casting when data types are combined with a Symbol object. If an overloaded operation of the Symbol class is employed, the Symbol class can automatically cast the second object to a Symbol. This is a convenient way to perform operations between `Symbol` objects and other data types, such as strings, integers, floats, lists, etc., without cluttering the syntax.
-
-#### Probabilistic Programming
-
-In this example, we perform a fuzzy comparison between two numerical objects. The `Symbol` variant is an approximation of `numpy.pi`. Despite the approximation, the fuzzy equals `==` operation still successfully compares the two values and returns `True`.
-
-```python
-# Fuzzy comparison
-S = Symbol('3.1415...')
-print(S == np.pi)  # Output: True
-```
-
-#### 🧠 Causal Reasoning
-
-The main goal of our framework is to enable reasoning capabilities on top of the statistical inference of Language Models (LMs). As a result, our `Symbol` objects offers operations to perform deductive reasoning expressions. One such operation involves defining rules that describe the causal relationship between symbols. The following example demonstrates how the `&` operator is overloaded to compute the logical implication of two symbols.
-
-```python
-S1 = Symbol('The horn only sounds on Sundays.', only_nesy=True)
-S2 = Symbol('I hear the horn.')
-
-(S1 & S2).extract('answer') # Since I hear the horn, and the horn only sounds on Sundays, it must be Sunday.
-```
-> **Note**: The first symbol (e.g., `S1`) needs to have the `only_nesy` flag set to `True` for logical operators. This is because, without this flag, the logical operators default to string concatenation. While we didn't find a better way to handle meta-overloading in Python, this flag allows us to use operators like `'A' & 'B' & 'C'` to produce `'ABC'` or `'A' | 'B' | 'C'` to result in `'A B C'`. This syntactic sugar is essential for our use case.
-
-The current `&` operation overloads the `and` logical operator and sends `few-shot` prompts to the neural computation engine for statement evaluation. However, we can define more sophisticated logical operators for `and`, `or`, and `xor` using formal proof statements. Additionally, the neural engines can parse data structures prior to expression evaluation. Users can also define custom operations for more complex and robust logical operations, including constraints to validate outcomes and ensure desired behavior.
-
-#### 🪜 Next Steps
-
-This quick start guide covers the basics of SymbolicAI. We also provide an interactive [notebook](https://github.com/ExtensityAI/symbolicai/blob/main/notebooks/Basics.ipynb) that reiterates these basics. For more detailed information and advanced usage explore the topics and tutorials listed below.
-
-* More in-depth guides: {doc}`Tutorials <TUTORIALS/index>`
-* Using different neuro-symbolic engines: {doc}`Engines <ENGINES/index>`
-* Advanced causal reasoning: {doc}`Causal Reasoning <FEATURES/causal_reasoning>`
-* Using operations to customize and define api behavior: {doc}`Operations <FEATURES/operations>`
-* Using expressions to create complex behaviors: {doc}`Expressions <FEATURES/expressions>`
-* Managing modules and imports: {doc}`Import Class <FEATURES/import>`
-* Error handling and debugging: {doc}`Error Handling and Debugging <FEATURES/error_handling>`
-* Built-in tools: {doc}`Tools <TOOLS/index>`
+Now, there are tools like DeepWiki that provide better documentation than we could ever write, and we don’t want to compete with that; we'll correct it where it's plain wrong. Please go read SymbolicAI's DeepWiki [page](https://deepwiki.com/ExtensityAI/symbolicai/). There's a lot of interesting stuff in there. Last but not least, check out our [paper](https://arxiv.org/abs/2402.00854) that describes the framework in detail. If you like watching videos, we have a series of tutorials that you can find [here](https://extensityai.gitbook.io/symbolicai/tutorials/video_tutorials).
 
 ### Contribution
 
-If you wish to contribute to this project, please refer to [the docs](https://symbolicai.readthedocs.io/en/latest/CONTRIBUTING.html) for details on our code of conduct, as well as the process for submitting pull requests. Any contributions are greatly appreciated.
+We are always looking for contributors to help us improve the framework, add new features, and fix bugs. Any contributions are greatly appreciated.
 
 ### 📜 Citation
 
@@ -358,14 +354,11 @@ This project is licensed under the BSD-3-Clause License - refer to [the docs](ht
 
 If you appreciate this project, please leave a star ⭐️ and share it with friends and colleagues. To support the ongoing development of this project even further, consider donating. Thank you!
 
-[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/donate/?hosted_button_id=WCWP5D2QWZXFQ)
+[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg?style=for-the-badge)](https://www.paypal.com/donate/?hosted_button_id=WCWP5D2QWZXFQ)
 
 We are also seeking contributors or investors to help grow and support this project. If you are interested, please reach out to us.
 
 ### 📫 Contact
 
 Feel free to contact us with any questions about this project via [email](mailto:office@extensity.ai), through our [website](https://extensity.ai/), or find us on Discord:
-
-[![Discord](https://img.shields.io/discord/768087161878085643?label=Discord&logo=Discord&logoColor=white)](https://discord.gg/QYMNnh9ra8)
-
-To contact me directly, you can find me on [LinkedIn](https://www.linkedin.com/in/mariusconstantindinu/), [Twitter](https://twitter.com/DinuMariusC), or at my personal [website](https://www.dinu.at/).
+[![Discord](https://img.shields.io/discord/768087161878085643?label=Discord&logo=Discord&logoColor=white?style=for-the-badge)](https://discord.gg/QYMNnh9ra8)
