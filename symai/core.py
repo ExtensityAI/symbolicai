@@ -1175,6 +1175,11 @@ def cluster(entries: List[str],
             post_processors: Optional[List[post.PostProcessor]] = [post.ClusterPostProcessor()],
             **decorator_kwargs):
     """Embeds and clusters the input entries."""
+    assert any(isinstance(pr, post.ClusterPostProcessor) for pr in post_processors), "At least one post processor must be a 'ClusterPostProcessor' for clustering!"
+    for post_pr in post_processors:
+        if isinstance(post_pr, post.ClusterPostProcessor):
+            post_pr.set(decorator_kwargs)
+
     return embed(entries=entries,
                  pre_processors=pre_processors,
                  post_processors=post_processors,

@@ -4,7 +4,7 @@ import numpy as np
 
 from collections import namedtuple
 from typing import Any
-from sklearn.cluster import AffinityPropagation
+from sklearn.cluster import HDBSCAN
 
 
 class PostProcessor:
@@ -27,13 +27,20 @@ class StripPostProcessor(PostProcessor):
 
 class ClusterPostProcessor(PostProcessor):
     def __call__(self, response, argument) -> Any:
-        clustering = AffinityPropagation().fit(response)
+        assert hasattr(self, 'clustering_kwargs'), "'clustering_kwargs' must be set in the class before calling __call__; use 'set' method."
+        clustering = HDBSCAN(**self.clustering_kwargs).fit(response)
         ids = np.unique(clustering.labels_)
         map_ = {}
         for id_ in ids:
             indices = np.where(clustering.labels_ == id_)[0]
             map_[id_] = [argument.prop.instance.value[i] for i in indices]
         return map_
+
+    def set(self, clustering_kwargs):
+        self.clustering_kwargs = clustering_kwargs
+
+    def delete(self):
+        del self.clustering_kwargs
 
 
 class TemplatePostProcessor(PostProcessor):
