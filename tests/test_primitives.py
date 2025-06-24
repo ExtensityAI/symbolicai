@@ -1939,8 +1939,8 @@ def test_data_clustering_pr():
     """Test the DataClusteringPrimitives class methods."""
     # Test cluster method with simple text data
     sym_text = Symbol(["apple", "banana", "cherry", "apple", "orange", "banana", "grape"])
-    clustered_result = sym_text.cluster()
-    display_op(f"[{sym_text}].cluster()", clustered_result, "cluster", "semantic")
+    clustered_result = sym_text.cluster(metric='cosine', min_cluster_size=2)
+    display_op(f"[{sym_text}].cluster(metric='cosine', min_cluster_size=2)", clustered_result, "cluster", "semantic")
 
     # Test cluster method with list data
     sym_list = Symbol(["technology", "science", "programming", "coding", "research", "innovation"])
@@ -1949,14 +1949,17 @@ def test_data_clustering_pr():
 
     # Test cluster method with structured sentences
     sym_sentences = Symbol([
-        "The weather is sunny today.",
-        "It's raining heavily outside.",
-        "The sun is shining brightly.",
-        "Heavy rain is falling down.",
-        "Beautiful sunny weather today."
+        'The concert last night was absolutely incredible!',
+        'That was the worst experience of my life.',
+        'I can’t stop smiling after tasting that delicious cake.',
+        'I hate how poorly designed this device is.',
+        'What a fantastic day at the beach with friends!',
+        'This traffic jam is driving me insane.',
+        'This new book has completely captivated me.',
+        'I fucking despise waiting in long lines.'
     ])
-    clustered_sentences = sym_sentences.cluster()
-    display_op(f"[{sym_sentences}].cluster()", clustered_sentences, "cluster", "semantic")
+    clustered_sentences = sym_sentences.cluster(min_cluster_size=3)
+    display_op(f"[{sym_sentences}].cluster(min_cluster_size=3)", clustered_sentences, "cluster", "semantic")
 
     # Test cluster method with simple categories
     sym_categories = Symbol([
@@ -1964,8 +1967,8 @@ def test_data_clustering_pr():
         "car", "truck", "bicycle", "motorcycle",
         "apple", "banana", "orange", "grape"
     ])
-    clustered_categories = sym_categories.cluster()
-    display_op(f"[{sym_categories}].cluster()", clustered_categories, "cluster", "semantic")
+    clustered_categories = sym_categories.cluster(metric='cosine', min_cluster_size=2)
+    display_op(f"[{sym_categories}].cluster(metric='cosine', min_cluster_size=2)", clustered_categories, "cluster", "semantic")
 
 @pytest.mark.mandatory
 @pytest.mark.skipif(not SYMAI_CONFIG.get('EMBEDDING_ENGINE_MODEL', False) and not SYMAI_CONFIG.get('EMBEDDING_ENGINE_API_KEY', False), reason="Embedding engine not configured!")
