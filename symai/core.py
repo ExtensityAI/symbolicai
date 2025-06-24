@@ -813,7 +813,7 @@ def expression(prompt: str = "Evaluate the symbolic expressions:\n",
     return decorator
 
 
-def interpret(prompt: str = "Evaluate the symbolic expressions:\n",
+def interpret(prompt: str = "Evaluate the symbolic expressions and return only the result:\n",
               default: Optional[str] = None,
               examples: prm.Prompt = prm.SimpleSymbolicExpression(),
               constraints: List[Callable] = [],
