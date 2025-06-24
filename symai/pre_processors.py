@@ -41,9 +41,7 @@ class EqualsPreProcessor(PreProcessor):
 
 class InterpretExpressionPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
-        assert len(argument.args) >= 1
-        val = str(argument.args[0])
-        val = val.replace('self', str(argument.prop.instance))
+        val = str(argument.prop.instance)
         return f"{val} =>"
 
 

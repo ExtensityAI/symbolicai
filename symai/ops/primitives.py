@@ -1585,7 +1585,7 @@ class ExpressionHandlingPrimitives(Primitive):
         self.init_results()
         self._accumulated_results = []
 
-    def interpret(self, prompt: Optional[str] = None, accumulate: bool = False, **kwargs) -> 'Symbol':
+    def interpret(self, prompt: Optional[str] = "Evaluate the symbolic expressions and return only the result:\n", accumulate: bool = False, **kwargs) -> 'Symbol':
         '''
         Evaluates simple symbolic expressions.
         Uses the core.expression decorator to create a _func method that evaluates the given expression.
@@ -1598,9 +1598,6 @@ class ExpressionHandlingPrimitives(Primitive):
         Returns:
             Symbol: A new symbol with the result of the expression evaluation.
         '''
-        if prompt is None:
-            prompt = self.value
-
         # Propagate original input
         input_value = getattr(self, '_input', self) if hasattr(self, '_input') else self
 
@@ -1608,7 +1605,7 @@ class ExpressionHandlingPrimitives(Primitive):
         def _func(_):
             pass
 
-        result = _func(self, prompt)
+        result = _func(self)
         result = self._to_type(result)
 
         if accumulate:
