@@ -152,7 +152,7 @@ class NotifySubscriberPostProcessor(PostProcessor):
 
 
 class ASTPostProcessor(PostProcessor):
-    def __call__(self, response) -> Any:
+    def __call__(self, response, *args, **kwargs) -> Any:
         try:
             val = ast.literal_eval(response.strip())
             return self._recursive_parse(val)
