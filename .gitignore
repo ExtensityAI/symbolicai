@@ -160,3 +160,4 @@ packages/ExtensityAI/LightRAG-symai
 sympkg
 symsh
 .bash_history
+.conversation_state
