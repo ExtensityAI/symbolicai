@@ -297,6 +297,13 @@ class FilterPreProcessor(PreProcessor):
         return f"text '{str(argument.prop.instance)}' {include} '{str(criteria)}' =>"
 
 
+class MapExpressionPreProcessor(PreProcessor):
+    def __call__(self, argument) -> Any:
+        val = prep_as_str(argument.prop.instance)
+        instruction = argument.prop.context
+        return f"text '{val}' {instruction} =>"
+
+
 class ArgsToInputPreProcessor(PreProcessor):
     def __init__(self, skip: Optional[List[int]] = None) -> None:
         super().__init__()

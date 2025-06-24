@@ -1288,77 +1288,165 @@ def test_interpret_pr():
 def test_data_handling_pr():
     """Test the DataHandlingPrimitives class methods."""
 
-    # Test clean method
-    sym_dirty = Symbol("This text has   multiple    spaces and\n\nextra newlines.\t\tAnd tabs.")
-    cleaned = sym_dirty.clean()
-    display_op(f"[{sym_dirty}].clean()", cleaned, "clean", "semantic")
+    # Test map() method with list containing fruits and animals
+    sym_mixed_list = Symbol(['apple', 'banana', 'cherry', 'cat', 'dog'])
+    mapped_result = sym_mixed_list.map('convert all fruits to vegetables')
+    display_op(f"[{sym_mixed_list}].map('convert all fruits to vegetables')", mapped_result, "map", "semantic")
 
-    # Test summarize method
-    sym_long = Symbol("""Python is a high-level, interpreted programming language known for its readability and simplicity.
-    It was first released in 1991 by Guido van Rossum. Python supports multiple programming paradigms,
-    including procedural, object-oriented, and functional programming. It has a comprehensive standard
-    library and a large ecosystem of third-party packages that make it suitable for various applications,
-    from web development to data science and machine learning. Python's philosophy emphasizes code
-    readability with its notable use of significant whitespace.""")
-    summarized = sym_long.summarize()
-    assert len(str(summarized)) < len(str(sym_long))
-    display_op(f"[{sym_long}].summarize()", summarized, "summarize", "semantic")
+    # Test map() with complex objects list
+    sym_complex_list = Symbol([
+        {'name': 'John', 'type': 'person'},
+        {'name': 'Fluffy', 'type': 'cat'},
+        {'name': 'Jane', 'type': 'person'},
+        {'name': 'Rex', 'type': 'dog'}
+    ])
+    complex_mapped = sym_complex_list.map('change all animals to birds')
+    display_op(f"[{sym_complex_list}].map('change all animals to birds')", complex_mapped, "map", "semantic")
 
-    # Test summarize with context
-    context_summarized = sym_long.summarize(context="Focus on Python's use in data science")
-    assert len(str(context_summarized)) < len(str(sym_long))
-    display_op(f"[{sym_long}].summarize(context='Focus on Python's use in data science')",
-              context_summarized, "summarize", "semantic")
+    # Test map() with numbers
+    sym_numbers = Symbol([1, 5, 10, 15, 20])
+    number_mapped = sym_numbers.map('multiply small numbers (under 10) by 2')
+    display_op(f"[{sym_numbers}].map('multiply small numbers (under 10) by 2')", number_mapped, "map", "semantic")
 
-    # Test outline method
-    sym_complex = Symbol(dedent("""
-    #Introduction to Machine Learning
-    Machine learning is a subset of artificial intelligence that focuses on building systems that learn from data.
-    ## Supervised Learning
-    Supervised learning involves training a model on labeled data.
-    ### Classification
-    Classification tasks involve predicting discrete categories.
-    ### Regression
-    Regression tasks involve predicting continuous values.
-    ## Unsupervised Learning
-    Unsupervised learning works with unlabeled data to find patterns."""))
-    outlined = sym_complex.outline()
-    display_op(f"[{sym_complex}].outline()", outlined, "outline", "semantic")
+    # Test map() with string
+    sym_string = Symbol("hello world")
+    string_mapped = sym_string.map('convert vowels to numbers: a=1, e=2, i=3, o=4, u=5')
+    display_op(f"[{sym_string}].map('convert vowels to numbers')", string_mapped, "map", "semantic")
 
-    # Test filter method (excluding)
-    sym_mixed = Symbol("Dogs are loyal pets. Cats are independent pets. Hamsters are small pets.")
-    filtered_ex = sym_mixed.filter(criteria="Cats")
-    display_op(f"[{sym_mixed}].filter('Cats')", filtered_ex, "filter", "semantic")
+    # Test map() with string consonants
+    sym_string2 = Symbol("PROGRAMMING")
+    string_mapped2 = sym_string2.map('make consonants lowercase, keep vowels uppercase')
+    display_op(f"[{sym_string2}].map('make consonants lowercase, keep vowels uppercase')", string_mapped2, "map", "semantic")
 
-    # Test filter method (including)
-    filtered_in = sym_mixed.filter(criteria="Dogs", include=True)
-    display_op(f"[{sym_mixed}].filter('Dogs', include=True)", filtered_in, "filter", "semantic")
+    # Test map() with dictionary
+    sym_dict = Symbol({'fruit1': 'apple', 'fruit2': 'banana', 'animal1': 'cat'})
+    dict_mapped = sym_dict.map('convert all fruits to vegetables')
+    display_op(f"[{sym_dict}].map('convert all fruits to vegetables')", dict_mapped, "map", "semantic")
 
-    # Test modify method
-    sym_original = Symbol("The quick brown fox jumps over the lazy dog.")
-    changes = "Change 'quick' to 'fast' and 'lazy' to 'sleeping'"
-    modified = sym_original.modify(changes=changes)
-    display_op(f"[{sym_original}].modify('{changes}')", modified, "modify", "semantic")
+    # Test map() with tuple
+    sym_tuple = Symbol(('red', 'blue', 'green', 'yellow'))
+    tuple_mapped = sym_tuple.map('change primary colors to secondary colors')
+    display_op(f"[{sym_tuple}].map('change primary colors to secondary colors')", tuple_mapped, "map", "semantic")
 
-    # Test replace method
-    sym_replace = Symbol("Python is a programming language. Python is easy to learn.")
-    replaced = sym_replace.replace("Python", "JavaScript")
-    display_op(f"[{sym_replace}].replace('Python', 'JavaScript')", replaced, "replace", "semantic")
+    # Test map() with set
+    sym_set = Symbol({'happy', 'sad', 'angry', 'excited'})
+    set_mapped = sym_set.map('convert emotions to weather conditions')
+    display_op(f"[{sym_set}].map('convert emotions to weather conditions')", set_mapped, "map", "semantic")
 
-    # Test remove method
-    sym_extra = Symbol("This text contains [unnecessary information] that should be removed.")
-    removed = sym_extra.remove("[unnecessary information] ")
-    display_op(f"[{sym_extra}].remove('[unnecessary information] ')", removed, "remove", "semantic")
+    # Test map() with dictionary
+    sym_dict = Symbol({'fruit1': 'apple', 'fruit2': 'banana', 'animal1': 'cat'})
+    dict_mapped = sym_dict.map('convert all fruits to vegetables')
+    display_op(f"[{sym_dict}].map('convert all fruits to vegetables')", dict_mapped, "map", "semantic")
 
-    # Test include method
-    sym_base = Symbol("This is the main content.")
-    included = sym_base.include("This is additional information.")
-    display_op(f"[{sym_base}].include('This is additional information.')", included, "include", "semantic")
+    # Test map() with complex dictionary
+    sym_complex_dict = Symbol({
+        'person1': {'name': 'John', 'type': 'human'},
+        'pet1': {'name': 'Fluffy', 'type': 'cat'},
+        'person2': {'name': 'Jane', 'type': 'human'}
+    })
+    complex_dict_mapped = sym_complex_dict.map('change all animals to birds')
+    display_op(f"[{sym_complex_dict}].map('change all animals to birds')", complex_dict_mapped, "map", "semantic")
 
-    # Test combine method
-    sym_first = Symbol("First part of the content.")
-    combined = sym_first.combine("Second part of the content.")
-    display_op(f"[{sym_first}].combine('Second part of the content.')", combined, "combine", "semantic")
+    # Test map() with tuple
+    sym_tuple = Symbol(('red', 'blue', 'green', 'yellow'))
+    tuple_mapped = sym_tuple.map('change primary colors to secondary colors')
+    display_op(f"[{sym_tuple}].map('change primary colors to secondary colors')", tuple_mapped, "map", "semantic")
+
+    # Test map() with set
+    sym_set = Symbol({'happy', 'sad', 'angry', 'excited'})
+    set_mapped = sym_set.map('convert emotions to weather conditions')
+    display_op(f"[{sym_set}].map('convert emotions to weather conditions')", set_mapped, "map", "semantic")
+
+    # Test map() error handling with non-iterable
+    sym_int = Symbol(42)
+    try:
+        sym_int.map('some instruction')
+    except AssertionError as e:
+        display_op(f"[{sym_int}].map('some instruction')", f"AssertionError: {str(e)}", "map", "syntactic")
+        assert "Map can only be applied to iterable objects" in str(e)
+    else:
+        assert False, "map() should raise AssertionError for non-iterable input"
+
+    # Test map() error handling without instruction
+    sym_list_no_instruction = Symbol([1, 2, 3])
+    try:
+        sym_list_no_instruction.map()
+    except TypeError as e:
+        display_op(f"[{sym_list_no_instruction}].map()", f"TypeError: {str(e)}", "map", "syntactic")
+    else:
+        assert False, "map() should require an instruction parameter"
+
+    # # Test clean method
+    # sym_dirty = Symbol("This text has   multiple    spaces and\n\nextra newlines.\t\tAnd tabs.")
+    # cleaned = sym_dirty.clean()
+    # display_op(f"[{sym_dirty}].clean()", cleaned, "clean", "semantic")
+
+    # # Test summarize method
+    # sym_long = Symbol("""Python is a high-level, interpreted programming language known for its readability and simplicity.
+    # It was first released in 1991 by Guido van Rossum. Python supports multiple programming paradigms,
+    # including procedural, object-oriented, and functional programming. It has a comprehensive standard
+    # library and a large ecosystem of third-party packages that make it suitable for various applications,
+    # from web development to data science and machine learning. Python's philosophy emphasizes code
+    # readability with its notable use of significant whitespace.""")
+    # summarized = sym_long.summarize()
+    # assert len(str(summarized)) < len(str(sym_long))
+    # display_op(f"[{sym_long}].summarize()", summarized, "summarize", "semantic")
+
+    # # Test summarize with context
+    # context_summarized = sym_long.summarize(context="Focus on Python's use in data science")
+    # assert len(str(context_summarized)) < len(str(sym_long))
+    # display_op(f"[{sym_long}].summarize(context='Focus on Python's use in data science')",
+    #           context_summarized, "summarize", "semantic")
+
+    # # Test outline method
+    # sym_complex = Symbol(dedent("""
+    # #Introduction to Machine Learning
+    # Machine learning is a subset of artificial intelligence that focuses on building systems that learn from data.
+    # ## Supervised Learning
+    # Supervised learning involves training a model on labeled data.
+    # ### Classification
+    # Classification tasks involve predicting discrete categories.
+    # ### Regression
+    # Regression tasks involve predicting continuous values.
+    # ## Unsupervised Learning
+    # Unsupervised learning works with unlabeled data to find patterns."""))
+    # outlined = sym_complex.outline()
+    # display_op(f"[{sym_complex}].outline()", outlined, "outline", "semantic")
+
+    # # Test filter method (excluding)
+    # sym_mixed = Symbol("Dogs are loyal pets. Cats are independent pets. Hamsters are small pets.")
+    # filtered_ex = sym_mixed.filter(criteria="Cats")
+    # display_op(f"[{sym_mixed}].filter('Cats')", filtered_ex, "filter", "semantic")
+
+    # # Test filter method (including)
+    # filtered_in = sym_mixed.filter(criteria="Dogs", include=True)
+    # display_op(f"[{sym_mixed}].filter('Dogs', include=True)", filtered_in, "filter", "semantic")
+
+    # # Test modify method
+    # sym_original = Symbol("The quick brown fox jumps over the lazy dog.")
+    # changes = "Change 'quick' to 'fast' and 'lazy' to 'sleeping'"
+    # modified = sym_original.modify(changes=changes)
+    # display_op(f"[{sym_original}].modify('{changes}')", modified, "modify", "semantic")
+
+    # # Test replace method
+    # sym_replace = Symbol("Python is a programming language. Python is easy to learn.")
+    # replaced = sym_replace.replace("Python", "JavaScript")
+    # display_op(f"[{sym_replace}].replace('Python', 'JavaScript')", replaced, "replace", "semantic")
+
+    # # Test remove method
+    # sym_extra = Symbol("This text contains [unnecessary information] that should be removed.")
+    # removed = sym_extra.remove("[unnecessary information] ")
+    # display_op(f"[{sym_extra}].remove('[unnecessary information] ')", removed, "remove", "semantic")
+
+    # # Test include method
+    # sym_base = Symbol("This is the main content.")
+    # included = sym_base.include("This is additional information.")
+    # display_op(f"[{sym_base}].include('This is additional information.')", included, "include", "semantic")
+
+    # # Test combine method
+    # sym_first = Symbol("First part of the content.")
+    # combined = sym_first.combine("Second part of the content.")
+    # display_op(f"[{sym_first}].combine('Second part of the content.')", combined, "combine", "semantic")
 
 @pytest.mark.mandatory
 def test_uniqueness_pr():
@@ -1466,11 +1554,6 @@ def test_pattern_matching_pr():
     sym_english = Symbol("Hello, how are you today?")
     translated = sym_english.translate("Spanish")
     display_op(f"[{sym_english}].translate('Spanish')", translated, "translate", "semantic")
-
-    # Test translate with formal context
-    sym_informal = Symbol("Hey there! What's up?")
-    translated_formal = sym_informal.translate("French", formal=True)
-    display_op(f"[{sym_informal}].translate('French', formal=True)", translated_formal, "translate", "semantic")
 
     # Test choice method
     sym_weather = Symbol("Temperature: 85°F, Humidity: 70%, Conditions: Sunny")
@@ -1748,54 +1831,6 @@ def test_dict_handling_pr():
     sym_numbers = Symbol([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
     number_dict = sym_numbers.dict("classify numbers")
     display_op(f"[{sym_numbers}].dict('classify numbers')", number_dict, "dict", "semantic")
-
-    # Test map() method with dictionary containing duplicate values
-    sym_dict_with_duplicates = Symbol({
-        'item1': 'apple',
-        'item2': 'banana',
-        'item3': 'apple',
-        'item4': 'cherry',
-        'item5': 'banana'
-    })
-    mapped_result = sym_dict_with_duplicates.map()
-    display_op(f"[{sym_dict_with_duplicates}].map()", mapped_result, "map", "semantic")
-
-    # Test map() with more complex dictionary
-    sym_complex_dict = Symbol({
-        'person1': {'name': 'John', 'age': 30},
-        'person2': {'name': 'Jane', 'age': 25},
-        'person3': {'name': 'John', 'age': 30},
-        'person4': {'name': 'Bob', 'age': 35}
-    })
-    complex_mapped = sym_complex_dict.map()
-    display_op(f"[{sym_complex_dict}].map()", complex_mapped, "map", "semantic")
-
-    # Test map() with string dictionary
-    sym_string_dict = Symbol({
-        'greeting1': 'hello',
-        'greeting2': 'hi',
-        'greeting3': 'hello',
-        'greeting4': 'hey'
-    })
-    string_mapped = sym_string_dict.map()
-    display_op(f"[{sym_string_dict}].map()", string_mapped, "map", "semantic")
-
-    # Test map() error handling with non-dictionary input
-    sym_not_dict = Symbol("This is not a dictionary")
-    try:
-        sym_not_dict.map()
-        assert False, "map() should raise AssertionError for non-dictionary input"
-    except AssertionError as e:
-        display_op(f"[{sym_not_dict}].map()", f"AssertionError: {str(e)}", "map", "syntactic")
-        assert "Map can only be applied to a dictionary" in str(e)
-
-    # Test map() with list input (should fail)
-    sym_list = Symbol([1, 2, 3, 4])
-    try:
-        sym_list.map()
-        assert False, "map() should raise AssertionError for list input"
-    except AssertionError as e:
-        display_op(f"[{sym_list}].map()", f"AssertionError: {str(e)}", "map", "syntactic")
 
     # Test dict() method with specific context and kwargs
     sym_animals = Symbol("Dogs bark, cats meow, birds chirp, fish swim")

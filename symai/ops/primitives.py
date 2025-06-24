@@ -2158,6 +2158,33 @@ class DataHandlingPrimitives(Primitive):
 
         return self._to_type(_func(self))
 
+    def map(self, instruction: str, **kwargs) -> 'Symbol':
+        '''
+        Applies a semantic transformation instruction to each element in an iterable.
+        This method transforms each element based on the provided instruction while preserving
+        elements that don't match the transformation criteria.
+
+        Args:
+            instruction (str): The semantic instruction to apply to each element
+            **kwargs: Additional keyword arguments for the transformation
+
+        Returns:
+            Symbol: A Symbol object containing the transformed elements
+
+        Raises:
+            AssertionError: If the Symbol's value is not iterable or is an unsupported type
+        '''
+        try:
+            iter(self.value)
+        except TypeError:
+            CustomUserWarning('Map can only be applied to iterable objects', raise_with=AssertionError)
+
+        @core.map(instruction=instruction, **kwargs)
+        def _func(_):
+            pass
+
+        return self._to_type(_func(self))
+
     def modify(self, changes: str, **kwargs) -> 'Symbol':
         '''
         Modifies the symbol value based on the specified changes.
@@ -2693,32 +2720,6 @@ class DictHandlingPrimitives(Primitive):
             pass
 
         return self._to_type(_func(self))
-
-    def map(self, **kwargs) -> 'Symbol':
-        '''
-        Transforms the keys of the dictionary value of a Symbol object to be unique.
-        This function asserts that the Symbol's value is a dictionary and creates a new dictionary with the same values but unique keys.
-        It is useful for ensuring that there are no duplicate keys in a dictionary.
-
-        Args:
-            **kwargs: Additional keyword arguments for the `unique` method.
-
-        Returns:
-            Symbol: A Symbol object with its value being the transformed dictionary with unique keys.
-
-        Raises:
-            AssertionError: If the Symbol's value is not a dictionary.
-        '''
-        assert isinstance(self.value, dict), 'Map can only be applied to a dictionary'
-
-        map_ = {}
-        keys = []
-        for v in self.value.values():
-            k = self._to_type(v).unique(keys, **kwargs)
-            keys.append(k.value)
-            map_[k.value] = v
-
-        return self._to_type(map_)
 
 
 class TemplateStylingPrimitives(Primitive):
