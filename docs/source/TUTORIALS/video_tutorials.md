@@ -1,5 +1,12 @@
 # Video Tutorials
 
+---
+
+## ⚠️  Outdated or Deprecated Documentation ⚠️
+This documentation is outdated and may not reflect the current state of the SymbolicAI library. This page might be revived or deleted entirely as we continue our development. We recommend using more modern tools that infer the documentation from the code itself, such as [DeepWiki](https://deepwiki.com/ExtensityAI/symbolicai). This will ensure you have the most accurate and up-to-date information and give you a better picture of the current state of the library.
+
+---
+
 | Date | Title    | Video |
 | ---- | ---- | ---- |
 | 2nd Dec. 2023 | Use ChatGPT and off-the-shelf RAG on Terminal/Command Prompt/Shell | [![Use ChatGPT and off-the-shelf RAG on Terminal/Command Prompt/Shell](https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/vid6.png)](https://youtu.be/RJ6i_b91nQE?si=jZR4LJRZQZVAm4MA) |

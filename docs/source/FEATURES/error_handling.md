@@ -1,5 +1,12 @@
 # ❌ Error Handling and Debugging
 
+---
+
+## ⚠️  Outdated or Deprecated Documentation ⚠️
+This documentation is outdated and may not reflect the current state of the SymbolicAI library. This page might be revived or deleted entirely as we continue our development. We recommend using more modern tools that infer the documentation from the code itself, such as [DeepWiki](https://deepwiki.com/ExtensityAI/symbolicai). This will ensure you have the most accurate and up-to-date information and give you a better picture of the current state of the library.
+
+---
+
 A key idea of the SymbolicAI API is code generation, which may result in errors that need to be handled contextually. In the future, we want our API to self-extend and resolve issues automatically. We propose the `Try` expression, which has built-in fallback statements and retries an execution with dedicated error analysis and correction. The expression analyzes the input and error, conditioning itself to resolve the error by manipulating the original code. If the fallback expression succeeds, the result is returned. Otherwise, this process is repeated for the specified number of `retries`. If the maximum number of retries is reached and the problem remains unresolved, the error is raised again.
 
 Suppose we have some executable code generated previously. By the nature of generative processes, syntax errors may occur. Using the `Execute` expression, we can evaluate our generated code, which takes in a symbol and tries to execute it. Naturally, this will fail. However, in the following example, the `Try` expression resolves the syntax error, and we receive a computed and corrected result.

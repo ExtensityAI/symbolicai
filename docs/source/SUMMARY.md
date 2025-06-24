@@ -19,12 +19,12 @@
 * [Webcrawler Engine](ENGINES/webcrawler_engine.md)
 
 ## Features
+* [Contracts](FEATURES/contracts.md)
+* [Primitives](FEATURES/primitives.md)
 * [Operations](FEATURES/operations.md)
 * [Expressions](FEATURES/expressions.md)
-* [Contracts](FEATURES/contracts.md)
 * [Causal Reasoning](FEATURES/causal_reasoning.md)
 * [Error Handling](FEATURES/error_handling.md)
-* [Vision](FEATURES/vision.md)
 * [Module Import](FEATURES/import.md)
 
 ## Tutorials

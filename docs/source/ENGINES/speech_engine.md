@@ -8,8 +8,3 @@ from symai.interfaces import Interface
 speech = Interface('whisper')
 res = speech('examples/audio.mp3')
 ```
-
-```bash
-:Output:
-I may have overslept.
-```

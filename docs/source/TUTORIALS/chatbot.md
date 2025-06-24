@@ -1,5 +1,12 @@
 # Writing a Custom Chatbot
 
+---
+
+## ⚠️  Outdated or Deprecated Documentation ⚠️
+This documentation is outdated and may not reflect the current state of the SymbolicAI library. This page might be revived or deleted entirely as we continue our development. We recommend using more modern tools that infer the documentation from the code itself, such as [DeepWiki](https://deepwiki.com/ExtensityAI/symbolicai). This will ensure you have the most accurate and up-to-date information and give you a better picture of the current state of the library.
+
+---
+
 Click here for [interactive notebook](https://github.com/ExtensityAI/symbolicai/blob/main/notebooks/ChatBot.ipynb)
 
 ```python

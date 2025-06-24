@@ -1,5 +1,12 @@
 # CLIP Engine
 
+---
+
+## ⚠️  Outdated or Deprecated Documentation ⚠️
+This documentation is outdated and may not reflect the current state of the SymbolicAI library. This page might be revived or deleted entirely as we continue our development. We recommend using more modern tools that infer the documentation from the code itself, such as [DeepWiki](https://deepwiki.com/ExtensityAI/symbolicai). This will ensure you have the most accurate and up-to-date information and give you a better picture of the current state of the library.
+
+---
+
 To perform text-based image few-shot classification, we use `CLIP`. This implementation is very experimental, and conceptually does not fully integrate the way we intend it, since the embeddings of CLIP and GPT-3 are not aligned (embeddings of the same word are not identical for both models). Aligning them remains an open problem for future research. For example, one could learn linear projections from one embedding space to the other.
 
 The following example demonstrates how to classify the image of our generated cat from above and return the results as an array of probabilities:
