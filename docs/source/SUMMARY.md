@@ -28,7 +28,6 @@
 * [Module Import](FEATURES/import.md)
 
 ## Tutorials
-* [Example Notebooks](TUTORIALS/examples.md)
 * [Chatbot Tutorial](TUTORIALS/chatbot.md)
 * [Handling Large Contexts](TUTORIALS/context.md)
 * [SQL Data Query](TUTORIALS/data_query.md)
