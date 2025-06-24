@@ -62,14 +62,8 @@ def test_syn_sem_pr():
     assert sym in lst
 
 @pytest.mark.mandatory
-def test_negate_op():
+def test_negate_invert_op():
     """Test the OperatorPrimitives class methods."""
-
-    sym = Symbol('This is true.')
-    display_op(sym, ~sym.sem, "~", "semantic")
-    sym = Symbol(True, semantic=True) # or can be converted to a semantic symbol with ".sym" method
-    display_op(sym, ~sym.syn, "~", "syntactic")
-    assert not ~sym
 
     sym_int_pos = Symbol(5)
     display_op(sym_int_pos, -sym_int_pos, "-", "syntactic")
@@ -87,17 +81,58 @@ def test_negate_op():
     display_op(sym_float_neg, -sym_float_neg, "-", "syntactic")
     assert -sym_float_neg.value == 0.123
 
-    sym_bool_true_sem = Symbol(True, semantic=True) # or can be converted to a semantic symbol with ".sym" method
-    display_op(sym_bool_true_sem, ~sym_bool_true_sem, "~", "semantic")
+    sym_str_affirmative = Symbol('I am happy.', semantic=True)
+    display_op(sym_str_affirmative, -sym_str_affirmative, "~", "semantic")
 
-    sym_bool_false_sem = Symbol(False, semantic=True) # or can be converted to a semantic symbol with ".sym" method
-    display_op(sym_bool_false_sem, ~sym_bool_false_sem, "~", "semantic")
+    sym_str_negative = Symbol('This is not correct.', semantic=True)
+    display_op(sym_str_negative, -sym_str_negative, "~", "semantic")
 
-    sym_str_affirmative = Symbol('I am happy.', semantic=True) # or can be converted to a semantic symbol with ".sym" method
-    display_op(sym_str_affirmative, ~sym_str_affirmative, "~", "semantic")
+    sym_bool_true = Symbol(True)
+    sym_bool_false = Symbol(False)
 
-    sym_str_negative = Symbol('This is not correct.', semantic=True) # or can be converted to a semantic symbol with ".sym" method
-    display_op(sym_str_negative, ~sym_str_negative, "~", "semantic")
+    assert ~sym_bool_true == False
+    display_op(f"{sym_bool_true}", ~sym_bool_true, "~", "syntactic")
+    assert ~sym_bool_false == True
+    display_op(f"{sym_bool_false}", ~sym_bool_false, "~", "syntactic")
+
+    sym_int_zero = Symbol(0)
+    sym_int_five = Symbol(5)
+    sym_int_neg_one = Symbol(-1)
+
+    assert ~sym_int_zero == -1
+    display_op(f"{sym_int_zero}", ~sym_int_zero, "~", "syntactic")
+    assert ~sym_int_five == -6
+    display_op(f"{sym_int_five}", ~sym_int_five, "~", "syntactic")
+    assert ~sym_int_neg_one == 0
+    display_op(f"{sym_int_neg_one}", ~sym_int_neg_one, "~", "syntactic")
+
+    sym_positive_statement = Symbol('I am confident.', semantic=True)
+    sym_negative_statement = Symbol('This is wrong.', semantic=True)
+    sym_neutral_statement = Symbol('The weather is nice.', semantic=True)
+
+    display_op(f"'{sym_positive_statement}'", ~sym_positive_statement, "~", "semantic")
+    display_op(f"'{sym_negative_statement}'", ~sym_negative_statement, "~", "semantic")
+    display_op(f"'{sym_neutral_statement}'", ~sym_neutral_statement, "~", "semantic")
+
+    sym_bool_true_sem = Symbol(True, semantic=True)
+    sym_bool_false_sem = Symbol(False, semantic=True)
+
+    display_op(f"{sym_bool_true_sem}", ~sym_bool_true_sem, "~", "semantic")
+    display_op(f"{sym_bool_false_sem}", ~sym_bool_false_sem, "~", "semantic")
+
+    sym_affirmative = Symbol('Yes, absolutely correct.', semantic=True)
+    sym_denial = Symbol('No, that is incorrect.', semantic=True)
+    sym_uncertainty = Symbol('Maybe it could work.', semantic=True)
+
+    display_op(f"'{sym_affirmative}'", ~sym_affirmative, "~", "semantic")
+    display_op(f"'{sym_denial}'", ~sym_denial, "~", "semantic")
+    display_op(f"'{sym_uncertainty}'", ~sym_uncertainty, "~", "semantic")
+
+    sym_mixed = Symbol('I agree completely.')
+    display_op(f"'{sym_mixed}'", ~sym_mixed.sem, "~", "semantic")
+
+    sym_mixed_sem = Symbol('This is definitely false.', semantic=True)
+    display_op(f"'{sym_mixed_sem}'", ~sym_mixed_sem.syn, "~", "syntactic")
 
 @pytest.mark.mandatory
 def test_contains_op():
@@ -293,57 +328,6 @@ def test_comparison_op():
     sym_word_num = Symbol('fifty', semantic=True) # or can be converted to a semantic symbol with ".sym" method
     regular_num = 45
     display_op(f"'{sym_word_num}' > {regular_num}", sym_word_num > regular_num, ">", "semantic")
-
-@pytest.mark.mandatory
-def test_invert_op():
-    """Test the OperatorPrimitives class methods."""
-
-    sym_bool_true = Symbol(True)
-    sym_bool_false = Symbol(False)
-
-    assert ~sym_bool_true == False
-    display_op(f"{sym_bool_true}", ~sym_bool_true, "~", "syntactic")
-    assert ~sym_bool_false == True
-    display_op(f"{sym_bool_false}", ~sym_bool_false, "~", "syntactic")
-
-    sym_int_zero = Symbol(0)
-    sym_int_five = Symbol(5)
-    sym_int_neg_one = Symbol(-1)
-
-    assert ~sym_int_zero == -1
-    display_op(f"{sym_int_zero}", ~sym_int_zero, "~", "syntactic")
-    assert ~sym_int_five == -6
-    display_op(f"{sym_int_five}", ~sym_int_five, "~", "syntactic")
-    assert ~sym_int_neg_one == 0
-    display_op(f"{sym_int_neg_one}", ~sym_int_neg_one, "~", "syntactic")
-
-    sym_positive_statement = Symbol('I am confident.', semantic=True)
-    sym_negative_statement = Symbol('This is wrong.', semantic=True)
-    sym_neutral_statement = Symbol('The weather is nice.', semantic=True)
-
-    display_op(f"'{sym_positive_statement}'", ~sym_positive_statement, "~", "semantic")
-    display_op(f"'{sym_negative_statement}'", ~sym_negative_statement, "~", "semantic")
-    display_op(f"'{sym_neutral_statement}'", ~sym_neutral_statement, "~", "semantic")
-
-    sym_bool_true_sem = Symbol(True, semantic=True)
-    sym_bool_false_sem = Symbol(False, semantic=True)
-
-    display_op(f"{sym_bool_true_sem}", ~sym_bool_true_sem, "~", "semantic")
-    display_op(f"{sym_bool_false_sem}", ~sym_bool_false_sem, "~", "semantic")
-
-    sym_affirmative = Symbol('Yes, absolutely correct.', semantic=True)
-    sym_denial = Symbol('No, that is incorrect.', semantic=True)
-    sym_uncertainty = Symbol('Maybe it could work.', semantic=True)
-
-    display_op(f"'{sym_affirmative}'", ~sym_affirmative, "~", "semantic")
-    display_op(f"'{sym_denial}'", ~sym_denial, "~", "semantic")
-    display_op(f"'{sym_uncertainty}'", ~sym_uncertainty, "~", "semantic")
-
-    sym_mixed = Symbol('I agree completely.')
-    display_op(f"'{sym_mixed}'", ~sym_mixed.sem, "~", "semantic")
-
-    sym_mixed_sem = Symbol('This is definitely false.', semantic=True)
-    display_op(f"'{sym_mixed_sem}'", ~sym_mixed_sem.syn, "~", "syntactic")
 
 @pytest.mark.mandatory
 def test_shift_op():
@@ -1248,16 +1232,16 @@ def test_interpret_pr():
     display_op(f"[{sym_math}].interpret()", result_math, "interpret", "semantic")
 
     # Test accumulation feature
-    sym_accumulate = Symbol('Propose a hypothesis about climate change')
+    sym_accumulate = Symbol('Relativistic electron formula')
     result1 = sym_accumulate.interpret(accumulate=True)
     display_op(f"[{sym_accumulate}].interpret(accumulate=True)", result1, "interpret", "semantic")
 
-    result2 = sym_accumulate.interpret('Provide evidence supporting this hypothesis', accumulate=True)
-    display_op(f"[{sym_accumulate}].interpret('Provide evidence supporting this hypothesis', accumulate=True)",
+    result2 = result1.interpret('Assume the momentum to be extremely large', accumulate=True)
+    display_op(f"[{result1}].interpret('Assume the momentum to be extremely large', accumulate=True)",
               result2, "interpret", "semantic")
 
-    result3 = sym_accumulate.interpret('Suggest potential counter-arguments', accumulate=True)
-    display_op(f"[{sym_accumulate}].interpret('Suggest potential counter-arguments', accumulate=True)",
+    result3 = result2.interpret('Expand the formula to account for both mass and momentum', accumulate=True)
+    display_op(f"[{result2}].interpret('Expand the formula to account for both mass and momentum', accumulate=True)",
               result3, "interpret", "semantic")
 
     # Check accumulated results

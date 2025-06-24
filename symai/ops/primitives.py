@@ -1587,7 +1587,7 @@ class ExpressionHandlingPrimitives(Primitive):
 
     def interpret(self, prompt: Optional[str] = None, accumulate: bool = False, **kwargs) -> 'Symbol':
         '''
-        Evaluates a symbolic expression using the provided engine.
+        Evaluates simple symbolic expressions.
         Uses the core.expression decorator to create a _func method that evaluates the given expression.
 
         Args:
@@ -1604,8 +1604,8 @@ class ExpressionHandlingPrimitives(Primitive):
         # Propagate original input
         input_value = getattr(self, '_input', self) if hasattr(self, '_input') else self
 
-        @core.interpret(**kwargs)
-        def _func(_, prompt: str):
+        @core.interpret(prompt=prompt, **kwargs)
+        def _func(_):
             pass
 
         result = _func(self, prompt)
@@ -2323,19 +2323,20 @@ class PatternMatchingPrimitives(Primitive):
 
         return self._to_type(_func(self, pattern))
 
-    def correct(self, context: str, **kwargs) -> 'Symbol':
+    def correct(self, context: str, exception: Exception, **kwargs) -> 'Symbol':
         '''
         Corrects the symbol value based on a specified context.
         Uses the @core.correct decorator, corrects the value of the symbol based on the given context.
 
         Args:
             context (str): The context used to correct the value of the symbol.
+            exception (Exception): The exception that occurred during processing, which provides context for the correction.
             **kwargs: Additional keyword arguments to pass to the core.correct decorator.
 
         Returns:
             Symbol: The corrected value as a Symbol.
         '''
-        @core.correct(context=context, **kwargs)
+        @core.correct(context=context, exception=exception, **kwargs)
         def _func(_) -> str:
             pass
 
