@@ -1292,6 +1292,8 @@ class IterationPrimitives(Primitive):
         Raises:
             KeyError: If the key or index is not found in the Symbol value.
         '''
+        from ..post_processors import ASTPostProcessor
+
         if not isinstance(self.value, (str, dict, list)):
             CustomUserWarning(f'Setting item is not supported for {type(self.value)}. Supported types are str, dict, and list.', raise_with=TypeError)
 
@@ -1308,7 +1310,7 @@ class IterationPrimitives(Primitive):
 
         result = _func(self, key, value)
         try:
-            self._value = eval(result) # The type of the object that the model changed was a list or a dict
+            self._value = ASTPostProcessor()(result) # The type of the object that the model changed was a list or a dict
         except Exception:
             self._value = result # It was a string, or something failed (because } wasn't close, etc)
 
@@ -1324,6 +1326,8 @@ class IterationPrimitives(Primitive):
         Raises:
             KeyError: If the key or index is not found in the Symbol value.
         '''
+        from ..post_processors import ASTPostProcessor
+
         if not isinstance(self.value, (str, dict, list)):
             CustomUserWarning(f'Setting item is not supported for {type(self.value)}. Supported types are str, dict, and list.', raise_with=TypeError)
 
@@ -1340,7 +1344,7 @@ class IterationPrimitives(Primitive):
 
         result = _func(self, key)
         try:
-            self._value = eval(result) # The type of the object that the model changed was a list or a dict
+            self._value = ASTPostProcessor()(result) # The type of the object that the model changed was a list or a dict
         except json.JSONDecodeError:
             self._value = result # It was a string, or something failed (because } wasn't close, etc)
 
