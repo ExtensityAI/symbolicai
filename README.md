@@ -50,7 +50,7 @@ At the core of SymbolicAI are `Symbol` objects—each one comes with a set of ti
 | `+=`, `-=`, `*=`, `/=`, `//=`, `%=`, `**=` | In-place Arithmetic | ✓ | ✓ | In-place enhanced assignment, some syntactic and some semantic (see above). |
 | `&=`, `\|=`, `^=`   | In-place Logical| ✓         | ✓        | In-place enhanced bitwise/logical assignment, both syntactic and semantic. |
 | `.cast(type)`, `.to(type)` | Casting         | ✓         |         | Cast to a specified type (e.g., int, float, str). |
-| `.str()`, `.int()`, `.float()`, `.bool()` | Casting    |          |         | Cast to basic types. |
+| `.str()`, `.int()`, `.float()`, `.bool()` | Casting    |     ✓      |         | Cast to basic types. |
 | `.ast()`             | Casting           | ✓         |         | Parse a Python literal string into a native object. |
 | `symbol[index]`, `symbol[start:stop]` | Iteration   | ✓         | ✓        | Get item or slice (list, tuple, dict, numpy array). |
 | `symbol[index] = value` | Iteration        | ✓         | ✓        | Set item or slice. |
@@ -95,7 +95,7 @@ At the core of SymbolicAI are `Symbol` objects—each one comes with a set of ti
 | `.ftry(expr, retries)`    | Execution Control |         | ✓        | Fault-tolerant execution with retries. |
 | `.dict(context, **kwargs)` | Dict Handling    |         | ✓        | Convert text/list into a dict semantically. |
 | `.template(template, placeholder?)` | Template Styling |    ✓  | | Fill in placeholders in a template string. |
-| `.style(description, libraries?) | Template Styling |        | ✓ | Style text/code (e.g., syntax highlighting). |
+| `.style(description, libraries?)` | Template Styling |        | ✓ | Style text/code (e.g., syntax highlighting). |
 | `.cluster(**clustering_kwargs?)`              | Data Clustering  |         | ✓        | Cluster data into groups semantically. (uses sklearn's DBSCAN)|
 | `.embed()`                | Embedding        |         | ✓        | Generate embeddings for text/data. |
 | `.embedding`              | Embedding        |         | ✓        | Retrieve embeddings as a numpy array. |
