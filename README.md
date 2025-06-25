@@ -1,14 +1,18 @@
 # **SymbolicAI: A neuro-symbolic perspective on LLMs**
 <img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/refs/heads/main/assets/images/banner.png">
 
+<div align="center">
+
 [![Documentation](https://img.shields.io/badge/Documentation-blue?style=for-the-badge)](https://extensityai.gitbook.io/symbolicai)
 [![Arxiv](https://img.shields.io/badge/Paper-32758e?style=for-the-badge)](https://arxiv.org/abs/2402.00854)
 [![DeepWiki](https://img.shields.io/badge/DeepWiki-yellow?style=for-the-badge)](https://deepwiki.com/ExtensityAI/symbolicai)
-[![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg?style=for-the-badge)](https://opensource.org/licenses/BSD-3-Clause)
-[![Contributions](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=for-the-badge)](https://github.com/ExtensityAI/symbolicai/issues)
 
 [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/dinumariusc.svg?style=social&label=@DinuMariusC)](https://twitter.com/DinuMariusC) [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/symbolicapi.svg?style=social&label=@ExtensityAI)](https://twitter.com/ExtensityAI)
 [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/futurisold.svg?style=social&label=@futurisold)](https://x.com/futurisold)
+
+</div>
+
+---
 
 <img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/preview.gif">
 
@@ -325,15 +329,24 @@ With these steps completed, you should be ready to start using SymbolicAI in you
 > **[NOTE]**: Our framework allows you to support us train models for local usage by enabling the data collection feature. On application startup we show the terms of services and you can activate or disable this community feature. We do not share or sell your data to 3rd parties and only use the data for research purposes and to improve your user experience. To change this setting open the `symai.config.json` and turn it on/off by setting the `SUPPORT_COMMUNITY` property to `True/False` via the config file or the respective environment variable.
 > **[NOTE]**: By default, the user warnings are enabled. To disable them, export `SYMAI_WARNINGS=0` in your environment variables.
 
-### 🪜 Next Steps
+### Running tests
+Some examples of running tests locally:
+```bash
+# Run all tests
+pytest tests
+# Run mandatory tests
+pytest -m mandatory
+```
+Be sure to have your configuration set up correctly before running the tests. You can also run the tests with coverage to see how much of the code is covered by tests:
+```bash
+pytest --cov=symbolicai tests
+```
+
+## 🪜 Next Steps
 
 Now, there are tools like DeepWiki that provide better documentation than we could ever write, and we don’t want to compete with that; we'll correct it where it's plain wrong. Please go read SymbolicAI's DeepWiki [page](https://deepwiki.com/ExtensityAI/symbolicai/). There's a lot of interesting stuff in there. Last but not least, check out our [paper](https://arxiv.org/abs/2402.00854) that describes the framework in detail. If you like watching videos, we have a series of tutorials that you can find [here](https://extensityai.gitbook.io/symbolicai/tutorials/video_tutorials).
 
-### Contribution
-
-We are always looking for contributors to help us improve the framework, add new features, and fix bugs. Any contributions are greatly appreciated.
-
-### 📜 Citation
+## 📜 Citation
 
 ```bibtex
 @software{Dinu_SymbolicAI_2022,
@@ -346,11 +359,11 @@ We are always looking for contributors to help us improve the framework, add new
 }
 ```
 
-### 📝 License
+## 📝 License
 
 This project is licensed under the BSD-3-Clause License - refer to [the docs](https://symbolicai.readthedocs.io/en/latest/LICENSE.html).
 
-### Like this Project?
+## Like this Project?
 
 If you appreciate this project, please leave a star ⭐️ and share it with friends and colleagues. To support the ongoing development of this project even further, consider donating. Thank you!
 
@@ -358,7 +371,7 @@ If you appreciate this project, please leave a star ⭐️ and share it with fri
 
 We are also seeking contributors or investors to help grow and support this project. If you are interested, please reach out to us.
 
-### 📫 Contact
+## 📫 Contact
 
 Feel free to contact us with any questions about this project via [email](mailto:office@extensity.ai), through our [website](https://extensity.ai/), or find us on Discord:
 [![Discord](https://img.shields.io/discord/768087161878085643?label=Discord&logo=Discord&logoColor=white?style=for-the-badge)](https://discord.gg/QYMNnh9ra8)
