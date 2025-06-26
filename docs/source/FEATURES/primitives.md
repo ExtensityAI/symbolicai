@@ -134,9 +134,9 @@ opt-in to semantics only where you need them.
    s = Symbol("Cats are adorable") # default = syntactic
    print(s.startswith("Cats")) # syntactic => True
    print(s.sem.startswith("animal")) # semantic => True
-   print("feline" in s.sem) # semantic  => True
-   result = (s / " ")[0]  # syntactic operator split, syntactic index
-   print(result) # 'Cats'
+   print("feline" in s.sem) # semantic => True
+   result = (s / " ")[0] # syntactic operator split, syntactic index
+   print(result) # => 'Cats'
    ```
 
 Because the projections return the *same underlying object* with just a different behavioural
@@ -147,15 +147,15 @@ coat, you can weave complex chains of syntactic and semantic operations on a sin
 #### Inversion (`~`)
 
 ```python
-s = Symbol("I am happy.", semantic=True)
-print(~s) # => Happiness is me.
+s = Symbol("I am standing on the shoulders of giants.", semantic=True)
+print(~s) # => Giants are standing on my shoulders.
 ```
 
 #### Negation (`-`)
 
 ```python
 s = Symbol("I am happy.", semantic=True)
-print(-s)  # => I am not happy.
+print(-s) # => I am not happy.
 ```
 
 ## 3. Comparison Operations
@@ -173,19 +173,19 @@ from symai import Symbol
 greeting_sem = Symbol('Hello there!', semantic=True)
 greeting_variant = 'Hi there!'
 
-print(greeting_sem == greeting_variant)  # => True (conceptually equivalent)
+print(greeting_sem == greeting_variant) # => True
 
 # Semantic farewell comparison
 farewell_sem = Symbol('Goodbye friend!', semantic=True)
 farewell_variant = 'See you later!'
 
-print(farewell_sem == farewell_variant)  # => False (different concepts)
+print(farewell_sem == farewell_variant) # => True
 
 # Works with lists too - semantic understanding
 list_sem = Symbol([1, 2, 3], semantic=True)
-list_different = Symbol([3, 2, 1], semantic=True)
+list_different = Symbol([3, 2, 1])
 
-print(list_sem == list_different)  # => False (semantic evaluation of order)
+print(list_sem == list_different) # => False
 ```
 
 #### Semantic Inequality (`!=`)
@@ -197,12 +197,12 @@ The inequality operator works as the logical inverse of equality with conceptual
 greeting_sem = Symbol('Hello there!', semantic=True)
 greeting_variant = 'Hi there!'
 
-print(greeting_sem != greeting_variant)  # => False (conceptually similar)
+print(greeting_sem != greeting_variant) # => False
 
 farewell_sem = Symbol('Goodbye friend!', semantic=True)
 farewell_variant = 'See you later!'
 
-print(farewell_sem != farewell_variant)  # => True (different concepts)
+print(farewell_sem != farewell_variant) # => False
 ```
 
 #### Advanced Contextual Equality - Custom Context Comparison
@@ -218,7 +218,7 @@ similar_greeting = 'Hi there, good day!'
 
 # Compare with specific greeting context
 result = greeting.equals(similar_greeting, context='greeting context')
-print(result)  # => True (both are greetings in context)
+print(result) # => True
 
 # Compare with different contexts for nuanced evaluation
 formal_greeting = Symbol('Good morning, sir.')
@@ -226,7 +226,7 @@ casual_greeting = 'Hey, what\'s up?'
 
 # Context-aware politeness comparison
 politeness_comparison = formal_greeting.equals(casual_greeting, context='politeness level')
-print(politeness_comparison)  # => False (different politeness levels)
+print(politeness_comparison) # => False
 ```
 
 ## 4. Membership Operations
@@ -244,18 +244,18 @@ from symai import Symbol
 str_sem = Symbol('apple banana cherry', semantic=True)
 concept_search = 'fruit'
 
-print(concept_search in str_sem)  # => True (understands apple/banana are fruits)
+print(concept_search in str_sem) # => True (understands apple/banana are fruits)
 
 # Semantic list containment - conceptual understanding
 list_sem = Symbol(['apple', 'banana', 'cherry'], semantic=True)
 
-print(concept_search in list_sem)  # => True (conceptual membership)
+print(concept_search in list_sem) # => True (conceptual membership)
 
 # More examples of semantic containment
 animals_sem = Symbol('cat dog bird fish', semantic=True)
-print('pet' in animals_sem)      # => True (cats and dogs are pets)
-print('mammal' in animals_sem)   # => True (cat and dog are mammals)
-print('vehicle' in animals_sem)  # => False (no vehicles in the list)
+print('pet' in animals_sem)     # => True (cats and dogs are pets)
+print('mammal' in animals_sem)  # => True (cat and dog are mammals)
+print('vehicle' in animals_sem) # => False (no vehicles in the list)
 ```
 
 #### Enhanced Semantic Containment - Multi-Type Support
@@ -267,12 +267,12 @@ from symai import Symbol
 
 # Semantic containment in text with concept understanding
 text = Symbol('The vehicle moved quickly down the road')
-print(text.contains('car'))  # => True (vehicle can semantically contain car)
+print(text.contains('car')) # => True (vehicle can semantically contain car)
 
 # Containment with mixed data types
 mixed_data = Symbol([1, 'two', 3.0, True])
-print(mixed_data.contains('two'))  # => True (exact string match)
-print(mixed_data.contains(True))   # => True (exact boolean match)
+print(mixed_data.contains('two')) # => True (exact string match)
+print(mixed_data.contains(True)) # => True (exact boolean match)
 ```
 
 ## 5. Ordering and Comparison Operations
@@ -288,37 +288,37 @@ from symai import Symbol
 large_sem = Symbol('enormous', semantic=True)
 small_sem = Symbol('tiny', semantic=True)
 
-print(large_sem > small_sem)  # => True (enormous is conceptually larger than tiny)
+print(large_sem > small_sem) # => True (enormous is conceptually larger than tiny)
 
 # Semantic animal size comparison
 cat_sem = Symbol('cat', semantic=True)
 dog_sem = Symbol('dog', semantic=True)
 
-print(cat_sem < dog_sem)  # => True (dogs are generally larger than cats)
+print(cat_sem < dog_sem) # => True (dogs are generally larger than cats)
 
 # Temperature comparisons - semantic understanding of hot/cold
 cold_sem = Symbol('freezing', semantic=True)
 hot_sem = Symbol('scorching', semantic=True)
 
-print(cold_sem < hot_sem)  # => True (freezing is less than scorching)
+print(cold_sem < hot_sem) # => True (freezing is less than scorching)
 
 # Semantic number understanding
 word_number = Symbol('fifty', semantic=True)
 regular_number = 45
 
-print(word_number > regular_number)  # => True (understands "fifty" means 50)
+print(word_number > regular_number) # => True (understands "fifty" means 50)
 
 # Speed comparisons with semantic understanding
 fast_sem = Symbol('lightning speed', semantic=True)
 slow_sem = Symbol('snail pace', semantic=True)
 
-print(fast_sem >= slow_sem)  # => True (lightning speed is much faster)
+print(fast_sem >= slow_sem) # => True (lightning speed is much faster)
 
 # Strength comparisons
 weak_sem = Symbol('fragile', semantic=True)
 strong_sem = Symbol('robust', semantic=True)
 
-print(weak_sem <= strong_sem)  # => True (fragile is weaker than robust)
+print(weak_sem <= strong_sem) # => True (fragile is weaker than robust)
 ```
 
 ## 6. Shift Operations - Semantic Inclusion
@@ -336,25 +336,25 @@ from symai import Symbol
 data_stream = Symbol('data stream', semantic=True)
 left_direction = Symbol('left')
 result = data_stream << left_direction
-print(result)  # => "left data stream"
+print(result) # => "left data stream"
 
 # Right shift - append/include at the end
 info_flow = Symbol('information flow', semantic=True)
 right_direction = Symbol('right')
 result = info_flow >> right_direction
-print(result)  # => "information flow right"
+print(result) # => "information flow right"
 
 # Priority and urgency - prepend urgent to task
 priority_task = Symbol('high priority task', semantic=True)
 urgency = Symbol('urgent')
 result = priority_task << urgency
-print(result)  # => "urgent high priority task"
+print(result) # => "urgent high priority task"
 
 # Process flow - append downstream to processing
 data_process = Symbol('data processing', semantic=True)
 downstream = Symbol('downstream')
 result = data_process >> downstream
-print(result)  # => "data processing downstream"
+print(result) # => "data processing downstream"
 ```
 
 #### Practical Use Cases
@@ -378,12 +378,12 @@ from symai import Symbol
 # Semantic logical conjunction - combining facts and rules
 horn_rule = Symbol('The horn only sounds on Sundays.', semantic=True)
 observation = Symbol('I hear the horn.')
-conclusion = horn_rule & observation  # => Logical inference
+conclusion = horn_rule & observation # => Logical inference
 
 # Combining evidence
 evidence1 = Symbol('The suspect was seen at the scene.', semantic=True)
 evidence2 = Symbol('His fingerprints were found.')
-combined_evidence = evidence1 & evidence2  # => Combined evidence
+combined_evidence = evidence1 & evidence2 # => Combined evidence
 ```
 
 ### Bitwise OR (`|`) - Union and Logical Disjunction
@@ -394,12 +394,12 @@ from symai import Symbol
 # Semantic logical disjunction - alternative possibilities
 option1 = Symbol('It might rain today.', semantic=True)
 option2 = Symbol('It could be sunny.')
-possibilities = option1 | option2  # => Multiple possibilities
+possibilities = option1 | option2 # => Multiple possibilities
 
 # Alternative scenarios
 scenario1 = Symbol('The meeting could be postponed.', semantic=True)
 scenario2 = Symbol('The meeting might be canceled.')
-alternatives = scenario1 | scenario2  # => Alternative outcomes
+alternatives = scenario1 | scenario2 # => Alternative outcomes
 ```
 
 ### Bitwise XOR (`^`) - Exclusive OR
@@ -410,12 +410,12 @@ from symai import Symbol
 # Semantic exclusive choice - either/or scenarios
 exclusive1 = Symbol('Either it will rain today.', semantic=True)
 exclusive2 = Symbol('Or it will be sunny.')
-either_or = exclusive1 ^ exclusive2  # => Exclusive alternative
+either_or = exclusive1 ^ exclusive2 # => Exclusive alternative
 
 # Contradictory statements
 statement1 = Symbol('The door is open.', semantic=True)
 statement2 = Symbol('The door is closed.')
-contradiction = statement1 ^ statement2  # => Mutually exclusive states
+contradiction = statement1 ^ statement2 # => Mutually exclusive states
 ```
 
 ## 8. Arithmetic Operations
@@ -429,7 +429,7 @@ from symai import Symbol
 
 enemy_text = Symbol('Hello my enemy', semantic=True)
 result = enemy_text - 'enemy' + 'friend'
-print(result)  # => "Hello my friend"
+print(result) # => "Hello my friend"
 ```
 
 ### String Manipulation (`@`, `/`)
@@ -452,9 +452,9 @@ from symai import Symbol
 
 # Semantic dictionary access - finds conceptually related keys
 sym_person = Symbol({'name': 'Alice', 'age': 30, 'city': 'NYC'}, semantic=True)
-name_result = sym_person['Return any names']  # => 'Alice'
-identity_result = sym_person['identity']  # => 'Alice' (matches 'name')
-profession_result = sym_person['profession']  # => might return 'age' or relevant info
+name_result = sym_person['Return any names'] # => 'Alice'
+identity_result = sym_person['identity'] # => 'Alice' (matches 'name')
+profession_result = sym_person['profession'] # => might return 'age' or relevant info
 
 # Semantic list access - finds conceptually matching items
 sym_animals = Symbol(['cat', 'dog', 'bird', 'fish'], semantic=True)
@@ -462,7 +462,7 @@ pet_result = sym_animals['domestic animal']
 
 # Color matching example
 sym_colors = Symbol({'red': '#FF0000', 'green': '#00FF00', 'blue': '#0000FF'}, semantic=True)
-primary_color = sym_colors['primary color']  # => one of the hex values
+primary_color = sym_colors['primary color'] # => one of the hex values
 ```
 
 ### Setting Items (`symbol[key] = value`)
@@ -471,7 +471,7 @@ from symai import Symbol
 
 # Semantic dictionary modification - maps to conceptually similar keys
 sym_weather = Symbol({'temperature': 20, 'humidity': 60, 'pressure': 1013}, semantic=True)
-sym_weather['Change the temperature'] = 25  # => maps to 'temperature' key
+sym_weather['Change the temperature'] = 25 # => maps to 'temperature' key
 ```
 
 ### Deleting Items (`del symbol[key]`)
@@ -480,7 +480,7 @@ from symai import Symbol
 
 # Semantic dictionary deletion - removes conceptually matching keys
 sym_person = Symbol({'first_name': 'John', 'last_name': 'Doe', 'age': 30}, semantic=True)
-del sym_person['surname']  # => removes 'last_name' (conceptually equivalent)
+del sym_person['surname'] # => removes 'last_name' (conceptually equivalent)
 # => {'first_name': 'John', 'age': 30}
 ```
 
@@ -495,24 +495,24 @@ from symai import Symbol
 
 # Basic semantic type checking
 number_sym = Symbol(42)
-print(number_sym.isinstanceof('number'))  # => True
-print(number_sym.isinstanceof('string'))  # => False
+print(number_sym.isinstanceof('number')) # => True
+print(number_sym.isinstanceof('string')) # => False
 
 # Collection type checking
 list_sym = Symbol(['apple', 'banana', 'cherry'])
-print(list_sym.isinstanceof('list'))  # => True
+print(list_sym.isinstanceof('list')) # => True
 
 # Boolean/logical type checking
 bool_sym = Symbol(True)
-print(bool_sym.isinstanceof('logical value'))  # => True
+print(bool_sym.isinstanceof('logical value')) # => True
 
 # Complex semantic type recognition
 person_data = Symbol({'name': 'John', 'age': 30})
-print(person_data.isinstanceof('person data'))  # => True
+print(person_data.isinstanceof('person data')) # => True
 
 # More natural language type queries
 user_info = Symbol({'name': 'Alice', 'age': 25, 'city': 'Wonderland'})
-print(user_info.isinstanceof('person'))  # => True (understands structure represents a person)
+print(user_info.isinstanceof('person')) # => True (understands structure represents a person)
 ```
 
 ## 11. Basic Symbolic Manipulations
@@ -525,12 +525,12 @@ from symai import Symbol
 # Symbolic reasoning and analogies
 analogy = Symbol('gravity : Earth :: radiation : ?')
 result = analogy.interpret()
-print(result)  # => Sun (or similar celestial body)
+print(result) # => Sun (or similar celestial body)
 
 # Mathematical expression interpretation
 math_expr = Symbol("∫(3x² + 2x - 5)dx")
 solution = math_expr.interpret()
-print(solution)  # => x³ + x² - 5x + C
+print(solution) # => x³ + x² - 5x + C
 ```
 
 ### Conditional Logic Processing
@@ -540,9 +540,9 @@ print(solution)  # => x³ + x² - 5x + C
 conditional = Symbol("If x < 0 then 'negative' else if x == 0 then 'zero' else 'positive'")
 
 # Test with different values
-print(conditional.interpret("x = -5"))  # => negative
-print(conditional.interpret("x = 0"))   # => zero
-print(conditional.interpret("x = 10"))  # => positive
+print(conditional.interpret("x = -5")) # => negative
+print(conditional.interpret("x = 0"))  # => zero
+print(conditional.interpret("x = 10")) # => positive
 ```
 
 ### System Solving and Constraints
@@ -551,7 +551,7 @@ print(conditional.interpret("x = 10"))  # => positive
 # Mathematical system solving
 system = Symbol("Find values for x and y where: x + y = 10, x - y = 4")
 solution = system.interpret()
-print(solution)  # => x = 7, y = 3
+print(solution) # => x = 7, y = 3
 
 # Logical reasoning with philosophical questions
 reasoning = Symbol('If every event has a cause, and the universe began with an event, what philosophical question arises?')
@@ -737,7 +737,7 @@ sym_type_error = Symbol("""
 def process_data(items):
     return items.sort()
 result = process_data([3, 1, 2])
-print(result + 1)  # TypeError: NoneType + int
+print(result + 1) # TypeError: NoneType + int
 """)
 corrected_type = sym_type_error.correct("Fix the code", exception=TypeError)
 # => Uses sorted() instead of sort() to return the sorted list
@@ -958,7 +958,7 @@ sym_type_error = Symbol("""
 def process_data(items):
     return items.sort()
 result = process_data([3, 1, 2])
-print(result + 1)  # TypeError: NoneType + int
+print(result + 1) # TypeError: NoneType + int
 """)
 corrected_type = sym_type_error.correct("Fix the code", exception=TypeError)
 # => Uses sorted() instead of sort() to return the sorted list
@@ -1041,7 +1041,7 @@ try:
     raise ValueError("Sample error for testing")
 except Exception as e:
     analyzed = sym_code.analyze(exception=e, query="What went wrong?")
-    # => Detailed analysis of the error context
+# => Detailed analysis of the error context
 ```
 
 ### Code Execution (`execute`, `fexecute`)
@@ -1251,7 +1251,7 @@ Handle interactive user input (requires user interaction):
 
 ```python
 sym = Symbol()
-user_input = sym.input()  # Prompts for user input
+user_input = sym.input() # Prompts for user input
 ```
 
 ## 21. Persistence Operations
@@ -1270,8 +1270,8 @@ sym_test.save("/path/to/file.pkl", serialize=True)
 sym_test.save("/path/to/file.txt", serialize=False)
 
 # Control file replacement
-sym_test.save("/path/to/file.txt", replace=False)  # Creates new file with suffix
-sym_test.save("/path/to/file.txt", replace=True)   # Overwrites existing file
+sym_test.save("/path/to/file.txt", replace=False) # Creates new file with suffix
+sym_test.save("/path/to/file.txt", replace=True)  # Overwrites existing file
 ```
 
 ### Loading Symbols (`load`)
@@ -1309,7 +1309,7 @@ result = sym_test.output()
 
 # Custom handler function
 def custom_handler(input_dict):
-    # Process the input dictionary
+   # Process the input dictionary
     pass
 
 result_with_handler = sym_test.output(handler=custom_handler)
