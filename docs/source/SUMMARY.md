@@ -23,7 +23,6 @@
 * [Primitives](FEATURES/primitives.md)
 * [Operations](FEATURES/operations.md)
 * [Expressions](FEATURES/expressions.md)
-* [Causal Reasoning](FEATURES/causal_reasoning.md)
 * [Error Handling](FEATURES/error_handling.md)
 * [Module Import](FEATURES/import.md)
 

@@ -54,7 +54,7 @@ Please note that the system_message is optional and can be used to provide conte
 {
     …
     "SEARCH_ENGINE_API_KEY": "pplx-…",
-    "SEARCH_ENGINE_MODEL": "llama-3.1-sonar-small-128k-online",
+    "SEARCH_ENGINE_MODEL": "sonar",
     …
 }
 ```

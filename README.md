@@ -18,102 +18,108 @@
 
 ## What is SymbolicAI?
 
-SymbolicAI is a **neuro-symbolic** framework, combining classical Python programming with the differentiable, programmable nature of LLMs. In this README, we'll introduce two key concepts that define SymbolicAI: **primitives** and **contracts**.
+SymbolicAI is a **neuro-symbolic** framework, combining classical Python programming with the differentiable, programmable nature of LLMs in a way that actually feels natural in Python.
+It's built to not stand in the way of your ambitions.
+It's easily extensible and customizable to your needs by virtue of its modular design.
+It's quite easy to [write your own engine](https://extensityai.gitbook.io/symbolicai/engines/custom_engine), [host locally](https://extensityai.gitbook.io/symbolicai/engines/local_engine) an engine of your choice, or interface with tools like [web search](https://extensityai.gitbook.io/symbolicai/engines/search_engine) or [image generation](https://extensityai.gitbook.io/symbolicai/engines/drawing_engine).
+To keep things concise in this README, we'll introduce two key concepts that define SymbolicAI: **primitives** and **contracts**.
 
 ### Primitives
-At the core of SymbolicAI are `Symbol` objects—each one comes with a set of tiny, composable operations that feel like native Python. Think of them as your building blocks for semantic reasoning. Right now, we support a wide range of primitives:
+At the core of SymbolicAI are `Symbol` objects—each one comes with a set of tiny, composable operations that feel like native Python.
+```python
+from symai import Symbol
+```
 
-| Primitive/Operator | Category         | Syntactic | Semantic | Description |
-|--------------------|-----------------|:---------:|:--------:|-------------|
-| `.sem` / `.syn`    | Casting         | ✓         | ✓        | Switches a symbol between syntactic (literal) and semantic (neuro-symbolic) behavior. |
-| `==`               | Comparison      | ✓         | ✓        | Tests for equality. Syntactic: literal match. Semantic: fuzzy/conceptual equivalence (e.g. 'Hi' == 'Hello'). |
-| `!=`               | Comparison      | ✓         | ✓        | Tests for inequality. Syntactic: literal not equal. Semantic: non-equivalence or opposite concepts. |
-| `>`                | Comparison      | ✓         | ✓        | Greater-than. Syntactic: numeric/string compare. Semantic: abstract comparison (e.g. 'hot' > 'warm'). |
-| `<`                | Comparison      | ✓         | ✓        | Less-than. Syntactic: numeric/string compare. Semantic: abstract ordering (e.g. 'cat' < 'dog'). |
-| `>=`               | Comparison      | ✓         | ✓        | Greater or equal. Syntactic or conceptual. |
-| `<=`               | Comparison      | ✓         | ✓        | Less or equal. Syntactic or conceptual. |
-| `in`               | Membership      | ✓         | ✓        | Syntactic: element in list/string. Semantic: membership by meaning (e.g. 'fruit' in ['apple', ...]). |
-| `~`                | Invert   | ✓         | ✓        | Negation: Syntactic: logical NOT/bitwise invert. Semantic: conceptual inversion (e.g. 'True' ➔ 'False', 'I am happy.' ➔ 'Happiness is me.'). |
-| `+`                | Arithmetic      | ✓         | ✓        | Syntactic: numeric/string/list addition. Semantic: meaningful composition, blending, or conceptual merge. |
-| `-`                | Arithmetic      | ✓         | ✓        | Syntactic: subtraction/negate. Semantic: replacement or conceptual opposition. |
-| `*`                | Arithmetic      | ✓         |         | Syntactic: multiplication/repeat. Semantic: expand or strengthen meaning. |
-| `@`                | Arithmetic      | ✓         |         | Sytactic: string concatenation. |
-| `/`                | Arithmetic      | ✓         |         | Syntactic: division. On strings, it splits the string based on delimiter (e.g. `Symbol('a b') / ' '` -> `['a', 'b']`))). |
-| `//`               | Arithmetic      | ✓         |         | Floor division. |
-| `%`                | Arithmetic      | ✓         |         | Modulo. Semantic: find remainder or part, can be used creatively over concepts. |
-| `**`               | Arithmetic      | ✓         |         | Power operation. Semantic: (hypernym or intensifier, depending on domain). |
-| `&`                | Logical/Bitwise | ✓         | ✓        | Syntactic: bitwise/logical AND. Semantic: logical conjunction, inference, e.g., context merge. |
-| `\|`                | Logical/Bitwise | ✓         | ✓        | Syntactic: bitwise/logical OR. Semantic: conceptual alternative/option. |
-| `^`                | Logical/Bitwise | ✓         | ✓        | Syntactic: bitwise XOR. Semantic: exclusive option/concept distinction. |
-| `<<`               | Shift           | ✓         | ✓        | Syntactic: left-shift (integers). Semantic: prepend or rearrange meaning/order. |
-| `>>`               | Shift           | ✓         | ✓        | Syntactic: right-shift (integers). Semantic: append or rearrange meaning/order. |
-| `+=`, `-=`, `*=`, `/=`, `//=`, `%=`, `**=` | In-place Arithmetic | ✓ | ✓ | In-place enhanced assignment, some syntactic and some semantic (see above). |
-| `&=`, `\|=`, `^=`   | In-place Logical| ✓         | ✓        | In-place enhanced bitwise/logical assignment, both syntactic and semantic. |
-| `.cast(type)`, `.to(type)` | Casting         | ✓         |         | Cast to a specified type (e.g., int, float, str). |
-| `.str()`, `.int()`, `.float()`, `.bool()` | Casting    |     ✓      |         | Cast to basic types. |
-| `.ast()`             | Casting           | ✓         |         | Parse a Python literal string into a native object. |
-| `symbol[index]`, `symbol[start:stop]` | Iteration   | ✓         | ✓        | Get item or slice (list, tuple, dict, numpy array). |
-| `symbol[index] = value` | Iteration        | ✓         | ✓        | Set item or slice. |
-| `del symbol[index]`      | Iteration        | ✓         | ✓        | Delete item or key. |
-| `.split(delimiter)`      | String Helper    | ✓         |         | Split a string or sequence into a list. |
-| `.join(delimiter)`      | String Helper    | ✓         |         | Join a list of strings into a string. |
-| `.startswith(prefix)`    | String Helper    | ✓         | ✓        | Check if a string starts with given prefix (in both modes). |
-| `.endswith(suffix)`      | String Helper    | ✓         | ✓        | Check if a string ends with given suffix (in both modes). |
-| `.equals(string, context?)` | Comparison     |           | ✓        | Semantic/contextual equality beyond `==`. |
-| `.contains(element)`         | Comparison      |           | ✓        | Semantic contains beyond `in`. |
-| `.isinstanceof(query)` | Comparison     |           | ✓        | Semantic type checking. |
-| `.interpret(prompt, accumulate?)`| Expression Handling |        | ✓ | Interpret prompts/expressions|
-| `.get_results()`        | Expression Handling |     ✓     |       | Retrieve accumulated interpretation results. |
-| `.clear_results()`        | Expression Handling |    ✓      |        | Clear accumulated interpretation results. |
-| `.clean()`                | Data Handling   |           | ✓        | Clean text (remove extra whitespace, newlines, tabs). |
-| `.summarize(context?)`    | Data Handling   |           | ✓        | Summarize text (optionally with context). |
-| `.outline()`              | Data Handling   |           | ✓        | Generate outline from structured text. |
-| `.filter(criteria, include?)` | Data Handling |   | ✓        | Filter text by criteria (exclude/include). |
-| `.map(instruction, prompt?)`                  | Data Handling    |         | ✓        | Semantic mapping over iterables. |
-| `.modify(changes)`        | Data Handling   |           | ✓        | Apply modifications according to prompt. |
-| `.replace(old, new)`      | Data Handling   |          | ✓        | Replace substrings in data. |
-| `.remove(information)`           | Data Handling   |           | ✓        | Remove specified text. |
-| `.include(information)`          | Data Handling   |           | ✓        | Include additional information. |
-| `.combine(information)`          | Data Handling   |           | ✓        | Combine with another text fragment. |
-| `.unique(keys?)`          | Uniqueness      |           | ✓        | Extract unique elements or entries. |
-| `.compose()`              | Uniqueness      |           | ✓        | Compose a coherent narrative. |
-| `.rank(measure?, order?)`   | Pattern Matching|           | ✓        | Rank items by a given measure/order. |
-| `.extract(pattern)`       | Pattern Matching|           | ✓        | Extract info matching a pattern. |
-| `.correct(context, exception)` | Pattern Matching |      | ✓        | Correct code/text based on prompt/exception. |
-| `.translate(language)` | Pattern Matching |         | ✓ | Translate text into another language. |
-| `.choice(cases, default)` | Pattern Matching|           | ✓        | Select best match from provided cases. |
-| `.query(context, prompt?, examples?)`  | Query Handling  |           | ✓        | Query structured data with a question or prompt. |
-| `.convert(format)`        | Query Handling  |           | ✓        | Convert data to specified format (YAML, XML, etc.). |
-| `.transcribe(modify)` | Query Handling |          | ✓        | Transcribe/reword text per instructions. |
-| `.analyze(exception, query?)` | Execution Control |      | ✓        | Analyze code execution and exceptions. |
-| `.execute()`, `.fexecute()` | Execution Control |       | ✓        | Execute code (with fallback). |
-| `.simulate()`             | Execution Control |         | ✓        | Simulate code or process semantically. |
-| `.sufficient(query)`   | Execution Control |         | ✓        | Check if information is sufficient. |
-| `.list(condition)`         | Execution Control |         | ✓        | List items matching criteria. |
-| `.foreach(condition, apply)`| Execution Control |         | ✓        | Apply action to each element. |
-| `.stream(expr, token_ratio)` | Execution Control |      | ✓        | Stream-process large inputs. |
-| `.ftry(expr, retries)`    | Execution Control |         | ✓        | Fault-tolerant execution with retries. |
-| `.dict(context, **kwargs)` | Dict Handling    |         | ✓        | Convert text/list into a dict semantically. |
-| `.template(template, placeholder?)` | Template Styling |    ✓  | | Fill in placeholders in a template string. |
-| `.style(description, libraries?)` | Template Styling |        | ✓ | Style text/code (e.g., syntax highlighting). |
-| `.cluster(**clustering_kwargs?)`              | Data Clustering  |         | ✓        | Cluster data into groups semantically. (uses sklearn's DBSCAN)|
-| `.embed()`                | Embedding        |         | ✓        | Generate embeddings for text/data. |
-| `.embedding`              | Embedding        |         | ✓        | Retrieve embeddings as a numpy array. |
-| `.similarity(other, metric?, normalize?)` | Embedding    |         | ✓        | Compute similarity between embeddings. |
-| `.distance(other, kernel?)`  | Embedding     |         | ✓        | Compute distance between embeddings. |
-| `.zip()`                  | Embedding        |         | ✓        | Package id, embedding, query into tuples. |
-| `.open(path?)`             | IO Handling      | ✓       |         | Open a file and read its contents. |
-| `.input(message?)`                | IO Handling      | ✓       |         | Read user input interactively. |
-| `.save(path, serialize?, replace?)` | Persistence | ✓ |  | Save a symbol to file (pickle/text). |
-| `.load(path)`             | Persistence      | ✓       |         | Load a symbol from file. |
-| `.expand()`               | Persistence      |         | ✓        | Generate and attach code based on prompt. |
-| `.output()` | Output Handling | ✓    | | Handle/capture output with handler. |
+`Symbol` comes in **two flavours**:
 
-If you want to see how these primitives are used in practice, check out the docs [here](https://extensityai.gitbook.io/symbolicai/features/primitives).
+1. **Syntactic** – behaves like a normal Python value (string, list, int ‐ whatever you passed in).
+2. **Semantic**  – is wired to the neuro-symbolic engine and therefore *understands* meaning and
+   context.
+
+Why is syntactic the default?
+Because Python operators (`==`, `~`, `&`, …) are overloaded in `symai`.
+If we would immediately fire the engine for *every* bitshift or comparison, code would be slow and could produce surprising side-effects.
+Starting syntactic keeps things safe and fast; you opt-in to semantics only where you need them.
+
+#### How to switch to the semantic view
+
+1. **At creation time**
+
+   ```python
+   S = Symbol("Cats are adorable", semantic=True) # already semantic
+   print("feline" in S) # => True
+   ```
+
+2. **On demand with the `.sem` projection** – the twin `.syn` flips you back:
+
+   ```python
+   S = Symbol("Cats are adorable") # default = syntactic
+   print("feline" in S.sem) # => True
+   print("feline" in S)     # => False
+   ```
+
+3. Invoking **dot-notation operations**—such as `.map()` or any other semantic function—automatically switches the symbol to semantic mode:
+
+   ```python
+    S = Symbol(['apple', 'banana', 'cherry', 'cat', 'dog'])
+    print(S.map('convert all fruits to vegetables'))
+    # => ['carrot', 'broccoli', 'spinach', 'cat', 'dog']
+   ```
+
+Because the projections return the *same underlying object* with just a different behavioural coat, you can weave complex chains of syntactic and semantic operations on a single symbol. Think of them as your building blocks for semantic reasoning. Right now, we support a wide range of primitives; check out the docs [here](https://extensityai.gitbook.io/symbolicai/features/primitives).
 
 ### Contracts
 
-They say LLMs hallucinate—but your code can't afford to. That's exactly why SymbolicAI brings **Design by Contract** principles into the world of LLMs. Instead of relying solely on post-hoc testing, contracts help build correctness directly into your design. All you need is some data models and a decorator. Read more about contracts [here](https://deepwiki.com/ExtensityAI/symbolicai/7.1-contract-validation-system) and [here](https://extensityai.gitbook.io/symbolicai/features/contracts).
+They say LLMs hallucinate—but your code can't afford to. That's why SymbolicAI brings **Design by Contract** principles into the world of LLMs. Instead of relying solely on post-hoc testing, contracts help build correctness directly into your design, everything packed into a decorator that will operate on your defined data models and validation constraints:
+```python
+from symai import Expression
+from symai.strategy import contract
+from symai.models import LLMDataModel # Compatible with Pydantic's BaseModel
+from pydantic import Field, field_validator
+
+# ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+#  Data models                                              ▬
+#  – clear structure + rich Field descriptions power        ▬
+#    validation, automatic prompt templating & remedies     ▬
+# ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+class DataModel(LLMDataModel):
+    some_field: some_type = Field(description="very descriptive field", and_other_supported_options_here="...")
+
+    @field_validator('some_field')
+    def validate_some_field(cls, v):
+        # Custom basic validation logic can be added here too besides pre/post
+        valid_opts = ['A', 'B', 'C']
+        if v not in valid_sizes:
+            raise ValueError(f'Must be one of {valid_sizes}, got "{v}".')
+        return v
+
+# ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+#  2.  The contracted expression class                                 ▬
+# ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+@contract(
+    # ── Remedies ─────────────────────────────────────────── #
+    pre_remedy=True,        # Try to fix bad inputs automatically
+    post_remedy=True,       # Try to fix bad LLM outputs automatically
+    accumulate_errors=True, # Feed history of errors to each retry
+    verbose=True,           # Nicely displays progress in terminal
+    remedy_retry_params=dict(tries=3, delay=0.4, max_delay=4.0,
+                             jitter=0.15, backoff=1.8, graceful=False),
+)
+class Agent(Expression):
+    #
+    # High-level behaviour:
+    #  *. `prompt` – a *static* description of what the LLM must do (mandatory)
+    #  1. `pre`    – sanity-check inputs (optional)
+    #  2. `act`    – mutate state (optional)
+    #  3. LLM      – generate expected answer (handled by SymbolicAI engine)
+    #  4. `post`   – ensure answer meets semantic rules (optional)
+    #  5. `forward` (mandatory)
+    #     • if contract succeeded → return type validated LLM object
+    #     • else                  → graceful fallback answer
+    # ...
+```
+
+Because we don't want to bloat this README file with long Python snippets, learn more about contracts [here](https://deepwiki.com/ExtensityAI/symbolicai/7.1-contract-validation-system) and [here](https://extensityai.gitbook.io/symbolicai/features/contracts).
 
 ## Installation
 
@@ -273,32 +279,7 @@ This addition to the README clearly explains:
 
 ### Configuration File
 
-You can specify engine properties in a symai.config.json file in your project path. This will replace the environment variables. The default configuration file that will be created is:
-```json
-{
-    "NEUROSYMBOLIC_ENGINE_API_KEY": "",
-    "NEUROSYMBOLIC_ENGINE_MODEL": "",
-    "SYMBOLIC_ENGINE_API_KEY": "",
-    "SYMBOLIC_ENGINE": "",
-    "EMBEDDING_ENGINE_API_KEY": "",
-    "EMBEDDING_ENGINE_MODEL": "",
-    "DRAWING_ENGINE_MODEL": "",
-    "DRAWING_ENGINE_API_KEY": "",
-    "SEARCH_ENGINE_API_KEY": "",
-    "SEARCH_ENGINE_MODEL": "",
-    "INDEXING_ENGINE_API_KEY": "",
-    "INDEXING_ENGINE_ENVIRONMENT": "",
-    "TEXT_TO_SPEECH_ENGINE_MODEL": "",
-    "TEXT_TO_SPEECH_ENGINE_API_KEY": "",
-    "SPEECH_TO_TEXT_ENGINE_MODEL": "",
-    "VISION_ENGINE_MODEL": "",
-    "OCR_ENGINE_API_KEY": "",
-    "COLLECTION_URI": "",
-    "COLLECTION_DB": "",
-    "COLLECTION_STORAGE": "",
-    "SUPPORT_COMMUNITY": false,
-}
-```
+You can specify engine properties in a `symai.config.json` file in your project path. This will replace the environment variables.
 Example of a configuration file with all engines enabled:
 ```json
 {
@@ -308,26 +289,25 @@ Example of a configuration file with all engines enabled:
     "SYMBOLIC_ENGINE": "wolframalpha",
     "EMBEDDING_ENGINE_API_KEY": "<OPENAI_API_KEY>",
     "EMBEDDING_ENGINE_MODEL": "text-embedding-3-small",
-    "DRAWING_ENGINE_API_KEY": "<OPENAI_API_KEY>",
-    "DRAWING_ENGINE_MODEL": "dall-e-3",
-    "VISION_ENGINE_MODEL": "openai/clip-vit-base-patch32",
     "SEARCH_ENGINE_API_KEY": "<PERPLEXITY_API_KEY>",
-    "SEARCH_ENGINE_MODEL": "llama-3.1-sonar-small-128k-online",
-    "OCR_ENGINE_API_KEY": "<APILAYER_API_KEY>",
-    "SPEECH_TO_TEXT_ENGINE_MODEL": "turbo",
+    "SEARCH_ENGINE_MODEL": "sonar",
+    "TEXT_TO_SPEECH_ENGINE_API_KEY": "<OPENAI_API_KEY>",
     "TEXT_TO_SPEECH_ENGINE_MODEL": "tts-1",
     "INDEXING_ENGINE_API_KEY": "<PINECONE_API_KEY>",
     "INDEXING_ENGINE_ENVIRONMENT": "us-west1-gcp",
-    "COLLECTION_DB": "ExtensityAI",
-    "COLLECTION_STORAGE": "SymbolicAI",
+    "DRAWING_ENGINE_API_KEY": "<OPENAI_API_KEY>",
+    "DRAWING_ENGINE_MODEL": "dall-e-3",
+    "VISION_ENGINE_MODEL": "openai/clip-vit-base-patch32",
+    "OCR_ENGINE_API_KEY": "<APILAYER_API_KEY>",
+    "SPEECH_TO_TEXT_ENGINE_MODEL": "turbo",
     "SUPPORT_COMMUNITY": true
 }
 ```
 
 With these steps completed, you should be ready to start using SymbolicAI in your projects.
 
-> **[NOTE]**: Our framework allows you to support us train models for local usage by enabling the data collection feature. On application startup we show the terms of services and you can activate or disable this community feature. We do not share or sell your data to 3rd parties and only use the data for research purposes and to improve your user experience. To change this setting open the `symai.config.json` and turn it on/off by setting the `SUPPORT_COMMUNITY` property to `True/False` via the config file or the respective environment variable.
-> **[NOTE]**: By default, the user warnings are enabled. To disable them, export `SYMAI_WARNINGS=0` in your environment variables.
+> ❗️**NOTE**❗️Our framework allows you to support us train models for local usage by enabling the data collection feature. On application startup we show the terms of services and you can activate or disable this community feature. We do not share or sell your data to 3rd parties and only use the data for research purposes and to improve your user experience. To change this setting open the `symai.config.json` and turn it on/off by setting the `SUPPORT_COMMUNITY` property to `True/False` via the config file or the respective environment variable.
+> ❗️**NOTE**❗️By default, the user warnings are enabled. To disable them, export `SYMAI_WARNINGS=0` in your environment variables.
 
 ### Running tests
 Some examples of running tests locally:
