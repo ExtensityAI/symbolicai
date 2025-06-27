@@ -66,7 +66,20 @@ Starting syntactic keeps things safe and fast; you opt-in to semantics only wher
     # => ['carrot', 'broccoli', 'spinach', 'cat', 'dog']
    ```
 
-Because the projections return the *same underlying object* with just a different behavioural coat, you can weave complex chains of syntactic and semantic operations on a single symbol. Think of them as your building blocks for semantic reasoning. Right now, we support a wide range of primitives; check out the docs [here](https://extensityai.gitbook.io/symbolicai/features/primitives).
+Because the projections return the *same underlying object* with just a different behavioural coat, you can weave complex chains of syntactic and semantic operations on a single symbol. Think of them as your building blocks for semantic reasoning. Right now, we support a wide range of primitives; check out the docs [here](https://extensityai.gitbook.io/symbolicai/features/primitives), but here's a quick snack:
+
+| Primitive/Operator | Category         | Syntactic | Semantic | Description |
+|--------------------|-----------------|:---------:|:--------:|-------------|
+| `==`               | Comparison      | ✓         | ✓        | Tests for equality. Syntactic: literal match. Semantic: fuzzy/conceptual equivalence (e.g. 'Hi' == 'Hello'). |
+| `+`                | Arithmetic      | ✓         | ✓        | Syntactic: numeric/string/list addition. Semantic: meaningful composition, blending, or conceptual merge. |
+| `&`                | Logical/Bitwise | ✓         | ✓        | Syntactic: bitwise/logical AND. Semantic: logical conjunction, inference, e.g., context merge. |
+| `symbol[index] = value` | Iteration        | ✓         | ✓        | Set item or slice. |
+| `.startswith(prefix)`    | String Helper    | ✓         | ✓        | Check if a string starts with given prefix (in both modes). |
+| `.choice(cases, default)` | Pattern Matching|           | ✓        | Select best match from provided cases. |
+| `.foreach(condition, apply)`| Execution Control |         | ✓        | Apply action to each element. |
+| `.cluster(**clustering_kwargs?)`              | Data Clustering  |         | ✓        | Cluster data into groups semantically. (uses sklearn's DBSCAN)|
+| `.similarity(other, metric?, normalize?)` | Embedding    |         | ✓        | Compute similarity between embeddings. |
+| ... | ...    |   ...|  ...        | ... |
 
 ### Contracts
 
@@ -94,7 +107,7 @@ class DataModel(LLMDataModel):
         return v
 
 # ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
-#  2.  The contracted expression class                                 ▬
+#  2.  The contracted expression class                      ▬
 # ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
 @contract(
     # ── Remedies ─────────────────────────────────────────── #
