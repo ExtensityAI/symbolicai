@@ -31,25 +31,39 @@ class MyEngine(Engine):
     return ...
 
 # register your engine
-EngineRepository.register('neurosymbolic', engine)
+EngineRepository.register('neurosymbolic', engine, allow_engine_override=True)
 ```
 
 Any engine is derived from the base class `Engine` and is then registered in the engines repository using its registry ID. The ID is for instance used in `core.py` decorators to address where to send the zero/few-shot statements using the class `EngineRepository`. You can find the `EngineRepository` defined in `functional.py` with the respective `query` method. Every engine has therefore three main methods you need to implement. The `id`, `prepare` and `forward` method. The `id` return the engine category. The `prepare` and `forward` methods have a signature variable called  `argument` which carries all necessary pipeline relevant data. For instance, the output of the `argument.prop.preprocessed_input` contains the pre-processed output of the `PreProcessor` objects and is usually what you need to build and pass on to the `argument.prop.prepared_input`, which is then used in the `forward` call.
 
 If you don't want to re-write the entire engine code but overwrite the existing prompt `prepare` logic, you can do so by subclassing the existing engine and overriding the `prepare` method.
 
-Here is an example of how to initialize your own engine. We will subclass the existing `GPTXCompletionEngine` and override the `prepare` method. This method is called before the neural computation and can be used to modify the input prompt's parameters that will be passed in for execution. In this example, we will replace the prompt with dummy text for illustration purposes:
+Here is an example of how to initialize your own engine. We will subclass the existing `GPTXChatEngine` and override the `prepare` method. This method is called before the neural computation and can be used to modify the input prompt's parameters that will be passed in for execution. In this example, we will replace the prompt with dummy text for illustration purposes:
 
 ```python
-from symai.backend.engines.neurosymbolic.engine_gptX_completion import GPTXCompletionEngine
+import os
+
+from symai import Expression, Symbol
+from symai.backend.engines.neurosymbolic.engine_openai_gptX_chat import \
+    GPTXChatEngine
 from symai.functional import EngineRepository
-class DummyEngine(GPTXCompletionEngine):
+
+
+class DummyEngine(GPTXChatEngine):
+    def __init__(self):
+        super().__init__(model='gpt-4o-mini', api_key=os.getenv('OPENAI_API_KEY', 'your-api-key-here'))
+
     def prepare(self, argument):
-        argument.prop.prepared_input = ['Go wild and generate something!']
+        argument.prop.prepared_input = [
+            {'role': 'system', 'content': 'Write like Jack London!'},
+            {'role': 'user', 'content': 'Go wild and generate something!'}
+        ]
+
 custom_engine = DummyEngine()
 sym = Symbol()
-EngineRepository.register('neurosymbolic', custom_engine)
+EngineRepository.register('neurosymbolic', custom_engine, allow_engine_override=True)
 res = sym.compose()
+print(res)
 ```
 
 To configure an engine, we can forward commands through `Expression` objects by using the `command` method. The `command` method passes on configurations (as `**kwargs`) to the engines and change functionalities or parameters. The functionalities depend on the respective engine.
@@ -57,14 +71,11 @@ To configure an engine, we can forward commands through `Expression` objects by 
 In this example, we will enable `verbose` mode, where the engine will print out the methods it is executing and the parameters it is using. This is useful for debugging purposes:
 
 ```python
+from symai import Expression
+
 sym = Symbol('Hello World!')
 Expression.command(engines=['neurosymbolic'], verbose=True)
 res = sym.translate('German')
 ```
 
-```bash
-:Output:
-<symai.backend.engines.engine_gptX_completion.GPTXCompletionEngine object at 0, <function Symbol.translate.<locals>._func at 0x7fd68ba04820>, {'instance': <class 'symai.symbol.S ['\n\nHallo Welt!']
-```
-
-Finally, if you want to create a completely new engine but still maintain our workflow, you can use the `query` function from [`symai/functional.py`](https://github.com/ExtensityAI/symbolicai/blob/main/symai/functional.py) and pass in your engine along with all other specified objects (i.e., Prompt, PreProcessor, etc.; see also section [Custom Operations](../FEATURES/operations.md#custom-operations)).
+Finally, if you want to create a completely new engine but still maintain our workflow, you can use the `query` function from [`symai/functional.py`](https://github.com/ExtensityAI/symbolicai/blob/main/symai/functional.py) and pass in your engine along with all other specified objects (i.e., Prompt, PreProcessor, etc).

@@ -308,9 +308,9 @@ from symai.models import LLMDataModel  # Thin Pydantic wrapper w/ LLM hints
 from symai.strategy import contract    # The Design-by-Contract decorator
 
 # ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
-#  1.  Data models                                             ▬
-#     – clear structure + rich Field descriptions power        ▬
-#       validation, automatic prompt templating & remedies     ▬
+#  1.  Data models                                          ▬
+#     – clear structure + rich Field descriptions power     ▬
+#       validation, automatic prompt templating & remedies  ▬
 # ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
 
 class Document(LLMDataModel):
@@ -376,7 +376,7 @@ class AnswerWithEvidence(LLMDataModel):
     )
 
 # ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
-#  2.  The contracted class                                    ▬
+#  2.  The contracted class                                 ▬
 # ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
 @contract(
     # ── Remedies ─────────────────────────────────────────── #
@@ -395,8 +395,8 @@ class MultiDocQAgent(Expression):
       3. LLM    – generate AnswerWithEvidence (handled by SymbolicAI engine)
       4. `post` – ensure answer & evidence meet semantic rules
       5. `forward`
-         • if contract succeeded → return validated LLM object
-         • else                   → graceful fallback answer
+         • if contract succeeded → return type validated LLM object
+         • else                  → graceful fallback answer
     """
 
     # ───────────────────────── init ───────────────────────── #
@@ -549,9 +549,9 @@ class MultiDocQAgent(Expression):
         )
 
 if __name__ == "__main__":
-    # ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
-    #  3.  Mini-demo (only executed when you run the file directly)
-    # ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+    # ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+    #  3.  Mini-demo (only executed when you run the file directly) ▬
+    # ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
     # ── tiny “corpus” ─────────────────────────────────────── #
     docs = [
         Document(

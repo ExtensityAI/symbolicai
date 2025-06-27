@@ -156,32 +156,7 @@ This addition to the README clearly explains:
 
 ### Configuration File
 
-You can specify engine properties in a symai.config.json file in your project path. This will replace the environment variables. The default configuration file that will be created is:
-```json
-{
-    "NEUROSYMBOLIC_ENGINE_API_KEY": "",
-    "NEUROSYMBOLIC_ENGINE_MODEL": "",
-    "SYMBOLIC_ENGINE_API_KEY": "",
-    "SYMBOLIC_ENGINE": "",
-    "EMBEDDING_ENGINE_API_KEY": "",
-    "EMBEDDING_ENGINE_MODEL": "",
-    "DRAWING_ENGINE_MODEL": "",
-    "DRAWING_ENGINE_API_KEY": "",
-    "SEARCH_ENGINE_API_KEY": "",
-    "SEARCH_ENGINE_MODEL": "",
-    "INDEXING_ENGINE_API_KEY": "",
-    "INDEXING_ENGINE_ENVIRONMENT": "",
-    "TEXT_TO_SPEECH_ENGINE_MODEL": "",
-    "TEXT_TO_SPEECH_ENGINE_API_KEY": "",
-    "SPEECH_TO_TEXT_ENGINE_MODEL": "",
-    "VISION_ENGINE_MODEL": "",
-    "OCR_ENGINE_API_KEY": "",
-    "COLLECTION_URI": "",
-    "COLLECTION_DB": "",
-    "COLLECTION_STORAGE": "",
-    "SUPPORT_COMMUNITY": false,
-}
-```
+You can specify engine properties in a `symai.config.json` file in your project path. This will replace the environment variables.
 Example of a configuration file with all engines enabled:
 ```json
 {
@@ -191,23 +166,22 @@ Example of a configuration file with all engines enabled:
     "SYMBOLIC_ENGINE": "wolframalpha",
     "EMBEDDING_ENGINE_API_KEY": "<OPENAI_API_KEY>",
     "EMBEDDING_ENGINE_MODEL": "text-embedding-3-small",
-    "DRAWING_ENGINE_API_KEY": "<OPENAI_API_KEY>",
-    "DRAWING_ENGINE_MODEL": "dall-e-3",
-    "VISION_ENGINE_MODEL": "openai/clip-vit-base-patch32",
     "SEARCH_ENGINE_API_KEY": "<PERPLEXITY_API_KEY>",
-    "SEARCH_ENGINE_MODEL": "llama-3.1-sonar-small-128k-online",
-    "OCR_ENGINE_API_KEY": "<APILAYER_API_KEY>",
-    "SPEECH_TO_TEXT_ENGINE_MODEL": "turbo",
+    "SEARCH_ENGINE_MODEL": "sonar",
+    "TEXT_TO_SPEECH_ENGINE_API_KEY": "<OPENAI_API_KEY>",
     "TEXT_TO_SPEECH_ENGINE_MODEL": "tts-1",
     "INDEXING_ENGINE_API_KEY": "<PINECONE_API_KEY>",
     "INDEXING_ENGINE_ENVIRONMENT": "us-west1-gcp",
-    "COLLECTION_DB": "ExtensityAI",
-    "COLLECTION_STORAGE": "SymbolicAI",
+    "DRAWING_ENGINE_API_KEY": "<OPENAI_API_KEY>",
+    "DRAWING_ENGINE_MODEL": "dall-e-3",
+    "VISION_ENGINE_MODEL": "openai/clip-vit-base-patch32",
+    "OCR_ENGINE_API_KEY": "<APILAYER_API_KEY>",
+    "SPEECH_TO_TEXT_ENGINE_MODEL": "turbo",
     "SUPPORT_COMMUNITY": true
 }
 ```
 
 With these steps completed, you should be ready to start using SymbolicAI in your projects.
 
-> **[NOTE]**: Our framework allows you to support us train models for local usage by enabling the data collection feature. On application startup we show the terms of services and you can activate or disable this community feature. We do not share or sell your data to 3rd parties and only use the data for research purposes and to improve your user experience. To change this setting open the `symai.config.json` and turn it on/off by setting the `SUPPORT_COMMUNITY` property to `True/False` via the config file or the respective environment variable.
-> **[NOTE]**: By default, the user warnings are enabled. To disable them, export `SYMAI_WARNINGS=0` in your environment variables.
+> ❗️**NOTE**❗️Our framework allows you to support us train models for local usage by enabling the data collection feature. On application startup we show the terms of services and you can activate or disable this community feature. We do not share or sell your data to 3rd parties and only use the data for research purposes and to improve your user experience. To change this setting open the `symai.config.json` and turn it on/off by setting the `SUPPORT_COMMUNITY` property to `True/False` via the config file or the respective environment variable.
+> ❗️**NOTE**❗️By default, the user warnings are enabled. To disable them, export `SYMAI_WARNINGS=0` in your environment variables.

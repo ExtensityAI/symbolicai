@@ -99,7 +99,7 @@ The Package Runner stores aliases in a JSON file named `aliases.json`. This file
 Here is an example how to use the `sympkg` and `symrun` via shell:
 ![Demo Usage of symask](https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/screen1.jpeg)
 
-> [NOTE]: If the alias specified cannot be found in the alias file, the Package Runner will attempt to run the command as a package. If the package is not found or an error occurs during execution, an appropriate error message will be displayed.
+> ❗️**NOTE**❗️If the alias specified cannot be found in the alias file, the Package Runner will attempt to run the command as a package. If the package is not found or an error occurs during execution, an appropriate error message will be displayed.
 
 That's it! You now have a basic understanding of how to use the Package Runner provided to run packages and aliases from the command line.
 
