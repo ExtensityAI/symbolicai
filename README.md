@@ -102,8 +102,8 @@ class DataModel(LLMDataModel):
     def validate_some_field(cls, v):
         # Custom basic validation logic can be added here too besides pre/post
         valid_opts = ['A', 'B', 'C']
-        if v not in valid_sizes:
-            raise ValueError(f'Must be one of {valid_sizes}, got "{v}".')
+        if v not in valid_opts:
+            raise ValueError(f'Must be one of {valid_opts}, got "{v}".')
         return v
 
 # ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
