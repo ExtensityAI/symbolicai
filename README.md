@@ -24,6 +24,8 @@ It's easily extensible and customizable to your needs by virtue of its modular d
 It's quite easy to [write your own engine](https://extensityai.gitbook.io/symbolicai/engines/custom_engine), [host locally](https://extensityai.gitbook.io/symbolicai/engines/local_engine) an engine of your choice, or interface with tools like [web search](https://extensityai.gitbook.io/symbolicai/engines/search_engine) or [image generation](https://extensityai.gitbook.io/symbolicai/engines/drawing_engine).
 To keep things concise in this README, we'll introduce two key concepts that define SymbolicAI: **primitives** and **contracts**.
 
+ > ❗️**NOTE**❗️ The framework's name is intended to credit the foundational work of Allen Newell and Herbert Simon that inspired this project.
+
 ### Primitives
 At the core of SymbolicAI are `Symbol` objects—each one comes with a set of tiny, composable operations that feel like native Python.
 ```python
@@ -283,12 +285,6 @@ If a configuration file exists in multiple locations, the system will use the hi
 - Use environment-specific configs for project-specific settings
 - Use debug mode (current directory) for development and testing
 - Run `symconfig` to inspect your current configuration setup
-
-This addition to the README clearly explains:
-1. The priority-based configuration system
-2. The different configuration locations and their purposes
-3. How to view and manage configurations
-4. Best practices for configuration management
 
 ### Configuration File
 
