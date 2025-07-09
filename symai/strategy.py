@@ -1,9 +1,8 @@
-import json
 import inspect
 import logging
 import time
 from collections import defaultdict
-from pydoc import locate
+from textwrap import dedent
 from typing import Callable
 
 import numpy as np
@@ -11,14 +10,12 @@ from beartype import beartype
 from loguru import logger
 from pydantic import BaseModel, ValidationError
 from rich.console import Console
+from rich.markup import escape
 from rich.panel import Panel
 from rich.table import Table
-from rich.markup import escape
 
 from .components import Function
-from .core_ext import deprecated
-from .models import (ExceptionWithUsage, LengthConstraint, LLMDataModel,
-                     TypeValidationError)
+from .models import LLMDataModel, TypeValidationError
 from .symbol import Expression
 
 NUM_REMEDY_RETRIES = 10
@@ -204,83 +201,85 @@ class TypeValidationFunction(ValidationFunction):
 
     def remedy_prompt(self, prompt: str, output: str, errors: str) -> str:
         """Override of base remedy_prompt providing instructions for fixing semantic validation errors."""
-        return f"""
-You are an expert in semantic validation. Your goal is to validate the output data model based on the prompt, the errors, and the output that produced the errors, and if given, the input data model and the input.
+        return dedent(f"""
+            You are an expert in semantic validation. Your goal is to validate the output data model based on the prompt, the errors, and the output that produced the errors, and if given, the input data model and the input.
 
-Your prompt was:
-<prompt>
-{prompt}
-</prompt>
+            Your prompt was:
+            <prompt>
+            {prompt}
+            </prompt>
 
-The input data model is:
-<input_data_model>
-{self.input_data_model.simplify_json_schema() if self.input_data_model is not None else 'N/A'}
-</input_data_model>
+            The input data model is:
+            <input_data_model>
+            {self.input_data_model.simplify_json_schema() if self.input_data_model is not None else 'N/A'}
+            </input_data_model>
 
-The given input was:
-<input>
-{str(self.input_data_model) if self.input_data_model is not None else 'N/A'}
-</input>
+            The given input was:
+            <input>
+            {str(self.input_data_model) if self.input_data_model is not None else 'N/A'}
+            </input>
 
-The output data model is:
-<output_data_model>
-{self.output_data_model.instruct_llm()}
-</output_data_model>
+            The output data model is:
+            <output_data_model>
+            {self.output_data_model.instruct_llm()}
+            </output_data_model>
 
-You've lastly generated the following output:
-<output>
-{output}
-</output>
+            You've lastly generated the following output:
+            <output>
+            {output}
+            </output>
 
-During the semantic validation, the output was found to have the following errors:
-<errors>
-{errors}
-</errors>
+            During the semantic validation, the output was found to have the following errors:
+            <errors>
+            {errors}
+            </errors>
 
-You need to:
-1. Correct the provided output to address **all listed validation errors**.
-2. Ensure the corrected output adheres strictly to the requirements of the **original prompt**.
-3. Preserve the intended meaning and structure of the original prompt wherever possible.
+            You need to:
+            1. Correct the provided output to address **all listed validation errors**.
+            2. Ensure the corrected output adheres strictly to the requirements of the **original prompt**.
+            3. Preserve the intended meaning and structure of the original prompt wherever possible.
 
-Important guidelines:
-</guidelines>
-- The result of the task must be the output data model.
-- Focus only on fixing the listed validation errors without introducing new errors or unnecessary changes.
-- Ensure the revised output is clear, accurate, and fully compliant with the original prompt.
-- Maintain proper formatting and any required conventions specified in the original prompt.
-</guidelines>
-"""
+            Important guidelines:
+            </guidelines>
+            - The result of the task must be the output data model.
+            - Focus only on fixing the listed validation errors without introducing new errors or unnecessary changes.
+            - Ensure the revised output is clear, accurate, and fully compliant with the original prompt.
+            - Maintain proper formatting and any required conventions specified in the original prompt.
+            </guidelines>
+            """
+        )
 
     def zero_shot_prompt(self, prompt: str) -> str:
         """We try to zero-shot the task, maybe we're lucky!"""
-        return f"""
-You are given the following prompt:
-<prompt>
-{prompt}
-</prompt>
+        return dedent(f"""
+            You are given the following prompt:
+            <prompt>
+            {prompt}
+            </prompt>
 
-The input data model is:
-<input_data_model>
-{self.input_data_model.simplify_json_schema() if self.input_data_model is not None else 'N/A'}
-</input_data_model>
+            The input data model is:
+            <input_data_model>
+            {self.input_data_model.simplify_json_schema() if self.input_data_model is not None else 'N/A'}
+            </input_data_model>
 
-The given input is:
-<input>
-{str(self.input_data_model) if self.input_data_model is not None else 'N/A'}
-</input>
+            The given input is:
+            <input>
+            {str(self.input_data_model) if self.input_data_model is not None else 'N/A'}
+            </input>
 
-The output data model is:
-<output_data_model>
-{self.output_data_model.instruct_llm()}
-</output_data_model>
+            The output data model is:
+            <output_data_model>
+            {self.output_data_model.instruct_llm()}
+            </output_data_model>
 
-Important guidelines:
-</guidelines>
-- The result of the task must be the output data model.
-- Ensure the revised output is clear, accurate, and fully compliant with the original prompt.
-- Maintain proper formatting and any required conventions specified in the original prompt.
-</guidelines>
-"""
+            Important guidelines:
+            </guidelines>
+            - The result of the task must be the output data model.
+            - Ensure the revised output is clear, accurate, and fully compliant with the original prompt.
+            - Maintain proper formatting and any required conventions specified in the original prompt.
+            </guidelines>
+            """
+        )
 
     def forward(self, prompt: str, f_semantic_conditions: list[Callable] | None = None, *args, **kwargs):
         if self.output_data_model is None:
@@ -306,13 +305,21 @@ Important guidelines:
 
         result = None
         errors = []
-        for i in range(self.retry_params["tries"]):
-            logger.info(f"Attempt {i+1}/{self.retry_params['tries']}: Attempting validation…")
+        for i in range(self.retry_params["tries"] + 1):
+            if i != self.retry_params["tries"]:
+                logger.info(f"Attempt {i+1}/{self.retry_params['tries']}: Attempting validation…")
             try:
                 result = self.output_data_model.model_validate_json(json_str, strict=True, context = validation_context)
                 if f_semantic_conditions is not None:
-                    if not all(f(result) for f in f_semantic_conditions):
-                        raise ValueError("Semantic validation failed!")
+                    try:
+                        assert all(f(result) for f in f_semantic_conditions)
+                    except Exception as e:
+                        # If we are in the last attempt and semantic validation fails, result will be None and we propagate the error
+                        if i == self.retry_params["tries"]:
+                            result = None
+                            errors.append(f"Semantic validation failed with:\n{str(e)}")
+                            break # We break to avoid going into the remedy loop
+                        raise e
                 break
             except Exception as e:
                 logger.info(f"Validation attempt {i+1} failed, pausing before retry…")
