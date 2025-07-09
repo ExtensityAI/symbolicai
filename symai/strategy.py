@@ -2,7 +2,6 @@ import inspect
 import logging
 import time
 from collections import defaultdict
-from textwrap import dedent
 from typing import Callable
 
 import numpy as np
@@ -201,85 +200,83 @@ class TypeValidationFunction(ValidationFunction):
 
     def remedy_prompt(self, prompt: str, output: str, errors: str) -> str:
         """Override of base remedy_prompt providing instructions for fixing semantic validation errors."""
-        return dedent(f"""
-            You are an expert in semantic validation. Your goal is to validate the output data model based on the prompt, the errors, and the output that produced the errors, and if given, the input data model and the input.
+        return f"""
+You are an expert in semantic validation. Your goal is to validate the output data model based on the prompt, the errors, and the output that produced the errors, and if given, the input data model and the input.
 
-            Your prompt was:
-            <prompt>
-            {prompt}
-            </prompt>
+Your prompt was:
+<prompt>
+{prompt}
+</prompt>
 
-            The input data model is:
-            <input_data_model>
-            {self.input_data_model.simplify_json_schema() if self.input_data_model is not None else 'N/A'}
-            </input_data_model>
+The input data model is:
+<input_data_model>
+{self.input_data_model.simplify_json_schema() if self.input_data_model is not None else 'N/A'}
+</input_data_model>
 
-            The given input was:
-            <input>
-            {str(self.input_data_model) if self.input_data_model is not None else 'N/A'}
-            </input>
+The given input was:
+<input>
+{str(self.input_data_model) if self.input_data_model is not None else 'N/A'}
+</input>
 
-            The output data model is:
-            <output_data_model>
-            {self.output_data_model.instruct_llm()}
-            </output_data_model>
+The output data model is:
+<output_data_model>
+{self.output_data_model.instruct_llm()}
+</output_data_model>
 
-            You've lastly generated the following output:
-            <output>
-            {output}
-            </output>
+You've lastly generated the following output:
+<output>
+{output}
+</output>
 
-            During the semantic validation, the output was found to have the following errors:
-            <errors>
-            {errors}
-            </errors>
+During the semantic validation, the output was found to have the following errors:
+<errors>
+{errors}
+</errors>
 
-            You need to:
-            1. Correct the provided output to address **all listed validation errors**.
-            2. Ensure the corrected output adheres strictly to the requirements of the **original prompt**.
-            3. Preserve the intended meaning and structure of the original prompt wherever possible.
+You need to:
+1. Correct the provided output to address **all listed validation errors**.
+2. Ensure the corrected output adheres strictly to the requirements of the **original prompt**.
+3. Preserve the intended meaning and structure of the original prompt wherever possible.
 
-            Important guidelines:
-            </guidelines>
-            - The result of the task must be the output data model.
-            - Focus only on fixing the listed validation errors without introducing new errors or unnecessary changes.
-            - Ensure the revised output is clear, accurate, and fully compliant with the original prompt.
-            - Maintain proper formatting and any required conventions specified in the original prompt.
-            </guidelines>
-            """
-        )
+Important guidelines:
+</guidelines>
+- The result of the task must be the output data model.
+- Focus only on fixing the listed validation errors without introducing new errors or unnecessary changes.
+- Ensure the revised output is clear, accurate, and fully compliant with the original prompt.
+- Maintain proper formatting and any required conventions specified in the original prompt.
+</guidelines>
+"""
 
     def zero_shot_prompt(self, prompt: str) -> str:
         """We try to zero-shot the task, maybe we're lucky!"""
-        return dedent(f"""
-            You are given the following prompt:
-            <prompt>
-            {prompt}
-            </prompt>
+        return f"""
+You are given the following prompt:
+<prompt>
+{prompt}
+</prompt>
 
-            The input data model is:
-            <input_data_model>
-            {self.input_data_model.simplify_json_schema() if self.input_data_model is not None else 'N/A'}
-            </input_data_model>
+The input data model is:
+<input_data_model>
+{self.input_data_model.simplify_json_schema() if self.input_data_model is not None else 'N/A'}
+</input_data_model>
 
-            The given input is:
-            <input>
-            {str(self.input_data_model) if self.input_data_model is not None else 'N/A'}
-            </input>
+The given input is:
+<input>
+{str(self.input_data_model) if self.input_data_model is not None else 'N/A'}
+</input>
 
-            The output data model is:
-            <output_data_model>
-            {self.output_data_model.instruct_llm()}
-            </output_data_model>
+The output data model is:
+<output_data_model>
+{self.output_data_model.instruct_llm()}
+</output_data_model>
 
-            Important guidelines:
-            </guidelines>
-            - The result of the task must be the output data model.
-            - Ensure the revised output is clear, accurate, and fully compliant with the original prompt.
-            - Maintain proper formatting and any required conventions specified in the original prompt.
-            </guidelines>
-            """
-        )
+Important guidelines:
+</guidelines>
+- The result of the task must be the output data model.
+- Ensure the revised output is clear, accurate, and fully compliant with the original prompt.
+- Maintain proper formatting and any required conventions specified in the original prompt.
+</guidelines>
+"""
 
     def forward(self, prompt: str, f_semantic_conditions: list[Callable] | None = None, *args, **kwargs):
         if self.output_data_model is None:
