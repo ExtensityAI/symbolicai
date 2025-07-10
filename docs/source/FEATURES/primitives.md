@@ -676,6 +676,46 @@ combined = sym_base.combine("Second part of the content.")
 # => "This is the main content. Second part of the content."
 ```
 
+### Semantic Mapping (`map`)
+
+The `map` operation applies semantic transformations to each element in an iterable based on natural language instructions. It preserves the container type and leaves non-matching elements unchanged.
+
+```python
+# Transform characters in strings
+text = Symbol("hello world")
+result = text.map('convert vowels to numbers: a=1, e=2, i=3, o=4, u=5')
+# => "h2ll4 w4rld"
+
+# Transform case selectively
+caps_text = Symbol("PROGRAMMING")
+result = caps_text.map('make consonants lowercase, keep vowels uppercase')
+# => "prOgrAmmIng"
+
+# Transform fruits to vegetables, leave animals unchanged
+mixed_list = Symbol(['apple', 'banana', 'cherry', 'cat', 'dog'])
+result = mixed_list.map('convert all fruits to vegetables')
+# => ['carrot', 'broccoli', 'spinach', 'cat', 'dog']
+
+# Work with dictionaries - transforms values, preserves keys
+fruit_dict = Symbol({'item1': 'apple', 'item2': 'banana', 'item3': 'cat'})
+result = fruit_dict.map('convert fruits to vegetables')
+# => {'item1': 'carrot', 'item2': 'broccoli', 'item3': 'cat'}
+
+# Preserve container types
+emotions_tuple = Symbol(('happy', 'sad', 'angry'))
+weather = emotions_tuple.map('convert emotions to weather')
+# => ('sunny', 'rainy', 'stormy')
+```
+
+**Supported Types:**
+- Strings: `"abc"` → `"xyz"` (character-by-character transformation)
+- Lists: `[...]` → `[...]`
+- Tuples: `(...)` → `(...)`
+- Sets: `{...}` → `{...}`
+- Dictionaries: `{key: value}` → `{key: transformed_value}`
+
+**Note:** For strings, transformations apply to individual characters and the result is joined back into a string. For dictionaries, transformations apply to values while preserving keys.
+
 ## 13. Pattern Matching and Intelligence Operations
 
 ### Content Ranking (`rank`)
@@ -770,230 +810,32 @@ sentiment_choice = sym_sentiment.choice(cases=sentiment_cases, default="neutral"
 # => "positive"
 ```
 
-## 12. Data Processing and Manipulation Operations
+## 14. Query Handling
 
-### Text Cleaning and Normalization (`clean`)
+### Querying
 
-The `clean()` method normalizes whitespace, removes extra spaces, and standardizes text formatting:
-
-```python
-sym_dirty = Symbol("This text has   multiple    spaces and\n\nextra newlines.\t\tAnd tabs.")
-cleaned = sym_dirty.clean()
-# => "This text has multiple spaces and extra newlines. And tabs."
-```
-
-### Content Summarization (`summarize`)
-
-The `summarize()` method creates concise summaries of longer content, with optional context for focused summarization:
+The `query()` method provides an easy interaction with an LLM based on the symbol value and a specified context.
 
 ```python
-sym_long = Symbol("Python is a high-level, interpreted programming language...")
-summarized = sym_long.summarize()
-# Creates a shorter version maintaining key information
+sym_data = Symbol(dedent("""
+Product: Laptop Computer
+Price: $1299.99
+Brand: TechCorp
+RAM: 16GB
+Storage: 512GB SSD
+Screen: 15.6 inch
+"""))
 
-# With context for focused summarization
-context_summarized = sym_long.summarize(context="Focus on Python's use in data science")
-# Emphasizes data science aspects in the summary
-```
+basic_query = sym_data.query("What is the price?")
+# => "The price is $1299.99"
 
-### Content Outlining (`outline`)
-
-The `outline()` method extracts structure and key points from hierarchical content:
-
-```python
-sym_complex = Symbol("""
-#Introduction to Machine Learning
-Machine learning is a subset of artificial intelligence...
-## Supervised Learning
-### Classification
-### Regression
-## Unsupervised Learning
-""")
-outlined = sym_complex.outline()
-# => ['- Machine Learning: subset of AI...', '- Supervised Learning: training...', ...]
-```
-
-### Content Filtering (`filter`)
-
-The `filter()` method selectively includes or excludes content based on criteria:
-
-```python
-sym_mixed = Symbol("Dogs are loyal pets. Cats are independent pets. Hamsters are small pets.")
-
-# Exclude content matching criteria (default behavior)
-filtered_ex = sym_mixed.filter(criteria="Cats")
-# => "Dogs are loyal pets. Hamsters are small pets."
-
-# Include only content matching criteria
-filtered_in = sym_mixed.filter(criteria="Dogs", include=True)
-# => "Dogs are loyal pets."
-```
-
-### Content Modification (`modify`)
-
-The `modify()` method applies specified changes to content:
-
-```python
-sym_original = Symbol("The quick brown fox jumps over the lazy dog.")
-changes = "Change 'quick' to 'fast' and 'lazy' to 'sleeping'"
-modified = sym_original.modify(changes=changes)
-# => "The fast brown fox jumps over the sleeping dog."
-```
-
-### Text Replacement (`replace`)
-
-The `replace()` method substitutes specific text with new content:
-
-```python
-sym_replace = Symbol("Python is a programming language. Python is easy to learn.")
-replaced = sym_replace.replace("Python", "JavaScript")
-# => "JavaScript is a programming language. JavaScript is easy to learn."
-```
-
-### Content Removal (`remove`)
-
-The `remove()` method eliminates specified content:
-
-```python
-sym_extra = Symbol("This text contains [unnecessary information] that should be removed.")
-removed = sym_extra.remove("[unnecessary information] ")
-# => "This text contains that should be removed."
-```
-
-### Content Addition (`include`, `combine`)
-
-Both methods add content, with subtle differences in behavior:
-
-```python
-sym_base = Symbol("This is the main content.")
-
-# Include additional information
-included = sym_base.include("This is additional information.")
-# => "This is the main content. This is additional information."
-
-# Combine with other content
-combined = sym_base.combine("Second part of the content.")
-# => "This is the main content. Second part of the content."
-```
-
-### Semantic Mapping (`map`)
-
-The `map` operation applies semantic transformations to each element in an iterable based on natural language instructions. It preserves the container type and leaves non-matching elements unchanged.
-
-```python
-# Transform characters in strings
-text = Symbol("hello world")
-result = text.map('convert vowels to numbers: a=1, e=2, i=3, o=4, u=5')
-# => "h2ll4 w4rld"
-
-# Transform case selectively
-caps_text = Symbol("PROGRAMMING")
-result = caps_text.map('make consonants lowercase, keep vowels uppercase')
-# => "prOgrAmmIng"
-
-# Transform fruits to vegetables, leave animals unchanged
-mixed_list = Symbol(['apple', 'banana', 'cherry', 'cat', 'dog'])
-result = mixed_list.map('convert all fruits to vegetables')
-# => ['carrot', 'broccoli', 'spinach', 'cat', 'dog']
-
-# Work with dictionaries - transforms values, preserves keys
-fruit_dict = Symbol({'item1': 'apple', 'item2': 'banana', 'item3': 'cat'})
-result = fruit_dict.map('convert fruits to vegetables')
-# => {'item1': 'carrot', 'item2': 'broccoli', 'item3': 'cat'}
-
-# Preserve container types
-emotions_tuple = Symbol(('happy', 'sad', 'angry'))
-weather = emotions_tuple.map('convert emotions to weather')
-# => ('sunny', 'rainy', 'stormy')
-```
-
-**Supported Types:**
-- Strings: `"abc"` → `"xyz"` (character-by-character transformation)
-- Lists: `[...]` → `[...]`
-- Tuples: `(...)` → `(...)`
-- Sets: `{...}` → `{...}`
-- Dictionaries: `{key: value}` → `{key: transformed_value}`
-
-**Note:** For strings, transformations apply to individual characters and the result is joined back into a string. For dictionaries, transformations apply to values while preserving keys.
-### Pattern Extraction (`extract`)
-
-The `extract()` method identifies and extracts specific patterns or information types:
-
-```python
-sym_contact = Symbol("""
-Contact Information:
-Email: john.doe@email.com
-Phone: +1-555-0123
-Address: 123 Main St, City
-""")
-extracted = sym_contact.extract("contact details")
-# => "Email: john.doe@email.com | Phone: +1-555-0123 | Address: 123 Main St, City"
-
-# Extract specific patterns like dates
-sym_text = Symbol("""
-Project deadline: 2024-03-15
-Budget allocated: $50,000
-Team size: 8 people
-Status: In Progress
-""")
-extracted_dates = sym_text.extract("dates and deadlines")
-# => "2024-03-15"
-```
-
-### Code Correction (`correct`)
-
-The `correct()` method automatically fixes code errors based on exceptions:
-
-```python
-# Fix syntax errors
-sym_code = Symbol("""
-def calculate_sum(a b):
-    return a + b
-""")
-corrected = sym_code.correct("Fix the code", exception=SyntaxError)
-# => "def calculate_sum(a, b):\n    return a + b"
-
-# Fix type errors
-sym_type_error = Symbol("""
-def process_data(items):
-    return items.sort()
-result = process_data([3, 1, 2])
-print(result + 1) # TypeError: NoneType + int
-""")
-corrected_type = sym_type_error.correct("Fix the code", exception=TypeError)
-# => Uses sorted() instead of sort() to return the sorted list
-```
-
-### Language Translation (`translate`)
-
-The `translate()` method converts content between languages with optional formality control:
-
-```python
-sym_english = Symbol("Hello, how are you today?")
-translated = sym_english.translate("Spanish")
-# => "Hola, ¿cómo estás hoy?"
-
-# Formal translation
-sym_informal = Symbol("Hey there! What's up?")
-translated_formal = sym_informal.translate("French", formal=True)
-# => "Salut ! Quoi de neuf ?" (Note: maintains appropriate formality)
-```
-
-### Multi-Choice Classification (`choice`)
-
-The `choice()` method classifies content into predefined categories:
-
-```python
-sym_weather = Symbol("Temperature: 85°F, Humidity: 70%, Conditions: Sunny")
-cases = ["hot and humid", "mild", "cold and dry"]
-weather_choice = sym_weather.choice(cases=cases, default="mild")
-# => "hot and humid"
-
-# Sentiment analysis
-sym_sentiment = Symbol("This product exceeded all my expectations! Absolutely wonderful!")
-sentiment_cases = ["positive", "neutral", "negative"]
-sentiment_choice = sym_sentiment.choice(cases=sentiment_cases, default="neutral")
-# => "positive"
+# Test query with more specific context
+tech_query = sym_data.query(
+    "specifications",
+    prompt="List the technical specifications",
+    examples=["|>a: ...", "|>b: ...", "|>c: ..."] # few-shot examples if needed
+)
+# => "|>RAM: 16GB\n|>Storage: 512GB SSD\n|>Screen: 15.6 inch"
 ```
 
 ### Format Conversion (`convert`)
