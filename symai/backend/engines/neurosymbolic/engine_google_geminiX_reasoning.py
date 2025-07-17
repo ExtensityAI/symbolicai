@@ -360,7 +360,7 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
             if except_remedy is not None:
                 res = except_remedy(self, e, self.client.generate_content, argument)
             else:
-                CustomUserWarning(f"Error during generation: {str(e)}", raise_with=ValueError)
+                CustomUserWarning(f'Error during generation. Caused by: {e}', raise_with=ValueError)
 
         metadata = {'raw_output': res}
         if payload.get('tools'):

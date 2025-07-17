@@ -305,13 +305,16 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             if except_remedy is not None:
                 res = except_remedy(self, e, callback, argument)
             else:
-                CustomUserWarning('An error occurred while calling the OpenAI API. Please check your API key and model name.', raise_with=ValueError)
+                CustomUserWarning(f'Error during generation. Caused by: {e}', raise_with=ValueError)
 
         metadata = {'raw_output': res}
         if payload.get('tools'):
             metadata = self._process_function_calls(res, metadata)
         output = [r.message.content for r in res.choices]
 
+        #@TODO: Normalize the output across engines to result something like Result object
+        #       I like the Rust Ok Result object, there's something similar in Python
+        #       (https://github.com/rustedpy/result)
         return output, metadata
 
     def _prepare_raw_input(self, argument):

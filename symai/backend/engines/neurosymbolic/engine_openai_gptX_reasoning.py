@@ -271,7 +271,7 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
             if except_remedy is not None:
                 res = except_remedy(self, e, callback, argument)
             else:
-                CustomUserWarning(f'An error occurred while processing the request: {e}. ', raise_with=ValueError)
+                CustomUserWarning(f'Error during generation. Caused by: {e}', raise_with=ValueError)
 
         metadata = {'raw_output': res}
         if payload.get('tools'):
