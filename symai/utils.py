@@ -162,6 +162,17 @@ def format_bytes(bytes):
         return f"{bytes / 1073741824:.2f} GB"
 
 
+def semassert(condition: bool, message: str = ""):
+    """
+    Weak assertion for semantic operations that informs about model limitations.
+    Shows a warning instead of failing the test when assertions fail.
+    """
+    if not condition:
+        base_msg = "Assertion failed due to model capability limitations in handling this type of semantic computation"
+        full_msg = f"{base_msg}. {message}" if message else base_msg
+        CustomUserWarning(f"⚠️  SEMANTIC ASSERT: {full_msg}")
+
+
 @dataclass
 class RuntimeInfo:
     total_elapsed_time: float

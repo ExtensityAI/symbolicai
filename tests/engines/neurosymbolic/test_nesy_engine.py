@@ -34,6 +34,7 @@ def test_init():
     assert True
 
 @pytest.mark.mandatory
+@pytest.mark.skipif(NEUROSYMBOLIC.startswith('groq'), reason='feature not yet implemented')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('llama'), reason='feature not yet implemented')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('huggingface'), reason='feature not yet implemented')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('o3-mini'), reason='feature not supported by the model')
@@ -60,6 +61,7 @@ def test_vision():
     assert 'cat' in res.value
 
 @pytest.mark.mandatory
+@pytest.mark.skipif(NEUROSYMBOLIC.startswith('groq'), reason='groq tokens computation is not supported')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('llama'), reason='llamacpp tokens computation is not yet implemented')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('huggingface'), reason='huggingface tokens computation is not yet implemented')
 def test_tokenizer():

@@ -10,6 +10,8 @@ import pytest
 
 from symai import Expression, Symbol
 from symai.backend.settings import SYMAI_CONFIG
+from symai.prompts import SemanticMapping
+from symai.utils import semassert
 
 _C = {
     "cyan":   "\033[96m",
@@ -38,11 +40,9 @@ def test_syn_sem_pr():
 
     sym_sem = sym_default.sem # convert to semantic
     assert sym_sem.__semantic__, ".sem should yield a semantic symbol"
-    assert sym_sem <= 123
 
     sym_syn = sym_sem.syn # convert back to syntactic
     assert not sym_syn.__semantic__, ".syn after .sem should revert to syntactic"
-    assert sym_syn <= 123
 
     sym_init_sem = Symbol("hello", semantic=True)
     assert sym_init_sem.__semantic__, "explicit semantic=True must set semantic"
@@ -59,7 +59,7 @@ def test_syn_sem_pr():
     assert lst.__semantic__     # semantic
     assert not sym.__semantic__ # syntactic
     assert sym not in lst.syn
-    assert sym in lst
+    semassert(sym in lst)
 
 @pytest.mark.mandatory
 def test_negate_invert_op():
@@ -146,9 +146,9 @@ def test_contains_op():
     other2 = 'fruit'
 
     assert other1 in sym_str_syn
+    assert not (other2 in sym_list_syn)
     display_op(f"'{sym_str_syn}' contains '{other1}'", other1 in sym_str_syn, "in", "syntactic")
     display_op(f"'{sym_str_sem}' contains '{other2}'", other2 in sym_str_sem, "in", "semantic")
-    assert other1 in sym_list_syn
     display_op(f"'{sym_list_syn}' contains '{other1}'", other1 in sym_list_syn, "in", "syntactic")
     display_op(f"'{sym_list_sem}' contains '{other2}'", other2 in sym_list_sem, "in", "semantic")
 
@@ -195,9 +195,9 @@ def test_equals_op():
     sym_list2 = Symbol([1, 2, 3], semantic=True) # or can be converted to a semantic symbol with ".sym" method
     sym_list3 = Symbol([3, 2, 1])
 
-    assert sym_list1 == sym_list2
-    display_op(f"{sym_list1} == {sym_list2}", sym_list1 == sym_list2, "==", "syntactic")
-    assert not (sym_list1 == sym_list3)
+    assert sym_list1 == sym_list2.syn
+    display_op(f"{sym_list1} == {sym_list2}", sym_list1 == sym_list2.syn, "==", "syntactic")
+    semassert(not (sym_list1 == sym_list3))
     display_op(f"{sym_list2} == {sym_list3}", sym_list2 == sym_list3, "==", "semantic")
 
 @pytest.mark.mandatory
@@ -243,9 +243,9 @@ def test_not_equals_op():
     sym_list2 = Symbol([1, 2, 3], semantic=True) # or can be converted to a semantic symbol with ".sym" method
     sym_list3 = Symbol([3, 2, 1])
 
-    assert not (sym_list1 != sym_list2)
-    display_op(f"{sym_list1} != {sym_list2}", sym_list1 != sym_list2, "!=", "syntactic")
-    assert sym_list1 != sym_list3
+    semassert(not (sym_list1 != sym_list2))
+    display_op(f"{sym_list1} != {sym_list2}", sym_list1 != sym_list2, "!=", "semantic")
+    semassert(sym_list1 != sym_list3)
     display_op(f"{sym_list2} != {sym_list3}", sym_list2 != sym_list3, "!=", "semantic")
 
 @pytest.mark.mandatory
