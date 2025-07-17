@@ -23,7 +23,8 @@ def test_json_format():
     admin_role = 'system' if \
         (NEUROSYMBOLIC.startswith('gpt') or
          NEUROSYMBOLIC.startswith('claude') or
-         NEUROSYMBOLIC.startswith('gemini'))  \
+         NEUROSYMBOLIC.startswith('gemini') or
+         NEUROSYMBOLIC.startswith('groq')) \
          else 'developer'
     if all(id not in NEUROSYMBOLIC for id in ['3-7', '4-0']):
         res = Expression.prompt(
