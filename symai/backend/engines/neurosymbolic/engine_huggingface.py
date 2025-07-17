@@ -125,7 +125,7 @@ class HFEngine(Engine):
             if except_remedy is not None:
                 res = except_remedy(self, e, argument)
             else:
-                CustomUserWarning(f"Request failed with exception: {str(e)}", raise_with=ValueError)
+                CustomUserWarning(f'Error during generation. Caused by: {e}', raise_with=ValueError)
 
         metadata = {'raw_output': res}
 

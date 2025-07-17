@@ -91,7 +91,7 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
             if except_remedy is not None:
                 res = except_remedy(self, e, callback, argument)
             else:
-                CustomUserWarning(f"DeepSeek API request failed. Original error: {e}", raise_with=ValueError)
+                CustomUserWarning(f'Error during generation. Caused by: {e}', raise_with=ValueError)
 
         reasoning_content = res.choices[0].message.reasoning_content
         content = res.choices[0].message.content

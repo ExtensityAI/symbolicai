@@ -189,7 +189,7 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
             if except_remedy is not None:
                 res = except_remedy(self, e, callback, argument)
             else:
-                CustomUserWarning(f"Anthropic API request failed: {e}", raise_with=ValueError)
+                CustomUserWarning(f'Error during generation. Caused by: {e}', raise_with=ValueError)
 
         if payload['stream']:
             res = [_ for _ in res] # Unpack the iterator to a list

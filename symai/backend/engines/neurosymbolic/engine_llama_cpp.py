@@ -196,7 +196,7 @@ class LlamaCppEngine(Engine):
         try:
             res = loop.run_until_complete(self._arequest(payload))
         except Exception as e:
-            CustomUserWarning(f"Request failed with error: {str(e)}", raise_with=ValueError)
+            CustomUserWarning(f'Error during generation. Caused by: {e}', raise_with=ValueError)
 
         metadata = {'raw_output': res}
 
