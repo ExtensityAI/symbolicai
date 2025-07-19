@@ -1,6 +1,6 @@
-# Installation
+## Installation
 
-## Core Features
+### Core Features
 
 To get started with SymbolicAI, you can install it using pip:
 
@@ -8,29 +8,7 @@ To get started with SymbolicAI, you can install it using pip:
 pip install symbolicai
 ```
 
-### Setting up a neurosymbolic API Key
-
-Before using SymbolicAI, you need to set up API keys for the various engines. Currently, SymbolicAI supports the following neurosymbolic engines through API: OpenAI, Anthropic. We also support {doc}`local neurosymbolic engines <ENGINES/local_engine>`, such as llama.cpp and huggingface.
-
-```bash
-# Linux / MacOS
-export NEUROSYMBOLIC_ENGINE_API_KEY="…"
-export NEUROSYMBOLIC_ENGINE_MODEL="…"
-```
-
-```bash
-# Windows (PowerShell)
-$Env:NEUROSYMBOLIC_ENGINE_API_KEY="…"
-$Env:NEUROSYMBOLIC_ENGINE_MODEL="…"
-```
-
-```bash
-# Jupyter Notebooks
-%env NEUROSYMBOLIC_ENGINE_API_KEY=…
-%env NEUROSYMBOLIC_ENGINE_MODEL=…
-```
-
-### Optional Features
+#### Optional Features
 
 SymbolicAI uses multiple engines to process text, speech and images. We also include search engine access to retrieve information from the web. To use all of them, you will need to also install the following dependencies and assign the API keys to the respective engines.
 
@@ -48,40 +26,7 @@ Or, install all optional dependencies at once:
 pip install "symbolicai[all]"
 ```
 
-And export the API keys, for example:
-
-```bash
-# Linux / MacOS
-export SYMBOLIC_ENGINE_API_KEY="<WOLFRAMALPHA_API_KEY>"
-export SEARCH_ENGINE_API_KEY="<SERP_API_KEY>"
-export OCR_ENGINE_API_KEY="<APILAYER_API_KEY>"
-export INDEXING_ENGINE_API_KEY="<PINECONE_API_KEY>"
-
-# Windows (PowerShell)
-$Env:SYMBOLIC_ENGINE_API_KEY="<WOLFRAMALPHA_API_KEY>"
-$Env:SEARCH_ENGINE_API_KEY="<SERP_API_KEY>"
-$Env:OCR_ENGINE_API_KEY="<APILAYER_API_KEY>"
-$Env:INDEXING_ENGINE_API_KEY="<PINECONE_API_KEY>"
-```
-
-See below for the entire list of keys that can be set via environment variables or a configuration file.
-
-### Additional Requirements
-
-**SpeechToText Engine**: Install `ffmpeg` for audio processing (based on OpenAI's [whisper](https://openai.com/blog/whisper/))
-
-```bash
-# Linux
-sudo apt update && sudo apt install ffmpeg
-
-# MacOS
-brew install ffmpeg
-
-# Windows
-choco install ffmpeg
-```
-
-**WebCrawler Engine**: For `selenium`, we automatically install the driver with `chromedriver-autoinstaller`. Currently we only support Chrome as the default browser.
+> ❗️**NOTE**❗️Please note that some of these optional dependencies may require additional installation steps. Additionally, some are only experimentally supported now and may not work as expected. If a feature is extremely important to you, please consider contributing to the project or reaching out to us.
 
 ## Configuration Management
 
@@ -111,11 +56,15 @@ The system manages three main configuration files:
 
 ### Viewing Your Configuration
 
-Before using the package, we recommend inspecting your current configuration setup using the command below. This will create all the necessary configuration files.
+Before using the `symai`, we recommend inspecting your current configuration setup using the command below. It will start the initial packages caching and initializing the `symbolicai` configuration files.
 
 ```bash
 symconfig
+
+# UserWarning: No configuration file found for the environment. A new configuration file has been created at <full-path>/.symai/symai.config.json. Please configure your environment.
 ```
+
+You then must edit the `symai.config.json` file. A neurosymbolic engine is **required** to use the `symai` package. Read more about how to use a neuro-symbolic engine [here](https://extensityai.gitbook.io/symbolicai/engines/neurosymbolic_engine).
 
 This command will show:
 - All configuration locations
@@ -148,12 +97,6 @@ If a configuration file exists in multiple locations, the system will use the hi
 - Use debug mode (current directory) for development and testing
 - Run `symconfig` to inspect your current configuration setup
 
-This addition to the README clearly explains:
-1. The priority-based configuration system
-2. The different configuration locations and their purposes
-3. How to view and manage configurations
-4. Best practices for configuration management
-
 ### Configuration File
 
 You can specify engine properties in a `symai.config.json` file in your project path. This will replace the environment variables.
@@ -184,4 +127,18 @@ Example of a configuration file with all engines enabled:
 With these steps completed, you should be ready to start using SymbolicAI in your projects.
 
 > ❗️**NOTE**❗️Our framework allows you to support us train models for local usage by enabling the data collection feature. On application startup we show the terms of services and you can activate or disable this community feature. We do not share or sell your data to 3rd parties and only use the data for research purposes and to improve your user experience. To change this setting open the `symai.config.json` and turn it on/off by setting the `SUPPORT_COMMUNITY` property to `True/False` via the config file or the respective environment variable.
+
 > ❗️**NOTE**❗️By default, the user warnings are enabled. To disable them, export `SYMAI_WARNINGS=0` in your environment variables.
+
+### Running tests
+Some examples of running tests locally:
+```bash
+# Run all tests
+pytest tests
+# Run mandatory tests
+pytest -m mandatory
+```
+Be sure to have your configuration set up correctly before running the tests. You can also run the tests with coverage to see how much of the code is covered by tests:
+```bash
+pytest --cov=symbolicai tests
+```
