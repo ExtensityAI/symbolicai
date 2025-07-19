@@ -127,8 +127,11 @@ class GPTXSearchEngine(Engine):
         }
         api_url = "https://api.openai.com/v1/responses"
 
-        res = requests.post(api_url, json=payload, headers=headers)
-        res = SearchResult(res.json())
+        try:
+            res = requests.post(api_url, json=payload, headers=headers)
+            res = SearchResult(res.json())
+        except Exception as e:
+            CustomUserWarning(f"Failed to make request: {e}", raise_with=ValueError)
 
         metadata = {"raw_output": res.raw}
         output   = [res]

@@ -2,7 +2,6 @@ import json
 import logging
 import re
 from copy import deepcopy
-from typing import List, Optional
 
 import openai
 
@@ -20,7 +19,7 @@ logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
 class GroqEngine(Engine):
-    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
+    def __init__(self, api_key: str | None = None, model: str | None = None):
         super().__init__()
         self.config = deepcopy(SYMAI_CONFIG)
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
@@ -180,7 +179,7 @@ class GroqEngine(Engine):
         if argument.prop.payload:
             system += f"<ADDITIONAL CONTEXT/>\n{str(payload)}\n\n"
 
-        examples: List[str] = argument.prop.examples
+        examples = argument.prop.examples
         if examples and len(examples) > 0:
             system += f"<EXAMPLES/>\n{str(examples)}\n\n"
 
