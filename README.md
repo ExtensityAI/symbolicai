@@ -146,7 +146,7 @@ To get started with SymbolicAI, you can install it using pip:
 pip install symbolicai
 ```
 
-#### Optional Features
+### Optional Features
 
 SymbolicAI uses multiple engines to process text, speech and images. We also include search engine access to retrieve information from the web. To use all of them, you will need to also install the following dependencies and assign the API keys to the respective engines.
 
