@@ -98,7 +98,7 @@ class WhisperResult(Result):
 
 
 class WhisperEngine(Engine):
-    def __init__(self, model: str | None = None):
+    def __init__(self, model: str | None = None, to_device: str | None = None):
         super().__init__()
         self.config = SYMAI_CONFIG
         self.model = None # lazy loading
@@ -108,6 +108,18 @@ class WhisperEngine(Engine):
         self.text = []
         self.formatter = WhisperTimestampsFormatter()
         self.name = self.__class__.__name__
+        if self.model is None or self.model_id != self.old_model_id:
+            device_fallback = 'cpu'
+            device = "cuda" if torch.cuda.is_available() else device_fallback
+            device = to_device if to_device is not None else device_fallback # user preference over auto detection
+            try:
+                self.model = whisper.load_model(self.model_id, device=device)
+            except RuntimeError:
+                CustomUserWarning(f"Whisper failed to load model on device {device}. Fallback to {device_fallback}.")
+                self.model = whisper.load_model(self.model_id, device=device_fallback)
+            self.old_model_id = self.model_id
+
+        self._try_compile()
 
     def id(self) -> str:
         if self.config['SPEECH_TO_TEXT_ENGINE_MODEL']:
@@ -127,18 +139,6 @@ class WhisperEngine(Engine):
         (_, audio) = argument.prop.prepared_input
         prompt = argument.prop.prompt
 
-        if self.model is None or self.model_id != self.old_model_id:
-            device_fallback = 'cpu'
-            device = "cuda" if torch.cuda.is_available() else device_fallback
-            device = kwargs['device'] if 'device' in kwargs else device # user preference over auto detection
-            try:
-                self.model = whisper.load_model(self.model_id, device=device)
-            except RuntimeError:
-                CustomUserWarning(f"Whisper failed to load model on device {device}. Fallback to {device_fallback}.")
-                self.model = whisper.load_model(self.model_id, device=device_fallback)
-            self.old_model_id = self.model_id
-
-        self._try_compile()
         show_pbar = kwargs.get("progress", False)
         language = kwargs.get("language", "en")
         temperature = kwargs.get("temperature", (0.0, 0.2, 0.4, 0.6, 0.8, 1.0))
