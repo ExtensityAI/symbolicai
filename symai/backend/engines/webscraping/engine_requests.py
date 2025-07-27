@@ -1,14 +1,18 @@
+import io
+import logging
 import re
 from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
 
 import requests
 import trafilatura
 from bs4 import BeautifulSoup
+from pdfminer.high_level import extract_text
 
 from ....symbol import Result
-from ....utils import CustomUserWarning
 from ...base import Engine
 
+logging.getLogger("pdfminer").setLevel(logging.WARNING)
+logging.getLogger("trafilatura").setLevel(logging.WARNING)
 
 class RequestsResult(Result):
     def __init__(self, value, output_format="markdown", **kwargs) -> None:
@@ -18,10 +22,16 @@ class RequestsResult(Result):
         self._value = self.extract()
 
     def extract(self):
+        ctype = self.raw.headers.get("Content-Type", "").lower()
+        is_pdf = "application/pdf" in ctype or self.raw.url.lower().endswith(".pdf")
         try:
-            decoded = trafilatura.load_html(self.raw.content)
-            self._value = trafilatura.extract(decoded, output_format=self.output_format)
-        except Exception as e:
+            if is_pdf:
+                with io.BytesIO(self.raw.content) as fh:
+                    self._value = extract_text(fh)
+            else:
+                decoded = trafilatura.load_html(self.raw.content)
+                self._value = trafilatura.extract(decoded, output_format=self.output_format)
+        except Exception:  # keep broad except to avoid hard failures
             self._value = None
         return self._value
 

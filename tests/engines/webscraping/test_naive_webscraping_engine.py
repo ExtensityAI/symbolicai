@@ -8,6 +8,7 @@ from symai.extended import Interface
 from symai.utils import semassert
 
 logging.getLogger("trafilatura").setLevel(logging.WARNING)
+logging.getLogger("pdfminer").setLevel(logging.WARNING)
 
 try:
     import bs4
@@ -23,17 +24,23 @@ def test_naive_webscraping(output_format):
     rsp = scraper(url, output_format=output_format)
 
     assert isinstance(rsp, RequestsResult), f"Expected RequestsResult, got {type(rsp)}"
-    semassert(rsp is not None, f"Expected a non-empty response for format '{output_format}'")
+    assert rsp is not None, f"Expected a non-empty response for format '{output_format}'"
 
     content = str(rsp).strip()
 
     if output_format == "json":
         try:
             parsed = json.loads(content)
-            semassert(isinstance(parsed, dict), "JSON output is not a valid JSON object")
+            assert isinstance(parsed, dict), "JSON output is not a valid JSON object"
         except json.JSONDecodeError as exc:
-            semassert(False, f"Invalid JSON output: {exc}")
+            assert False, f"Invalid JSON output: {exc}"
     elif output_format in ("html", "xml"):
-        semassert(content.startswith("<"), f"Expected {output_format} content to start with '<'")
+        assert content.startswith("<"), f"Expected {output_format} content to start with '<'"
     else:  # txt, markdown, or csv
-        semassert(len(content) > 0, f"{output_format} output is empty")
+        assert len(content) > 0, f"{output_format} output is empty"
+
+def test_pdf_extraction():
+    url = 'https://jevinwest.org/papers/Kim2017asa.pdf'
+    rsp = scraper(url)
+    assert isinstance(rsp, RequestsResult), f"Expected RequestsResult, got {type(rsp)}"
+    assert len(rsp) > 0, f"Expected non-empty response"
