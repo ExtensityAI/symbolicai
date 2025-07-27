@@ -1,22 +1,35 @@
 # Indexing Engine
 
----
+> ⚠️ **NOTE:** We currently only provide a naive local vector storage implementation within SymbolicAI, intended for local development, prototyping, or very small projects—**not** for production or scaled workloads. Local index storage is currently in-memory + on-disk (pickle) and not intended for concurrent/multi-process use. _Pinecone support has been deprecated and is likely non-functional_. We plan to add more robust local options (like Chroma, Milvus, etc.) and modern cloud index providers in the future; community contributions are very welcome!
 
-## ⚠️  Outdated or Deprecated Documentation ⚠️
-This documentation is outdated and may not reflect the current state of the SymbolicAI library. This page might be revived or deleted entirely as we continue our development. We recommend using more modern tools that infer the documentation from the code itself, such as [DeepWiki](https://deepwiki.com/ExtensityAI/symbolicai). This will ensure you have the most accurate and up-to-date information and give you a better picture of the current state of the library.
+## Usage
 
----
-
-We use `Pinecone` to index and search for text. The following example demonstrates how to store text as an index and then retrieve the most related match:
+By default, text indexing and retrieval is performed with the local naive vector engine using the `Interface` abstraction:
 
 ```python
-expr = Expression()
-expr.add(Symbol('Hello World!').zip())
-expr.add(Symbol('I like cookies!').zip())
-res = expr.get(Symbol('hello').embedding, index_name='default_index').ast()
-res['matches'][0]['metadata']['text'][0]
+from symai.interfaces import Interface
+
+db = Interface('naive_vectordb', index_name="my_index")
+db("Hello world", operation="add")
+result = db("Hello", operation="search", top_k=1)
+print(result.value)  # most relevant match
 ```
 
-Here, the `zip` method creates a pair of strings and embedding vectors, which are then added to the index. The line with `get` retrieves the original source based on the vector value of `hello` and uses `ast` to cast the value to a dictionary.
+You can also add or search multiple documents at once, and perform save/load/purge operations:
 
-You can set several optional arguments for the indexing engine. For more details, see the `symai/backend/engine_pinecone.py` file.
+```python
+docs = ["Alpha document", "Beta entry", "Gamma text"]
+db = Interface('naive_vectordb', index_name="my_index")
+db(docs, operation="add")
+db("save", operation="config")
+# Load or purge as needed
+```
+
+See code/tests for further advanced usage.
+
+## Embedding Model & API Key Behavior
+
+- **If `EMBEDDING_ENGINE_API_KEY` is empty (`""`, the default),** SymbolicAI will use a local, lightweight embedding engine based on SentenceTransformers. You can specify any supported model name via `EMBEDDING_ENGINE_MODEL` (e.g. `"all-mpnet-base-v2"`).
+- **If you DO provide an `EMBEDDING_ENGINE_API_KEY`**, then the respective remote embedding engine will be used (e.g. OpenAI). The model is selected according to the `EMBEDDING_ENGINE_MODEL` key where applicable.
+
+This allows you to easily experiment locally for free, and switch to more powerful cloud backends when ready.

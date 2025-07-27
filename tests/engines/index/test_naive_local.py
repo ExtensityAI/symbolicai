@@ -5,7 +5,7 @@ import pytest
 
 from symai.backend.engines.index.engine_vectordb import VectorDBResult
 from symai.backend.settings import HOME_PATH, SYMAI_CONFIG
-from symai.extended.interfaces.naive_vectordb import naive_vectordb
+from symai.extended import Interface
 from symai.utils import CustomUserWarning
 
 if not bool(SYMAI_CONFIG.get("EMBEDDING_ENGINE_API_KEY")):
@@ -15,7 +15,7 @@ if not bool(SYMAI_CONFIG.get("EMBEDDING_ENGINE_API_KEY")):
 
 def test_add_and_search_single_document():
     index_name = "testindex_single"
-    db = naive_vectordb(index_name=index_name)
+    db = Interface("naive_vectordb", index_name=index_name)
     db("Hello world", operation="add")
     result = db("Hello world", operation="search")
     assert isinstance(result, VectorDBResult)
@@ -25,7 +25,7 @@ def test_add_and_search_single_document():
 def test_add_and_search_multiple_documents():
     index_name = "testindex_multiple"
     docs = ["Alpha document", "Beta entry", "Gamma text"]
-    db = naive_vectordb(index_name=index_name)
+    db = Interface("naive_vectordb", index_name=index_name)
     db(docs, operation="add")
     result = db("Beta entry", operation="search", top_k=1)
     assert isinstance(result, VectorDBResult)
@@ -39,7 +39,7 @@ def test_save_load_purge():
     storage_file = storage_dir / f"{index_name}.pkl"
     docs = ["Alpha document", "Beta entry", "Gamma text"]
 
-    db = naive_vectordb(index_name=index_name)
+    db = Interface("naive_vectordb", index_name=index_name)
     db(docs, operation="add")
     db("save", operation="config")
 
