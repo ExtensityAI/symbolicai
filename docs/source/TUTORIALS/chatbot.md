@@ -1,83 +1,87 @@
-# Writing a Custom Chatbot
+# Talking to Symbia 🤖
+
+SymbiaChat is the built-in conversational agent that ships with SymbolicAI.
+You don’t have to derive your own `ChatBot` subclass anymore—everything is
+already wired together for you.
 
 ---
 
-## ⚠️  Outdated or Deprecated Documentation ⚠️
-This documentation is outdated and may not reflect the current state of the SymbolicAI library. This page might be revived or deleted entirely as we continue our development. We recommend using more modern tools that infer the documentation from the code itself, such as [DeepWiki](https://deepwiki.com/ExtensityAI/symbolicai). This will ensure you have the most accurate and up-to-date information and give you a better picture of the current state of the library.
+## Quick start
 
----
+### 1 · From the terminal
 
-Click here for [interactive notebook](https://github.com/ExtensityAI/symbolicai/blob/main/notebooks/ChatBot.ipynb)
-
-```python
-import os
-import warnings
-warnings.filterwarnings('ignore')
-os.chdir('../') # set the working directory to the root of the project
-from symai import *
-from symai.components import *
-from IPython.display import display
+```bash
+symchat
 ```
 
-Writing a chatbot is fairly easy with our framework. All we need to do is basically derive from the ChatBot class and implement the forward method. The base class ChatBot has already some helper capabilities and context detection dictionaries. All we have to do is use the self.narrate method to instruct our chatbot to say what we want.
-
-Afterwards, we can use the self.context_choice method to classify the context of the user input. This is done by using a dictionary of context keywords. The self.context_choice method returns the context key that matches the user input. This key can then be used to determine the next action / condition of the chatbot.
-
-By creating an instance of the SymbiaChat and calling the forward method, we can start a chat with our chatbot. The forward method takes a user input and returns a chatbot response.
-
-See the following example:
-
-```python
-from symai.chat import ChatBot
-from symai.interfaces import Interface
-
-
-class SymbiaChat(ChatBot):
-    def forward(self) -> str:
-        message = self.narrate('Symbia introduces herself, writes a greeting message and asks how to help.')
-        while True:
-            # query user
-            usr = self.input(message)
-
-            # detect context
-            ctxt = self.context_choice(usr)
-
-            if 'option 3' in ctxt: # exit
-                self.narrate('Symbia writes goodbye message.', end=True)
-                break # end chat
-
-            elif 'option 4' in ctxt: # help
-                message = self.narrate('Symbia writes for each capability one sentence.',
-                                       context=self.capabilities)
-
-            elif 'option 1' in ctxt: # chit chat
-                message = self.narrate('Symbia replies to the user question in a casual way.')
-
-            elif 'option 2' in ctxt:
-                # detect command
-                option = self.capabilities_choice(usr)
-
-                if 'option 1' in option:
-                    q = usr.extract('user query request')
-                    rsp = self.search(q)
-                    message = self.narrate('Symbia replies to the user based on the online search results.',
-                                           context=rsp)
-                elif 'option 2' in option:
-                    q = usr.extract('URL')
-                    site = self.crawler(q)
-                    site.save('tmp.html')
-                    message = self.narrate('Symbia explains that the website is downloaded to the `tmp.html` file.')
-                elif 'option 3' in option:
-                    pass
-
-                # TODO ...
-```
+### 2 · From Python
 
 ```python
 from symai.chat import SymbiaChat
 
-chat = SymbiaChat()
+chat = SymbiaChat() # optional: verbose=True for debug prints
 chat()
 ```
 
-The implemented chatbot can answer trivia questions, use the Google search engine to retrieve information, and download and save web pages.
+Both entry points start an interactive REPL. Type your messages and Symbia will
+reply in real time.
+
+---
+
+## What can Symbia do?
+
+Symbia continuously classifies your input and decides whether she can answer
+directly, needs a tool, or should ask for clarification.
+Below is the current toolbox with the *classification tags* it uses
+internally (you will occasionally see them in debug mode):
+
+| Tag | Engine | Typical prompt examples |
+|-----|--------|-------------------------|
+| `[WORLD-KNOWLEDGE]` | Internal LLM | “Who wrote *Dune*?” |
+| `[SYMBOLIC]` | Symbolic math solver | “Integrate x² from 0 to 3.” |
+| `[SEARCH]` | Web search (RAG) | “Give me the TL;DR of arXiv:2507.16075.” |
+| `[SCRAPER]` | Website scraper | “Scrape all contributor names from <URL>.” |
+| `[SPEECH-TO-TEXT]` | Audio transcription | “What does this file say? /path/to/audio.mp3” |
+| `[TEXT-TO-IMAGE]` | Image generation | “Draw a friendly space cat.” |
+| `[FILE]` | File reader | “Summarise /tmp/report.pdf.” |
+| `[RECALL]` | Memory (short + long term) | “Remember that my dog’s name is Noodle.” |
+| `[HELP]` | Capability list | “What can you do?” |
+| `[DK]` | “Don’t know” ↔ ask user | Ambiguous or malformed input |
+| `[EXIT]` | Quit session | “Goodbye”, “quit”, … |
+
+---
+
+## Memory model
+
+1. **Short-term memory** – a fixed-size sliding window that keeps the last *n*
+   conversation turns.
+2. **Long-term memory** – a vector index stored on disk (`localdb/<index>.pkl`)
+   for facts Symbia deems worth remembering.
+   Ask “Do you remember …?” to trigger a `[RECALL]`.
+
+Both memories are consulted automatically; you do not need to manage them.
+
+---
+
+## Under the hood (tl;dr)
+
+```
+ChatBot                # abstract base class
+└── SymbiaChat         # concrete subclass you interact with
+    ├─ In-context classification → picks capability tag
+    ├─ SlidingWindowListMemory  → short-term memory
+    ├─ Vector index interface   → long-term memory
+    └─ self.interfaces[...]     → tooling shown above
+```
+
+If your use-case demands different behaviour, subclass `ChatBot` and override
+`forward`, but for most applications `SymbiaChat` is already sufficient.
+
+---
+
+## Next steps
+
+* Start a chat, explore the capabilities, and watch the classification tags in
+  verbose mode for insight into Symbia’s decision making.
+
+Happy chatting!
