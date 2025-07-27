@@ -480,11 +480,6 @@ class CleanTextMessagePreProcessor(PreProcessor):
         return f"Text: '{str(argument.prop.instance)}' =>"
 
 
-class CrawlPatternPreProcessor(PreProcessor):
-    def __call__(self, argument) -> Any:
-        return ''
-
-
 class PredictionMessagePreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
         return f'Prediction:'

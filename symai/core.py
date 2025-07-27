@@ -1346,23 +1346,20 @@ def output(constraints: List[Callable] = [],
     return decorator
 
 
-def fetch(url: str,
-          pattern: str = ' ',
+def scrape(url: str,
           constraints: List[Callable] = [],
           default: Optional[object] = None,
-          pre_processors: Optional[List[pre.PreProcessor]] = [pre.CrawlPatternPreProcessor()],
+          pre_processors: Optional[List[pre.PreProcessor]] = [],
           post_processors: Optional[List[post.PostProcessor]] = [],
           **decorator_kwargs):
     """Fetches data from a given URL and applies the provided post-processors."""
     def decorator(func):
         @functools.wraps(func)
         def wrapper(instance, *signature_args, **signature_kwargs):
-            # Construct container object for the arguments and kwargs
-            decorator_kwargs['urls'] = url
-            decorator_kwargs['patterns'] = pattern
+            decorator_kwargs['url'] = url
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
             return EngineRepository.query(
-                                engine='crawler',
+                                engine='webscraping',
                                 instance=instance,
                                 func=func,
                                 constraints=constraints,

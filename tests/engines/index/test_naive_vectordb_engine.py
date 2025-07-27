@@ -1,8 +1,3 @@
-import json
-import os
-
-import pytest
-
 from symai.backend.engines.index.engine_vectordb import VectorDBResult
 from symai.backend.settings import HOME_PATH, SYMAI_CONFIG
 from symai.extended import Interface

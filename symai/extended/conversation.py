@@ -1,17 +1,17 @@
 import os
 import pickle
-
 from datetime import datetime
-from typing import Any, Callable, Optional, List
 from pathlib import Path
+from typing import Any, Callable, List, Optional
 
-from .seo_query_optimizer import SEOQueryOptimizer
-from .document import DocumentRetriever
+from ..components import FileReader, Indexer
 from ..formatter import TextContainerFormatter
-from ..components import Indexer, FileReader
+from ..interfaces import Interface
 from ..memory import SlidingWindowStringConcatMemory
 from ..symbol import Symbol
-from ..interfaces import Interface
+from ..utils import CustomUserWarning, deprecated
+from .document import DocumentRetriever
+from .seo_query_optimizer import SEOQueryOptimizer
 
 
 class CodeFormatter:
@@ -23,14 +23,14 @@ class CodeFormatter:
 class Conversation(SlidingWindowStringConcatMemory):
     def __init__(
             self,
-            init:                    Optional[str]       = None,
-            file_link:               Optional[List[str]] = None,
-            url_link:                Optional[List[str]] = None,
-            index_name:              Optional[str]       = None,
-            auto_print:              bool                = True,
-            truncation_percentage:   float               = 0.8,
-            truncation_type:         str                 = 'head',
-            with_metadata:           bool                = False,
+            init: Optional[str] = None,
+            file_link: Optional[List[str]] = None,
+            url_link: Optional[List[str]] = None,
+            index_name: Optional[str] = None,
+            auto_print: bool = True,
+            truncation_percentage: float = 0.8,
+            truncation_type: str = 'head',
+            with_metadata: bool = False,
             *args, **kwargs
         ):
         super().__init__(*args, **kwargs)
@@ -46,7 +46,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         self.index_name = index_name
         self.seo_opt = SEOQueryOptimizer()
         self.reader = FileReader(with_metadata=with_metadata)
-        self.crawler = Interface('selenium')
+        self.scraper = Interface('naive_webscraping')
         self.user_tag = 'USER::'
         self.bot_tag = 'ASSISTANT::'
 
@@ -58,15 +58,13 @@ class Conversation(SlidingWindowStringConcatMemory):
         if url_link is not None:
             for url in url_link:
                 self.store_url(url, *args, **kwargs)
-        self.indexer     = None
-        self.index       = None
+        self.indexer = None
+        self.index = None
         if index_name is not None:
-            self.indexer = Indexer(index_name=index_name)
-            self.index   = self.indexer(raw_result=kwargs.get('raw_result', False))
+            CustomUserWarning("Index not supported for conversation class.", raise_with=NotImplementedError)
 
     def __getstate__(self):
         state = super().__getstate__().copy()
-        # Remove the unpickleable entries such as the `indexer` attribute because it is not serializable
         state.pop('seo_opt', None)
         state.pop('indexer', None)
         state.pop('index', None)
@@ -74,14 +72,11 @@ class Conversation(SlidingWindowStringConcatMemory):
         return state
 
     def __setstate__(self, state):
-        # Restore instance attributes
         self.__dict__.update(state)
-        # Add back the attribute that were removed in __getstate__
-        if self.index_name:
-            self.indexer = Indexer(index_name=self.index_name)
-            self.index   = self.indexer(raw_result=True)
         self.seo_opt = SEOQueryOptimizer()
-        self.reader  = FileReader()
+        self.reader = FileReader()
+        if self.index_name is not None:
+            CustomUserWarning("Index not supported for conversation class.", raise_with=NotImplementedError)
 
     def store_system_message(self, message: str, *args, **kwargs):
         val = f"[SYSTEM_INSTRUCTION::]: <<<\n{str(message)}\n>>>\n"
@@ -93,7 +88,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         self.store(val)
 
     def store_url(self, url: str, *args, **kwargs):
-        content = self.crawler(url)
+        content = self.scraper(url)
         val = f"[DATA::{url}]: <<<\n{str(content)}\n>>>\n"
         self.store(val)
 
@@ -129,11 +124,10 @@ class Conversation(SlidingWindowStringConcatMemory):
         self.file_link = conversation_state.file_link
         self.url_link = conversation_state.url_link
         self.index_name  = conversation_state.index_name
-        if self.index_name is not None:
-            self.indexer = Indexer(index_name=self.index_name)
-            self.index = self.indexer(raw_result=True)
         self.seo_opt = SEOQueryOptimizer()
         self.reader = FileReader()
+        if self.index_name is not None:
+            CustomUserWarning("Index not supported for conversation class.", raise_with=NotImplementedError)
         return self
 
     def commit(self, target_file: str = None, formatter: Optional[Callable] = None):
@@ -271,6 +265,7 @@ Responses should be:
 - Referenced to source when applicable
 """
 
+@deprecated("Use `Conversation` instead for now. This will be removed/fixed in the future.")
 class RetrievalAugmentedConversation(Conversation):
     def __init__(
             self,
@@ -311,7 +306,6 @@ class RetrievalAugmentedConversation(Conversation):
         self.max_depth = max_depth
         self.index_name = index_name
         self.auto_print = auto_print
-        self.token_ratio = token_ratio
         self.top_k = top_k
         self.formatter = formatter
         self.overwrite = overwrite

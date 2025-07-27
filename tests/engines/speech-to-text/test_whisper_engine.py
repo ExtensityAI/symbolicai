@@ -11,7 +11,7 @@ from symai.utils import CustomUserWarning, semassert
 try:
     import whisper
 except ImportError:
-    raise ImportError("whisper is not installed. Please install it using 'pip install openai-whisper'")
+    raise ImportError("whisper is not installed. Please install it.")
 
 if SYMAI_CONFIG.get("SPEECH_TO_TEXT_ENGINE_MODEL") not in ["tiny", "base", "small", "medium", "large", "turbo"]:
     CustomUserWarning("The model you have selected is not supported by the whisper engine. Please select a supported model: [tiny, base, small, medium, large, turbo]", raise_with=ValueError)
