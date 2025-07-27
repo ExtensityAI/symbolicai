@@ -27,7 +27,6 @@ dependencies:
   - beautifulsoup4
   - selenium
   - rpyc
-  - accelerate
   - sentencepiece
   - webdriver-manager
   - pandas

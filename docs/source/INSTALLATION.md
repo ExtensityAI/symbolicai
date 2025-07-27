@@ -120,6 +120,7 @@ Example of a configuration file with all engines enabled:
     "VISION_ENGINE_MODEL": "openai/clip-vit-base-patch32",
     "OCR_ENGINE_API_KEY": "<APILAYER_API_KEY>",
     "SPEECH_TO_TEXT_ENGINE_MODEL": "turbo",
+    "SPEECH_TO_TEXT_API_KEY": "",
     "SUPPORT_COMMUNITY": true
 }
 ```
