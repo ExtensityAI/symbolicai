@@ -24,7 +24,7 @@ class SymAIConfig:
         """Returns the active configuration directory based on priority system."""
         # Debug mode takes precedence
         if (self._debug_dir / 'symai.config.json').exists():
-            return self._debug_dir
+            return self._debug_dir / '.symai'
         # Then environment config
         if self._env_config_dir.exists():
             return self._env_config_dir

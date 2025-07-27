@@ -1,101 +1,38 @@
 import gzip
+import logging
 import os
 import pickle
+from copy import deepcopy
 from pathlib import Path
 
 import numpy as np
 
-from ..backend.settings import HOME_PATH
+from ..backend.settings import HOME_PATH, SYMAI_CONFIG
 from ..interfaces import Interface
 from ..symbol import Expression, Symbol
+from ..utils import CustomUserWarning
 from .metrics import (adams_similarity, cosine_similarity,
                       derridaean_similarity, dot_product, euclidean_metric,
                       ranking_algorithm_sort)
 
-MAX_BATCH_SIZE = 2048 # Maximum batch size for embedding function
+logging.getLogger('sentence_transformers').setLevel(logging.WARNING)
+logging.getLogger('datasets').setLevel(logging.WARNING)
 
 
 class VectorDB(Expression):
-    """
-    A simple vector database that stores vectors and documents in memory.
-
-    Inspired by the foundational research of John Dagdelen from the University of California, Berkeley and
-    his unique approach to problem solving with vector databases: https://github.com/jdagdelen/hyperDB
-
-    Parameters
-    ----------
-    documents : list, optional
-        A list of documents to add to the database.
-    vectors : list, optional
-        A list of vectors to add to the database.
-    embedding_model : callable, optional
-        The reference to a callable embedding model used in the default `embedding_function`; defaults to `ExtensityAI/embeddings` which is `all-mpnet-base-v2` based.
-    embedding_function : callable, optional
-        A function that takes in a list of documents and returns a list of vectors; defaults to `_get_embedding` which uses the callable `embedding_model`.
-    similarity_metric : str, optional
-        The similarity metric to use when querying the database. Can be either 'dot', 'cosine', 'euclidean', 'adams', or 'derrida'.
-    batch_size : int, optional
-        The batch size to use when embedding documents into vectors.
-    load_on_init : bool, optional
-        Whether or not to load the database from a file on initialization.
-    index_dims : int, optional
-        The number of dimensions to use when creating a new index. Defaults to 768.
-    top_k : int, optional
-        The number of results to return when querying the database. Defaults to 5.
-
-    Attributes
-    ----------
-    documents : list
-        A list of documents in the database.
-    vectors : numpy.ndarray
-        A numpy array of vectors in the database.
-    embedding_function : function
-        The function used to embed documents into vectors.
-    similarity_metric : function
-        The similarity metric used to query the database.
-
-    Methods
-    -------
-    dict(vectors=False)
-        Returns a list of documents in the database.
-    add(documents, vectors=None)
-        Adds a document or list of documents to the database.
-    add_document(document, vector=None)
-        Adds a document to the database.
-    remove_document(index)
-        Removes a document from the database.
-    add_documents(documents, vectors=None)
-        Adds a list of documents to the database.
-    save(storage_file)
-        Saves the database to a file.
-    load(storage_file)
-        Loads the database from a file.
-    forward(query_text, top_k=5, return_similarities=True)
-        Queries the database for similar documents.
-
-    Examples
-    --------
-    >>> from symai.extended import VectorDB
-    >>> db = VectorDB()
-    >>> db.add("Hello, World!")
-    >>> db("Hello, World!")
-    """
-    _default_documents          = []
-    _default_vectors            = None
-    _default_embedding_model    = None
-    _default_batch_size         = MAX_BATCH_SIZE
-    _default_similarity_metric  = "cosine"
+    _default_documents = []
+    _default_vectors = None
+    _default_batch_size = 2048
+    _default_similarity_metric = "cosine"
     _default_embedding_function = None
-    _default_index_dims         = 768
-    _default_top_k              = 5
-    _default_storage_path       = os.path.join(HOME_PATH, "localdb")
-    _default_index_name         = "dataindex"
-
+    _default_index_dims = 768
+    _default_top_k = 5
+    _default_storage_path = os.path.join(HOME_PATH, "localdb")
+    _default_index_name = "dataindex"
     def __init__(
         self,
         documents=_default_documents,
         vectors=_default_vectors,
-        embedding_model=_default_embedding_model,
         embedding_function=_default_embedding_function,
         similarity_metric=_default_similarity_metric,
         batch_size=_default_batch_size,
@@ -106,20 +43,20 @@ class VectorDB(Expression):
         **kwargs
     ):
         super().__init__(**kwargs)
-        #
-        self.documents          = []
-        self.vectors            = None
+        self.config = deepcopy(SYMAI_CONFIG)
+        self.documents = []
+        self.vectors = None
         # init basic properties
-        self.batch_size         = batch_size
-        self.index_dims         = index_dims
-        self.index_top_k        = top_k
-        self.index_name         = index_name
+        self.batch_size = batch_size
+        self.index_dims = index_dims
+        self.index_top_k = top_k
+        self.index_name = index_name
         # init embedding function
-        self.model              = embedding_model or Interface('ExtensityAI/embeddings')
+        self._init_embedding_model()
         self.embedding_function = embedding_function or self._get_embedding
         if vectors is not None:
-            self.vectors        = vectors
-            self.documents      = documents
+            self.vectors = vectors
+            self.documents = documents
         else:
             self.add_documents(documents)
 
@@ -134,7 +71,7 @@ class VectorDB(Expression):
         elif "adams" in similarity_metric:
             self.similarity_metric = adams_similarity
         else:
-            raise Exception("Similarity metric not supported. Please use either 'dot', 'cosine', 'euclidean', 'adams', or 'derrida'.")
+            CustomUserWarning(f"Similarity metric not supported. Please use either 'dot', 'cosine', 'euclidean', 'adams', or 'derrida'.", raise_with=ValueError)
 
         if load_on_init:
             # If load_on_init is a string, use it as the storage file
@@ -143,6 +80,12 @@ class VectorDB(Expression):
                 self.load(path)
             else:
                 self.load()
+
+    def _init_embedding_model(self):
+        if self.config['EMBEDDING_ENGINE_API_KEY'] is None or  self.config['EMBEDDING_ENGINE_API_KEY'] == '':
+            self.model = Interface('ExtensityAI/embeddings') # default to local model
+        else:
+            self.model = lambda x: Symbol(x).embedding
 
     def _get_embedding(self, documents, key=None):
         """
@@ -166,7 +109,6 @@ class VectorDB(Expression):
         # if the documents are a list of Symbols, unwrap them
         if len(documents) == 0:
             return []
-
         if isinstance(documents, list):
             # If the documents are a list of dictionaries, extract the text from the dictionary
             if isinstance(documents[0], dict):
@@ -179,18 +121,18 @@ class VectorDB(Expression):
                         key_chain = [key]
                     for doc in documents:
                         for key in key_chain:
-                            doc   = doc[key]
+                            doc = doc[key]
                         texts.append(doc.replace("\n", " "))
                 # If no key is specified, extract the text from the dictionary using all keys
                 elif key is None:
                     for doc in documents:
-                        text      = ", ".join([f"{key}: {value}" for key, value in doc.items()])
+                        text = ", ".join([f"{key}: {value}" for key, value in doc.items()])
                         texts.append(text)
             # If the documents are a list of strings, use the strings as the documents
             elif isinstance(documents[0], str):
                 texts = documents
             # If the documents are a list of lists, use the lists as the documents
-        batches    = [texts[i : i + self.batch_size] for i in range(0, len(texts), self.batch_size)]
+        batches = [texts[i : i + self.batch_size] for i in range(0, len(texts), self.batch_size)]
         embeddings = []
         # Embed the documents in batches
         for batch in batches:
@@ -202,7 +144,7 @@ class VectorDB(Expression):
                 for i in range(emb.shape[0]):
                     embeddings.append(emb[i])
             else:
-                raise Exception("Embeddings must be a 1D or 2D array.")
+                CustomUserWarning("Embeddings must be a 1D or 2D array.", raise_with=ValueError)
         return embeddings
 
     def dict(self, vectors=False):
@@ -246,7 +188,6 @@ class VectorDB(Expression):
         # unwrap the documents if they are a Symbol
         if isinstance(documents, Symbol):
             documents = documents.value
-
         if not isinstance(documents, list):
             return self.add_document(documents, vectors)
         self.add_documents(documents, vectors)
@@ -267,7 +208,7 @@ class VectorDB(Expression):
         if self.vectors is None:
             self.vectors = np.empty((0, len(vector)), dtype=np.float32)
         elif len(vector) != self.vectors.shape[1]:
-            raise ValueError("All vectors must have the same length.")
+            CustomUserWarning("All vectors must have the same length.", raise_with=ValueError)
         # convert the vector to a numpy array if it is not already
         if type(vector) == list:
             vector = np.array(vector)
@@ -360,12 +301,12 @@ class VectorDB(Expression):
 
         if storage_file.endswith(".gz"):
             with gzip.open(storage_file, "rb") as f:
-                data   = pickle.load(f)
+                data = pickle.load(f)
         else:
             with open(storage_file, "rb") as f:
-                data   = pickle.load(f)
+                data = pickle.load(f)
 
-        self.vectors   = data["vectors"].astype(np.float32) if data["vectors"] is not None else None
+        self.vectors = data["vectors"].astype(np.float32) if data["vectors"] is not None else None
         self.documents = data["documents"]
 
     def purge(self, index_name : str):
@@ -392,15 +333,7 @@ class VectorDB(Expression):
         if storage_file.exists():
             # remove the file
             os.remove(storage_file)
-        # remove index from `indices.txt`
-        with open(symai_folder / 'indices.txt', 'r') as f:
-            indices = f.read().split('\n')
-            # filter out empty strings
-            indices = [i for i in indices if i]
-            if index_name in indices:
-                indices.remove(index_name)
-        with open(symai_folder / 'indices.txt', 'w') as f:
-            f.write('\n'.join(indices))
+        self.clear()
 
     def forward(self, query=None, vector=None, top_k=None, return_similarities=True):
         """
@@ -422,8 +355,8 @@ class VectorDB(Expression):
 
         """
         assert self.vectors is not None, f"Error: Cannot query the database without prior insertion / initialization."
-        top_k          = top_k or self.index_top_k
-        query_vector   = self.embedding_function([query])[0] if vector is None else vector
+        top_k = top_k or self.index_top_k
+        query_vector = self.embedding_function([query])[0] if vector is None else vector
         if type(query_vector) == list:
             query_vector = np.array(query_vector)
         ranked_results, similarities = ranking_algorithm_sort(
