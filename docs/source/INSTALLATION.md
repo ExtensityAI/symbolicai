@@ -8,22 +8,46 @@ To get started with SymbolicAI, you can install it using pip:
 pip install symbolicai
 ```
 
+Alternatively, clone the repository and set up a Python virtual environment using uv:
+```bash
+git clone git@github.com:ExtensityAI/symbolicai.git
+cd symbolicai
+uv sync --python x.xx
+source ./.venv/bin/activate
+```
+Running `symconfig` will now use this Python environment.
+
 #### Optional Features
 
-SymbolicAI uses multiple engines to process text, speech and images. We also include search engine access to retrieve information from the web. To use all of them, you will need to also install the following dependencies and assign the API keys to the respective engines.
+SymbolicAI uses multiple engines to process text, speech and images. We also include search engine access to retrieve information from the web. To use all of them, you will need to also install the following dependencies and assign the API keys to the respective engines. E.g.:
 
 ```bash
-pip install "symbolicai[wolframalpha]"
-pip install "symbolicai[whisper]"
-pip install "symbolicai[selenium]"
-pip install "symbolicai[serpapi]"
-pip install "symbolicai[pinecone]"
+pip install "symbolicai[hf]",
+pip install "symbolicai[llamacpp]",
+pip install "symbolicai[bitsandbytes]",
+pip install "symbolicai[wolframalpha]",
+pip install "symbolicai[whisper]",
+pip install "symbolicai[webscraping]",
+pip install "symbolicai[serpapi]",
+pip install "symbolicai[services]",
+pip install "symbolicai[solver]"
 ```
 
 Or, install all optional dependencies at once:
 
 ```bash
 pip install "symbolicai[all]"
+```
+
+To install dependencies exactly as locked in the provided lock file:
+```bash
+uv sync --frozen
+```
+
+To install optional extras via uv:
+```bash
+uv sync --extra all # all optional extras
+uv sync --extra webscraping # only webscraping
 ```
 
 > ❗️**NOTE**❗️Please note that some of these optional dependencies may require additional installation steps. Additionally, some are only experimentally supported now and may not work as expected. If a feature is extremely important to you, please consider contributing to the project or reaching out to us.
