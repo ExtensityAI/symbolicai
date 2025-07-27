@@ -35,19 +35,16 @@ dependencies = [
     "torchaudio>=2.2.2",
     "torchvision>=0.17.2",
     "PyYAML>=6.0.1",
-    "transformers>=4.45.2",
     "sympy>=1.12",
     "openai>=1.60.0",
     "anthropic>=0.43.1",
     "google-genai>=1.16.1",
     "pypdf>=4.3.0",
     "ipython>=8.24.0",
-    "accelerate>=0.33.0",
     "sentencepiece>=0.2.0",
     "sentence-transformers>=2.5.1",
     "tiktoken>=0.8.0",
     "tika>=2.6.0",
-    "beautifulsoup4>=4.12.3",
     "colorama>=0.4.6",
     "GitPython>=3.1.42",
     "pathos>=0.3.2",
@@ -71,10 +68,10 @@ dependencies = [
 bitsandbytes = ["bitsandbytes>=0.43.1"] # handle separately because of Apple Silicon
 blip2        = ["decord>=0.6.0", "salesforce-lavis>=1.0.0", "opencv-python-headless>=4.5.5.64"]
 hf           = ["transformers>=4.45.2", "accelerate>=0.33.0", "peft>=0.13.1", "datasets>=3.0.1", "trl>=0.11.3"]
+webscraping  = ["beautifulsoup4>=4.12.3", "trafilatura>=2.0.0"]
 llama_cpp    = ["llama-cpp-python[server]>=0.3.7"] # handle separately since this dependency may not compile and require special maintenance
 wolframalpha = ["wolframalpha>=5.0.0"]
 whisper      = ["openai-whisper>=20240930", "numba>=0.60.0"]
-selenium     = ["selenium>=4.18.1", "webdriver-manager>=4.0.2", "chromedriver-autoinstaller>=0.6.4"]
 serpapi      = ["google_search_results>=2.4.2"]
 pinecone     = ["pinecone-client>=4.1.0"]
 bard         = ["bardapi>=1.0.0"]
@@ -84,7 +81,7 @@ all          = [
     "symbolicai[hf]",
     "symbolicai[wolframalpha]",
     "symbolicai[whisper]",
-    "symbolicai[selenium]",
+    "symbolicai[webscraping]",
     "symbolicai[serpapi]",
     "symbolicai[pinecone]",
     "symbolicai[bard]",

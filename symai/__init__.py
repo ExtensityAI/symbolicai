@@ -11,7 +11,7 @@ from rich.table import Table
 from rich.tree import Tree
 
 from .backend import settings
-from .menu.screen import show_menu
+from .menu.screen import show_intro_menu
 from .misc.console import ConsoleStyle
 from .utils import CustomUserWarning
 
@@ -78,25 +78,15 @@ def _start_symai():
     _symai_config_path_ = config_manager.get_config_path('symai.config.json')
 
     if not os.path.exists(_symai_config_path_):
-        setup_wizard(_symai_config_path_, show_wizard=False)
+        setup_wizard(_symai_config_path_)
         CustomUserWarning(f'No configuration file found for the environment. A new configuration file has been created at {_symai_config_path_}. Please configure your environment.')
         sys.exit(1)
 
     # Load and manage configurations
     _symai_config_ = config_manager.load_config('symai.config.json')
-    _tmp_symai_config_ = _symai_config_.copy()
 
     # MIGRATE THE ENVIRONMENT VARIABLES
     # *==========================================================================================================*
-    if 'SPEECH_ENGINE_MODEL' in _symai_config_:
-        updates = {
-            'SPEECH_TO_TEXT_ENGINE_MODEL': _symai_config_['SPEECH_ENGINE_MODEL'],
-            'TEXT_TO_SPEECH_ENGINE_MODEL': "tts-1"
-        }
-        config_manager.migrate_config('symai.config.json', updates)
-        del _symai_config_['SPEECH_ENGINE_MODEL']
-        del _tmp_symai_config_['SPEECH_ENGINE_MODEL']
-
     if 'COLLECTION_URI' not in _symai_config_:
         updates = {
             'COLLECTION_URI': "mongodb+srv://User:vt3epocXitd6WlQ6@extensityai.c1ajxxy.mongodb.net/?retryWrites=true&w=majority",
@@ -138,6 +128,7 @@ def _start_symai():
             len(_symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY']) == 0):
             # Try to fallback to the global (home) config if environment is not home
             if config_manager.config_dir != config_manager._home_config_dir:
+                show_intro_menu()
                 CustomUserWarning(f"You didn't configure your environment ({config_manager.config_dir})! Falling back to the global ({config_manager._home_config_dir}) configuration if it exists.")
                 # Force loading from home
                 _symai_config_ = config_manager.load_config('symai.config.json', fallback_to_home=True)
@@ -152,11 +143,6 @@ def _start_symai():
     settings.SYMAI_CONFIG = _symai_config_
     settings.SYMSH_CONFIG = _symsh_config_
     settings.SYMSERVER_CONFIG = _symserver_config_
-
-def run_setup_wizard(file_path = None):
-    if file_path is None:
-        file_path = config_manager.get_config_path('symai.config.json')
-    setup_wizard(file_path)
 
 
 def run_server():
@@ -293,28 +279,30 @@ def display_config():
 # *==============================================================================================================*
 
 
-def setup_wizard(_symai_config_path_, show_wizard=True):
-    _user_config_                   = show_menu(show_wizard=show_wizard)
-    _nesy_engine_api_key            = _user_config_['nesy_engine_api_key']
-    _nesy_engine_model              = _user_config_['nesy_engine_model']
-    _symbolic_engine_api_key        = _user_config_['symbolic_engine_api_key']
-    _symbolic_engine_model          = _user_config_['symbolic_engine_model']
-    _embedding_engine_api_key       = _user_config_['embedding_engine_api_key']
-    _embedding_model                = _user_config_['embedding_model']
-    _drawing_engine_api_key         = _user_config_['drawing_engine_api_key']
-    _drawing_engine_model           = _user_config_['drawing_engine_model']
-    _vision_engine_model            = _user_config_['vision_engine_model']
-    _search_engine_api_key          = _user_config_['search_engine_api_key']
-    _search_engine_model            = _user_config_['search_engine_model']
-    _ocr_engine_api_key             = _user_config_['ocr_engine_api_key']
-    _speech_to_text_engine_model    = _user_config_['speech_to_text_engine_model']
-    _text_to_speech_engine_api_key  = _user_config_['text_to_speech_engine_api_key']
-    _text_to_speech_engine_model    = _user_config_['text_to_speech_engine_model']
-    _text_to_speech_engine_voice    = _user_config_['text_to_speech_engine_voice']
-    _indexing_engine_api_key        = _user_config_['indexing_engine_api_key']
-    _indexing_engine_environment    = _user_config_['indexing_engine_environment']
-    _caption_engine_environment     = _user_config_['caption_engine_environment']
-    _support_comminity              = _user_config_['support_community']
+def setup_wizard(_symai_config_path_):
+    show_intro_menu()
+
+    _nesy_engine_api_key            = ''
+    _nesy_engine_model              = ''
+    _symbolic_engine_api_key        = ''
+    _symbolic_engine_model          = ''
+    _embedding_engine_api_key       = ''
+    _embedding_model                = ''
+    _drawing_engine_api_key         = ''
+    _drawing_engine_model           = ''
+    _vision_engine_model            = ''
+    _search_engine_api_key          = ''
+    _search_engine_model            = ''
+    _ocr_engine_api_key             = ''
+    _speech_to_text_engine_model    = ''
+    _speech_to_text_api_key         = ''
+    _text_to_speech_engine_api_key  = ''
+    _text_to_speech_engine_model    = ''
+    _text_to_speech_engine_voice    = ''
+    _indexing_engine_api_key        = ''
+    _indexing_engine_environment    = ''
+    _caption_engine_environment     = ''
+    _support_comminity              = False
 
     config_manager.save_config(_symai_config_path_, {
         "NEUROSYMBOLIC_ENGINE_API_KEY":   _nesy_engine_api_key,
@@ -330,6 +318,7 @@ def setup_wizard(_symai_config_path_, show_wizard=True):
         "SEARCH_ENGINE_MODEL":            _search_engine_model,
         "OCR_ENGINE_API_KEY":             _ocr_engine_api_key,
         "SPEECH_TO_TEXT_ENGINE_MODEL":    _speech_to_text_engine_model,
+        "SPEECH_TO_TEXT_API_KEY":         _speech_to_text_api_key,
         "TEXT_TO_SPEECH_ENGINE_API_KEY":  _text_to_speech_engine_api_key,
         "TEXT_TO_SPEECH_ENGINE_MODEL":    _text_to_speech_engine_model,
         "TEXT_TO_SPEECH_ENGINE_VOICE":    _text_to_speech_engine_voice,
