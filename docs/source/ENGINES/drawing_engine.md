@@ -17,8 +17,6 @@ Supported models:
 - `dall-e-3`
 - `gpt-image-1`
 
-### Example: Create
-
 ```python
 from symai.interfaces import Interface
 
@@ -44,8 +42,6 @@ paths = gpt_image(
 print(paths[0])  # → /tmp/tmpabcd.png
 ```
 
-### Example: Variation
-
 ```python
 from symai.interfaces import Interface
 from pathlib import Path
@@ -61,8 +57,6 @@ paths = gpt_image(
     response_format="url",
 )
 ```
-
-### Example: Edit
 
 ```python
 from symai.interfaces import Interface
@@ -115,8 +109,6 @@ paths = gpt_image(
 
 Use `Interface('flux')` to call Flux via https://api.us1.bfl.ai.
 Supported models: any `flux-*`, e.g. configured in `SYMAI_CONFIG["DRAWING_ENGINE_MODEL"]`.
-
-### Example
 
 ```python
 from symai.interfaces import Interface
