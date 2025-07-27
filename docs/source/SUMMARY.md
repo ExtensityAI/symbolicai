@@ -14,7 +14,7 @@
 * [Local Engine](ENGINES/local_engine.md)
 * [OCR Engine](ENGINES/ocr_engine.md)
 * [Search Engine](ENGINES/search_engine.md)
-* [Speech Engine](ENGINES/speech_engine.md)
+* [Speech-to-Text Engine](ENGINES/speech_to_text_engine.md)
 * [Symbolic Engine](ENGINES/symbolic_engine.md)
 * [Webscraping Engine](ENGINES/webscraping_engine.md)
 

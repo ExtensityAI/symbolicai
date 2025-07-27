@@ -1,4 +1,4 @@
-# Speech Engine (Whisper)
+# Speech-to-Text Engine
 
 To transcribe audio files, we can perform speech transcription using `whisper`. The following example demonstrates how to transcribe an audio file and return the text:
 
