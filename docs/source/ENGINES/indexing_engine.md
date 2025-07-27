@@ -1,9 +1,5 @@
 # Indexing Engine
 
-> ⚠️ **NOTE:** We currently only provide a naive local vector storage implementation within SymbolicAI, intended for local development, prototyping, or very small projects—**not** for production or scaled workloads. Local index storage is currently in-memory + on-disk (pickle) and not intended for concurrent/multi-process use. _Pinecone support has been deprecated and is likely non-functional_. We plan to add more robust local options (like Chroma, Milvus, etc.) and modern cloud index providers in the future; community contributions are very welcome!
-
-## Usage
-
 By default, text indexing and retrieval is performed with the local naive vector engine using the `Interface` abstraction:
 
 ```python
