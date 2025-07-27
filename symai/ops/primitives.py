@@ -3139,57 +3139,24 @@ class IOHandlingPrimitives(Primitive):
 #@TODO: add tests
 class IndexingPrimitives(Primitive):
     '''
-    This mixin contains functionalities related to indexing symbols.
+    This mixin contains functionalities related to indexing symbols locally.
     '''
     def config(self, path: str, index_name: str, **kwargs) -> 'Symbol':
-        '''
-        Execute a configuration operation on the index.
-
-        Args:
-            path (str): Index configuration path.
-            **kwargs: Arbitrary keyword arguments to be used by the core.index decorator.
-
-        Returns:
-            Symbol: An Expression object containing the configuration result.
-        '''
+        '''Execute a configuration operation on the index.'''
         @core.index(prompt=path, index_name=index_name, operation='config', **kwargs)
         def _func(_):
             pass
         return _func(self)
 
-    def add(self, doc: List[Tuple[str, List, Dict]], index_name: str, **kwargs) -> 'Symbol':
-        '''
-        Add an entry to the existing index.
-
-        Args:
-            doc (List[Tuple[str, List, Dict]]): The document used to add an entry to the index. Use zip(...) to generate the document.
-            **kwargs: Arbitrary keyword arguments to be used by the core.index decorator.
-
-        Returns:
-            Symbol: An Expression object containing the addition result.
-        '''
+    def add(self, doc: list[str], index_name: str, **kwargs) -> 'Symbol':
+        '''Add an entry to the existing index.'''
         @core.index(prompt=doc, index_name=index_name, operation='add', **kwargs)
         def _func(_):
             pass
         return _func(self)
 
-    def get(self, query: List[int], index_name: str, **kwargs) -> 'Symbol':
-        '''
-        Search the index based on the provided query.
-
-        Args:
-            query (List[int]): The query vector used to search entries in the index.
-            **kwargs: Arbitrary keyword arguments to be used by the core.index decorator.
-
-        Returns:
-            Symbol: An Expression object containing the search result.
-        '''
-        # convert query to list if it is a tensor or numpy array
-        if isinstance(query, np.ndarray):
-            query = query.tolist()
-        elif isinstance(query, torch.Tensor):
-            query = query.cpu().numpy().tolist()
-
+    def get(self, query: list[str], index_name: str, **kwargs) -> 'Symbol':
+        '''Search the index based on the provided query.'''
         @core.index(prompt=query, index_name=index_name, operation='search', **kwargs)
         def _func(_):
             pass

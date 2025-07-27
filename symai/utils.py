@@ -12,7 +12,6 @@ import httpx
 import numpy as np
 from box import Box
 from PIL import Image
-from transformers.models.detr.image_processing_detr_fast import defaultdict
 
 from .misc.console import ConsoleStyle
 
@@ -171,6 +170,8 @@ def semassert(condition: bool, message: str = ""):
         base_msg = "Assertion failed due to model capability limitations in handling this type of semantic computation"
         full_msg = f"{base_msg}. {message}" if message else base_msg
         CustomUserWarning(f"⚠️  SEMANTIC ASSERT: {full_msg}")
+        return False
+    return True
 
 
 @dataclass

@@ -4,9 +4,7 @@ import os
 import subprocess
 import sys
 import warnings
-from pathlib import Path
 
-from rich import print as rprint
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table

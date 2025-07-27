@@ -1,7 +1,9 @@
 import itertools
+from copy import deepcopy
 
 from ....extended.vectordb import VectorDB
 from ....symbol import Result
+from ....utils import CustomUserWarning
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
 
@@ -18,10 +20,10 @@ def chunks(iterable, batch_size=100):
 class VectorDBResult(Result):
     def __init__(self, res, query: str, embedding: list, **kwargs):
         super().__init__(res, **kwargs)
-        self.raw                 = res
-        self._query              = query
-        self._value              = self._process(res)
-        self._metadata.raw       = embedding
+        self.raw = res
+        self._query = query
+        self._value = self._process(res)
+        self._metadata.raw = embedding
 
     def _process(self, res):
         if not res:
@@ -37,7 +39,6 @@ class VectorDBResult(Result):
     def _unpack_matches(self):
         if not self.value:
             return
-
         for i, match in enumerate(self.value):
             match = match.strip()
             if match.startswith('# ----[FILE_START]') and '# ----[FILE_END]' in match:
@@ -80,13 +81,12 @@ Matches:
 
 class VectorDBIndexEngine(Engine):
     # Updated default values to be congruent with VectorDB's defaults
-    _default_index_name      = 'dataindex'
-    _default_index_dims      = 768
-    _default_index_top_k     = 5
-    _default_index_metric    = 'cosine'
-    _index_dict              = {}
-    _index_storage_file      = None
-
+    _default_index_name = 'dataindex'
+    _default_index_dims = 768
+    _default_index_top_k = 5
+    _default_index_metric = 'cosine'
+    _index_dict = {}
+    _index_storage_file = None
     def __init__(
             self,
             index_name=_default_index_name,
@@ -98,6 +98,7 @@ class VectorDBIndexEngine(Engine):
             **kwargs
         ):
         super().__init__()
+        self.config = deepcopy(SYMAI_CONFIG)
         self.index_name = index_name
         self.index_dims = index_dims
         self.index_top_k = index_top_k
@@ -110,67 +111,59 @@ class VectorDBIndexEngine(Engine):
         self.name = self.__class__.__name__
 
     def id(self) -> str:
-        if not SYMAI_CONFIG['INDEXING_ENGINE_API_KEY'] or SYMAI_CONFIG['INDEXING_ENGINE_API_KEY'] == '':
+        if not self.config['INDEXING_ENGINE_API_KEY'] or self.config['INDEXING_ENGINE_API_KEY'] == '':
             return 'index'
         return super().id() # default to unregistered
 
     def forward(self, argument):
-        embedding    = argument.prop.prepared_input
-        query        = argument.prop.ori_query
-        operation    = argument.prop.operation
-        index_name   = argument.prop.index_name or self.index_name
-        index_dims   = argument.prop.index_dims or self.index_dims
-        top_k        = argument.prop.top_k or self.index_top_k
-        metric       = argument.prop.metric or self.index_metric
+        query = argument.prop.prepared_input
+        operation = argument.prop.operation
+        index_name = argument.prop.index_name or self.index_name
+        index_dims = argument.prop.index_dims or self.index_dims
+        top_k = argument.prop.top_k or self.index_top_k
+        metric = argument.prop.metric or self.index_metric
         similarities = argument.prop.similarities or False
         storage_file = argument.prop.storage_file or self.storage_file
-        kwargs       = argument.kwargs
-        rsp          = None
+        kwargs = argument.kwargs
+        rsp = None
 
         self._init(index_name, top_k, index_dims, metric)
 
-        # Process each operation
         if operation == 'search':
-            # Get the query text from the prepared input
-            query_vector = embedding[0]
-            # Perform search in the VectorDB
+            if isinstance(query, list) and len(query) > 1:
+                CustomUserWarning('VectorDB indexing engine does not support multiple queries. Pass a single string query instead.', raise_with=ValueError)
+            query_vector = self.index[index_name].embedding_function([query])[0]
             results = self.index[index_name](vector=query_vector, top_k=top_k, return_similarities=similarities)
             rsp = [{'metadata': {'text': result}} for result in results]
-
         elif operation == 'add':
-            # Add provided documents (and optionally vectors) to the VectorDB
+            assert isinstance(query, list), 'VectorDB indexing requires a list of queries at insertion, even if there is only one query.'
             documents = []
             vectors = []
-            for uid, vector, document in embedding:
-                vectors.append(vector)
-                documents.append(document['text'])
+            for q in query:
+                vectors.append(self.index[index_name].embedding_function([q])[0])
+                documents.append(q)
             self.index[index_name].add(documents=documents, vectors=vectors)
-
         elif operation == 'config':
-            # Handle any configurations if needed (not applicable for in-memory VectorDB)
             assert kwargs, 'Please provide a configuration by passing the appropriate kwargs. Currently, only `load`, `save`, `purge`.'
-            # Check if the index is to be persisted or loaded
-            if kwargs.get('load'):
+            maybe_as_prompt = kwargs.get('prompt')
+            if kwargs.get('load', maybe_as_prompt == 'load'):
                 assert storage_file, 'Please provide a `storage_file` path to load the pre-computed index.'
                 self.load(index_name, storage_file, index_dims, top_k, metric)
-            elif kwargs.get('save'):
-                # Save the pre-computed index to the provided path
+            elif kwargs.get('save', maybe_as_prompt == 'save'):
                 self.save(index_name, storage_file)
-            elif kwargs.get('purge'):
-                # Purge the pre-computed index from the database path
+            elif kwargs.get('purge', maybe_as_prompt == 'purge'):
                 self.purge(index_name)
             else:
-                raise ValueError('Invalid configuration; please use either "load" or "save".')
+                CustomUserWarning('Invalid configuration; please use either "load", "save", or "purge".', raise_with=ValueError)
         else:
-            raise ValueError('Invalid operation; please use either "search", "add", or "config".')
+            CustomUserWarning('Invalid operation; please use either "search", "add", or "config".', raise_with=ValueError)
 
         metadata = {}
+        rsp = VectorDBResult(rsp, query[0], None)
 
-        rsp = VectorDBResult(rsp, query, None)
         return [rsp], metadata
 
     def _init(self, index_name, top_k, index_dims, metric, embedding_model=not None):
-        # Initialize the VectorDB if not already initialized
         if index_name not in self.index:
             self.index[index_name] = VectorDB(
                 index_name=index_name,
@@ -190,16 +183,14 @@ class VectorDBIndexEngine(Engine):
             top_k=top_k,
             similarity_metric=metric,
             load_on_init=storage_file,
-            index_name=index_name
+            index_name=index_name,
         )
 
     def save(self, index_name = None, storage_file = None):
-        index_name   = index_name or self.index_name
+        index_name = index_name or self.index_name
         storage_file = storage_file or self._index_storage_file
-        # Save the pre-computed index to the provided path
         self.index[index_name].save(storage_file)
 
     def purge(self, index_name = None):
-        index_name   = index_name or self.index_name
-        # Purge the pre-computed index from the database path
+        index_name = index_name or self.index_name
         self.index[index_name].purge(index_name)
