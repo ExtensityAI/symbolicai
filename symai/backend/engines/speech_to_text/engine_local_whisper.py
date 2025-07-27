@@ -1,19 +1,30 @@
 import logging
+import re
+from itertools import takewhile
+from typing import Iterable
+
 import torch
 
-from itertools import takewhile
-from typing import Iterable, List, Optional
-
+from ....symbol import Expression, Result
+from ....utils import CustomUserWarning
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
-from ....symbol import Expression, Result
+
+try:
+    import whisper
+    from whisper.audio import \
+        N_SAMPLES  # @NOTE: sample_rate (16_000) * chunk_length (30) = 480_000
+    from whisper.tokenizer import get_tokenizer
+except ImportError:
+    whisper   = None
+    N_SAMPLES = 16_000 * 30
 
 
 class WhisperTimestampsFormatter(Expression):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def forward(self, response: List[str]) -> str:
+    def forward(self, response: list[str]) -> str:
         result = []
         for i, interval in enumerate(response):
             interval = self._filter_empty_string(interval)
@@ -43,7 +54,7 @@ class WhisperTimestampsFormatter(Expression):
                 result.append(f"{self._format_to_hours(start + (i*30))} {self._get_sentence(head)}")
         return "\n".join(result)
 
-    def _filter_empty_string(self, s: str) -> List[str]:
+    def _filter_empty_string(self, s: str) -> list[str]:
         return list(filter(lambda x: x, s.split("<|")))
 
     def _get_timestamp(self, s: str) -> float:
@@ -53,9 +64,9 @@ class WhisperTimestampsFormatter(Expression):
         return s.split("|>")[-1]
 
     def _format_to_hours(self, seconds: float) -> str:
-        hours    = int(seconds // 3600)
+        hours = int(seconds // 3600)
         seconds %= 3600
-        minutes  = int(seconds // 60)
+        minutes = int(seconds // 60)
         seconds %= 60
         formatted_time = "{:02d}:{:02d}:{:02d}".format(hours, minutes, int(seconds))
         return formatted_time
@@ -65,20 +76,29 @@ class WhisperResult(Result):
     def __init__(self, value, **kwargs) -> None:
         super().__init__(value, **kwargs)
         self.raw = None
+        self._value = value
 
+    def get_bins(self, bin_size_s: int = 5 * 60) -> list[str]:
+        tmps = list(map(self._seconds, re.findall(r"\b\d{2}:\d{2}:\d{2}\b", self._value)))
+        value_pairs = list(zip(tmps, self._value.split("\n")))
+        bin = []
+        result = []
+        for tmp, seg in value_pairs:
+            bin.append(seg)
+            if tmp == 0 or (tmp - bin_size_s) % bin_size_s != 0:
+                continue
+            result.append("\n".join(bin))
+            bin = []
+        result.append("\n".join(bin))
+        return result
 
-try:
-    import whisper
-    from whisper.audio import \
-        N_SAMPLES  # @NOTE: sample_rate (16_000) * chunk_length (30) = 480_000
-    from whisper.tokenizer import get_tokenizer
-except ImportError:
-    whisper   = None
-    N_SAMPLES = 16_000 * 30
+    def _seconds(self, tmp: str) -> int:
+        h, m ,s = tmp.split(":")
+        return int(h) * 3600 + int(m) * 60 + int(s)
 
 
 class WhisperEngine(Engine):
-    def __init__(self, model: Optional[str] = None):
+    def __init__(self, model: str | None = None):
         super().__init__()
         self.config = SYMAI_CONFIG
         self.model = None # lazy loading
@@ -92,7 +112,7 @@ class WhisperEngine(Engine):
     def id(self) -> str:
         if self.config['SPEECH_TO_TEXT_ENGINE_MODEL']:
             if whisper is None:
-                print("Whisper is not installed. Please install it with `pip install symbolicai[whisper]`")
+                CustomUserWarning("Whisper is not installed. Please install it with `pip install symbolicai[whisper]`", raise_with=ImportError)
             return 'speech-to-text'
         return super().id() # default to unregistered
 
@@ -103,9 +123,9 @@ class WhisperEngine(Engine):
 
     def forward(self, argument):
         assert whisper is not None, "Whisper is not installed. Please install it first."
-        kwargs     = argument.kwargs
+        kwargs = argument.kwargs
         (_, audio) = argument.prop.prepared_input
-        prompt     = argument.prop.prompt
+        prompt = argument.prop.prompt
 
         if self.model is None or self.model_id != self.old_model_id:
             device_fallback = 'cpu'
@@ -114,14 +134,14 @@ class WhisperEngine(Engine):
             try:
                 self.model = whisper.load_model(self.model_id, device=device)
             except RuntimeError:
-                logging.warn(f"Whisper failed to load model on device {device}. Fallback to {device_fallback}.")
+                CustomUserWarning(f"Whisper failed to load model on device {device}. Fallback to {device_fallback}.")
                 self.model = whisper.load_model(self.model_id, device=device_fallback)
             self.old_model_id = self.model_id
 
         self._try_compile()
-        show_pbar          = kwargs.get("progress", False)
-        language           = kwargs.get("language", "en")
-        temperature        = kwargs.get("temperature", (0.0, 0.2, 0.4, 0.6, 0.8, 1.0))
+        show_pbar = kwargs.get("progress", False)
+        language = kwargs.get("language", "en")
+        temperature = kwargs.get("temperature", (0.0, 0.2, 0.4, 0.6, 0.8, 1.0))
         without_timestamps = kwargs.get("without_timestamps", False)
 
         raw_result = []
@@ -160,10 +180,9 @@ class WhisperEngine(Engine):
             else:
                 rsp = " ".join(self.text)
         else:
-            raise Exception(f"Unknown whisper command prompt: {prompt}")
+            CustomUserWarning(f"Unknown whisper command prompt: {prompt}", raise_with=ValueError)
 
         metadata = {}
-
         rsp = WhisperResult(rsp)
         if raw_result:
             rsp.raw = raw_result
@@ -173,10 +192,10 @@ class WhisperEngine(Engine):
         assert not argument.prop.processed_input, "Whisper does not support processed_input."
         assert argument.prop.audio, "Whisper requires audio input."
         audio_file  = str(argument.prop.audio)
-        audio       = whisper.load_audio(audio_file)
+        audio = whisper.load_audio(audio_file)
         argument.prop.prepared_input = (audio_file, audio)
 
-    def _get_chunks(self, it: Iterable, batch: int = N_SAMPLES) -> torch.Tensor:
+    def _get_chunks(self, it: Iterable, batch: int = N_SAMPLES) -> Iterable[torch.Tensor]:
         """
         Split an iterable into chunks of size `batch`. It defaults to `N_SAMPLES` 480_000 samples which is equal to 30 seconds.
         """
