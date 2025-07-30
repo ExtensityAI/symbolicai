@@ -445,8 +445,9 @@ class contract:
                 finally:
                     wrapped_self._contract_timing[it]["input_validation"] = time.perf_counter() - op_start
                 logger.success("Pre-condition validation successful!")
-                return
-        logger.info("Skip; no pre-condition validation was required!")
+                return input
+            logger.info("Skip; no pre-condition validation was required!")
+            return input
 
     def _validate_output(self, wrapped_self, input, output, it, **remedy_kwargs):
         logger.info("Starting output validation...")
@@ -494,8 +495,9 @@ class contract:
                 finally:
                     wrapped_self._contract_timing[it]["output_validation"] = time.perf_counter() - op_start
                 logger.success("Post-condition validation successful!")
-                return
+                return output
         logger.info("Skip; no post-condition validation was required!")
+        return output
 
     def _act(self, wrapped_self, input, it, **act_kwargs):
         act_method = getattr(wrapped_self, 'act', None)
