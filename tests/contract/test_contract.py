@@ -920,6 +920,66 @@ def test_act_state_modification_without_input_change():
 
     # State counter should have been incremented again
     assert contract_instance.state_counter == 2
+   
+@pytest.mark.mandatory
+def test_skip_pre_and_post_without_methods():
+    """Test that when no pre/post methods are implemented and remedy disabled, input is passed through act and forward."""
+    class SimpleInput(LLMDataModel):
+        x: int
+
+    @contract(pre_remedy=False, post_remedy=False, verbose=False,
+              remedy_retry_params={'tries': 1, 'delay': 0, 'max_delay': 0, 'jitter': 0, 'backoff': 1, 'graceful': True})
+    class SimpleNoPreNoPost(Expression):
+        @property
+        def prompt(self) -> str:
+            return "skip pre/post prompt"
+
+        def act(self, input: SimpleInput, **kwargs) -> SimpleInput:
+            # Increment value to test act propagation
+            return SimpleInput(x=input.x + 2)
+
+        def forward(self, input: SimpleInput, **kwargs) -> SimpleInput:
+            # Should receive input from act unchanged
+            return input
+
+    instance = SimpleNoPreNoPost()
+    input_model = SimpleInput(x=3)
+    result = instance(input=input_model)
+    assert isinstance(result, SimpleInput)
+    assert result.x == input_model.x + 2
+
+@pytest.mark.mandatory
+def test_post_without_remedy_returns_act_output():
+    """Test that when a post method is defined but post_remedy is False, the act output is returned."""
+    class SimpleIn(LLMDataModel):
+        x: int
+
+    class SimpleOut(LLMDataModel):
+        x: int
+
+    @contract(pre_remedy=False, post_remedy=False, verbose=False,
+              remedy_retry_params={'tries': 1, 'delay': 0, 'max_delay': 0, 'jitter': 0, 'backoff': 1, 'graceful': True})
+    class SimpleWithPost(Expression):
+        @property
+        def prompt(self) -> str:
+            return "post without remedy prompt"
+
+        def act(self, input: SimpleIn, **kwargs) -> SimpleOut:
+            return SimpleOut(x=input.x * 3)
+
+        def post(self, output: SimpleOut) -> bool:
+            # Simple post validation; should pass
+            assert output.x == 6
+            return True
+
+        def forward(self, input: SimpleOut, **kwargs) -> SimpleOut:
+            return input
+
+    instance2 = SimpleWithPost()
+    input_model2 = SimpleIn(x=2)
+    result2 = instance2(input=input_model2)
+    assert isinstance(result2, SimpleOut)
+    assert result2.x == input_model2.x * 3
 
 
 if __name__ == "__main__":
