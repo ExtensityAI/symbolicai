@@ -3,6 +3,7 @@
 
 You can use a locally hosted instance for the Neuro-Symbolic Engine. We build on top of:
 - [llama.cpp](https://github.com/ggerganov/llama.cpp/tree/master) either through:
+    > ❗️**NOTE**❗️ Latest `llama.cpp` commit on `master` branch that we tested `symai` with is `0f5ccd6fd1a1`. We used the build [setup](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md).
   - Direct C++ server from llama.cpp
   - [llama-cpp-python](https://github.com/abetlen/llama-cpp-python?tab=readme-ov-file)
 - [huggingface/transformers](https://huggingface.co/docs/transformers/en/index) through a custom FastAPI server.
@@ -83,6 +84,7 @@ print(sym)
 ```
 
 ## Local Embedding Engine
+
 You can also use local embedding models through the `llama.cpp` backend. First, set the `EMBEDDING_ENGINE_MODEL` to `llamacpp`:
 
 ```json
