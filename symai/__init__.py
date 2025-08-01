@@ -155,6 +155,8 @@ def run_server():
         _symserver_config_['online'] = True
 
         config_manager.save_config("symserver.config.json", _symserver_config_)
+        #@NOTE: Save in both places since you can start the server from anywhere and still not have a nesy engine configured
+        config_manager.save_config("symserver.config.json", _symserver_config_, fallback_to_home=True)
 
         try:
             subprocess.run(command, check=True)
