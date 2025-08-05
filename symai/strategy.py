@@ -377,7 +377,7 @@ class contract:
     def __init__(
         self,
         pre_remedy: bool = False,
-        post_remedy: bool = True,
+        post_remedy: bool = False,
         accumulate_errors: bool = False,
         verbose: bool = False,
         remedy_retry_params: dict[str, int | float | bool] = _default_remedy_retry_params,
@@ -415,22 +415,28 @@ class contract:
             raise TypeError("The return type annotation must be a subclass of `LLMDataModel`.")
         return True
 
-    def _try_dynamic_type_annotation(self, arg, original_forward):
+    def _try_dynamic_type_annotation(self, original_forward, *, context: str = "input"):
+        assert context in {"input", "output"}, (
+            "`context` must be either 'input' or 'output', got " + repr(context)
+        )
         sig = inspect.signature(original_forward)
         try:
-            if inspect.isclass(arg) or hasattr(arg, '__origin__'):
-                # arg is a type annotation, build dynamic model from it directly
-                dynamic_model = build_dynamic_llm_datamodel(arg)
-            elif sig.parameters['input'].annotation != inspect._empty:
-                # plain Python/typing type
-                dynamic_model = build_dynamic_llm_datamodel(sig.parameters['input'].annotation)
-            else:
-                # unknown type, cannot infer and best effort will likely mess things up
-                raise TypeError("Failed to infer type from input")
-        except Exception as e:
-            logger.exception(f"Failed to build dynamic LLMDataModel from {arg}!")
+            # Fallback: look at the relevant part of the function signature
+            # depending on whether we deal with an *input* or *output*
+            if context == "input":
+                param = sig.parameters.get("input")
+                if param is None or param.annotation == inspect._empty:
+                    raise TypeError("Failed to infer type from input parameter annotation")
+                dynamic_model = build_dynamic_llm_datamodel(param.annotation)
+            else:  # context == "output"
+                if sig.return_annotation == inspect._empty:
+                    raise TypeError("Failed to infer type from return annotation")
+                dynamic_model = build_dynamic_llm_datamodel(sig.return_annotation)
+        except Exception:
+            logger.exception(f"Failed to build dynamic LLMDataModel from {sig.parameters.get('input')}!")
             raise TypeError(
-                "The type annotation must be a subclass of `LLMDataModel` or a valid Python typing object supported by Pydantic."
+                "The type annotation must be a subclass of `LLMDataModel` or a "
+                "valid Python typing object supported by Pydantic."
             )
 
         dynamic_model._is_dynamic_model = True
@@ -532,11 +538,24 @@ class contract:
         logger.info("Skip; no post-condition validation was required!")
         return output
 
+    def _validate_act_method(self, act_method):
+        act_sig = inspect.signature(act_method)
+        params = list(act_sig.parameters.values())
+        if not params or params[0].name != 'input':
+            raise TypeError("'act' method first parameter must be named 'input'")
+        if params[0].annotation == inspect._empty:
+            raise TypeError("'act' method parameter 'input' must have a type annotation'")
+        if act_sig.return_annotation == inspect._empty:
+            raise TypeError("'act' method must have a return type annotation'")
+        return True
+
     def _act(self, wrapped_self, input, it, **act_kwargs):
         act_method = getattr(wrapped_self, 'act', None)
         if not callable(act_method):
             # Propagate the input if no act method is defined
             return input
+
+        assert self._validate_act_method(act_method)
 
         is_dynamic_model = getattr(input, '_is_dynamic_model', False)
         input = input if not is_dynamic_model else input.value
@@ -588,7 +607,7 @@ class contract:
             try:
                 assert self._is_valid_input(input)
             except TypeError:
-                input_type = self._try_dynamic_type_annotation(input, original_forward)
+                input_type = self._try_dynamic_type_annotation(original_forward, context="input")
                 input = input_type(value=input)
 
             maybe_payload = getattr(wrapped_self, "payload", None)
@@ -609,7 +628,7 @@ class contract:
             try:
                 assert self._is_valid_output(output_type)
             except TypeError:
-                output_type = self._try_dynamic_type_annotation(output_type, original_forward)
+                output_type = self._try_dynamic_type_annotation(original_forward, context="output")
 
             output = None
             current_input = input
