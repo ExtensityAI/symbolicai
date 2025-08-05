@@ -1,9 +1,10 @@
 import json
+from functools import lru_cache
 from types import UnionType
 from typing import Any, Literal, Type, Union, get_args, get_origin
 
 from attr import dataclass
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, create_model
 
 
 @dataclass
@@ -61,7 +62,7 @@ class LLMDataModel(BaseModel):
         indent_str = " " * indent
         fields = "\n".join(
             self.format_field(name, getattr(self, name), indent + 2)
-            for name, field in self.model_fields.items()
+            for name, field in type(self).model_fields.items()
             if (
                 getattr(self, name, None) is not None
                 and not getattr(field, "exclude", False)
@@ -320,3 +321,43 @@ Return a JSON object with the following schema:
 {example_json}
 ´´´
 """
+
+@lru_cache(maxsize=128)
+def build_dynamic_llm_datamodel(py_type: Any) -> Type[LLMDataModel]:
+    """Dynamically create a subclass of ``LLMDataModel`` that contains a single
+    field called ``value`` annotated with *py_type*.
+
+    The model class is cached so that identical *py_type* inputs return the
+    *same* class instance – this is important for equality checks based on
+    ``issubclass`` later in the workflow.
+
+    Parameters
+    ----------
+    py_type : Any
+        A Python or ``typing`` type that is supported by Pydantic (e.g.
+        ``str``, ``list[str]``, ``dict[str, int]``).
+
+    Returns
+    -------
+    Type[LLMDataModel]
+        A newly created (or cached) subclass of ``LLMDataModel`` with one
+        required field named ``value``.
+    """
+
+    model_name = f"LLMDynamicDataModel_{hash(str(py_type)) & 0xFFFFFFFF:X}"  # deterministic but short name
+
+    # `create_model` returns a new Pydantic model class
+    model: Type[LLMDataModel] = create_model(
+        model_name,
+        __base__=LLMDataModel,
+        value=(
+            py_type,
+            Field(
+                ...,
+                description="This is a dynamically generated data model. Match the schema **exactly** " +
+                "– use the same keys and, for any array/collection, keep the element-to-element correspondence and length " +
+                "of the input unless the prompt explicitly says otherwise.")
+        ),
+    )
+
+    return model
