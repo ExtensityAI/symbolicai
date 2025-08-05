@@ -2,7 +2,9 @@
 
 In SymbolicAI, the `@contract` decorator provides a powerful mechanism, inspired by Design by Contract (DbC) principles, to enhance the reliability and semantic correctness of `Expression` classes, especially those interacting with Large Language Models (LLMs). It allows you to define explicit pre-conditions, post-conditions, and intermediate processing steps, guiding the behavior of your classes and the underlying LLMs. The original post introducing this feature can be found [here](https://futurisold.github.io/2025-03-01-dbc/).
 
-<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/contract_flow.svg" width="720px">
+<div style="text-align: center;">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/dev/assets/images/contract_flow.png" width="400px" style="cursor: pointer;" onclick="this.style.width = this.style.width === '400px' ? '720px' : '400px';" title="Click to expand/collapse">
+</div>
 
 ## Why Use Contracts?
 
