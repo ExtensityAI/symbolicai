@@ -2,6 +2,8 @@
 
 In SymbolicAI, the `@contract` decorator provides a powerful mechanism, inspired by Design by Contract (DbC) principles, to enhance the reliability and semantic correctness of `Expression` classes, especially those interacting with Large Language Models (LLMs). It allows you to define explicit pre-conditions, post-conditions, and intermediate processing steps, guiding the behavior of your classes and the underlying LLMs. The original post introducing this feature can be found [here](https://futurisold.github.io/2025-03-01-dbc/).
 
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/contract_flow.svg" width="720px">
+
 ## Why Use Contracts?
 
 Traditional software development often relies on testing to verify correctness after the fact. Contracts, however, encourage building correctness into the design itself. When working with LLMs, which are inherently probabilistic, ensuring that outputs are not only syntactically valid but also semantically meaningful and contextually appropriate is crucial.
@@ -20,7 +22,7 @@ The `@contract` is a class decorator that you apply to your custom classes inher
 
 Key characteristics:
 
-*   **Operates on `LLMDataModel`**: Inputs to and outputs from the core contract-validated logic *must* be instances of `symai.models.LLMDataModel` (which extends Pydantic's `BaseModel`). This allows for structured data validation and rich schema descriptions that can inform LLM prompts.
+*   **Operates on LLMDataModel or Python types**: Inputs to and outputs from the core contract-validated logic can be instances of `symai.models.LLMDataModel` (extending Pydantic's `BaseModel`) or native Python types (e.g., `str`, `int`, `list[int]`, `dict[str, int]`, `Optional[...]`, `Union[...]`). Dynamic type annotation automatically wraps primitive or complex Python types into internal LLMDataModel wrappers (with a single `value` field) for validation and unwrapping, reducing verbosity compared to defining full LLMDataModel classes for simple use cases.
 *   **User-Defined Conditions**: You define the contract's terms by implementing specific methods: `pre` (pre-conditions), `act` (optional intermediate action), and `post` (post-conditions), along with a `prompt` property.
 *   **Fallback Mechanism**: A contract never entirely prevents the execution of your class's original `forward` method. If contract validation fails (even after remedies), your `forward` method is still called (typically with the original, unvalidated input, if the failure happened before `act`, or the `act`-modified input if failure was in `post`), allowing you to implement fallback logic or return a default, type-compliant object.
 *   **State and Results**: The decorator adds attributes to your class instance:
@@ -70,16 +72,20 @@ class MyContractedClass(Expression):
     Controls whether error messages from multiple failed validation attempts (during remediation) are accumulated and provided to the LLM in subsequent retry attempts. See more details in the "Error Accumulation" section below.
 *   `verbose` (bool, default: `False`):
     If `True`, enables detailed logging of the contract's internal operations, including prompts sent to the LLM and validation steps.
-*   `remedy_retry_params` (dict, default: `{ "tries": 5, "delay": 0.5, "max_delay": 15, "jitter": 0.1, "backoff": 2, "graceful": False }`):
-    A dictionary configuring the retry behavior for both type and semantic validation/remediation functions.
-    *   `tries` (int): Maximum number of retry attempts for a failed validation.
-    *   `delay` (float): Initial delay (in seconds) before the first retry.
-    *   `max_delay` (float): The maximum delay between retries.
-    *   `jitter` (float): A factor for adding random jitter to delays to prevent thundering herd problems.
-    *   `backoff` (float): The multiplier for increasing the delay between retries (e.g., 2 means delay doubles).
-    *   `graceful` (bool): If `True`, suppresses exceptions during retry exhaustion and might allow the process to continue with a potentially invalid state (behavior depends on the specific validation function). Typically `False` for contracts to ensure failures are robustly handled.
+    *   `remedy_retry_params` (dict, default: `{ "tries": 5, "delay": 0.5, "max_delay": 15, "jitter": 0.1, "backoff": 2, "graceful": False }`):
+        A dictionary configuring the retry behavior for both type and semantic validation/remediation functions.
+        *   `tries` (int): Maximum number of retry attempts for a failed validation.
+        *   `delay` (float): Initial delay (in seconds) before the first retry.
+        *   `max_delay` (float): The maximum delay between retries.
+        *   `jitter` (float): A factor for adding random jitter to delays to prevent thundering herd problems.
+        *   `backoff` (float): The multiplier for increasing the delay between retries (e.g., 2 means delay doubles).
+        *   `graceful` (bool): If `True`, suppresses exceptions during retry exhaustion and allows the contract to continue with potentially invalid state. In graceful mode:
+            - Exceptions from validation/remediation are suppressed and `self.contract_exception` remains `None`.
+            - The automatic final output type check (which would raise a `TypeError` for mismatched return types) is skipped, preventing upstream errors.
+            This lets your `forward` method receive invalid or missing results without interruption and implement custom fallback logic.
 
 ### 2. Input and Output Data Models
+**Note**: You can use native Python types directly in your `pre`, `act`, `post`, and `forward` method signatures (e.g., `str`, `int`, `list[int]`, `dict[str, int]`, `Optional[...]`, `Union[...]`), or mix them with traditional `LLMDataModel` types in hybrid scenarios (e.g., LLMDataModel inputs with list outputs). The system will dynamically generate internal LLMDataModel wrappers (with a single `value` field) for validation and automatically unwrap the `value` field back to your native data on return, making simple use cases more concise than defining full Pydantic models.
 
 Your contract's core logic (especially `pre`, `act`, `post`, and `forward`) will operate on instances of `LLMDataModel`. Define these models using Pydantic syntax. Crucially, use `Field(description=\"...\")` for your model attributes, as these descriptions are used to generate more effective prompts for the LLM. Always use descriptive `Field(description=\"...\")` for your type data models, as these descriptions are crucial for guiding the LLM effectively during validation and generation steps. Rich descriptions help the `TypeValidationFunction` understand the semantic intent of each field, leading to better error messages and more accurate data generation when remedies are active.
 
@@ -205,15 +211,17 @@ This is your class's original `forward` method, containing the primary logic. Th
     *   This method is **always called** by the contract's `wrapped_forward` (in its `finally` block), regardless of whether the preceding contract validations (`pre`, `act`, `post`, remedies) succeeded or failed.
     *   **Developer Responsibility**: Inside your `forward` method, you *must* check `self.contract_successful` and/or `self.contract_result`.
         *   If `self.contract_successful` is `True`, `self.contract_result` holds the validated (and possibly remedied) output from the contract pipeline. You should typically return this.
-        *   If `self.contract_successful` is `False`, the contract failed. `self.contract_result` might be `None` or an intermediate (invalid) object. In this case, your `forward` method should implement fallback logic:
+        *   If `self.contract_successful` is `False`, the contract failed. `self.contract_result` might be `None` or an intermediate (invalid) object, and `self.contract_exception` holds the underlying exception from the contract pipeline. In this case, your `forward` method can:
             *   Return a sensible default object that matches `YourOutputModel`.
-            *   Or, if appropriate, raise a custom exception (though the pattern encourages graceful fallback).
+            *   Or, if you prefer to propagate the error, raise it to preserve the original context, e.g.,
+                ```python
+                raise self.contract_exception or ValueError("Contract failed!")
+                ```
     *   The `input` argument received by *this* `forward` method (the one you write) depends on whether the contract succeeded:
         *   If `contract_successful == True`: `input` is the `current_input` from `wrapped_forward` which was used by `_validate_output`. This `current_input` is the output of `_act` if `act` is defined, otherwise it's the output of `_validate_input`.
         *   If `contract_successful == False`: `input` is the `original_input` (the raw input to the contract call, after initial type validation by `_is_valid_input` but before `pre` or `act` modifications).
 
 ```python
-
     def forward(self, input: MyInput, **kwargs) -> MyOutput:
         if not self.contract_successful or self.contract_result is None:
             # Contract failed, or result is not set: implement fallback
@@ -225,6 +233,36 @@ This is your class's original `forward` method, containing the primary logic. Th
         final_result: MyOutput = self.contract_result
         final_result.result += " (Forward processed)" # Example of further work
         return final_result
+```
+
+#### Error Handling and Propagation
+
+When a contract validation or remediation step fails, the exception is captured in `self.contract_exception`, and `self.contract_successful` is set to `False`. If you prefer to surface these errors instead of returning fallback values, you can propagate the exception in your `forward` implementation:
+
+```python
+    def forward(self, input: MyInput, **kwargs) -> MyOutput:
+        if self.contract_result is None:
+            # Propagate the original contract exception, or a generic one
+            raise self.contract_exception or ValueError("Contract failed!")
+        return self.contract_result
+```
+```python
+# Example: graceful=True → suppressed errors, skip type check (can return any type)
+# Contract decorator configured as:
+# @contract(pre_remedy=False, post_remedy=True, remedy_retry_params={"graceful": True, ...})
+class MyExpr(Expression):
+    def forward(self, input: MyInput, **kwargs) -> MyOutput:
+        # In graceful mode, contract_exception is None on failures,
+        # and the final output type check is skipped.
+        # You may return a completely different type than the annotation.
+        if not self.contract_successful or self.contract_result is None:
+            # Fallback logic returning a raw dict instead of MyOutput
+            return {
+                "status": "error",
+                "message": "Fallback allowed under graceful mode"
+            }
+        # On success, return the validated contract result
+        return self.contract_result
 ```
 
 ### Ensuring Meaningful Output: The Importance of `pre` and `post` Conditions
@@ -247,9 +285,15 @@ To illustrate, say you want a non-trivial `title: str` in your output object, bu
 
 When you call an instance of your contracted class (e.g., `my_instance(input=my_input_data)`), the `wrapped_forward` method (created by the `@contract` decorator) executes the following sequence:
 
-1.  **Initial Input Validation (`_is_valid_input`)**:
+0.  **Return Type Annotation Validation & Dynamic Wrapping (`_is_valid_output` + `_try_dynamic_type_annotation`)**:
+    *   Inspects your `forward` method's return type annotation (`sig.return_annotation`).
+    *   Ensures you provided a return type annotation and it’s a subclass of `LLMDataModel`.
+    *   If the annotation is a native Python/typing type (e.g., `str`, `list[int]`, `Optional[...]`), the system automatically builds a dynamic `LLMDataModel` wrapper for the output type, allowing subsequent validation and unwrapping.
+
+1.  **Initial Input Validation & Dynamic Wrapping (`_is_valid_input` + `_try_dynamic_type_annotation`)**:
     *   Checks if the provided `input` kwarg is an instance of `LLMDataModel`. Fails fast if not.
     *   Extracts the `original_input` object.
+    *   If the `input` is a native Python type (and not an `LLMDataModel`), the system inspects your `forward` signature to infer the expected Python type and automatically wraps your primitive or container in a temporary `LLMDataModel` for validation (via `_try_dynamic_type_annotation`).
 
 2.  **Pre-condition Validation (`_validate_input`)**:
     *   The `current_input` (initially `original_input`) is passed to your `pre(input)` method.
@@ -271,6 +315,7 @@ When you call an instance of your contracted class (e.g., `my_instance(input=my_
     *   The `current_input` (which is the output from `_act`, or from `_validate_input` if no `act`) and your class's `prompt` are used to guide an LLM call to generate/validate data conforming to the target output type.
     *   Your `post(output)` method is called with the LLM-generated/validated output object.
     *   If `post()` raises an exception and `post_remedy=True`, remediation is attempted.
+    *   If your `forward` return annotation is a native Python type or typing construct (e.g., `int`, `list[str]`, `dict[str, int]`, `Optional[...]`, `Union[...]`), the contract will build a dynamic `LLMDataModel` wrapper for the output, validate and (if needed) remediate it, then automatically unwrap and return the native value on exit.
     *   If all these steps (type validation, LLM generation, `post` validation, remedies) succeed:
         *   `self.contract_successful` is set to `True`.
         *   `self.contract_result` is set to the final, validated output object.
@@ -287,7 +332,7 @@ When you call an instance of your contracted class (e.g., `my_instance(input=my_
         *   If `self.contract_successful` is `False`, `forward_input` is the `original_input`.
     *   Your class's original `forward(self, input=forward_input, **kwargs)` method is called.
     *   The value returned by *your* `forward` method becomes the ultimate return value of the contract call.
-    *   A final output type check is performed on this returned value against your `forward` method's declared return type annotation.
+    *   A final output type check is performed on this returned value against your `forward` method's declared return type annotation. If the contract is configured with `graceful=True`, this final type check is skipped instead of raising a `TypeError`.
 
 ## Example
 This is a 0-shot example generated by o3 from the above documentation and tests.
