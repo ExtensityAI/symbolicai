@@ -1,17 +1,20 @@
 import json
+from enum import Enum
 from functools import lru_cache
 from types import UnionType
 from typing import Any, Literal, Type, Union, get_args, get_origin
 
 from attr import dataclass
-from pydantic import BaseModel, Field, create_model
+from pydantic import BaseModel, Field, create_model, model_validator
+from pydantic_core import PydanticUndefined
 
 
 @dataclass
 class LengthConstraint:
-    field_name: str
-    min_length: int
-    max_length: int
+    field_name: str = None
+    min_length: int = None
+    max_length: int = None
+
 
 @dataclass
 class CustomConstraint:
@@ -19,7 +22,7 @@ class CustomConstraint:
 
 
 def Const(value: str):
-    return Field(default=value, frozen=True, init_var=False)
+    return Field(default=value, json_schema_extra={'const_value': value})
 
 
 class LLMDataModel(BaseModel):
@@ -32,44 +35,103 @@ class LLMDataModel(BaseModel):
         default=None, exclude=True, frozen=True
     )  # Optional section header for top-level models
 
-    def format_field(self, key: str, value: Any, indent: int = 0) -> str:
+    @model_validator(mode='before')
+    @classmethod
+    def validate_const_fields(cls, values):
+        """Validate that const fields have their expected values."""
+        for field_name, field_info in cls.model_fields.items():
+            if field_info.json_schema_extra and 'const_value' in field_info.json_schema_extra:
+                const_value = field_info.json_schema_extra['const_value']
+                if field_name in values and values[field_name] != const_value:
+                    raise ValueError(f'{field_name} must be {const_value!r}')
+        return values
+
+    def format_field(self, key: str, value: Any, indent: int = 0, visited: set = None) -> str:
         """
-        Formats a single field for output. Handles nested models, lists, and dictionaries.
+        Formats a field value for string representation, handling nested structures.
         """
+        if visited is None:
+            visited = set()
         indent_str = " " * indent
 
+        if value is None:
+            return f"{indent_str}{key}: None"
+
+        # Handle Enum values
+        if isinstance(value, Enum):
+            return f"{indent_str}{key}: {value.value}"
+
         if isinstance(value, LLMDataModel):
-            nested_str = value.__str__(indent).strip()
+            obj_id = id(value)
+            if obj_id in visited:
+                return f"{indent_str}{key}: <circular reference>"
+            visited.add(obj_id)
+            nested_str = value.__str__(indent, visited).strip()
+            visited.discard(obj_id)
             return f"{indent_str}{key}:\n{indent_str}  {nested_str}"
 
         if isinstance(value, list):
-            items = [f"{indent_str}  - {self.format_field('', item, indent).strip()}"
-                    for item in value]
+            if not value:  # Empty list
+                return f"{indent_str}{key}:\n"
+            items = []
+            for item in value:
+                if isinstance(item, dict):
+                    # Recursively format nested dictionaries
+                    dict_str = self.format_field("", item, indent + 2, visited).strip()
+                    items.append(f"{indent_str}  - :\n{indent_str}    {dict_str}")
+                elif isinstance(item, list):
+                    # Recursively format nested lists
+                    list_str = self.format_field("", item, indent + 2, visited).strip()
+                    items.append(f"{indent_str}  - :\n{indent_str}    {list_str}")
+                elif isinstance(item, LLMDataModel):
+                    obj_id = id(item)
+                    if obj_id in visited:
+                        items.append(f"{indent_str}  - : <circular reference>")
+                    else:
+                        visited.add(obj_id)
+                        item_str = item.__str__(indent + 2, visited).strip()
+                        visited.discard(obj_id)
+                        items.append(f"{indent_str}  - : {item_str}" if item_str else f"{indent_str}  - :")
+                else:
+                    items.append(f"{indent_str}  - : {item}" if item != "" else f"{indent_str}  - :")
             return f"{indent_str}{key}:\n" + "\n".join(items)
 
         if isinstance(value, dict):
-            items = [f"{indent_str}  {k}: {self.format_field('', v, indent).strip()}"
-                    for k, v in value.items()]
-            return f"{indent_str}{key}:\n" + "\n".join(items)
+            if not value:  # Empty dict
+                return f"{indent_str}{key}:\n"
+            items = []
+            for k, v in value.items():
+                # Recursively format nested values
+                if isinstance(v, (dict, list, LLMDataModel)):
+                    nested_str = self.format_field(k, v, indent + 2, visited)
+                    items.append(nested_str)
+                else:
+                    items.append(f"{indent_str}  {k}: {v}")
+            return f"{indent_str}{key}:\n" + "\n".join(items) if key else "\n".join(items)
 
         return f"{indent_str}{key}: {value}"
 
-    def __str__(self, indent: int = 0) -> str:
+    def __str__(self, indent: int = 0, visited: set = None) -> str:
         """
         Converts the model into a formatted string for LLM prompts.
         Handles indentation for nested models and includes an optional section header.
         """
+        if visited is None:
+            visited = set()
         indent_str = " " * indent
-        fields = "\n".join(
-            self.format_field(name, getattr(self, name), indent + 2)
+        field_list = [
+            self.format_field(name, getattr(self, name), indent + 2, visited)
             for name, field in type(self).model_fields.items()
             if (
-                getattr(self, name, None) is not None
-                and not getattr(field, "exclude", False)
+                not getattr(field, "exclude", False)
                 and not name == "section_header"
-            )  # Exclude None values and "exclude" fields
-        )
-        fields += "\n"  # add line break at the end to separate from the next section
+            )  # Exclude "exclude" fields
+        ]
+
+        if field_list:
+            fields = "\n".join(field_list) + "\n"  # add line break at the end to separate from the next section
+        else:
+            fields = ""
 
         if self.section_header and indent == 0:
             header = f"{indent_str}[[{self.section_header}]]\n"
@@ -97,7 +159,8 @@ class LLMDataModel(BaseModel):
     # Helper methods for generating LLM instructions
     ########################################
     @classmethod
-    def simplify_json_schema(model) -> str:
+    @lru_cache(maxsize=128)
+    def simplify_json_schema(cls) -> str:
         """
         Converts a schema from Pydantic's model_json_schema() into a simplified, human-readable format
         with proper indentation for all levels of nested fields.
@@ -109,10 +172,13 @@ class LLMDataModel(BaseModel):
             str: A simplified, human-readable schema description with proper indentation.
         """
 
-        schema = model.model_json_schema()
+        schema = cls.model_json_schema()
 
-        def format_field(name, field_schema, required, definitions, indent_level):
+        def format_field(name, field_schema, required, definitions, indent_level, visited=None):
             """Formats a single field in the schema with proper indentation."""
+            if visited is None:
+                visited = set()
+
             field_type = resolve_field_type(field_schema, definitions)
             description = field_schema.get(
                 "description", field_schema.get("title", "No description provided.")
@@ -124,15 +190,17 @@ class LLMDataModel(BaseModel):
             nested_description = ""
             if field_type.startswith("nested object"):
                 ref_name = field_schema.get("$ref", "").split("/")[-1]
-                if ref_name in definitions:
+                if ref_name in definitions and ref_name not in visited:
+                    visited.add(ref_name)
                     nested_description = simplify_fields(
-                        definitions[ref_name], definitions, indent_level + 1, extra_defs
+                        definitions[ref_name], definitions, indent_level + 1, extra_defs, visited.copy()
                     )
             elif field_type.startswith("array of nested object"):
                 ref_name = field_schema.get("items", {}).get("$ref", "").split("/")[-1]
-                if ref_name in definitions:
+                if ref_name in definitions and ref_name not in visited:
+                    visited.add(ref_name)
                     nested_description = simplify_fields(
-                        definitions[ref_name], definitions, indent_level + 1, extra_defs
+                        definitions[ref_name], definitions, indent_level + 1, extra_defs, visited.copy()
                     )
 
             # Build the field description
@@ -143,9 +211,20 @@ class LLMDataModel(BaseModel):
 
         def resolve_field_type(field_schema, definitions):
             """Resolves the type of a field, including arrays and $ref references."""
+            # Handle allOf with $ref (common for enums)
+            if "allOf" in field_schema and len(field_schema["allOf"]) == 1:
+                inner = field_schema["allOf"][0]
+                if "$ref" in inner:
+                    ref_name = inner["$ref"].split("/")[-1]
+                    if ref_name in definitions:
+                        ref_def = definitions[ref_name]
+                        if "enum" in ref_def:
+                            literal_values = ", ".join(map(repr, ref_def["enum"]))
+                            return f"enum ({literal_values})"
+                        return f"nested object ({ref_name})"
             if "enum" in field_schema:
                 literal_values = ", ".join(map(repr, field_schema["enum"]))
-                return f"one of ({literal_values})"
+                return f"enum ({literal_values})"
             if "anyOf" in field_schema:
                 subtypes = [
                     resolve_field_type(subschema, definitions)
@@ -183,8 +262,10 @@ class LLMDataModel(BaseModel):
                 return f"nested object ({ref_name})"
             return "unknown"
 
-        def simplify_fields(schema, definitions, indent_level=0, extra_defs: set[str] | None = None):
+        def simplify_fields(schema, definitions, indent_level=0, extra_defs: set[str] | None = None, visited=None):
             """Simplifies the properties of a schema with proper indentation."""
+            if visited is None:
+                visited = set()
             properties = schema.get("properties", {})
             required_fields = set(schema.get("required", []))
             lines = []
@@ -198,6 +279,7 @@ class LLMDataModel(BaseModel):
                         name in required_fields,
                         definitions,
                         indent_level,
+                        visited.copy(),
                     )
                 )
 
@@ -221,9 +303,19 @@ class LLMDataModel(BaseModel):
         def simplify_definitions(definitions, extra_defs: set[str]):
             """Simplifies the definitions for all referenced models."""
             lines = []
+            visited_defs = set()
             for name, definition in definitions.items():
-                lines.append(f"- {name}:")
-                lines.append(simplify_fields(definition, definitions, indent_level=1, extra_defs=extra_defs))
+                if name not in visited_defs:
+                    visited_defs.add(name)
+                    lines.append(f"- {name}:")
+                    # Check if this is an enum definition
+                    if "enum" in definition:
+                        # Format enum values
+                        enum_values = ", ".join(map(repr, definition["enum"]))
+                        lines.append(f"  Enum values: {enum_values}")
+                    else:
+                        # Regular object with properties
+                        lines.append(simplify_fields(definition, definitions, indent_level=1, extra_defs=extra_defs, visited={name}))
 
             # Append pseudo-definitions for union alternatives that are primitives or simple arrays/objects
             for desc in sorted(extra_defs):
@@ -248,7 +340,7 @@ class LLMDataModel(BaseModel):
         return result
 
     @staticmethod
-    def generate_example_json(model: Type[BaseModel]) -> dict:
+    def generate_example_json(model: Type[BaseModel], visited_models=None) -> dict:
         """
         Generates an example JSON object from a Pydantic BaseModel, recursively handling nested models,
         including cases where a field is a list with mixed types (e.g., Union[TypeA, TypeB]).
@@ -260,21 +352,33 @@ class LLMDataModel(BaseModel):
             dict: An example JSON object.
         """
 
-        def resolve_field_value(field_annotation: Any) -> Any:
+        def resolve_field_value(field_annotation: Any, visited_models=None) -> Any:
             """Recursively resolves the value of a field."""
+            if visited_models is None:
+                visited_models = set()
+
             origin = get_origin(field_annotation)
             if origin is None:
                 origin = field_annotation
 
+            # Handle Enum
+            if isinstance(origin, type) and issubclass(origin, Enum):
+                # Return the first enum value's actual value
+                return list(origin)[0].value if list(origin) else "enum_value"
+
             # Handle Literal
             if origin is Literal:
-                return get_args(field_annotation)[
-                    0
-                ]  # Use the first allowed value as the example
+                return get_args(field_annotation)[0]  # Use the first allowed value as the example
 
             # Handle nested BaseModel
             if isinstance(origin, type) and issubclass(origin, BaseModel):
-                return LLMDataModel.generate_example_json(field_annotation)
+                # Avoid infinite recursion for self-referential models
+                model_name = field_annotation.__name__
+                if model_name in visited_models:
+                    return [] if "list" in str(field_annotation).lower() else {}
+                visited_models.add(model_name)
+                result = LLMDataModel.generate_example_json(field_annotation, visited_models.copy())
+                return result
 
             # Handle List
             if origin is list:
@@ -285,11 +389,11 @@ class LLMDataModel(BaseModel):
                 if get_origin(item_type) in [Union, UnionType]:
                     subtypes = get_args(item_type)
                     return [
-                        resolve_field_value(subtype)
+                        resolve_field_value(subtype, visited_models)
                         for subtype in subtypes
                         if subtype is not type(None)
                     ]
-                return [resolve_field_value(item_type)]  # Single type in the list
+                return [resolve_field_value(item_type, visited_models)]  # Single type in the list
 
             # Handle Dict
             if origin is dict:
@@ -298,47 +402,40 @@ class LLMDataModel(BaseModel):
                     if get_args(field_annotation)
                     else (str, Any)
                 )
-                return {resolve_field_value(key_type): resolve_field_value(value_type)}
+                return {resolve_field_value(key_type, visited_models): resolve_field_value(value_type, visited_models)}
+
+            # Handle Set
+            if origin is set:
+                item_type = (
+                    get_args(field_annotation)[0] if get_args(field_annotation) else Any
+                )
+                # Return as list for JSON serialization (sets aren't JSON serializable)
+                return [resolve_field_value(item_type, visited_models), resolve_field_value(item_type, visited_models)]
+
+            # Handle Frozenset
+            if origin is frozenset:
+                item_type = (
+                    get_args(field_annotation)[0] if get_args(field_annotation) else Any
+                )
+                # Return as list for JSON serialization (frozensets aren't JSON serializable)
+                return [resolve_field_value(item_type, visited_models), resolve_field_value(item_type, visited_models)]
+
+            # Handle Tuple
+            if origin is tuple:
+                type_args = get_args(field_annotation)
+                if type_args:
+                    # Return as list for JSON serialization (tuples aren't JSON serializable)
+                    return [resolve_field_value(t, visited_models) for t in type_args]
+                return ["example_value"]
 
             # Handle Union (e.g., Union[TypeA, TypeB, None])
             if origin in [Union, UnionType]:
                 # Filter out `None` so we only consider real alternatives.
                 subtypes = [s for s in get_args(field_annotation) if s is not type(None)]
 
-                # Heuristic: prefer less-nested and more primitive representations, in the
-                # following precedence order. This reduces bias towards complex objects and
-                # makes it more likely that every union alternative is, at some point, used
-                # as an example across different combinations.
-                # We prefer examples that best showcase structure:
-                # 0 – alternatives containing BaseModel (either directly or as value in dict/list)
-                # 1 – dict variants
-                # 2 – list variants
-                # 3 – everything else (primitives)
-                def contains_basemodel(annotation: Any) -> bool:
-                    """Recursively check whether *annotation* contains a pydantic BaseModel."""
-                    orig = get_origin(annotation)
-                    if orig is None:
-                        orig = annotation
-                    if isinstance(orig, type) and issubclass(orig, BaseModel):
-                        return True
-                    if orig in (list, tuple, dict, Union, UnionType):
-                        for sub in get_args(annotation):
-                            if contains_basemodel(sub):
-                                return True
-                    return False
-
-                def priority(t: Any) -> int:
-                    if contains_basemodel(t):
-                        return 0
-                    t_origin = get_origin(t) or t
-                    if t_origin is dict:
-                        return 1
-                    if t_origin is list:
-                        return 2
-                    return 3
-
-                chosen_subtype = sorted(subtypes, key=priority)[0] if subtypes else None
-                return resolve_field_value(chosen_subtype) if chosen_subtype else None
+                # Simply use the first non-None type in the Union
+                chosen_subtype = subtypes[0] if subtypes else None
+                return resolve_field_value(chosen_subtype, visited_models) if chosen_subtype else None
 
             # Primitive types
             if field_annotation is str:
@@ -361,7 +458,16 @@ class LLMDataModel(BaseModel):
             if field_name == "section_header":
                 continue
             field_annotation = model_field.annotation
-            example[field_name] = resolve_field_value(field_annotation)
+            # Use default value if available (including None)
+            if model_field.default != ...:
+                if model_field.default != PydanticUndefined:
+                    example[field_name] = model_field.default
+                else:
+                    example[field_name] = resolve_field_value(field_annotation, visited_models)
+            elif model_field.default_factory is not None:
+                example[field_name] = model_field.default_factory()
+            else:
+                example[field_name] = resolve_field_value(field_annotation, visited_models)
 
         return example
 
@@ -370,22 +476,23 @@ class LLMDataModel(BaseModel):
     ########################################
 
     @classmethod
-    def instruct_llm(model):
+    @lru_cache(maxsize=128)
+    def instruct_llm(cls):
         # ------------------------------------------------------------------
         # 1. Human-readable schema
         # ------------------------------------------------------------------
-        human_readable_schema = model.simplify_json_schema()
+        human_readable_schema = cls.simplify_json_schema()
 
         # ------------------------------------------------------------------
         # 2. Generate example(s). If the top-level `value` annotation is a
-        #    Union we create one example per alternative (excluding None).
+        #    Union we create one example per alternative.
         # ------------------------------------------------------------------
         examples: list[str] = []
 
         # Determine how to construct examples based on the model structure
         # ------------------------------------------------------------------
         user_fields = {
-            name: f for name, f in model.model_fields.items() if name != "section_header"
+            name: f for name, f in cls.model_fields.items() if name != "section_header"
         }
 
         def _append_example(example_dict: dict):
@@ -407,7 +514,7 @@ class LLMDataModel(BaseModel):
 
             for subtype in subtypes:
                 submodel = build_dynamic_llm_datamodel(subtype)
-                example_dict = LLMDataModel.generate_example_json(submodel)
+                example_dict = cls.generate_example_json(submodel)
                 _append_example(example_dict)
         elif len(user_fields) == 1:
             # Single-field user-defined model; might still be Union.
@@ -424,11 +531,11 @@ class LLMDataModel(BaseModel):
             for subtype in subtypes:
                 # Generate example value for this subtype and embed in dict
                 temp_model = build_dynamic_llm_datamodel(subtype)
-                value_example = LLMDataModel.generate_example_json(temp_model)["value"]
+                value_example = cls.generate_example_json(temp_model)["value"]
                 _append_example({field_name: value_example})
         else:
             # Complex model with multiple fields – fall back to single example
-            _append_example(LLMDataModel.generate_example_json(model))
+            _append_example(cls.generate_example_json(cls))
 
         # ------------------------------------------------------------------
         # 3. Assemble instruction
