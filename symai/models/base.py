@@ -382,19 +382,53 @@ class LLMDataModel(BaseModel):
         # ------------------------------------------------------------------
         examples: list[str] = []
 
-        value_annotation = model.model_fields["value"].annotation
-        origin = get_origin(value_annotation)
+        # Determine how to construct examples based on the model structure
+        # ------------------------------------------------------------------
+        user_fields = {
+            name: f for name, f in model.model_fields.items() if name != "section_header"
+        }
 
-        subtypes = (
-            [a for a in get_args(value_annotation) if a is not type(None)]
-            if origin in (Union, UnionType)
-            else [value_annotation]
-        )
-
-        for subtype in subtypes:
-            submodel = build_dynamic_llm_datamodel(subtype)
-            example_dict = LLMDataModel.generate_example_json(submodel)
+        def _append_example(example_dict: dict):
             examples.append(json.dumps(example_dict, indent=1))
+
+        if (
+            # Classic dynamic model created via `build_dynamic_llm_datamodel`
+            "value" in user_fields
+            and len(user_fields) == 1
+        ):
+            value_annotation = user_fields["value"].annotation
+            origin = get_origin(value_annotation)
+
+            subtypes = (
+                [a for a in get_args(value_annotation) if a is not type(None)]
+                if origin in (Union, UnionType)
+                else [value_annotation]
+            )
+
+            for subtype in subtypes:
+                submodel = build_dynamic_llm_datamodel(subtype)
+                example_dict = LLMDataModel.generate_example_json(submodel)
+                _append_example(example_dict)
+        elif len(user_fields) == 1:
+            # Single-field user-defined model; might still be Union.
+            field_name, field = next(iter(user_fields.items()))
+            annotation = field.annotation
+            origin = get_origin(annotation)
+
+            subtypes = (
+                [a for a in get_args(annotation) if a is not type(None)]
+                if origin in (Union, UnionType)
+                else [annotation]
+            )
+
+            for subtype in subtypes:
+                # Generate example value for this subtype and embed in dict
+                temp_model = build_dynamic_llm_datamodel(subtype)
+                value_example = LLMDataModel.generate_example_json(temp_model)["value"]
+                _append_example({field_name: value_example})
+        else:
+            # Complex model with multiple fields – fall back to single example
+            _append_example(LLMDataModel.generate_example_json(model))
 
         # ------------------------------------------------------------------
         # 3. Assemble instruction
