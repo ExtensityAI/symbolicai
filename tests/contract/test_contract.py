@@ -195,7 +195,7 @@ class TestTripletExtractor(Expression):
 
     def forward(self, input: TripletExtractorInput, **kwargs) -> KGState:
         if self.contract_result is None:
-            raise ValueError("Contract failed!")
+            raise self.contract_exception or ValueError("Contract failed!")
         return self.contract_result
 
     def extend_triplets(self, new_triplets: List[Triplet]):
@@ -208,7 +208,11 @@ class TestTripletExtractor(Expression):
         return len(self._triplets)
 
 
-# Tests
+# ============================
+# LLMDataModel Type Annotation Tests
+# ============================
+##############################
+
 @pytest.mark.mandatory
 def test_triplet_extractor_basic():
     """Test basic functionality of the triplet extractor with act (the happy path!)"""
@@ -250,33 +254,25 @@ def test_triplet_extractor_state_persistence():
     ])
 
     extractor = TestTripletExtractor(threshold=0.7)
-
-    # First call
     input_data1 = TripletExtractorInput(
         text="Machine Learning models process data.",
         ontology=ontology
     )
     result1 = extractor(input=input_data1)
 
-    # Store initial triplets
     original_triplet_count = extractor.get_triplet_count()
     if result1.triplets:
         extractor.extend_triplets(result1.triplets)
-
-    # Second call
     input_data2 = TripletExtractorInput(
         text="Deep Learning is a subtype of Machine Learning.",
         ontology=ontology
     )
     result2 = extractor(input=input_data2)
-
     if result2.triplets:
         extractor.extend_triplets(result2.triplets)
 
-    # Verify state was maintained
     assert extractor.calls_count == 2
     assert len(extractor.analysis_history) == 2
-    # Verify triplets accumulate
     assert extractor.get_triplet_count() >= original_triplet_count
 
 
@@ -291,8 +287,6 @@ def test_triplet_extractor_with_multiple_texts():
     ])
 
     extractor = TestTripletExtractor(threshold=0.6)  # Lower threshold for test
-
-    # List of texts to process
     texts = [
         "Neural Networks are models that process data.",
         "Machine Learning algorithms improve with more data.",
@@ -311,11 +305,9 @@ def test_triplet_extractor_with_multiple_texts():
         result = extractor(input=input_data)
         results.append(result)
 
-        # Extend triplets with each result
         if result.triplets:
             extractor.extend_triplets(result.triplets)
 
-    # Verify the extractor processed all texts
     assert extractor.calls_count == len(texts)
     assert len(extractor.analysis_history) == len(texts)
 
@@ -326,26 +318,18 @@ def test_act_transformation():
     ontology = SimpleOntology(classes=[OntologyClass(name="ML")])
     extractor = TestTripletExtractor()
 
-    # Get the act method
     act_method = getattr(extractor, 'act')
 
-    # Call act directly to confirm type transformation
     input_data = TripletExtractorInput(
         text="Neural Networks are ML models.",
         ontology=ontology
     )
 
-    # Act should transform TripletExtractorInput to IntermediateAnalysisResult
     act_result = act_method(input_data)
-
-    # Verify type transformation
     assert isinstance(act_result, IntermediateAnalysisResult)
     assert not isinstance(act_result, TripletExtractorInput)
 
-    # Now test through the contract
     contract_result = extractor(input=input_data)
-
-    # Result from contract should be KGState
     assert isinstance(contract_result, KGState)
 
 
@@ -353,7 +337,7 @@ def test_act_transformation():
 def test_act_signature_validation():
     """Test that contract properly validates act method signature"""
 
-    @contract() # Basic contract decorator for testing
+    @contract()
     class BadActSignatureMissingInput(Expression):
         @property
         def prompt(self) -> str: return "test"
@@ -380,24 +364,6 @@ def test_act_signature_validation():
         def forward(self, **kwargs) -> KGState:
             return KGState()
 
-    @contract()
-    class BadActSignatureWrongInputType(Expression):
-        @property
-        def prompt(self) -> str: return "test"
-        def act(self, input: str, **kwargs) -> IntermediateAnalysisResult: # Input not LLMDataModel
-            return IntermediateAnalysisResult(analyzed_text=input)
-        def forward(self, **kwargs) -> KGState:
-            return KGState()
-
-    @contract()
-    class BadActSignatureWrongReturnType(Expression):
-        @property
-        def prompt(self) -> str: return "test"
-        def act(self, input: TripletExtractorInput, **kwargs) -> str: # Return not LLMDataModel
-            return input.text
-        def forward(self, **kwargs) -> KGState:
-            return KGState()
-
     dummy_ontology = SimpleOntology(classes=[OntologyClass(name="Test")])
     dummy_input = TripletExtractorInput(text="test", ontology=dummy_ontology)
 
@@ -416,14 +382,6 @@ def test_act_signature_validation():
     contract_bsnra = BadActSignatureNoReturnAnnotation()
     contract_bsnra(input=dummy_input)
     assert not contract_bsnra.contract_successful
-
-    contract_bswit = BadActSignatureWrongInputType()
-    contract_bswit(input=dummy_input)
-    assert not contract_bswit.contract_successful
-
-    contract_bswrt = BadActSignatureWrongReturnType()
-    contract_bswrt(input=dummy_input)
-    assert not contract_bswrt.contract_successful
 
 
 @pytest.mark.mandatory
@@ -515,7 +473,7 @@ def test_act_contract_state_interaction():
     class StateInteractionContract(Expression):
         def __init__(self):
             super().__init__()
-            self.custom_threshold = 0.5 # Initial state
+            self.custom_threshold = 0.5
             self.prompt_access_count = 0
 
         @property
@@ -531,11 +489,10 @@ def test_act_contract_state_interaction():
         def act(self, input: TripletExtractorInput, **kwargs) -> IntermediateAnalysisResult:
             if input.text == "fail_act":
                 raise RuntimeError("Simulated failure in act method")
-            # Modify instance state that might be used in post
             self.custom_threshold = 0.9
             return IntermediateAnalysisResult(
                 analyzed_text=f"{input.text} - analyzed",
-                confidence_threshold=self.custom_threshold # Pass it along
+                confidence_threshold=self.custom_threshold
             )
 
         def post(self, output: KGState) -> bool:
@@ -547,11 +504,10 @@ def test_act_contract_state_interaction():
             return True
 
         def forward(self, input: TripletExtractorInput, **kwargs) -> KGState:
-            # This is the original_forward method.
-            if not self.contract_successful and self.contract_result is None: # Fallback path
+            if not self.contract_successful and self.contract_result is None:
                 return KGState(triplets=[Triplet(subject=Entity(name="Fallback"),
                                                  predicate=Relationship(name="created_due_to_failure"),
-                                                 object=Entity(name=input.text[:10]), # Use original input for fallback
+                                                 object=Entity(name=input.text[:10]),
                                                  confidence=0.1)])
 
             if self.contract_result is None: # Should ideally not happen if contract_successful
@@ -747,7 +703,7 @@ def test_contract_perf_stats():
     class PerfStatsTestContract(Expression):
         def __init__(self):
             super().__init__()
-            self.sleep_time = 0.01  # Default sleep time in seconds
+            self.sleep_time = 0.01
 
         @property
         def prompt(self) -> str:
@@ -878,17 +834,13 @@ def test_act_state_modification_without_input_change():
             # For this test, we want to use the validated input but create our own output
             return StateModificationOutput(value=input.value)
 
-    # Create test input
     test_input = StateModificationInput(value="test_value")
-
-    # Create contract instance
     contract_instance = StateModificationContract()
 
     # Initial state should be zero
     assert contract_instance.state_counter == 0
     assert contract_instance.last_input_value is None
 
-    # Call the contract
     result = contract_instance(input=test_input)
 
     # Verify the execution flow
@@ -907,11 +859,8 @@ def test_act_state_modification_without_input_change():
     assert contract_instance.last_input_value == "test_value"
 
     # Verify that the input object was preserved throughout the contract execution
-    # This is a key test for our refactored _act method, ensuring it properly
-    # propagates the exact same input object without creating new instances
     assert contract_instance.input_preserved, "Input object identity was not preserved through the contract flow"
 
-    # Verify that the output has the expected value
     assert isinstance(result, StateModificationOutput)
     assert result.value == "test_value"
 
@@ -920,7 +869,8 @@ def test_act_state_modification_without_input_change():
 
     # State counter should have been incremented again
     assert contract_instance.state_counter == 2
-   
+
+
 @pytest.mark.mandatory
 def test_skip_pre_and_post_without_methods():
     """Test that when no pre/post methods are implemented and remedy disabled, input is passed through act and forward."""
@@ -947,6 +897,7 @@ def test_skip_pre_and_post_without_methods():
     result = instance(input=input_model)
     assert isinstance(result, SimpleInput)
     assert result.x == input_model.x + 2
+
 
 @pytest.mark.mandatory
 def test_post_without_remedy_returns_act_output():
@@ -982,5 +933,337 @@ def test_post_without_remedy_returns_act_output():
     assert result2.x == input_model2.x * 3
 
 
-if __name__ == "__main__":
-    pytest.main()
+@pytest.mark.mandatory
+def test_forward_return_type_mismatch():
+    """Original forward returning wrong type should trigger TypeError"""
+    class NumberModel(LLMDataModel):
+        x: int
+
+    @contract(pre_remedy=False, post_remedy=False)
+    class BadReturn(Expression):
+        @property
+        def prompt(self) -> str:
+            return "Return type mismatch"
+
+        def forward(self, input: NumberModel, **kwargs) -> str:
+            return 123  # wrong type
+
+    inst = BadReturn()
+    with pytest.raises(TypeError):
+        inst(input=NumberModel(x=1))
+
+@pytest.mark.mandatory
+def test_final_type_check_graceful_behavior():
+    """Test final type-check behavior under graceful modes"""
+    # Define a simple data model
+    class NumberModel(LLMDataModel):
+        x: int
+
+    # Non-graceful mode: should raise TypeError on forward return type mismatch
+    @contract(pre_remedy=False, post_remedy=False, remedy_retry_params={"graceful": False})
+    class BadReturnFail(Expression):
+        @property
+        def prompt(self) -> str:
+            return "Testing graceful False"
+
+        def forward(self, input: NumberModel, **kwargs) -> str:
+            return 789  # wrong type
+
+    inst_fail = BadReturnFail()
+    with pytest.raises(TypeError):
+        inst_fail(input=NumberModel(x=1))
+
+    # Graceful mode: should skip TypeError and return raw output
+    @contract(pre_remedy=False, post_remedy=False, remedy_retry_params={"graceful": True})
+    class BadReturnGrace(Expression):
+        @property
+        def prompt(self) -> str:
+            return "Testing graceful True"
+
+        def forward(self, input: NumberModel, **kwargs) -> str:
+            return 246  # raw output allowed under graceful
+
+    inst_grace = BadReturnGrace()
+    result = inst_grace(input=NumberModel(x=2))
+    assert result == 246
+
+@pytest.mark.mandatory
+def test_pre_remedy_input_correction_via_fake_remedy():
+    """With pre_remedy=True, the remedy function can correct invalid input"""
+    class NumberModel(LLMDataModel):
+        x: int
+
+    @contract(pre_remedy=True, post_remedy=False)
+    class FixX(Expression):
+        def __init__(self):
+            super().__init__()
+
+        @property
+        def prompt(self) -> str:
+            return "Ensure x is non-negative: {{x}}"
+
+        def pre(self, input: NumberModel) -> bool:
+            if input.x <= 0:
+                raise ValueError("x must be positive")
+            self.fixed_x = input.x
+            return True
+
+        def forward(self, input: NumberModel, **kwargs) -> NumberModel:
+            if self.contract_result is None:
+                raise self.contract_exception or ValueError("Contract failed!")
+            return self.contract_result
+
+    inst = FixX()
+    out = inst(input=NumberModel(x=-10))
+    assert isinstance(out, NumberModel)
+    assert out.x >= 0
+    assert inst.fixed_x >= 0
+    assert inst.contract_successful is True
+
+# ============================
+# Dynamic Type Annotation Tests
+# ============================
+##############################
+#
+# These tests cover the dynamic type annotation functionality in the contract system.
+# Dynamic type annotation allows contracts to work with primitive Python types (str, int, list, etc.)
+# and complex typing constructs (Union, Optional, nested collections) by automatically creating
+# wrapper LLMDataModel classes at runtime.
+#
+# How Dynamic Type Annotation Works:
+# 1. When a contract method (act/forward) uses non-LLMDataModel type annotations (e.g., str, list[str]),
+#    the system detects this and creates a dynamic LLMDataModel wrapper using build_dynamic_llm_datamodel().
+# 2. The dynamic model has a 'value' field that contains the actual primitive data.
+# 3. Input data is wrapped in the dynamic model for internal processing.
+# 4. Output data is automatically unwrapped from the dynamic model before returning to the user.
+
+@pytest.mark.mandatory
+def test_dynamic_type_annotation_primitive_types():
+    """Test dynamic type annotation with primitive Python types."""
+
+    @contract(pre_remedy=False, post_remedy=False)
+    class PrimitiveStringContract(Expression):
+        def __init__(self):
+            super().__init__()
+
+        @property
+        def prompt(self) -> str:
+            return "Convert input to uppercase string"
+
+        def forward(self, input: str, **kwargs) -> str:
+            if self.contract_result is None:
+                raise self.contract_exception or ValueError("Contract failed!")
+            return self.contract_result
+
+    # Test string contract
+    string_contract = PrimitiveStringContract()
+    result = string_contract(input="hello")
+    # The result will be unwrapped to the primitive value
+    assert result == "HELLO"
+
+@pytest.mark.mandatory
+def test_dynamic_type_annotation_list_type():
+    @contract(pre_remedy=True, post_remedy=True, remedy_retry_params=dict(tries=4, delay=0))
+    class IdentityListContract(Expression):
+        @property
+        def prompt(self) -> str:
+            return "Return the list with all its elements squared"
+
+        def pre(self, input: list[int]) -> bool:
+            return True
+
+        def post(self, output: list[int]) -> bool:
+            if len(output) != 3:
+                raise ValueError(f"You must return a list that matches the input length; got {len(output)} elements for input [1, 2, 3]")
+            return True
+
+        def forward(self, input: list[int], **kwargs) -> list[int]:
+            if self.contract_result is None:
+                raise self.contract_exception or ValueError("Contract failed!")
+            return self.contract_result
+
+    list_contract = IdentityListContract()
+    input_list = [3, 4, 5]
+    result = list_contract(input=input_list)
+    assert result == [9, 16, 25]
+
+@pytest.mark.mandatory
+def test_dynamic_type_annotation_dict_type():
+    @contract(pre_remedy=False, post_remedy=True, remedy_retry_params=dict(tries=4, delay=0))
+    class IdentityDictContract(Expression):
+        @property
+        def prompt(self) -> str:
+            return "Return the values squared"
+
+        def post(self, output: dict[str, int]) -> bool:
+            if output != {"a": 1, "b": 4, "c": 25}:
+                raise ValueError("You must return the same dictionary as the input")
+            return True
+
+        def forward(self, input: dict[str, int], **kwargs) -> dict[str, int]:
+            if self.contract_result is None:
+                raise self.contract_exception or ValueError("Contract failed!")
+            return self.contract_result
+
+    dict_contract = IdentityDictContract()
+    input_dict = {"a": 1, "b": 2, "c": 5}
+    result = dict_contract(input=input_dict)
+    assert result == {"a": 1, "b": 4, "c": 25}
+
+@pytest.mark.mandatory
+def test_dynamic_type_annotation_nested_types():
+    @contract(pre_remedy=False, post_remedy=False)
+    class NestedContract(Expression):
+        @property
+        def prompt(self) -> str:
+            return "Return the same nested structure unchanged"
+
+        def forward(self, input: list[dict[str, int]], **kwargs) -> list[dict[str, int]]:
+            if self.contract_result is None:
+                raise self.contract_exception or ValueError("Contract failed!")
+            return self.contract_result
+
+    nested_contract = NestedContract()
+    input_data = [{"a": 1}, {"b": 2}]
+    result = nested_contract(input=input_data)
+    assert result == input_data
+
+@pytest.mark.mandatory
+def test_dynamic_type_annotation_union_optional_types():
+    @contract(pre_remedy=True, post_remedy=True, remedy_retry_params=dict(tries=1, delay=0))
+    class UnionOptionalContract(Expression):
+        @property
+        def prompt(self) -> str:
+            return "Return the input unchanged"
+
+        def pre(self, input: int | str) -> bool:
+            return True
+
+        def post(self, output: int | str | None) -> bool:
+            if output != 42 and output != "test" and output is None:
+                raise ValueError("You must return the same value as the input")
+            return True
+
+        def forward(self, input: int | str | None, **kwargs) -> int | str | None:
+            if self.contract_result is None:
+                raise self.contract_exception or ValueError("Contract failed!")
+            return self.contract_result
+
+    contract_inst = UnionOptionalContract()
+    assert contract_inst(input=42) == 42
+    assert contract_inst(input="test") == "test"
+
+# ============================
+# Hybrid Type Annotation Tests
+# ============================
+##############################
+
+@pytest.mark.mandatory
+def test_hybrid_llm_datamodel_to_list_of_str():
+    """Test a hybrid contract: input is an LLMDataModel, output is a native list[str]"""
+    # Define a simple LLMDataModel with a list of strings
+    class WordBag(LLMDataModel):
+        words: list[str]
+
+    @contract(pre_remedy=False, post_remedy=False)
+    class EchoWords(Expression):
+        @property
+        def prompt(self) -> str:
+            return "Echo back the words as a JSON list of strings."
+
+        def forward(self, input: WordBag, **kwargs) -> list[str]:
+            if self.contract_result is None:
+                raise self.contract_exception or ValueError("Contract failed!")
+            return self.contract_result
+
+    # Create input instance and run the contract
+    wb = WordBag(words=["apple", "banana", "cherry"])
+    runner = EchoWords()
+    out = runner(input=wb)
+
+    # Verify that the output is an unwrapped list of strings matching the input
+    assert isinstance(out, list)
+    assert all(isinstance(x, str) for x in out)
+    assert out == ["apple", "banana", "cherry"]
+
+@pytest.mark.mandatory
+def test_hybrid_llm_datamodel_to_optional_list_of_str():
+    """Test hybrid contract: input is an LLMDataModel, output is Optional[list[str]]"""
+    class WordBag(LLMDataModel):
+        words: list[str]
+
+    @contract(pre_remedy=False, post_remedy=False)
+    class MaybeEchoWords(Expression):
+        @property
+        def prompt(self) -> str:
+            return (
+                "If the 'words' list is empty, return null; "
+                "otherwise echo the words as a JSON list of strings."
+            )
+
+        def forward(self, input: WordBag, **kwargs) -> Optional[list[str]]:
+            if self.contract_result is None:
+                raise self.contract_exception or ValueError("Contract failed!")
+            return self.contract_result
+
+    wb_empty = WordBag(words=[])
+    wb_vals = WordBag(words=["x", "y"])
+    runner = MaybeEchoWords()
+    out_empty = runner(input=wb_empty)
+    out_vals = runner(input=wb_vals)
+    assert out_empty is None
+    assert isinstance(out_vals, list)
+    assert out_vals == ["x", "y"]
+
+@pytest.mark.mandatory
+def test_hybrid_llm_datamodel_to_dict_str_int():
+    """Test hybrid contract: input is an LLMDataModel, output is dict[str, int] mapping each word to its length"""
+    class WordBag(LLMDataModel):
+        words: list[str]
+
+    @contract(pre_remedy=False, post_remedy=False)
+    class WordLengthMap(Expression):
+        @property
+        def prompt(self) -> str:
+            return (
+                "Given a JSON list of strings under key 'words', return a JSON object "
+                "mapping each string to its length."
+            )
+
+        def forward(self, input: WordBag, **kwargs) -> dict[str, int]:
+            if self.contract_result is None:
+                raise self.contract_exception or ValueError("Contract failed!")
+            return self.contract_result
+
+    wb = WordBag(words=["a", "bb", "ccc"])
+    runner = WordLengthMap()
+    out = runner(input=wb)
+    assert isinstance(out, dict)
+    assert out == {"a": 1, "bb": 2, "ccc": 3}
+
+@pytest.mark.mandatory
+def test_hybrid_list_of_datamodels_to_flat_list_of_str():
+    """Test hybrid contract: input is list[WordBag], output list of all words flattened"""
+    class WordBag(LLMDataModel):
+        words: list[str]
+
+    @contract(pre_remedy=False, post_remedy=False)
+    class FlattenBags(Expression):
+        @property
+        def prompt(self) -> str:
+            return (
+                "You're given a JSON list of objects, each having a 'words' list of strings. "
+                "Return a JSON list of all strings flattened in order."
+            )
+
+        def forward(self, input: list[WordBag], **kwargs) -> list[str]:
+            if self.contract_result is None:
+                raise self.contract_exception or ValueError("Contract failed!")
+            return self.contract_result
+
+    wb1 = WordBag(words=["hello", "world"])
+    wb2 = WordBag(words=["foo", "bar"])
+    runner = FlattenBags()
+    out = runner(input=[wb1, wb2])
+    assert isinstance(out, list)
+    assert out == ["hello", "world", "foo", "bar"]

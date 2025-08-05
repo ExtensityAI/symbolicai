@@ -14,10 +14,9 @@ from rich.panel import Panel
 from rich.table import Table
 
 from .components import Function
-from .models import LLMDataModel, TypeValidationError
+from .models import (LLMDataModel, TypeValidationError,
+                     build_dynamic_llm_datamodel)
 from .symbol import Expression
-
-NUM_REMEDY_RETRIES = 10
 
 
 class ValidationFunction(Function):
@@ -29,13 +28,13 @@ class ValidationFunction(Function):
       • Pause/backoff logic
       • Error simplification
     """
-
+    # Have some default retry params that don't add overhead
     _default_retry_params = dict(
-        tries=5,
-        delay=0.5,
-        max_delay=15,
-        backoff=2,
-        jitter=0.1,
+        tries=8,
+        delay=0.015,
+        backoff=1.25,
+        jitter=0.0,
+        max_delay=0.25,
         graceful=False
     )
 
@@ -47,9 +46,7 @@ class ValidationFunction(Function):
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
-        if retry_params is None:
-            retry_params = self._default_retry_params
-        self.retry_params = retry_params
+        self.retry_params = {**self._default_retry_params, **(retry_params or {})}
         self.console = Console()
 
         # Standard remedy function for JSON correction:
@@ -125,20 +122,13 @@ class ValidationFunction(Function):
 
         return "\n".join(simplified_errors)
 
-    def _pause(self):
-        """
-        Pause logic with backoff and jitter.
-        """
-        _delay = self.retry_params['delay']
-        _delay *= self.retry_params['backoff']
-
-        if isinstance(self.retry_params['jitter'], tuple):
-            _delay += np.random.uniform(*self.retry_params['jitter'])
-        else:
-            _delay += self.retry_params['jitter']
-
-        if self.retry_params['max_delay'] >= 0:
-            _delay = min(_delay, self.retry_params['max_delay'])
+    def _pause(self, attempt):
+        base = self.retry_params['delay'] * (self.retry_params['backoff'] ** attempt)
+        jit = (np.random.uniform(*self.retry_params['jitter'])
+            if isinstance(self.retry_params['jitter'], tuple)
+            else self.retry_params['jitter'])
+        _delay = min(base + jit, self.retry_params['max_delay'])
+        time.sleep(_delay)
 
     def remedy_prompt(self, *args, **kwargs):
         """
@@ -297,7 +287,7 @@ Important guidelines:
         context = self.zero_shot_prompt(prompt=prompt)
         json_str = super().forward(context, *args, **kwargs).value
 
-        remedy_seeds = self.prepare_seeds(self.retry_params["tries"], **kwargs)
+        remedy_seeds = self.prepare_seeds(self.retry_params["tries"] + 1, **kwargs)
         logger.info(f"Prepared {len(remedy_seeds)} remedy seeds for validation attempts…")
 
         result = None
@@ -309,7 +299,10 @@ Important guidelines:
                 result = self.output_data_model.model_validate_json(json_str, strict=True, context = validation_context)
                 if f_semantic_conditions is not None:
                     try:
-                        assert all(f(result) for f in f_semantic_conditions)
+                        assert all(
+                            f(result if not getattr(self.output_data_model, '_is_dynamic_model', False) else result.value)
+                            for f in f_semantic_conditions
+                        )
                     except Exception as e:
                         # If we are in the last attempt and semantic validation fails, result will be None and we propagate the error
                         if i == self.retry_params["tries"]:
@@ -321,7 +314,7 @@ Important guidelines:
             except Exception as e:
                 logger.info(f"Validation attempt {i+1} failed, pausing before retry…")
 
-                self._pause()
+                self._pause(i)
 
                 if isinstance(e, ValidationError):
                     error_str = self.simplify_validation_errors(e)
@@ -355,6 +348,8 @@ Important guidelines:
 
         if result is None:
             logger.error(f"All validation attempts failed!")
+            if self.retry_params['graceful']:
+                return
             raise TypeValidationError(
                 prompt=prompt,
                 result=json_str,
@@ -371,11 +366,11 @@ Important guidelines:
 @beartype
 class contract:
     _default_remedy_retry_params = dict(
-        tries=5,
-        delay=0.5,
-        max_delay=15,
-        jitter=0.1,
-        backoff=2,
+        tries=8,
+        delay=0.015,
+        backoff=1.25,
+        jitter=0.0,
+        max_delay=0.25,
         graceful=False
     )
 
@@ -394,6 +389,7 @@ class contract:
         '''
         self.pre_remedy = pre_remedy
         self.post_remedy = post_remedy
+        self.remedy_retry_params = remedy_retry_params
         self.f_type_validation_remedy = TypeValidationFunction(accumulate_errors=accumulate_errors, verbose=verbose, retry_params=remedy_retry_params)
 
         if not verbose:
@@ -401,10 +397,7 @@ class contract:
         else:
             logger.enable(__name__)
 
-    def _is_valid_input(self, input, *args, **kwargs):
-        if args:
-            logger.error("Positional arguments detected!")
-            raise ValueError("Positional arguments are not allowed! Please use keyword arguments instead.")
+    def _is_valid_input(self, input):
         if input is None:
             logger.error("No `input` argument provided!")
             raise ValueError("Please provide an `input` argument.")
@@ -412,6 +405,44 @@ class contract:
             logger.error(f"Invalid input type: {type(input)}")
             raise TypeError(f"Expected input to be of type `LLMDataModel`, got {type(input)}")
         return True
+
+    def _is_valid_output(self, output_type):
+        if output_type == inspect._empty:
+            logger.error("Missing return type annotation!")
+            raise ValueError("The contract requires a return type annotation.")
+        if not issubclass(output_type, LLMDataModel):
+            logger.error(f"Invalid return type: {output_type}")
+            raise TypeError("The return type annotation must be a subclass of `LLMDataModel`.")
+        return True
+
+    def _try_dynamic_type_annotation(self, arg, original_forward):
+        sig = inspect.signature(original_forward)
+        try:
+            if inspect.isclass(arg) or hasattr(arg, '__origin__'):
+                # arg is a type annotation, build dynamic model from it directly
+                dynamic_model = build_dynamic_llm_datamodel(arg)
+            elif sig.parameters['input'].annotation != inspect._empty:
+                # plain Python/typing type
+                dynamic_model = build_dynamic_llm_datamodel(sig.parameters['input'].annotation)
+            else:
+                # unknown type, cannot infer and best effort will likely mess things up
+                raise TypeError("Failed to infer type from input")
+        except Exception as e:
+            logger.exception(f"Failed to build dynamic LLMDataModel from {arg}!")
+            raise TypeError(
+                "The type annotation must be a subclass of `LLMDataModel` or a valid Python typing object supported by Pydantic."
+            )
+
+        dynamic_model._is_dynamic_model = True
+        return dynamic_model
+
+    def _try_remedy_with_exception(self, prompt, f_semantic_conditions, **remedy_kwargs):
+        try:
+            data_model = self.f_type_validation_remedy(prompt, f_semantic_conditions=f_semantic_conditions, **remedy_kwargs)
+        except Exception as e:
+            logger.error(f"Type validation failed with exception!")
+            raise e
+        return data_model
 
     def _validate_input(self, wrapped_self, input, it, **remedy_kwargs):
         logger.info("Starting input validation...")
@@ -427,9 +458,9 @@ class contract:
                 logger.success("Pre-condition validation successful!")
                 return input
             except Exception as e:
-                logger.error("Pre-condition validation failed!")
+                logger.exception("Pre-condition validation failed!")
                 self.f_type_validation_remedy.register_expected_data_model(input, attach_to="output", override=True)
-                input = self.f_type_validation_remedy(wrapped_self.prompt, f_semantic_conditions=[wrapped_self.pre], **remedy_kwargs)
+                input = self._try_remedy_with_exception(prompt=wrapped_self.prompt, f_semantic_conditions=[wrapped_self.pre], **remedy_kwargs)
             finally:
                 wrapped_self._contract_timing[it]["input_validation"] = time.perf_counter() - op_start
             return input
@@ -440,8 +471,8 @@ class contract:
                 try:
                     assert wrapped_self.pre(input)
                 except Exception as e:
-                    logger.error(f"Pre-condition validation failed (exception in pre): {str(e)}")
-                    raise Exception(f"Pre-condition validation failed!\n{str(e)}")
+                    logger.exception(f"Pre-condition validation failed")
+                    raise e
                 finally:
                     wrapped_self._contract_timing[it]["input_validation"] = time.perf_counter() - op_start
                 logger.success("Pre-condition validation successful!")
@@ -457,10 +488,12 @@ class contract:
         op_start = time.perf_counter()
         try:
             logger.info("Getting a valid output type...")
-            output = self.f_type_validation_remedy(wrapped_self.prompt, **remedy_kwargs)
+            output = self._try_remedy_with_exception(prompt=wrapped_self.prompt, f_semantic_conditions=None, **remedy_kwargs)
+            if output is None: # output is None when graceful mode is enabled
+                return output
         except Exception as e:
-            logger.error(f"Type creation failed: {str(e)}")
-            raise Exception("Couldn't create a data model matching the output data model.")
+            logger.exception(f"Type creation failed!")
+            raise e
         finally:
             wrapped_self._contract_timing[it]["output_validation"] = time.perf_counter() - op_start
         logger.success("Type successfully created!")
@@ -477,8 +510,8 @@ class contract:
                 logger.success("Post-condition validation successful!")
                 return output
             except Exception as e:
-                logger.error("Post-condition validation failed!")
-                output = self.f_type_validation_remedy(wrapped_self.prompt, f_semantic_conditions=[wrapped_self.post], **remedy_kwargs)
+                logger.exception("Post-condition validation failed!")
+                output = self._try_remedy_with_exception(prompt=wrapped_self.prompt, f_semantic_conditions=[wrapped_self.post], **remedy_kwargs)
             finally:
                 wrapped_self._contract_timing[it]["output_validation"] += (time.perf_counter() - op_start)
             logger.success("Post-condition validation successful!")
@@ -490,8 +523,8 @@ class contract:
                 try:
                     assert wrapped_self.post(output)
                 except Exception as e:
-                    logger.error("Post-condition validation failed!")
-                    raise Exception(f"Post-condition validation failed!\n{str(e)}")
+                    logger.exception("Post-condition validation failed!")
+                    raise e
                 finally:
                     wrapped_self._contract_timing[it]["output_validation"] = time.perf_counter() - op_start
                 logger.success("Post-condition validation successful!")
@@ -505,23 +538,21 @@ class contract:
             # Propagate the input if no act method is defined
             return input
 
+        is_dynamic_model = getattr(input, '_is_dynamic_model', False)
+        input = input if not is_dynamic_model else input.value
+
         logger.info(f"Executing 'act' method on {wrapped_self.__class__.__name__}…")
-
-        act_sig = inspect.signature(act_method)
-        act_params_list = list(act_sig.parameters.values())
-
-        if not len(act_params_list) > 1:
-            raise TypeError(f"'act' method on {wrapped_self.__class__.__name__} must accept at least one input parameter after 'self'.")
 
         op_start = time.perf_counter()
         try:
             act_output = act_method(input, **act_kwargs)
         except Exception as e:
-            logger.error(f"'act' method execution failed: {str(e)}")
-            raise Exception(f"'act' method execution failed!\n{str(e)}")
+            logger.exception(f"'act' method execution failed")
+            raise e
         finally:
             wrapped_self._contract_timing[it]["act_execution"] = time.perf_counter() - op_start
 
+        act_sig = inspect.signature(act_method)
         if act_sig.return_annotation != inspect.Signature.empty and inspect.isclass(act_sig.return_annotation):
             if not isinstance(act_output, act_sig.return_annotation):
                 raise TypeError(f"'act' method returned {type(act_output).__name__}, expected {act_sig.return_annotation.__name__}.")
@@ -543,16 +574,23 @@ class contract:
 
             wrapped_self.contract_successful = False
             wrapped_self.contract_result = None
+            wrapped_self.contract_exception = None
             wrapped_self._contract_timing = defaultdict(dict)
             logger.info("Contract initialization complete!")
 
-        def wrapped_forward(wrapped_self, *args, **kwargs):
+        def wrapped_forward(wrapped_self, **kwargs):
+            logger.info("Starting contract execution...")
             it = len(wrapped_self._contract_timing) # the len is the __call__ op_start
             contract_start = time.perf_counter()
-            logger.info("Starting contract execution...")
-            # We first check if the input is valid
+
             input = kwargs.pop("input", None)
-            assert self._is_valid_input(input)
+            input_type = None
+            try:
+                assert self._is_valid_input(input)
+            except TypeError:
+                input_type = self._try_dynamic_type_annotation(input, original_forward)
+                input = input_type(value=input)
+
             maybe_payload = getattr(wrapped_self, "payload", None)
             maybe_template = getattr(wrapped_self, "template")
             if inspect.ismethod(maybe_template):
@@ -568,12 +606,10 @@ class contract:
 
             sig = inspect.signature(original_forward)
             output_type = sig.return_annotation
-            if output_type == inspect._empty:
-                logger.error("Missing return type annotation!")
-                raise ValueError("The contract requires a return type annotation.")
-            if not issubclass(output_type, LLMDataModel):
-                logger.error(f"Invalid return type: {output_type}")
-                raise ValueError("The return type annotation must be a subclass of `LLMDataModel`.")
+            try:
+                assert self._is_valid_output(output_type)
+            except TypeError:
+                output_type = self._try_dynamic_type_annotation(output_type, original_forward)
 
             output = None
             current_input = input
@@ -588,12 +624,14 @@ class contract:
 
                 # 3. Validate output type and prepare for original_forward
                 output = self._validate_output(wrapped_self, current_input, output_type, it, **validation_kwargs)
-                wrapped_self.contract_successful = True
+                wrapped_self.contract_successful = True if output is not None else False
                 wrapped_self.contract_result = output
+                wrapped_self.contract_exception = None
 
             except Exception as e:
-                logger.error(f"Contract execution failed in main path: {str(e)}")
+                logger.exception(f"Contract execution failed in main path!")
                 wrapped_self.contract_successful = False
+                wrapped_self.contract_exception = e
                 # contract_result remains None or its value before the exception.
                 # final_output remains None or its value before the exception.
                 # The finally block's execution of original_forward will determine the actual returned value.
@@ -620,6 +658,11 @@ class contract:
 
                 if not isinstance(output, output_type):
                     logger.error(f"Output type mismatch: {type(output)}")
+                    if self.remedy_retry_params["graceful"]:
+                        # In graceful mode, skip type mismatch error and return raw output
+                        if hasattr(output_type, '_is_dynamic_model') and output_type._is_dynamic_model and hasattr(output, 'value'):
+                            return output.value
+                        return output
                     raise TypeError(
                         f"Expected output to be an instance of {output_type}, "
                         f"but got {type(output)}! Forward method must return an instance of {output_type}!"
@@ -628,6 +671,10 @@ class contract:
                     logger.warning("Contract validation failed!")
                 else:
                     logger.success("Contract validation successful!")
+
+            if hasattr(output_type, '_is_dynamic_model') and output_type._is_dynamic_model:
+                return output.value
+
             return output
 
         def contract_perf_stats(wrapped_self):
@@ -765,7 +812,7 @@ class contract:
 class BaseStrategy(TypeValidationFunction):
     def __init__(self, data_model: BaseModel, *args, **kwargs):
         super().__init__(
-            retry_params=dict(tries=NUM_REMEDY_RETRIES, delay=0.5, max_delay=15, backoff=2, jitter=0.1, graceful=False),
+            retry_params=dict(tries=8, delay=0.015, backoff=1.25, jitter=0.0, max_delay=0.25, graceful=False),
             **kwargs,
         )
         super().register_expected_data_model(data_model, attach_to="output")
