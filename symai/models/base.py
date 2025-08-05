@@ -126,13 +126,13 @@ class LLMDataModel(BaseModel):
                 ref_name = field_schema.get("$ref", "").split("/")[-1]
                 if ref_name in definitions:
                     nested_description = simplify_fields(
-                        definitions[ref_name], definitions, indent_level + 1
+                        definitions[ref_name], definitions, indent_level + 1, extra_defs
                     )
             elif field_type.startswith("array of nested object"):
                 ref_name = field_schema.get("items", {}).get("$ref", "").split("/")[-1]
                 if ref_name in definitions:
                     nested_description = simplify_fields(
-                        definitions[ref_name], definitions, indent_level + 1
+                        definitions[ref_name], definitions, indent_level + 1, extra_defs
                     )
 
             # Build the field description
@@ -164,13 +164,26 @@ class LLMDataModel(BaseModel):
                     items = field_schema.get("items", {})
                     item_type = resolve_field_type(items, definitions)
                     return f"array of {item_type}"
+                # Handle dictionaries / mappings via `additionalProperties`
+                # Pydantic represents ``dict[key_type, value_type]`` as a JSON schema object
+                # with an ``additionalProperties`` entry that contains the value schema.
+                # If we detect such a structure we propagate the value type information so
+                # that the human-readable schema makes clear what the object contains.
+                if field_type == "object" and "additionalProperties" in field_schema:
+                    value_schema = field_schema.get("additionalProperties", {})
+                    # If ``additionalProperties`` is simply ``true`` we treat it as a plain object.
+                    if value_schema is True:
+                        return "object"
+
+                    value_type = resolve_field_type(value_schema, definitions)
+                    return f"object of {value_type}"
                 return field_type
             if "$ref" in field_schema:
                 ref_name = field_schema["$ref"].split("/")[-1]
                 return f"nested object ({ref_name})"
             return "unknown"
 
-        def simplify_fields(schema, definitions, indent_level=0):
+        def simplify_fields(schema, definitions, indent_level=0, extra_defs: set[str] | None = None):
             """Simplifies the properties of a schema with proper indentation."""
             properties = schema.get("properties", {})
             required_fields = set(schema.get("required", []))
@@ -187,24 +200,47 @@ class LLMDataModel(BaseModel):
                         indent_level,
                     )
                 )
+
+                # Collect union/oneOf/anyOf alternative type descriptions that are not $ref'd objects
+                if extra_defs is not None:
+                    variants = []
+                    if "anyOf" in field_schema:
+                        variants.extend(field_schema["anyOf"])
+                    if "oneOf" in field_schema:
+                        variants.extend(field_schema["oneOf"])
+
+                    for variant in variants:
+                        # Skip definitions that are already objects referenced via $ref
+                        if "$ref" in variant:
+                            continue
+                        desc = resolve_field_type(variant, definitions)
+                        if desc:
+                            extra_defs.add(desc)
             return "\n".join(lines)
 
-        def simplify_definitions(definitions):
+        def simplify_definitions(definitions, extra_defs: set[str]):
             """Simplifies the definitions for all referenced models."""
             lines = []
             for name, definition in definitions.items():
                 lines.append(f"- {name}:")
-                lines.append(simplify_fields(definition, definitions, indent_level=1))
+                lines.append(simplify_fields(definition, definitions, indent_level=1, extra_defs=extra_defs))
+
+            # Append pseudo-definitions for union alternatives that are primitives or simple arrays/objects
+            for desc in sorted(extra_defs):
+                lines.append(f"- {desc}")
             return "\n".join(lines)
 
 
         # Extract and simplify the main schema
         definitions = schema.get("$defs", schema.get("definitions", {}))
-        main_schema = simplify_fields(schema, definitions, indent_level=0)
+        # Collect additional union alternatives that are not objects with $ref
+        extra_defs: set[str] = set()
+
+        main_schema = simplify_fields(schema, definitions, indent_level=0, extra_defs=extra_defs)
         result = f"[[Schema]]\n{main_schema}"
 
         # Extract and simplify definitions
-        definitions_schema = simplify_definitions(definitions)
+        definitions_schema = simplify_definitions(definitions, extra_defs)
         if definitions_schema:
             result += f"\n\n[[Definitions]]\n{definitions_schema}"
 
@@ -266,12 +302,43 @@ class LLMDataModel(BaseModel):
 
             # Handle Union (e.g., Union[TypeA, TypeB, None])
             if origin in [Union, UnionType]:
-                subtypes = get_args(field_annotation)
-                # Include an example for each subtype except NoneType
-                for subtype in subtypes:
-                    if subtype is not type(None):  # Skip NoneType
-                        return resolve_field_value(subtype)
-                return None
+                # Filter out `None` so we only consider real alternatives.
+                subtypes = [s for s in get_args(field_annotation) if s is not type(None)]
+
+                # Heuristic: prefer less-nested and more primitive representations, in the
+                # following precedence order. This reduces bias towards complex objects and
+                # makes it more likely that every union alternative is, at some point, used
+                # as an example across different combinations.
+                # We prefer examples that best showcase structure:
+                # 0 – alternatives containing BaseModel (either directly or as value in dict/list)
+                # 1 – dict variants
+                # 2 – list variants
+                # 3 – everything else (primitives)
+                def contains_basemodel(annotation: Any) -> bool:
+                    """Recursively check whether *annotation* contains a pydantic BaseModel."""
+                    orig = get_origin(annotation)
+                    if orig is None:
+                        orig = annotation
+                    if isinstance(orig, type) and issubclass(orig, BaseModel):
+                        return True
+                    if orig in (list, tuple, dict, Union, UnionType):
+                        for sub in get_args(annotation):
+                            if contains_basemodel(sub):
+                                return True
+                    return False
+
+                def priority(t: Any) -> int:
+                    if contains_basemodel(t):
+                        return 0
+                    t_origin = get_origin(t) or t
+                    if t_origin is dict:
+                        return 1
+                    if t_origin is list:
+                        return 2
+                    return 3
+
+                chosen_subtype = sorted(subtypes, key=priority)[0] if subtypes else None
+                return resolve_field_value(chosen_subtype) if chosen_subtype else None
 
             # Primitive types
             if field_annotation is str:
@@ -304,11 +371,44 @@ class LLMDataModel(BaseModel):
 
     @classmethod
     def instruct_llm(model):
-        # simplify the schema and generate LLM instructions
+        # ------------------------------------------------------------------
+        # 1. Human-readable schema
+        # ------------------------------------------------------------------
         human_readable_schema = model.simplify_json_schema()
 
-        # generate an example
-        example_json = json.dumps(LLMDataModel.generate_example_json(model), indent=1)
+        # ------------------------------------------------------------------
+        # 2. Generate example(s). If the top-level `value` annotation is a
+        #    Union we create one example per alternative (excluding None).
+        # ------------------------------------------------------------------
+        examples: list[str] = []
+
+        value_annotation = model.model_fields["value"].annotation
+        origin = get_origin(value_annotation)
+
+        subtypes = (
+            [a for a in get_args(value_annotation) if a is not type(None)]
+            if origin in (Union, UnionType)
+            else [value_annotation]
+        )
+
+        for subtype in subtypes:
+            submodel = build_dynamic_llm_datamodel(subtype)
+            example_dict = LLMDataModel.generate_example_json(submodel)
+            examples.append(json.dumps(example_dict, indent=1))
+
+        # ------------------------------------------------------------------
+        # 3. Assemble instruction
+        # ------------------------------------------------------------------
+        example_blocks = []
+        if len(examples) == 1:
+            example_blocks.append("[[Example]]\n```json\n" + examples[0] + "\n´´´")
+        else:
+            for idx, ex in enumerate(examples, start=1):
+                example_blocks.append(
+                    f"[[Example {idx}]]\n```json\n{ex}\n´´´"
+                )
+
+        examples_section = "\n\n".join(example_blocks)
 
         return f"""
 [[Result]]
@@ -316,20 +416,12 @@ Return a JSON object with the following schema:
 
 {human_readable_schema}
 
-[[Example]]
-```json
-{example_json}
-´´´
+{examples_section}
 """
 
-@lru_cache(maxsize=128)
 def build_dynamic_llm_datamodel(py_type: Any) -> Type[LLMDataModel]:
     """Dynamically create a subclass of ``LLMDataModel`` that contains a single
     field called ``value`` annotated with *py_type*.
-
-    The model class is cached so that identical *py_type* inputs return the
-    *same* class instance – this is important for equality checks based on
-    ``issubclass`` later in the workflow.
 
     Parameters
     ----------
@@ -340,7 +432,7 @@ def build_dynamic_llm_datamodel(py_type: Any) -> Type[LLMDataModel]:
     Returns
     -------
     Type[LLMDataModel]
-        A newly created (or cached) subclass of ``LLMDataModel`` with one
+        A newly created subclass of ``LLMDataModel`` with one
         required field named ``value``.
     """
 
@@ -354,9 +446,11 @@ def build_dynamic_llm_datamodel(py_type: Any) -> Type[LLMDataModel]:
             py_type,
             Field(
                 ...,
-                description="This is a dynamically generated data model. Match the schema **exactly** " +
-                "– use the same keys and, for any array/collection, keep the element-to-element correspondence and length " +
-                "of the input unless the prompt explicitly says otherwise.")
+                description="This is a dynamically generated data model. This description is general. " +
+                "If you're dealing with a complex type, or nested types in combination with unions, make sure you " +
+                "understand the instructions provided in the prompt, and select the appropriate data model based on the " +
+                "type at hand, as described in the schema section."
+            )
         ),
     )
 
