@@ -15,7 +15,7 @@ from symai.models.base import (
 def extract_examples(text: str) -> list[str]:
     """Return all raw JSON strings embedded in ``[[Example]]`` blocks."""
 
-    pattern = re.compile(r"\[\[Example(?: \d+)?]]\s+```json\s+(.*?)\s+´´´", re.DOTALL)
+    pattern = re.compile(r"\[\[Example(?: \d+)?]]\s+```json\s+(.*?)\s+```", re.DOTALL)
     return pattern.findall(text)
 
 
