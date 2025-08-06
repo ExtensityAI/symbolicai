@@ -446,3 +446,195 @@ def test_special_json_characters():
     json_str = json.dumps(example)
     parsed = json.loads(json_str)
     assert isinstance(parsed, dict)
+
+
+# ---------------------------------------------------------------------------
+# Dictionary Key Type Tests
+# ---------------------------------------------------------------------------
+def test_dict_with_int_keys():
+    """Test that dict[int, str] generates integer keys."""
+    model = build_dynamic_llm_datamodel(dict[int, str])
+    example = model.generate_example_json()
+
+    assert "value" in example
+    dict_value = example["value"]
+    assert isinstance(dict_value, dict)
+
+    # Should have an integer key
+    assert 123 in dict_value
+    assert dict_value[123] == "example_string"
+
+
+def test_dict_with_float_keys():
+    """Test that dict[float, int] generates float keys."""
+    model = build_dynamic_llm_datamodel(dict[float, int])
+    example = model.generate_example_json()
+
+    dict_value = example["value"]
+    assert isinstance(dict_value, dict)
+
+    # Should have a float key
+    assert 123.45 in dict_value
+    assert dict_value[123.45] == 123
+
+
+def test_dict_with_bool_keys():
+    """Test that dict[bool, str] generates boolean keys."""
+    model = build_dynamic_llm_datamodel(dict[bool, str])
+    example = model.generate_example_json()
+
+    dict_value = example["value"]
+    assert isinstance(dict_value, dict)
+
+    # Should have a boolean key
+    assert True in dict_value
+    assert dict_value[True] == "example_string"
+
+
+def test_dict_with_tuple_keys():
+    """Test that dict[tuple[str, int], bool] generates tuple keys."""
+    model = build_dynamic_llm_datamodel(dict[tuple[str, int], bool])
+    example = model.generate_example_json()
+
+    dict_value = example["value"]
+    assert isinstance(dict_value, dict)
+
+    # Should have a tuple key
+    expected_key = ("example_string", 123)
+    assert expected_key in dict_value
+    assert dict_value[expected_key] is True
+
+
+def test_dict_with_frozenset_keys():
+    """Test that dict[frozenset[int], str] generates frozenset keys."""
+    model = build_dynamic_llm_datamodel(dict[frozenset[int], str])
+    example = model.generate_example_json()
+
+    dict_value = example["value"]
+    assert isinstance(dict_value, dict)
+
+    # Should have a frozenset key
+    keys = list(dict_value.keys())
+    assert len(keys) == 1
+    assert isinstance(keys[0], frozenset)
+    assert 123 in keys[0]
+    assert dict_value[keys[0]] == "example_string"
+
+
+def test_dict_with_string_keys():
+    """Test that dict[str, int] generates string keys (default case)."""
+    model = build_dynamic_llm_datamodel(dict[str, int])
+    example = model.generate_example_json()
+
+    dict_value = example["value"]
+    assert isinstance(dict_value, dict)
+
+    # Should have a string key
+    assert "example_string" in dict_value
+    assert dict_value["example_string"] == 123
+
+
+def test_dict_with_any_keys():
+    """Test that dict[Any, str] defaults to string keys."""
+    model = build_dynamic_llm_datamodel(dict[Any, str])
+    example = model.generate_example_json()
+
+    dict_value = example["value"]
+    assert isinstance(dict_value, dict)
+
+    # Should default to string key for Any
+    assert "example_string" in dict_value
+    assert dict_value["example_string"] == "example_string"
+
+
+def test_dict_with_complex_tuple_keys():
+    """Test dict with nested tuple keys."""
+    model = build_dynamic_llm_datamodel(dict[tuple[int, tuple[str, bool]], float])
+    example = model.generate_example_json()
+
+    dict_value = example["value"]
+    assert isinstance(dict_value, dict)
+
+    # Should have a nested tuple key
+    expected_key = (123, ("example_string", True))
+    assert expected_key in dict_value
+    assert dict_value[expected_key] == 123.45
+
+
+def test_dict_with_unspecified_type():
+    """Test plain dict without type parameters."""
+    model = build_dynamic_llm_datamodel(dict)
+    example = model.generate_example_json()
+
+    dict_value = example["value"]
+    assert isinstance(dict_value, dict)
+
+    # Should default to string key for unspecified type
+    assert "example_string" in dict_value
+
+
+def test_nested_dict_with_various_keys():
+    """Test nested dicts with different key types."""
+    class ComplexModel(LLMDataModel):
+        int_dict: dict[int, str]
+        float_dict: dict[float, int]
+        tuple_dict: dict[tuple[str, int], bool]
+        nested: dict[str, dict[int, float]]
+
+    example = ComplexModel.generate_example_json(ComplexModel)
+
+    # Check int keys
+    assert 123 in example["int_dict"]
+    assert example["int_dict"][123] == "example_string"
+
+    # Check float keys
+    assert 123.45 in example["float_dict"]
+    assert example["float_dict"][123.45] == 123
+
+    # Check tuple keys
+    assert ("example_string", 123) in example["tuple_dict"]
+    assert example["tuple_dict"][("example_string", 123)] is True
+
+    # Check nested dict
+    assert "example_string" in example["nested"]
+    inner_dict = example["nested"]["example_string"]
+    assert 123 in inner_dict
+    assert inner_dict[123] == 123.45
+
+
+def test_dict_json_serialization_with_non_string_keys():
+    """Test that dicts with non-string keys can be used in Python but note JSON limitations."""
+    model = build_dynamic_llm_datamodel(dict[int, str])
+    example = model.generate_example_json()
+
+    # The example works as a Python dict
+    dict_value = example["value"]
+    assert 123 in dict_value
+
+    # When serializing to JSON, numeric keys work (converted to strings in JSON)
+    json_str = json.dumps(example)
+    parsed = json.loads(json_str)
+
+    # After JSON round-trip, int keys become strings
+    assert "123" in parsed["value"] or 123 in parsed["value"]
+
+    # Tuple keys would fail JSON serialization
+    tuple_model = build_dynamic_llm_datamodel(dict[tuple[str, int], str])
+    tuple_example = tuple_model.generate_example_json()
+
+    # This works as a Python dict
+    assert ("example_string", 123) in tuple_example["value"]
+
+    # But JSON serialization would fail for tuple keys
+    with pytest.raises(TypeError, match="keys must be str"):
+        json.dumps(tuple_example)
+
+
+def test_instruct_llm_with_dict_int_keys():
+    """Test that instruct_llm handles dict with int keys properly."""
+    model = build_dynamic_llm_datamodel(dict[int, str])
+    instructions = model.instruct_llm()
+
+    # The schema should indicate the key and value types
+    assert "[[Schema]]" in instructions
+    assert "object" in instructions.lower() or "dict" in instructions.lower()

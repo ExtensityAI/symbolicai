@@ -85,6 +85,7 @@ class SimpleNestedModel(LLMDataModel):
 
 
 class ModelWithBytes(LLMDataModel):
+    model_config = {"arbitrary_types_allowed": True}
     binary_data: bytes
     bytearray_data: bytearray
 
@@ -376,13 +377,11 @@ def test_const_field_immutability():
 # ---------------------------------------------------------------------------
 def test_large_model_serialization():
     """Test handling of large models with many fields."""
-    class LargeModel(LLMDataModel):
-        pass
+    from pydantic import create_model
 
-    for i in range(100):
-        setattr(LargeModel, f'field_{i}', str)
-
-    LargeModel.__annotations__ = {f'field_{i}': str for i in range(100)}
+    # Create a model with 100 fields using create_model
+    fields = {f'field_{i}': (str, ...) for i in range(100)}
+    LargeModel = create_model('LargeModel', __base__=LLMDataModel, **fields)
 
     schema = LargeModel.simplify_json_schema()
     assert "field_0" in schema
