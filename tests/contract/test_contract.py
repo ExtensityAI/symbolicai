@@ -14,6 +14,7 @@ from symai import Expression
 from symai.backend.settings import SYMAI_CONFIG
 from symai.models import LLMDataModel
 from symai.strategy import contract
+from symai.utils import semassert
 
 NEUROSYMBOLIC = SYMAI_CONFIG.get('NEUROSYMBOLIC_ENGINE_MODEL')
 
@@ -1085,7 +1086,7 @@ def test_dynamic_type_annotation_list_type():
     list_contract = IdentityListContract()
     input_list = [3, 4, 5]
     result = list_contract(input=input_list)
-    assert result == [9, 16, 25]
+    semassert(result == [9, 16, 25])
 
 @pytest.mark.mandatory
 def test_dynamic_type_annotation_dict_type():

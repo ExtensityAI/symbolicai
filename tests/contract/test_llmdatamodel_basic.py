@@ -1,3 +1,4 @@
+import ast
 import json
 import re
 
@@ -13,9 +14,9 @@ from symai.models.base import (
 # Helper utilities used across multiple assertions
 # ---------------------------------------------------------------------------
 def extract_examples(text: str) -> list[str]:
-    """Return all raw JSON strings embedded in ``[[Example]]`` blocks."""
+    """Return all raw Python dict strings embedded in ``[[Example]]`` blocks."""
 
-    pattern = re.compile(r"\[\[Example(?: \d+)?]]\s+```json\s+(.*?)\s+```", re.DOTALL)
+    pattern = re.compile(r"\[\[Example(?: \d+)?]]\s+```python\s+(.*?)\s+```", re.DOTALL)
     return pattern.findall(text)
 
 
@@ -162,8 +163,8 @@ def test_instruct_llm_single_example_for_standard_model():
     examples = extract_examples(instr)
     assert len(examples) == 1
 
-    # The JSON in the example block should be parsable.
-    parsed = json.loads(examples[0])
+    # The Python dict in the example block should be parsable.
+    parsed = ast.literal_eval(examples[0])
     assert set(parsed.keys()) == set(User.model_fields.keys()) - {"section_header"}
 
 
@@ -179,9 +180,9 @@ def test_instruct_llm_multiple_examples_for_union():
     assert len(examples) == 2, "Expected one example per union alternative."
 
     # Ensure one example corresponds to the list[Address] variant and one to the dict variant.
-    # We parse both JSON strings and inspect the *type* of the ``value`` field.
-    v1_type = type(json.loads(examples[0])["value"])
-    v2_type = type(json.loads(examples[1])["value"])
+    # We parse both Python dict strings and inspect the *type* of the ``value`` field.
+    v1_type = type(ast.literal_eval(examples[0])["value"])
+    v2_type = type(ast.literal_eval(examples[1])["value"])
 
     assert {v1_type, v2_type} == {list, dict}, "Expected examples for both list and dict union variants."
 
@@ -222,7 +223,7 @@ def test_user_defined_model_non_union():
     # Should have a single example block illustrating list of strings.
     examples = extract_examples(instr)
     assert len(examples) == 1
-    assert '"thoughts": [' in examples[0]
+    assert "'thoughts': [" in examples[0]
 
 
 def test_nested_union_complex():
@@ -238,12 +239,12 @@ def test_nested_union_complex():
 
     # Example 1 should be list variant containing Person objects.
     list_ex = ex_blocks[0]
-    assert list_ex.strip().startswith("{\n \"value\": ["), "First example is expected to be list variant."
-    assert "\"name\":" in list_ex and "\"age\":" in list_ex
+    assert list_ex.strip().startswith("{'value': ["), "First example is expected to be list variant."
+    assert "'name':" in list_ex and "'age':" in list_ex
 
     # Example 2 should be dict[str, list[int]]
     dict_ex = ex_blocks[1]
-    assert "\"value\": {" in dict_ex and "[\n   123\n  ]" in dict_ex
+    assert "'value': {" in dict_ex and "[123]" in dict_ex
 
 
 # ---------------------------------------------------------------------------

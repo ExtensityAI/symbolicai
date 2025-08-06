@@ -1,4 +1,4 @@
-import json
+import pprint
 from enum import Enum
 from functools import lru_cache
 from types import UnionType
@@ -366,12 +366,12 @@ class LLMDataModel(BaseModel):
             )
 
             if extra_defs is not None:
-                cls._collect_variant_definitions(field_schema, extra_defs)
+                cls._collect_variant_definitions(field_schema, extra_defs, definitions)
 
         return "\n".join(lines)
 
     @classmethod
-    def _collect_variant_definitions(cls, field_schema: dict, extra_defs: set) -> None:
+    def _collect_variant_definitions(cls, field_schema: dict, extra_defs: set, definitions: dict) -> None:
         """Collect variant definitions from anyOf/oneOf fields."""
         variants = []
         if "anyOf" in field_schema:
@@ -383,6 +383,12 @@ class LLMDataModel(BaseModel):
             if "$ref" in variant:
                 ref_name = variant["$ref"].split("/")[-1]
                 extra_defs.add(ref_name)
+            elif "type" in variant:
+                # Add primitive type descriptions for union variants
+                type_desc = cls._resolve_field_type(variant, definitions)
+                if type_desc not in ["null", "boolean", "string", "integer", "number"]:
+                    # Only add complex primitive types like arrays or objects
+                    extra_defs.add(f"_type:{type_desc}")
 
     @classmethod
     def _resolve_field_type(cls, field_schema: dict, definitions: dict) -> str:
@@ -456,6 +462,19 @@ class LLMDataModel(BaseModel):
     @classmethod
     def _resolve_array_type(cls, field_schema: dict, definitions: dict) -> str:
         """Resolve array type schema."""
+        # Check if it's a set (has uniqueItems: true)
+        if field_schema.get("uniqueItems") is True:
+            items = field_schema.get("items", {})
+            item_type = cls._resolve_field_type(items, definitions)
+            return f"set of {item_type}"
+
+        # Check if it's a tuple (has prefixItems)
+        if "prefixItems" in field_schema:
+            prefix_items = field_schema["prefixItems"]
+            item_types = [cls._resolve_field_type(item, definitions) for item in prefix_items]
+            return f"tuple of ({', '.join(item_types)})"
+
+        # Regular list/array
         items = field_schema.get("items", {})
         item_type = cls._resolve_field_type(items, definitions)
         return f"array of {item_type}"
@@ -495,10 +514,70 @@ class LLMDataModel(BaseModel):
                     )
                     lines.append(formatted)
 
-        for desc in sorted(extra_defs):
+        # Add type clarifications for primitive union members
+        type_defs = sorted([d for d in extra_defs if d.startswith("_type:")])
+        object_defs = sorted([d for d in extra_defs if not d.startswith("_type:")])
+
+        for type_def in type_defs:
+            type_desc = type_def[6:]  # Remove "_type:" prefix
+            lines.append(f"- {type_desc}: {cls._generate_type_description(type_desc)}")
+
+        for desc in object_defs:
             lines.append(f"- {desc}")
 
         return "\n".join(lines)
+
+    @classmethod
+    def _generate_type_description(cls, type_desc: str) -> str:
+        """Generate a human-readable description for a type."""
+        def extract_after(text: str, prefix: str) -> str:
+            """Extract text after prefix if it starts with it."""
+            return text.replace(prefix, "", 1) if text.startswith(prefix) else None
+
+        # Define type mappings
+        type_prefixes = {
+            "array of": ("list", "A list"),
+            "set of": ("set", "A set"),
+            "tuple of": ("tuple", "A tuple with specific types:"),
+            "object of": ("dict", "A dictionary"),
+        }
+
+        for prefix, (type_name, description) in type_prefixes.items():
+            if item_type := extract_after(type_desc, prefix + " "):
+                if prefix == "tuple of":
+                    return f"{description} {item_type}"
+
+                # Handle nested types
+                if item_type.startswith("nested object"):
+                    element_desc = item_type
+                elif inner := extract_after(item_type, "array of "):
+                    element_desc = f"a list of {inner} values"
+                elif inner := extract_after(item_type, "set of "):
+                    element_desc = f"a set of unique {inner} values"
+                elif inner := extract_after(item_type, "tuple of "):
+                    element_desc = f"a tuple with types: {inner}"
+                elif inner := extract_after(item_type, "object of "):
+                    element_desc = f"a dictionary with {inner} values"
+                else:
+                    # Simple types
+                    if type_name == "list":
+                        return f"A list containing {item_type} values"
+                    elif type_name == "set":
+                        return f"A set containing unique {item_type} values"
+                    elif type_name == "dict":
+                        return f"A dictionary with {item_type} values"
+                    else:
+                        element_desc = item_type
+
+                # Format the final description
+                if type_name == "list":
+                    return f"A list where each element is {element_desc}"
+                elif type_name == "set":
+                    return f"A set where each element is {element_desc}"
+                elif type_name == "dict":
+                    return f"A dictionary where each value is {element_desc}"
+
+        return type_desc
 
     @classmethod
     def _compose_schema_output(cls, main_schema: str, definitions_schema: str) -> str:
@@ -737,7 +816,8 @@ class LLMDataModel(BaseModel):
         examples = []
         for subtype in subtypes:
             example = cls._create_example_with_type(subtype)
-            examples.append(json.dumps(example, indent=1))
+            # Use Python repr for examples, not JSON
+            examples.append(cls._format_python_example(example))
         return examples
 
     @classmethod
@@ -756,13 +836,13 @@ class LLMDataModel(BaseModel):
         for subtype in subtypes:
             temp_model = build_dynamic_llm_datamodel(subtype)
             value_example = cls.generate_example_json(temp_model, visited_models=set())["value"]
-            examples.append(json.dumps({field_name: value_example}, indent=1))
+            examples.append(cls._format_python_example({field_name: value_example}))
         return examples
 
     @classmethod
     def _generate_single_example(cls):
         """Generate a single example for the model."""
-        return json.dumps(cls.generate_example_json(cls), indent=1)
+        return cls._format_python_example(cls.generate_example_json(cls))
 
     @classmethod
     def _create_example_with_type(cls, subtype: Any) -> dict:
@@ -771,14 +851,20 @@ class LLMDataModel(BaseModel):
         return submodel.generate_example_json()
 
     @classmethod
+    def _format_python_example(cls, obj: Any, indent: int = 0) -> str:
+        """Format a Python object as a readable string representation."""
+        # Use pprint for nice formatting that handles all Python types
+        return pprint.pformat(obj, indent=1, width=80, compact=False)
+
+    @classmethod
     def _format_examples(cls, examples: list) -> str:
         """Format examples into the final output string."""
         if len(examples) == 1:
-            return f"[[Example]]\n```json\n{examples[0]}\n```"
+            return f"[[Example]]\n```python\n{examples[0]}\n```"
 
         example_blocks = []
         for idx, ex in enumerate(examples, start=1):
-            example_blocks.append(f"[[Example {idx}]]\n```json\n{ex}\n```")
+            example_blocks.append(f"[[Example {idx}]]\n```python\n{ex}\n```")
         return "\n\n".join(example_blocks)
 
 

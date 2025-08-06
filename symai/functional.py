@@ -91,7 +91,7 @@ def _cast_return_type(rsp: Any, return_constraint: Type, engine_probabilistic_bo
 def _apply_postprocessors(outputs, return_constraint, post_processors, argument, mode=ENGINE_PROBABILISTIC_BOOLEAN_MODE):
     if argument.prop.preview:
         return outputs
-    
+
     rsp, metadata = outputs[0][0], outputs[1]
     argument.prop.outputs = outputs
     argument.prop.metadata = metadata
@@ -165,7 +165,7 @@ def _prepare_argument(argument: Any, engine: Any, instance: Any, func: Callable,
 
 def _execute_query_fallback(func, instance, argument, error=None, stack_trace=None):
     """Execute fallback behavior when query execution fails.
-    
+
     This matches the fallback logic used in _process_query by handling errors consistently,
     providing error context to the fallback function, and maintaining the same return format.
     """
@@ -254,7 +254,7 @@ def _process_query(
 
     argument = _prepare_argument(argument, engine, instance, func, constraints, default, limit, trials, pre_processors, post_processors)
     return_constraint = argument.prop.return_constraint
-    # if prep_processors is empty or none this returns an empty string 
+    # if prep_processors is empty or none this returns an empty string
     processed_input = _apply_preprocessors(argument, instance, pre_processors)
     if not argument.prop.raw_input:
         argument.prop.processed_input = processed_input
@@ -275,10 +275,11 @@ def _process_query(
             logger.error(f"Failed to execute query: {str(e)}")
             logger.error(f"Stack trace: {stack_trace}")
             if try_cnt < trials:
-                continue      
+                continue
             rsp = _execute_query_fallback(func, instance, argument, error=e, stack_trace=stack_trace)
 
-    rsp = _limit_number_results(rsp, argument, return_constraint)
+    if not argument.prop.raw_output:
+        rsp = _limit_number_results(rsp, argument, return_constraint)
     if argument.prop.return_metadata:
         return rsp, metadata
     return rsp

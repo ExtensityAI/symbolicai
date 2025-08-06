@@ -170,7 +170,7 @@ def test_union_resolution_nested_containers():
         Union[list[list[int]], dict[str, dict[str, str]]]
     )
     instr = DynModel.instruct_llm()
-    pattern = re.compile(r"\[\[Example(?: \d+)?]]\s+```json\s+(.*?)\s+```", re.DOTALL)
+    pattern = re.compile(r"\[\[Example(?: \d+)?]]\s+```python\s+(.*?)\s+```", re.DOTALL)
     examples = pattern.findall(instr)
     assert len(examples) == 2
 
@@ -286,12 +286,13 @@ def test_instruct_llm_with_all_field_types():
 
 def test_instruct_llm_union_example_generation():
     """Test that union types generate appropriate number of examples."""
+    import ast
     instr = ModelWithMultipleUnions.instruct_llm()
-    pattern = re.compile(r"\[\[Example(?: \d+)?]]\s+```json\s+(.*?)\s+```", re.DOTALL)
+    pattern = re.compile(r"\[\[Example(?: \d+)?]]\s+```python\s+(.*?)\s+```", re.DOTALL)
     examples = pattern.findall(instr)
 
     for example_str in examples:
-        parsed = json.loads(example_str)
+        parsed = ast.literal_eval(example_str)
         assert "simple_union" in parsed
         assert "complex_union" in parsed
         assert "nested_union" in parsed
@@ -305,6 +306,45 @@ def test_instruct_llm_with_empty_model():
     instr = EmptyModel.instruct_llm()
     assert "[[Result]]" in instr
     assert "[[Schema]]" in instr
+
+
+def test_instruct_llm_dict_person_union_list():
+    """Test that dict[int, Person] | list[int] generates complete definitions."""
+    class Person(LLMDataModel):
+        name: str = Field(description="Name")
+        age: int | None = Field(description="Age")
+
+    DynModel = build_dynamic_llm_datamodel(dict[int, Person] | list[int])
+    instr = DynModel.instruct_llm()
+
+    # Check that Person is correctly included in definitions
+    assert "[[Definitions]]" in instr
+    assert "Person:" in instr
+    assert '"name"' in instr
+    assert '"age"' in instr
+
+    # Check that the schema correctly describes the union type
+    assert "object of nested object (Person) or array of integer" in instr
+
+    # Check that definitions include clarifications for both union types
+    assert "array of integer: A list containing integer values" in instr
+    assert "object of nested object (Person): A dictionary where each value is nested object (Person)" in instr
+
+    # Verify that examples are generated correctly
+    import ast
+    pattern = re.compile(r"\[\[Example(?: \d+)?]]\s+```python\s+(.*?)\s+```", re.DOTALL)
+    examples = pattern.findall(instr)
+    assert len(examples) == 2
+
+    # First example should be dict[int, Person]
+    example1 = ast.literal_eval(examples[0])
+    assert "value" in example1
+    assert isinstance(example1["value"], dict)
+
+    # Second example should be list[int]
+    example2 = ast.literal_eval(examples[1])
+    assert "value" in example2
+    assert isinstance(example2["value"], list)
 
 
 # ---------------------------------------------------------------------------
