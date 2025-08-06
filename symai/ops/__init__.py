@@ -8,8 +8,6 @@ SYMBOL_PRIMITIVES = [
     CastingPrimitives,
     ComparisonPrimitives,
     ExpressionHandlingPrimitives,
-    ValidationHandlingPrimitives,
-    ConstraintHandlingPrimitives,
     DataHandlingPrimitives,
     UniquenessPrimitives,
     PatternMatchingPrimitives,
