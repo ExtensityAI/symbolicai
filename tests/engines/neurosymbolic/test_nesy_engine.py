@@ -206,7 +206,19 @@ def test_raw_output():
             S = Expression.prompt('What is the capital of France?', raw_output=True)
         else:
             S = Expression.prompt('What is the capital of France?', raw_output=True, max_tokens=CLAUDE_MAX_TOKENS, thinking=CLAUDE_THINKING)
-        assert isinstance(S.value, Message) or isinstance(S.value, Stream)
+        # Accept list of events (when stream is consumed) or Message/Stream objects
+        assert isinstance(S.value, (Message, Stream, list))
+        if isinstance(S.value, list):
+            # Verify it's a list of streaming events
+            assert len(S.value) > 0
+            from anthropic.types import (RawMessageStartEvent, RawContentBlockStartEvent,
+                                        RawContentBlockDeltaEvent, RawContentBlockStopEvent,
+                                        RawMessageDeltaEvent, RawMessageStopEvent)
+            # Check that list contains expected event types
+            event_types = {type(event).__name__ for event in S.value}
+            expected_types = {'RawMessageStartEvent', 'RawContentBlockStartEvent',
+                            'RawContentBlockDeltaEvent', 'RawContentBlockStopEvent'}
+            assert len(event_types & expected_types) > 0, f"Expected streaming events but got: {event_types}"
     elif NEUROSYMBOLIC.startswith('gpt') or NEUROSYMBOLIC.startswith('o1') or NEUROSYMBOLIC.startswith('o3'):
         S = Expression.prompt('What is the capital of France?', raw_output=True)
         assert isinstance(S.value, ChatCompletion)
