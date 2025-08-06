@@ -296,7 +296,14 @@ Important guidelines:
             if i != self.retry_params["tries"]:
                 logger.info(f"Attempt {i+1}/{self.retry_params['tries']}: Attempting validation…")
             try:
-                result = self.output_data_model.model_validate_json(json_str, strict=True, context = validation_context)
+                #@NOTE: We use strict=False (default) to allow Pydantic's type coercion.
+                # This handles common LLM output issues like:
+                # - String keys "123" -> integer keys 123 for dict[int, ...] types
+                # - String numbers "42" -> int 42
+                # - Float 1.0 -> int 1
+                # These coercions are safe and helpful when dealing with JSON from LLMs,
+                # while still catching actual type errors (e.g., "not_a_number" -> int fails).
+                result = self.output_data_model.model_validate_json(json_str, strict=False, context=validation_context)
                 if f_semantic_conditions is not None:
                     try:
                         assert all(
