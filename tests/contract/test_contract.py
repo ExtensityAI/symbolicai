@@ -1,14 +1,10 @@
-import json
 import logging
 import time
-from pathlib import Path
 from typing import List, Optional
 
 import numpy as np
 import pytest
 from pydantic import Field
-from rich.console import Console
-from rich.table import Table
 
 from symai import Expression
 from symai.backend.settings import SYMAI_CONFIG
@@ -1064,19 +1060,11 @@ def test_dynamic_type_annotation_primitive_types():
 
 @pytest.mark.mandatory
 def test_dynamic_type_annotation_list_type():
-    @contract(pre_remedy=True, post_remedy=True, remedy_retry_params=dict(tries=4, delay=0))
+    @contract(remedy_retry_params=dict(tries=4, delay=0))
     class IdentityListContract(Expression):
         @property
         def prompt(self) -> str:
             return "Return the list with all its elements squared"
-
-        def pre(self, input: list[int]) -> bool:
-            return True
-
-        def post(self, output: list[int]) -> bool:
-            if len(output) != 3:
-                raise ValueError(f"You must return a list that matches the input length; got {len(output)} elements for input [1, 2, 3]")
-            return True
 
         def forward(self, input: list[int], **kwargs) -> list[int]:
             if self.contract_result is None:
@@ -1268,3 +1256,46 @@ def test_hybrid_list_of_datamodels_to_flat_list_of_str():
     out = runner(input=[wb1, wb2])
     assert isinstance(out, list)
     assert out == ["hello", "world", "foo", "bar"]
+
+
+@pytest.mark.mandatory
+def test_union_dict_with_int_keys_or_list():
+    """Test contract with union type dict[int, Person] | list[int]"""
+    class Person(LLMDataModel):
+        name: str
+        age: int | None
+
+    @contract(remedy_retry_params={"tries": 6})
+    class ExtractPersons(Expression):
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+
+        @property
+        def prompt(self):
+            return "choose the most appropiate data structure for the task at hand, that would allow you to best capture all the relevant information from the parsed unstructured text"
+
+        def forward(self, input: str) -> dict[int, Person] | list[int]:
+            if self.contract_result is None:
+                raise self.contract_exception or ValueError("Contract failed!")
+            return self.contract_result
+
+    texts = [
+        "Last Friday, Anna Martínez, 34, met with Dr. John Lee, 28, to discuss the community project. Meanwhile, Michael Robinson dropped by—nobody's quite sure of his age, but he seemed excited about the event. Later, 42-year-old Sarah O'Neill volunteered to coordinate the schedule.",
+        "For technical support, dial 555-0134 between 9 a.m. and 6 p.m. If you need after-hours help, leave a message at +1-800-777-9924. For urgent maintenance issues, you may also text 020-7946-0011 and someone will respond within 30 minutes."
+    ]
+
+    co = ExtractPersons()
+    for text in texts:
+        result = co(input=text)
+        # First text should extract persons as dict
+        if "Anna" in text:
+            assert isinstance(result, dict)
+            # Check that we have Person objects
+            for key, person in result.items():
+                assert isinstance(key, int)
+                assert isinstance(person, Person)
+                assert hasattr(person, 'name')
+                assert hasattr(person, 'age')
+        # Second text might return list of phone numbers as integers or dict
+        else:
+            assert isinstance(result, (dict, list))

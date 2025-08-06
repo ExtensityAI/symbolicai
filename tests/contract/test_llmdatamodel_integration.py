@@ -1,15 +1,12 @@
-import json
-import re
-from typing import Any
+from __future__ import annotations
+
 from datetime import datetime
-from enum import Enum
+from typing import Any
 
 import pytest
+from pydantic import Field, ValidationError
 
-from symai.models.base import (
-    LLMDataModel,
-    build_dynamic_llm_datamodel,
-)
+from symai.models.base import LLMDataModel, build_dynamic_llm_datamodel
 
 
 # ---------------------------------------------------------------------------
@@ -643,3 +640,323 @@ def test_multi_tenant_configuration():
     assert "Company B" in s
     assert "feature1: True" in s
     assert "storage_gb: 50" in s
+
+
+# ---------------------------------------------------------------------------
+# convert_dict_int_keys Integration Tests
+# ---------------------------------------------------------------------------
+def test_convert_dict_int_keys_in_complex_models():
+    """Test that convert_dict_int_keys works in complex real-world scenarios."""
+    class MetricsData(LLMDataModel):
+        hourly_stats: dict[int, float]  # Hour of day -> metric value
+        daily_totals: dict[int, dict[str, float]]  # Day of month -> metrics
+
+    # Simulate JSON data with string keys (as would come from JSON)
+    json_data = {
+        "hourly_stats": {"0": 10.5, "12": 45.2, "23": 8.3},
+        "daily_totals": {
+            "1": {"visits": 1000.0, "conversions": 50.0},
+            "15": {"visits": 1500.0, "conversions": 75.0}
+        }
+    }
+
+    model = MetricsData(**json_data)
+
+    # Verify keys are converted to integers
+    assert model.hourly_stats == {0: 10.5, 12: 45.2, 23: 8.3}
+    assert model.daily_totals == {
+        1: {"visits": 1000.0, "conversions": 50.0},
+        15: {"visits": 1500.0, "conversions": 75.0}
+    }
+    assert all(isinstance(k, int) for k in model.hourly_stats.keys())
+    assert all(isinstance(k, int) for k in model.daily_totals.keys())
+
+
+def test_convert_dict_int_keys_with_api_response():
+    """Test int key conversion in API response models."""
+    class PaginatedResponse(LLMDataModel):
+        page_data: dict[int, list[str]]  # Page number -> items
+        total_pages: int
+
+    # API response typically has string keys
+    api_response = {
+        "page_data": {"1": ["item1", "item2"], "2": ["item3", "item4"]},
+        "total_pages": 2
+    }
+
+    response = PaginatedResponse(**api_response)
+    assert response.page_data == {1: ["item1", "item2"], 2: ["item3", "item4"]}
+
+
+def test_convert_dict_int_keys_validation_error():
+    """Test that non-numeric string keys raise appropriate errors."""
+    class StrictIntKeyModel(LLMDataModel):
+        data: dict[int, str]
+
+    with pytest.raises(ValidationError) as exc_info:
+        StrictIntKeyModel(data={"not_numeric": "value"})
+
+    error_str = str(exc_info.value)
+    assert "not_numeric" in error_str or "invalid" in error_str.lower()
+
+
+# ---------------------------------------------------------------------------
+# Negative Path Integration Tests
+# ---------------------------------------------------------------------------
+def test_database_config_invalid_values():
+    """Test DatabaseConfig with various invalid configurations."""
+    with pytest.raises(ValidationError):
+        DatabaseConfig(
+            host="db.example.com",
+            port=-1,  # Invalid port
+            database="test_db",
+            user="admin",
+            password="secret",
+            pool_size=10,
+            timeout=30,
+            ssl_enabled=True,
+            retry_config={"max_retries": 3, "backoff": 2}
+        )
+
+    with pytest.raises(ValidationError):
+        DatabaseConfig(
+            host="",  # Empty host
+            port=5432,
+            database="test_db",
+            user="admin",
+            password="secret",
+            pool_size=10,
+            timeout=30,
+            ssl_enabled=True,
+            retry_config={"max_retries": 3, "backoff": 2}
+        )
+
+
+def test_ml_model_config_invalid_hyperparameters():
+    """Test MLModelConfig with invalid hyperparameter combinations."""
+    with pytest.raises(ValidationError):
+        MLModelConfig(
+            model_type="neural_network",
+            version="1.0.0",
+            hyperparameters={
+                "learning_rate": "not_a_number",  # Invalid type
+                "batch_size": 32,
+                "epochs": 100
+            },
+            training_config=TrainingConfig(
+                batch_size=32,
+                learning_rate=0.001,
+                epochs=100,
+                validation_split=0.2,
+                early_stopping=True,
+                metrics=["accuracy", "loss"]
+            ),
+            inference_config=InferenceConfig(
+                batch_size=1,
+                timeout_ms=1000,
+                max_retries=3,
+                cache_predictions=True
+            )
+        )
+
+
+def test_event_log_missing_required_fields():
+    """Test EventLog with missing required fields."""
+    with pytest.raises(ValidationError):
+        EventLog(
+            # Missing event_id
+            timestamp="2024-01-01T10:00:00Z",
+            event_type="user_action",
+            user_id="user123",
+            metadata={"action": "click"},
+            severity="info",
+            source="web",
+            tags=["ui", "interaction"]
+        )
+
+
+def test_graphql_invalid_query_structure():
+    """Test GraphQL models with invalid query structures."""
+    with pytest.raises(ValidationError):
+        GraphQLQuery(
+            query=123,  # Should be string
+            variables={"id": "123"},
+            operation_name="GetUser"
+        )
+
+    with pytest.raises(ValidationError):
+        GraphQLResponse(
+            data={"user": {"id": "123"}},
+            errors="not_a_list",  # Should be list or None
+            extensions={}
+        )
+
+
+def test_user_profile_invalid_nested_structure():
+    """Test UserProfile with invalid nested structures."""
+    with pytest.raises(ValidationError):
+        UserProfile(
+            user_id="user123",
+            username="john_doe",
+            email="invalid_email",  # Invalid email format if validated
+            created_at="2024-01-01T00:00:00Z",
+            last_login="2024-01-15T10:30:00Z",
+            profile={
+                "first_name": "John",
+                "last_name": "Doe",
+                "bio": "Software developer",
+                "avatar_url": "not_a_url"  # Invalid URL if validated
+            },
+            settings="not_a_settings_object",  # Wrong type
+            permissions=["read", "write"],
+            metadata={"login_count": 42}
+        )
+
+
+def test_circular_reference_handling_in_complex_models():
+    """Test handling of circular references in complex integration scenarios."""
+    class Node(LLMDataModel):
+        id: str
+        data: dict[str, Any]
+        children: list['Node'] = Field(default_factory=list)
+        parent: Node | None = None
+
+    # Create circular structure
+    root = Node(id="root", data={"value": 1})
+    child1 = Node(id="child1", data={"value": 2}, parent=root)
+    child2 = Node(id="child2", data={"value": 3}, parent=root)
+    root.children = [child1, child2]
+
+    # Add circular reference
+    child1.children = [root]  # Circular!
+
+    # Should handle without crashing
+    s = str(root)
+    assert "root" in s
+    assert "child1" in s
+
+    schema = Node.simplify_json_schema()
+    assert "recursive" in schema.lower() or "children" in schema
+
+
+def test_excessive_nesting_in_real_scenario():
+    """Test handling of excessive nesting in realistic scenarios."""
+    class Comment(LLMDataModel):
+        id: str
+        text: str
+        replies: list['Comment'] = Field(default_factory=list)
+
+    # Create very deep comment thread
+    current = Comment(id="base", text="Base comment")
+    for i in range(100):
+        current = Comment(
+            id=f"reply_{i}",
+            text=f"Reply level {i}",
+            replies=[current]
+        )
+
+    # Should handle deep nesting without stack overflow
+    s = str(current)
+    assert len(s) > 0
+    assert "Reply level" in s
+
+
+def test_union_validation_failures_in_api_response():
+    """Test union validation failures in API response scenarios."""
+    DynamicResponse = build_dynamic_llm_datamodel(
+        dict[str, Any] | list[Any] | str | None
+    )
+
+    # Valid cases
+    valid1 = DynamicResponse(value={"key": "value"})
+    valid2 = DynamicResponse(value=[1, 2, 3])
+    valid3 = DynamicResponse(value="string")
+    valid4 = DynamicResponse(value=None)
+
+    # Invalid case - wrong type
+    with pytest.raises(ValidationError):
+        DynamicResponse(value=123)  # int not in union
+
+
+def test_batch_processing_with_invalid_items():
+    """Test batch processing with invalid items in the batch."""
+    class BatchItem(LLMDataModel):
+        id: str
+        data: dict[str, Any]
+        validate_strict: bool = True
+
+    class Batch(LLMDataModel):
+        items: list[BatchItem]
+        batch_id: str
+
+    # Should fail with invalid item structure
+    with pytest.raises(ValidationError):
+        Batch(
+            batch_id="batch_001",
+            items=[
+                BatchItem(id="1", data={"valid": "data"}),
+                {"id": "2", "data": "not_a_dict"},  # Invalid data type
+                BatchItem(id="3", data={"valid": "data"})
+            ]
+        )
+
+
+# ---------------------------------------------------------------------------
+# Cache Testing with Equality
+# ---------------------------------------------------------------------------
+def test_schema_caching_uses_equality():
+    """Test that schema caching uses equality comparison, not identity."""
+    # Create two separate instances
+    config1 = DatabaseConfig(
+        host="localhost",
+        port=5432,
+        database="test",
+        username="user",
+        password="pass",
+        pool_size=10,
+        timeout=30,
+        ssl_enabled=False,
+        retry_config={}
+    )
+
+    config2 = DatabaseConfig(
+        host="localhost",
+        port=5432,
+        database="test",
+        username="user",
+        password="pass",
+        pool_size=10,
+        timeout=30,
+        ssl_enabled=False,
+        retry_config={}
+    )
+
+    schema1 = config1.simplify_json_schema()
+    schema2 = config2.simplify_json_schema()
+
+    # Should be equal but not necessarily the same object
+    assert schema1 == schema2
+
+    instr1 = DatabaseConfig.instruct_llm()
+    instr2 = DatabaseConfig.instruct_llm()
+
+    # Should be equal
+    assert instr1 == instr2
+
+
+def test_example_generation_deterministic():
+    """Test that example generation is deterministic for the same model."""
+    example1 = LLMDataModel.generate_example_json(UserProfile)
+    example2 = LLMDataModel.generate_example_json(UserProfile)
+
+    # Should generate the same structure
+    assert set(example1.keys()) == set(example2.keys())
+
+    # Nested structures should also match
+    if "settings" in example1 and "settings" in example2:
+        # Check if settings is a dict before trying to access keys
+        if isinstance(example1["settings"], dict) and isinstance(example2["settings"], dict):
+            assert set(example1["settings"].keys()) == set(example2["settings"].keys())
+        else:
+            # If settings is not a dict (e.g., a string), just compare values
+            assert example1["settings"] == example2["settings"]
