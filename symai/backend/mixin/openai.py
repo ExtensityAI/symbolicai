@@ -18,12 +18,16 @@ SUPPORTED_CHAT_MODELS = [
     'gpt-4.1',
     'gpt-4.1-mini',
     'gpt-4.1-nano',
+    'gpt-5-chat-latest',
 ]
 SUPPORTED_REASONING_MODELS = [
     'o3-mini',
     'o4-mini',
     'o1',
-    'o3'
+    'o3',
+    'gpt-5',
+    'gpt-5-mini',
+    'gpt-5-nano',
 ]
 SUPPORTED_EMBEDDING_MODELS = [
     'text-embedding-ada-002',
@@ -73,6 +77,11 @@ class OpenAIMixin:
            self.model == 'o3-mini' or \
            self.model == 'o4-mini':
                return 200_000
+        if self.model == 'gpt-5' or \
+           self.model == 'gpt-5-mini' or \
+           self.model == 'gpt-5-nano' or \
+           self.model == 'gpt-5-chat-latest':
+            return 400_000
         if self.model == 'gpt-4.1' or \
            self.model == 'gpt-4.1-mini' or \
            self.model == 'gpt-4.1-nano':
@@ -108,6 +117,11 @@ class OpenAIMixin:
            self.model == 'o3-mini' or \
            self.model == 'o4-mini':
                return 100_000
+        if self.model == 'gpt-5' or \
+           self.model == 'gpt-5-mini' or \
+           self.model == 'gpt-5-nano' or \
+           self.model == 'gpt-5-chat-latest':
+            return 128_000
         raise ValueError(f'Unsupported model: {self.model}')
 
     def api_embedding_dims(self):

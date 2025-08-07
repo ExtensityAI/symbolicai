@@ -12,6 +12,7 @@ from symai import Expression, Symbol
 from symai.backend.settings import SYMAI_CONFIG
 from symai.components import Function
 from symai.core_ext import bind
+from symai.utils import semassert
 
 NEUROSYMBOLIC = SYMAI_CONFIG.get('NEUROSYMBOLIC_ENGINE_MODEL')
 CLAUDE_THINKING = {"budget_tokens": 1024}
@@ -25,7 +26,7 @@ def _compute_required_tokens(): pass
 def test_init():
     x = Symbol('This is a test!')
 
-    if all(id not in NEUROSYMBOLIC for id in ['3-7', '4-0']):
+    if all(id not in NEUROSYMBOLIC for id in ['3-7', '4-0', '4-1']):
         x.query('What is this?')
     else:
         x.query('What is this?', max_tokens=CLAUDE_MAX_TOKENS, thinking=CLAUDE_THINKING, raw_output=True)
@@ -41,7 +42,7 @@ def test_init():
 def test_vision():
     file = Path(__file__).parent.parent.parent.parent / 'assets' / 'images' / 'cat.jpg'
     x = Symbol(f'<<vision:{file}:>>')
-    if all(id not in NEUROSYMBOLIC for id in ['3-7', '4-0']):
+    if all(id not in NEUROSYMBOLIC for id in ['3-7', '4-0', '4-1']):
         res = x.query('What is in the image?')
     else:
         res = x.query('What is in the image?', max_tokens=CLAUDE_MAX_TOKENS, thinking=CLAUDE_THINKING)
@@ -52,7 +53,7 @@ def test_vision():
     file = 'https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/cat.jpg'
     x = Symbol(f'<<vision:{file}:>>')
 
-    if all(id not in NEUROSYMBOLIC for id in ['3-7', '4-0']):
+    if all(id not in NEUROSYMBOLIC for id in ['3-7', '4-0', '4-1']):
         res = x.query('What is in the image?')
     else:
         res = x.query('What is in the image?', max_tokens=CLAUDE_MAX_TOKENS, thinking=CLAUDE_THINKING)
@@ -202,7 +203,7 @@ def test_tool_usage():
 @pytest.mark.mandatory
 def test_raw_output():
     if NEUROSYMBOLIC.startswith('claude'):
-        if all(id not in NEUROSYMBOLIC for id in ['3-7', '4-0']):
+        if all(id not in NEUROSYMBOLIC for id in ['3-7', '4-0', '4-1']):
             S = Expression.prompt('What is the capital of France?', raw_output=True)
         else:
             S = Expression.prompt('What is the capital of France?', raw_output=True, max_tokens=CLAUDE_MAX_TOKENS, thinking=CLAUDE_THINKING)

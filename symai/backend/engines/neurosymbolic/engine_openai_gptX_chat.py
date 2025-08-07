@@ -53,7 +53,8 @@ class GPTXChatEngine(Engine, OpenAIMixin):
            (self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('gpt-3.5') or \
             self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('gpt-4') or \
             self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('chatgpt-4o') or \
-            self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('gpt-4.1')):
+            self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('gpt-4.1') or \
+            self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') == 'gpt-5-chat-latest'):
                 return 'neurosymbolic'
         return super().id() # default to unregistered
 
@@ -84,7 +85,8 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             "chatgpt-4o-latest",
             "gpt-4.1",
             "gpt-4.1-mini",
-            "gpt-4.1-nano"
+            "gpt-4.1-nano",
+            "gpt-5-chat-latest"
             }:
             tokens_per_message = 3
             tokens_per_name = 1
@@ -142,7 +144,8 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             self.model == 'chatgpt-4o-latest' or \
             self.model == 'gpt-4.1' or \
             self.model == 'gpt-4.1-mini' or \
-            self.model == 'gpt-4.1-nano') \
+            self.model == 'gpt-4.1-nano' or \
+            self.model == 'gpt-5-chat-latest') \
             and '<<vision:' in content:
 
             parts = extract_pattern(content)
@@ -396,7 +399,8 @@ class GPTXChatEngine(Engine, OpenAIMixin):
              self.model == 'chatgpt-4o-latest' or \
              self.model == 'gpt-4.1' or \
              self.model == 'gpt-4.1-mini' or \
-             self.model == 'gpt-4.1-nano':
+             self.model == 'gpt-4.1-nano' or \
+             self.model == 'gpt-5-chat-latest':
 
             images = [{ 'type': 'image_url', "image_url": { "url": file }} for file in image_files]
             user_prompt = { "role": "user", "content": [
@@ -502,7 +506,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             "top_logprobs": kwargs.get('top_logprobs'),
         }
 
-        if self.model == "chatgpt-4o-latest":
+        if self.model == "chatgpt-4o-latest" or self.model == "gpt-5-chat-latest":
             del payload['tools']
             del payload['tool_choice']
 

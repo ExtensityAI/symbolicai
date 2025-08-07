@@ -56,7 +56,8 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         if self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and \
            self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('claude') and \
            ('3-7' in self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') or \
-            '4-0' in self.config.get('NEUROSYMBOLIC_ENGINE_MODEL')):
+            '4-0' in self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') or \
+            '4-1' in self.config.get('NEUROSYMBOLIC_ENGINE_MODEL')):
                return 'neurosymbolic'
         return super().id() # default to unregistered
 
