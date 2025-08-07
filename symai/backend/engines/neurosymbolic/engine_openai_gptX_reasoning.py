@@ -2,7 +2,6 @@ import json
 import logging
 import re
 from copy import deepcopy
-from typing import List, Optional
 
 import openai
 import tiktoken
@@ -23,7 +22,7 @@ logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
 class GPTXReasoningEngine(Engine, OpenAIMixin):
-    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
+    def __init__(self, api_key: str | None = None, model: str | None = None):
         super().__init__()
         self.config = deepcopy(SYMAI_CONFIG)
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
@@ -52,7 +51,10 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
         if self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and \
            (self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('o1') or \
             self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('o3') or \
-            self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('o4')):
+            self.config.get('NEUROSYMBOLIC_ENGINE_MODEL').startswith('o4') or \
+            self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') == 'gpt-5' or \
+            self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') == 'gpt-5-mini' or \
+            self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') == 'gpt-5-nano'):
                 return 'neurosymbolic'
         return super().id() # default to unregistered
 
@@ -73,6 +75,9 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
             'o3',
             'o3-mini',
             'o4-mini',
+            'gpt-5',
+            'gpt-5-mini',
+            'gpt-5-nano',
             }:
             tokens_per_message = 3
             tokens_per_name = 1
@@ -110,7 +115,10 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
 
         image_files = []
         # pre-process prompt if contains image url
-        if self.model == 'o1' and '<<vision:' in content:
+        if (self.model == 'o1' or \
+            self.model == 'gpt-5' or \
+            self.model == 'gpt-5-mini' or \
+            self.model == 'gpt-5-nano') and '<<vision:' in content:
             parts = _extract_pattern(content)
             for p in parts:
                 img_ = p.strip()
@@ -325,7 +333,7 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
         if argument.prop.payload:
             developer += f"<ADDITIONAL CONTEXT/>\n{str(payload)}\n\n"
 
-        examples: List[str] = argument.prop.examples
+        examples: list[str] = argument.prop.examples
         if examples and len(examples) > 0:
             developer += f"<EXAMPLES/>\n{str(examples)}\n\n"
 
@@ -450,6 +458,9 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
         }
 
         if self.model == "o4-mini" or self.model == "o3":
+            del payload["stop"]
+
+        if self.model.startswith("gpt-5"):
             del payload["stop"]
 
         return payload

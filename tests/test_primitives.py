@@ -882,7 +882,7 @@ def test_iteration_pr():
     # Test __getitem__ with lists - semantic
     sym_list_sem = Symbol([10, 20, 30, 40, 50], semantic=True)
     item_sem = sym_list_sem[2]
-    assert item_sem == 30
+    semassert(item_sem == 30)
     display_op(f"{sym_list_sem}[2]", item_sem, "getitem", "semantic")
 
     # Test __getitem__ with dictionaries - syntactic
@@ -894,7 +894,7 @@ def test_iteration_pr():
     # Test __getitem__ with dictionaries - semantic
     sym_dict_sem = Symbol({'name': 'Alice', 'age': 30, 'city': 'NYC'}, semantic=True)
     dict_item_sem = sym_dict_sem['Return any names']
-    assert dict_item_sem == 'Alice'
+    semassert(dict_item_sem == 'Alice')
     display_op(f"{sym_dict_sem}['Return any names']", dict_item_sem, "getitem", "semantic")
 
     sym_colors = Symbol({'red': '#FF0000', 'green': '#00FF00', 'blue': '#0000FF'}, semantic=True)
