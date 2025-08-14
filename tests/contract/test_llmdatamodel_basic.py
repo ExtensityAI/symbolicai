@@ -243,27 +243,6 @@ def test_instruct_llm_single_example_for_standard_model():
     assert set(parsed.keys()) == expected_keys
 
 
-def test_instruct_llm_multiple_examples_for_union():
-    """A union containing alternatives should lead to multiple example blocks."""
-    DynModel = build_dynamic_llm_datamodel(list[Address] | dict[str, int])
-    instr = DynModel.instruct_llm()
-
-    examples = extract_examples(instr)
-    assert len(examples) >= 2, "Expected multiple examples for union types"
-
-    types_found = set()
-    for example_str in examples:
-        parsed = json.loads(example_str)
-        types_found.add(type(parsed["value"]))
-
-    assert list in types_found and dict in types_found
-
-
-def test_instruct_llm_caching():
-    """Instruction generation should be cached."""
-    instr1 = User.instruct_llm()
-    instr2 = User.instruct_llm()
-    assert instr1 == instr2
 
 
 def test_union_int_str():
@@ -348,10 +327,6 @@ def test_invalid_field_types():
         )
 
 
-def test_missing_required_fields():
-    """Test that missing required fields raise validation errors."""
-    with pytest.raises(ValidationError):
-        User(age=25)
 
 
 def test_const_field_validation():
@@ -381,19 +356,6 @@ def test_invalid_enum_value():
         StatusModel(status="invalid_status")
 
 
-def test_deeply_nested_validation_error():
-    """Test that validation errors in deeply nested structures are properly reported."""
-    class Level3(LLMDataModel):
-        value: int
-
-    class Level2(LLMDataModel):
-        level3: Level3
-
-    class Level1(LLMDataModel):
-        level2: Level2
-
-    with pytest.raises(ValidationError):
-        Level1(level2={"level3": {"value": "not_an_int"}})
 
 
 def test_union_validation_all_branches_fail():

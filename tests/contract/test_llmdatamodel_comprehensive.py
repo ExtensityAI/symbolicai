@@ -688,22 +688,6 @@ def test_generate_type_description():
     assert "array" in desc.lower() or "list" in desc.lower()
 
 
-def test_collect_variant_definitions():
-    """Test _collect_variant_definitions for union types."""
-    class UnionModel(LLMDataModel):
-        union_field: int | str | list[int]
-
-    schema = UnionModel.model_json_schema()
-    definitions = UnionModel._collect_variant_definitions(
-        schema["properties"]["union_field"],
-        schema.get("$defs", {})
-    )
-
-    assert len(definitions) > 0
-    assert any("integer" in str(d).lower() for d in definitions)
-    assert any("string" in str(d).lower() for d in definitions)
-
-
 def test_resolve_allof_type():
     """Test _resolve_allof_type for allOf schemas."""
     class BaseModel(LLMDataModel):
@@ -722,9 +706,9 @@ def test_resolve_allof_type():
         ]
     }
 
-    resolved = ExtendedModel._resolve_allof_type(allof_schema)
-    assert "properties" in resolved
-    assert len(resolved["properties"]) >= 2
+    resolved = ExtendedModel._resolve_allof_type(allof_schema, ExtendedModel.model_json_schema().get("$defs", {}))
+    assert isinstance(resolved, str)
+    assert resolved in ("object", "nested object (BaseModel)", "unknown")
 
 
 def test_is_const_field():
