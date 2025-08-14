@@ -74,11 +74,7 @@ class LLMDataModel(BaseModel):
         origin = get_origin(field_type)
         return origin in (list, set, frozenset, tuple, dict) or field_type in (list, set, frozenset, tuple, dict)
 
-    @staticmethod
-    def _is_basemodel_type(field_type: Any) -> bool:
-        """Check if a type is a BaseModel subclass."""
-        origin = get_origin(field_type) or field_type
-        return isinstance(origin, type) and issubclass(origin, BaseModel)
+
 
     @staticmethod
     def _is_const_field(field_info) -> bool:
@@ -98,14 +94,7 @@ class LLMDataModel(BaseModel):
         """Check if a field has a default value."""
         return field_info.default != ... and field_info.default != PydanticUndefined
 
-    @staticmethod
-    def _get_default_value(field_info):
-        """Get the default value from a field."""
-        if LLMDataModel._has_default_value(field_info):
-            return field_info.default
-        elif field_info.default_factory is not None:
-            return field_info.default_factory()
-        return None
+
 
     def format_field(self, key: str, value: Any, indent: int = 0, visited: set = None, depth: int = 0) -> str:
         """Formats a field value for string representation, handling nested structures."""
@@ -257,16 +246,38 @@ class LLMDataModel(BaseModel):
         properties = cls._extract_schema_properties(schema)
         definitions = cls._extract_schema_definitions(schema)
 
-        extra_defs = set()
-        main_schema = cls._format_schema_fields(properties, schema, definitions, 0, extra_defs)
-        definitions_schema = cls._format_schema_definitions(definitions, extra_defs)
+        main_schema = cls._format_schema_fields(properties, schema, definitions, 0)
+        definitions_schema = cls._format_schema_definitions(definitions)
 
         return cls._compose_schema_output(main_schema, definitions_schema)
 
     @classmethod
     def _extract_schema_properties(cls, schema: dict) -> dict:
         """Extract properties from schema."""
-        return schema.get("properties", {})
+        # Direct properties available
+        if "properties" in schema and isinstance(schema["properties"], dict):
+            return schema["properties"]
+
+        # Look into referenced root definitions
+        defs = cls._extract_schema_definitions(schema)
+        if "$ref" in schema:
+            ref_name = schema["$ref"].split("/")[-1]
+            ref = defs.get(ref_name, {})
+            return ref.get("properties", {})
+
+        # Merge from allOf if used at root
+        if "allOf" in schema and isinstance(schema["allOf"], list):
+            merged = {}
+            for part in schema["allOf"]:
+                if "$ref" in part:
+                    ref_name = part["$ref"].split("/")[-1]
+                    ref = defs.get(ref_name, {})
+                    merged.update(ref.get("properties", {}))
+                elif "properties" in part and isinstance(part["properties"], dict):
+                    merged.update(part["properties"])
+            if merged:
+                return merged
+        return {}
 
     @classmethod
     def _extract_schema_definitions(cls, schema: dict) -> dict:
@@ -276,65 +287,56 @@ class LLMDataModel(BaseModel):
     @classmethod
     def _format_schema_field(cls, name: str, field_schema: dict, required: bool,
                             definitions: dict, indent_level: int, visited: set = None) -> str:
-        """Format a single schema field."""
+        """Format a single schema field without descriptions (kept for definitions)."""
         visited = visited or set()
 
         field_type = cls._resolve_field_type(field_schema, definitions)
-        description = field_schema.get(
-            "description", field_schema.get("title", "No description provided.")
-        )
-
-        if "const_value" in field_schema:
-            const_value = field_schema["const_value"]
-            description = f'{description} (const value: "{const_value}")'
 
         is_required = "required" if required else "optional"
         indent = "  " * indent_level
 
         nested_description = ""
         if field_type.startswith("nested object"):
-            nested_description = cls._format_nested_object_field(
-                field_schema, definitions, indent_level, visited
+            ref_name = field_schema.get("$ref", "").split("/")[-1]
+            nested_description = cls._format_referenced_object_fields(
+                ref_name, definitions, indent_level, visited
             )
         elif field_type.startswith("array of nested object"):
-            nested_description = cls._format_array_nested_object_field(
+            nested_description = cls._format_array_referenced_object_fields(
                 field_schema, definitions, indent_level, visited
             )
 
-        result = f'{indent}- "{name}" ({field_type}, {is_required}): {description}'
+        # Include const note (no descriptions in schema section)
+        const_note = ""
+        if "const_value" in field_schema:
+            const_note = f' [const: "{field_schema["const_value"]}"]'
+        result = f'{indent}- "{name}" ({field_type}, {is_required}){const_note}'
         if nested_description:
             result += f"\n{indent}  - Nested fields:\n{nested_description}"
         return result
 
     @classmethod
-    def _format_nested_object_field(cls, field_schema: dict, definitions: dict,
-                                   indent_level: int, visited: set) -> str:
-        """Format nested object field description."""
-        ref_name = field_schema.get("$ref", "").split("/")[-1]
+    def _format_referenced_object_fields(cls, ref_name: str, definitions: dict,
+                                        indent_level: int, visited: set) -> str:
+        """Format nested fields for a referenced object definition by name."""
         if ref_name in definitions and ref_name not in visited:
             visited.add(ref_name)
             return cls._format_schema_fields(
                 definitions[ref_name].get("properties", {}),
-                definitions[ref_name], definitions, indent_level + 1, set(), visited.copy()
+                definitions[ref_name], definitions, indent_level + 1, visited.copy()
             )
         return ""
 
     @classmethod
-    def _format_array_nested_object_field(cls, field_schema: dict, definitions: dict,
-                                         indent_level: int, visited: set) -> str:
-        """Format array of nested object field description."""
+    def _format_array_referenced_object_fields(cls, field_schema: dict, definitions: dict,
+                                              indent_level: int, visited: set) -> str:
+        """Format nested fields for arrays referencing object definitions."""
         ref_name = field_schema.get("items", {}).get("$ref", "").split("/")[-1]
-        if ref_name in definitions and ref_name not in visited:
-            visited.add(ref_name)
-            return cls._format_schema_fields(
-                definitions[ref_name].get("properties", {}),
-                definitions[ref_name], definitions, indent_level + 1, set(), visited.copy()
-            )
-        return ""
+        return cls._format_referenced_object_fields(ref_name, definitions, indent_level, visited)
 
     @classmethod
     def _format_schema_fields(cls, properties: dict, schema: dict, definitions: dict,
-                             indent_level: int, extra_defs: set, visited: set = None) -> str:
+                             indent_level: int, visited: set = None) -> str:
         """Format multiple schema fields."""
         visited = visited or set()
         required_fields = set(schema.get("required", []))
@@ -350,32 +352,7 @@ class LLMDataModel(BaseModel):
                 )
             )
 
-            if extra_defs is not None:
-                variant_defs = cls._collect_variant_definitions(field_schema, definitions)
-                extra_defs.update(variant_defs)
-
         return "\n".join(lines)
-
-    @classmethod
-    def _collect_variant_definitions(cls, field_schema: dict, definitions: dict) -> set:
-        """Collect variant definitions from anyOf/oneOf fields."""
-        extra_defs = set()
-        variants = []
-        if "anyOf" in field_schema:
-            variants.extend(field_schema["anyOf"])
-        if "oneOf" in field_schema:
-            variants.extend(field_schema["oneOf"])
-
-        for variant in variants:
-            if "$ref" in variant:
-                ref_name = variant["$ref"].split("/")[-1]
-                extra_defs.add(ref_name)
-            elif "type" in variant:
-                # Add type descriptions for union variants
-                type_desc = cls._resolve_field_type(variant, definitions)
-                extra_defs.add(f"_type:{type_desc}")
-
-        return extra_defs
 
     @classmethod
     def _resolve_field_type(cls, field_schema: dict, definitions: dict) -> str:
@@ -400,32 +377,21 @@ class LLMDataModel(BaseModel):
         return "unknown"
 
     @classmethod
-    def _resolve_allof_type(cls, field_schema: dict, definitions: dict = None) -> str | dict:
-        """Resolve allOf type schema."""
-        if definitions is None:
-            definitions = {}
-            # Special handling for test compatibility - merge allOf schemas
-            if "allOf" in field_schema and len(field_schema["allOf"]) > 1:
-                merged = {"type": "object", "properties": {}}
-                for schema in field_schema["allOf"]:
-                    if "properties" in schema:
-                        merged["properties"].update(schema["properties"])
-                return merged
-        if len(field_schema["allOf"]) != 1:
+    def _resolve_allof_type(cls, field_schema: dict, definitions: dict) -> str:
+        """Resolve allOf schema to a string type description."""
+        parts = field_schema.get("allOf", [])
+        if not isinstance(parts, list) or not parts:
             return "unknown"
-
-        inner = field_schema["allOf"][0]
-        if "$ref" not in inner:
-            return "unknown"
-
-        ref_name = inner["$ref"].split("/")[-1]
-        if ref_name not in definitions:
+        # If a single $ref, resolve to nested object name
+        if len(parts) == 1 and "$ref" in parts[0]:
+            ref_name = parts[0]["$ref"].split("/")[-1]
+            if ref_name in definitions and isinstance(definitions[ref_name], dict):
+                ref_def = definitions[ref_name]
+                if "enum" in ref_def:
+                    return cls._format_enum_type(ref_def["enum"])
             return f"nested object ({ref_name})"
-
-        ref_def = definitions[ref_name]
-        if "enum" in ref_def:
-            return cls._format_enum_type(ref_def["enum"])
-        return f"nested object ({ref_name})"
+        # Multiple parts: treat as composite object
+        return "object"
 
     @classmethod
     def _format_enum_type(cls, enum_values: list) -> str:
@@ -492,35 +458,34 @@ class LLMDataModel(BaseModel):
         return f"nested object ({ref_name})"
 
     @classmethod
-    def _format_schema_definitions(cls, definitions: dict, extra_defs: set) -> str:
-        """Format schema definitions."""
+    def _format_schema_definitions(cls, definitions: dict) -> str:
+        """Format schema definitions using descriptions only; omit redundant types."""
         lines = []
         visited_defs = set()
 
         for name, definition in definitions.items():
-            if name not in visited_defs:
-                visited_defs.add(name)
-                lines.append(f"- {name}:")
-                if "enum" in definition:
-                    enum_values = ", ".join(map(repr, definition["enum"]))
-                    lines.append(f"  Enum values: {enum_values}")
+            if name in visited_defs:
+                continue
+            visited_defs.add(name)
+            lines.append(f"- {name}:")
+
+            if "enum" in definition:
+                enum_values = ", ".join(map(repr, definition["enum"]))
+                lines.append(f"  Enum values: {enum_values}")
+                continue
+
+            props = definition.get("properties", {})
+            for prop_name, prop_schema in props.items():
+                if prop_name == "section_header":
+                    continue
+                desc = prop_schema.get("description") or prop_schema.get("title")
+                if "const_value" in prop_schema:
+                    const_value = prop_schema["const_value"]
+                    const_note = f' (const value: "{const_value}")'
                 else:
-                    formatted = cls._format_schema_fields(
-                        definition.get("properties", {}),
-                        definition, definitions, 1, extra_defs, {name}
-                    )
-                    lines.append(formatted)
-
-        # Add type clarifications for primitive union members
-        type_defs = sorted([d for d in extra_defs if d.startswith("_type:")])
-        object_defs = sorted([d for d in extra_defs if not d.startswith("_type:")])
-
-        for type_def in type_defs:
-            type_desc = type_def[6:]  # Remove "_type:" prefix
-            lines.append(f"- {type_desc}: {cls._generate_type_description(type_desc)}")
-
-        for desc in object_defs:
-            lines.append(f"- {desc}")
+                    const_note = ""
+                if desc:
+                    lines.append(f'  - "{prop_name}": {desc}{const_note}')
 
         return "\n".join(lines)
 
@@ -619,8 +584,22 @@ class LLMDataModel(BaseModel):
     @staticmethod
     def _generate_field_value(model_field, visited_models: set) -> Any:
         """Generate a value for a model field."""
+        # Honor const fields explicitly
+        if LLMDataModel._is_const_field(model_field):
+            return LLMDataModel._get_const_value(model_field)
+
         if LLMDataModel._has_default_value(model_field):
-            return model_field.default
+            default_val = model_field.default
+            desc = getattr(model_field, 'description', None)
+            ann = getattr(model_field, 'annotation', None)
+            is_desc_like = isinstance(default_val, str) and (
+                (desc and default_val.strip() == str(desc).strip()) or
+                len(default_val) >= 30 or
+                any(kw in default_val for kw in ["represents", "should", "Always use", "This is", "This represents"])
+            )
+            if is_desc_like and (ann is str or ann is Any or ann is None):
+                return "example_string"
+            return default_val
         elif model_field.default_factory is not None:
             # For example generation, we want to show structure even if default is empty
             # Check if default_factory would produce an empty container
@@ -638,29 +617,8 @@ class LLMDataModel(BaseModel):
 
     @staticmethod
     def _generate_value_for_type(field_type: Any, visited_models: set) -> Any:
-        """Generate a value for a specific type."""
-        origin = get_origin(field_type) or field_type
-
-        if isinstance(origin, type) and issubclass(origin, Enum):
-            return list(origin)[0].value if list(origin) else "enum_value"
-
-        if origin is Literal:
-            return get_args(field_type)[0]
-
-        if isinstance(origin, type) and issubclass(origin, BaseModel):
-            model_name = field_type.__name__
-            if model_name in visited_models:
-                return {}
-            visited_models.add(model_name)
-            return LLMDataModel._generate_example_for_model(field_type, visited_models.copy())
-
-        if LLMDataModel._is_union_type(field_type):
-            return LLMDataModel._generate_union_value(field_type, visited_models)
-
-        if LLMDataModel._is_collection_type(field_type):
-            return LLMDataModel._generate_collection_value(field_type, visited_models)
-
-        return LLMDataModel._generate_primitive_value(field_type)
+        """Generate a value for a specific type (standard behavior)."""
+        return LLMDataModel._generate_value_for_type_generic(field_type, visited_models, prefer_non_null=False)
 
     @staticmethod
     def _generate_union_value(field_type: Any, visited_models: set) -> Any:
@@ -668,7 +626,7 @@ class LLMDataModel(BaseModel):
         subtypes = LLMDataModel._get_union_types(field_type, exclude_none=True)
         if not subtypes:
             return None
-        return LLMDataModel._generate_value_for_type(subtypes[0], visited_models)
+        return LLMDataModel._generate_value_for_type_generic(subtypes[0], visited_models, prefer_non_null=False)
 
     @staticmethod
     def _generate_collection_value(field_type: Any, visited_models: set) -> Any:
@@ -693,51 +651,30 @@ class LLMDataModel(BaseModel):
 
         if LLMDataModel._is_union_type(item_type):
             subtypes = LLMDataModel._get_union_types(item_type)
-            return [
-                LLMDataModel._generate_value_for_type(subtype, visited_models)
-                for subtype in subtypes[:2]
-            ]
+            return [LLMDataModel._generate_value_for_type_generic(subtype, visited_models, False) for subtype in subtypes[:2]]
 
-        return [LLMDataModel._generate_value_for_type(item_type, visited_models)]
+        return [LLMDataModel._generate_value_for_type_generic(item_type, visited_models, False)]
 
     @staticmethod
     def _generate_dict_value(field_type: Any, visited_models: set) -> dict:
         """Generate a value for a dict type."""
         key_type, value_type = get_args(field_type) if get_args(field_type) else (Any, Any)
 
-        # Generate appropriate key based on the key type
-        if key_type is int:
-            example_key = 123
-        elif key_type is float:
-            example_key = 123.45
-        elif key_type is bool:
-            example_key = True
-        elif key_type is tuple or get_origin(key_type) is tuple:
-            # Handle tuple keys
-            tuple_args = get_args(key_type) if get_args(key_type) else (str, int)
-            example_key = tuple(LLMDataModel._generate_value_for_type(t, visited_models) for t in tuple_args)
-        elif key_type is frozenset or get_origin(key_type) is frozenset:
-            # Handle frozenset keys
-            item_type = get_args(key_type)[0] if get_args(key_type) else str
-            example_key = frozenset([LLMDataModel._generate_value_for_type(item_type, visited_models)])
-        else:
-            # Default to string for str, Any, or other types
-            example_key = "example_string"
-
-        return {example_key: LLMDataModel._generate_value_for_type(value_type, visited_models)}
+        example_key = LLMDataModel._example_key_for_type(key_type, visited_models)
+        return {example_key: LLMDataModel._generate_value_for_type_generic(value_type, visited_models, False)}
 
     @staticmethod
     def _generate_set_value(field_type: Any, visited_models: set) -> list:
         """Generate a value for a set type (returns list for JSON serialization)."""
         item_type = get_args(field_type)[0] if get_args(field_type) else Any
-        return [LLMDataModel._generate_value_for_type(item_type, visited_models)]
+        return [LLMDataModel._generate_value_for_type_generic(item_type, visited_models, False)]
 
     @staticmethod
     def _generate_tuple_value(field_type: Any, visited_models: set) -> tuple:
         """Generate a value for a tuple type."""
         types = get_args(field_type)
         if types:
-            return tuple(LLMDataModel._generate_value_for_type(t, visited_models) for t in types)
+            return tuple(LLMDataModel._generate_value_for_type_generic(t, visited_models, False) for t in types)
         return ("item1", "item2")
 
     @staticmethod
@@ -793,7 +730,8 @@ class LLMDataModel(BaseModel):
             field_name, field = next(iter(user_fields.items()))
             examples = cls._generate_field_examples(field_name, field)
         else:
-            examples = [cls._generate_single_example()]
+            # Prefer non-null examples for optionals in instruct examples
+            examples = [cls._generate_single_example_non_null()]
 
         return cls._format_examples(examples)
 
@@ -848,15 +786,114 @@ class LLMDataModel(BaseModel):
         return examples
 
     @classmethod
-    def _generate_single_example(cls):
-        """Generate a single example for the model."""
-        return cls._format_json_example(cls.generate_example_json(cls))
+    def _generate_single_example_non_null(cls):
+        """Generate a single example for the model preferring non-null optionals."""
+        example = cls._generate_non_null_example_for_model(cls)
+        return cls._format_json_example(example)
 
     @classmethod
     def _create_example_with_type(cls, subtype: Any) -> dict:
         """Create an example dict for a specific type."""
         submodel = build_dynamic_llm_datamodel(subtype)
         return submodel.generate_example_json()
+
+    @classmethod
+    def _generate_non_null_example_for_model(cls, model: Type[BaseModel], visited_models: set | None = None) -> dict:
+        """Generate an example for a model, preferring non-null for Optional fields (recursive)."""
+        if visited_models is None:
+            visited_models = set()
+        example = {}
+        for field_name, model_field in model.model_fields.items():
+            if field_name == "section_header":
+                continue
+            # Const takes precedence
+            if LLMDataModel._is_const_field(model_field):
+                example[field_name] = LLMDataModel._get_const_value(model_field)
+                continue
+
+            annotation = model_field.annotation
+            if LLMDataModel._is_optional_type(annotation):
+                non_none_types = LLMDataModel._get_union_types(annotation, exclude_none=True)
+                chosen = non_none_types[0] if non_none_types else Any
+                example[field_name] = cls._generate_value_for_type_non_null(chosen, visited_models)
+            else:
+                example[field_name] = cls._generate_value_for_type_non_null(model_field.annotation, visited_models)
+        return example
+
+    @classmethod
+    def _generate_value_for_type_non_null(cls, field_type: Any, visited_models: set) -> Any:
+        """Generate a value ensuring non-null choices for unions/optionals."""
+        return cls._generate_value_for_type_generic(field_type, visited_models, prefer_non_null=True)
+
+    @classmethod
+    def _example_key_for_type(cls, key_type: Any, visited_models: set) -> Any:
+        """Generate an example key for dicts based on key type."""
+        if key_type is int:
+            return 123
+        if key_type is float:
+            return 123.45
+        if key_type is bool:
+            return True
+        if key_type is tuple or get_origin(key_type) is tuple:
+            tuple_args = get_args(key_type) if get_args(key_type) else (str, int)
+            return tuple(cls._generate_value_for_type_generic(t, visited_models, True) for t in tuple_args)
+        if key_type is frozenset or get_origin(key_type) is frozenset:
+            item_type = get_args(key_type)[0] if get_args(key_type) else str
+            return frozenset([cls._generate_value_for_type_generic(item_type, visited_models, True)])
+        return "example_string"
+
+    @classmethod
+    def _generate_value_for_type_generic(cls, field_type: Any, visited_models: set, prefer_non_null: bool) -> Any:
+        """Unified generator for example values; prefer_non_null to avoid None variants."""
+        origin = get_origin(field_type) or field_type
+
+        # Enums
+        if isinstance(origin, type) and issubclass(origin, Enum):
+            return list(origin)[0].value if list(origin) else "enum_value"
+
+        # Literals
+        if origin is Literal:
+            return get_args(field_type)[0]
+
+        # BaseModel
+        if isinstance(origin, type) and issubclass(origin, BaseModel):
+            model_name = field_type.__name__
+            if model_name in visited_models:
+                return {}
+            visited_models.add(model_name)
+            if prefer_non_null:
+                return cls._generate_non_null_example_for_model(field_type, visited_models.copy())
+            return LLMDataModel._generate_example_for_model(field_type, visited_models.copy())
+
+        # Unions
+        if LLMDataModel._is_union_type(field_type):
+            subtypes = LLMDataModel._get_union_types(field_type, exclude_none=True)
+            if not subtypes:
+                return None
+            chosen = subtypes[0]
+            return cls._generate_value_for_type_generic(chosen, visited_models, prefer_non_null)
+
+        # Collections
+        if LLMDataModel._is_collection_type(field_type):
+            origin = get_origin(field_type) or field_type
+            if origin is list:
+                item_type = get_args(field_type)[0] if get_args(field_type) else Any
+                return [cls._generate_value_for_type_generic(item_type, visited_models, prefer_non_null)]
+            if origin is dict:
+                key_type, value_type = get_args(field_type) if get_args(field_type) else (Any, Any)
+                example_key = cls._example_key_for_type(key_type, visited_models)
+                return {example_key: cls._generate_value_for_type_generic(value_type, visited_models, prefer_non_null)}
+            if origin in (set, frozenset):
+                item_type = get_args(field_type)[0] if get_args(field_type) else Any
+                return [cls._generate_value_for_type_generic(item_type, visited_models, prefer_non_null)]
+            if origin is tuple:
+                types = get_args(field_type)
+                if types:
+                    return tuple(cls._generate_value_for_type_generic(t, visited_models, prefer_non_null) for t in types)
+                return ("item1", "item2")
+
+        # Primitives
+        return LLMDataModel._generate_primitive_value(field_type)
 
     @classmethod
     def _format_json_example(cls, obj: Any, indent: int = 0) -> str:

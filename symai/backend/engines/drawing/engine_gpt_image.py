@@ -110,8 +110,9 @@ class GPTImageEngine(Engine):
         n = kwargs.get("n", 1)
 
         if "size" in kwargs:
-            s = kwargs["size"]
-            kwargs["size"] = f"{s}x{s}"
+            if isinstance(kwargs["size"], int):
+                s = kwargs["size"]
+                kwargs["size"] = f"{s}x{s}"
 
         except_remedy = kwargs.get("except_remedy", None)
 
