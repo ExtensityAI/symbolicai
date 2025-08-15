@@ -247,7 +247,7 @@ class LLMDataModel(BaseModel):
         definitions = cls._extract_schema_definitions(schema)
 
         main_schema = cls._format_schema_fields(properties, schema, definitions, 0)
-        definitions_schema = cls._format_schema_definitions(definitions)
+        definitions_schema = cls._format_schema_definitions(definitions, schema)
 
         return cls._compose_schema_output(main_schema, definitions_schema)
 
@@ -458,10 +458,37 @@ class LLMDataModel(BaseModel):
         return f"nested object ({ref_name})"
 
     @classmethod
-    def _format_schema_definitions(cls, definitions: dict) -> str:
-        """Format schema definitions using descriptions only; omit redundant types."""
+    def _format_schema_definitions(cls, definitions: dict, root_schema: dict | None = None) -> str:
+        """Format schema definitions using descriptions and examples; omit redundant types.
+
+        Also includes the root model's fields (from root_schema) so their descriptions/examples
+        are visible, not just $defs.
+        """
         lines = []
         visited_defs = set()
+
+        # Include root model's fields in Definitions (for descriptions/examples)
+        if root_schema and isinstance(root_schema, dict):
+            root_title = root_schema.get("title", "Root")
+            root_props = cls._extract_schema_properties(root_schema)
+            if root_props:
+                lines.append(f"- {root_title}:")
+                for prop_name, prop_schema in root_props.items():
+                    if prop_name == "section_header":
+                        continue
+                    desc = prop_schema.get("description") or prop_schema.get("title")
+                    const_note = ""
+                    if "const_value" in prop_schema:
+                        const_note = f' (const value: "{prop_schema["const_value"]}")'
+                    if desc:
+                        lines.append(f'  - "{prop_name}": {desc}{const_note}')
+                        examples = prop_schema.get("examples") or prop_schema.get("example")
+                        if examples is not None:
+                            try:
+                                ex_str = json.dumps(examples, ensure_ascii=False)
+                            except Exception:
+                                ex_str = str(examples)
+                            lines.append(f"    Examples: {ex_str}")
 
         for name, definition in definitions.items():
             if name in visited_defs:
@@ -486,6 +513,14 @@ class LLMDataModel(BaseModel):
                     const_note = ""
                 if desc:
                     lines.append(f'  - "{prop_name}": {desc}{const_note}')
+                    # If field provides examples, list them as few-shot hints
+                    examples = prop_schema.get("examples") or prop_schema.get("example")
+                    if examples is not None:
+                        try:
+                            ex_str = json.dumps(examples, ensure_ascii=False)
+                        except Exception:
+                            ex_str = str(examples)
+                        lines.append(f"    Examples: {ex_str}")
 
         return "\n".join(lines)
 
