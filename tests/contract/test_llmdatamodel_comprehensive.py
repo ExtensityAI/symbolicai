@@ -257,6 +257,71 @@ def test_simplify_schema_caching():
     assert schema1 == schema2
 
 
+def test_definitions_include_field_examples():
+    """Definitions should include descriptions and examples when provided via Field."""
+    class InnerWithExamples(LLMDataModel):
+        intent_tag: str = Field(description='The intent of the query.', examples=['foo', 'bar'])
+        source_type: str = Field(description='The source type to target for this query.', examples=['doc', 'web'])
+        vertical_tags: list[str] = Field(description='1–3 vertical tags describing the domain focus.', examples=[["finance"], ["health", "ai"]])
+
+    class WrapperModel(LLMDataModel):
+        inner: InnerWithExamples
+
+    schema = WrapperModel.simplify_json_schema()
+
+    assert '[[Definitions]]' in schema
+    assert 'Examples:' in schema
+    assert 'intent_tag' in schema and 'foo' in schema and 'bar' in schema
+    assert 'source_type' in schema and 'doc' in schema and 'web' in schema
+    assert 'vertical_tags' in schema and 'finance' in schema and 'health' in schema and 'ai' in schema
+
+
+def test_extremely_complex_very_nested_object():
+    """Stress test schema and example generation for a very nested, complex model."""
+    class Leaf(LLMDataModel):
+        id: int
+        tags: list[str]
+        meta: dict[str, int | str]
+
+    class Node(LLMDataModel):
+        name: str
+        value: int | str | list[int]
+        children: list['Node'] = Field(default_factory=list)
+        mapping: dict[str, list[Leaf]]
+        optional_leaf: Leaf | None = None
+        tuple_field: tuple[str, int, bool]
+        set_field: set[str]
+
+    class Root(LLMDataModel):
+        graph: Node
+        index: dict[int, Node]
+        registry: dict[tuple[str, int], dict[bool, list[Leaf]]]
+        alt: list[Node | Leaf]
+        any_map: dict[str, dict[str, list[int | str]]]
+
+    # Schema assertions
+    schema = Root.simplify_json_schema()
+    assert '[[Schema]]' in schema
+    assert 'graph' in schema
+    assert 'nested object (Node)' in schema
+    assert 'nested object (Leaf)' in schema
+    assert 'array' in schema.lower()
+    assert 'tuple' in schema.lower()
+
+    # Example assertions
+    example = LLMDataModel.generate_example_json(Root)
+    assert 'graph' in example and isinstance(example['graph'], dict)
+    assert 'children' in example['graph'] and isinstance(example['graph']['children'], list)
+    assert 'mapping' in example['graph'] and isinstance(example['graph']['mapping'], dict)
+
+    assert 'index' in example and isinstance(example['index'], dict)
+    assert any(isinstance(k, int) for k in example['index'].keys()) or 123 in example['index']
+
+    assert 'registry' in example and isinstance(example['registry'], dict)
+    assert 'alt' in example and isinstance(example['alt'], list)
+    assert 'any_map' in example and isinstance(example['any_map'], dict)
+
+
 # ---------------------------------------------------------------------------
 # generate_example_json Tests
 # ---------------------------------------------------------------------------
