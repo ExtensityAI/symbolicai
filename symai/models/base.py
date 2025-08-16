@@ -74,8 +74,6 @@ class LLMDataModel(BaseModel):
         origin = get_origin(field_type)
         return origin in (list, set, frozenset, tuple, dict) or field_type in (list, set, frozenset, tuple, dict)
 
-
-
     @staticmethod
     def _is_const_field(field_info) -> bool:
         """Check if a field is a const field."""
@@ -93,8 +91,6 @@ class LLMDataModel(BaseModel):
     def _has_default_value(field_info) -> bool:
         """Check if a field has a default value."""
         return field_info.default != ... and field_info.default != PydanticUndefined
-
-
 
     def format_field(self, key: str, value: Any, indent: int = 0, visited: set = None, depth: int = 0) -> str:
         """Formats a field value for string representation, handling nested structures."""
@@ -467,28 +463,55 @@ class LLMDataModel(BaseModel):
         lines = []
         visited_defs = set()
 
+        def _format_definition_properties(props: dict) -> list[str]:
+            """Render property lines using only Field(description=...), with const/excerpts.
+
+            Always lists properties; if description is missing, emit a generic guidance message.
+            """
+            out: list[str] = []
+            def _fmt_example_value(val):
+                if isinstance(val, str):
+                    return val
+                try:
+                    return json.dumps(val, ensure_ascii=False)
+                except Exception:
+                    return str(val)
+            for prop_name, prop_schema in props.items():
+                if prop_name == "section_header":
+                    continue
+                desc = prop_schema.get("description")
+                const_note = ""
+                if "const_value" in prop_schema:
+                    const_note = f' (const value: "{prop_schema["const_value"]}")'
+                if not desc:
+                    out.append(
+                        f'  - "{prop_name}": '
+                        'No definition provided. Focus on the [[Schema]] and the prompt to infer '
+                        'the expected structure and constraints.'
+                    )
+                else:
+                    out.append(f'  - "{prop_name}": {desc}{const_note}')
+
+                examples = prop_schema.get("examples")
+                if examples is None and "example" in prop_schema:
+                    examples = prop_schema.get("example")
+
+                if isinstance(examples, (list, tuple)):
+                    if len(examples) > 0:
+                        out.append("    - Examples:")
+                        for ex in examples:
+                            out.append(f"      - {_fmt_example_value(ex)}")
+                elif examples is not None:
+                    out.append(f"    - Example: {_fmt_example_value(examples)}")
+            return out
+
         # Include root model's fields in Definitions (for descriptions/examples)
         if root_schema and isinstance(root_schema, dict):
             root_title = root_schema.get("title", "Root")
             root_props = cls._extract_schema_properties(root_schema)
             if root_props:
                 lines.append(f"- {root_title}:")
-                for prop_name, prop_schema in root_props.items():
-                    if prop_name == "section_header":
-                        continue
-                    desc = prop_schema.get("description") or prop_schema.get("title")
-                    const_note = ""
-                    if "const_value" in prop_schema:
-                        const_note = f' (const value: "{prop_schema["const_value"]}")'
-                    if desc:
-                        lines.append(f'  - "{prop_name}": {desc}{const_note}')
-                        examples = prop_schema.get("examples") or prop_schema.get("example")
-                        if examples is not None:
-                            try:
-                                ex_str = json.dumps(examples, ensure_ascii=False)
-                            except Exception:
-                                ex_str = str(examples)
-                            lines.append(f"    Examples: {ex_str}")
+                lines.extend(_format_definition_properties(root_props))
 
         for name, definition in definitions.items():
             if name in visited_defs:
@@ -502,25 +525,7 @@ class LLMDataModel(BaseModel):
                 continue
 
             props = definition.get("properties", {})
-            for prop_name, prop_schema in props.items():
-                if prop_name == "section_header":
-                    continue
-                desc = prop_schema.get("description") or prop_schema.get("title")
-                if "const_value" in prop_schema:
-                    const_value = prop_schema["const_value"]
-                    const_note = f' (const value: "{const_value}")'
-                else:
-                    const_note = ""
-                if desc:
-                    lines.append(f'  - "{prop_name}": {desc}{const_note}')
-                    # If field provides examples, list them as few-shot hints
-                    examples = prop_schema.get("examples") or prop_schema.get("example")
-                    if examples is not None:
-                        try:
-                            ex_str = json.dumps(examples, ensure_ascii=False)
-                        except Exception:
-                            ex_str = str(examples)
-                        lines.append(f"    Examples: {ex_str}")
+            lines.extend(_format_definition_properties(props))
 
         return "\n".join(lines)
 

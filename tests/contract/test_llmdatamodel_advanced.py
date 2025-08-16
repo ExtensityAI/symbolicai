@@ -1,7 +1,7 @@
 import json
 import re
 from enum import Enum
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal, Optional, Union, Dict, List, Optional
 
 import pytest
 from pydantic import Field, ValidationError, field_validator
@@ -342,6 +342,78 @@ def test_instruct_llm_dict_person_union_list():
     example2 = json.loads(examples[1])
     assert "value" in example2
     assert isinstance(example2["value"], list)
+
+
+def test_definitions_generic_message_and_preserved_descriptions_for_nested_dict():
+    """Definitions should list all fields; use generic message when no Field(description=...) is provided,
+    and preserve provided descriptions (e.g., for nested dict fields)."""
+
+    class Metadata(LLMDataModel):
+        author: str
+        version: str
+        tags: List[str]
+
+    class ContentBlock(LLMDataModel):
+        id: str
+        title: str
+        paragraphs: List[str]
+
+    class NestedConfig(LLMDataModel):
+        translations: Dict[str, Dict[str, str]] = Field(
+            ...,
+            description="Nested dictionary mapping language -> section -> text"
+        )
+
+    class ComplexDocument(LLMDataModel):
+        doc_id: str
+        metadata: Metadata
+        content: List[ContentBlock]
+        config: NestedConfig
+        notes: Optional[str]
+
+    instr = ComplexDocument.instruct_llm()
+
+    # Schema checks for nested dict typing and optional notes
+    assert "object of object of string" in instr
+    assert "notes\" (string or null, required)" in instr or "notes\" (string or null" in instr
+
+    # Definitions should include all root fields under ComplexDocument
+    assert "[[Definitions]]" in instr
+    assert "- ComplexDocument:" in instr
+
+
+def test_examples_render_even_without_description():
+    """Examples should be shown even when no description is provided, formatted as bullets."""
+
+    class WithExamples(LLMDataModel):
+        title: str = Field(examples=["a", "b", "c"])  # no description
+        name: str = Field(description="Name field", examples=["x", "y"])  # has description
+
+    generic_msg = (
+        "No definition provided. Focus on the [[Schema]] and the prompt to infer "
+        "the expected structure and constraints."
+    )
+    instr = WithExamples.instruct_llm()
+    assert "[[Definitions]]" in instr
+    # Generic message for title (no description)
+    assert (
+        '  - "title": No definition provided. Focus on the [[Schema]] and the prompt to infer '
+        'the expected structure and constraints.'
+    ) in instr
+    # Bullet examples under title
+    assert "    - Examples:" in instr
+    assert "      - a" in instr and "      - b" in instr and "      - c" in instr
+    # Name has description and bullet examples
+    assert '  - "name": Name field' in instr
+    assert "      - x" in instr and "      - y" in instr
+
+    # Also verify single example formatting (no description)
+    class WithSingleExample(LLMDataModel):
+        value: int = Field(example=42)  # no description, single example
+
+    instr_single = WithSingleExample.instruct_llm()
+    assert '  - "value": ' in instr_single and "No definition provided." in instr_single
+    assert "    - Example: 42" in instr_single
 
 
 # ---------------------------------------------------------------------------
