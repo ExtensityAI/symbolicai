@@ -1265,7 +1265,7 @@ def test_union_dict_with_int_keys_or_list():
         name: str
         age: int | None
 
-    @contract(remedy_retry_params={"tries": 6})
+    @contract(remedy_retry_params={"tries": 6}, verbose=True)
     class ExtractPersons(Expression):
         def __init__(self, **kwargs):
             super().__init__(**kwargs)
