@@ -1,7 +1,10 @@
+import hashlib
 import json
 import logging
+import re
 from copy import deepcopy
 from dataclasses import dataclass
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from openai import OpenAI
 
@@ -16,6 +19,10 @@ logging.getLogger("urllib3").setLevel(logging.ERROR)
 logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
 
+
+TRACKING_KEYS = {
+    "utm_source" # so far I've only seen this one
+}
 
 @dataclass
 class Citation:
@@ -35,31 +42,110 @@ class SearchResult(Result):
         if value.get('error'):
             CustomUserWarning(value['error'], raise_with=ValueError)
         try:
-            for output in value.get('output', []):
-                if output.get('type') == 'message' and output.get('content'):
-                    annotations = output['content'][0].get('annotations', [])
-                    citations = []
-                    for n, annotation in enumerate(annotations):
-                        if annotation.get('type') == 'url_citation':
-                            citation = Citation(
-                                id=f'[{n + 1}]',
-                                start=annotation.get('start_index'),
-                                end=annotation.get('end_index'),
-                                title=annotation.get('title', ''),
-                                url=annotation.get('url', ''),
-                            )
-                            if citation not in citations:
-                                citations.append(citation)
-            self._value = output['content'][0]['text']
-            delta = 0
-            for citation in citations:
-                self._value = self._value[:citation.start - delta] + citation.id + self._value[citation.end - delta:]
-                delta += (citation.end - citation.start) - len(citation.id)
-            self._citations = citations
+            text, annotations = self._extract_text_and_annotations(value)
+            if text is None:
+                self._value = None
+                self._citations = []
+                return
+            replaced_text, ordered = self._replace_links_with_citations(text, annotations, id_mode="sequential")
+            self._value = replaced_text
+            self._citations = [
+                Citation(id=cid, title=title, url=url, start=0, end=0)
+                for cid, title, url in ordered
+            ]
 
         except Exception as e:
             self._value = None
             CustomUserWarning(f"Failed to parse response: {e}", raise_with=ValueError)
+
+    def _extract_text(self, value) -> str | None:
+        text = None
+        for output in value.get('output', []):
+            if output.get('type') == 'message' and output.get('content'):
+                content0 = output['content'][0]
+                if 'text' in content0 and content0['text']:
+                    text = content0['text']
+        return text
+
+    def _extract_text_and_annotations(self, value):
+        text = None
+        annotations = []
+        for output in value.get('output', []):
+            if output.get('type') != 'message' or not output.get('content'):
+                continue
+            for content in output.get('content', []) or []:
+                if 'text' in content and content['text']:
+                    text = content['text']
+                anns = content.get('annotations', []) or []
+                for ann in anns:
+                    if ann.get('type') == 'url_citation':
+                        annotations.append(ann)
+        return text, annotations
+
+    def _normalize_url(self, u: str) -> str:
+        parts = urlsplit(u)
+        scheme = parts.scheme.lower()
+        netloc = parts.netloc.lower()
+        path = parts.path.rstrip('/') or '/'
+        q = []
+        for k, v in parse_qsl(parts.query, keep_blank_values=True):
+            kl = k.lower()
+            if kl in TRACKING_KEYS or kl.startswith('utm_'):
+                continue
+            q.append((k, v))
+        query = urlencode(q, doseq=True)
+        fragment = ''
+        return urlunsplit((scheme, netloc, path, query, fragment))
+
+    def _make_title_map(self, annotations):
+        m = {}
+        for a in annotations or []:
+            url = a.get('url')
+            if not url:
+                continue
+            nu = self._normalize_url(url)
+            title = (a.get('title') or '').strip()
+            if nu not in m and title:
+                m[nu] = title
+        return m
+
+    def _hostname(self, u: str) -> str:
+        return urlsplit(u).netloc
+
+    def _short_hash_id(self, nu: str, length=6) -> str:
+        return hashlib.sha1(nu.encode('utf-8')).hexdigest()[:length]
+
+    def _replace_links_with_citations(self, text: str, annotations, id_mode: str = 'sequential'):
+        title_map = self._make_title_map(annotations)
+        id_map = {}
+        ordered = []  # list of ("[n]", title, normalized_url)
+        next_id = 1
+
+        pattern = re.compile(r"\[([^\]]*?)\]\((https?://[^\s)]+)\)")
+
+        def _get_id(nu: str) -> str:
+            nonlocal next_id
+            if id_mode == 'hash':
+                return self._short_hash_id(nu)
+            if nu not in id_map:
+                id_map[nu] = str(next_id)
+                t = title_map.get(nu) or self._hostname(nu)
+                ordered.append((f"[{id_map[nu]}]", t, nu))
+                next_id += 1
+            return id_map[nu]
+
+        def _repl(m):
+            link_text, url = m.group(1), m.group(2)
+            nu = self._normalize_url(url)
+            cid = _get_id(nu)
+            title = title_map.get(nu)
+            if not title:
+                lt = (link_text or '').strip()
+                title = lt if (' ' in lt) else self._hostname(nu)
+            return f"[{cid}] ({title})"
+
+        replaced = pattern.sub(_repl, text)
+        return replaced, ordered
 
     def __str__(self) -> str:
         try:
