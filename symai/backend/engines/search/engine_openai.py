@@ -1,14 +1,15 @@
 import json
 import logging
-import requests
 from copy import deepcopy
 from dataclasses import dataclass
+
+from openai import OpenAI
 
 from ....symbol import Result
 from ....utils import CustomUserWarning
 from ...base import Engine
-from ...settings import SYMAI_CONFIG
 from ...mixin import OPENAI_CHAT_MODELS, OPENAI_REASONING_MODELS
+from ...settings import SYMAI_CONFIG
 
 logging.getLogger("requests").setLevel(logging.ERROR)
 logging.getLogger("urllib3").setLevel(logging.ERROR)
@@ -86,6 +87,10 @@ class GPTXSearchEngine(Engine):
         self.api_key = self.config.get('SEARCH_ENGINE_API_KEY')
         self.model = self.config.get('SEARCH_ENGINE_MODEL', 'gpt-4.1') # Default to gpt-4.1 as per docs
         self.name = self.__class__.__name__
+        try:
+            self.client = OpenAI(api_key=self.api_key)
+        except Exception as e:
+            CustomUserWarning(f"Failed to initialize OpenAI client: {e}", raise_with=ValueError)
 
     def id(self) -> str:
         if self.config.get('SEARCH_ENGINE_API_KEY') and \
@@ -117,19 +122,12 @@ class GPTXSearchEngine(Engine):
             "model": self.model,
             "input": messages,
             "tools": [tool_definition],
-            "tool_choice": {"type": "web_search_preview"} # force the use of web search tool
+            "tool_choice": {"type": "web_search_preview"} if self.model not in OPENAI_REASONING_MODELS else "auto" # force the use of web search tool for non-reasoning models
         }
-
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-            "OpenAI-Beta": "assistants=v1" # Required for some beta features, might be useful
-        }
-        api_url = "https://api.openai.com/v1/responses"
 
         try:
-            res = requests.post(api_url, json=payload, headers=headers)
-            res = SearchResult(res.json())
+            res = self.client.responses.create(**payload)
+            res = SearchResult(res.dict())
         except Exception as e:
             CustomUserWarning(f"Failed to make request: {e}", raise_with=ValueError)
 
