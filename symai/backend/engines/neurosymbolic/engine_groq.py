@@ -29,7 +29,7 @@ class GroqEngine(Engine):
         if self.id() != 'neurosymbolic':
             return # do not initialize if not neurosymbolic; avoids conflict with llama.cpp check in EngineRepository.register_from_package
         openai.api_key = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
-        self.model = self.config['NEUROSYMBOLIC_ENGINE_MODEL'].replace('groq:', '')
+        self.model = self.config['NEUROSYMBOLIC_ENGINE_MODEL'] # Keep the original config name to avoid confusion in downstream tasks
         self.seed = None
         self.name = self.__class__.__name__
 
@@ -49,7 +49,7 @@ class GroqEngine(Engine):
         if 'NEUROSYMBOLIC_ENGINE_API_KEY' in kwargs:
             openai.api_key = kwargs['NEUROSYMBOLIC_ENGINE_API_KEY']
         if 'NEUROSYMBOLIC_ENGINE_MODEL' in kwargs:
-            self.model = kwargs['NEUROSYMBOLIC_ENGINE_MODEL'].replace('groq:', '')
+            self.model = kwargs['NEUROSYMBOLIC_ENGINE_MODEL']
         if 'seed' in kwargs:
             self.seed = kwargs['seed']
 
@@ -59,18 +59,9 @@ class GroqEngine(Engine):
     def compute_remaining_tokens(self, prompts: list) -> int:
         raise NotImplementedError("Token counting not implemented for this engine.")
 
-    def _handle_image_content(self, content: str) -> list:
-        """Handle image content by processing vision patterns and returning image file data."""
-        def extract_pattern(text):
-            pattern = r'<<vision:(.*?):>>'
-            return re.findall(pattern, text)
-        raise NotImplementedError("Image content handling not implemented for this engine.")
-
-
-    def _remove_vision_pattern(self, text: str) -> str:
-        """Remove vision patterns from text."""
-        pattern = r'<<vision:(.*?):>>'
-        return re.sub(pattern, '', text)
+    def _handle_prefix(self, model_name: str) -> str:
+        """Handle prefix for model name."""
+        return model_name.replace('groq:', '')
 
     def _extract_thinking_content(self, output: list[str]) -> tuple[str | None, list[str]]:
         """Extract thinking content from model output if present and return cleaned output."""
@@ -115,7 +106,7 @@ class GroqEngine(Engine):
                 openai.api_key = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
 
             callback = self.client.chat.completions.create
-            kwargs['model'] = kwargs['model'] if 'model' in kwargs else self.model
+            kwargs['model'] = self._handle_prefix(kwargs['model']) if 'model' in kwargs else self._handle_prefix(self.model)
 
             if except_remedy is not None:
                 res = except_remedy(self, e, callback, argument)
@@ -256,7 +247,7 @@ class GroqEngine(Engine):
 
         payload = {
             "messages": messages,
-            "model": kwargs.get('model', self.model),
+            "model": self._handle_prefix(kwargs.get('model', self.model)),
             "seed": kwargs.get('seed', self.seed),
             "max_completion_tokens": kwargs.get('max_completion_tokens'),
             "stop": kwargs.get('stop'),
@@ -272,7 +263,7 @@ class GroqEngine(Engine):
             "response_format": kwargs.get('response_format'),
         }
 
-        if not self.model.startswith('qwen'):
+        if not self._handle_prefix(self.model).startswith('qwen'):
             del payload['reasoning_effort']
 
         return payload
