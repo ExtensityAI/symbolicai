@@ -215,6 +215,11 @@ class SearchResult(Result):
         # Remove bare [text](http...)
         pattern_bare = re.compile(r"\[[^\]]+\]\(https?://[^)]+\)")
         text = pattern_bare.sub('', text)
+        # Remove parentheses that became empty or contain only commas/whitespace like (, , )
+        pattern_empty_paren = re.compile(r"\(\s*\)")
+        text = pattern_empty_paren.sub('', text)
+        pattern_commas_only = re.compile(r"\(\s*(,\s*)+\)")
+        text = pattern_commas_only.sub('', text)
         # Collapse potential double spaces resulting from removals
         return re.sub(r"\s{2,}", " ", text).strip()
 
