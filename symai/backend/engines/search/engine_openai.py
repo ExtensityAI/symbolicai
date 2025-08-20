@@ -26,7 +26,7 @@ TRACKING_KEYS = {
 
 @dataclass
 class Citation:
-    id: str
+    id: int
     title: str
     url: str
     start: int
@@ -59,7 +59,6 @@ class SearchResult(Result):
             CustomUserWarning(f"Failed to parse response: {e}", raise_with=ValueError)
 
     def _extract_text(self, value) -> str | None:
-        # Prefer aggregated output text when available
         if isinstance(value.get('output_text'), str) and value.get('output_text'):
             return value.get('output_text')
         text = None
@@ -71,7 +70,6 @@ class SearchResult(Result):
         return text
 
     def _extract_text_and_annotations(self, value):
-        # Build text from content segments so annotation indices can be made global
         segments = []
         global_annotations = []
         pos = 0
@@ -82,12 +80,10 @@ class SearchResult(Result):
                 seg_text = content.get('text') or ''
                 if not isinstance(seg_text, str):
                     continue
-                # capture annotations for this segment
                 for ann in (content.get('annotations') or []):
                     if ann.get('type') == 'url_citation' and ann.get('url'):
                         start = ann.get('start_index', 0)
                         end = ann.get('end_index', 0)
-                        # !: convert to global indices
                         global_annotations.append({
                             'type': 'url_citation',
                             'url': ann.get('url'),
@@ -138,18 +134,15 @@ class SearchResult(Result):
         return hashlib.sha1(nu.encode('utf-8')).hexdigest()[:length]
 
     def _insert_citation_markers(self, text: str, annotations):
-        # Build title map and stable IDs per normalized URL
         title_map = self._make_title_map(annotations)
         id_map: dict[str, int] = {}
         first_span: dict[int, tuple[int, int]] = {}
         ordered: list[tuple[int, str, str]] = []  # (id, title, normalized_url)
         next_id = 1
 
-        # Filter and sort annotations by start index
         url_anns = [a for a in annotations or [] if a.get('type') == 'url_citation' and a.get('url')]
         url_anns.sort(key=lambda a: int(a.get('start_index', 0)))
 
-        # Plan insertions without altering original indices
         pieces: list[str] = []
         cursor = 0
         out_len = 0  # length of output built so far (after cleaning and prior markers)
@@ -174,23 +167,18 @@ class SearchResult(Result):
             cid = _get_id(nu)
             title = title_map.get(nu) or self._hostname(nu)
 
-            # Clean and append prefix before the span
             prefix = text[cursor:start]
             prefix_clean = self._strip_markdown_links(prefix)
             pieces.append(prefix_clean)
             out_len += len(prefix_clean)
 
-            # Clean and append the annotated span text itself
             span_text = text[start:end]
             span_clean = self._strip_markdown_links(span_text)
-            span_start_out = out_len
             span_end_out = out_len + len(span_clean)
             pieces.append(span_clean)
             out_len = span_end_out
 
-            # Append marker with title and newline
             marker = f"[{cid}] ({title})\n"
-            # For start/end we point to the marker range in the final text
             marker_start_out = out_len
             marker_end_out = out_len + len(marker)
             if cid not in first_span:
@@ -199,12 +187,10 @@ class SearchResult(Result):
             out_len = marker_end_out
             cursor = end
 
-        # Append any remaining text after the last span (cleaned)
         tail_clean = self._strip_markdown_links(text[cursor:])
         pieces.append(tail_clean)
         replaced = ''.join(pieces)
 
-        # Build starts/ends map keyed by citation id
         starts_ends = {cid: first_span.get(cid, (0, 0)) for cid, _, _ in ordered}
         return replaced, ordered, starts_ends
 
@@ -224,7 +210,6 @@ class SearchResult(Result):
         return re.sub(r"\s{2,}", " ", text).strip()
 
     def __str__(self) -> str:
-        # Prefer the processed text value; fallback to raw JSON if unavailable
         if isinstance(self._value, str) and self._value:
             return self._value
         try:
@@ -233,7 +218,6 @@ class SearchResult(Result):
             return str(self.raw)
 
     def _repr_html_(self) -> str:
-        # Show processed text in simple HTML when available, otherwise raw JSON
         if isinstance(self._value, str) and self._value:
             return f"<pre>{self._value}</pre>"
         try:

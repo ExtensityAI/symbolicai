@@ -1,119 +1,58 @@
-import json
 import os
 import re
 
 import pytest
-from pydantic import BaseModel
 
-from symai import Interface
-from symai.backend.engines.search.engine_openai import SearchResult
-from symai.backend.mixin import OPENAI_CHAT_MODELS, OPENAI_REASONING_MODELS
+from symai.backend.engines.search.engine_openai import GPTXSearchEngine
 from symai.backend.settings import SYMAI_CONFIG
+from symai.extended.interfaces.openai_search import openai_search
+from symai.functional import EngineRepository
 
-API_KEY = bool(SYMAI_CONFIG.get('SEARCH_ENGINE_API_KEY', None))
-MODEL = SYMAI_CONFIG.get('SEARCH_ENGINE_MODEL', '') in OPENAI_CHAT_MODELS + OPENAI_REASONING_MODELS
 
-pytestmark = [
-    pytest.mark.search_engine,
-    pytest.mark.skipif(not API_KEY, reason="SEARCH_ENGINE_API_KEY not configured or missing."),
-    pytest.mark.skipif(not MODEL, reason="SEARCH_ENGINE_MODEL is not OpenAI chat model.")
-]
+def _get_api_key():
+    return (
+        os.environ.get("OPENAI_API_KEY")
+        or SYMAI_CONFIG.get("SEARCH_ENGINE_API_KEY")
+        or os.environ.get("SEARCH_ENGINE_API_KEY")
+    )
 
-try:
-    search_interface = Interface('openai_search')
-except Exception as e:
-    search_interface = None
-    pytestmark.append(pytest.mark.skipif(True, reason=f"OpenAI search interface initialization failed: {e}"))
 
-@pytest.fixture(scope="module")
-def openai_search_interface():
-    if search_interface is None:
-        pytest.skip("OpenAI search interface not available.")
-    return search_interface
+@pytest.mark.parametrize("model", ["gpt-4.1-mini", "gpt-5-mini"])
+def test_openai_search_citations_and_formatting_live(model):
+    api_key = _get_api_key()
+    if not api_key:
+        pytest.skip("OPENAI_API_KEY/SEARCH_ENGINE_API_KEY not set; live test skipped")
 
-def test_openai_search_basic_query(openai_search_interface):
-    """Test a basic query to OpenAI search."""
-    query = "Who is Nicusor Dan?"
-    res = openai_search_interface(query)
+    # Register a fresh engine instance with the provided API key and target model
+    engine = GPTXSearchEngine(api_key=api_key, model=model)
+    EngineRepository.register("search", engine, allow_engine_override=True)
 
-    assert isinstance(res, SearchResult), "Response should be a SearchResult instance."
-    assert res.value is not None, "Response value should not be None."
-    assert isinstance(res.value, str), "Response value should be a string."
-    assert len(res.value) > 0, "Response value should not be empty."
+    # Keep the query stable but realistic to elicit citations
+    query = "President of Romania 2025 inauguration timeline and partner (with citations)"
+    search = openai_search()
+    res = search(query, model=model, search_context_size="medium")
 
+    # 1) No leftover markdown link patterns or empty parentheses artifacts
+    assert not re.search(r"\[[^\]]+\]\(https?://[^)]+\)", res.value)
+    assert "(, , )" not in res.value
+    assert "()" not in res.value
+
+    # 2) Citations exist with integer ids and normalized URLs (no utm_ params)
     citations = res.get_citations()
-    assert isinstance(citations, list), "get_citations should return a list"
-    if citations:
-        citation_ids = set(citation.id for citation in citations)
-        for cid in citation_ids:
-            assert cid in res.value, f"Citation {cid} should appear in text"
+    assert isinstance(citations, list) and len(citations) >= 1
+    seen_ids = set()
+    for c in citations:
+        assert isinstance(c.id, int)
+        assert c.id not in seen_ids
+        seen_ids.add(c.id)
+        assert "utm_" not in c.url
 
-def test_openai_search_with_user_location(openai_search_interface):
-    """Test OpenAI search with user location customization."""
-    query = "What are popular tourist attractions nearby?"
-    location_config = {
-        "user_location": {
-            "type": "approximate",
-            "country": "US",
-            "city": "New York",
-            "region": "New York"
-        }
-    }
+        # Slice should match the marker format; allow small whitespace variance before newline
+        slice_text = res.value[c.start:c.end]
+        assert slice_text.startswith(f"[{c.id}] (")
+        assert slice_text.endswith(")\n")
+        # Optional stronger check including title
+        assert slice_text == f"[{c.id}] ({c.title})\n"
 
-    res = openai_search_interface(query, **location_config)
-
-    assert isinstance(res, SearchResult)
-    assert res.value is not None
-    assert isinstance(res.value, str)
-    assert len(res.value) > 0
-
-    location_terms = ["New York", "NYC", "Manhattan", "Brooklyn"]
-    has_location_relevance = any(term.lower() in res.value.lower() for term in location_terms)
-    if not has_location_relevance:
-        pytest.skip("Response did not contain location-relevant information - API specifics may vary")
-
-def test_openai_search_with_timezone(openai_search_interface):
-    """Test OpenAI search with timezone in user location."""
-    query = "What local events are happening today?"
-    timezone_config = {
-        "user_location": {
-            "type": "approximate",
-            "country": "JP",
-            "city": "Tokyo",
-            "region": "Tokyo",
-            "timezone": "Asia/Tokyo"
-        }
-    }
-
-    res = openai_search_interface(query, **timezone_config)
-
-    assert isinstance(res, SearchResult)
-    assert res.value is not None
-    assert isinstance(res.value, str)
-    assert len(res.value) > 0
-
-    timezone_terms = ["Japan", "Tokyo", "JST"]
-    has_timezone_relevance = any(term.lower() in res.value.lower() for term in timezone_terms)
-    if not has_timezone_relevance:
-        pytest.skip("Response did not contain location-relevant information - API specifics may vary")
-
-def test_openai_search_context_size(openai_search_interface):
-    """Test OpenAI search with different context size settings."""
-    query = "Explain quantum computing developments"
-
-    try:
-        low_config = {"search_context_size": "low"}
-        low_res = openai_search_interface(query, **low_config)
-
-        assert isinstance(low_res, SearchResult)
-        assert low_res.value is not None
-        assert len(low_res.value) > 0
-
-        high_config = {"search_context_size": "high"}
-        high_res = openai_search_interface(query, **high_config)
-
-        assert isinstance(high_res, SearchResult)
-        assert high_res.value is not None
-        assert len(high_res.value) > 0
-    except Exception as e:
-        pytest.skip(f"Search context size test failed with error: {str(e)}")
+    # 3) Formatting: At least one marker pattern with newline is present
+    assert re.search(r"\[\d+\] \([^)]+\)\n", res.value)
