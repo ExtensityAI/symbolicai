@@ -47,10 +47,10 @@ class SearchResult(Result):
                 self._value = None
                 self._citations = []
                 return
-            replaced_text, ordered = self._replace_links_with_citations(text, annotations, id_mode="sequential")
+            replaced_text, ordered, starts_ends = self._insert_citation_markers(text, annotations)
             self._value = replaced_text
             self._citations = [
-                Citation(id=cid, title=title, url=url, start=0, end=0)
+                Citation(id=cid, title=title, url=url, start=starts_ends[cid][0], end=starts_ends[cid][1])
                 for cid, title, url in ordered
             ]
 
@@ -59,6 +59,9 @@ class SearchResult(Result):
             CustomUserWarning(f"Failed to parse response: {e}", raise_with=ValueError)
 
     def _extract_text(self, value) -> str | None:
+        # Prefer aggregated output text when available
+        if isinstance(value.get('output_text'), str) and value.get('output_text'):
+            return value.get('output_text')
         text = None
         for output in value.get('output', []):
             if output.get('type') == 'message' and output.get('content'):
@@ -68,19 +71,38 @@ class SearchResult(Result):
         return text
 
     def _extract_text_and_annotations(self, value):
-        text = None
-        annotations = []
-        for output in value.get('output', []):
+        # Build text from content segments so annotation indices can be made global
+        segments = []
+        global_annotations = []
+        pos = 0
+        for output in value.get('output', []) or []:
             if output.get('type') != 'message' or not output.get('content'):
                 continue
             for content in output.get('content', []) or []:
-                if 'text' in content and content['text']:
-                    text = content['text']
-                anns = content.get('annotations', []) or []
-                for ann in anns:
-                    if ann.get('type') == 'url_citation':
-                        annotations.append(ann)
-        return text, annotations
+                seg_text = content.get('text') or ''
+                if not isinstance(seg_text, str):
+                    continue
+                # capture annotations for this segment
+                for ann in (content.get('annotations') or []):
+                    if ann.get('type') == 'url_citation' and ann.get('url'):
+                        start = ann.get('start_index', 0)
+                        end = ann.get('end_index', 0)
+                        # !: convert to global indices
+                        global_annotations.append({
+                            'type': 'url_citation',
+                            'url': ann.get('url'),
+                            'title': (ann.get('title') or '').strip(),
+                            'start_index': pos + int(start),
+                            'end_index': pos + int(end),
+                        })
+                segments.append(seg_text)
+                pos += len(seg_text)
+
+        built_text = ''.join(segments) if segments else None
+        # Prefer top-level output_text if present AND segments are empty (no way to compute indices)
+        if not built_text and isinstance(value.get('output_text'), str):
+            return value.get('output_text'), []
+        return built_text, global_annotations
 
     def _normalize_url(self, u: str) -> str:
         parts = urlsplit(u)
@@ -115,48 +137,103 @@ class SearchResult(Result):
     def _short_hash_id(self, nu: str, length=6) -> str:
         return hashlib.sha1(nu.encode('utf-8')).hexdigest()[:length]
 
-    def _replace_links_with_citations(self, text: str, annotations, id_mode: str = 'sequential'):
+    def _insert_citation_markers(self, text: str, annotations):
+        # Build title map and stable IDs per normalized URL
         title_map = self._make_title_map(annotations)
-        id_map = {}
-        ordered = []  # list of ("[n]", title, normalized_url)
+        id_map: dict[str, int] = {}
+        first_span: dict[int, tuple[int, int]] = {}
+        ordered: list[tuple[int, str, str]] = []  # (id, title, normalized_url)
         next_id = 1
 
-        pattern = re.compile(r"\[([^\]]*?)\]\((https?://[^\s)]+)\)")
+        # Filter and sort annotations by start index
+        url_anns = [a for a in annotations or [] if a.get('type') == 'url_citation' and a.get('url')]
+        url_anns.sort(key=lambda a: int(a.get('start_index', 0)))
 
-        def _get_id(nu: str) -> str:
+        # Plan insertions without altering original indices
+        pieces: list[str] = []
+        cursor = 0
+        out_len = 0  # length of output built so far (after cleaning and prior markers)
+
+        def _get_id(nu: str) -> int:
             nonlocal next_id
-            if id_mode == 'hash':
-                return self._short_hash_id(nu)
             if nu not in id_map:
-                id_map[nu] = str(next_id)
-                t = title_map.get(nu) or self._hostname(nu)
-                ordered.append((f"[{id_map[nu]}]", t, nu))
+                cid = next_id
+                id_map[nu] = cid
+                title = title_map.get(nu) or self._hostname(nu)
+                ordered.append((cid, title, nu))
                 next_id += 1
             return id_map[nu]
 
-        def _repl(m):
-            link_text, url = m.group(1), m.group(2)
+        for ann in url_anns:
+            start = int(ann.get('start_index', 0))
+            end = int(ann.get('end_index', 0))
+            if end <= cursor:
+                continue  # skip overlapping or backwards spans
+            url = ann.get('url')
             nu = self._normalize_url(url)
             cid = _get_id(nu)
-            title = title_map.get(nu)
-            if not title:
-                lt = (link_text or '').strip()
-                title = lt if (' ' in lt) else self._hostname(nu)
-            return f"[{cid}] ({title})"
+            title = title_map.get(nu) or self._hostname(nu)
 
-        replaced = pattern.sub(_repl, text)
-        return replaced, ordered
+            # Clean and append prefix before the span
+            prefix = text[cursor:start]
+            prefix_clean = self._strip_markdown_links(prefix)
+            pieces.append(prefix_clean)
+            out_len += len(prefix_clean)
+
+            # Clean and append the annotated span text itself
+            span_text = text[start:end]
+            span_clean = self._strip_markdown_links(span_text)
+            span_start_out = out_len
+            span_end_out = out_len + len(span_clean)
+            pieces.append(span_clean)
+            out_len = span_end_out
+
+            # Append marker with title and newline
+            marker = f"[{cid}] ({title})\n"
+            # For start/end we point to the marker range in the final text
+            marker_start_out = out_len
+            marker_end_out = out_len + len(marker)
+            if cid not in first_span:
+                first_span[cid] = (marker_start_out, marker_end_out)
+            pieces.append(marker)
+            out_len = marker_end_out
+            cursor = end
+
+        # Append any remaining text after the last span (cleaned)
+        tail_clean = self._strip_markdown_links(text[cursor:])
+        pieces.append(tail_clean)
+        replaced = ''.join(pieces)
+
+        # Build starts/ends map keyed by citation id
+        starts_ends = {cid: first_span.get(cid, (0, 0)) for cid, _, _ in ordered}
+        return replaced, ordered, starts_ends
+
+    def _strip_markdown_links(self, text: str) -> str:
+        # Remove ([text](http...)) including surrounding parentheses
+        pattern_paren = re.compile(r"\(\s*\[[^\]]+\]\(https?://[^)]+\)\s*\)")
+        text = pattern_paren.sub('', text)
+        # Remove bare [text](http...)
+        pattern_bare = re.compile(r"\[[^\]]+\]\(https?://[^)]+\)")
+        text = pattern_bare.sub('', text)
+        # Collapse potential double spaces resulting from removals
+        return re.sub(r"\s{2,}", " ", text).strip()
 
     def __str__(self) -> str:
+        # Prefer the processed text value; fallback to raw JSON if unavailable
+        if isinstance(self._value, str) and self._value:
+            return self._value
         try:
             return json.dumps(self.raw, indent=2)
         except TypeError:
             return str(self.raw)
 
     def _repr_html_(self) -> str:
+        # Show processed text in simple HTML when available, otherwise raw JSON
+        if isinstance(self._value, str) and self._value:
+            return f"<pre>{self._value}</pre>"
         try:
             return f"<pre>{json.dumps(self.raw, indent=2)}</pre>"
-        except Exception as e:
+        except Exception:
             return f"<pre>{str(self.raw)}</pre>"
 
     def get_citations(self) -> list[Citation]:
