@@ -224,9 +224,7 @@ class RuntimeInfo:
             try:
                 return RuntimeInfo.from_usage_stats(tracker.usage, total_elapsed_time)
             except Exception as e:
-                raise e
-                CustomUserWarning(f"Failed to parse metadata; returning empty RuntimeInfo: {e}")
-                return RuntimeInfo(0, 0, 0, 0, 0, 0, 0, 0)
+                CustomUserWarning(f"Failed to parse metadata: {e}", raise_with=ValueError)
         return RuntimeInfo(0, 0, 0, 0, 0, 0, 0, 0)
 
     @staticmethod
@@ -234,12 +232,13 @@ class RuntimeInfo:
         if usage_stats is not None:
             usage_per_engine = {}
             for (engine_name, model_name), data in usage_stats.items():
+                #!: This object interacts with `MetadataTracker`; its fields are mandatory and handled there
                 data = Box(data)
                 usage_per_engine[(engine_name, model_name)] = RuntimeInfo(
                     total_elapsed_time=total_elapsed_time,
                     prompt_tokens=data.usage.prompt_tokens,
                     completion_tokens=data.usage.completion_tokens,
-                    reasoning_tokens=getattr(data.usage, 'reasoning_tokens', 0),
+                    reasoning_tokens=data.completion_breakdown.reasoning_tokens,
                     cached_tokens=data.prompt_breakdown.cached_tokens,
                     total_calls=data.usage.total_calls,
                     total_tokens=data.usage.total_tokens,

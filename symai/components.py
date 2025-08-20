@@ -1147,8 +1147,17 @@ class MetadataTracker(Expression):
         # Note on try/except:
         # The unpacking shouldn't fail; if it fails, it's likely the API response format has changed and we need to know that ASAP
         for (_, engine_name, model_name), metadata in self._metadata.items():
-            if engine_name in ("GPTXChatEngine", "GPTXReasoningEngine"):
-                try:
+            try:
+                if engine_name == "GroqEngine":
+                    usage = metadata["raw_output"].usage
+                    token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += usage.completion_tokens
+                    token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += usage.prompt_tokens
+                    token_details[(engine_name, model_name)]["usage"]["total_tokens"] += usage.total_tokens
+                    token_details[(engine_name, model_name)]["usage"]["total_calls"] += 1
+                    #!: Backward compatibility for components like `RuntimeInfo`
+                    token_details[(engine_name, model_name)]["prompt_breakdown"]["cached_tokens"] += 0 # Assignment not allowed with defualtdict
+                    token_details[(engine_name, model_name)]["completion_breakdown"]["reasoning_tokens"] += 0
+                elif engine_name in ("GPTXChatEngine", "GPTXReasoningEngine"):
                     usage = metadata["raw_output"].usage
                     token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += usage.completion_tokens
                     token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += usage.prompt_tokens
@@ -1160,10 +1169,7 @@ class MetadataTracker(Expression):
                     token_details[(engine_name, model_name)]["completion_breakdown"]["reasoning_tokens"] += usage.completion_tokens_details.reasoning_tokens
                     token_details[(engine_name, model_name)]["prompt_breakdown"]["audio_tokens"] += usage.prompt_tokens_details.audio_tokens
                     token_details[(engine_name, model_name)]["prompt_breakdown"]["cached_tokens"] += usage.prompt_tokens_details.cached_tokens
-                except Exception as e:
-                    CustomUserWarning(f"Failed to parse metadata for {engine_name}: {e}", raise_with=AttributeError)
-            elif engine_name == "GPTXSearchEngine":
-                try:
+                elif engine_name == "GPTXSearchEngine":
                     usage = metadata["raw_output"].usage
                     token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += usage.input_tokens
                     token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += usage.output_tokens
@@ -1171,11 +1177,11 @@ class MetadataTracker(Expression):
                     token_details[(engine_name, model_name)]["usage"]["total_calls"] += 1
                     token_details[(engine_name, model_name)]["prompt_breakdown"]["cached_tokens"] += usage.input_tokens_details.cached_tokens
                     token_details[(engine_name, model_name)]["completion_breakdown"]["reasoning_tokens"] += usage.output_tokens_details.reasoning_tokens
-                except Exception as e:
-                    CustomUserWarning(f"Failed to parse metadata for {engine_name}: {e}", raise_with=AttributeError)
-            else:
-                logger.warning(f"Tracking {engine_name} is not supported.")
-                continue
+                else:
+                    logger.warning(f"Tracking {engine_name} is not supported.")
+                    continue
+            except Exception as e:
+                CustomUserWarning(f"Failed to parse metadata for {engine_name}: {e}", raise_with=AttributeError)
 
         # Convert to normal dict
         return {**token_details}
@@ -1193,6 +1199,7 @@ class MetadataTracker(Expression):
         # Skipz first entry
         for (_, engine_name), metadata in list(self._metadata.items())[1:]:
             if engine_name not in ("GPTXChatEngine", "GPTXReasoningEngine", "GPTXSearchEngine"):
+                logger.warning(f"Metadata accumulation for {engine_name} is not supported. Try `.usage` instead for now.")
                 continue
 
             # Accumulate time if it exists
