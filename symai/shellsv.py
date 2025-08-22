@@ -13,6 +13,7 @@ import traceback
 from pathlib import Path
 from typing import Iterable, Tuple
 
+#@TODO: refactor to use rich instead of prompt_toolkit
 from prompt_toolkit import HTML, PromptSession, print_formatted_text
 from prompt_toolkit.completion import Completer, Completion, WordCompleter
 from prompt_toolkit.history import History
