@@ -143,7 +143,8 @@ class CustomUserWarning:
             filename = caller.filename
             filename = filename[filename.find('symbolicai'):]
             with ConsoleStyle('warn') as console:
-                console.print(f"{filename}:{lineno}: {UserWarning.__name__}: {message}")
+                # Escape content to avoid HTML parsing errors from model text like <|constrain|>JSON
+                console.print(f"{filename}:{lineno}: {UserWarning.__name__}: {message}", escape=True)
         # Always raise the warning if raise_with is provided
         if raise_with is not None:
             raise raise_with(message)

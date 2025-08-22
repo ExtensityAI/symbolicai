@@ -239,6 +239,14 @@ class GroqEngine(Engine):
             CustomUserWarning("If N is supplied, it must be equal to 1. We default to 1 to not crash your program.")
             n = 1
 
+        # Handle Groq JSON-mode quirk: JSON Object Mode internally uses a constrainer tool.
+        response_format = kwargs.get('response_format')
+        tool_choice = kwargs.get('tool_choice', 'auto' if kwargs.get('tools') else 'none')
+        tools = kwargs.get('tools')
+        if response_format and isinstance(response_format, dict) and response_format.get('type') == 'json_object':
+            if tool_choice in (None, 'none'): tool_choice = 'auto'
+            if tools: tools = None
+
         payload = {
             "messages": messages,
             "model": self._handle_prefix(kwargs.get('model', self.model)),
@@ -252,9 +260,9 @@ class GroqEngine(Engine):
             "service_tier": kwargs.get('service_tier', 'on_demand'),
             "top_p": kwargs.get('top_p', 1),
             "n": n,
-            "tools": kwargs.get('tools'),
-            "tool_choice": kwargs.get('tool_choice', 'auto' if kwargs.get('tools') else 'none'),
-            "response_format": kwargs.get('response_format'),
+            "tools": tools,
+            "tool_choice": tool_choice,
+            "response_format": response_format,
         }
 
         if not self._handle_prefix(self.model).startswith('qwen'):
