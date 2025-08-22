@@ -197,6 +197,16 @@ data = json.loads(resp.value)
 # data == {"team":"Los Angeles Dodgers", "year":2020, "coach":"Dave Roberts"}
 ```
 
+### Groq JSON mode caveat
+
+Groq currently has a quirk (arguably a bug) when combining JSON Object Mode with an explicit `tool_choice: "none"`. Their API may return:
+
+```
+Error code: 400 - {'error': {'message': 'Tool choice is none, but model called a tool', 'type': 'invalid_request_error', 'code': 'tool_use_failed', 'failed_generation': '{"name": "<|constrain|>json" …'}}
+```
+
+This happens because JSON Object Mode internally invokes a JSON “constrainer” tool (`<|constrain|>json`), which collides with `tool_choice: "none"`. Groq’s own docs state JSON modes can’t be mixed with tool use; here, the model implicitly “uses a tool” even when you didn’t ask. As of Aug. 22, 2025, this behavior is triggered regardless of whether you set `tool_choice: "auto"` or `tool_choice: "none"`. Enforcing not choosing that tool via prompting also doesn't work.
+
 ---
 
 ## Token Counting & Truncation
