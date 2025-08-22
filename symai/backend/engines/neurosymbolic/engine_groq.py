@@ -151,12 +151,6 @@ class GroqEngine(Engine):
         if argument.prop.response_format:
             _rsp_fmt = argument.prop.response_format
             assert _rsp_fmt.get('type') is not None, 'Expected format `{ "type": "json_object" }`! We are using the OpenAI compatible API for Groq. See more here: https://console.groq.com/docs/tool-use'
-            if _rsp_fmt["type"] == "json_object":
-                # OpenAI docs:
-                    # "Important: when using JSON mode, you must also instruct the model
-                    #  to produce JSON yourself via a system or user message"
-                    #  Assuming this stays true even for this engine
-                system += f'<RESPONSE_FORMAT/>\nYou are a helpful assistant designed to output JSON.\n\n'
 
         ref = argument.prop.instance
         static_ctxt, dyn_ctxt = ref.global_context
@@ -251,7 +245,7 @@ class GroqEngine(Engine):
             "seed": kwargs.get('seed', self.seed),
             "max_completion_tokens": kwargs.get('max_completion_tokens'),
             "stop": kwargs.get('stop'),
-            "temperature": kwargs.get('temperature', 0.6), # Default temperature for Kimi K2 (https://huggingface.co/moonshotai/Kimi-K2-Instruct)
+            "temperature": kwargs.get('temperature', 1), # Default temperature for gpt-oss-120b
             "frequency_penalty": kwargs.get('frequency_penalty', 0),
             "presence_penalty": kwargs.get('presence_penalty', 0),
             "reasoning_effort": kwargs.get('reasoning_effort'), # Field available only for qwen3 models
@@ -259,7 +253,7 @@ class GroqEngine(Engine):
             "top_p": kwargs.get('top_p', 1),
             "n": n,
             "tools": kwargs.get('tools'),
-            "tool_choice": kwargs.get('tool_choice', 'none'),
+            "tool_choice": kwargs.get('tool_choice', 'auto' if kwargs.get('tools') else 'none'),
             "response_format": kwargs.get('response_format'),
         }
 
