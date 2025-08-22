@@ -2,6 +2,7 @@ import re
 import pygments
 import logging
 
+#@TODO: refactor to use rich instead of prompt_toolkit
 from html import escape as escape_html
 from pygments.lexers.python import PythonLexer
 from pygments.lexers.javascript import JavascriptLexer
@@ -49,8 +50,8 @@ class ConsoleStyle(object):
         message = str(message)
         if self.logging:
             logger.debug(message)
-        if escape:
-            message = escape_html(message)
+        # Prepare safe content for HTML printing without mutating the original
+        content_for_html = escape_html(message) if escape else message
         style = self.style_types.get(self.style_type, self.style_types['default'])
 
         if style == self.style_types['code']:
@@ -80,7 +81,6 @@ class ConsoleStyle(object):
         elif style == self.style_types['default']:
             print(message)
         elif style == self.style_types['custom']:
-            print(HTML(f'<style fg="{self.color}">{message}</style>'))
+            print(HTML(f'<style fg="{self.color}">{content_for_html}</style>'))
         else:
-            print(HTML(f'<style fg="{style}">{message}</style>'))
-
+            print(HTML(f'<style fg="{style}">{content_for_html}</style>'))
