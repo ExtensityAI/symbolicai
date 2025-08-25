@@ -256,7 +256,7 @@ class GroqEngine(Engine):
             "temperature": kwargs.get('temperature', 1), # Default temperature for gpt-oss-120b
             "frequency_penalty": kwargs.get('frequency_penalty', 0),
             "presence_penalty": kwargs.get('presence_penalty', 0),
-            "reasoning_effort": kwargs.get('reasoning_effort'), # Field available only for qwen3 models
+            "reasoning_effort": kwargs.get('reasoning_effort'),
             "service_tier": kwargs.get('service_tier', 'on_demand'),
             "top_p": kwargs.get('top_p', 1),
             "n": n,
@@ -265,7 +265,7 @@ class GroqEngine(Engine):
             "response_format": response_format,
         }
 
-        if not self._handle_prefix(self.model).startswith('qwen'):
+        if not self._handle_prefix(self.model).startswith('qwen') or not self._handle_prefix(self.model).startswith('openai'):
             del payload['reasoning_effort']
 
         return payload
