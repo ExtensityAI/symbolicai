@@ -19,6 +19,7 @@ from .backend import engines
 from .backend.base import ENGINE_UNREGISTERED, Engine
 from .post_processors import PostProcessor
 from .pre_processors import PreProcessor
+from .utils import CustomUserWarning
 
 
 class ConstraintViolationException(Exception):
@@ -417,12 +418,21 @@ class EngineRepository(object):
     def get_dynamic_engine_instance(self):
         from .components import DynamicEngine
 
-        # Iterate over all thread frames
         for thread_id, top_frame in sys._current_frames().items():
             frame = top_frame
             while frame:
-                locals_copy = frame.f_locals.copy()
-                for _, value in locals_copy.items():
+                if getattr(frame.f_locals, "copy", None) is None:
+                    # Try to coerce dict to avoid AttributeError
+                    try: locals_copy = dict(frame.f_locals)
+                    except Exception:
+                        frame = frame.f_back
+                        continue
+                else:
+                    try: locals_copy = frame.f_locals.copy()
+                    except Exception:
+                        CustomUserWarning("This is not supposed to happen, but it did. Please report this to the symai developers.", raise_with=RuntimeError)
+
+                for value in locals_copy.values():
                     if isinstance(value, DynamicEngine) and getattr(value, '_entered', False):
                         return value.engine_instance
                 frame = frame.f_back
