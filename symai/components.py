@@ -35,6 +35,10 @@ from .prompts import JsonPromptTemplate, Prompt
 from .symbol import Expression, Metadata, Symbol
 from .utils import CustomUserWarning
 
+from contextvars import ContextVar
+from contextlib import contextmanager
+from typing import Optional
+
 
 class GraphViz(Expression):
     def __init__(self,
@@ -1247,31 +1251,36 @@ class MetadataTracker(Expression):
         return self._accumulate_completion_token_details()
 
 
+# Context variable to store the current dynamic engine instance
+_current_dynamic_engine: ContextVar[Optional[object]] = ContextVar('current_dynamic_engine', default=None)
+
 class DynamicEngine(Expression):
-    """Context manager for dynamically switching neurosymbolic engine models."""
+    """Context manager for dynamically switching neurosymbolic engine models using ContextVar for thread-safety."""
     def __init__(self, model: str, api_key: str, debug: bool = False, **kwargs):
         super().__init__()
         self.model = model
         self.api_key = api_key
-        self._entered = False
-        self._lock = Lock()
+        self.debug = debug
         self.engine_instance = None
+        self._token = None
 
     def __new__(cls, *args, **kwargs):
-        cls._lock = getattr(cls, '_lock', Lock())
-        with cls._lock:
-            instance = super().__new__(cls)
-            instance._metadata = {}
-            instance._metadata_id = 0
-            return instance
+        instance = super().__new__(cls)
+        instance._metadata = {}
+        instance._metadata_id = 0
+        return instance
 
     def __enter__(self):
-        self._entered = True
+        """Enter the context and set the current dynamic engine."""
         self.engine_instance = self._create_engine_instance()
+        self._token = _current_dynamic_engine.set(self.engine_instance)
         return self.engine_instance
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self._entered = False
+        """Exit the context and restore the previous dynamic engine."""
+        if self._token is not None:
+            _current_dynamic_engine.reset(self._token)
+            self._token = None
 
     def _create_engine_instance(self):
         """Create an engine instance based on the model name."""
@@ -1283,3 +1292,16 @@ class DynamicEngine(Expression):
             return engine_class(api_key=self.api_key, model=self.model)
         except Exception as e:
             raise ValueError(f"Failed to create engine for model '{self.model}': {str(e)}")
+
+    @staticmethod
+    def get_current_engine():
+        """Get the current dynamic engine from context."""
+        return _current_dynamic_engine.get()
+
+    @classmethod
+    @contextmanager
+    def use_model(cls, model: str, api_key: str, **kwargs):
+        """Convenience context manager for using a specific model."""
+        engine = cls(model, api_key, **kwargs)
+        with engine as instance:
+            yield instance
