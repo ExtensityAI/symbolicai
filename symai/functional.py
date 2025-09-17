@@ -418,22 +418,29 @@ class EngineRepository(object):
     def get_dynamic_engine_instance(self):
         from .components import DynamicEngine
 
-        for thread_id, top_frame in sys._current_frames().items():
-            frame = top_frame
-            while frame:
-                if getattr(frame.f_locals, "copy", None) is None:
-                    # Try to coerce dict to avoid AttributeError
-                    try: locals_copy = dict(frame.f_locals)
-                    except Exception:
-                        frame = frame.f_back
-                        continue
-                else:
-                    try: locals_copy = frame.f_locals.copy()
-                    except Exception:
-                        CustomUserWarning("This is not supposed to happen, but it did. Please report this to the symai developers.", raise_with=RuntimeError)
+        # Walk ONLY the current thread's frame stack to avoid cross-thread leakage
+        try:
+            frame = sys._getframe()
+        except Exception:
+            return None
 
-                for value in locals_copy.values():
-                    if isinstance(value, DynamicEngine) and getattr(value, '_entered', False):
-                        return value.engine_instance
-                frame = frame.f_back
+        while frame:
+            # Safely snapshot locals to avoid concurrent mutation issues
+            try:
+                if getattr(frame.f_locals, "copy", None) is None:
+                    locals_copy = dict(frame.f_locals)
+                else:
+                    locals_copy = frame.f_locals.copy()
+            except Exception:
+                # Extremely rare: locals mapping misbehaves; warn once and continue up-stack
+                CustomUserWarning(
+                    "Unexpected failure copying frame locals while resolving DynamicEngine.",
+                    raise_with=None,
+                )
+                locals_copy = {}
+
+            for value in locals_copy.values():
+                if isinstance(value, DynamicEngine) and getattr(value, '_entered', False):
+                    return value.engine_instance
+            frame = frame.f_back
         return None
