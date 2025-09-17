@@ -20,6 +20,7 @@ from .backend.base import ENGINE_UNREGISTERED, Engine
 from .post_processors import PostProcessor
 from .pre_processors import PreProcessor
 from .utils import CustomUserWarning
+from .context import CURRENT_ENGINE_VAR
 
 
 class ConstraintViolationException(Exception):
@@ -416,29 +417,29 @@ class EngineRepository(object):
         raise ValueError(f"No engine named {engine} is registered.")
 
     def get_dynamic_engine_instance(self):
-        from .components import DynamicEngine
+        # 1) Primary: use ContextVar (fast, async-safe)
+        try:
+            eng = CURRENT_ENGINE_VAR.get()
+            if eng is not None:
+                return eng
+        except Exception:
+            pass
 
-        # Walk ONLY the current thread's frame stack to avoid cross-thread leakage
+        # 2) Fallback: walk ONLY current thread frames (legacy behavior)
+        from .components import DynamicEngine
         try:
             frame = sys._getframe()
         except Exception:
             return None
-
         while frame:
-            # Safely snapshot locals to avoid concurrent mutation issues
             try:
-                if getattr(frame.f_locals, "copy", None) is None:
-                    locals_copy = dict(frame.f_locals)
-                else:
-                    locals_copy = frame.f_locals.copy()
+                locals_copy = frame.f_locals.copy() if hasattr(frame.f_locals, 'copy') else dict(frame.f_locals)
             except Exception:
-                # Extremely rare: locals mapping misbehaves; warn once and continue up-stack
                 CustomUserWarning(
                     "Unexpected failure copying frame locals while resolving DynamicEngine.",
                     raise_with=None,
                 )
                 locals_copy = {}
-
             for value in locals_copy.values():
                 if isinstance(value, DynamicEngine) and getattr(value, '_entered', False):
                     return value.engine_instance

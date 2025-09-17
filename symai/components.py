@@ -10,6 +10,7 @@ from pathlib import Path
 from random import sample
 from string import ascii_lowercase, ascii_uppercase
 from threading import Lock
+from .context import CURRENT_ENGINE_VAR
 from typing import Callable, Dict, Iterator, List, Optional, Type, Union
 
 import numpy as np
@@ -1256,6 +1257,7 @@ class DynamicEngine(Expression):
         self._entered = False
         self._lock = Lock()
         self.engine_instance = None
+        self._ctx_token = None
 
     def __new__(cls, *args, **kwargs):
         cls._lock = getattr(cls, '_lock', Lock())
@@ -1268,10 +1270,21 @@ class DynamicEngine(Expression):
     def __enter__(self):
         self._entered = True
         self.engine_instance = self._create_engine_instance()
+        # Set ContextVar and keep the token for proper reset
+        try:
+            self._ctx_token = CURRENT_ENGINE_VAR.set(self.engine_instance)
+        except Exception:
+            self._ctx_token = None
         return self.engine_instance
 
     def __exit__(self, exc_type, exc_value, traceback):
         self._entered = False
+        # Reset ContextVar back to previous value
+        try:
+            if self._ctx_token is not None:
+                CURRENT_ENGINE_VAR.reset(self._ctx_token)
+        finally:
+            self._ctx_token = None
 
     def _create_engine_instance(self):
         """Create an engine instance based on the model name."""
