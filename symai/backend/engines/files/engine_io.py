@@ -9,10 +9,19 @@ from tika import unpack
 
 from ...base import Engine
 
-# initialize tika server
-tika.initVM()
-# suppress tika logging
-logging.getLogger('tika').setLevel(logging.CRITICAL)
+# Initialize Tika lazily to avoid spawning JVMs prematurely for all workers
+_TIKA_INITIALIZED = False
+
+def _ensure_tika_vm():
+    global _TIKA_INITIALIZED
+    if not _TIKA_INITIALIZED:
+        try:
+            tika.initVM()
+        except Exception:
+            # If initVM fails, we still attempt unpack.from_file which may auto-init
+            pass
+        logging.getLogger('tika').setLevel(logging.CRITICAL)
+        _TIKA_INITIALIZED = True
 
 
 @dataclass
@@ -69,6 +78,29 @@ class FileEngine(Engine):
         if os.path.getsize(file_path) <= 0:
             return ''
 
+        # For common plain-text extensions, avoid Tika overhead
+        ext = Path(file_path).suffix.lower()
+        if ext in {'.txt', '.md', '.py', '.json', '.yaml', '.yml', '.csv', '.tsv', '.log'}:
+            try:
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+                if content is None:
+                    return None
+                # Apply slicing by lines, mirroring the Tika branch
+                lines = content.split('\n')
+                if slices_ is not None:
+                    new_content = []
+                    for s in slices_:
+                        new_content.extend(lines[s])
+                    lines = new_content
+                content = '\n'.join(lines)
+                content = content.encode('utf8', 'ignore').decode('utf8', 'ignore')
+                return content if not with_metadata else [TextContainer(id, None, content)]
+            except Exception:
+                # Fallback to Tika if plain read fails
+                pass
+
+        _ensure_tika_vm()
         file_ = unpack.from_file(str(file_path))
         if 'content' in file_:
             content = file_['content']
