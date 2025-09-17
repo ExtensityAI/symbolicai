@@ -1282,7 +1282,12 @@ class DynamicEngine(Expression):
         # Reset ContextVar back to previous value
         try:
             if self._ctx_token is not None:
-                CURRENT_ENGINE_VAR.reset(self._ctx_token)
+                try:
+                    CURRENT_ENGINE_VAR.reset(self._ctx_token)
+                except ValueError:
+                    # Token belongs to a different logical Context (e.g., run in anyio worker)
+                    # Fallback: clear the var in this Context to avoid leaking the engine
+                    CURRENT_ENGINE_VAR.set(None)
         finally:
             self._ctx_token = None
 
