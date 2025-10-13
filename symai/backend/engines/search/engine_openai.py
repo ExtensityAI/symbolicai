@@ -261,7 +261,7 @@ class GPTXSearchEngine(Engine):
         messages = argument.prop.prepared_input
         kwargs = argument.kwargs
 
-        tool_definition = {"type": "web_search_preview"}
+        tool_definition = {"type": "web_search"}
         user_location = kwargs.get('user_location')
         if user_location:
             tool_definition['user_location'] = user_location
@@ -274,7 +274,7 @@ class GPTXSearchEngine(Engine):
             "model": self.model,
             "input": messages,
             "tools": [tool_definition],
-            "tool_choice": {"type": "web_search_preview"} if self.model not in OPENAI_REASONING_MODELS else "auto" # force the use of web search tool for non-reasoning models
+            "tool_choice": {"type": "web_search"} if self.model not in OPENAI_REASONING_MODELS else "auto" # force the use of web search tool for non-reasoning models
         }
 
         try:
