@@ -30,7 +30,7 @@ def test_openai_search_citations_and_formatting_live(model):
     # Keep the query stable but realistic to elicit citations
     query = "President of Romania 2025 inauguration timeline and partner (with citations)"
     search = openai_search()
-    res = search(query, model=model, search_context_size="medium")
+    res = search(query, model=model)
 
     # 1) No leftover markdown link patterns or empty parentheses artifacts
     assert not re.search(r"\[[^\]]+\]\(https?://[^)]+\)", res.value)

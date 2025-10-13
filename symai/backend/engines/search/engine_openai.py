@@ -265,9 +265,6 @@ class GPTXSearchEngine(Engine):
         user_location = kwargs.get('user_location')
         if user_location:
             tool_definition['user_location'] = user_location
-        search_context_size = kwargs.get('search_context_size')
-        if search_context_size:
-            tool_definition['search_context_size'] = search_context_size
 
         self.model = kwargs.get('model', self.model) # Important for MetadataTracker to work correctly
         payload = {
