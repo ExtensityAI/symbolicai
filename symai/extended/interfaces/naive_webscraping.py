@@ -10,6 +10,8 @@ class naive_webscraping(Expression):
 
     def __call__(self, url: str, **kwargs) -> RequestsResult:
         @core.scrape(url=url, **kwargs)
-        def _func(_) -> RequestsResult:
-            pass
+        def _func(_, *args, **inner_kwargs) -> RequestsResult:
+            # The fallback path may inject debugging kwargs like `error`/`stack_trace`;
+            # accept and ignore them so EngineRepository can surface structured failures.
+            return None
         return _func(self)

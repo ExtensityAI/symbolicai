@@ -1,3 +1,12 @@
+"""
+WARNING: This module implements a naive web scraping engine meant for light
+testing. It does not prevent IP bans, bot detection, or terms-of-service
+violations. Use only where scraping is legally permitted and respect each
+site's robots directives. For production workloads, add robust rate limiting,
+consent handling, rotating proxies/VPNs, and ongoing monitoring to avoid
+service disruption.
+"""
+
 import io
 import logging
 import re
@@ -7,12 +16,14 @@ import requests
 import trafilatura
 from bs4 import BeautifulSoup
 from pdfminer.high_level import extract_text
+from requests.structures import CaseInsensitiveDict
 
 from ....symbol import Result
 from ...base import Engine
 
 logging.getLogger("pdfminer").setLevel(logging.WARNING)
 logging.getLogger("trafilatura").setLevel(logging.WARNING)
+
 
 class RequestsResult(Result):
     def __init__(self, value, output_format="markdown", **kwargs) -> None:
@@ -37,27 +48,54 @@ class RequestsResult(Result):
 
 
 class RequestsEngine(Engine):
-    # Some forums show a consent / age gate only once if a cookie is set.
-    # Pre-seed a few common bypass cookies by default.
+    """
+    Lightweight HTTP/Playwright fetching pipeline for content extraction.
+
+    The engine favors clarity over stealth. Helper methods normalize cookie
+    metadata before handing it to Playwright so that the headless browser and
+    the requests session stay aligned.
+    """
+
     COMMON_BYPASS_COOKIES = {
+        # Some forums display consent or age gates once if a friendly cookie is set.
         "cookieconsent_status": "allow",
         "accepted_cookies": "yes",
         "age_verified": "1",
     }
-    def __init__(self, timeout=15, verify_ssl=True):
+
+    DEFAULT_HEADERS = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                      "AppleWebKit/537.36 (KHTML, like Gecko) "
+                      "Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "DNT": "1",
+    }
+
+    _SAMESITE_CANONICAL = {
+        "strict": "Strict",
+        "lax": "Lax",
+        "none": "None",
+    }
+
+    def __init__(self, timeout=15, verify_ssl=True, user_agent=None):
+        """
+        Args:
+            timeout: Seconds to wait for network operations before aborting.
+            verify_ssl: Toggle for TLS certificate verification.
+            user_agent: Optional override for the default desktop Chrome UA.
+        """
         super().__init__()
         self.timeout = timeout
         self.verify_ssl = verify_ssl
         self.name = self.__class__.__name__
+
+        headers = dict(self.DEFAULT_HEADERS)
+        if user_agent:
+            headers["User-Agent"] = user_agent
+
         self.session = requests.Session()
-        self.session.headers.update({
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                          "AppleWebKit/537.36 (KHTML, like Gecko) "
-                          "Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.9",
-            "DNT": "1",
-        })
+        self.session.headers.update(headers)
 
     def _maybe_set_bypass_cookies(self, url: str):
         netloc = urlparse(url).hostname
@@ -65,6 +103,58 @@ class RequestsEngine(Engine):
             return
         for k, v in self.COMMON_BYPASS_COOKIES.items():
             self.session.cookies.set(k, v, domain=netloc)
+
+    @staticmethod
+    def _normalize_http_only(raw_value, key_present):
+        """
+        Playwright expects a boolean. Cookie metadata can arrive as strings,
+        numbers, or placeholder objects, so normalize defensively.
+        """
+        if isinstance(raw_value, bool):
+            return raw_value
+        if isinstance(raw_value, str):
+            normalized = raw_value.strip().lower()
+            if normalized in {"false", "0", "no"}:
+                return False
+            if normalized in {"true", "1", "yes"}:
+                return True
+        if raw_value is None:
+            return key_present
+        return bool(raw_value)
+
+    @classmethod
+    def _normalize_same_site(cls, raw_value):
+        if raw_value is None:
+            return None
+        normalized = str(raw_value).strip().lower()
+        return cls._SAMESITE_CANONICAL.get(normalized)
+
+    def _playwright_cookie_payload(self, cookie, hostname):
+        """
+        Convert a requests cookie into Playwright-friendly format or return None
+        if the cookie does not apply to the hostname.
+        """
+        domain = (cookie.domain or hostname).lstrip(".")
+        if not hostname.endswith(domain):
+            return None
+
+        rest_attrs = {k.lower(): v for k, v in cookie._rest.items()}
+        http_only = self._normalize_http_only(rest_attrs.get("httponly"), "httponly" in rest_attrs)
+        payload = {
+            "name": cookie.name,
+            "value": cookie.value,
+            "domain": cookie.domain or hostname,
+            "path": cookie.path or "/",
+            "httpOnly": http_only,
+            "secure": cookie.secure,
+        }
+        if cookie.expires:
+            payload["expires"] = cookie.expires
+
+        same_site = self._normalize_same_site(rest_attrs.get("samesite"))
+        if same_site:
+            payload["sameSite"] = same_site
+        return payload
 
     def _follow_meta_refresh(self, resp, timeout=15):
         """
@@ -90,6 +180,93 @@ class RequestsEngine(Engine):
             return resp
         return self.session.get(target, timeout=timeout, allow_redirects=True)
 
+    def _fetch_with_playwright(self, url: str, wait_selector: str = None, wait_until: str = "networkidle", timeout: float = None):
+        """
+        Render the target URL in a headless browser to execute JavaScript and
+        return a synthetic ``requests.Response`` object to keep downstream
+        processing consistent with the non-JS path.
+        """
+        try:
+            from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+            logging.getLogger("playwright").setLevel(logging.WARNING)
+        except ImportError as exc:
+            raise RuntimeError(
+                "Playwright is not installed. Install symbolicai[webscraping] with Playwright extras to enable render_js."
+            ) from exc
+
+        timeout_seconds = timeout if timeout is not None else self.timeout
+        timeout_ms = max(int(timeout_seconds * 1000), 0)
+        user_agent = self.session.headers.get("User-Agent")
+
+        parsed = urlparse(url)
+        hostname = parsed.hostname or ""
+        cookie_payload = []
+        if hostname:
+            for cookie in self.session.cookies:
+                payload = self._playwright_cookie_payload(cookie, hostname)
+                if payload:
+                    cookie_payload.append(payload)
+
+        content = ""
+        final_url = url
+        status = 200
+        headers = CaseInsensitiveDict()
+
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(headless=True)
+            context = browser.new_context(
+                user_agent=user_agent,
+                java_script_enabled=True,
+                ignore_https_errors=not self.verify_ssl,
+            )
+            if cookie_payload:
+                context.add_cookies(cookie_payload)
+            page = context.new_page()
+
+            navigation_error = None
+            response = None
+            try:
+                try:
+                    response = page.goto(url, wait_until=wait_until, timeout=timeout_ms)
+                    if wait_selector:
+                        page.wait_for_selector(wait_selector, timeout=timeout_ms)
+                except PlaywrightTimeoutError as exc:
+                    navigation_error = exc
+
+                try:
+                    content = page.content()
+                except Exception:
+                    content = ""
+
+                # Always persist Playwright cookies back into the requests session.
+                for cookie in context.cookies():
+                    self.session.cookies.set(
+                        cookie["name"],
+                        cookie["value"],
+                        domain=cookie.get("domain"),
+                        path=cookie.get("path", "/"),
+                    )
+
+                final_url = page.url
+                status = response.status if response is not None else 200
+                headers = CaseInsensitiveDict(response.headers if response is not None else {})
+                if "content-type" not in headers:
+                    headers["Content-Type"] = "text/html; charset=utf-8"
+
+                if navigation_error and not content:
+                    raise requests.exceptions.Timeout(f"Playwright timed out while rendering {url}") from navigation_error
+            finally:
+                context.close()
+                browser.close()
+
+        rendered_response = requests.Response()
+        rendered_response.status_code = status
+        rendered_response._content = content.encode("utf-8", errors="replace")
+        rendered_response.url = final_url
+        rendered_response.headers = headers
+        rendered_response.encoding = "utf-8"
+        return rendered_response
+
     def id(self) -> str:
         return 'webscraping'
 
@@ -111,7 +288,21 @@ class RequestsEngine(Engine):
               if k.lower() not in {"utm_source", "utm_medium", "utm_campaign"}]
         clean_url = urlunparse(parsed._replace(query=urlencode(qs)))
 
-        resp = self.session.get(clean_url, timeout=self.timeout, allow_redirects=True, verify=self.verify_ssl)
+        render_js = kwargs.get("render_js")
+        render_wait_selector = kwargs.get("render_wait_selector")
+        render_wait_until = kwargs.get("render_wait_until", "networkidle")
+        render_timeout = kwargs.get("render_timeout")
+
+        # Prefer fast requests path unless the caller opts into JS rendering.
+        if render_js:
+            resp = self._fetch_with_playwright(
+                clean_url,
+                wait_selector=render_wait_selector,
+                wait_until=render_wait_until,
+                timeout=render_timeout,
+            )
+        else:
+            resp = self.session.get(clean_url, timeout=self.timeout, allow_redirects=True, verify=self.verify_ssl)
         resp.raise_for_status()
 
         # Follow a legacy meta refresh once (do AFTER normal HTTP redirects)
@@ -120,7 +311,11 @@ class RequestsEngine(Engine):
             resp2.raise_for_status()
             resp = resp2
 
-        metadata = {}
+        metadata = {
+            "response_source": "playwright" if render_js else "requests",
+            "render_js": bool(render_js),
+            "final_url": resp.url,
+        }
         result = RequestsResult(resp, output_format)
         return [result], metadata
 

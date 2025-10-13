@@ -44,3 +44,21 @@ def test_pdf_extraction():
     rsp = scraper(url)
     assert isinstance(rsp, RequestsResult), f"Expected RequestsResult, got {type(rsp)}"
     assert len(rsp) > 0, f"Expected non-empty response"
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://x.com/karpathy/status/1973468610917179630",
+        "https://www.linkedin.com/posts/george-hotz-b3866476_more-technology-is-not-going-to-bring-you-activity-7367261116713861122-YcLy",
+    ],
+)
+def test_naive_webscraping_render_js(url):
+    pytest.importorskip(
+        "playwright.sync_api",
+        reason="Playwright runtime is required to execute render_js flows.",
+    )
+
+    rsp = scraper(url, render_js=True, render_timeout=30)
+    assert isinstance(rsp, RequestsResult), "render_js should still produce RequestsResult"
+    assert len(str(rsp)) > 0, "Expected rendered content for social media page"
