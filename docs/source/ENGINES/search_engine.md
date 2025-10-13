@@ -78,7 +78,7 @@ res = search("What local events are happening today?",
              })
 
 # Control the amount of search context
-res = search("Explain quantum computing developments", search_context_size="high")
+res = search("Explain quantum computing developments")
 ```
 
 Here's how to configure the OpenAI search engine:
