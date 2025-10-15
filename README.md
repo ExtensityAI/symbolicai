@@ -325,7 +325,7 @@ Now, there are tools like DeepWiki that provide better documentation than we cou
 
 ## 📝 License
 
-This project is licensed under the BSD-3-Clause License - refer to [the docs](https://symbolicai.readthedocs.io/en/latest/LICENSE.html).
+This project is licensed under the BSD-3-Clause License.
 
 ## Like this Project?
 
