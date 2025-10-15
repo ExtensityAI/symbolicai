@@ -36,6 +36,3 @@
 * [Chatbot CLI](TOOLS/chatbot.md)
 * [Package Manager](TOOLS/packages.md)
 * [Shell](TOOLS/shell.md)
-
-## License
-* [License](LICENSE)
