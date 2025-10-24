@@ -14,6 +14,8 @@ SUPPORTED_REASONING_MODELS = [
     "claude-opus-4-0",
     "claude-sonnet-4-0",
     'claude-3-7-sonnet-latest',
+    'claude-haiku-4-5',
+    'claude-sonnet-4-5',
 ]
 
 class AnthropicMixin:
@@ -22,6 +24,8 @@ class AnthropicMixin:
            self.model == 'claude-opus-4-0' or \
            self.model == 'claude-sonnet-4-0' or \
            self.model == 'claude-3-7-sonnet-latest' or \
+           self.model == 'claude-haiku-4-5' or \
+           self.model == 'claude-sonnet-4-5' or \
            self.model == 'claude-3-5-sonnet-latest' or \
            self.model == 'claude-3-5-sonnet-20241022' or \
            self.model == 'claude-3-5-sonnet-20240620' or \
@@ -33,7 +37,9 @@ class AnthropicMixin:
 
     def api_max_response_tokens(self):
         if self.model == 'claude-sonnet-4-0' or \
-           self.model == 'claude-3-7-sonnet-latest':
+           self.model == 'claude-3-7-sonnet-latest' or \
+           self.model == 'claude-haiku-4-5' or \
+           self.model == 'claude-sonnet-4-5':
             return 64_000
         if self.model == 'claude-opus-4-1' or \
            self.model == 'claude-opus-4-0':

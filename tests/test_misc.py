@@ -26,7 +26,7 @@ def test_json_format():
          NEUROSYMBOLIC.startswith('gemini') or
          NEUROSYMBOLIC.startswith('groq')) \
          else 'developer'
-    if all(id not in NEUROSYMBOLIC for id in ['3-7', '4-0', '4-1']):
+    if all(id not in NEUROSYMBOLIC for id in ['3-7', '4-0', '4-1', '4-5']):
         res = Expression.prompt(
             message=[
                 {"role": admin_role, "content": "You are a helpful assistant designed to output JSON."},
@@ -63,7 +63,7 @@ Now 41 and with dozens of movies to her name, Hathaway has revealed how early on
 Speaking to V Magazine in an interview published Monday, Hathaway said: “Back in the 2000s — and this did happen to me — it was considered normal to ask an actor to make out with other actors to test for chemistry. Which is actually the worst way to do it.
 '''
     S = Symbol(text)
-    if all(id not in NEUROSYMBOLIC for id in ['3-7', '4-0', '4-1']):
+    if all(id not in NEUROSYMBOLIC for id in ['3-7', '4-0', '4-1', '4-5']):
         res = S.query("Fill in the text.", template_suffix="{{fill}}")
     else:
         res = S.query("Fill in the text.", template_suffix="{{fill}}", max_tokens=CLAUDE_MAX_TOKENS, thinking=CLAUDE_THINKING)
@@ -71,7 +71,7 @@ Speaking to V Magazine in an interview published Monday, Hathaway said: “Back 
 
 @pytest.mark.mandatory
 def test_self_prompt():
-    if all(id not in NEUROSYMBOLIC for id in ['3-7', '4-0', '4-1']):
+    if all(id not in NEUROSYMBOLIC for id in ['3-7', '4-0', '4-1', '4-5']):
         sym = Symbol('np.log2(2)', self_prompt=True)
         res = Symbol('np.log2(2)').query('Is this equal to 1?', self_prompt=True)
     else:
