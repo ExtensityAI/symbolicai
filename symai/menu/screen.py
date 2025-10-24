@@ -1,3 +1,5 @@
+import os
+
 from prompt_toolkit import print_formatted_text
 
 from ..misc.console import ConsoleStyle
@@ -33,12 +35,13 @@ def show_separator(print: callable = print_formatted_text):
 
 
 def show_intro_menu():
-    with ConsoleStyle('extensity') as console:
-        show_splash_screen(print=console.print)
-    with ConsoleStyle('text') as console:
-        show_info_message(print=console.print)
-    with ConsoleStyle('extensity') as console:
-        show_separator(print=console.print)
+    if os.environ.get('SYMAI_WARNINGS', '1') == '1':
+        with ConsoleStyle('extensity') as console:
+            show_splash_screen(print=console.print)
+        with ConsoleStyle('text') as console:
+            show_info_message(print=console.print)
+        with ConsoleStyle('extensity') as console:
+            show_separator(print=console.print)
 
 if __name__ == '__main__':
     show_intro_menu()
