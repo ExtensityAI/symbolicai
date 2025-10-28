@@ -1,5 +1,6 @@
 import os
 import re
+from urllib.parse import urlparse
 
 import pytest
 
@@ -17,13 +18,12 @@ def _get_api_key():
     )
 
 
-@pytest.mark.parametrize("model", ["gpt-4.1-mini", "gpt-5-mini"])
+@pytest.mark.parametrize("model", ["gpt-4.1-mini", "gpt-5-nano"])
 def test_openai_search_citations_and_formatting_live(model):
     api_key = _get_api_key()
     if not api_key:
         pytest.skip("OPENAI_API_KEY/SEARCH_ENGINE_API_KEY not set; live test skipped")
 
-    # Register a fresh engine instance with the provided API key and target model
     engine = GPTXSearchEngine(api_key=api_key, model=model)
     EngineRepository.register("search", engine, allow_engine_override=True)
 
@@ -56,3 +56,27 @@ def test_openai_search_citations_and_formatting_live(model):
 
     # 3) Formatting: At least one marker pattern with newline is present
     assert re.search(r"\[\d+\] \([^)]+\)\n", res.value)
+
+
+@pytest.mark.parametrize("model", ["gpt-4.1", "gpt-5-nano"])
+def test_openai_search_domain_filtering(model):
+    api_key = _get_api_key()
+    if not api_key:
+        pytest.skip("OPENAI_API_KEY/SEARCH_ENGINE_API_KEY not set; live test skipped")
+
+    engine = GPTXSearchEngine(api_key=api_key, model=model)
+    EngineRepository.register("search", engine, allow_engine_override=True)
+
+    domains =  [
+        "tomshardware.com",            # ok
+        "https://www.arstechnica.com", # ok, bWhat are the latest news?ut the internal processing should yield the root domain
+        "tomshardware"                 # not ok
+    ]
+
+    query = "what is the best gpu"
+    search = openai_search()
+    res = search(query, model=model, allowed_domains=domains)
+
+    allowed_netlocs = { "www.tomshardware.com", "www.arstechnica.com" }
+    citation_netlocs = { urlparse(c.url).netloc for c in res.get_citations() }
+    assert allowed_netlocs & citation_netlocs, "No citations from allowed domains found"
