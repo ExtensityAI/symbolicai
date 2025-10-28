@@ -230,6 +230,8 @@ class SearchResult(Result):
 
 
 class GPTXSearchEngine(Engine):
+    MAX_ALLOWED_DOMAINS = 20
+
     def __init__(self, api_key: str | None = None, model: str | None = None):
         super().__init__()
         self.config = deepcopy(SYMAI_CONFIG)
@@ -250,6 +252,65 @@ class GPTXSearchEngine(Engine):
             return 'search'
         return super().id()  # default to unregistered
 
+    def _extract_netloc(self, raw_domain: str | None) -> str | None:
+        if not isinstance(raw_domain, str):
+            return None
+        candidate = raw_domain.strip()
+        if not candidate:
+            return None
+        parsed = urlsplit(candidate if '://' in candidate else f"//{candidate}")
+        netloc = parsed.netloc or parsed.path
+        if not netloc:
+            return None
+        if '@' in netloc:
+            netloc = netloc.split('@', 1)[1]
+        if ':' in netloc:
+            netloc = netloc.split(':', 1)[0]
+        netloc = netloc.strip('.').strip()
+        if not netloc:
+            return None
+        return netloc.lower()
+
+    def _normalize_allowed_domains(self, domains: list[str] | None) -> list[str]:
+        if not domains or not isinstance(domains, list):
+            return []
+
+        normalized: list[str] = []
+        seen: set[str] = set()
+        for domain in domains:
+            netloc = self._extract_netloc(domain)
+            if not netloc or netloc in seen:
+                continue
+            # Validate that netloc is actually a valid domain
+            if not self._is_domain(netloc):
+                continue
+            normalized.append(netloc)
+            seen.add(netloc)
+            if len(normalized) >= self.MAX_ALLOWED_DOMAINS:
+                break
+        return normalized
+
+    def _is_domain(self, s: str) -> bool:
+        _label_re = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$")
+        if not s:
+            return False
+        host = s.strip().rstrip(".")
+        # If the input might be a URL, extract the hostname via urllib:
+        if "://" in host or "/" in host or "@" in host:
+            host = urlsplit(host if "://" in host else f"//{host}").hostname or ""
+        if not host:
+            return False
+        try:
+            host_ascii = host.encode("idna").decode("ascii")
+        except Exception:
+            return False
+        if len(host_ascii) > 253:
+            return False
+        labels = host_ascii.split(".")
+        if len(labels) < 2:  # require a dot (reject "google")
+            return False
+        return all(_label_re.fullmatch(lbl or "") for lbl in labels)
+
     def command(self, *args, **kwargs):
         super().command(*args, **kwargs)
         if 'SEARCH_ENGINE_API_KEY' in kwargs:
@@ -265,6 +326,12 @@ class GPTXSearchEngine(Engine):
         user_location = kwargs.get('user_location')
         if user_location:
             tool_definition['user_location'] = user_location
+
+        allowed_domains = self._normalize_allowed_domains(kwargs.get('allowed_domains'))
+        if allowed_domains:
+            tool_definition['filters'] = {
+                'allowed_domains': allowed_domains
+            }
 
         self.model = kwargs.get('model', self.model) # Important for MetadataTracker to work correctly
         payload = {
