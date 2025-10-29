@@ -69,7 +69,7 @@ def test_openai_search_domain_filtering(model):
 
     domains =  [
         "tomshardware.com",            # ok
-        "https://www.arstechnica.com", # ok, bWhat are the latest news?ut the internal processing should yield the root domain
+        "https://www.arstechnica.com", # ok, but the internal processing should yield the root domain
         "tomshardware"                 # not ok
     ]
 
