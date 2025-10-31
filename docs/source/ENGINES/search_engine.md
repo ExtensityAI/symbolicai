@@ -79,6 +79,16 @@ res = search("What local events are happening today?",
 
 # Control the amount of search context
 res = search("Explain quantum computing developments")
+
+# Enable a reasoning model via the Responses API
+res = search(
+    "Summarize the latest research on quantum error correction",
+    model="o4-mini",
+    reasoning={
+        "effort": "medium",
+        "summary": "auto"
+    }
+)
 ```
 
 Here's how to configure the OpenAI search engine:
@@ -91,3 +101,5 @@ Here's how to configure the OpenAI search engine:
     …
 }
 ```
+
+This engine calls the OpenAI Responses API under the hood. When you target a reasoning-capable model, pass a `reasoning` dictionary matching the Responses payload schema (for example `{"effort": "low", "summary": "auto"}`). If omitted, the engine falls back to the default effort/summary settings shown above.

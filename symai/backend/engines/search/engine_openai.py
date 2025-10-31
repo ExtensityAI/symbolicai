@@ -334,12 +334,17 @@ class GPTXSearchEngine(Engine):
             }
 
         self.model = kwargs.get('model', self.model) # Important for MetadataTracker to work correctly
+
         payload = {
             "model": self.model,
             "input": messages,
             "tools": [tool_definition],
             "tool_choice": {"type": "web_search"} if self.model not in OPENAI_REASONING_MODELS else "auto" # force the use of web search tool for non-reasoning models
         }
+
+        if self.model in OPENAI_REASONING_MODELS:
+            reasoning = kwargs.get('reasoning', { "effort": "low", "summary": "auto" })
+            payload['reasoning'] = reasoning
 
         try:
             res = self.client.responses.create(**payload)
