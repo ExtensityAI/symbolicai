@@ -109,7 +109,6 @@ def test_tokenizer():
     assert api_tokens == tik_tokens
 
 @pytest.mark.mandatory
-@pytest.mark.skipif(NEUROSYMBOLIC.startswith('llama'), reason='feature not yet implemented')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('huggingface'), reason='feature not yet implemented')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('o1'), reason='feature not supported by the model')
 def test_tool_usage():
