@@ -171,7 +171,10 @@ def _execute_query_fallback(func, instance, argument, error=None, stack_trace=No
     This matches the fallback logic used in _process_query by handling errors consistently,
     providing error context to the fallback function, and maintaining the same return format.
     """
-    rsp = func(instance, error=error, stack_trace=stack_trace, *argument.args, **argument.signature_kwargs)
+    try:
+        rsp = func(instance, error=error, stack_trace=stack_trace, *argument.args, **argument.signature_kwargs)
+    except Exception:
+        raise error # re-raise the original error
     if rsp is not None:
         # fallback was implemented
         rsp = dict(data=rsp, error=error, stack_trace=stack_trace)
@@ -242,7 +245,7 @@ def _process_query(
         func: Callable,
         constraints: List[Callable] = [],
         default: Optional[object] = None,
-        limit: int = 1,
+        limit: int | None = None,
         trials: int = 1,
         pre_processors: Optional[List[PreProcessor]] = None,
         post_processors: Optional[List[PostProcessor]] = None,

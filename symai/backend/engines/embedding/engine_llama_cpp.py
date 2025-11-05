@@ -84,7 +84,7 @@ class LlamaCppEmbeddingEngine(Engine):
             asyncio.set_event_loop(new_loop)
             return new_loop
 
-    async def _arequest(self, text: str) -> dict:
+    async def _arequest(self, text: str, embd_normalize: str) -> dict:
         """Makes an async HTTP request to the llama.cpp server."""
         @retry(**self.retry_params)
         async def _make_request():
@@ -95,7 +95,7 @@ class LlamaCppEmbeddingEngine(Engine):
             async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.post(
                     f"{self.server_endpoint}/v1/embeddings",
-                    json={"input": text}
+                    json={"content": text, "embd_normalize": embd_normalize}
                 ) as res:
                     if res.status != 200:
                         raise ValueError(f"Request failed with status code: {res.status}")
@@ -108,21 +108,22 @@ class LlamaCppEmbeddingEngine(Engine):
         kwargs = argument.kwargs
 
         inp = prepared_input if isinstance(prepared_input, list) else [prepared_input]
+        embd_normalize = kwargs.get('embd_normalize', -1) # -1 = no normalization
+
         new_dim = kwargs.get('new_dim')
+        if new_dim:
+            raise NotImplementedError("new_dim is not yet supported")
 
         nest_asyncio.apply()
         loop = self._get_event_loop()
 
         try:
-            res = loop.run_until_complete(self._arequest(inp))
+            res = loop.run_until_complete(self._arequest(inp, embd_normalize))
         except Exception as e:
             raise ValueError(f"Request failed with error: {str(e)}")
 
-        if new_dim:
-            raise NotImplementedError("new_dim is not yet supported")
-
         if res is not None:
-            output = [r["embedding"] for r in res["data"]]
+            output = [r["embedding"] for r in res] # B x 1 x D
         else:
             output = None
         metadata = {'raw_output': res}

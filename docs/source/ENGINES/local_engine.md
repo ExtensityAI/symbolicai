@@ -3,16 +3,13 @@
 
 You can use a locally hosted instance for the Neuro-Symbolic Engine. We build on top of:
 - [llama.cpp](https://github.com/ggerganov/llama.cpp/tree/master) either through:
-    > ❗️**NOTE**❗️ Latest `llama.cpp` commit on `master` branch that we tested `symai` with is `0f5ccd6fd1a1`. We used the build [setup](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md).
+    > ❗️**NOTE**❗️ Latest `llama.cpp` commit on `master` branch on November 5th, 2025 that we tested `symai` with is `a5c07dcd7b49`. We used the build [setup](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md).
   - Direct C++ server from llama.cpp
   - [llama-cpp-python](https://github.com/abetlen/llama-cpp-python?tab=readme-ov-file)
 - [huggingface/transformers](https://huggingface.co/docs/transformers/en/index) through a custom FastAPI server.
 
 ### llama.cpp backend
-For instance, let's suppose you want to set as a Neuro-Symbolic Engine the latest Llama 3 model. First, download the model with the HuggingFace CLI:
-```bash
-huggingface-cli download TheBloke/LLaMA-Pro-8B-Instruct-GGUF llama-pro-8b-instruct.Q4_K_M.gguf --local-dir .
-```
+For instance, let's suppose you want to set up the Neuro-Symbolic Engine with the `gpt-oss-120b` model. Download the GGUF shards you need (e.g. the `Q4_1` variant).
 
 With `symai`, first set the `NEUROSYMBOLIC_ENGINE_MODEL` to `llamacpp`:
 
@@ -33,14 +30,16 @@ symserver --env python --model ./llama-pro-8b-instruct.Q4_K_M.gguf --n_gpu_layer
 
 2. Using C++ server directly:
 ```bash
-symserver --env cpp --cpp-server-path /path/to/llama.cpp/server -m ./llama-pro-8b-instruct.Q4_K_M.gguf --port 8000 --host localhost
+symserver --env cpp --cpp-server-path /path/to/llama.cpp/llama-server -ngl -1 -m gpt-oss-120b/Q4_1/gpt-oss-120b-Q4_1-00001-of-00002.gguf -fa 'on' -b 8092 -ub 1024 --port 8000 --host localhost -c 0 -n 4096 -t 14 --jinja
 ```
 
 To see all available options, run:
 ```bash
 symserver --env python --help  # for Python bindings
-symserver --env cpp --cpp-server-path /path/to/llama.cpp/server --help  # for C++ server
+symserver --env cpp --cpp-server-path /path/to/llama.cpp/llama-server --help  # for C++ server
 ```
+
+The Neuro-Symbolic Engine now supports tool execution and structured JSON responses out of the box. For concrete examples, review the tests in `tests/engines/neurosymbolic/test_nesy_engine.py::test_tool_usage` and `tests/contract/test_contract.py`.
 
 ### HuggingFace backend
 Let's suppose we want to use `dolphin-2.9.3-mistral-7B-32k` from HuggingFace. First, download the model with the HuggingFace CLI:
@@ -109,7 +108,7 @@ symserver --env python --model nomic-embed-text-v1.5.Q8_0.gguf --embedding True 
 
 C++ server:
 ```bash
-symserver --env cpp --cpp-server-path /path/to/llama.cpp/server  -ngl 0 -m nomic-embed-text-v1.5.Q8_0.gguf --embedding -c 8192 -b 8192 --rope-scaling yarn --rope-freq-scale .75 --port 8000 --host localhost
+symserver --env cpp --cpp-server-path /path/to/llama.cpp/llama-server -ngl -1 -m nomic-embed-text-v1.5.Q8_0.gguf --embedding -b 8092 -ub 1024 --port 8000 --host localhost -t 14 --mlock --no-mmap
 ```
 
 The server supports batch processing for embeddings. Here's how to use it with `symai`:
@@ -123,5 +122,5 @@ embedding = Symbol(some_text).embed()  # returns a list (1 x dim)
 
 # Batch processing
 some_batch_of_texts = ["Hello, world!"] * 32
-embeddings = Symbol(some_batch_of_texts).embed()  # returns a list (32 x dim)
+embeddings = Symbol(some_batch_of_texts).embed()  # returns a list (32 x 1 x dim)
 ```

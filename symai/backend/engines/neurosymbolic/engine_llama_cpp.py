@@ -26,8 +26,8 @@ class LlamaCppTokenizer:
     @staticmethod
     async def _encode(text: str) -> list[int]:
         async with aiohttp.ClientSession() as session:
-            async with session.post(f"{LlamaCppTokenizer._server_endpoint}/extras/tokenize", json={
-                "input": text,
+            async with session.post(f"{LlamaCppTokenizer._server_endpoint}/tokenize", json={
+                "content": text,
             }) as res:
                 if res.status != 200:
                     CustomUserWarning(f"Request failed with status code: {res.status}", raise_with=ValueError)
@@ -46,13 +46,13 @@ class LlamaCppTokenizer:
     @staticmethod
     async def _decode(tokens: list[int]) -> str:
         async with aiohttp.ClientSession() as session:
-            async with session.post(f"{LlamaCppTokenizer._server_endpoint}/extras/detokenize", json={
+            async with session.post(f"{LlamaCppTokenizer._server_endpoint}/detokenize", json={
                 "tokens": tokens,
             }) as res:
                 if res.status != 200:
                     CustomUserWarning(f"Request failed with status code: {res.status}", raise_with=ValueError)
                 res = await res.json()
-                return res['text']
+                return res['content']
 
     @staticmethod
     def decode(tokens: list[int]) -> str:
@@ -148,7 +148,7 @@ class LlamaCppEngine(Engine):
     def _prepare_request_payload(self, argument: Argument) -> dict:
         """Prepares the request payload from the argument."""
         kwargs = argument.kwargs
-        return {
+        payload = {
             "messages": argument.prop.prepared_input,
             "temperature": kwargs.get('temperature', 0.6),
             "frequency_penalty": kwargs.get('frequency_penalty', 0),
@@ -162,11 +162,27 @@ class LlamaCppEngine(Engine):
             "repeat_penalty": kwargs.get('repeat_penalty', 1),
             "logits_bias": kwargs.get('logits_bias'),
             "logprobs": kwargs.get('logprobs', False),
-            "functions": kwargs.get('functions'),
-            "function_call": kwargs.get('function_call'),
             "grammar": kwargs.get('grammar'),
             "response_format": kwargs.get('response_format'),
         }
+
+        model = SYMSERVER_CONFIG.get('-m') or SYMSERVER_CONFIG.get('--model')
+        if model:
+            payload["model"] = model
+
+        tools = kwargs.get('tools')
+        if tools:
+            payload["tools"] = tools
+
+        tool_choice = kwargs.get('tool_choice')
+        if tool_choice is not None:
+            payload["tool_choice"] = tool_choice
+
+        extra_body = kwargs.get('extra_body')
+        if isinstance(extra_body, dict):
+            payload.update(extra_body)
+
+        return payload
 
     async def _arequest(self, payload: dict) -> dict:
         """Makes an async HTTP request to the llama.cpp server."""
@@ -187,6 +203,19 @@ class LlamaCppEngine(Engine):
 
         return await _make_request()
 
+    @classmethod
+    def _extract_thinking(cls, response):
+        """Extract reasoning traces from llama.cpp responses."""
+        if not isinstance(response, dict):
+            return None
+        choices = response.get('choices', [])
+        if not isinstance(choices, list) or not choices:
+            return None
+        for choice in choices:
+            if isinstance(choice, dict) and isinstance(choice.get('message'), dict):
+                return choice['message'].get('reasoning_content')
+        return None
+
     def forward(self, argument):
         payload = self._prepare_request_payload(argument)
 
@@ -200,10 +229,52 @@ class LlamaCppEngine(Engine):
 
         metadata = {'raw_output': res}
 
+        if payload.get('tools'):
+            metadata = self._process_tool_calls(res, metadata)
+
+        thinking = self._extract_thinking(res)
+        if thinking:
+            metadata['thinking'] = thinking
+
         output = [r['message']['content'] for r in res['choices']]
         output = output if isinstance(argument.prop.prepared_input, list) else output[0]
 
         return output, metadata
+
+    @staticmethod
+    def _process_tool_calls(res, metadata):
+        choices = res.get('choices') if isinstance(res, dict) else None
+        if not choices:
+            return metadata
+        hit = False
+        for choice in choices:
+            if not isinstance(choice, dict):
+                continue
+            message = choice.get('message') or {}
+            tool_calls = message.get('tool_calls') or []
+            if not tool_calls:
+                continue
+            for tool_call in tool_calls:
+                if not isinstance(tool_call, dict):
+                    continue
+                function = tool_call.get('function') or {}
+                if hit:
+                    CustomUserWarning("Multiple function calls detected in the response but only the first one will be processed.")
+                    return metadata
+                arguments = function.get('arguments')
+                try:
+                    args_dict = json.loads(arguments) if isinstance(arguments, str) else arguments or {}
+                except json.JSONDecodeError:
+                    args_dict = {}
+                metadata['function_call'] = {
+                    'name': function.get('name'),
+                    'arguments': args_dict or {}
+                }
+                hit = True
+                break
+            if hit:
+                break
+        return metadata
 
     def _prepare_raw_input(self, argument):
         if not argument.prop.processed_input:
