@@ -1,7 +1,7 @@
 import json
 import re
 from enum import Enum
-from typing import Any, Literal, Optional, Union, Dict, List, Optional
+from typing import Any, Literal, Optional, Union
 
 import pytest
 from pydantic import Field, ValidationError, field_validator
@@ -28,12 +28,12 @@ class ModelWithValidation(LLMDataModel):
             raise ValueError('Invalid age')
         return v
 
-    def validate(self) -> Optional[str]:
+    def validate(self) -> str | None:
         if self.age < 18:
             return "User must be 18 or older"
         return None
 
-    def remedy(self) -> Optional[str]:
+    def remedy(self) -> str | None:
         if self.age < 18:
             return "Set age to 18 for minimum requirement"
         return None
@@ -46,9 +46,9 @@ class ModelWithLiterals(LLMDataModel):
 
 
 class ModelWithMultipleUnions(LLMDataModel):
-    simple_union: Union[int, str]
-    complex_union: Union[list[int], dict[str, str], None]
-    nested_union: Union[list[Union[int, str]], dict[str, Union[bool, float]]]
+    simple_union: int | str
+    complex_union: list[int] | dict[str, str] | None
+    nested_union: list[int | str] | dict[str, bool | float]
 
 
 class ModelWithAllFieldTypes(LLMDataModel):
@@ -59,8 +59,8 @@ class ModelWithAllFieldTypes(LLMDataModel):
     bool_field: bool
 
     # Optional primitives
-    opt_str: Optional[str]
-    opt_int: Optional[int]
+    opt_str: str | None
+    opt_int: int | None
 
     # Collections
     list_field: list[str]
@@ -91,7 +91,7 @@ class ModelWithCustomTypes(LLMDataModel):
         OPTION_B = "b"
 
     enum_field: InnerEnum
-    literal_union: Union[Literal["x"], Literal["y"], Literal["z"]]
+    literal_union: Literal["x"] | Literal["y"] | Literal["z"]
 
 
 # ---------------------------------------------------------------------------
@@ -351,15 +351,15 @@ def test_definitions_generic_message_and_preserved_descriptions_for_nested_dict(
     class Metadata(LLMDataModel):
         author: str
         version: str
-        tags: List[str]
+        tags: list[str]
 
     class ContentBlock(LLMDataModel):
         id: str
         title: str
-        paragraphs: List[str]
+        paragraphs: list[str]
 
     class NestedConfig(LLMDataModel):
-        translations: Dict[str, Dict[str, str]] = Field(
+        translations: dict[str, dict[str, str]] = Field(
             ...,
             description="Nested dictionary mapping language -> section -> text"
         )
@@ -367,9 +367,9 @@ def test_definitions_generic_message_and_preserved_descriptions_for_nested_dict(
     class ComplexDocument(LLMDataModel):
         doc_id: str
         metadata: Metadata
-        content: List[ContentBlock]
+        content: list[ContentBlock]
         config: NestedConfig
-        notes: Optional[str]
+        notes: str | None
 
     instr = ComplexDocument.instruct_llm()
 
@@ -431,7 +431,7 @@ def test_build_dynamic_with_any_type():
 def test_build_dynamic_with_union_of_unions():
     """Test dynamic model with nested unions."""
     DynModel = build_dynamic_llm_datamodel(
-        Union[Union[int, str], Union[list, dict]]
+        Union[int | str, list | dict]
     )
     instance1 = DynModel(value=42)
     instance2 = DynModel(value="text")
@@ -599,7 +599,7 @@ def test_convert_dict_int_keys_invalid_raises():
 def test_invalid_union_all_branches_fail():
     """Test that union validation fails when value doesn't match any branch."""
     class UnionModel(LLMDataModel):
-        value: Union[int, str, bool]
+        value: int | str | bool
 
     with pytest.raises(ValidationError):
         UnionModel(value=[1, 2, 3])  # List doesn't match any union branch
@@ -698,7 +698,7 @@ def test_circular_dependency_handling():
     """Test that circular dependencies are handled without infinite loops."""
     class Node(LLMDataModel):
         value: str
-        children: Optional[list['Node']] = None
+        children: list['Node'] | None = None
 
     # Create a circular structure
     node1 = Node(value="node1")

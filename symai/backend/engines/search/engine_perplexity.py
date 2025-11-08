@@ -35,7 +35,7 @@ class SearchResult(Result):
         try:
             return f"<pre>{json.dumps(self.raw, indent=2)}</pre>"
         except TypeError:
-            return f"<pre>{str(self.raw)}</pre>"
+            return f"<pre>{self.raw!s}</pre>"
 
 
 class PerplexityEngine(Engine):

@@ -1,23 +1,22 @@
-import re
-import pygments
 import logging
+import re
 
 #@TODO: refactor to use rich instead of prompt_toolkit
 from html import escape as escape_html
-from pygments.lexers.python import PythonLexer
-from pygments.lexers.javascript import JavascriptLexer
-from pygments.lexers.c_cpp import CppLexer
-from pygments.lexers.shell import BashLexer
-from prompt_toolkit import print_formatted_text
-from prompt_toolkit import HTML
-from prompt_toolkit.formatted_text import PygmentsTokens
 
+import pygments
+from prompt_toolkit import HTML, print_formatted_text
+from prompt_toolkit.formatted_text import PygmentsTokens
+from pygments.lexers.c_cpp import CppLexer
+from pygments.lexers.javascript import JavascriptLexer
+from pygments.lexers.python import PythonLexer
+from pygments.lexers.shell import BashLexer
 
 logger = logging.getLogger(__name__)
 print = print_formatted_text
 
 
-class ConsoleStyle(object):
+class ConsoleStyle:
     style_types = {
         'alert':     'orange',
         'error':     'ansired',

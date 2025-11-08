@@ -2,13 +2,11 @@ import json
 import logging
 import re
 from copy import deepcopy
-from typing import List, Optional
 
 import openai
 import tiktoken
 
 from ....components import SelfPrompt
-from ....misc.console import ConsoleStyle
 from ....symbol import Symbol
 from ....utils import CustomUserWarning, encode_media_frames
 from ...base import Engine
@@ -23,7 +21,7 @@ logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
 class GPTXChatEngine(Engine, OpenAIMixin):
-    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
+    def __init__(self, api_key: str | None = None, model: str | None = None):
         super().__init__()
         self.config = deepcopy(SYMAI_CONFIG)
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
@@ -36,7 +34,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         self.model = self.config['NEUROSYMBOLIC_ENGINE_MODEL']
         try:
             self.tokenizer = tiktoken.encoding_for_model(self.model)
-        except Exception as e:
+        except Exception:
             self.tokenizer = tiktoken.get_encoding('o200k_base')
         self.max_context_tokens = self.api_max_context_tokens()
         self.max_response_tokens = self.api_max_response_tokens()
@@ -151,9 +149,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
             parts = extract_pattern(content)
             for p in parts:
                 img_ = p.strip()
-                if img_.startswith('http'):
-                    image_files.append(img_)
-                elif img_.startswith('data:image'):
+                if img_.startswith('http') or img_.startswith('data:image'):
                     image_files.append(img_)
                 else:
                     max_frames_spacing = 50
@@ -351,7 +347,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
                 # OpenAI docs:
                     # "Important: when using JSON mode, you must also instruct the model
                     #  to produce JSON yourself via a system or user message"
-                system += f'<RESPONSE_FORMAT/>\nYou are a helpful assistant designed to output JSON.\n\n'
+                system += '<RESPONSE_FORMAT/>\nYou are a helpful assistant designed to output JSON.\n\n'
 
         ref = argument.prop.instance
         static_ctxt, dyn_ctxt = ref.global_context
@@ -363,11 +359,11 @@ class GPTXChatEngine(Engine, OpenAIMixin):
 
         payload = argument.prop.payload
         if argument.prop.payload:
-            system += f"<ADDITIONAL CONTEXT/>\n{str(payload)}\n\n"
+            system += f"<ADDITIONAL CONTEXT/>\n{payload!s}\n\n"
 
-        examples: List[str] = argument.prop.examples
+        examples: list[str] = argument.prop.examples
         if examples and len(examples) > 0:
-            system += f"<EXAMPLES/>\n{str(examples)}\n\n"
+            system += f"<EXAMPLES/>\n{examples!s}\n\n"
 
         image_files = self._handle_image_content(str(argument.prop.processed_input))
 
@@ -384,7 +380,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         user += f"{suffix}"
 
         if argument.prop.template_suffix:
-            system += f' You will only generate content for the placeholder `{str(argument.prop.template_suffix)}` following the instructions and the provided context information.\n\n'
+            system += f' You will only generate content for the placeholder `{argument.prop.template_suffix!s}` following the instructions and the provided context information.\n\n'
 
         if self.model == 'gpt-4-vision-preview':
            images = [{ 'type': 'image', "image_url": { "url": file }} for file in image_files]

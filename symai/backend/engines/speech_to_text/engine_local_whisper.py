@@ -1,7 +1,6 @@
-import logging
 import re
+from collections.abc import Iterable
 from itertools import takewhile
-from typing import Iterable
 
 import torch
 
@@ -12,8 +11,7 @@ from ...settings import SYMAI_CONFIG
 
 try:
     import whisper
-    from whisper.audio import \
-        N_SAMPLES  # @NOTE: sample_rate (16_000) * chunk_length (30) = 480_000
+    from whisper.audio import N_SAMPLES  # @NOTE: sample_rate (16_000) * chunk_length (30) = 480_000
     from whisper.tokenizer import get_tokenizer
 except ImportError:
     whisper   = None
@@ -68,7 +66,7 @@ class WhisperTimestampsFormatter(Expression):
         seconds %= 3600
         minutes = int(seconds // 60)
         seconds %= 60
-        formatted_time = "{:02d}:{:02d}:{:02d}".format(hours, minutes, int(seconds))
+        formatted_time = f"{hours:02d}:{minutes:02d}:{int(seconds):02d}"
         return formatted_time
 
 

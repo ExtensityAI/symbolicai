@@ -44,7 +44,7 @@ class VectorDBResult(Result):
             if match.startswith('# ----[FILE_START]') and '# ----[FILE_END]' in match:
                 m = match.split('[FILE_CONTENT]:')[-1].strip()
                 splits = m.split('# ----[FILE_END]')
-                assert len(splits) >= 2, 'Invalid file format: {}'.format(splits)
+                assert len(splits) >= 2, f'Invalid file format: {splits}'
                 content = splits[0]
                 file_name = ','.join(splits[1:]) # TODO: check why there are multiple file names
                 yield file_name.strip(), content.strip()

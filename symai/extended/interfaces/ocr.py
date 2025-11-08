@@ -1,6 +1,6 @@
 from ... import core
-from ...symbol import Expression
 from ...backend.engines.ocr.engine_apilayer import ApiLayerResult
+from ...symbol import Expression
 
 
 class ocr(Expression):

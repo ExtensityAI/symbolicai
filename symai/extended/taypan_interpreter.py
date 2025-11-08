@@ -2,8 +2,8 @@ import os
 import pathlib
 
 from ..core import *
-from ..pre_processors import PreProcessor
 from ..post_processors import CodeExtractPostProcessor
+from ..pre_processors import PreProcessor
 from ..symbol import Expression, Symbol
 
 
@@ -11,15 +11,15 @@ def create_template():
     package_path = os.path.dirname(pathlib.Path(__file__).parent.absolute())
 
 
-    with open(os.path.join(package_path, 'symbol.py'), 'r') as f:
+    with open(os.path.join(package_path, 'symbol.py')) as f:
         SYMBOL_API = f.read()
 
 
-    with open(os.path.join(package_path, 'components.py'), 'r') as f:
+    with open(os.path.join(package_path, 'components.py')) as f:
         COMPONENTS_API = f.read()
 
 
-    TAYPAN_DESCRIPTION = """[Description]
+    TAYPAN_DESCRIPTION = f"""[Description]
     You are a programming language re-writing system from Taypan (high-level general-purpose programming language based on neuro-symbolic virtual machine) to Python interpreter, analogous to the relation between Scala and Java is the relation of Taypan to Python.
 
     All code from Python is valid Taypan code, but not all code from Taypan is valid Python code.
@@ -104,18 +104,18 @@ def create_template():
     [SymboliAI API]
 
     - components `from symai.components import *`:
-    {0}
+    {COMPONENTS_API}
 
     - symbol `from symai.symbol import *`:
-    {1}
+    {SYMBOL_API}
 
-    """.format(COMPONENTS_API, SYMBOL_API)
+    """
     return TAYPAN_DESCRIPTION
 
 
 class TaypanPreProcessor(PreProcessor):
     def __call__(self, argument):
-        return '```taypan\n{}\n =>'.format(str(argument.args[0]))
+        return f'```taypan\n{argument.args[0]!s}\n =>'
 
 
 class TaypanInterpreter(Expression):

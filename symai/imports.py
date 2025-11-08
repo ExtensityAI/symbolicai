@@ -6,8 +6,6 @@ import shutil
 import stat
 import subprocess
 import sys
-from pathlib import Path
-from typing import List, Tuple, Union
 
 from loguru import logger
 
@@ -35,8 +33,7 @@ class Import(Expression):
         # Check if module is a local path or a GitHub repo reference
         if os.path.exists(module) and os.path.isdir(module):
             return os.path.exists(f'{module}/package.json')
-        else:
-            return os.path.exists(f'{BASE_PACKAGE_PATH}/{module}/package.json')
+        return os.path.exists(f'{BASE_PACKAGE_PATH}/{module}/package.json')
 
     @staticmethod
     def get_from_local(module, local_path):
@@ -150,7 +147,7 @@ class Import(Expression):
         return module_classes
 
     @staticmethod
-    def load_expression(module, expressions: Union[List[str] | Tuple[str] | str]) -> Union[List[Expression] | Expression]:
+    def load_expression(module, expressions: list[str] | tuple[str] | str) -> list[Expression] | Expression:
         module_classes = []
         # Detect if module is a local path
         is_local_path = os.path.exists(module) and os.path.isdir(module)

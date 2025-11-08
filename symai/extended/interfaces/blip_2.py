@@ -1,4 +1,3 @@
-from typing import List
 
 from ... import core
 from ...symbol import Expression

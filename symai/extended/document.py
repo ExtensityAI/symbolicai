@@ -1,6 +1,6 @@
-import os
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, List, Optional, Union
+from typing import Union
 
 from ..components import FileReader, Indexer
 from ..formatter import ParagraphFormatter
@@ -10,7 +10,7 @@ from ..symbol import Expression, Symbol
 class DocumentRetriever(Expression):
     def __init__(
             self,
-            source: Optional[str] = None,
+            source: str | None = None,
             *,
             index_name: str = Indexer.DEFAULT,
             top_k: int = 5,
@@ -18,8 +18,8 @@ class DocumentRetriever(Expression):
             formatter: Callable = ParagraphFormatter(),
             overwrite: bool = False,
             with_metadata: bool = False,
-            raw_result: Optional[bool] = False,
-            new_dim: Optional[int] = None,
+            raw_result: bool | None = False,
+            new_dim: int | None = None,
             **kwargs
         ):
         super().__init__(**kwargs)
@@ -42,14 +42,14 @@ class DocumentRetriever(Expression):
     def forward(
             self,
             query: Symbol,
-            raw_result: Optional[bool] = False,
+            raw_result: bool | None = False,
         ) -> Symbol:
         return self.index(
                 query,
                 raw_result=raw_result,
                 )
 
-    def insert(self, source: Union[str, Path], **kwargs):
+    def insert(self, source: str | Path, **kwargs):
         # dynamically insert data into the index given a session
         # the data can be:
         #  - a string (e.g. something that the user wants to insert)
@@ -60,7 +60,7 @@ class DocumentRetriever(Expression):
         self.add(text, index_name=self.indexer.index_name, **kwargs)
         self.config(None, save=True, index_name=self.indexer.index_name, **kwargs)
 
-    def parse_source(self, source: str, with_metadata: bool, max_depth: int, **kwargs) -> List[Union[str, 'TextContainer']]:
+    def parse_source(self, source: str, with_metadata: bool, max_depth: int, **kwargs) -> list[Union[str, 'TextContainer']]:
         maybe_path = Path(source)
         if isinstance(source, str) and not (maybe_path.is_file() or maybe_path.is_dir()):
             return Symbol(source).zip(new_dim=self.new_dim)

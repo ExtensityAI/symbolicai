@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 import numpy as np
 import openai
@@ -16,7 +15,7 @@ logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
 class EmbeddingEngine(Engine, OpenAIMixin):
-    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
+    def __init__(self, api_key: str | None = None, model: str | None = None):
         super().__init__()
         logger = logging.getLogger('openai')
         logger.setLevel(logging.WARNING)
@@ -79,6 +78,5 @@ class EmbeddingEngine(Engine, OpenAIMixin):
             if norm == 0:
                 return x.tolist()
             return (x / norm).tolist()
-        else:
-            norm = np.linalg.norm(x, 2, axis=1, keepdims=True)
-            return np.where(norm == 0, x, x / norm).tolist()
+        norm = np.linalg.norm(x, 2, axis=1, keepdims=True)
+        return np.where(norm == 0, x, x / norm).tolist()

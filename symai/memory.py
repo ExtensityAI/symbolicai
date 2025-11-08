@@ -1,8 +1,7 @@
-from typing import List
 
 from . import core_ext
-from .symbol import Expression, Symbol
 from .components import Function
+from .symbol import Expression, Symbol
 
 
 class Memory(Expression):
@@ -25,7 +24,7 @@ class Memory(Expression):
 class SlidingWindowListMemory(Memory):
     def __init__(self, window_size: int = 10, max_size: int = 1000, **kwargs):
         super().__init__(**kwargs)
-        self._memory: List[str] = []
+        self._memory: list[str] = []
         self._window_size: int  = window_size
         self._max_size: int     = max_size
 
@@ -71,7 +70,7 @@ class SlidingWindowStringConcatMemory(Memory):
 
     def store(self, query: str):
         # append to string to memory
-        self._memory += f'{str(query)}{self.marker}'
+        self._memory += f'{query!s}{self.marker}'
 
     def forget(self, query: Symbol, *args, **kwargs):
         # remove substring from memory
@@ -107,7 +106,7 @@ class VectorDatabaseMemory(Memory):
         self.add(Symbol(query).zip(), index_name=self.index_name)
 
     def recall(self, query: str, *args, **kwargs):
-        if not self.enabled: return
+        if not self.enabled: return None
 
         res = self.get(Symbol(query).embed().value, index_top_k=self.top_k, index_name=self.index_name).ast()
 

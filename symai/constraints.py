@@ -21,16 +21,15 @@ class DictFormatConstraint:
             except json.JSONDecodeError as e:
                 raise ConstraintViolationException(f"Invalid JSON: ```json\n{input.value}\n```\n{e}")
             return DictFormatConstraint.check_keys(self.format, gen_dict)
-        elif input.value_type == dict:
+        if input.value_type == dict:
             return DictFormatConstraint.check_keys(self.format, input.value)
-        else:
-            raise ConstraintViolationException(f"Unsupported input type: {input.value_type}")
+        raise ConstraintViolationException(f"Unsupported input type: {input.value_type}")
 
     @staticmethod
     def check_keys(json_format, gen_dict):
         for key, value in json_format.items():
-            if not str(key).startswith('{') and not str(key).endswith('}') and \
-                key not in gen_dict or not isinstance(gen_dict[key], type(value)):
+            if (not str(key).startswith('{') and not str(key).endswith('}') and \
+                key not in gen_dict) or not isinstance(gen_dict[key], type(value)):
                 raise ConstraintViolationException(f"Key `{key}` not found or type `{type(key)}` mismatch")
             if isinstance(gen_dict[key], dict):
                 # on a dictionary, descend recursively

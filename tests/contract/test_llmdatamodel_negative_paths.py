@@ -155,7 +155,7 @@ def test_deeply_nested_union():
     """Test deeply nested union types."""
     DeepUnion = Union[
         int,
-        Union[str, Union[float, Union[bool, bytes]]]
+        str | float | bool | bytes
     ]
 
     class DeepUnionModel(LLMDataModel):
@@ -177,10 +177,7 @@ def test_union_with_conflicting_constraints():
     """Test union types with conflicting field constraints."""
     class ConflictingUnion(LLMDataModel):
         # String must be short, list must be long - creates validation complexity
-        value: Union[
-            str,  # With constraint via validator
-            list[int]  # With different constraint
-        ]
+        value: str | list[int]
 
         @field_validator('value')
         def validate_value(cls, v):

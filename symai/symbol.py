@@ -1,9 +1,9 @@
 import copy
 import html
 import json
+from collections.abc import Callable, Iterator
 from json import JSONEncoder
-from typing import (Any, Callable, Dict, Generic, Iterator, List, Optional,
-                    Tuple, Type, TypeVar)
+from typing import Any, Generic, TypeVar
 
 import numpy as np
 from box import Box
@@ -30,7 +30,7 @@ class SymbolEncoder(JSONEncoder):
         return JSONEncoder.default(self, o)
 
 
-class Metadata(object):
+class Metadata:
     # create a method that allow to dynamically assign a attribute if not in __dict__
     # example: metadata = Metadata()
     # metadata.some_new_attribute = 'some_value'
@@ -111,7 +111,7 @@ class Metadata(object):
         _val = ''
         if self.value is not None:
             _val += str(self.value)
-        return _val + f"Properties({str({k: str(v) for k, v in self.__dict__.items() if not k.startswith('_')})})"
+        return _val + f"Properties({ {k: str(v) for k, v in self.__dict__.items() if not k.startswith('_')}!s})"
 
     def __repr__(self) -> str:
         '''
@@ -128,7 +128,7 @@ class Metadata(object):
 
 
 class Linker(Metadata):
-    def keys(self) -> List[str]:
+    def keys(self) -> list[str]:
         '''
         Get all keys of the linker.
 
@@ -137,7 +137,7 @@ class Linker(Metadata):
         '''
         return list(self.results.keys())
 
-    def values(self) -> List[Any]:
+    def values(self) -> list[Any]:
         '''
         Get all values of the linker.
 
@@ -168,7 +168,7 @@ class Linker(Metadata):
             assert len(res) == 1, f'Found {len(res)} results for name {name}. Expected 1.'
         if len(res) == 0:
             return None
-        elif len(res) == 1:
+        if len(res) == 1:
             return res[0]
         return res
 
@@ -212,10 +212,10 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
     _primitives           = SYMBOL_PRIMITIVES
     _metadata             = Metadata()
     _metadata._primitives = {}
-    _dynamic_context: Dict[str, List[str]] = {}
+    _dynamic_context: dict[str, list[str]] = {}
     _RESERVED_PROPERTIES = {'graph', 'linker', 'parent', 'children', 'metadata', 'value', 'root', 'nodes', 'edges', 'global_context', 'static_context', 'dynamic_context', 'shape'}
 
-    def __init__(self, *value, static_context: Optional[str] = '', dynamic_context: Optional[str] = None, **kwargs) -> None:
+    def __init__(self, *value, static_context: str | None = '', dynamic_context: str | None = None, **kwargs) -> None:
         '''
         Initialize a Symbol instance with a specified value. Unwraps nested symbols.
 
@@ -252,7 +252,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
         '''
         def _func(k, v):
             # check if property is of type Symbol and not private and a class variable (not a function)
-            if isinstance(v, Symbol) and not k.startswith('_') and not v is self:
+            if isinstance(v, Symbol) and not k.startswith('_') and v is not self:
                 v._parent = self
                 self._children.append(v)
             # else if iterable, check if it contains symbols
@@ -268,7 +268,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
         if len(args) == 0:
             return None
         # check if args is a single value
-        elif len(args) == 1:
+        if len(args) == 1:
             # get the first args value
             value = args[0]
 
@@ -304,7 +304,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
 
             return value
 
-        elif len(args) > 1:
+        if len(args) > 1:
             return [self._unwrap_symbols_args(a, nested=True) if isinstance(a, Symbol) else a for a in args]
 
     def _construct_dependency_graph(self, *value):
@@ -316,16 +316,16 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
         '''
         # for each value
         for v in value:
-            if isinstance(v, Symbol) and not v is self:
+            if isinstance(v, Symbol) and v is not self:
                 # new instance becomes child of previous instance
                 v._parent = self
                 # add new instance to children of previous instance
                 self._children.append(v)
 
     def __new__(cls, *args,
-                mixin: Optional[bool] = None,
-                primitives: Optional[List[Type]] = None,
-                callables: Optional[List[Tuple[str, Callable]]] = None,
+                mixin: bool | None = None,
+                primitives: list[type] | None = None,
+                callables: list[tuple[str, Callable]] | None = None,
                 semantic: bool = False,
                 **kwargs) -> "Symbol":
         '''
@@ -411,7 +411,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
             value = self.value if self.value is not None else None
             if isinstance(value, Exception):
                 raise value
-            raise AttributeError(f'<class \'{self.__class__.__name__}\'> or nested value of {str(type(value))} have no attribute \'{name}\'')
+            raise AttributeError(f'<class \'{self.__class__.__name__}\'> or nested value of {type(value)!s} have no attribute \'{name}\'')
         except AttributeError as ex:
             # if has attribute and is public function
             if hasattr(self.value, name) and not name.startswith('_'):
@@ -440,7 +440,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
         return memoryview(self.embedding)
 
     @staticmethod
-    def symbols(*values) -> List["Symbol"]:
+    def symbols(*values) -> list["Symbol"]:
         '''
         Create a list of Symbol instances from a list of values.
 
@@ -505,7 +505,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
             return obj
         return base_cls()
 
-    def __getstate__(self) -> Dict[str, Any]:
+    def __getstate__(self) -> dict[str, Any]:
         '''
         Get the state of the symbol for serialization.
 
@@ -532,7 +532,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
         self._parent     = None
         self._children   = []
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         '''
         Get the json-serializable dictionary representation of the Symbol instance.
 
@@ -609,7 +609,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
         return str(self.value).__hash__()
 
     @property
-    def metadata(self) -> Dict[str, Any]:
+    def metadata(self) -> dict[str, Any]:
         '''
         Get the metadata associated with the symbol.
 
@@ -692,7 +692,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
         return root
 
     @property
-    def nodes(self) -> List["Symbol"]:
+    def nodes(self) -> list["Symbol"]:
         '''
         Get all nodes descending recursively from the symbol.
 
@@ -709,7 +709,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
         return nodes
 
     @property
-    def edges(self) -> List[tuple]:
+    def edges(self) -> list[tuple]:
         '''
         Get all edges descending recursively from the symbol.
 
@@ -726,7 +726,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
         return edges
 
     @property
-    def graph(self) -> (List["Symbol"], List[tuple]):
+    def graph(self) -> (list["Symbol"], list[tuple]):
         '''
         Get the graph representation of the symbol.
 
@@ -736,7 +736,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
         return self.nodes, self.edges
 
     @property
-    def linker(self) -> List["Symbol"]:
+    def linker(self) -> list["Symbol"]:
         '''
         Returns the link object metadata by descending recursively from the root of the symbol to the root_link object.
 
@@ -756,7 +756,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
         return self._parent
 
     @property
-    def children(self) -> List["Symbol"]:
+    def children(self) -> list["Symbol"]:
         '''
         Get the children of the symbol.
 
@@ -777,7 +777,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
             Any: The result of the forward method.
         '''
         # transport results to the root node for global access
-        if not self is self.root and not self.metadata.detach:
+        if self is not self.root and not self.metadata.detach:
             ref = self.root.metadata
             if ref.root_link is None:
                 ref.root_link = Linker()
@@ -788,12 +788,12 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
                 prev = list(ref.root_link.results.values())[-1] # get previous result
             # create new symbol to avoid circular references
             res_ = Symbol(sym)
-            if prev is not None and not prev is res_.root:
+            if prev is not None and prev is not res_.root:
                 prev.children.append(res_.root)
                 res_.root._parent = prev
             ref.root_link.results[self.__repr__()] = res_
 
-    def adapt(self, context: str, types: List[Type] = []) -> None:
+    def adapt(self, context: str, types: list[type] = []) -> None:
         '''
         Update the dynamic context with a given runtime context.
 
@@ -814,7 +814,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
 
             Symbol._dynamic_context[type_].append(str(context))
 
-    def clear(self, types: List[Type] = []) -> None:
+    def clear(self, types: list[type] = []) -> None:
         '''
         Clear the dynamic context associated with this symbol type.
         '''
@@ -859,14 +859,13 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
         '''
         if self.value is None:
             return ''
-        elif isinstance(self.value, list) or isinstance(self.value, np.ndarray) or isinstance(self.value, tuple):
+        if isinstance(self.value, list) or isinstance(self.value, np.ndarray) or isinstance(self.value, tuple):
             return str([str(v) for v in self.value])
-        elif isinstance(self.value, dict):
+        if isinstance(self.value, dict):
             return str({k: str(v) for k, v in self.value.items()})
-        elif isinstance(self.value, set):
+        if isinstance(self.value, set):
             return str({str(v) for v in self.value})
-        else:
-            return str(self.value)
+        return str(self.value)
 
     def __repr__(self, simplified: bool = False) -> str:
         '''
@@ -960,7 +959,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
 # TODO: Workaround for Python bug to enable runtime assignment of lambda function to new Symbol objects.
 # Currently creating multiple lambda functions within class __new__ definition only links last lambda function to all new Symbol attribute assignments.
 # Need to contact Python developers to fix this bug.
-class Call(object):
+class Call:
     def __new__(self, name, callable: Callable) -> Any:
         '''
         Prepare a callable for use in a Symbol instance.
@@ -976,7 +975,7 @@ class Call(object):
         return (name, _func)
 
 
-class GlobalSymbolPrimitive(object):
+class GlobalSymbolPrimitive:
     def __new__(self, name, callable: Callable) -> Any:
         '''
         Prepare a callable for use in a Symbol instance.
@@ -1060,7 +1059,7 @@ class Expression(Symbol):
         return json.dumps(self, cls=ExpressionEncoder)
 
     @property
-    def sym_return_type(self) -> Type:
+    def sym_return_type(self) -> type:
         '''
         Returns the casting type of this expression.
 
@@ -1070,7 +1069,7 @@ class Expression(Symbol):
         return self._sym_return_type
 
     @sym_return_type.setter
-    def sym_return_type(self, type: Type) -> None:
+    def sym_return_type(self, type: type) -> None:
         '''
         Sets the casting type of this expression.
 
@@ -1090,10 +1089,10 @@ class Expression(Symbol):
         Returns:
             Symbol: The evaluated result of the implemented forward method.
         '''
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @staticmethod
-    def command(engines: List[str] = ['all'], **kwargs) -> 'Symbol':
+    def command(engines: list[str] = ['all'], **kwargs) -> 'Symbol':
         '''
         Execute command(s) on engines.
 
@@ -1110,7 +1109,7 @@ class Expression(Symbol):
         return Expression(_func(Expression()))
 
     @staticmethod
-    def register(engines: Dict[str, Any], **kwargs) -> 'Symbol':
+    def register(engines: dict[str, Any], **kwargs) -> 'Symbol':
         '''
         Configure multiple engines.
 

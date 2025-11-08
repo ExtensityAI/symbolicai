@@ -1,9 +1,7 @@
 import base64
-import io
 import logging
 import mimetypes
 import re
-import urllib.parse
 from copy import deepcopy
 from pathlib import Path
 
@@ -12,8 +10,6 @@ from google import genai
 from google.genai import types
 
 from ....components import SelfPrompt
-from ....misc.console import ConsoleStyle
-from ....symbol import Symbol
 from ....utils import CustomUserWarning, encode_media_frames
 from ...base import Engine
 from ...mixin.google import GoogleMixin
@@ -100,7 +96,7 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
             return count_response.total_tokens
         except Exception as e:
             logging.error(f"Gemini count_tokens failed: {e}")
-            CustomUserWarning(f"Error counting tokens for Gemini: {str(e)}", raise_with=RuntimeError)
+            CustomUserWarning(f"Error counting tokens for Gemini: {e!s}", raise_with=RuntimeError)
 
     def compute_remaining_tokens(self, prompts: list) -> int:
         CustomUserWarning("Token counting not implemented for Gemini", raise_with=NotImplementedError)
@@ -117,9 +113,8 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
             if doc_path.startswith('http'):
                 CustomUserWarning("URL documents not yet supported for Gemini")
                 return None
-            else:
-                uploaded_file = genai.upload_file(doc_path)
-                return uploaded_file
+            uploaded_file = genai.upload_file(doc_path)
+            return uploaded_file
         except Exception as e:
             CustomUserWarning(f"Failed to process document: {e}")
             return None
@@ -203,7 +198,7 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
                     image_parts.append(genai.types.Part(inline_data=genai.types.Blob(mime_type=mime_type, data=image_bytes)))
 
             except Exception as e:
-                CustomUserWarning(f"Failed to process image source '{img_src}'. Error: {str(e)}", raise_with=ValueError)
+                CustomUserWarning(f"Failed to process image source '{img_src}'. Error: {e!s}", raise_with=ValueError)
 
         return image_parts
 
@@ -219,10 +214,9 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
             if video_path.startswith('http'):
                 CustomUserWarning("URL videos not yet supported for Gemini")
                 return None
-            else:
-                # Upload local video
-                uploaded_file = genai.upload_file(video_path)
-                return uploaded_file
+            # Upload local video
+            uploaded_file = genai.upload_file(video_path)
+            return uploaded_file
         except Exception as e:
             CustomUserWarning(f"Failed to process video: {e}")
             return None
@@ -239,10 +233,9 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
             if audio_path.startswith('http'):
                 CustomUserWarning("URL audio not yet supported for Gemini")
                 return None
-            else:
-                # Upload local audio
-                uploaded_file = genai.upload_file(audio_path)
-                return uploaded_file
+            # Upload local audio
+            uploaded_file = genai.upload_file(audio_path)
+            return uploaded_file
         except Exception as e:
             CustomUserWarning(f"Failed to process audio: {e}")
             return None
@@ -475,7 +468,7 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
             _rsp_fmt = argument.prop.response_format
             assert _rsp_fmt.get('type') is not None, 'Response format type is required!'
             if _rsp_fmt["type"] == "json_object":
-                system_content += f'<RESPONSE_FORMAT/>\nYou are a helpful assistant designed to output JSON.\n\n'
+                system_content += '<RESPONSE_FORMAT/>\nYou are a helpful assistant designed to output JSON.\n\n'
 
         ref = argument.prop.instance
         static_ctxt, dyn_ctxt = ref.global_context
@@ -487,11 +480,11 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
 
         payload = argument.prop.payload
         if argument.prop.payload:
-            system_content += f"<ADDITIONAL_CONTEXT/>\n{str(payload)}\n\n"
+            system_content += f"<ADDITIONAL_CONTEXT/>\n{payload!s}\n\n"
 
         examples: list[str] = argument.prop.examples
         if examples and len(examples) > 0:
-            system_content += f"<EXAMPLES/>\n{str(examples)}\n\n"
+            system_content += f"<EXAMPLES/>\n{examples!s}\n\n"
 
         # Handle multimodal content
         processed_input_str = str(argument.prop.processed_input)
@@ -507,7 +500,7 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
         user_content += f"{suffix}"
 
         if argument.prop.template_suffix:
-            system_content += f' You will only generate content for the placeholder `{str(argument.prop.template_suffix)}` following the instructions and the provided context information.\n\n'
+            system_content += f' You will only generate content for the placeholder `{argument.prop.template_suffix!s}` following the instructions and the provided context information.\n\n'
 
         # Handle self-prompting
         if argument.prop.instance._kwargs.get('self_prompt', False) or argument.prop.self_prompt:

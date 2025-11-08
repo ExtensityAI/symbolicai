@@ -1,11 +1,8 @@
 import asyncio
 import logging
-from multiprocessing import Value
-from typing import Optional
 
 import aiohttp
 import nest_asyncio
-import numpy as np
 
 from ....core_ext import retry
 from ....utils import CustomUserWarning
@@ -92,14 +89,13 @@ class LlamaCppEmbeddingEngine(Engine):
                 sock_connect=self.timeout_params['connect'],
                 sock_read=self.timeout_params['read']
             )
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.post(
-                    f"{self.server_endpoint}/v1/embeddings",
-                    json={"content": text, "embd_normalize": embd_normalize}
-                ) as res:
-                    if res.status != 200:
-                        raise ValueError(f"Request failed with status code: {res.status}")
-                    return await res.json()
+            async with aiohttp.ClientSession(timeout=timeout) as session, session.post(
+                f"{self.server_endpoint}/v1/embeddings",
+                json={"content": text, "embd_normalize": embd_normalize}
+            ) as res:
+                if res.status != 200:
+                    raise ValueError(f"Request failed with status code: {res.status}")
+                return await res.json()
 
         return await _make_request()
 
@@ -120,7 +116,7 @@ class LlamaCppEmbeddingEngine(Engine):
         try:
             res = loop.run_until_complete(self._arequest(inp, embd_normalize))
         except Exception as e:
-            raise ValueError(f"Request failed with error: {str(e)}")
+            raise ValueError(f"Request failed with error: {e!s}")
 
         if res is not None:
             output = [r["embedding"] for r in res] # B x 1 x D

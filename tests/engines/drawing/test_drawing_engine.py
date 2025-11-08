@@ -3,7 +3,6 @@ from pathlib import Path
 
 import pytest
 
-from symai import Symbol
 from symai.backend.settings import SYMAI_CONFIG
 from symai.extended import Interface
 

@@ -1,9 +1,9 @@
 from pathlib import Path
-from typing import Optional
+
 from git import Repo
 
-from ..symbol import Expression
 from ..backend.settings import HOME_PATH
+from ..symbol import Expression
 
 
 class RepositoryCloner(Expression):
@@ -16,7 +16,7 @@ class RepositoryCloner(Expression):
       repo_path (Optional[str]): The path where to clone the repository.
                                  By default it will be at '~/.symai/repos/'.
     """
-    def __init__(self, repo_path: Optional[str] = None, **kwargs):
+    def __init__(self, repo_path: str | None = None, **kwargs):
         super().__init__(**kwargs)
         self.repo_dir = HOME_PATH / 'repos/' if repo_path is None else Path(repo_path)
         if not self.repo_dir.exists():

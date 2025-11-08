@@ -9,7 +9,6 @@ from symai.backend.settings import SYMAI_CONFIG
 from symai.components import DynamicEngine, MetadataTracker
 from symai.extended import Interface
 from symai.functional import EngineRepository
-from symai.symbol import Metadata
 from symai.utils import RuntimeInfo
 
 NEUROSYMBOLIC_ENGINE = SYMAI_CONFIG.get('NEUROSYMBOLIC_ENGINE_MODEL', '') in OPENAI_CHAT_MODELS + OPENAI_REASONING_MODELS
@@ -94,7 +93,7 @@ def test_dynamic_engine_switching():
     anthropic_api_key = os.environ.get("ANTHROPIC_API_KEY")
 
     if openai_api_key is None or anthropic_api_key is None:
-        raise EnvironmentError(
+        raise OSError(
             "Missing environment variables: OPENAI_API_KEY and/or ANTHROPIC_API_KEY"
         )
 

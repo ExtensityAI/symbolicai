@@ -1,8 +1,7 @@
 from .. import core
+from ..post_processors import CodeExtractPostProcessor
 from ..pre_processors import PreProcessor
 from ..symbol import Expression, Symbol
-from ..post_processors import CodeExtractPostProcessor
-
 
 BIB_DESCRIPTION = """[Description]
 You take in a text with references to papers and return a list of biblatex entries.
@@ -69,7 +68,7 @@ Multimodal Few-Shot Learning with Frozen Language Models Maria Tsimpoukelli
 
 class BibTexPreProcessor(PreProcessor):
     def __call__(self, argument):
-        return '>>>\n{}\n\n<<<\n'.format(str(argument.args[0]))
+        return f'>>>\n{argument.args[0]!s}\n\n<<<\n'
 
 
 class BibTexParser(Expression):

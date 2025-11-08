@@ -1,16 +1,15 @@
 import argparse
 import os
 
+from . import SYMAI_VERSION
 from .components import Lambda, Try
 from .core import few_shot
 from .misc.console import ConsoleStyle
 from .misc.loader import Loader
 from .post_processors import StripPostProcessor
 from .pre_processors import PreProcessor
-from .symbol import Expression
 from .shellsv import run as shellsv_run
-from . import SYMAI_VERSION
-
+from .symbol import Expression
 
 SHELL_CONTEXT = """[Description]
 This shell program is the command interpreter on the Linux systems, MacOS and Windows PowerShell.
@@ -47,7 +46,7 @@ $> New-Item -ItemType Directory -Path <path> EOF
 
 class ShellPreProcessor(PreProcessor):
     def __call__(self, argument):
-        return '// {}\n$>'.format(str(argument.prop.instance))
+        return f'// {argument.prop.instance!s}\n$>'
 
 
 class Shell(Expression):
