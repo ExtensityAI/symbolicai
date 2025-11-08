@@ -1,16 +1,17 @@
 import argparse
+
 try:
     import z3
 except ImportError:
     z3 = None
 
-from .conversation import Conversation
 from .. import core
 from ..components import Execute
-from ..post_processors import StripPostProcessor, CodeExtractPostProcessor
+from ..post_processors import CodeExtractPostProcessor, StripPostProcessor
 from ..pre_processors import PreProcessor
 from ..prompts import Prompt
 from ..symbol import Expression, Symbol
+from .conversation import Conversation
 
 #############################################################################################
 #
@@ -57,12 +58,12 @@ $> Max is 2 years older than his brother. In 5 years, Max will be 3 times as old
 
 class ProblemClassifierPreProcessor(PreProcessor):
     def __call__(self, argument):
-        return '$> {}\n//'.format(str(argument.prop.instance))
+        return f'$> {argument.prop.instance!s}\n//'
 
 
 class OptionsPreProcessor(PreProcessor):
     def __call__(self, argument):
-        return '$> :{}: == :{}: =>'.format(str(argument.prop.instance), str(argument.args[0]))
+        return f'$> :{argument.prop.instance!s}: == :{argument.args[0]!s}: =>'
 
 
 class ProblemClassifier(Expression):
@@ -105,7 +106,7 @@ class ProblemClassifier(Expression):
 
 class FormulaCheckerPreProcessor(PreProcessor):
     def __call__(self, argument):
-        return '$> {} =>'.format(str(argument.prop.instance))
+        return f'$> {argument.prop.instance!s} =>'
 
 
 class FormulaChecker(Expression):
@@ -145,7 +146,7 @@ class FormulaChecker(Expression):
 
 class FormulaWriterPreProcessor(PreProcessor):
     def __call__(self, argument):
-        return '$> {} =>'.format(str(argument.prop.instance))
+        return f'$> {argument.prop.instance!s} =>'
 
 
 class FormulaWriter(Expression):
@@ -212,9 +213,8 @@ class SATSolver(Expression):
             m = S.model()
             # Return the solution
             return m[query]
-        else:
-            print("Cannot solve the puzzle. Returned: " + str(r))
-            return None
+        print("Cannot solve the puzzle. Returned: " + str(r))
+        return None
 
 
 #############################################################################################
@@ -244,22 +244,15 @@ class Solver(Expression):
         classifier = ProblemClassifier(sym)
         problem = classifier(**kwargs)
 
-        if 'Arithmetics formula' == problem:
+        if problem == 'Arithmetics formula' or problem == 'Equations':
             formula = self.rewrite_formula(sym, **kwargs)
             print(formula)
-        elif 'Equations' == problem:
-            formula = self.rewrite_formula(sym, **kwargs)
-            print(formula)
-        elif 'Implication and logical expressions' == problem:
+        elif problem == 'Implication and logical expressions':
             res     = self.conv(sym, **kwargs)
             code    = self.pp(str(res), None, tag="python")
             formula = self.solver(code, lambda: 'German')
             print(formula)
-        elif 'Probability and statistics' == problem:
-            raise NotImplementedError('This feature is not yet implemented.')
-        elif 'Linear algebra' == problem:
-            raise NotImplementedError('This feature is not yet implemented.')
-        elif 'Linguistic problem with relations' == problem:
+        elif problem == 'Probability and statistics' or problem == 'Linear algebra' or problem == 'Linguistic problem with relations':
             raise NotImplementedError('This feature is not yet implemented.')
         else:
             return "Sorry, something went wrong. Please check if your backend is available and try again or report an issue to the devs. :("

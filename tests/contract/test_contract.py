@@ -1,8 +1,6 @@
 import logging
 import time
-from typing import List, Optional
 
-import numpy as np
 import pytest
 from pydantic import Field
 
@@ -68,24 +66,24 @@ class OntologyClass(LLMDataModel):
 
 
 class SimpleOntology(LLMDataModel):
-    classes: List[OntologyClass] = Field(default_factory=list, description="List of classes in the ontology")
+    classes: list[OntologyClass] = Field(default_factory=list, description="List of classes in the ontology")
 
 
 class KGState(LLMDataModel):
-    triplets: List[Triplet] = Field(default_factory=list, description="List of triplets.")
+    triplets: list[Triplet] = Field(default_factory=list, description="List of triplets.")
 
 
 class TripletExtractorInput(LLMDataModel):
     text: str = Field(description="Text to extract triplets from.")
     ontology: SimpleOntology = Field(description="Simplified ontology schema for testing.")
-    state: Optional[KGState] = Field(default=None, description="Existing knowledge graph state (triplets), if any.")
+    state: KGState | None = Field(default=None, description="Existing knowledge graph state (triplets), if any.")
 
 
 class IntermediateAnalysisResult(LLMDataModel):
     """A different type that the act method will produce"""
     analyzed_text: str = Field(description="Text with analysis markers")
-    possible_entities: List[str] = Field(default_factory=list, description="Potential entities identified")
-    possible_relationships: List[str] = Field(default_factory=list, description="Potential relationships identified")
+    possible_entities: list[str] = Field(default_factory=list, description="Potential entities identified")
+    possible_relationships: list[str] = Field(default_factory=list, description="Potential relationships identified")
     confidence_threshold: float = Field(default=0.7, description="Confidence threshold used")
 
 
@@ -195,7 +193,7 @@ class TestTripletExtractor(Expression):
             raise self.contract_exception or ValueError("Contract failed!")
         return self.contract_result
 
-    def extend_triplets(self, new_triplets: List[Triplet]):
+    def extend_triplets(self, new_triplets: list[Triplet]):
         """Store extracted triplets"""
         if new_triplets:
             self._triplets.update(new_triplets)
@@ -315,7 +313,7 @@ def test_act_transformation():
     ontology = SimpleOntology(classes=[OntologyClass(name="ML")])
     extractor = TestTripletExtractor()
 
-    act_method = getattr(extractor, 'act')
+    act_method = extractor.act
 
     input_data = TripletExtractorInput(
         text="Neural Networks are ML models.",
@@ -595,7 +593,7 @@ def test_act_contract_state_interaction():
                                                  object=Entity(name=input.text[:10]),
                                                  confidence=0.1)])
             # This path should not be taken if pre-failed and fallback occurred.
-            if self.contract_result is None: raise ValueError("Contract result none in forward for success path");
+            if self.contract_result is None: raise ValueError("Contract result none in forward for success path")
             return self.contract_result
 
     contract_no_remedy_pre = StateInteractionNoRemedyPreFail()
@@ -747,7 +745,7 @@ def test_contract_perf_stats():
     for op in expected_operations:
         assert op in stats, f"Operation {op} missing from stats"
 
-    assert "overhead" in stats, f"Overhead tracking missing from stats"
+    assert "overhead" in stats, "Overhead tracking missing from stats"
 
     assert stats["act_execution"]["count"] == 3
 
@@ -1190,7 +1188,7 @@ def test_hybrid_llm_datamodel_to_optional_list_of_str():
                 "otherwise echo the words as a JSON list of strings."
             )
 
-        def forward(self, input: WordBag, **kwargs) -> Optional[list[str]]:
+        def forward(self, input: WordBag, **kwargs) -> list[str] | None:
             if self.contract_result is None:
                 raise self.contract_exception or ValueError("Contract failed!")
             return self.contract_result

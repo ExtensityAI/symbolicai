@@ -2,7 +2,7 @@ import inspect
 import logging
 import time
 from collections import defaultdict
-from typing import Callable
+from collections.abc import Callable
 
 import numpy as np
 from beartype import beartype
@@ -14,8 +14,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from .components import Function
-from .models import (LLMDataModel, TypeValidationError,
-                     build_dynamic_llm_datamodel)
+from .models import LLMDataModel, TypeValidationError, build_dynamic_llm_datamodel
 from .symbol import Expression
 
 
@@ -314,7 +313,7 @@ Important guidelines:
                         # If we are in the last attempt and semantic validation fails, result will be None and we propagate the error
                         if i == self.retry_params["tries"]:
                             result = None
-                            errors.append(f"Semantic validation failed with:\n{str(e)}")
+                            errors.append(f"Semantic validation failed with:\n{e!s}")
                             break # We break to avoid going into the remedy loop
                         raise e
                 break
@@ -330,7 +329,7 @@ Important guidelines:
 
                 errors.append(error_str)
 
-                logger.error(f"Validation errors identified!")
+                logger.error("Validation errors identified!")
                 if self.verbose:
                     self.display_panel(
                         "\n".join(errors) if self.accumulate_errors else error_str,
@@ -354,9 +353,9 @@ Important guidelines:
                 logger.info("Applied remedy function with updated context!")
 
         if result is None:
-            logger.error(f"All validation attempts failed!")
+            logger.error("All validation attempts failed!")
             if self.retry_params['graceful']:
-                return
+                return None
             raise TypeValidationError(
                 prompt=prompt,
                 result=json_str,
@@ -453,7 +452,7 @@ class contract:
         try:
             data_model = self.f_type_validation_remedy(prompt, f_semantic_conditions=f_semantic_conditions, **remedy_kwargs)
         except Exception as e:
-            logger.error(f"Type validation failed with exception!")
+            logger.error("Type validation failed with exception!")
             raise e
         return data_model
 
@@ -470,28 +469,27 @@ class contract:
                 assert wrapped_self.pre(input)
                 logger.success("Pre-condition validation successful!")
                 return input
-            except Exception as e:
+            except Exception:
                 logger.exception("Pre-condition validation failed!")
                 self.f_type_validation_remedy.register_expected_data_model(input, attach_to="output", override=True)
                 input = self._try_remedy_with_exception(prompt=wrapped_self.prompt, f_semantic_conditions=[wrapped_self.pre], **remedy_kwargs)
             finally:
                 wrapped_self._contract_timing[it]["input_validation"] = time.perf_counter() - op_start
             return input
-        else:
-            if hasattr(wrapped_self, 'pre'):
-                logger.info("Validating pre-conditions without remedy...")
-                op_start = time.perf_counter()
-                try:
-                    assert wrapped_self.pre(input)
-                except Exception as e:
-                    logger.exception(f"Pre-condition validation failed")
-                    raise e
-                finally:
-                    wrapped_self._contract_timing[it]["input_validation"] = time.perf_counter() - op_start
-                logger.success("Pre-condition validation successful!")
-                return input
-            logger.info("Skip; no pre-condition validation was required!")
+        if hasattr(wrapped_self, 'pre'):
+            logger.info("Validating pre-conditions without remedy...")
+            op_start = time.perf_counter()
+            try:
+                assert wrapped_self.pre(input)
+            except Exception as e:
+                logger.exception("Pre-condition validation failed")
+                raise e
+            finally:
+                wrapped_self._contract_timing[it]["input_validation"] = time.perf_counter() - op_start
+            logger.success("Pre-condition validation successful!")
             return input
+        logger.info("Skip; no pre-condition validation was required!")
+        return input
 
     def _validate_output(self, wrapped_self, input, output, it, **remedy_kwargs):
         logger.info("Starting output validation...")
@@ -505,7 +503,7 @@ class contract:
             if output is None: # output is None when graceful mode is enabled
                 return output
         except Exception as e:
-            logger.exception(f"Type creation failed!")
+            logger.exception("Type creation failed!")
             raise e
         finally:
             wrapped_self._contract_timing[it]["output_validation"] = time.perf_counter() - op_start
@@ -522,26 +520,25 @@ class contract:
                 assert wrapped_self.post(output)
                 logger.success("Post-condition validation successful!")
                 return output
-            except Exception as e:
+            except Exception:
                 logger.exception("Post-condition validation failed!")
                 output = self._try_remedy_with_exception(prompt=wrapped_self.prompt, f_semantic_conditions=[wrapped_self.post], **remedy_kwargs)
             finally:
                 wrapped_self._contract_timing[it]["output_validation"] += (time.perf_counter() - op_start)
             logger.success("Post-condition validation successful!")
             return output
-        else:
-            if hasattr(wrapped_self, "post"):
-                logger.info("Validating post-conditions without remedy...")
-                op_start = time.perf_counter()
-                try:
-                    assert wrapped_self.post(output)
-                except Exception as e:
-                    logger.exception("Post-condition validation failed!")
-                    raise e
-                finally:
-                    wrapped_self._contract_timing[it]["output_validation"] = time.perf_counter() - op_start
-                logger.success("Post-condition validation successful!")
-                return output
+        if hasattr(wrapped_self, "post"):
+            logger.info("Validating post-conditions without remedy...")
+            op_start = time.perf_counter()
+            try:
+                assert wrapped_self.post(output)
+            except Exception as e:
+                logger.exception("Post-condition validation failed!")
+                raise e
+            finally:
+                wrapped_self._contract_timing[it]["output_validation"] = time.perf_counter() - op_start
+            logger.success("Post-condition validation successful!")
+            return output
         logger.info("Skip; no post-condition validation was required!")
         return output
 
@@ -573,7 +570,7 @@ class contract:
         try:
             act_output = act_method(input, **act_kwargs)
         except Exception as e:
-            logger.exception(f"'act' method execution failed")
+            logger.exception("'act' method execution failed")
             raise e
         finally:
             wrapped_self._contract_timing[it]["act_execution"] = time.perf_counter() - op_start
@@ -618,7 +615,7 @@ class contract:
                 input = input_type(value=input)
 
             maybe_payload = getattr(wrapped_self, "payload", None)
-            maybe_template = getattr(wrapped_self, "template")
+            maybe_template = wrapped_self.template
             if inspect.ismethod(maybe_template):
                 # `template` is a primitive in symbolicai case in which we actually don't have a template
                 maybe_template = None
@@ -655,7 +652,7 @@ class contract:
                 wrapped_self.contract_exception = None
 
             except Exception as e:
-                logger.exception(f"Contract execution failed in main path!")
+                logger.exception("Contract execution failed in main path!")
                 wrapped_self.contract_successful = False
                 wrapped_self.contract_exception = e
                 # contract_result remains None or its value before the exception.
@@ -866,7 +863,7 @@ class BaseStrategy(TypeValidationFunction):
 
     @property
     def static_context(self):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @property
     def template(self):

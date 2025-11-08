@@ -1,6 +1,4 @@
-from ... import core
-from ...backend.engines.index.engine_vectordb import (VectorDBIndexEngine,
-                                                      VectorDBResult)
+from ...backend.engines.index.engine_vectordb import VectorDBIndexEngine, VectorDBResult
 from ...symbol import Expression
 from ...utils import CustomUserWarning
 
@@ -26,10 +24,10 @@ class naive_vectordb(Expression):
             if isinstance(query, list):
                 for q in query:
                     self.add(doc=[q], index_name=index, **kwargs)
-                return
+                return None
             self.add(doc=[query], index_name=index, **kwargs)
-            return
+            return None
         if operation == "config":
             self.config(path=query, index_name=index, storage_file=storage_file, **kwargs)
-            return
+            return None
         CustomUserWarning(f"Operation not supported: {operation}", raise_with=NotImplementedError)

@@ -1,1 +1,0 @@
-from .yann_lecun import YannLeCun

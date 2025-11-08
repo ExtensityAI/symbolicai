@@ -1,10 +1,10 @@
 import os
 import pickle
+from collections.abc import Callable
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Callable, List, Optional
+from typing import Any
 
-from ..components import FileReader, Indexer
+from ..components import FileReader
 from ..formatter import TextContainerFormatter
 from ..interfaces import Interface
 from ..memory import SlidingWindowStringConcatMemory
@@ -23,10 +23,10 @@ class CodeFormatter:
 class Conversation(SlidingWindowStringConcatMemory):
     def __init__(
             self,
-            init: Optional[str] = None,
-            file_link: Optional[List[str]] = None,
-            url_link: Optional[List[str]] = None,
-            index_name: Optional[str] = None,
+            init: str | None = None,
+            file_link: list[str] | None = None,
+            url_link: list[str] | None = None,
+            index_name: str | None = None,
             auto_print: bool = True,
             truncation_percentage: float = 0.8,
             truncation_type: str = 'head',
@@ -79,17 +79,17 @@ class Conversation(SlidingWindowStringConcatMemory):
             CustomUserWarning("Index not supported for conversation class.", raise_with=NotImplementedError)
 
     def store_system_message(self, message: str, *args, **kwargs):
-        val = f"[SYSTEM_INSTRUCTION::]: <<<\n{str(message)}\n>>>\n"
+        val = f"[SYSTEM_INSTRUCTION::]: <<<\n{message!s}\n>>>\n"
         self.store(val)
 
     def store_file(self, file_path: str, *args, **kwargs):
         content = self.reader(file_path)
-        val = f"[DATA::{file_path}]: <<<\n{str(content)}\n>>>\n"
+        val = f"[DATA::{file_path}]: <<<\n{content!s}\n>>>\n"
         self.store(val)
 
     def store_url(self, url: str, *args, **kwargs):
         content = self.scraper(url)
-        val = f"[DATA::{url}]: <<<\n{str(content)}\n>>>\n"
+        val = f"[DATA::{url}]: <<<\n{content!s}\n>>>\n"
         self.store(val)
 
     @staticmethod
@@ -130,7 +130,7 @@ class Conversation(SlidingWindowStringConcatMemory):
             CustomUserWarning("Index not supported for conversation class.", raise_with=NotImplementedError)
         return self
 
-    def commit(self, target_file: str = None, formatter: Optional[Callable] = None):
+    def commit(self, target_file: str = None, formatter: Callable | None = None):
         if target_file and isinstance(target_file, str):
             file_link = target_file
         else:
@@ -161,7 +161,7 @@ class Conversation(SlidingWindowStringConcatMemory):
     def build_tag(self, tag: str, query: str) -> str:
         # get timestamp in string format
         timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S:%f")
-        return str(f"[{tag}{timestamp}]: <<<\n{str(query)}\n>>>\n")
+        return str(f"[{tag}{timestamp}]: <<<\n{query!s}\n>>>\n")
 
     def forward(self, query: str, *args, **kwargs):
         # dynamic takes precedence over static
@@ -190,7 +190,7 @@ class Conversation(SlidingWindowStringConcatMemory):
 
             search_query = query | '\n' | '\n'.join(memory_shards)
             if kwargs.get('use_seo_opt'):
-                search_query = self.seo_opt(f'[Query]:' | search_query)
+                search_query = self.seo_opt('[Query]:' | search_query)
             memory = self.index(search_query, *args, **kwargs)
 
             if 'raw_result' in kwargs:
@@ -211,7 +211,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         res = self.recall(query, *args, payload=payload, **kwargs)
 
         # if user is requesting to preview the response, then return only the preview result
-        if 'preview' in kwargs and kwargs['preview']:
+        if kwargs.get('preview'):
             if self.auto_print:
                 print(res)
             return res
@@ -269,10 +269,10 @@ Responses should be:
 class RetrievalAugmentedConversation(Conversation):
     def __init__(
             self,
-            folder_path: Optional[str] = None,
+            folder_path: str | None = None,
             *,
-            index_name: Optional[str] = None,
-            max_depth: Optional[int] = 0,
+            index_name: str | None = None,
+            max_depth: int | None = 0,
             auto_print: bool = True,
             top_k: int = 5,
             formatter: Callable = TextContainerFormatter(text_split=4),
@@ -280,8 +280,8 @@ class RetrievalAugmentedConversation(Conversation):
             truncation_percentage: float = 0.8,
             truncation_type: str = 'head',
             with_metadata: bool = False,
-            raw_result: Optional[bool] = False,
-            new_dim: Optional[int] = None,
+            raw_result: bool | None = False,
+            new_dim: int | None = None,
             **kwargs
         ):
 

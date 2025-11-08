@@ -4,20 +4,17 @@ import json
 import os
 import re
 import sys
-from abc import abstractmethod
 from collections import defaultdict
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from random import sample
 from string import ascii_lowercase, ascii_uppercase
 from threading import Lock
-from .context import CURRENT_ENGINE_VAR
-from typing import Callable, Dict, Iterator, List, Optional, Type, Union
+from typing import Union
 
 import numpy as np
-from attr import dataclass
 from box import Box
 from loguru import logger
-from pydantic import BaseModel, ValidationError
 from pyvis.network import Network
 from tqdm import tqdm
 
@@ -25,11 +22,15 @@ from . import core, core_ext
 from .backend.base import Engine
 from .backend.settings import HOME_PATH
 from .constraints import DictFormatConstraint
+from .context import CURRENT_ENGINE_VAR
 from .formatter import ParagraphFormatter
-from .post_processors import (CodeExtractPostProcessor,
-                              JsonTruncateMarkdownPostProcessor,
-                              JsonTruncatePostProcessor, PostProcessor,
-                              StripPostProcessor)
+from .post_processors import (
+    CodeExtractPostProcessor,
+    JsonTruncateMarkdownPostProcessor,
+    JsonTruncatePostProcessor,
+    PostProcessor,
+    StripPostProcessor,
+)
 from .pre_processors import JsonPreProcessor, PreProcessor
 from .processor import ProcessorPipeline
 from .prompts import JsonPromptTemplate, Prompt
@@ -73,18 +74,18 @@ class TrackerTraceable(Expression):
 
 
 class Any(Expression):
-    def __init__(self, *expr: List[Expression], **kwargs):
+    def __init__(self, *expr: list[Expression], **kwargs):
         super().__init__(**kwargs)
-        self.expr: List[Expression] = expr
+        self.expr: list[Expression] = expr
 
     def forward(self, *args, **kwargs) -> Symbol:
         return self.sym_return_type(any([e() for e in self.expr(*args, **kwargs)]))
 
 
 class All(Expression):
-    def __init__(self, *expr: List[Expression], **kwargs):
+    def __init__(self, *expr: list[Expression], **kwargs):
         super().__init__(**kwargs)
-        self.expr: List[Expression] = expr
+        self.expr: list[Expression] = expr
 
     def forward(self, *args, **kwargs) -> Symbol:
         return self.sym_return_type(all([e() for e in self.expr(*args, **kwargs)]))
@@ -117,10 +118,10 @@ class Lambda(Expression):
 
 
 class Choice(Expression):
-    def __init__(self, cases: List[str], default: Optional[str] = None, **kwargs):
+    def __init__(self, cases: list[str], default: str | None = None, **kwargs):
         super().__init__(**kwargs)
-        self.cases: List[str] = cases
-        self.default: Optional[str] = default
+        self.cases: list[str] = cases
+        self.default: str | None = default
 
     def forward(self, sym: Symbol, *args, **kwargs) -> Symbol:
         sym = self._to_symbol(sym)
@@ -141,9 +142,9 @@ class Output(Expression):
 
 
 class Sequence(TrackerTraceable):
-    def __init__(self, *expressions: List[Expression], **kwargs):
+    def __init__(self, *expressions: list[Expression], **kwargs):
         super().__init__(**kwargs)
-        self.expressions: List[Expression] = expressions
+        self.expressions: list[Expression] = expressions
 
     def forward(self, *args, **kwargs) -> Symbol:
         sym = self.expressions[0](*args, **kwargs)
@@ -159,11 +160,11 @@ class Sequence(TrackerTraceable):
 
 
 class Parallel(Expression):
-    def __init__(self, *expr: List[Expression | Callable], sequential: bool = False, **kwargs):
+    def __init__(self, *expr: list[Expression | Callable], sequential: bool = False, **kwargs):
         super().__init__(**kwargs)
         self.sequential: bool       = sequential
-        self.expr: List[Expression] = expr
-        self.results: List[Symbol]  = []
+        self.expr: list[Expression] = expr
+        self.results: list[Symbol]  = []
 
     def forward(self, *args, **kwargs) -> Symbol:
         # run in sequence
@@ -180,11 +181,11 @@ class Parallel(Expression):
 
 #@TODO: BinPacker(format="...") -> ensure that data packages form a "bin" that's consistent (e.g. never break a sentence in the middle)
 class Stream(Expression):
-    def __init__(self, expr: Optional[Expression] = None, retrieval: Optional[str] = None, **kwargs):
+    def __init__(self, expr: Expression | None = None, retrieval: str | None = None, **kwargs):
         super().__init__(**kwargs)
         self.char_token_ratio:    float = 0.6
-        self.expr: Optional[Expression] = expr
-        self.retrieval:   Optional[str] = retrieval
+        self.expr: Expression | None = expr
+        self.retrieval:   str | None = retrieval
         self._trace:               bool = False
         self._previous_frame            = None
 
@@ -231,10 +232,10 @@ class Stream(Expression):
 
 
 class Trace(Expression):
-    def __init__(self, expr: Optional[Expression] = None, engines=['all'], **kwargs):
+    def __init__(self, expr: Expression | None = None, engines=['all'], **kwargs):
         super().__init__(**kwargs)
         self.expr: Expression = expr
-        self.engines: List[str] = engines
+        self.engines: list[str] = engines
 
     def forward(self, *args, **kwargs) -> Expression:
         Expression.command(verbose=True, engines=self.engines)
@@ -255,20 +256,20 @@ class Trace(Expression):
 
 
 class Analyze(Expression):
-    def __init__(self, exception: Exception, query: Optional[str] = None, **kwargs):
+    def __init__(self, exception: Exception, query: str | None = None, **kwargs):
         super().__init__(**kwargs)
         self.exception: Expression = exception
-        self.query: Optional[str] = query
+        self.query: str | None = query
 
     def forward(self, sym: Symbol, *args, **kwargs) -> Symbol:
         return sym.analyze(exception=self.exception, query=self.query, *args, **kwargs)
 
 
 class Log(Expression):
-    def __init__(self, expr: Optional[Expression] = None, engines=['all'], **kwargs):
+    def __init__(self, expr: Expression | None = None, engines=['all'], **kwargs):
         super().__init__(**kwargs)
         self.expr: Expression = expr
-        self.engines: List[str] = engines
+        self.engines: list[str] = engines
 
     def forward(self, *args, **kwargs) -> Expression:
         Expression.command(logging=True, engines=self.engines)
@@ -350,10 +351,10 @@ class Metric(Expression):
 
 
 class Style(Expression):
-    def __init__(self, description: str, libraries: List[str] = [], **kwargs):
+    def __init__(self, description: str, libraries: list[str] = [], **kwargs):
         super().__init__(**kwargs)
         self.description: str = description
-        self.libraries: List[str] = libraries
+        self.libraries: list[str] = libraries
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
         sym = self._to_symbol(sym)
@@ -498,7 +499,7 @@ class FileReader(Expression):
         return False
 
     @staticmethod
-    def get_files(folder_path: str, max_depth: int = 1) -> List[str]:
+    def get_files(folder_path: str, max_depth: int = 1) -> list[str]:
         accepted_formats = ['.pdf', '.md', '.txt']
 
         folder = Path(folder_path)
@@ -512,7 +513,7 @@ class FileReader(Expression):
         return files
 
     @staticmethod
-    def extract_files(cmds: str) -> Optional[List[str]]:
+    def extract_files(cmds: str) -> list[str] | None:
         # Use the updated regular expression to match quoted and non-quoted paths
         pattern = r'''(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)'|`((?:\\.|[^`\\])*)`|((?:\\ |[^ ])+))'''
         # Use the regular expression to split and handle quoted and non-quoted paths
@@ -551,7 +552,7 @@ class FileReader(Expression):
         return Path(path).expanduser().resolve().as_posix()
 
     @staticmethod
-    def integrity_check(files: List[str]) -> List[str]:
+    def integrity_check(files: list[str]) -> list[str]:
         not_skipped = []
         for file in tqdm(files):
             if FileReader.exists(file):
@@ -560,7 +561,7 @@ class FileReader(Expression):
                 CustomUserWarning(f'Skipping file: {file}')
         return not_skipped
 
-    def forward(self, files: Union[str, List[str]], **kwargs) -> Expression:
+    def forward(self, files: str | list[str], **kwargs) -> Expression:
         if isinstance(files, str):
             # Convert to list for uniform processing; more easily downstream
             files = [files]
@@ -586,14 +587,14 @@ class FileQuery(Expression):
 
 class Function(TrackerTraceable):
     def __init__(self, prompt: str       = '',
-                 examples: Optional[str] = [],
-                 pre_processors: Optional[List[PreProcessor]]   = None,
-                 post_processors: Optional[List[PostProcessor]] = None,
-                 default: Optional[object]       = None,
-                 constraints: List[Callable]     = [],
-                 return_type: Optional[Type]     = str,
-                 sym_return_type: Optional[Type] = Symbol,
-                 origin_type: Optional[Type]     = Expression,
+                 examples: str | None = [],
+                 pre_processors: list[PreProcessor] | None   = None,
+                 post_processors: list[PostProcessor] | None = None,
+                 default: object | None       = None,
+                 constraints: list[Callable]     = [],
+                 return_type: type | None     = str,
+                 sym_return_type: type | None = Symbol,
+                 origin_type: type | None     = Expression,
                  *args, **kwargs):
         super().__init__(**kwargs)
         chars       = ascii_lowercase + ascii_uppercase
@@ -768,7 +769,7 @@ class JsonParser(Expression):
 
 
 class SimilarityClassification(Expression):
-    def __init__(self, classes: List[str], metric: str = 'cosine', in_memory: bool = False, **kwargs):
+    def __init__(self, classes: list[str], metric: str = 'cosine', in_memory: bool = False, **kwargs):
         super().__init__(**kwargs)
         self.classes   = classes
         self.metric    = metric
@@ -861,7 +862,7 @@ class Indexer(Expression):
     def register(self):
         # check if index already exists in indices.txt and append if not
         change = False
-        with open(self.path, 'r') as f:
+        with open(self.path) as f:
             indices = f.read().split('\n')
             # filter out empty strings
             indices = [i for i in indices if i]
@@ -877,14 +878,14 @@ class Indexer(Expression):
         path = HOME_PATH / 'indices.txt'
         if not path.exists():
             return False
-        with open(path, 'r') as f:
+        with open(path) as f:
             indices = f.read().split('\n')
             if self.index_name in indices:
                 return True
 
     def forward(
             self,
-            data: Optional[Symbol] = None,
+            data: Symbol | None = None,
             raw_result: bool = False,
         ) -> Symbol:
         that = self
@@ -1020,12 +1021,11 @@ class FunctionWithUsage(Function):
             self.completion_tokens += completion_tokens
             self.total_tokens += total_tokens
         else:
-            if self.missing_usage_exception and not "preview" in kwargs:
+            if self.missing_usage_exception and "preview" not in kwargs:
                 raise Exception("Missing usage in metadata of neursymbolic engine")
-            else:
-                prompt_tokens = 0
-                completion_tokens = 0
-                total_tokens = 0
+            prompt_tokens = 0
+            completion_tokens = 0
+            total_tokens = 0
 
         return res, self._format_usage(prompt_tokens, completion_tokens, total_tokens)
 
@@ -1041,7 +1041,7 @@ class SelfPrompt(Expression):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def forward(self, existing_prompt: Dict[str, str], **kwargs) -> Dict[str, str]:
+    def forward(self, existing_prompt: dict[str, str], **kwargs) -> dict[str, str]:
         """
         Generate new system and user prompts based on the existing prompt.
 
@@ -1094,12 +1094,11 @@ class MetadataTracker(Expression):
         value = value or self.metadata
         if isinstance(value, dict):
             return '{\n\t' + ', \n\t'.join(f'"{k}": {self.__str__(v)}' for k,v in value.items()) + '\n}'
-        elif isinstance(value, list):
+        if isinstance(value, list):
             return '[' + ', '.join(self.__str__(item) for item in value) + ']'
-        elif isinstance(value, str):
+        if isinstance(value, str):
             return f'"{value}"'
-        else:
-            return f"\n\t    {value}"
+        return f"\n\t    {value}"
 
     def __new__(cls, *args, **kwargs):
         cls._lock = getattr(cls, '_lock', Lock())
@@ -1122,7 +1121,7 @@ class MetadataTracker(Expression):
 
     def _trace_calls(self, frame, event, arg):
         if not self._trace:
-            return
+            return None
 
         if event == 'return' and frame.f_code.co_name == 'forward':
             # Check if this is an engine forward call
@@ -1300,4 +1299,4 @@ class DynamicEngine(Expression):
                 raise ValueError(f"Unsupported model '{self.model}'")
             return engine_class(api_key=self.api_key, model=self.model)
         except Exception as e:
-            raise ValueError(f"Failed to create engine for model '{self.model}': {str(e)}")
+            raise ValueError(f"Failed to create engine for model '{self.model}': {e!s}")

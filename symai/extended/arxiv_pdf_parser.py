@@ -1,13 +1,13 @@
 import os
 import re
 import shutil
-import requests
-
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+import requests
+
+from ..backend.settings import HOME_PATH
 from ..symbol import Expression, Symbol
 from .file_merger import FileMerger
-from ..backend.settings import HOME_PATH
 
 
 class ArxivPdfParser(Expression):
@@ -21,7 +21,7 @@ class ArxivPdfParser(Expression):
         urls = re.findall(self.url_pattern, str(data))
 
         # Convert all urls to pdf urls
-        pdf_urls = [f"https://arxiv.org/pdf/" + (f"{url.split('/')[-1]}.pdf" if 'pdf' not in url else {url.split('/')[-1]}) for url in urls]
+        pdf_urls = ["https://arxiv.org/pdf/" + (f"{url.split('/')[-1]}.pdf" if 'pdf' not in url else {url.split('/')[-1]}) for url in urls]
 
         # Create temporary folder in the home directory
         output_path = os.path.join(HOME_PATH, "temp/downloads")

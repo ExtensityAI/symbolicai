@@ -1,11 +1,14 @@
 import os
 import subprocess
+import tempfile
+from typing import Any
+
 import docker
 import paramiko
-import tempfile
-from typing import Any, List, Tuple, Optional, Dict
-from ...base import Engine
+
 from ....symbol import Result
+from ...base import Engine
+
 
 class LeanResult(Result):
     """
@@ -14,7 +17,7 @@ class LeanResult(Result):
     Attributes:
         _value (Dict[str, str]): A dictionary containing the output of the Lean execution.
     """
-    def __init__(self, value: Dict[str, str]) -> None:
+    def __init__(self, value: dict[str, str]) -> None:
         """
         Initializes a new LeanResult instance.
 
@@ -137,7 +140,7 @@ class LeanEngine(Engine):
         subprocess.run(['docker', 'exec', self.container.id, 'chmod', '600', '/root/.ssh/authorized_keys'], check=True)
         subprocess.run(['docker', 'exec', self.container.id, 'chown', 'root:root', '/root/.ssh/authorized_keys'], check=True)
 
-    def forward(self, argument: Any) -> Tuple[List[LeanResult], dict]:
+    def forward(self, argument: Any) -> tuple[list[LeanResult], dict]:
         """
         Executes Lean code provided as a string or as an object property.
 
@@ -149,10 +152,10 @@ class LeanEngine(Engine):
         """
         code: str = argument if isinstance(argument, str) else argument.prop.prepared_input
 
-        rsp: Optional[LeanResult] = None
-        err: Optional[str] = None
-        tmpfile_path: Optional[str] = None
-        metadata: Dict[str, Any] = {}
+        rsp: LeanResult | None = None
+        err: str | None = None
+        tmpfile_path: str | None = None
+        metadata: dict[str, Any] = {}
         try:
             with tempfile.NamedTemporaryFile(delete=False, suffix=".lean") as tmpfile:
                 tmpfile.write(code.encode())
@@ -178,7 +181,7 @@ class LeanEngine(Engine):
 
         return [rsp] if rsp else [], metadata
 
-    def _execute_lean(self, filepath: str) -> Tuple[str, dict]:
+    def _execute_lean(self, filepath: str) -> tuple[str, dict]:
         """
         Executes a Lean script within the Docker container via SSH.
 
@@ -216,13 +219,12 @@ class LeanEngine(Engine):
 
             if "error" in output.lower() or "error" in error.lower():
                 return output, {'status': 'failure'}
-            elif not output and not error:
+            if not output and not error:
                 return "Lean program halted successfully with no output.", {'status': 'success'}
-            else:
-                return output, {'status': 'success'}
+            return output, {'status': 'success'}
 
         except Exception as e:
-            raise RuntimeError(f"SSH command execution failed: {str(e)}")
+            raise RuntimeError(f"SSH command execution failed: {e!s}")
 
     def prepare(self, argument: Any) -> None:
         """

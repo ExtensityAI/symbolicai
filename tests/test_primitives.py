@@ -10,7 +10,6 @@ import pytest
 
 from symai import Expression, Symbol
 from symai.backend.settings import SYMAI_CONFIG
-from symai.prompts import SemanticMapping
 from symai.utils import semassert
 
 _C = {
@@ -146,7 +145,7 @@ def test_contains_op():
     other2 = 'fruit'
 
     assert other1 in sym_str_syn
-    assert not (other2 in sym_list_syn)
+    assert other2 not in sym_list_syn
     display_op(f"'{sym_str_syn}' contains '{other1}'", other1 in sym_str_syn, "in", "syntactic")
     display_op(f"'{sym_str_sem}' contains '{other2}'", other2 in sym_str_sem, "in", "semantic")
     display_op(f"'{sym_list_syn}' contains '{other1}'", other1 in sym_list_syn, "in", "syntactic")
@@ -406,7 +405,7 @@ def test_shift_op():
     sym_chain = Symbol(1)
     chained_result = sym_chain << Symbol(2) << Symbol(1)
     assert chained_result == 8
-    display_op(f"1 << 2 << 1", chained_result, "<<", "syntactic")
+    display_op("1 << 2 << 1", chained_result, "<<", "syntactic")
 
 @pytest.mark.mandatory
 def test_bitwise_logical_op():
@@ -1362,7 +1361,7 @@ def test_data_handling_pr():
     try:
         sym_int.map('some instruction')
     except AssertionError as e:
-        display_op(f"[{sym_int}].map('some instruction')", f"AssertionError: {str(e)}", "map", "syntactic")
+        display_op(f"[{sym_int}].map('some instruction')", f"AssertionError: {e!s}", "map", "syntactic")
         assert "Map can only be applied to iterable objects" in str(e)
     else:
         assert False, "map() should raise AssertionError for non-iterable input"
@@ -1372,7 +1371,7 @@ def test_data_handling_pr():
     try:
         sym_list_no_instruction.map()
     except TypeError as e:
-        display_op(f"[{sym_list_no_instruction}].map()", f"TypeError: {str(e)}", "map", "syntactic")
+        display_op(f"[{sym_list_no_instruction}].map()", f"TypeError: {e!s}", "map", "syntactic")
     else:
         assert False, "map() should require an instruction parameter"
 
@@ -2070,7 +2069,7 @@ def test_embedding_pr():
         sym_invalid.zip()
         assert False, "zip() should raise ValueError for non-string/non-list input"
     except ValueError as e:
-        display_op(f"[{sym_invalid}].zip()", f"ValueError: {str(e)}", "zip", "syntactic")
+        display_op(f"[{sym_invalid}].zip()", f"ValueError: {e!s}", "zip", "syntactic")
         assert "Expected id to be a string" in str(e)
 
 @pytest.mark.mandatory
@@ -2108,17 +2107,16 @@ def test_io_handling_pr():
         sym_no_path.open()
         assert False, "open() should raise ValueError when no path is provided"
     except ValueError as e:
-        display_op(f"Symbol().open()", f"ValueError: {str(e)}", "open", "syntactic")
+        display_op("Symbol().open()", f"ValueError: {e!s}", "open", "syntactic")
         assert "Path is not provided" in str(e)
 
     assert hasattr(sym_no_path, 'input'), "Symbol should have input method"
-    assert callable(getattr(sym_no_path, 'input')), "input should be callable"
-    display_op(f"Symbol().input()", "input method is callable (requires interaction)", "input", "syntactic")
+    assert callable(sym_no_path.input), "input should be callable"
+    display_op("Symbol().input()", "input method is callable (requires interaction)", "input", "syntactic")
 
 @pytest.mark.mandatory
 def test_persistence_pr():
     """Test the PersistencePrimitives class methods."""
-    import pickle
 
     # Test save() and load() methods with serialization
     sym_test = Symbol("Hello, persistence test!")
@@ -2161,7 +2159,7 @@ def test_persistence_pr():
         display_op(f"Symbol('{sym_text}').save('{os.path.basename(tmp_file_path)}', serialize=False)", "saved as text", "save", "syntactic")
 
         # Read the file to verify content
-        with open(tmp_file_path, 'r') as f:
+        with open(tmp_file_path) as f:
             saved_content = f.read()
         assert saved_content == str(sym_text)
 
@@ -2183,7 +2181,7 @@ def test_persistence_pr():
         expected_new_path = base_path.replace('.txt', '_0.txt')
         assert os.path.exists(expected_new_path), "New file with suffix should be created"
 
-        with open(expected_new_path, 'r') as f:
+        with open(expected_new_path) as f:
             content = f.read()
         assert content == str(sym_replace)
 
@@ -2205,7 +2203,7 @@ def test_persistence_pr():
         display_op(f"Symbol('{sym_replace_true}').save(existing_file, serialize=False, replace=True)", "overwritten existing file", "save", "syntactic")
 
         # Should overwrite the original file, not create a new one
-        with open(replace_base_path, 'r') as f:
+        with open(replace_base_path) as f:
             content = f.read()
         assert content == str(sym_replace_true), "File content should be overwritten"
 
@@ -2281,7 +2279,7 @@ def test_output_handling_pr():
 
     # Verify that output method exists and is callable
     assert hasattr(sym_test, 'output'), "Symbol should have output method"
-    assert callable(getattr(sym_test, 'output')), "output should be callable"
+    assert callable(sym_test.output), "output should be callable"
 
     # Test with different symbol types
     sym_number = Symbol(42)

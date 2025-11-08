@@ -1,7 +1,6 @@
-from typing import List
 
-from ...symbol import Expression
 from ...shellsv import process_command
+from ...symbol import Expression
 
 
 class terminal(Expression):

@@ -1,8 +1,6 @@
 import platform
 import subprocess
 
-from typing import Dict, List
-
 from ..post_processors import CodeExtractPostProcessor
 from ..symbol import Expression, Symbol
 
@@ -62,16 +60,16 @@ Write an executable command that starts a process according to the user query, p
 
 
 class OSCommand(Expression):
-    def __init__(self, programs:        List[str],
-                       metadata:   Dict[str, str] = {},
+    def __init__(self, programs:        list[str],
+                       metadata:   dict[str, str] = {},
                        verbose:              bool = False,
                        os_platform:           str = 'auto',
                        **kwargs):
         super().__init__(**kwargs)
         self.verbose:            bool = verbose
         self.os_platform:         str = os_platform
-        self.programs:      List[str] = programs
-        self.meta: Dict[str, str]     = metadata
+        self.programs:      list[str] = programs
+        self.meta: dict[str, str]     = metadata
 
         if self.os_platform == 'auto':
             self.os_platform = platform.platform()
@@ -82,13 +80,12 @@ class OSCommand(Expression):
         command = args[0]
         print(f'Executing {self.os_platform} command: {command}')
         if 'linux' in self.os_platform.lower():
-            return [subprocess.run(["bash", "-c", str(command)])]
-        elif 'windows' in self.os_platform.lower():
-            return [subprocess.run(["powershell", "-Command", str(command)])]
-        elif 'mac' in self.os_platform.lower():
-            return [subprocess.run(["bash", "-c", str(command)])]
-        else:
-            raise Exception('Unsupported platform!')
+            return [subprocess.run(["bash", "-c", str(command)], check=False)]
+        if 'windows' in self.os_platform.lower():
+            return [subprocess.run(["powershell", "-Command", str(command)], check=False)]
+        if 'mac' in self.os_platform.lower():
+            return [subprocess.run(["bash", "-c", str(command)], check=False)]
+        raise Exception('Unsupported platform!')
 
     def forward(self, sym: Symbol, **kwargs) -> Expression:
         sym = self._to_symbol(sym)

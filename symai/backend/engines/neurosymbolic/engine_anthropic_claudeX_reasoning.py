@@ -2,19 +2,23 @@ import json
 import logging
 import re
 from copy import copy, deepcopy
-from typing import List, Optional
 
 import anthropic
 from anthropic._types import NOT_GIVEN
-from anthropic.types import (InputJSONDelta, Message,
-                             RawContentBlockDeltaEvent,
-                             RawContentBlockStartEvent,
-                             RawContentBlockStopEvent, TextBlock, TextDelta,
-                             ThinkingBlock, ThinkingDelta, ToolUseBlock)
+from anthropic.types import (
+    InputJSONDelta,
+    Message,
+    RawContentBlockDeltaEvent,
+    RawContentBlockStartEvent,
+    RawContentBlockStopEvent,
+    TextBlock,
+    TextDelta,
+    ThinkingBlock,
+    ThinkingDelta,
+    ToolUseBlock,
+)
 
 from ....components import SelfPrompt
-from ....misc.console import ConsoleStyle
-from ....symbol import Symbol
 from ....utils import CustomUserWarning, encode_media_frames
 from ...base import Engine
 from ...mixin.anthropic import AnthropicMixin
@@ -35,7 +39,7 @@ class TokenizerWrapper:
         return self.compute_tokens_func([{"role": "user", "content": text}])
 
 class ClaudeXReasoningEngine(Engine, AnthropicMixin):
-    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
+    def __init__(self, api_key: str | None = None, model: str | None = None):
         super().__init__()
         self.config = deepcopy(SYMAI_CONFIG)
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
@@ -129,7 +133,7 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
             return count_response.input_tokens
         except Exception as e:
             logging.error(f"Claude count_tokens failed: {e}")
-            CustomUserWarning(f"Error counting tokens for Claude: {str(e)}", raise_with=RuntimeError)
+            CustomUserWarning(f"Error counting tokens for Claude: {e!s}", raise_with=RuntimeError)
 
     def compute_remaining_tokens(self, prompts: list) -> int:
         CustomUserWarning('Method not implemented.', raise_with=NotImplementedError)
@@ -158,7 +162,7 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
                 elif len(buffer) == 1:
                     image_files.append({'data': buffer[0], 'media_type': f'image/{ext}', 'type': 'base64'})
                 else:
-                    CustomUserWarning(f'No frames found for image!')
+                    CustomUserWarning('No frames found for image!')
         return image_files
 
     def _remove_vision_pattern(self, text: str) -> str:
@@ -262,11 +266,11 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
 
         payload = argument.prop.payload
         if argument.prop.payload:
-            system += f"<ADDITIONAL_CONTEXT/>\n{str(payload)}\n\n"
+            system += f"<ADDITIONAL_CONTEXT/>\n{payload!s}\n\n"
 
-        examples: List[str] = argument.prop.examples
+        examples: list[str] = argument.prop.examples
         if examples and len(examples) > 0:
-            system += f"<EXAMPLES/>\n{str(examples)}\n\n"
+            system += f"<EXAMPLES/>\n{examples!s}\n\n"
 
         image_files = self._handle_image_content(str(argument.prop.processed_input))
 
@@ -287,7 +291,7 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
             user = "N/A"
 
         if argument.prop.template_suffix:
-            system += f' You will only generate content for the placeholder `{str(argument.prop.template_suffix)}` following the instructions and the provided context information.\n\n'
+            system += f' You will only generate content for the placeholder `{argument.prop.template_suffix!s}` following the instructions and the provided context information.\n\n'
 
         if len(image_files) > 0:
             images = [{ 'type': 'image', "source": im } for im in image_files]

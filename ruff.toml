@@ -1,0 +1,64 @@
+exclude = [
+    ".codex",
+    ".symai",
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+    "scripts"
+]
+
+line-length = 100
+indent-width = 4
+target-version = "py312"
+
+[lint]
+# Rules URL: https://docs.astral.sh/ruff/rules
+select = [
+  "F","E4","E7","E9",
+  "I","UP","B","SIM","C4","A","ARG","ISC","RET","RSE",
+  "G","LOG","TC","PTH","EM","C90",
+  "PLE","PLC","PLW",
+  "RUF","T10","T20"
+]
+ignore = [
+  "B028",  # no explicit stacklevel; enable if you rely on warnings for users
+  "PLW0603",  # global statement discouraged; often noisy in legacy code
+  "G004", #  logging-f-string
+  "A002", #  argument-shadowing-builtin (needed for contracts; `input` is mandatory arg)
+]
+
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[format]
+quote-style = "double"
+indent-style = "tab"
+skip-magic-trailing-comma = false
+line-ending = "auto"

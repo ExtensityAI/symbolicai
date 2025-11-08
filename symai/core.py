@@ -1,5 +1,6 @@
 import functools
-from typing import Any, Callable, Dict, List, Optional, Type
+from collections.abc import Callable
+from typing import Any
 
 from box import Box
 
@@ -100,11 +101,11 @@ class Argument(Expression):
 
 def few_shot(prompt: str = '',
              examples: prm.Prompt = [],
-             constraints: List[Callable] = [],
+             constraints: list[Callable] = [],
              default: Any = None,
              limit: int = 1,
-             pre_processors: Optional[List[pre.PreProcessor]] = None,
-             post_processors: Optional[List[post.PostProcessor]] = None,
+             pre_processors: list[pre.PreProcessor] | None = None,
+             post_processors: list[post.PostProcessor] | None = None,
              **decorator_kwargs):
     """"General decorator for the neural processing engine."""
     def decorator(func):
@@ -129,11 +130,11 @@ def few_shot(prompt: str = '',
 
 
 def zero_shot(prompt: str = '',
-              constraints: List[Callable] = [],
-              default: Optional[object] = None,
+              constraints: list[Callable] = [],
+              default: object | None = None,
               limit: int = 1,
-              pre_processors: Optional[List[pre.PreProcessor]] = None,
-              post_processors: Optional[List[post.PostProcessor]] = None,
+              pre_processors: list[pre.PreProcessor] | None = None,
+              post_processors: list[post.PostProcessor] | None = None,
               **decorator_kwargs):
     """"General decorator for the neural processing engine."""
     return few_shot(prompt,
@@ -155,13 +156,13 @@ def prompt(message: str,
 
 
 def summarize(prompt: str = 'Summarize the content of the following text:\n',
-              context: Optional[str] = None,
-              constraints: List[Callable] = [],
-              default: Optional[object] = None,
+              context: str | None = None,
+              constraints: list[Callable] = [],
+              default: object | None = None,
               limit: int = 1,
               stop: str | None = None,
-              pre_processors: Optional[List[pre.PreProcessor]] = [pre.SummaryPreProcessing()],
-              post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+              pre_processors: list[pre.PreProcessor] | None = [pre.SummaryPreProcessing()],
+              post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
               **decorator_kwargs):
     """Summarizes the content of a text."""
     return few_shot(prompt,
@@ -180,11 +181,11 @@ def equals(context: str = 'contextually',
            default: bool = False,
            prompt: str = "Make a fuzzy equals comparison; are the following objects {} the same?\n",
            examples: prm.Prompt = prm.FuzzyEquals(),
-           constraints: List[Callable] = [],
+           constraints: list[Callable] = [],
            limit: int = 1,
            stop: str | None = None,
-           pre_processors: Optional[List[pre.PreProcessor]] = [pre.EqualsPreProcessor()],
-           post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+           pre_processors: list[pre.PreProcessor] | None = [pre.EqualsPreProcessor()],
+           post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
            **decorator_kwargs):
     """Equality function for two objects."""
     return few_shot(prompt=prompt.format(context),
@@ -203,11 +204,11 @@ def sufficient(query: str,
                prompt: str = "Consider if there is sufficient information to answer the query:\n",
                default: bool = False,
                examples: prm.Prompt = prm.SufficientInformation(),
-               constraints: List[Callable] = [],
+               constraints: list[Callable] = [],
                limit: int = 1,
                stop: str | None = None,
-               pre_processors: Optional[List[pre.PreProcessor]] = [pre.SufficientInformationPreProcessor()],
-               post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+               pre_processors: list[pre.PreProcessor] | None = [pre.SufficientInformationPreProcessor()],
+               post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
                **decorator_kwargs) -> bool:
     """Determines if there is sufficient information to answer the given query."""
     return few_shot(prompt=prompt,
@@ -223,14 +224,14 @@ def sufficient(query: str,
                     **decorator_kwargs)
 
 
-def delitem(default: Optional[str] = None,
+def delitem(default: str | None = None,
             prompt: str = "Delete the items at the index position:\n",
             examples: prm.Prompt = prm.RemoveIndex(),
-            constraints: List[Callable] = [],
+            constraints: list[Callable] = [],
             limit: int = 1,
             stop: str | None = None,
-            pre_processors: Optional[List[pre.PreProcessor]] = [pre.DeleteIndexPreProcessor()],
-            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+            pre_processors: list[pre.PreProcessor] | None = [pre.DeleteIndexPreProcessor()],
+            post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
             **decorator_kwargs):
     """Deletes the items at the specified index position."""
     return few_shot(prompt=prompt,
@@ -244,14 +245,14 @@ def delitem(default: Optional[str] = None,
                     **decorator_kwargs)
 
 
-def setitem(default: Optional[str] = None,
+def setitem(default: str | None = None,
             prompt: str = "Set item at index position:\n",
             examples: prm.Prompt = prm.SetIndex(),
-            constraints: List[Callable] = [],
+            constraints: list[Callable] = [],
             limit: int = 1,
             stop: str | None = None,
-            pre_processors: Optional[List[pre.PreProcessor]] = [pre.SetIndexPreProcessor()],
-            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+            pre_processors: list[pre.PreProcessor] | None = [pre.SetIndexPreProcessor()],
+            post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
             **decorator_kwargs):
     """Sets an item at a given index position in a sequence."""
     return few_shot(prompt=prompt,
@@ -265,14 +266,14 @@ def setitem(default: Optional[str] = None,
                     **decorator_kwargs)
 
 
-def getitem(default: Optional[str] = None,
+def getitem(default: str | None = None,
             prompt: str = "Get item at index position:\n",
             examples: prm.Prompt = prm.Index(),
-            constraints: List[Callable] = [],
+            constraints: list[Callable] = [],
             limit: int = 1,
             stop: str | None = None,
-            pre_processors: Optional[List[pre.PreProcessor]] = [pre.IndexPreProcessor()],
-            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+            pre_processors: list[pre.PreProcessor] | None = [pre.IndexPreProcessor()],
+            post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
             **decorator_kwargs):
     """Retrieves the item at the given index position."""
     return few_shot(prompt=prompt,
@@ -287,14 +288,14 @@ def getitem(default: Optional[str] = None,
 
 
 def modify(changes: str,
-           default: Optional[str] = None,
+           default: str | None = None,
            prompt: str = "Modify the text to match the criteria:\n",
            examples: prm.Prompt = prm.Modify(),
-           constraints: List[Callable] = [],
+           constraints: list[Callable] = [],
            limit: int = 1,
            stop: str | None = None,
-           pre_processors: Optional[List[pre.PreProcessor]] = [pre.ModifyPreProcessor()],
-           post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+           pre_processors: list[pre.PreProcessor] | None = [pre.ModifyPreProcessor()],
+           post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
            **decorator_kwargs):
     """A function to modify a text based on a set of criteria."""
     return few_shot(prompt=prompt,
@@ -311,14 +312,14 @@ def modify(changes: str,
 
 def filtering(criteria: str,
               include: bool = False,
-              default: Optional[str] = None,
+              default: str | None = None,
               prompt: str = "Filter the information from the text based on the filter criteria. Leave sentences unchanged if they are unrelated to the filter criteria:\n",
               examples: prm.Prompt = prm.Filter(),
-              constraints: List[Callable] = [],
+              constraints: list[Callable] = [],
               limit: int = 1,
               stop: str | None = None,
-              pre_processors: Optional[List[pre.PreProcessor]] = [pre.FilterPreProcessor()],
-              post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+              pre_processors: list[pre.PreProcessor] | None = [pre.FilterPreProcessor()],
+              post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
               **decorator_kwargs):
     """Filter information from a text based on a set of criteria."""
     return few_shot(prompt=prompt,
@@ -357,15 +358,15 @@ def map(instruction: str,
                     **decorator_kwargs)
 
 
-def notify(subscriber: Dict[str, Callable],
-           default: Optional[object] = None,
+def notify(subscriber: dict[str, Callable],
+           default: object | None = None,
            prompt: str = "List the semantically related topics:\n",
            examples: prm.Prompt = prm.SemanticMapping(),
-           constraints: List[Callable] = [],
+           constraints: list[Callable] = [],
            limit: int | None = 1,
            stop: str | None = None,
-           pre_processors: Optional[List[pre.PreProcessor]] = [pre.SemanticMappingPreProcessor()],
-           post_processors: Optional[List[post.PostProcessor]] = [post.SplitPipePostProcessor(), post.NotifySubscriberPostProcessor()],
+           pre_processors: list[pre.PreProcessor] | None = [pre.SemanticMappingPreProcessor()],
+           post_processors: list[post.PostProcessor] | None = [post.SplitPipePostProcessor(), post.NotifySubscriberPostProcessor()],
            **decorator_kwargs):
     """Notify subscribers based on a set of topics if detected in the input text and matching the key of the subscriber."""
     return few_shot(prompt=prompt,
@@ -384,11 +385,11 @@ def compare(default: bool = False,
             operator: str = '>',
             prompt: str = "Compare 'A' and 'B' based on the operator:\n",
             examples: prm.Prompt = prm.CompareValues(),
-            constraints: List[Callable] = [],
+            constraints: list[Callable] = [],
             limit: int | None = 1,
             stop: str | None = None,
-            pre_processors: Optional[List[pre.PreProcessor]] = [pre.ComparePreProcessor()],
-            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+            pre_processors: list[pre.PreProcessor] | None = [pre.ComparePreProcessor()],
+            post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
             **decorator_kwargs):
     """Compare two objects based on the specified operator."""
     return few_shot(prompt=prompt,
@@ -405,14 +406,14 @@ def compare(default: bool = False,
 
 
 def convert(format: str,
-            default: Optional[str] = None,
+            default: str | None = None,
             prompt: str = "Translate the following text into {} format.\n",
             examples: prm.Prompt = prm.Format(),
-            constraints: List[Callable] = [],
+            constraints: list[Callable] = [],
             limit: int | None = 1,
             stop: str | None = None,
-            pre_processors: Optional[List[pre.PreProcessor]] = [pre.TextFormatPreProcessor()],
-            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+            pre_processors: list[pre.PreProcessor] | None = [pre.TextFormatPreProcessor()],
+            post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
             **decorator_kwargs):
     """Transformation operation from one format to another."""
     return few_shot(prompt=prompt,
@@ -428,14 +429,14 @@ def convert(format: str,
 
 
 def transcribe(modify: str,
-               default: Optional[str] = None,
+               default: str | None = None,
                prompt: str = "Transcribe the following text by only modifying the text by the provided instruction.\n",
                examples: prm.Prompt = prm.Transcription(),
-               constraints: List[Callable] = [],
+               constraints: list[Callable] = [],
                limit: int | None = 1,
                stop: str | None = None,
-               pre_processors: Optional[List[pre.PreProcessor]] = [pre.TranscriptionPreProcessor()],
-               post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+               pre_processors: list[pre.PreProcessor] | None = [pre.TranscriptionPreProcessor()],
+               post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
                **decorator_kwargs):
     """Transcription operation of a text to another styled text."""
     return few_shot(prompt=prompt,
@@ -451,14 +452,14 @@ def transcribe(modify: str,
 
 
 def style(description: str,
-          libraries: List[str] = [],
-          default: Optional[str] = None,
+          libraries: list[str] = [],
+          default: str | None = None,
           prompt: str = "Style the [DATA] based on best practices and the descriptions in [...] brackets. Do not remove content from the data! Do not add libraries or other descriptions. \n",
-          constraints: List[Callable] = [],
+          constraints: list[Callable] = [],
           limit: int | None = 1,
           stop: str | None = None,
-          pre_processors: Optional[List[pre.PreProcessor]] = [pre.StylePreProcessor()],
-          post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+          pre_processors: list[pre.PreProcessor] | None = [pre.StylePreProcessor()],
+          post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
           **decorator_kwargs):
     """Styles a given text based on best practices and a given description."""
     return few_shot(prompt=prompt,
@@ -476,14 +477,14 @@ def style(description: str,
 
 def analyze(query: str,
             exception: Exception,
-            default: Optional[str] = None,
+            default: str | None = None,
             prompt: str = "Only analyze the error message and suggest a potential correction, however, do NOT provide the code!\n",
             examples: prm.Prompt = prm.ExceptionMapping(),
-            constraints: List[Callable] = [],
+            constraints: list[Callable] = [],
             limit: int | None = 1,
             stop: str | None = None,
-            pre_processors: Optional[List[pre.PreProcessor]] = [pre.ExceptionPreProcessor()],
-            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+            pre_processors: list[pre.PreProcessor] | None = [pre.ExceptionPreProcessor()],
+            post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
             **decorator_kwargs):
     """Analyses an Exception and proposes a correction."""
     return few_shot(prompt=prompt,
@@ -501,14 +502,14 @@ def analyze(query: str,
 
 def correct(context: str,
             exception: Exception,
-            default: Optional[str] = None,
+            default: str | None = None,
             prompt: str = "Correct the code according to the context description. Use markdown syntax to format the code; do not provide any other text.\n",
-            examples: Optional[prm.Prompt] = None,
-            constraints: List[Callable] = [],
+            examples: prm.Prompt | None = None,
+            constraints: list[Callable] = [],
             limit: int | None = 1,
             stop: str | None = None,
-            pre_processors: Optional[List[pre.PreProcessor]] = [pre.CorrectionPreProcessor()],
-            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor(), post.CodeExtractPostProcessor()],
+            pre_processors: list[pre.PreProcessor] | None = [pre.CorrectionPreProcessor()],
+            post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor(), post.CodeExtractPostProcessor()],
             **decorator_kwargs):
     """Analyses an Exception and proposes a correction."""
     return few_shot(prompt=prompt,
@@ -527,12 +528,12 @@ def correct(context: str,
 def translate(language: str = 'English',
               default: str = "Sorry, I do not understand the given language.",
               prompt: str = "Your task is to translate and **only** translate the text into {}:\n",
-              examples: Optional[prm.Prompt] = None,
-              constraints: List[Callable] = [],
+              examples: prm.Prompt | None = None,
+              constraints: list[Callable] = [],
               limit: int | None = 1,
               stop: str | None = None,
-              pre_processors: Optional[List[pre.PreProcessor]] = [pre.LanguagePreProcessor()],
-              post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+              pre_processors: list[pre.PreProcessor] | None = [pre.LanguagePreProcessor()],
+              post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
               **decorator_kwargs):
     """Translates a given text into a specified language."""
     return few_shot(prompt=prompt,
@@ -547,15 +548,15 @@ def translate(language: str = 'English',
                     **decorator_kwargs)
 
 
-def rank(default: Optional[object] = None,
+def rank(default: object | None = None,
          order: str = 'desc',
          prompt: str = "Order the list of objects based on their quality measure and oder literal:\n",
          examples: prm.Prompt = prm.RankList(),
-         constraints: List[Callable] = [],
+         constraints: list[Callable] = [],
          limit: int | None = 1,
          stop: str | None = None,
-         pre_processors: Optional[List[pre.PreProcessor]] = [pre.RankPreProcessor()],
-         post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor(), post.ASTPostProcessor()],
+         pre_processors: list[pre.PreProcessor] | None = [pre.RankPreProcessor()],
+         post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor(), post.ASTPostProcessor()],
          **decorator_kwargs):
     """Ranks a list of objects based on their quality measure and order literal."""
     return few_shot(prompt=prompt,
@@ -571,13 +572,13 @@ def rank(default: Optional[object] = None,
 
 
 def replace(prompt: str = "Replace text parts by string pattern.\n",
-            default: Optional[str] = None,
+            default: str | None = None,
             examples: prm.Prompt = prm.ReplaceText(),
-            constraints: List[Callable] = [],
+            constraints: list[Callable] = [],
             limit: int | None = 1,
             stop: str | None = None,
-            pre_processors: Optional[List[pre.PreProcessor]] = [pre.ReplacePreProcessor()],
-            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+            pre_processors: list[pre.PreProcessor] | None = [pre.ReplacePreProcessor()],
+            post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
             **decorator_kwargs):
     """Replaces text parts by a given string pattern."""
     return few_shot(prompt=prompt,
@@ -592,13 +593,13 @@ def replace(prompt: str = "Replace text parts by string pattern.\n",
 
 
 def include(prompt: str = "Include information based on description.\n",
-            default: Optional[str] = None,
+            default: str | None = None,
             examples: prm.Prompt = prm.IncludeText(),
-            constraints: List[Callable] = [],
+            constraints: list[Callable] = [],
             limit: int | None = 1,
             stop: str | None = None,
-            pre_processors: Optional[List[pre.PreProcessor]] = [pre.IncludePreProcessor()],
-            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+            pre_processors: list[pre.PreProcessor] | None = [pre.IncludePreProcessor()],
+            post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
             **decorator_kwargs):
     """Include information from a description."""
     return few_shot(prompt=prompt,
@@ -613,13 +614,13 @@ def include(prompt: str = "Include information based on description.\n",
 
 
 def combine(prompt: str = "Add the two data types in a logical way:\n",
-            default: Optional[str] = None,
+            default: str | None = None,
             examples: prm.Prompt = prm.CombineText(),
-            constraints: List[Callable] = [],
+            constraints: list[Callable] = [],
             limit: int | None = 1,
             stop: str | None = None,
-            pre_processors: Optional[List[pre.PreProcessor]] = [pre.CombinePreProcessor()],
-            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+            pre_processors: list[pre.PreProcessor] | None = [pre.CombinePreProcessor()],
+            post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
             **decorator_kwargs):
     """Combines two data types in a logical way."""
     return few_shot(prompt=prompt,
@@ -634,13 +635,13 @@ def combine(prompt: str = "Add the two data types in a logical way:\n",
 
 
 def negate(prompt: str = "Negate the following statement:\n",
-           default: Optional[str] = None,
+           default: str | None = None,
            examples: prm.Prompt = prm.NegateStatement(),
-           constraints: List[Callable] = [],
+           constraints: list[Callable] = [],
            limit: int | None = 1,
            stop: str | None = None,
-           pre_processors: Optional[List[pre.PreProcessor]] = [pre.NegatePreProcessor()],
-           post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+           pre_processors: list[pre.PreProcessor] | None = [pre.NegatePreProcessor()],
+           post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
            **decorator_kwargs):
     """Negates a given statement."""
     return few_shot(prompt=prompt,
@@ -657,11 +658,11 @@ def negate(prompt: str = "Negate the following statement:\n",
 def contains(default: bool = False,
              prompt: str = "Is semantically the information of 'A' contained in 'B'?\n",
              examples: prm.Prompt = prm.ContainsValue(),
-             constraints: List[Callable] = [],
+             constraints: list[Callable] = [],
              limit: int | None = 1,
              stop: str | None = None,
-             pre_processors: Optional[List[pre.PreProcessor]] = [pre.ContainsPreProcessor()],
-             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+             pre_processors: list[pre.PreProcessor] | None = [pre.ContainsPreProcessor()],
+             post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
              **decorator_kwargs):
     """Determines whether a given string contains another string."""
     return few_shot(prompt=prompt,
@@ -679,11 +680,11 @@ def contains(default: bool = False,
 def isinstanceof(default: bool = False,
                  prompt: str = "Is 'A' an instance of 'B'?\n",
                  examples: prm.Prompt = prm.IsInstanceOf(),
-                 constraints: List[Callable] = [],
+                 constraints: list[Callable] = [],
                  limit: int | None = 1,
                  stop: str | None = None,
-                 pre_processors: Optional[List[pre.PreProcessor]] = [pre.IsInstanceOfPreProcessor()],
-                 post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+                 pre_processors: list[pre.PreProcessor] | None = [pre.IsInstanceOfPreProcessor()],
+                 post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
                  **decorator_kwargs):
     """Detects if one object is an instance of another."""
     return few_shot(prompt=prompt,
@@ -701,11 +702,11 @@ def isinstanceof(default: bool = False,
 def startswith(default: bool = False,
                prompt: str = "Does 'A' start with 'B'?\n",
                examples: prm.Prompt = prm.StartsWith(),
-               constraints: List[Callable] = [],
+               constraints: list[Callable] = [],
                limit: int | None = 1,
                stop: str | None = None,
-               pre_processors: Optional[List[pre.PreProcessor]] = [pre.StartsWithPreProcessor()],
-               post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+               pre_processors: list[pre.PreProcessor] | None = [pre.StartsWithPreProcessor()],
+               post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
                **decorator_kwargs):
     """Determines whether a string starts with a specified prefix."""
     return few_shot(prompt=prompt,
@@ -723,11 +724,11 @@ def startswith(default: bool = False,
 def endswith(default: bool = False,
              prompt: str = "Does 'A' end with 'B'?\n",
              examples: prm.Prompt = prm.EndsWith(),
-             constraints: List[Callable] = [],
+             constraints: list[Callable] = [],
              limit: int | None = 1,
              stop: str | None = None,
-             pre_processors: Optional[List[pre.PreProcessor]] = [pre.EndsWithPreProcessor()],
-             post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+             pre_processors: list[pre.PreProcessor] | None = [pre.EndsWithPreProcessor()],
+             post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
              **decorator_kwargs):
     """Determines whether a string ends with a specified suffix."""
     return few_shot(prompt=prompt,
@@ -742,14 +743,14 @@ def endswith(default: bool = False,
                     **decorator_kwargs)
 
 
-def case(enum: List[str],
+def case(enum: list[str],
          default: str,
          prompt: str = "Classify the text according to one of the following categories and return only the category name: ",
-         examples: Optional[prm.Prompt] = None,
+         examples: prm.Prompt | None = None,
          limit: int | None = 1,
          stop: str | None = None,
-         pre_processors: Optional[List[pre.PreProcessor]] = [pre.EnumPreProcessor(), pre.TextMessagePreProcessor(), pre.PredictionMessagePreProcessor()],
-         post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor(), post.CaseInsensitivePostProcessor()],
+         pre_processors: list[pre.PreProcessor] | None = [pre.EnumPreProcessor(), pre.TextMessagePreProcessor(), pre.PredictionMessagePreProcessor()],
+         post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor(), post.CaseInsensitivePostProcessor()],
          **decorator_kwargs):
     """Classifies a text according to one of the given categories."""
     return few_shot(prompt=prompt,
@@ -764,13 +765,13 @@ def case(enum: List[str],
 
 
 def extract(prompt: str = "Extract a pattern from text:\n",
-            default: Optional[str] = None,
+            default: str | None = None,
             examples: prm.Prompt = prm.ExtractPattern(),
-            constraints: List[Callable] = [],
+            constraints: list[Callable] = [],
             limit: int | None = 1,
             stop: str | None = None,
-            pre_processors: Optional[List[pre.PreProcessor]] = [pre.ExtractPatternPreProcessor()],
-            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+            pre_processors: list[pre.PreProcessor] | None = [pre.ExtractPatternPreProcessor()],
+            post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
             **decorator_kwargs):
     """Extracts a pattern from text."""
     return few_shot(prompt=prompt,
@@ -784,9 +785,9 @@ def extract(prompt: str = "Extract a pattern from text:\n",
                     **decorator_kwargs)
 
 def expression(prompt: str = "Evaluate the symbolic expressions:\n",
-               default: Optional[str] = None,
-               pre_processors: Optional[List[pre.PreProcessor]] = [],
-               post_processors: Optional[List[post.PostProcessor]] = [post.WolframAlphaPostProcessor()],
+               default: str | None = None,
+               pre_processors: list[pre.PreProcessor] | None = [],
+               post_processors: list[post.PostProcessor] | None = [post.WolframAlphaPostProcessor()],
                **decorator_kwargs):
     """Evaluates the symbolic expressions."""
     def decorator(func):
@@ -808,13 +809,13 @@ def expression(prompt: str = "Evaluate the symbolic expressions:\n",
 
 
 def interpret(prompt: str = "Evaluate the symbolic expressions and return only the result:\n",
-              default: Optional[str] = None,
+              default: str | None = None,
               examples: prm.Prompt = prm.SimpleSymbolicExpression(),
-              constraints: List[Callable] = [],
+              constraints: list[Callable] = [],
               limit: int | None = 1,
               stop: str | None = None,
-              pre_processors: Optional[List[pre.PreProcessor]] = [pre.InterpretExpressionPreProcessor()],
-              post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+              pre_processors: list[pre.PreProcessor] | None = [pre.InterpretExpressionPreProcessor()],
+              post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
               **decorator_kwargs):
     """Evaluates the symbolic expressions by interpreting the semantic meaning."""
     return few_shot(prompt=prompt,
@@ -830,13 +831,13 @@ def interpret(prompt: str = "Evaluate the symbolic expressions and return only t
 
 def logic(prompt: str = "Evaluate the logic expressions:\n",
           operator: str = 'and',
-          default: Optional[str] = None,
+          default: str | None = None,
           examples: prm.Prompt = prm.LogicExpression(),
-          constraints: List[Callable] = [],
+          constraints: list[Callable] = [],
           limit: int | None = 1,
           stop: str | None = None,
-          pre_processors: Optional[List[pre.PreProcessor]] = [pre.LogicExpressionPreProcessor()],
-          post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+          pre_processors: list[pre.PreProcessor] | None = [pre.LogicExpressionPreProcessor()],
+          post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
           **decorator_kwargs):
     """Evaluates a logic expression."""
     return few_shot(prompt=prompt,
@@ -852,13 +853,13 @@ def logic(prompt: str = "Evaluate the logic expressions:\n",
 
 
 def invert(prompt: str = "Invert the logic of the content:\n",
-           default: Optional[str] = None,
+           default: str | None = None,
            examples: prm.Prompt = prm.InvertExpression(),
-           constraints: List[Callable] = [],
+           constraints: list[Callable] = [],
            limit: int | None = 1,
            stop: str | None = None,
-           pre_processors: Optional[List[pre.PreProcessor]] = [pre.ArrowMessagePreProcessor()],
-           post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+           pre_processors: list[pre.PreProcessor] | None = [pre.ArrowMessagePreProcessor()],
+           post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
            **decorator_kwargs):
     """Inverts the logic of a statement."""
     return few_shot(prompt=prompt,
@@ -873,13 +874,13 @@ def invert(prompt: str = "Invert the logic of the content:\n",
 
 
 def simulate(prompt: str = "Simulate the following code:\n",
-             default: Optional[str] = None,
+             default: str | None = None,
              examples: prm.Prompt = prm.SimulateCode(),
-             constraints: List[Callable] = [],
+             constraints: list[Callable] = [],
              limit: int | None = 1,
              stop: str | None = None,
-             pre_processors: Optional[List[pre.PreProcessor]] = [pre.SimulateCodePreProcessor()],
-             post_processors: Optional[List[post.PostProcessor]] = [post.SplitPipePostProcessor(), post.TakeLastPostProcessor()],
+             pre_processors: list[pre.PreProcessor] | None = [pre.SimulateCodePreProcessor()],
+             post_processors: list[post.PostProcessor] | None = [post.SplitPipePostProcessor(), post.TakeLastPostProcessor()],
              **decorator_kwargs):
     """Simulates code and returns the result."""
     return few_shot(prompt=prompt,
@@ -894,13 +895,13 @@ def simulate(prompt: str = "Simulate the following code:\n",
 
 
 def code(prompt: str = "Generate code that solves the following problems:\n",
-         default: Optional[str] = None,
+         default: str | None = None,
          examples: prm.Prompt = prm.GenerateCode(),
-         constraints: List[Callable] = [],
+         constraints: list[Callable] = [],
          limit: int | None = 1,
          stop: str | None = None,
-         pre_processors: Optional[List[pre.PreProcessor]] = [pre.GenerateCodePreProcessor()],
-         post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+         pre_processors: list[pre.PreProcessor] | None = [pre.GenerateCodePreProcessor()],
+         post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
          **decorator_kwargs):
     """Generates code that solves a given problem."""
     return few_shot(prompt=prompt,
@@ -915,13 +916,13 @@ def code(prompt: str = "Generate code that solves the following problems:\n",
 
 
 def outline(prompt: str = "Outline only the essential content as a short list of bullets. Each bullet is in a new line:\n",
-            default: List[str] = None,
+            default: list[str] = None,
             examples: prm.Prompt = prm.TextToOutline(),
-            constraints: List[Callable] = [],
+            constraints: list[Callable] = [],
             limit: int | None = 1,
             stop: str | None = None,
-            pre_processors: Optional[List[pre.PreProcessor]] = [pre.TextToOutlinePreProcessor()],
-            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor(), post.SplitNewLinePostProcessor()],
+            pre_processors: list[pre.PreProcessor] | None = [pre.TextToOutlinePreProcessor()],
+            post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor(), post.SplitNewLinePostProcessor()],
             **decorator_kwargs):
     """Outlines the essential content as a short list of bullets."""
     return few_shot(prompt=prompt,
@@ -936,14 +937,14 @@ def outline(prompt: str = "Outline only the essential content as a short list of
 
 
 def unique(prompt: str = "Create a short unique key that captures the essential topic from the following statements and does not collide with the list of keys:\n",
-           keys: List[str] = None,
-           default: List[str] = None,
+           keys: list[str] = None,
+           default: list[str] = None,
            examples: prm.Prompt = prm.UniqueKey(),
-           constraints: List[Callable] = [],
+           constraints: list[Callable] = [],
            limit: int | None = 1,
            stop: str | None = None,
-           pre_processors: Optional[List[pre.PreProcessor]] = [pre.UniquePreProcessor()],
-           post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+           pre_processors: list[pre.PreProcessor] | None = [pre.UniquePreProcessor()],
+           post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
            **decorator_kwargs):
     """Creates a short, unique key that captures the essential topic from the given statements and does not collide with the list of keys."""
     return few_shot(prompt=prompt,
@@ -959,13 +960,13 @@ def unique(prompt: str = "Create a short unique key that captures the essential 
 
 
 def clean(prompt: str = "Clean up the text from special characters or escape sequences. DO NOT change any words or sentences! Keep original semantics:\n",
-          default: List[str] = None,
+          default: list[str] = None,
           examples: prm.Prompt = prm.CleanText(),
-          constraints: List[Callable] = [],
+          constraints: list[Callable] = [],
           limit: int | None = 1,
           stop: str | None = None,
-          pre_processors: Optional[List[pre.PreProcessor]] = [pre.CleanTextMessagePreProcessor()],
-          post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+          pre_processors: list[pre.PreProcessor] | None = [pre.CleanTextMessagePreProcessor()],
+          post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
           **decorator_kwargs):
     """Cleans up a text from special characters and escape sequences."""
     return few_shot(prompt=prompt,
@@ -980,13 +981,13 @@ def clean(prompt: str = "Clean up the text from special characters or escape seq
 
 
 def compose(prompt: str = "Create a coherent text based on the facts listed in the outline:\n",
-            default: Optional[str] = None,
-            examples: Optional[prm.Prompt] = None,
-            constraints: List[Callable] = [],
+            default: str | None = None,
+            examples: prm.Prompt | None = None,
+            constraints: list[Callable] = [],
             limit: int | None = 1,
             stop: str | None = None,
-            pre_processors: Optional[List[pre.PreProcessor]] = [pre.GenerateTextPreProcessor()],
-            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+            pre_processors: list[pre.PreProcessor] | None = [pre.GenerateTextPreProcessor()],
+            post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
             **decorator_kwargs):
     """Compose a coherent text based on an outline."""
     return few_shot(prompt=prompt,
@@ -1003,13 +1004,13 @@ def compose(prompt: str = "Create a coherent text based on the facts listed in t
 def foreach(condition: str,
             apply: str,
             prompt: str = "Iterate over each element and apply operation based on condition:\n",
-            default: Optional[str] = None,
+            default: str | None = None,
             examples: prm.Prompt = prm.ForEach(),
-            constraints: List[Callable] = [],
+            constraints: list[Callable] = [],
             limit: int | None = 1,
             stop: str | None = None,
-            pre_processors: Optional[List[pre.PreProcessor]] = [pre.ForEachPreProcessor()],
-            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+            pre_processors: list[pre.PreProcessor] | None = [pre.ForEachPreProcessor()],
+            post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
             **decorator_kwargs):
     """Applies an operation based on a given condition to each element in a list."""
     return few_shot(prompt=prompt,
@@ -1027,13 +1028,13 @@ def foreach(condition: str,
 
 def dictionary(context: str,
                prompt: str = "Map related content together under a common abstract topic. Do not remove content:\n",
-               default: Optional[str] = None,
+               default: str | None = None,
                examples: prm.Prompt = prm.MapContent(),
-               constraints: List[Callable] = [],
+               constraints: list[Callable] = [],
                limit: int | None = 1,
                stop: str | None = None,
-               pre_processors: Optional[List[pre.PreProcessor]] = [pre.MapPreProcessor()],
-               post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor(), post.ASTPostProcessor()],
+               pre_processors: list[pre.PreProcessor] | None = [pre.MapPreProcessor()],
+               post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor(), post.ASTPostProcessor()],
                **decorator_kwargs):
     """Maps related content together under a common abstract topic."""
     return few_shot(prompt=prompt,
@@ -1049,13 +1050,13 @@ def dictionary(context: str,
 
 def listing(condition: str,
             prompt: str = "List each element contained in the text or list based on condition:\n",
-            default: Optional[str] = None,
+            default: str | None = None,
             examples: prm.Prompt = prm.ListObjects(),
-            constraints: List[Callable] = [],
+            constraints: list[Callable] = [],
             stop: str | None = None,
             limit: int | None = 1,
-            pre_processors: Optional[List[pre.PreProcessor]] = [pre.ListPreProcessor()],
-            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+            pre_processors: list[pre.PreProcessor] | None = [pre.ListPreProcessor()],
+            post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
             **decorator_kwargs):
     """Lists each element contained in the text or list based on the given condition."""
     return few_shot(prompt=prompt,
@@ -1071,14 +1072,14 @@ def listing(condition: str,
 
 
 def query(context: str,
-          prompt: Optional[str] = None,
-          examples: Optional[prm.Prompt] = None,
-          constraints: List[Callable] = [],
-          default: Optional[object] = None,
+          prompt: str | None = None,
+          examples: prm.Prompt | None = None,
+          constraints: list[Callable] = [],
+          default: object | None = None,
           stop: str | None = None,
           limit: int | None = 1,
-          pre_processors: Optional[List[pre.PreProcessor]] = [pre.QueryPreProcessor()],
-          post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+          pre_processors: list[pre.PreProcessor] | None = [pre.QueryPreProcessor()],
+          post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
           **decorator_kwargs):
     """Performs a query given a context."""
     return few_shot(prompt=prompt,
@@ -1093,14 +1094,14 @@ def query(context: str,
                     **decorator_kwargs)
 
 
-def expand(prompt: Optional[str] = 'Write a self-contained function (with all imports) to solve a specific user problem task. Label the function with a name that describes the task.',
-           examples: Optional[prm.Prompt] = prm.ExpandFunction(),
-           constraints: List[Callable] = [],
-           default: Optional[object] = None,
+def expand(prompt: str | None = 'Write a self-contained function (with all imports) to solve a specific user problem task. Label the function with a name that describes the task.',
+           examples: prm.Prompt | None = prm.ExpandFunction(),
+           constraints: list[Callable] = [],
+           default: object | None = None,
            stop: str | None = None,
            limit: int | None = 1,
-           pre_processors: Optional[List[pre.PreProcessor]] = pre.ExpandFunctionPreProcessor(),
-           post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor(), post.ExpandFunctionPostProcessor()],
+           pre_processors: list[pre.PreProcessor] | None = pre.ExpandFunctionPreProcessor(),
+           post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor(), post.ExpandFunctionPostProcessor()],
            **decorator_kwargs):
     """Performs a expand command given a context to generate new prompts."""
     return few_shot(prompt=prompt,
@@ -1115,10 +1116,10 @@ def expand(prompt: Optional[str] = 'Write a self-contained function (with all im
 
 
 def search(query: str,
-           constraints: List[Callable] = [],
-           default: Optional[object] = None,
-           pre_processors: Optional[List[pre.PreProcessor]] = None,
-           post_processors: Optional[List[post.PostProcessor]] = None,
+           constraints: list[Callable] = [],
+           default: object | None = None,
+           pre_processors: list[pre.PreProcessor] | None = None,
+           post_processors: list[post.PostProcessor] | None = None,
            **decorator_kwargs):
     """Searches for a given query on the internet."""
     def decorator(func):
@@ -1141,10 +1142,10 @@ def search(query: str,
 
 
 def opening(path: str,
-            constraints: List[Callable] = [],
-            default: Optional[object] = None,
-            pre_processors: Optional[List[pre.PreProcessor]] = None,
-            post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+            constraints: list[Callable] = [],
+            default: object | None = None,
+            pre_processors: list[pre.PreProcessor] | None = None,
+            post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
             **decorator_kwargs):
     """Opens a file and applies a given function to it."""
     def decorator(func):
@@ -1166,9 +1167,9 @@ def opening(path: str,
     return decorator
 
 
-def embed(entries: List[str],
-          pre_processors: Optional[List[pre.PreProcessor]] = [pre.UnwrapListSymbolsPreProcessor()],
-          post_processors: Optional[List[post.PostProcessor]] = None,
+def embed(entries: list[str],
+          pre_processors: list[pre.PreProcessor] | None = [pre.UnwrapListSymbolsPreProcessor()],
+          post_processors: list[post.PostProcessor] | None = None,
           **decorator_kwargs):
     """Embeds the entries provided in a decorated function."""
     def decorator(func):
@@ -1188,9 +1189,9 @@ def embed(entries: List[str],
     return decorator
 
 
-def cluster(entries: List[str],
-            pre_processors: Optional[List[pre.PreProcessor]] = [pre.UnwrapListSymbolsPreProcessor()],
-            post_processors: Optional[List[post.PostProcessor]] = [post.ClusterPostProcessor()],
+def cluster(entries: list[str],
+            pre_processors: list[pre.PreProcessor] | None = [pre.UnwrapListSymbolsPreProcessor()],
+            post_processors: list[post.PostProcessor] | None = [post.ClusterPostProcessor()],
             **decorator_kwargs):
     """Embeds and clusters the input entries."""
     assert any(isinstance(pr, post.ClusterPostProcessor) for pr in post_processors), "At least one post processor must be a 'ClusterPostProcessor' for clustering!"
@@ -1206,8 +1207,8 @@ def cluster(entries: List[str],
 
 def draw(operation: str = 'create',
          prompt: str = '',
-         pre_processors: Optional[List[pre.PreProcessor]] = [pre.ValuePreProcessor()],
-         post_processors: Optional[List[post.PostProcessor]] = None,
+         pre_processors: list[pre.PreProcessor] | None = [pre.ValuePreProcessor()],
+         post_processors: list[post.PostProcessor] | None = None,
          **decorator_kwargs):
     """Draws an image provided in a decorated function."""
     def decorator(func):
@@ -1228,10 +1229,10 @@ def draw(operation: str = 'create',
     return decorator
 
 
-def text_vision(image: Optional[str|bytes] = None,
-                text: List[str] = None,
-                pre_processors: Optional[List[pre.PreProcessor]] = None,
-                post_processors: Optional[List[post.PostProcessor]] = None,
+def text_vision(image: str | bytes | None = None,
+                text: list[str] = None,
+                pre_processors: list[pre.PreProcessor] | None = None,
+                post_processors: list[post.PostProcessor] | None = None,
                 **decorator_kwargs):
     """Performs vision-related associative tasks. Currently limited to CLIP model embeddings."""
     def decorator(func):
@@ -1253,8 +1254,8 @@ def text_vision(image: Optional[str|bytes] = None,
 
 
 def ocr(image: str,
-        pre_processors: Optional[List[pre.PreProcessor]] = None,
-        post_processors: Optional[List[post.PostProcessor]] = None,
+        pre_processors: list[pre.PreProcessor] | None = None,
+        post_processors: list[post.PostProcessor] | None = None,
         **decorator_kwargs):
     """Performs Optical Character Recognition (OCR) on an image."""
     def decorator(func):
@@ -1275,8 +1276,8 @@ def ocr(image: str,
 
 
 def speech_to_text(prompt: str = 'decode',
-                   pre_processors: Optional[List[pre.PreProcessor]] = None,
-                   post_processors: Optional[List[post.PostProcessor]] = None,
+                   pre_processors: list[pre.PreProcessor] | None = None,
+                   post_processors: list[post.PostProcessor] | None = None,
                    **decorator_kwargs):
     """Decorates the given function for speech recognition."""
     def decorator(func):
@@ -1299,8 +1300,8 @@ def speech_to_text(prompt: str = 'decode',
 def text_to_speech(prompt: str,
                    path: str,
                    voice: str = 'nova',
-                   pre_processors: Optional[List[pre.PreProcessor]] = None,
-                   post_processors: Optional[List[post.PostProcessor]] = None,
+                   pre_processors: list[pre.PreProcessor] | None = None,
+                   post_processors: list[post.PostProcessor] | None = None,
                    **decorator_kwargs):
     """Decorates the given function for text to speech synthesis."""
     def decorator(func):
@@ -1322,10 +1323,10 @@ def text_to_speech(prompt: str,
     return decorator
 
 
-def output(constraints: List[Callable] = [],
-           default: Optional[object] = None,
-           pre_processors: Optional[List[pre.PreProcessor]] = [pre.ConsolePreProcessor()],
-           post_processors: Optional[List[post.PostProcessor]] = [post.ConsolePostProcessor()],
+def output(constraints: list[Callable] = [],
+           default: object | None = None,
+           pre_processors: list[pre.PreProcessor] | None = [pre.ConsolePreProcessor()],
+           post_processors: list[post.PostProcessor] | None = [post.ConsolePostProcessor()],
            **decorator_kwargs):
     """Offers an output stream for writing results."""
     def decorator(func):
@@ -1347,10 +1348,10 @@ def output(constraints: List[Callable] = [],
 
 
 def scrape(url: str,
-          constraints: List[Callable] = [],
-          default: Optional[object] = None,
-          pre_processors: Optional[List[pre.PreProcessor]] = [],
-          post_processors: Optional[List[post.PostProcessor]] = [],
+          constraints: list[Callable] = [],
+          default: object | None = None,
+          pre_processors: list[pre.PreProcessor] | None = [],
+          post_processors: list[post.PostProcessor] | None = [],
           **decorator_kwargs):
     """Fetches data from a given URL and applies the provided post-processors."""
     def decorator(func):
@@ -1371,10 +1372,10 @@ def scrape(url: str,
     return decorator
 
 
-def userinput(constraints: List[Callable] = [],
-              default: Optional[object] = None,
-              pre_processors: Optional[List[pre.PreProcessor]] = [pre.ConsoleInputPreProcessor()],
-              post_processors: Optional[List[post.PostProcessor]] = [post.StripPostProcessor()],
+def userinput(constraints: list[Callable] = [],
+              default: object | None = None,
+              pre_processors: list[pre.PreProcessor] | None = [pre.ConsoleInputPreProcessor()],
+              post_processors: list[post.PostProcessor] | None = [post.StripPostProcessor()],
               **decorator_kwargs):
     """Prompts for user input and returns the user response through a decorator."""
     def decorator(func):
@@ -1395,10 +1396,10 @@ def userinput(constraints: List[Callable] = [],
     return decorator
 
 
-def execute(default: Optional[str] = None,
-            constraints: List[Callable] = [],
-            pre_processors: List[pre.PreProcessor] = [],
-            post_processors: List[post.PostProcessor] = [],
+def execute(default: str | None = None,
+            constraints: list[Callable] = [],
+            pre_processors: list[pre.PreProcessor] = [],
+            post_processors: list[post.PostProcessor] = [],
             **decorator_kwargs):
     """Executes a given function after applying constraints, pre-processing and post-processing."""
     def decorator(func):
@@ -1422,10 +1423,10 @@ def execute(default: Optional[str] = None,
 def index(prompt: Any,
           index_name: str,
           operation: str = 'search', # | add | config
-          default: Optional[str] = None,
-          constraints: List[Callable] = [],
-          pre_processors: List[pre.PreProcessor] = [],
-          post_processors: List[post.PostProcessor] = [],
+          default: str | None = None,
+          constraints: list[Callable] = [],
+          pre_processors: list[pre.PreProcessor] = [],
+          post_processors: list[post.PostProcessor] = [],
           **decorator_kwargs):
     """Query for a given index and returns the result through a decorator."""
     def decorator(func):
@@ -1449,7 +1450,7 @@ def index(prompt: Any,
     return decorator
 
 
-def command(engines: List[str] = ['all'], **decorator_kwargs):
+def command(engines: list[str] = ['all'], **decorator_kwargs):
     """Decorates a function to forward commands to the engine backends."""
     def decorator(func):
         @functools.wraps(func)
@@ -1464,7 +1465,7 @@ def command(engines: List[str] = ['all'], **decorator_kwargs):
     return decorator
 
 
-def register(engines: Dict[str, Any]):
+def register(engines: dict[str, Any]):
     """Decorates a function to initialize custom engines as backends."""
     def decorator(func):
         @functools.wraps(func)
@@ -1480,8 +1481,8 @@ def register(engines: Dict[str, Any]):
 
 
 def tune(operation: str = 'create',
-         pre_processors: Optional[List[pre.PreProcessor]] = None,
-         post_processors: Optional[List[post.PostProcessor]] = None,
+         pre_processors: list[pre.PreProcessor] | None = None,
+         post_processors: list[post.PostProcessor] | None = None,
          **decorator_kwargs):
     """Fine tune a LLM."""
     def decorator(func):
@@ -1503,8 +1504,8 @@ def tune(operation: str = 'create',
 
 def caption(image: str,
             prompt: str,
-            pre_processors: Optional[List[pre.PreProcessor]] = [pre.ValuePreProcessor()],
-            post_processors: Optional[List[post.PostProcessor]] = None,
+            pre_processors: list[pre.PreProcessor] | None = [pre.ValuePreProcessor()],
+            post_processors: list[post.PostProcessor] | None = None,
             **decorator_kwargs):
     """Caption the content of an image."""
     def decorator(func):

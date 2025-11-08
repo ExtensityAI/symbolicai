@@ -10,7 +10,7 @@ from ... import config_manager
 from ...imports import Import
 
 
-class PackageHandler():
+class PackageHandler:
     def __init__(self):
         self.package_dir = Path(config_manager.config_dir) / 'packages'
 
@@ -37,7 +37,7 @@ class PackageHandler():
         parser.add_argument('command', help='Subcommand to run')
         args = parser.parse_args(sys.argv[1:2])
         if len(args.command) > 1 and not hasattr(self, args.command):
-            setattr(args, 'package', args.command)
+            args.package = args.command
             self.i(args)
         elif len(args.command) == 1 and not hasattr(self, args.command):
             logger.error('Unrecognized command')

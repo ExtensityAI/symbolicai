@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import base64
 import inspect
-import json
 import os
 import warnings
 from dataclasses import dataclass
@@ -22,7 +21,7 @@ def encode_media_frames(file_path):
         if file_path.startswith('http'):
             return encode_image_url(file_path)
         return encode_image_local(file_path)
-    elif ext.lower() == 'gif':
+    if ext.lower() == 'gif':
         if file_path.startswith('http'):
             raise ValueError("GIF files from URLs are not supported. Please download the file and try again.")
 
@@ -37,7 +36,7 @@ def encode_media_frames(file_path):
                 _, buffer = cv2.imencode(".jpg", current_frame)
                 base64Frames.append(base64.b64encode(buffer).decode("utf-8"))
         return base64Frames, ext
-    elif ext.lower() == 'mp4' or ext.lower() == 'avi' or ext.lower() == 'mov':
+    if ext.lower() == 'mp4' or ext.lower() == 'avi' or ext.lower() == 'mov':
         if file_path.startswith('http'):
             raise ValueError("Video files from URLs are not supported. Please download the file and try again.")
 
@@ -53,8 +52,7 @@ def encode_media_frames(file_path):
             base64Frames.append(base64.b64encode(buffer).decode("utf-8"))
         video.release()
         return base64Frames, ext
-    else:
-        raise ValueError(f"File extension {ext} not supported")
+    raise ValueError(f"File extension {ext} not supported")
 
 
 def encode_image_local(image_path):
@@ -100,13 +98,13 @@ def ignore_exception(exception=Exception, default=None):
 
 
 def prep_as_str(x):
-    return f"'{str(x)}'" if ignore_exception()(int)(str(x)) is None else str(x)
+    return f"'{x!s}'" if ignore_exception()(int)(str(x)) is None else str(x)
 
 
 def deprecated(message):
     def deprecated_decorator(func):
         def deprecated_func(*args, **kwargs):
-            warnings.warn("{} is a deprecated function. {}".format(func.__name__, message),
+            warnings.warn(f"{func.__name__} is a deprecated function. {message}",
                           category=DeprecationWarning,
                           stacklevel=2)
             warnings.simplefilter('default', DeprecationWarning)
@@ -120,8 +118,7 @@ def toggle_test(enabled: bool = True, default = None):
         def test_func(*args, **kwargs):
             if enabled:
                 return func(*args, **kwargs)
-            else:
-                return default
+            return default
         return test_func
     return test_decorator
 
@@ -154,12 +151,11 @@ class CustomUserWarning:
 def format_bytes(bytes):
     if bytes < 1024:
         return f"{bytes} bytes"
-    elif bytes < 1048576:
+    if bytes < 1048576:
         return f"{bytes / 1024:.2f} KB"
-    elif bytes < 1073741824:
+    if bytes < 1073741824:
         return f"{bytes / 1048576:.2f} MB"
-    else:
-        return f"{bytes / 1073741824:.2f} GB"
+    return f"{bytes / 1073741824:.2f} GB"
 
 
 def semassert(condition: bool, message: str = ""):
@@ -220,7 +216,7 @@ class RuntimeInfo:
         )
 
     @staticmethod
-    def from_tracker(tracker: 'MetadataTracker', total_elapsed_time: float = 0):
+    def from_tracker(tracker: MetadataTracker, total_elapsed_time: float = 0):
         if len(tracker.metadata) > 0:
             try:
                 return RuntimeInfo.from_usage_stats(tracker.usage, total_elapsed_time)

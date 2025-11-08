@@ -1,14 +1,17 @@
 import argparse
 import random
-from typing import List, Optional
 
 import numpy as np
 import torch
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from pydantic import BaseModel
-from transformers import (AutoModelForCausalLM, AutoTokenizer,
-                          BitsAndBytesConfig, StoppingCriteria,
-                          StoppingCriteriaList)
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    BitsAndBytesConfig,
+    StoppingCriteria,
+    StoppingCriteriaList,
+)
 
 # General arguments
 parser = argparse.ArgumentParser(description="FastAPI server for Hugging Face models")
@@ -92,26 +95,26 @@ class StoppingCriteriaSub(StoppingCriteria):
 
 class TokenizeRequest(BaseModel):
     input: str
-    add_special_tokens: Optional[bool] = False
+    add_special_tokens: bool | None = False
 
 class DetokenizeRequest(BaseModel):
-    tokens: List[int]
-    skip_special_tokens: Optional[bool] = True
+    tokens: list[int]
+    skip_special_tokens: bool | None = True
 
 class ChatCompletionRequest(BaseModel):
-    messages: List[dict]
+    messages: list[dict]
     temperature: float = 1.
     top_p: float = 1.
-    stop: Optional[List[str]] = None
-    seed: Optional[int] = None
-    max_tokens: Optional[int] = 2048
-    max_tokens_forcing: Optional[int] = None
+    stop: list[str] | None = None
+    seed: int | None = None
+    max_tokens: int | None = 2048
+    max_tokens_forcing: int | None = None
     top_k: int = 50
     logprobs: bool = False
     do_sample: bool = True
     num_beams: int = 1
     num_beam_groups: int = 1
-    eos_token_id: Optional[int] = None
+    eos_token_id: int | None = None
 
 @app.post("/chat")
 def chat_completions(request: ChatCompletionRequest):
@@ -188,7 +191,8 @@ def detokenize(request: DetokenizeRequest):
     return {"text": text}
 
 def huggingface_server():
-    import uvicorn
     from functools import partial
+
+    import uvicorn
     command = partial(uvicorn.run, app)
     return command, args

@@ -1,6 +1,6 @@
 from ... import core
-from ...symbol import Expression, Symbol
 from ...backend.engines.drawing.engine_bfl import FluxResult
+from ...symbol import Expression
 
 
 class flux(Expression):

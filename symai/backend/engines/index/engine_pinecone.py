@@ -1,6 +1,5 @@
 import itertools
 import warnings
-import numpy as np
 
 warnings.filterwarnings('ignore', module='pinecone')
 try:
@@ -8,10 +7,10 @@ try:
 except:
     pass
 
-from ...base import Engine
-from ...settings import SYMAI_CONFIG
 from .... import core_ext
 from ....symbol import Result
+from ...base import Engine
+from ...settings import SYMAI_CONFIG
 
 
 def chunks(iterable, batch_size=100):
@@ -51,7 +50,7 @@ class PineconeResult(Result):
             if match.startswith('# ----[FILE_START]') and '# ----[FILE_END]' in match:
                 m = match.split('[FILE_CONTENT]:')[-1].strip()
                 splits = m.split('# ----[FILE_END]')
-                assert len(splits) >= 2, 'Invalid file format: {}'.format(splits)
+                assert len(splits) >= 2, f'Invalid file format: {splits}'
                 content = splits[0]
                 file_name = ','.join(splits[1:]) # TODO: check why there are multiple file names
                 yield file_name.strip(), content.strip()

@@ -1,10 +1,9 @@
 import os
 
 from tqdm import tqdm
-from typing import List
 
-from ..symbol import Expression, Symbol
 from ..components import FileReader
+from ..symbol import Expression, Symbol
 
 
 class FileMerger(Expression):
@@ -12,8 +11,8 @@ class FileMerger(Expression):
     Class to merge contents of multiple files into one, specified by their file endings and root path.
     Files specified in the exclude list will not be included.
     """
-    def __init__(self, file_endings: List[str] = ['.py', '.md', '.txt', '.sh', '.pdf', '.json', '.yaml', '.java', '.cpp', '.hpp', '.c', '.h', '.js', '.css', '.html', '.xml', '.csv', '.tsv', '.yml', '.rst', '.ipynb', '.tex', '.bib'],
-                       file_excludes: List[str] = ['__init__.py', '__pycache__', 'LICENSE', 'requirements.txt', 'environment.yaml', '.git'], **kwargs):
+    def __init__(self, file_endings: list[str] = ['.py', '.md', '.txt', '.sh', '.pdf', '.json', '.yaml', '.java', '.cpp', '.hpp', '.c', '.h', '.js', '.css', '.html', '.xml', '.csv', '.tsv', '.yml', '.rst', '.ipynb', '.tex', '.bib'],
+                       file_excludes: list[str] = ['__init__.py', '__pycache__', 'LICENSE', 'requirements.txt', 'environment.yaml', '.git'], **kwargs):
         super().__init__(**kwargs)
         self.file_endings = file_endings
         self.file_excludes = file_excludes
@@ -31,7 +30,7 @@ class FileMerger(Expression):
 
         # Implement recursive file search
         # use tqdm for progress bar and description
-        tqdm_desc = f"Reading file: ..."
+        tqdm_desc = "Reading file: ..."
         # use os.walk to recursively search for files in the root path
         progress = tqdm(os.walk(root_path), desc=tqdm_desc)
 

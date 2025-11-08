@@ -11,9 +11,14 @@ from ..backend.settings import HOME_PATH, SYMAI_CONFIG
 from ..interfaces import Interface
 from ..symbol import Expression, Symbol
 from ..utils import CustomUserWarning
-from .metrics import (adams_similarity, cosine_similarity,
-                      derridaean_similarity, dot_product, euclidean_metric,
-                      ranking_algorithm_sort)
+from .metrics import (
+    adams_similarity,
+    cosine_similarity,
+    derridaean_similarity,
+    dot_product,
+    euclidean_metric,
+    ranking_algorithm_sort,
+)
 
 logging.getLogger('sentence_transformers').setLevel(logging.WARNING)
 logging.getLogger('datasets').setLevel(logging.WARNING)
@@ -71,7 +76,7 @@ class VectorDB(Expression):
         elif "adams" in similarity_metric:
             self.similarity_metric = adams_similarity
         else:
-            CustomUserWarning(f"Similarity metric not supported. Please use either 'dot', 'cosine', 'euclidean', 'adams', or 'derrida'.", raise_with=ValueError)
+            CustomUserWarning("Similarity metric not supported. Please use either 'dot', 'cosine', 'euclidean', 'adams', or 'derrida'.", raise_with=ValueError)
 
         if load_on_init:
             # If load_on_init is a string, use it as the storage file
@@ -354,7 +359,7 @@ class VectorDB(Expression):
             A list of results.
 
         """
-        assert self.vectors is not None, f"Error: Cannot query the database without prior insertion / initialization."
+        assert self.vectors is not None, "Error: Cannot query the database without prior insertion / initialization."
         top_k = top_k or self.index_top_k
         query_vector = self.embedding_function([query])[0] if vector is None else vector
         if type(query_vector) == list:

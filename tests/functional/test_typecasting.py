@@ -1,10 +1,13 @@
 import inspect
-from typing import Any, Dict, List, Type, Union
+from typing import Any
 
 import pytest
 
-from symai.functional import (ConstraintViolationException,
-                              ProbabilisticBooleanMode, _cast_return_type)
+from symai.functional import (
+    ConstraintViolationException,
+    ProbabilisticBooleanMode,
+    _cast_return_type,
+)
 
 
 @pytest.mark.parametrize("rsp, return_constraint, expected_output", [
@@ -48,7 +51,7 @@ from symai.functional import (ConstraintViolationException,
     (False, bool, False),
     
 ])
-def test_cast_return_type(rsp: Any, return_constraint: Type, expected_output: Any):
+def test_cast_return_type(rsp: Any, return_constraint: type, expected_output: Any):
     result = _cast_return_type(rsp, return_constraint, ProbabilisticBooleanMode.TOLERANT)
     assert result == expected_output
     assert isinstance(result, return_constraint)

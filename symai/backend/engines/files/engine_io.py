@@ -57,7 +57,7 @@ class FileEngine(Engine):
             for s in slices_s:
                 if s == '':
                     continue
-                elif ':' in s:
+                if ':' in s:
                     s_split = s.split(':')
                     if len(s_split) == 2:
                         start_slice = int(s_split[0]) if s_split[0] != '' else None
@@ -82,7 +82,7 @@ class FileEngine(Engine):
         ext = Path(file_path).suffix.lower()
         if ext in {'.txt', '.md', '.py', '.json', '.yaml', '.yml', '.csv', '.tsv', '.log'}:
             try:
-                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                with open(file_path, encoding='utf-8', errors='ignore') as f:
                     content = f.read()
                 if content is None:
                     return None

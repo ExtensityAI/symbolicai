@@ -1,5 +1,5 @@
-import re
 import ast
+import re
 
 
 class DynamicClass:
@@ -87,17 +87,16 @@ def create_object_from_string(str_class):
                 value = value[1:-1]
                 values = value.split(',')
                 return [parse_value(v.strip()) for v in values]
-            elif value.startswith('{'):
+            if value.startswith('{'):
                 value = value[1:-1]
                 values = value.split(',')
                 return {k.strip(): parse_value(v.strip()) for k, v in [v.split(':', 1) for v in values]}
             res = ast.literal_eval(value)
             if isinstance(res, dict):
                 return {k: parse_value(v) for k, v in res.items()}
-            elif isinstance(res, list) or isinstance(res, tuple) or isinstance(res, set):
+            if isinstance(res, list) or isinstance(res, tuple) or isinstance(res, set):
                 return [parse_value(v) for v in res]
-            else:
-                return res
+            return res
         except:
             return value
 

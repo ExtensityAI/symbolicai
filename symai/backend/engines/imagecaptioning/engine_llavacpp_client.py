@@ -1,15 +1,14 @@
-import logging
-import requests
-import json
 import io
+import json
+import logging
 
-from typing import List
-from requests_toolbelt.multipart.encoder import MultipartEncoder
+import requests
 from PIL.Image import Image
+from requests_toolbelt.multipart.encoder import MultipartEncoder
 
+from ....symbol import Result
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
-from ....symbol import Result
 
 
 def image_to_byte_array(image: Image, format='PNG') -> bytes:
@@ -126,11 +125,11 @@ class LLaMACppClientEngine(Engine):
 
         payload = argument.prop.payload
         if argument.prop.payload:
-            system += f"[ADDITIONAL CONTEXT]\n{str(payload)}\n\n"
+            system += f"[ADDITIONAL CONTEXT]\n{payload!s}\n\n"
 
-        examples: List[str] = argument.prop.examples
+        examples: list[str] = argument.prop.examples
         if examples and len(examples) > 0:
-            system += f"[EXAMPLES]\n{str(examples)}\n\n"
+            system += f"[EXAMPLES]\n{examples!s}\n\n"
 
         if argument.prop.prompt is not None and len(argument.prop.prompt) > 0:
             val = str(argument.prop.prompt)
@@ -154,8 +153,8 @@ class LLaMACppClientEngine(Engine):
         user += f"{suffix}"
 
         if argument.prop.template_suffix:
-            user += f"\n[[PLACEHOLDER]]\n{str(argument.prop.template_suffix)}\n\n"
-            user += f"Only generate content for the placeholder `[[PLACEHOLDER]]` following the instructions and context information. Do NOT write `[[PLACEHOLDER]]` or anything else in your output.\n\n"
+            user += f"\n[[PLACEHOLDER]]\n{argument.prop.template_suffix!s}\n\n"
+            user += "Only generate content for the placeholder `[[PLACEHOLDER]]` following the instructions and context information. Do NOT write `[[PLACEHOLDER]]` or anything else in your output.\n\n"
 
         user_prompt = { "role": "user", "content": user }
         argument.prop.prepared_input = [

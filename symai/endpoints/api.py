@@ -1,20 +1,19 @@
 import importlib
 import inspect
 import pickle
-import redis
+from typing import Any, Generic, TypeVar, Union
 
-from redis.exceptions import ConnectionError
-from fastapi import FastAPI, APIRouter, HTTPException, Security, status
-from fastapi.security import APIKeyHeader
+import redis
+from fastapi import APIRouter, FastAPI, HTTPException, Security, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
-from typing import Any, Generic, TypeVar, Dict, List, Optional, Union
+from redis.exceptions import ConnectionError
 
 from symai.backend import settings
 
 from .. import core_ext
-from ..symbol import Symbol, Expression
-
+from ..symbol import Expression, Symbol
 
 # Configure Redis server connection parameters and executable path
 HOST  = 'localhost'
@@ -40,7 +39,7 @@ T = TypeVar('T')
 
 class GenericRepository(Generic[T]):
     def __init__(self, redis_client: redis.Redis, id_key: str, use_redis: bool = True):
-        self.storage: Dict[str, T] = {}  # In-memory dictionary to mock Redis
+        self.storage: dict[str, T] = {}  # In-memory dictionary to mock Redis
         self.use_redis     = use_redis
         self.id_key        = id_key  # Key used for storing the incremental ID counter
         self.redis_client  = redis_client
@@ -125,8 +124,8 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, 
 
 
 class CreateSymbolRequest(BaseModel):
-    value: Optional[Any]          = None
-    static_context: Optional[str] = ''
+    value: Any | None          = None
+    static_context: str | None = ''
 
 
 class UpdateSymbolRequest(BaseModel):
@@ -135,8 +134,8 @@ class UpdateSymbolRequest(BaseModel):
 
 
 class SymbolMethodRequest(BaseModel):
-    args: List[Any] = []
-    kwargs: Dict[str, Any] = {}
+    args: list[Any] = []
+    kwargs: dict[str, Any] = {}
 
 def get_api_key(api_key_header: str = Security(api_key_header) if API_KEY else None) -> str:
     if API_KEY == None:
@@ -200,7 +199,7 @@ def operate_on_symbol(symbol_id: str, method_name: str, method_request: SymbolMe
 
 
 class CreateExpressionRequest(BaseModel):
-    value: Optional[Any] = None
+    value: Any | None = None
 
 
 class UpdateExpressionRequest(BaseModel):
@@ -278,21 +277,21 @@ class AddComponentRequest(BaseModel):
 # Endpoint to instantiate a generic component class and get the ID
 class CreateComponentGenericRequest(BaseModel):
     class_name: str
-    init_args: List[Any]        = []
-    init_kwargs: Dict[str, Any] = {}
+    init_args: list[Any]        = []
+    init_kwargs: dict[str, Any] = {}
 
 
 # Modify the existing GenericRequest
 class GenericRequest(BaseModel):
     class_name: str
-    init_args: List[Any]            = {}
-    init_kwargs: Dict[str, Any]     = {}
-    forward_args: List[ Any]        = {}
-    forward_kwargs: Dict[str, Any]  = {}
+    init_args: list[Any]            = {}
+    init_kwargs: dict[str, Any]     = {}
+    forward_args: list[ Any]        = {}
+    forward_kwargs: dict[str, Any]  = {}
 
 
 class UpdateComponentRequest(BaseModel):
-    update_kwargs: Dict[str, Any] = {}
+    update_kwargs: dict[str, Any] = {}
 
 
 @app.post("/components/")
@@ -361,10 +360,9 @@ def delete_component(instance_id: str, api_key: str = Security(get_api_key)):
 
 # extended imports
 from ..extended import Conversation
-from ..extended.personas import Persona, Dialogue
-from ..extended.personas.student import MaxTenner
+from ..extended.personas import Dialogue, Persona
 from ..extended.personas.sales import ErikJames
-
+from ..extended.personas.student import MaxTenner
 
 extended_types = [Conversation, Persona, Dialogue, MaxTenner, ErikJames]
 # Register only the extended types from the extended_types Union
@@ -375,12 +373,12 @@ extended_instance_repository = GenericRepository[extended_types](redis_client, "
 # Model definitions for extended classes
 class CreateExtendedRequest(BaseModel):
     class_name: str
-    init_args: List[Any]        = []
-    init_kwargs: Dict[str, Any] = {}
+    init_args: list[Any]        = []
+    init_kwargs: dict[str, Any] = {}
 
 
 class UpdateExtendedRequest(BaseModel):
-    update_kwargs: Dict[str, Any] = {}
+    update_kwargs: dict[str, Any] = {}
 
 
 # Create endpoints for each of the extended classes
@@ -418,16 +416,15 @@ def extended_forward(request: GenericRequest, api_key: str = Security(get_api_ke
         # Check if the type of the result is within extended types or a primitive that can be serialized directly
         if isinstance(result, Symbol):
             return result.json()  # Convert to dictionary if it's a complex type
-        else:
-            return {"result": result}  # Return as is if it's a primitive type
+        return {"result": result}  # Return as is if it's a primitive type
     except ImportError as e:
-        raise HTTPException(status_code=404, detail=f"Module not found: {str(e)}")
+        raise HTTPException(status_code=404, detail=f"Module not found: {e!s}")
     except AttributeError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except TypeError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"An error occurred: {e!s}")
 
 
 @app.get("/extended/{instance_id}/")

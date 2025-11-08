@@ -1,13 +1,11 @@
 import logging
 import os
 import time
-
 from abc import ABC
-from typing import Any, List, Tuple
-from .settings import HOME_PATH
+from typing import Any
 
 from ..collect import CollectionRepository, rec_serialize
-
+from .settings import HOME_PATH
 
 ENGINE_UNREGISTERED = '<UNREGISTERED/>'
 
@@ -34,7 +32,7 @@ class Engine(ABC):
         stream.setFormatter(streamformat)
         self.logger.addHandler(stream)
 
-    def __call__(self, argument: Any) -> Tuple[List[str], dict]:
+    def __call__(self, argument: Any) -> tuple[list[str], dict]:
         log = {
             'Input': {
                 'self': self,
@@ -64,7 +62,7 @@ class Engine(ABC):
         log['Output'] = res
         if self.verbose:
             view   = {k: v for k, v in list(log['Input'].items()) if k != 'self'}
-            input_ = f"{str(log['Input']['self'])[:50]}, {str(argument.prop.func)}, {str(view)}"
+            input_ = f"{str(log['Input']['self'])[:50]}, {argument.prop.func!s}, {view!s}"
             print(input_[:150], str(log['Output'])[:100])
         if self.logging:
             self.logger.log(self.log_level, log)
@@ -117,20 +115,20 @@ class Engine(ABC):
 
         return Preview(argument), {}
 
-    def forward(self, *args: Any, **kwds: Any) -> List[str]:
-        raise NotADirectoryError()
+    def forward(self, *args: Any, **kwds: Any) -> list[str]:
+        raise NotADirectoryError
 
     def prepare(self, argument):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def command(self, *args, **kwargs):
-        if kwargs.get('verbose', None):
+        if kwargs.get('verbose'):
             self.verbose = kwargs['verbose']
-        if kwargs.get('logging', None):
+        if kwargs.get('logging'):
             self.logging = kwargs['logging']
-        if kwargs.get('log_level', None):
+        if kwargs.get('log_level'):
             self.log_level = kwargs['log_level']
-        if kwargs.get('time_clock', None):
+        if kwargs.get('time_clock'):
             self.time_clock = kwargs['time_clock']
 
     def __str__(self) -> str:
@@ -155,7 +153,7 @@ class BatchEngine(Engine):
         self.time_clock = True
         self.allows_batching = True
 
-    def __call__(self, arguments: List[Any]) -> List[Tuple[Any, dict]]:
+    def __call__(self, arguments: list[Any]) -> list[tuple[Any, dict]]:
         start_time = time.time()
         for arg in arguments:
             if hasattr(arg.prop.instance, '_metadata') and hasattr(arg.prop.instance._metadata, 'input_handler'):
@@ -191,5 +189,5 @@ class BatchEngine(Engine):
             return_list.append((result, metadata))
         return return_list
 
-    def forward(self, arguments: List[Any]) -> Tuple[List[Any], List[dict]]:
+    def forward(self, arguments: list[Any]) -> tuple[list[Any], list[dict]]:
         raise NotImplementedError("Subclasses must implement forward method")

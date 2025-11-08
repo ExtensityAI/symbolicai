@@ -1,9 +1,8 @@
 from .. import core
-from ..pre_processors import PreProcessor
-from ..post_processors import CodeExtractPostProcessor
-from ..symbol import Expression, Symbol
 from ..components import Execute
-
+from ..post_processors import CodeExtractPostProcessor
+from ..pre_processors import PreProcessor
+from ..symbol import Expression, Symbol
 
 API_BUILDER_DESCRIPTION = """[Description]
 You are an API coding tool for Python that creates API calls to any web URL based on user requests.
@@ -64,7 +63,7 @@ res = run(value) # [MANAGED] must contain this line, do not change
 
 class APIBuilderPreProcessor(PreProcessor):
     def __call__(self, argument):
-        return '$> {} =>'.format(str(argument.args[0]))
+        return f'$> {argument.args[0]!s} =>'
 
 
 class APIBuilder(Expression):

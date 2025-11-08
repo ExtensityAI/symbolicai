@@ -1,22 +1,20 @@
 import logging
-import requests
-
-import torch
-from typing import Optional
-from PIL import Image
 from io import BytesIO
+
+import requests
+import torch
+from PIL import Image
 from transformers import CLIPModel, CLIPProcessor
 
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
-
 
 # supress warnings
 logging.getLogger("PIL").setLevel(logging.WARNING)
 
 
 class CLIPEngine(Engine):
-    def __init__(self, model: Optional[str] = None):
+    def __init__(self, model: str | None = None):
         super().__init__()
         self.model =  None # lazy loading
         self.preprocessor = None # lazy loading

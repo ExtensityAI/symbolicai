@@ -10,8 +10,7 @@ import subprocess
 import sys
 import time
 import traceback
-from pathlib import Path
-from typing import Iterable, Tuple
+from collections.abc import Iterable
 
 #@TODO: refactor to use rich instead of prompt_toolkit
 from prompt_toolkit import HTML, PromptSession, print_formatted_text
@@ -19,17 +18,20 @@ from prompt_toolkit.completion import Completer, Completion, WordCompleter
 from prompt_toolkit.history import History
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.keys import Keys
-from prompt_toolkit.lexers import PygmentsLexer
 from prompt_toolkit.patch_stdout import patch_stdout
 from prompt_toolkit.shortcuts import CompleteStyle, ProgressBar
 from prompt_toolkit.styles import Style
-from pygments.lexers.shell import BashLexer
 
 from .backend.settings import HOME_PATH, SYMSH_CONFIG
 from .components import FileReader, Function, Indexer
-from .extended import (ArxivPdfParser, Conversation, DocumentRetriever,
-                       FileMerger, RepositoryCloner,
-                       RetrievalAugmentedConversation)
+from .extended import (
+    ArxivPdfParser,
+    Conversation,
+    DocumentRetriever,
+    FileMerger,
+    RepositoryCloner,
+    RetrievalAugmentedConversation,
+)
 from .imports import Import
 from .interfaces import Interface
 from .menu.screen import show_intro_menu
@@ -220,19 +222,18 @@ def _(event):
 
     # Use `patch_stdout`, to make sure that prints go above the
     # application.
-    with patch_stdout():
-        with ProgressBar(key_bindings=kb, bottom_toolbar=bottom_toolbar) as pb:
-            # TODO: hack to simulate progress bar of indeterminate length of an synchronous function
-            for i in pb(range(100)):
-                if i > 50 and i < 70:
-                    time.sleep(.01)
+    with patch_stdout(), ProgressBar(key_bindings=kb, bottom_toolbar=bottom_toolbar) as pb:
+        # TODO: hack to simulate progress bar of indeterminate length of an synchronous function
+        for i in pb(range(100)):
+            if i > 50 and i < 70:
+                time.sleep(.01)
 
-                if i == 60:
-                    res = func(current_user_input) # hack to see progress bar
+            if i == 60:
+                res = func(current_user_input) # hack to see progress bar
 
-                # Stop when the cancel flag has been set.
-                if cancel[0]:
-                    break
+            # Stop when the cancel flag has been set.
+            if cancel[0]:
+                break
 
     with ConsoleStyle('code') as console:
         console.print(res)
@@ -262,7 +263,7 @@ class FileHistory(History):
         lines: list[str] = []
 
         if os.path.exists(self.filename):
-            with open(self.filename, "r") as f:
+            with open(self.filename) as f:
                 lines = f.readlines()
                 # Remove comments and empty lines.
                 lines = [line for line in lines if line.strip() and not line.startswith("#")]
@@ -301,7 +302,7 @@ def get_git_branch():
         pass
     return None
 
-def disambiguate(cmds: str) -> Tuple[str, int]:
+def disambiguate(cmds: str) -> tuple[str, int]:
     '''
     Ok, so, possible options for now:
         1. query | cmd
@@ -323,7 +324,7 @@ def disambiguate(cmds: str) -> Tuple[str, int]:
                          'query | cmd (e.g. "what flags can I use with rg?" | rg --help)')
     # now check order of commands and keep correct order
     if shutil.which(maybe_cmd) is not None:
-        cmd_out = subprocess.run(cmds, capture_output=True, text=True, shell=True)
+        cmd_out = subprocess.run(cmds, check=False, capture_output=True, text=True, shell=True)
         if not cmd_out.stdout:
             raise ValueError(f'Command not found or failed. Error: {cmd_out.stderr}')
         return cmd_out.stdout, 1
@@ -345,7 +346,7 @@ def query_language_model(query: str, res=None, *args, **kwargs):
         splits = query.split(f'{splitter}')
         if previous_kwargs is None and '=' not in splits[-1] and ',' not in splits[-1]:
             raise ValueError('Kwargs format must be last in query.')
-        elif previous_kwargs is not None and '=' not in splits[-1] and ',' not in splits[-1]:
+        if previous_kwargs is not None and '=' not in splits[-1] and ',' not in splits[-1]:
             # use previous kwargs
             cmd_kwargs = previous_kwargs
         else:
@@ -384,7 +385,7 @@ def query_language_model(query: str, res=None, *args, **kwargs):
         except Exception:
             with ConsoleStyle('error') as console:
                 console.print('No conversation state found. Please start a new conversation.')
-            return
+            return None
         if plugin is not None:
             with Loader(desc="Inference ...", end=""):
                 query = query[1:].strip('\'"')
@@ -398,11 +399,11 @@ def query_language_model(query: str, res=None, *args, **kwargs):
     if '|' in query:
         cmds = query.split('|')
         if len(cmds) > 2:
-            raise ValueError(('Cannot disambiguate commands that have more than 1 pipes. Please provide correct order of commands. '
+            raise ValueError('Cannot disambiguate commands that have more than 1 pipes. Please provide correct order of commands. '
                               'Supported are: '
                               'query | file [file ...] (e.g. "what do these files have in common?" | file1 [file2 ...]) '
                               'and '
-                              'query | cmd (e.g. "what flags can I use with rg?" | rg --help)'))
+                              'query | cmd (e.g. "what flags can I use with rg?" | rg --help)')
         query = cmds[0]
         payload, order = disambiguate(cmds[1].strip())
         # check if we're in a stateful conversation
@@ -543,35 +544,33 @@ def set_default_module(cmd: str):
         console.print(msg)
 
 def handle_error(cmd, res, message, auto_query_on_error):
-    msg = Symbol(cmd) | f'\n{str(res)}'
+    msg = Symbol(cmd) | f'\n{res!s}'
     if 'command not found' in str(res) or 'not recognized as an internal or external command' in str(res):
         return res.stderr.decode('utf-8')
-    else:
-        stderr = res.stderr
-        if stderr and auto_query_on_error:
-            rsp = stderr.decode('utf-8')
-            print(rsp)
-            msg = msg | f"\n{rsp}"
-            if 'usage:' in rsp:
-                try:
-                    cmd = cmd.split('usage: ')[-1].split(' ')[0]
-                    # get man page result for command
-                    res = subprocess.run('man -P cat %s' % cmd,
-                                            shell=True,
-                                            stdout=subprocess.PIPE)
-                    stdout = res.stdout
-                    if stdout:
-                        rsp = stdout.decode('utf-8')[:500]
-                        msg = msg | f"\n{rsp}"
-                except Exception:
-                    pass
+    stderr = res.stderr
+    if stderr and auto_query_on_error:
+        rsp = stderr.decode('utf-8')
+        print(rsp)
+        msg = msg | f"\n{rsp}"
+        if 'usage:' in rsp:
+            try:
+                cmd = cmd.split('usage: ')[-1].split(' ')[0]
+                # get man page result for command
+                res = subprocess.run('man -P cat %s' % cmd,
+                                        check=False, shell=True,
+                                        stdout=subprocess.PIPE)
+                stdout = res.stdout
+                if stdout:
+                    rsp = stdout.decode('utf-8')[:500]
+                    msg = msg | f"\n{rsp}"
+            except Exception:
+                pass
 
-            return query_language_model(msg)
-        else:
-            stdout = res.stdout
-            if stdout:
-                message = stderr.decode('utf-8')
-            return message
+        return query_language_model(msg)
+    stdout = res.stdout
+    if stdout:
+        message = stderr.decode('utf-8')
+    return message
 
 # run shell command
 def run_shell_command(cmd: str, prev=None, auto_query_on_error: bool=False, stdout=None, stderr=None):
@@ -588,7 +587,7 @@ def run_shell_command(cmd: str, prev=None, auto_query_on_error: bool=False, stdo
     try:
         stdout = subprocess.PIPE if auto_query_on_error else stdout
         stderr = subprocess.PIPE if auto_query_on_error else stderr
-        res = subprocess.run(cmd, shell=True, stdout=stdout, stderr=stderr, env=new_env)
+        res = subprocess.run(cmd, check=False, shell=True, stdout=stdout, stderr=stderr, env=new_env)
         if res and stdout and res.stdout:
             message = res.stdout.decode('utf-8')
         elif res and stderr and res.stderr:
@@ -602,8 +601,7 @@ def run_shell_command(cmd: str, prev=None, auto_query_on_error: bool=False, stdo
     if res.returncode == 0:
         return message
     # If command not found, then try to query language model
-    else:
-        return handle_error(cmd, res, message, auto_query_on_error)
+    return handle_error(cmd, res, message, auto_query_on_error)
 
 def is_llm_request(cmd: str):
     return cmd.startswith('"') or cmd.startswith('."') or cmd.startswith('!"') or cmd.startswith('?"') or\
@@ -691,19 +689,19 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
         cmd = cmd[1:]
         return search_engine(cmd, res=res)
 
-    elif  is_llm_request(cmd) or '...' in cmd:
+    if  is_llm_request(cmd) or '...' in cmd:
         return query_language_model(cmd, res=res)
 
-    elif cmd.startswith('*'):
+    if cmd.startswith('*'):
         cmd = cmd[1:]
         return retrieval_augmented_indexing(cmd)
 
-    elif cmd.startswith('man symsh'):
+    if cmd.startswith('man symsh'):
         # read symsh.md file and print it
         # get symsh path
         pkg_path = os.path.dirname(os.path.abspath(__file__))
         symsh_path = os.path.join(pkg_path, 'symsh.md')
-        with open(symsh_path, 'r', encoding="utf8") as f:
+        with open(symsh_path, encoding="utf8") as f:
             return f.read()
 
     elif cmd.startswith('conda activate'):
@@ -763,9 +761,8 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
         if os.name == 'nt':
             cmd = cmd.replace('ll', 'dir')
             return run_shell_command(cmd, prev=res)
-        else:
-            cmd = cmd.replace('ll', 'ls -la')
-            return run_shell_command(cmd, prev=res)
+        cmd = cmd.replace('ll', 'ls -la')
+        return run_shell_command(cmd, prev=res)
 
     else:
         return run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)

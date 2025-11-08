@@ -7,20 +7,20 @@ import pkgutil
 import sys
 import traceback
 import warnings
+from collections.abc import Callable
 from enum import Enum
 from types import ModuleType
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type
+from typing import Any
 
-from box import Box
 from loguru import logger
 from pydantic import BaseModel
 
 from .backend import engines
 from .backend.base import ENGINE_UNREGISTERED, Engine
+from .context import CURRENT_ENGINE_VAR
 from .post_processors import PostProcessor
 from .pre_processors import PreProcessor
 from .utils import CustomUserWarning
-from .context import CURRENT_ENGINE_VAR
 
 
 class ConstraintViolationException(Exception):
@@ -34,9 +34,13 @@ class ProbabilisticBooleanMode(Enum):
 
 
 ENGINE_PROBABILISTIC_BOOLEAN_MODE = ProbabilisticBooleanMode.MEDIUM
-from .prompts import (ProbabilisticBooleanModeMedium,
-                      ProbabilisticBooleanModeStrict,
-                      ProbabilisticBooleanModeTolerant)
+import builtins
+
+from .prompts import (
+    ProbabilisticBooleanModeMedium,
+    ProbabilisticBooleanModeStrict,
+    ProbabilisticBooleanModeTolerant,
+)
 
 
 def _probabilistic_bool(rsp: str, mode=ProbabilisticBooleanMode.TOLERANT) -> bool:
@@ -46,16 +50,15 @@ def _probabilistic_bool(rsp: str, mode=ProbabilisticBooleanMode.TOLERANT) -> boo
     val = str(rsp).lower()
     if   mode == ProbabilisticBooleanMode.STRICT:
         return val == ProbabilisticBooleanModeStrict
-    elif mode == ProbabilisticBooleanMode.MEDIUM:
+    if mode == ProbabilisticBooleanMode.MEDIUM:
         return val in ProbabilisticBooleanModeMedium
-    elif mode == ProbabilisticBooleanMode.TOLERANT:
+    if mode == ProbabilisticBooleanMode.TOLERANT:
         # allow for probabilistic boolean / fault tolerance
         return val in ProbabilisticBooleanModeTolerant
-    else:
-        raise ValueError(f"Invalid mode {mode} for probabilistic boolean!")
+    raise ValueError(f"Invalid mode {mode} for probabilistic boolean!")
 
 
-def _cast_return_type(rsp: Any, return_constraint: Type, engine_probabilistic_boolean_mode: ProbabilisticBooleanMode) -> Any:
+def _cast_return_type(rsp: Any, return_constraint: type, engine_probabilistic_boolean_mode: ProbabilisticBooleanMode) -> Any:
     if return_constraint == inspect._empty:
         # do not cast if return type is not specified
         pass
@@ -68,22 +71,21 @@ def _cast_return_type(rsp: Any, return_constraint: Type, engine_probabilistic_bo
     elif return_constraint in (list, tuple, set, dict):
         try:
             res = ast.literal_eval(rsp)
-        except Exception as e:
-            logger.warning(f"Failed to cast return type to {return_constraint} for {str(rsp)}")
+        except Exception:
+            logger.warning(f"Failed to cast return type to {return_constraint} for {rsp!s}")
             warnings.warn(f"Failed to cast return type to {return_constraint}")  # Add warning for test
             res = rsp
-        assert res is not None, f"Return type cast failed! Check if the return type is correct or post_processors output matches desired format: {str(rsp)}"
+        assert res is not None, f"Return type cast failed! Check if the return type is correct or post_processors output matches desired format: {rsp!s}"
         return res
     elif return_constraint == bool:
         if len(rsp) <= 0:
             return False
-        else:
-            return _probabilistic_bool(rsp, mode=engine_probabilistic_boolean_mode)
+        return _probabilistic_bool(rsp, mode=engine_probabilistic_boolean_mode)
     elif not isinstance(rsp, return_constraint):
         try:
             # hard cast to return type fallback
             rsp = return_constraint(rsp)
-        except (ValueError, TypeError) as e:
+        except (ValueError, TypeError):
             if return_constraint == int:
                 raise ConstraintViolationException(f"Cannot convert {rsp} to int")
             warnings.warn(f"Failed to cast {rsp} to {return_constraint}")
@@ -112,7 +114,7 @@ def _apply_postprocessors(outputs, return_constraint, post_processors, argument,
     return rsp, metadata
 
 
-def _apply_preprocessors(argument, instance: Any, pre_processors: Optional[List[PreProcessor]]) -> str:
+def _apply_preprocessors(argument, instance: Any, pre_processors: list[PreProcessor] | None) -> str:
     processed_input = ''
     if pre_processors and not argument.prop.raw_input:
         argument.prop.instance = instance
@@ -131,19 +133,19 @@ def _limit_number_results(rsp: Any, argument, return_type):
     if limit_ is not None:
         if return_type == str and isinstance(rsp, list):
             return '\n'.join(rsp[:limit_])
-        elif return_type == list:
+        if return_type == list:
             return rsp[:limit_]
-        elif return_type == dict:
+        if return_type == dict:
             keys = list(rsp.keys())
             return {k: rsp[k] for k in keys[:limit_]}
-        elif return_type == set:
+        if return_type == set:
             return set(list(rsp)[:limit_])
-        elif return_type == tuple:
+        if return_type == tuple:
             return tuple(list(rsp)[:limit_])
     return rsp
 
 
-def _prepare_argument(argument: Any, engine: Any, instance: Any, func: Callable, constraints: List[Callable], default: Any, limit: int, trials: int, pre_processors: Optional[List[PreProcessor]], post_processors: Optional[List[PostProcessor]]) -> Any:
+def _prepare_argument(argument: Any, engine: Any, instance: Any, func: Callable, constraints: list[Callable], default: Any, limit: int, trials: int, pre_processors: list[PreProcessor] | None, post_processors: list[PostProcessor] | None) -> Any:
     # check signature for return type
     sig = inspect.signature(func)
     return_constraint = sig._return_annotation
@@ -179,23 +181,22 @@ def _execute_query_fallback(func, instance, argument, error=None, stack_trace=No
         # fallback was implemented
         rsp = dict(data=rsp, error=error, stack_trace=stack_trace)
         return rsp
-    elif argument.prop.default is not None:
+    if argument.prop.default is not None:
         # no fallback implementation, but default value is set
         rsp = dict(data=argument.prop.default, error=error, stack_trace=stack_trace)
         return rsp
-    else:
-        raise error
+    raise error
 
 
 def _process_query_single(engine,
                           instance,
                           func: Callable,
-                          constraints: List[Callable] = [],
-                          default: Optional[object] = None,
+                          constraints: list[Callable] = [],
+                          default: object | None = None,
                           limit: int = 1,
                           trials: int = 1,
-                          pre_processors: Optional[List[PreProcessor]] = None,
-                          post_processors: Optional[List[PostProcessor]] = None,
+                          pre_processors: list[PreProcessor] | None = None,
+                          post_processors: list[PostProcessor] | None = None,
                           argument=None):
     if pre_processors and not isinstance(pre_processors, list):
         pre_processors = [pre_processors]
@@ -217,7 +218,7 @@ def _process_query_single(engine,
             break
         except Exception as e:
             stack_trace = traceback.format_exc()
-            logger.error(f"Failed to execute query: {str(e)}")
+            logger.error(f"Failed to execute query: {e!s}")
             logger.error(f"Stack trace: {stack_trace}")
             if _ == trials - 1:
                 result = _execute_query_fallback(func, instance, argument, error=e, stack_trace=stack_trace)
@@ -230,7 +231,7 @@ def _process_query_single(engine,
     return limited_result
 
 
-def _execute_query(engine, argument) -> List[object]:
+def _execute_query(engine, argument) -> list[object]:
     # build prompt and query engine
     engine.prepare(argument)
     if argument.prop.preview:
@@ -243,12 +244,12 @@ def _process_query(
         engine: Engine,
         instance: Any,
         func: Callable,
-        constraints: List[Callable] = [],
-        default: Optional[object] = None,
+        constraints: list[Callable] = [],
+        default: object | None = None,
         limit: int | None = None,
         trials: int = 1,
-        pre_processors: Optional[List[PreProcessor]] = None,
-        post_processors: Optional[List[PostProcessor]] = None,
+        pre_processors: list[PreProcessor] | None = None,
+        post_processors: list[PostProcessor] | None = None,
         argument: Argument = None,
     ) -> Any:
 
@@ -277,7 +278,7 @@ def _process_query(
 
         except Exception as e:
             stack_trace = traceback.format_exc()
-            logger.error(f"Failed to execute query: {str(e)}")
+            logger.error(f"Failed to execute query: {e!s}")
             logger.error(f"Stack trace: {stack_trace}")
             if try_cnt < trials:
                 continue
@@ -290,12 +291,12 @@ def _process_query(
     return rsp
 
 
-class EngineRepository(object):
+class EngineRepository:
     _instance = None
 
     def __init__(self):
         if '_engines' not in self.__dict__:  # ensures _engines is only set once
-            self._engines: Dict[str, Engine] = {}
+            self._engines: dict[str, Engine] = {}
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
@@ -313,14 +314,14 @@ class EngineRepository(object):
         self._engines[id] = engine_instance
 
     @staticmethod
-    def register_from_plugin(id: str, plugin: str, selected_engine: Optional[str] = None, allow_engine_override: bool = False, *args, **kwargs) -> None:
+    def register_from_plugin(id: str, plugin: str, selected_engine: str | None = None, allow_engine_override: bool = False, *args, **kwargs) -> None:
         from .imports import Import
         types = Import.load_module_class(plugin)
         # filter out engine class type
         engines = [t for t in types if issubclass(t, Engine) and t is not Engine]
         if len(engines) > 1 and selected_engine is None:
             raise ValueError(f"Multiple engines found in plugin {plugin}. Please specify the engine to use.")
-        elif len(engines) > 1 and selected_engine is not None:
+        if len(engines) > 1 and selected_engine is not None:
             engine = [e for e in engines if selected_engine in str(e)]
             if len(engine) <= 0:
                 raise ValueError(f"No engine named {selected_engine} found in plugin {plugin}.")
@@ -345,7 +346,7 @@ class EngineRepository(object):
                         # Assume the class has an 'init' static method to initialize it
                         engine_id_func_ = getattr(instance, 'id', None)
                         if engine_id_func_ is None:
-                            raise ValueError(f"Engine {str(instance)} does not have an id. Please add a method id() to the class.")
+                            raise ValueError(f"Engine {instance!s} does not have an id. Please add a method id() to the class.")
                         # call engine_() to get the id of the engine
                         id_ = engine_id_func_()
                         # only registered configured engine
@@ -353,7 +354,7 @@ class EngineRepository(object):
                             # register new engine
                             self.register(id_, instance, allow_engine_override=allow_engine_override)
                     except Exception as e:
-                        logger.error(f"Failed to register engine {str(attribute)}: {str(e)}")
+                        logger.error(f"Failed to register engine {attribute!s}: {e!s}")
 
     @staticmethod
     def get(engine_name: str, *args, **kwargs):
@@ -378,12 +379,12 @@ class EngineRepository(object):
         return engine
 
     @staticmethod
-    def list() -> List[str]:
+    def list() -> builtins.list[str]:
         self = EngineRepository()
         return dict(self._engines.items())
 
     @staticmethod
-    def command(engines: List[str], *args, **kwargs) -> Any:
+    def command(engines: builtins.list[str], *args, **kwargs) -> Any:
         self = EngineRepository()
         if isinstance(engines, str):
             engines = [engines]
@@ -399,15 +400,14 @@ class EngineRepository(object):
         raise ValueError(f"No engine named <{engine_name}> is registered.")
 
     @staticmethod
-    def query(engine: str, *args, **kwargs) -> Tuple:
+    def query(engine: str, *args, **kwargs) -> tuple:
         self = EngineRepository()
         engine = self.get(engine)
         if engine:
             engine_allows_batching = getattr(engine, 'allows_batching', False)
             if engine_allows_batching:
                 return _process_query_single(engine, *args, **kwargs)
-            else:
-                return _process_query(engine, *args, **kwargs)
+            return _process_query(engine, *args, **kwargs)
         raise ValueError(f"No engine named {engine} is registered.")
 
     @staticmethod

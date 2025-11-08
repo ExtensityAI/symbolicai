@@ -1,7 +1,8 @@
 import threading
 from abc import ABC
+from collections.abc import Callable
 from enum import Enum
-from typing import Any, Callable, List
+from typing import Any
 
 from .exceptions import TemplatePropertyException
 
@@ -33,10 +34,10 @@ class Prompt(ABC):
         self.format_kwargs = format_kwargs
 
     @property
-    def value(self) -> List[str]:
+    def value(self) -> list[str]:
         return self._value
 
-    def __call__(self, *args: Any, **kwds: Any) -> List["Prompt"]:
+    def __call__(self, *args: Any, **kwds: Any) -> list["Prompt"]:
         return self.value
 
     def __str__(self) -> str:
@@ -49,7 +50,7 @@ class Prompt(ABC):
                 count = val_.count(template_)
                 if count <= 0:
                     raise TemplatePropertyException(f"Template property `{k}` not found.")
-                elif count > 1:
+                if count > 1:
                     raise TemplatePropertyException(f"Template property {k} found multiple times ({count}), expected only once.")
                 if v is None:
                     raise TemplatePropertyException(f"Invalid value: Template property {k} is None.")
@@ -164,7 +165,7 @@ class PromptRegistry:
             and key in dictionary[model][lang]
         ):
             return dictionary[model][lang][key]
-        elif self._model_fallback and model != ModelName.ALL:
+        if self._model_fallback and model != ModelName.ALL:
             return self._retrieve_value(dictionary, ModelName.ALL, lang, key)
 
         raise ValueError(
@@ -222,13 +223,11 @@ class PromptRegistry:
             if format:
                 prefix, suffix = tag_data['delimiters']
                 return f"{prefix}{tag_value}{suffix}"
-            else:
-                return tag_value
+            return tag_value
 
         if format:
             return f"{self._tag_prefix}{tag_data}{self._tag_suffix}"
-        else:
-            return tag_data
+        return tag_data
 
     def has_value(
         self, key, model: ModelName = ModelName.ALL, lang: PromptLanguage = None

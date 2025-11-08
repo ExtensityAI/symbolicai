@@ -57,7 +57,7 @@ class SymAIConfig:
         config_path = self.get_config_path(filename, fallback_to_home=fallback_to_home)
         if not config_path.exists():
             return {}
-        with open(config_path, 'r', encoding='utf-8') as f:
+        with open(config_path, encoding='utf-8') as f:
             return json.load(f)
 
     def save_config(self, filename: str, data: dict, fallback_to_home: bool = False) -> None:

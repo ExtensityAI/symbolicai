@@ -5,7 +5,6 @@ import pytest
 
 from symai.backend.engines.webscraping.engine_requests import RequestsResult
 from symai.extended import Interface
-from symai.utils import semassert
 
 logging.getLogger("trafilatura").setLevel(logging.WARNING)
 logging.getLogger("pdfminer").setLevel(logging.WARNING)
@@ -43,7 +42,7 @@ def test_pdf_extraction():
     url = 'https://jevinwest.org/papers/Kim2017asa.pdf'
     rsp = scraper(url)
     assert isinstance(rsp, RequestsResult), f"Expected RequestsResult, got {type(rsp)}"
-    assert len(rsp) > 0, f"Expected non-empty response"
+    assert len(rsp) > 0, "Expected non-empty response"
 
 
 @pytest.mark.parametrize(

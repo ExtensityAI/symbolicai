@@ -1,11 +1,10 @@
-import requests
 from pathlib import Path
 
-from typing import Optional
+import requests
 
+from ....symbol import Result
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
-from ....symbol import Result
 
 
 class ApiLayerResult(Result):
@@ -20,7 +19,7 @@ class ApiLayerResult(Result):
 
 
 class OCREngine(Engine):
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None):
         super().__init__()
         # Opening JSON file
         self.config = SYMAI_CONFIG

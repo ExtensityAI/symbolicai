@@ -65,7 +65,7 @@ class SearchResult(Result):
         for output in value.get('output', []):
             if output.get('type') == 'message' and output.get('content'):
                 content0 = output['content'][0]
-                if 'text' in content0 and content0['text']:
+                if content0.get('text'):
                     text = content0['text']
         return text
 
@@ -223,7 +223,7 @@ class SearchResult(Result):
         try:
             return f"<pre>{json.dumps(self.raw, indent=2)}</pre>"
         except Exception:
-            return f"<pre>{str(self.raw)}</pre>"
+            return f"<pre>{self.raw!s}</pre>"
 
     def get_citations(self) -> list[Citation]:
         return self._citations

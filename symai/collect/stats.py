@@ -1,7 +1,8 @@
 import json
 import re
+from collections.abc import Callable
 from json import JSONEncoder
-from typing import Any, Callable, List, Optional, Tuple, Type, Union
+from typing import Any, Union
 
 import numpy as np
 import torch
@@ -24,7 +25,7 @@ class AggregatorJSONEncoder(JSONEncoder):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         # drop active from state
-        elif isinstance(obj, Aggregator):
+        if isinstance(obj, Aggregator):
             state = obj.__dict__.copy()
             state.pop('_raise_error', None)
             state.pop('_active', None)
@@ -32,8 +33,8 @@ class AggregatorJSONEncoder(JSONEncoder):
             state.pop('_map', None)
             # drop everything that starts with SPECIAL_CONSTANT
             for key in list(state.keys()):
-                if  not key.startswith(SPECIAL_CONSTANT) and key != '_value' or \
-                    key == '_value' and obj._value == [] or \
+                if  (not key.startswith(SPECIAL_CONSTANT) and key != '_value') or \
+                    (key == '_value' and obj._value == []) or \
                     key.replace(SPECIAL_CONSTANT, '') in EXCLUDE_LIST:
                     state.pop(key, None)
             return state
@@ -42,8 +43,8 @@ class AggregatorJSONEncoder(JSONEncoder):
 
 class Aggregator(Symbol):
     def __init__(self,
-                 value: Optional[Union["Aggregator", Symbol]] = None,
-                 path: Optional[str] = None,
+                 value: Union["Aggregator", Symbol] | None = None,
+                 path: str | None = None,
                  active: bool = True,
                  raise_error: bool = False,
                  *args, **kwargs):
@@ -71,9 +72,9 @@ class Aggregator(Symbol):
         self._path      = path
 
     def __new__(cls, *args,
-            mixin: Optional[bool] = None,
-            primitives: Optional[List[Type]] = [OperatorPrimitives], # only inherit arithmetic primitives
-            callables: Optional[List[Tuple[str, Callable]]] = None,
+            mixin: bool | None = None,
+            primitives: list[type] | None = [OperatorPrimitives], # only inherit arithmetic primitives
+            callables: list[tuple[str, Callable]] | None = None,
             semantic: bool = False,
             **kwargs) -> "Symbol":
         return super().__new__(cls, *args,
@@ -97,7 +98,7 @@ class Aggregator(Symbol):
             # add also a property with the same name but without the SPECIAL_CONSTANT prefix as a shortcut
             self.__dict__[name] = self.__dict__[f'{SPECIAL_CONSTANT}{name}']
             return self.__dict__.get(name)
-        elif not self._active and name not in self.__dict__:
+        if not self._active and name not in self.__dict__:
             raise Exception(f'Aggregator object is frozen! No attribute {name} found!')
         return self.__dict__.get(name)
 
@@ -232,8 +233,7 @@ class Aggregator(Symbol):
     def shape(self):
         if len(self.entries) > 0:
             return np.asarray(self.entries).shape
-        else:
-            return ()
+        return ()
 
     def serialize(self):
         return json.dumps(self, cls=AggregatorJSONEncoder)
@@ -244,7 +244,7 @@ class Aggregator(Symbol):
 
     @staticmethod
     def load(path: str, strict: bool = True):
-        with open(path, 'r') as f:
+        with open(path) as f:
             json_ = json.load(f)
         return Aggregator._reconstruct(json_, strict=strict)
 
@@ -259,7 +259,7 @@ class Aggregator(Symbol):
             return
         try:
             # Append a new entry to the aggregator
-            assert type(entries) in [tuple, list, np.float32, np.float64, np.ndarray, torch.Tensor, int, float, bool, str] or isinstance(entries, Symbol), 'Entries must be a tuple, list, numpy array, torch tensor, integer, float, boolean, string, or Symbol! Got: {}'.format(type(entries))
+            assert type(entries) in [tuple, list, np.float32, np.float64, np.ndarray, torch.Tensor, int, float, bool, str] or isinstance(entries, Symbol), f'Entries must be a tuple, list, numpy array, torch tensor, integer, float, boolean, string, or Symbol! Got: {type(entries)}'
             if type(entries) == torch.Tensor:
                 entries = entries.detach().cpu().numpy().astype(np.float32)
             elif type(entries) in [tuple, list]:
@@ -285,8 +285,7 @@ class Aggregator(Symbol):
         except Exception as e:
             if self._raise_error:
                 raise Exception(f'Could not add entries to Aggregator object! Please verify type or original error: {e}') from e
-            else:
-                print('Could not add entries to Aggregator object! Please verify type or original error: {}'.format(e))
+            print(f'Could not add entries to Aggregator object! Please verify type or original error: {e}')
 
     def keys(self):
         # Get all key names of items that have the SPECIAL_CONSTANT prefix
@@ -301,7 +300,7 @@ class Aggregator(Symbol):
     @active.setter
     def active(self, value):
         # Set the active status of the aggregator
-        assert isinstance(value, bool), 'Active status must be a boolean! Got: {}'.format(type(value))
+        assert isinstance(value, bool), f'Active status must be a boolean! Got: {type(value)}'
         self._active = value
 
     @property
@@ -312,7 +311,7 @@ class Aggregator(Symbol):
     @finalized.setter
     def finalized(self, value):
         # Set the finalized status of the aggregator
-        assert isinstance(value, bool), 'Finalized status must be a boolean! Got: {}'.format(type(value))
+        assert isinstance(value, bool), f'Finalized status must be a boolean! Got: {type(value)}'
         self._finalized = value
 
     def finalize(self):

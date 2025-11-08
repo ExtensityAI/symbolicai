@@ -2,7 +2,7 @@ import json
 from enum import Enum
 from functools import lru_cache
 from types import UnionType
-from typing import Any, Literal, Type, Union, get_args, get_origin
+from typing import Any, Literal, Union, get_args, get_origin
 
 from attr import dataclass
 from pydantic import BaseModel, Field, create_model, model_validator
@@ -227,7 +227,7 @@ class LLMDataModel(BaseModel):
 
     def remedy(self):
         """Default remedy method for the model."""
-        return None
+        return
 
     @classmethod
     @lru_cache(maxsize=128)
@@ -576,19 +576,18 @@ class LLMDataModel(BaseModel):
                     # Simple types
                     if type_name == "list":
                         return f"A list containing {item_type} values"
-                    elif type_name == "set":
+                    if type_name == "set":
                         return f"A set containing unique {item_type} values"
-                    elif type_name == "dict":
+                    if type_name == "dict":
                         return f"A dictionary with {item_type} values"
-                    else:
-                        element_desc = item_type
+                    element_desc = item_type
 
                 # Format the final description
                 if type_name == "list":
                     return f"A list where each element is {element_desc}"
-                elif type_name == "set":
+                if type_name == "set":
                     return f"A set where each element is {element_desc}"
-                elif type_name == "dict":
+                if type_name == "dict":
                     return f"A dictionary where each value is {element_desc}"
 
         return type_desc
@@ -612,7 +611,7 @@ class LLMDataModel(BaseModel):
         return cls._generate_example_for_model(model, visited_models)
 
     @staticmethod
-    def _generate_example_for_model(model: Type[BaseModel], visited_models: set) -> dict:
+    def _generate_example_for_model(model: type[BaseModel], visited_models: set) -> dict:
         """Generate example for a model, excluding section_header."""
         example = {}
         for field_name, model_field in model.model_fields.items():
@@ -640,7 +639,7 @@ class LLMDataModel(BaseModel):
             if is_desc_like and (ann is str or ann is Any or ann is None):
                 return "example_string"
             return default_val
-        elif model_field.default_factory is not None:
+        if model_field.default_factory is not None:
             # For example generation, we want to show structure even if default is empty
             # Check if default_factory would produce an empty container
             default_val = model_field.default_factory()
@@ -650,10 +649,9 @@ class LLMDataModel(BaseModel):
                     model_field.annotation, visited_models
                 )
             return default_val
-        else:
-            return LLMDataModel._generate_value_for_type(
-                model_field.annotation, visited_models
-            )
+        return LLMDataModel._generate_value_for_type(
+            model_field.annotation, visited_models
+        )
 
     @staticmethod
     def _generate_value_for_type(field_type: Any, visited_models: set) -> Any:
@@ -838,7 +836,7 @@ class LLMDataModel(BaseModel):
         return submodel.generate_example_json()
 
     @classmethod
-    def _generate_non_null_example_for_model(cls, model: Type[BaseModel], visited_models: set | None = None) -> dict:
+    def _generate_non_null_example_for_model(cls, model: type[BaseModel], visited_models: set | None = None) -> dict:
         """Generate an example for a model, preferring non-null for Optional fields (recursive)."""
         if visited_models is None:
             visited_models = set()
@@ -952,20 +950,20 @@ class LLMDataModel(BaseModel):
         return "\n\n".join(example_blocks)
 
 
-def build_dynamic_llm_datamodel(py_type: Any) -> Type[LLMDataModel]:
+def build_dynamic_llm_datamodel(py_type: Any) -> type[LLMDataModel]:
     """Dynamically create a subclass of LLMDataModel with a single 'value' field."""
     model_name = f"LLMDynamicDataModel_{hash(str(py_type)) & 0xFFFFFFFF:X}"
 
-    model: Type[LLMDataModel] = create_model(
+    model: type[LLMDataModel] = create_model(
         model_name,
         __base__=LLMDataModel,
         value=(
             py_type,
             Field(
                 ...,
-                description="This is a dynamically generated data model. This description is general. " +
-                "If you're dealing with a complex type, or nested types in combination with unions, make sure you " +
-                "understand the instructions provided in the prompt, and select the appropriate data model based on the " +
+                description="This is a dynamically generated data model. This description is general. "
+                "If you're dealing with a complex type, or nested types in combination with unions, make sure you "
+                "understand the instructions provided in the prompt, and select the appropriate data model based on the "
                 "type at hand, as described in the schema section."
             )
         ),

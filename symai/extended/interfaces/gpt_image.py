@@ -1,6 +1,6 @@
 from ... import core
 from ...backend.engines.drawing.engine_gpt_image import GPTImageResult
-from ...symbol import Expression, Symbol
+from ...symbol import Expression
 
 
 class gpt_image(Expression):

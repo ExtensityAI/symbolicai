@@ -1,4 +1,3 @@
-from pydantic import BaseModel
 
 class ExceptionWithUsage(Exception):
     def __init__(self, message, usage):

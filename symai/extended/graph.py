@@ -1,5 +1,5 @@
+from collections.abc import Callable
 from multiprocessing import Pool
-from typing import Callable
 
 from .. import core
 from ..formatter import SentenceFormatter
@@ -18,7 +18,7 @@ If more than one entity pair is extracted from the same sentence, then the CSV f
 
 class GraphPreProcessor(PreProcessor):
     def __call__(self, argument):
-        return '$> {} =>'.format(str(argument.args[0]))
+        return f'$> {argument.args[0]!s} =>'
 
 
 class Graph(Expression):

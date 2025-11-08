@@ -1,6 +1,5 @@
 import logging
 import re
-from typing import Optional
 
 from loguru import logger
 
@@ -119,7 +118,7 @@ class ChatBot(Expression):
     def _init_custom_input_postprocessor(that):
         class CustomInputPostProcessor(ConsolePostProcessor):
             def __call__(self, rsp, argument):
-                that.short_term_memory.store(f'User: {str(rsp)}')
+                that.short_term_memory.store(f'User: {rsp!s}')
                 return rsp
         return CustomInputPostProcessor
 
@@ -167,7 +166,7 @@ class SymbiaChat(ChatBot):
         super().__init__(name=name, verbose=verbose, **kwargs)
         self.message = self.narrate(f'{self.name} introduces herself, writes a greeting message and asks how to help.', context=None)
 
-    def forward(self, usr: Optional[str] = None) -> Symbol:
+    def forward(self, usr: str | None = None) -> Symbol:
         loop = True
         ask_input = True
         if usr:
@@ -195,7 +194,7 @@ class SymbiaChat(ChatBot):
             if '[EXIT]' in ctxt:
                 self.message = self.narrate(f'{self.name} writes friendly goodbye message.', context=None, end=True)
                 break
-            elif '[HELP]' in ctxt:
+            if '[HELP]' in ctxt:
                 reflection = self._extract_reflection(ctxt)
                 self.message = self.narrate(f'{self.name} ', context=reflection)
             elif '[RECALL]' in ctxt:
@@ -249,13 +248,13 @@ class SymbiaChat(ChatBot):
         res = re.findall(r'\(([^)]+)\)', msg)
         if len(res) > 0:
             return res.pop()
-        return
+        return None
 
     def _extract_category(self, msg: str) -> str:
         res = re.findall(r'\[([^]]+)\]', msg)
         if len(res) > 0:
             return res.pop()
-        return
+        return None
 
     def _memory_scratchpad(self, context, short_term_memory, long_term_memory):
         scratchpad = f'''

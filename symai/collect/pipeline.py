@@ -1,7 +1,7 @@
 import json
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from bson.objectid import ObjectId
 from pymongo.collection import Collection
@@ -24,18 +24,17 @@ def rec_serialize(obj):
     if isinstance(obj, (int, float, bool)):
         # For simple types, return the string representation directly.
         return obj
-    elif isinstance(obj, dict):
+    if isinstance(obj, dict):
         # For dictionaries, serialize each value. Keep keys as strings.
         return {str(key): rec_serialize(value) for key, value in obj.items()}
-    elif isinstance(obj, (list, tuple, set)):
+    if isinstance(obj, (list, tuple, set)):
         # For lists, tuples, and sets, serialize each element.
         return [rec_serialize(elem) for elem in obj]
-    else:
-        # Attempt JSON serialization first, then fall back to str(...)
-        try:
-            return json.dumps(obj)
-        except TypeError:
-            return str(obj)
+    # Attempt JSON serialization first, then fall back to str(...)
+    try:
+        return json.dumps(obj)
+    except TypeError:
+        return str(obj)
 
 
 class CollectionRepository:
@@ -44,15 +43,15 @@ class CollectionRepository:
         self.uri: str                           = SYMAI_CONFIG["COLLECTION_URI"]
         self.db_name: str                       = SYMAI_CONFIG["COLLECTION_DB"]
         self.collection_name: str               = SYMAI_CONFIG["COLLECTION_STORAGE"]
-        self.client: Optional[MongoClient]      = None
-        self.db: Optional[Database]             = None
-        self.collection: Optional[Collection]   = None
+        self.client: MongoClient | None      = None
+        self.db: Database | None             = None
+        self.collection: Collection | None   = None
 
     def __enter__(self) -> 'CollectionRepository':
         self.connect()
         return self
 
-    def __exit__(self, exc_type: Optional[type], exc_val: Optional[Exception], exc_tb: Optional[Any]) -> None:
+    def __exit__(self, exc_type: type | None, exc_val: Exception | None, exc_tb: Any | None) -> None:
         self.close()
 
     def ping(self) -> bool:
@@ -66,7 +65,7 @@ class CollectionRepository:
             print("Connection failed: " + str(e))
             return False
 
-    def add(self, forward: Any, engine: Any, metadata: Dict[str, Any] = {}) -> Any:
+    def add(self, forward: Any, engine: Any, metadata: dict[str, Any] = {}) -> Any:
         if not self.support_community:
             return None
         record = {
@@ -78,22 +77,22 @@ class CollectionRepository:
         }
         try: # assure that adding a record does never cause a system error
             return self.collection.insert_one(record).inserted_id if self.collection else None
-        except Exception as e:
+        except Exception:
             return None
 
-    def get(self, record_id: str) -> Optional[Dict[str, Any]]:
+    def get(self, record_id: str) -> dict[str, Any] | None:
         if not self.support_community:
             return None
         return self.collection.find_one({'_id': ObjectId(record_id)}) if self.collection else None
 
     def update(self,
                record_id: str,
-               forward: Optional[Any]             = None,
-               engine: Optional[str]              = None,
-               metadata: Optional[Dict[str, Any]] = None) -> Any:
+               forward: Any | None             = None,
+               engine: str | None              = None,
+               metadata: dict[str, Any] | None = None) -> Any:
         if not self.support_community:
             return None
-        updates: Dict[str, Any] = {'updated_at': datetime.now()}
+        updates: dict[str, Any] = {'updated_at': datetime.now()}
         if forward is not None:
             updates['forward']  = forward
         if engine is not None:
@@ -108,14 +107,14 @@ class CollectionRepository:
             return None
         return self.collection.delete_one({'_id': ObjectId(record_id)}) if self.collection else None
 
-    def list(self, filters: Optional[Dict[str, Any]] = None, limit: int = 0) -> List[Dict[str, Any]]:
+    def list(self, filters: dict[str, Any] | None = None, limit: int = 0) -> list[dict[str, Any]]:
         if not self.support_community:
             return None
         if filters is None:
             filters = {}
         return list(self.collection.find(filters).limit(limit)) if self.collection else []
 
-    def count(self, filters: Optional[Dict[str, Any]] = None) -> int:
+    def count(self, filters: dict[str, Any] | None = None) -> int:
         if not self.support_community:
             return None
         if filters is None:

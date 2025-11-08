@@ -2,17 +2,14 @@ from pathlib import Path
 
 import pytest
 from anthropic import Stream
-from anthropic.types import ToolUseBlock
 from anthropic.types.message import Message
 from google.genai import types  # Import for Gemini types
-from numpy import add
 from openai.types.chat.chat_completion import ChatCompletion
 
 from symai import Expression, Symbol
 from symai.backend.settings import SYMAI_CONFIG
 from symai.components import Function
 from symai.core_ext import bind
-from symai.utils import semassert
 
 NEUROSYMBOLIC = SYMAI_CONFIG.get('NEUROSYMBOLIC_ENGINE_MODEL')
 CLAUDE_THINKING = {"budget_tokens": 1024}
@@ -211,9 +208,6 @@ def test_raw_output():
         if isinstance(S.value, list):
             # Verify it's a list of streaming events
             assert len(S.value) > 0
-            from anthropic.types import (RawMessageStartEvent, RawContentBlockStartEvent,
-                                        RawContentBlockDeltaEvent, RawContentBlockStopEvent,
-                                        RawMessageDeltaEvent, RawMessageStopEvent)
             # Check that list contains expected event types
             event_types = {type(event).__name__ for event in S.value}
             expected_types = {'RawMessageStartEvent', 'RawContentBlockStartEvent',

@@ -29,8 +29,8 @@ class UserProfile(LLMDataModel):
     avatar_url: str | None
     verified: bool = False
     created_at: str
-    settings: 'UserSettings'
-    social_links: list['SocialLink']
+    settings: UserSettings
+    social_links: list[SocialLink]
     metadata: dict[str, Any]
 
 
@@ -77,8 +77,8 @@ class MLModelConfig(LLMDataModel):
     version: str
     architecture: str
     hyperparameters: dict[str, float | int | str]
-    training_config: 'TrainingConfig'
-    inference_config: 'InferenceConfig'
+    training_config: TrainingConfig
+    inference_config: InferenceConfig
     metrics: dict[str, float]
 
 
@@ -367,9 +367,9 @@ def test_complex_nested_configuration():
     """Test deeply nested configuration structures."""
     class ServiceConfig(LLMDataModel):
         name: str
-        endpoints: list['EndpointConfig']
-        dependencies: dict[str, 'DependencyConfig']
-        health_checks: list['HealthCheckConfig']
+        endpoints: list[EndpointConfig]
+        dependencies: dict[str, DependencyConfig]
+        health_checks: list[HealthCheckConfig]
 
     class EndpointConfig(LLMDataModel):
         path: str
@@ -503,7 +503,7 @@ def test_batch_processing_scenario():
     """Test batch processing with multiple models."""
     class BatchRequest(LLMDataModel):
         batch_id: str
-        items: list['ProcessItem']
+        items: list[ProcessItem]
         options: dict[str, Any]
 
     class ProcessItem(LLMDataModel):
@@ -515,7 +515,7 @@ def test_batch_processing_scenario():
         batch_id: str
         processed: int
         failed: int
-        results: list['ItemResult']
+        results: list[ItemResult]
         duration_ms: float
 
     class ItemResult(LLMDataModel):
@@ -818,7 +818,7 @@ def test_circular_reference_handling_in_complex_models():
     class Node(LLMDataModel):
         id: str
         data: dict[str, Any]
-        children: list['Node'] = Field(default_factory=list)
+        children: list[Node] = Field(default_factory=list)
         parent: Node | None = None
 
     # Create circular structure
@@ -844,7 +844,7 @@ def test_excessive_nesting_in_real_scenario():
     class Comment(LLMDataModel):
         id: str
         text: str
-        replies: list['Comment'] = Field(default_factory=list)
+        replies: list[Comment] = Field(default_factory=list)
 
     # Create very deep comment thread
     current = Comment(id="base", text="Base comment")

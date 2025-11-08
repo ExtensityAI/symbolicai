@@ -1,13 +1,12 @@
-from typing import List
 
 from ..components import Clean, Outline, Sequence, Stream, Translate
 from ..symbol import Expression, Symbol
 
 
 class Summarizer(Expression):
-    def __init__(self, filters: List[Expression] = [], **kwargs):
+    def __init__(self, filters: list[Expression] = [], **kwargs):
         super().__init__(**kwargs)
-        filters = filters if isinstance(filters, List) or isinstance(filters, tuple) else [filters]
+        filters = filters if isinstance(filters, list) or isinstance(filters, tuple) else [filters]
         self.data_stream = Stream(Sequence(
             Clean(),
             Translate(),
