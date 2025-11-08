@@ -3,7 +3,6 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Optional
 
 from loguru import logger
 
@@ -13,7 +12,7 @@ from ...misc.console import ConsoleStyle
 from ...misc.loader import Loader
 
 
-class PackageRunner():
+class PackageRunner:
     def __init__(self):
         self.package_dir = Path(config_manager.config_dir) / 'packages'
         self.aliases_file = self.package_dir / 'aliases.json'
@@ -50,14 +49,14 @@ class PackageRunner():
         if not os.path.exists(self.aliases_file):
             return {}
 
-        with open(self.aliases_file, 'r') as f:
+        with open(self.aliases_file) as f:
             return json.load(f)
 
     def save_aliases(self, aliases):
         with open(self.aliases_file, 'w') as f:
             json.dump(aliases, f)
 
-    def console(self, header: str, output: Optional[object] = None):
+    def console(self, header: str, output: object | None = None):
         with ConsoleStyle('success'):
             logger.success(header)
         if output is not None:
@@ -83,9 +82,9 @@ class PackageRunner():
 
         if package is None:
             with ConsoleStyle('error'):
-                logger.error("Alias run of `{}` not found. Please check your command {}".format(args.alias, args))
+                logger.error(f"Alias run of `{args.alias}` not found. Please check your command {args}")
             parser.print_help()
-            return
+            return None
 
         arg_values = [arg for arg in args.params if '=' not in arg]
         kwargs = {arg.split('=')[0]: arg.split('=')[1] for arg in args.params if '=' in arg}
@@ -104,9 +103,9 @@ class PackageRunner():
                 expr = Import(package, **kwargs)
         except Exception as e:
             with ConsoleStyle('error'):
-                logger.error("Error: {} in package `{}`.\nPlease check your command {} or if package is available.".format(str(e), package, args))
+                logger.error(f"Error: {e!s} in package `{package}`.\nPlease check your command {args} or if package is available.")
             parser.print_help()
-            return
+            return None
 
         if '--disable-pbar' not in arg_values:
             with Loader(desc="Inference ...", end=""):
@@ -117,7 +116,7 @@ class PackageRunner():
         if result is not None:
             self.console(result)
         else:
-            self.console("Execution of {} => {} completed successfully.".format(args.alias, package))
+            self.console(f"Execution of {args.alias} => {package} completed successfully.")
 
         return result
 
@@ -133,7 +132,7 @@ class PackageRunner():
         aliases = self.load_aliases()
         aliases[args.alias] = args.package
         self.save_aliases(aliases)
-        self.console("Alias {} => {} created successfully.".format(args.alias, args.package))
+        self.console(f"Alias {args.alias} => {args.package} created successfully.")
 
     def l(self):
         aliases = self.load_aliases()
@@ -155,7 +154,7 @@ class PackageRunner():
         if args.alias in aliases:
             del aliases[args.alias]
         self.save_aliases(aliases)
-        self.console("Alias {} removed successfully.".format(args.alias))
+        self.console(f"Alias {args.alias} removed successfully.")
 
 
 def run() -> None:

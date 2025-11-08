@@ -1,5 +1,5 @@
 from ... import core
-from ...symbol import Expression, Symbol, Result
+from ...symbol import Expression, Result, Symbol
 
 
 class tts(Expression):

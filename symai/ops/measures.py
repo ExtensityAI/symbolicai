@@ -1,5 +1,4 @@
 import numpy as np
-
 from scipy import linalg
 
 
@@ -51,7 +50,7 @@ def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
     if np.iscomplexobj(covmean):
         if not np.allclose(np.diagonal(covmean).imag, 0, atol=1e-3):
             m = np.max(np.abs(covmean.imag))
-            raise ValueError('Imaginary component {}'.format(m))
+            raise ValueError(f'Imaginary component {m}')
         covmean = covmean.real
 
     tr_covmean = np.trace(covmean)
@@ -83,7 +82,7 @@ def calculate_mmd(x, y, kernel='rbf', kernel_mul=2.0, kernel_num=5, fix_sigma=No
 
     if kernel == 'linear':
         return linear_mmd2(x, y)
-    elif kernel == 'rbf':
+    if kernel == 'rbf':
         batch_size = x.shape[0]
         kernels = gaussian_kernel(x, y, kernel_mul=kernel_mul, kernel_num=kernel_num, fix_sigma=fix_sigma)
         xx = np.mean(kernels[:batch_size, :batch_size])

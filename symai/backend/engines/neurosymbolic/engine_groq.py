@@ -162,11 +162,11 @@ class GroqEngine(Engine):
 
         payload = argument.prop.payload
         if argument.prop.payload:
-            system += f"<ADDITIONAL CONTEXT/>\n{str(payload)}\n\n"
+            system += f"<ADDITIONAL CONTEXT/>\n{payload!s}\n\n"
 
         examples = argument.prop.examples
         if examples and len(examples) > 0:
-            system += f"<EXAMPLES/>\n{str(examples)}\n\n"
+            system += f"<EXAMPLES/>\n{examples!s}\n\n"
 
         if argument.prop.prompt is not None and len(argument.prop.prompt) > 0:
             val = str(argument.prop.prompt)
@@ -176,7 +176,7 @@ class GroqEngine(Engine):
         user += f"{suffix}"
 
         if argument.prop.template_suffix:
-            system += f' You will only generate content for the placeholder `{str(argument.prop.template_suffix)}` following the instructions and the provided context information.\n\n'
+            system += f' You will only generate content for the placeholder `{argument.prop.template_suffix!s}` following the instructions and the provided context information.\n\n'
 
         user_prompt = { "role": "user", "content": user }
 

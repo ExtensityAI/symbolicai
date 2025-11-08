@@ -6,8 +6,13 @@ from typing import Any, Optional, Union
 import pytest
 from pydantic import Field, ValidationError
 
-from symai.models.base import (Const, CustomConstraint, LengthConstraint,
-                               LLMDataModel, build_dynamic_llm_datamodel)
+from symai.models.base import (
+    Const,
+    CustomConstraint,
+    LengthConstraint,
+    LLMDataModel,
+    build_dynamic_llm_datamodel,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -19,11 +24,10 @@ def contains_key_value(text: str, key: str, value: Any = None) -> bool:
     if value is None:
         # Just check if the key appears followed by a colon
         return f"{key}:" in text or f"{key} :" in text
-    else:
-        # Check if key and value appear near each other
-        return (f"{key}: {value}" in text or
-                f"{key} : {value}" in text or
-                f"{key}:{value}" in text)
+    # Check if key and value appear near each other
+    return (f"{key}: {value}" in text or
+            f"{key} : {value}" in text or
+            f"{key}:{value}" in text)
 
 def contains_list_item(text: str, item: Any) -> bool:
     """Check if an item appears in list format.
@@ -72,8 +76,8 @@ class ModelWithDefaults(LLMDataModel):
 class ModelWithComplexTypes(LLMDataModel):
     list_of_lists: list[list[int]]
     dict_of_dicts: dict[str, dict[str, str]]
-    union_field: Union[int, str, list[str]]
-    optional_union: Optional[Union[dict[str, Any], list[Any]]]
+    union_field: int | str | list[str]
+    optional_union: dict[str, Any] | list[Any] | None
 
 
 class RecursiveModel(LLMDataModel):
@@ -363,7 +367,7 @@ def test_generate_example_with_optional_none():
     """Test example generation with optional fields."""
     class ModelWithOptional(LLMDataModel):
         required: str
-        optional: Optional[str] = None
+        optional: str | None = None
 
     example = LLMDataModel.generate_example_json(ModelWithOptional)
     assert example["required"] == "example_string"
@@ -440,7 +444,7 @@ def test_build_dynamic_with_primitive():
 def test_build_dynamic_with_complex_type():
     """Test dynamic model with complex nested type."""
     DynModel = build_dynamic_llm_datamodel(
-        dict[str, list[Union[int, str]]]
+        dict[str, list[int | str]]
     )
     instance = DynModel(value={"key": [1, "two", 3]})
     assert instance.value["key"] == [1, "two", 3]

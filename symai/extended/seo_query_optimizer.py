@@ -4,7 +4,6 @@ from ..pre_processors import PreProcessor
 from ..prompts import Prompt
 from ..symbol import Expression, Symbol
 
-
 SEO_OPTIMIZER_DESCRIPTION = """[Description]
 You are a SEO query optimizer. You are given a list of queries, phrases or sentences and you need to optimize them for search engines.
 Assume your search engines are based on vector databases and contain indices of GitHub repositories, papers and other resources.
@@ -17,7 +16,7 @@ The number of resulting queries should be between 1 and 8 statements separated b
 
 class SEOQueryOptimizerPreProcessor(PreProcessor):
     def __call__(self, argument):
-        return '$> {} =>'.format(str(argument.args[0]))
+        return f'$> {argument.args[0]!s} =>'
 
 
 class SEOQueryOptimizer(Expression):

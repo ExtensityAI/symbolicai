@@ -6,16 +6,14 @@ import multiprocessing as mp
 import os
 import pickle
 import random
-import sys
-import time
 import threading
+import time
 import traceback
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, List
 
 import dill
 from loguru import logger
-from pathos.multiprocessing import ProcessingPool as PPool
 
 from . import __root_dir__
 from .functional import EngineRepository
@@ -50,7 +48,7 @@ def _run_in_process(expr, func, args, kwargs):
     func = dill.loads(func)
     return func(expr, *args, **kwargs)
 
-def _parallel(func: Callable, expressions: List[Callable], worker: int = mp.cpu_count() // 2):
+def _parallel(func: Callable, expressions: list[Callable], worker: int = mp.cpu_count() // 2):
     pickled_exprs = [dill.dumps(expr) for expr in expressions]
     pickled_func  = dill.dumps(func)
     pool = _get_pool(worker)
@@ -62,7 +60,7 @@ def _parallel(func: Callable, expressions: List[Callable], worker: int = mp.cpu_
     return proxy_function
 
 # Decorator
-def parallel(expressions: List[Callable], worker: int = mp.cpu_count() // 2):
+def parallel(expressions: list[Callable], worker: int = mp.cpu_count() // 2):
     def decorator_parallel(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -127,20 +125,19 @@ def retry(
                     graceful=graceful
                 )
             return async_wrapper
-        else:
-            @functools.wraps(func)
-            def sync_wrapper(*args, **kwargs):
-                return _retry_func(
-                    functools.partial(func, *args, **kwargs),
-                    exceptions=exceptions,
-                    tries=tries,
-                    delay=delay,
-                    max_delay=max_delay,
-                    backoff=backoff,
-                    jitter=jitter,
-                    graceful=graceful
-                )
-            return sync_wrapper
+        @functools.wraps(func)
+        def sync_wrapper(*args, **kwargs):
+            return _retry_func(
+                functools.partial(func, *args, **kwargs),
+                exceptions=exceptions,
+                tries=tries,
+                delay=delay,
+                max_delay=max_delay,
+                backoff=backoff,
+                jitter=jitter,
+                graceful=graceful
+            )
+        return sync_wrapper
     return decorator
 
 
@@ -158,7 +155,7 @@ def _retry_func(
     while _tries:
         try:
             return func()
-        except exceptions as e:
+        except exceptions:
             _tries -= 1
             if not _tries:
                 if graceful:
@@ -191,7 +188,7 @@ async def _aretry_func(
     while _tries:
         try:
             return await func()
-        except exceptions as e:
+        except exceptions:
             _tries -= 1
             if not _tries:
                 if graceful:
@@ -265,7 +262,7 @@ def error_logging(debug: bool = False):
                 logger.error(e)
                 if debug:
                     # Simple message:
-                    print('Function: {} call failed. Error: {}'.format(func.__name__, e))
+                    print(f'Function: {func.__name__} call failed. Error: {e}')
                     # print traceback
                     traceback.print_exc()
                 raise e

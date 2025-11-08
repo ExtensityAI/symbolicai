@@ -1,3 +1,6 @@
+'''
+@TODO: This must go away. As soon as we have Qdrant, everything related to vectordb must be cleaned up.
+'''
 import random
 
 import numpy as np
@@ -11,8 +14,7 @@ def get_norm_vector(vector):
     """
     if len(vector.shape) == 1:
         return vector / np.linalg.norm(vector)
-    else:
-        return vector / np.linalg.norm(vector, axis=1)[:, np.newaxis]
+    return vector / np.linalg.norm(vector, axis=1)[:, np.newaxis]
 
 
 def dot_product(vectors, query_vector):

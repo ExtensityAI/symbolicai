@@ -3,7 +3,7 @@ from box import Box
 
 from symai import Symbol
 from symai.core import Argument
-from symai.functional import _execute_query, _execute_query_fallback
+from symai.functional import _execute_query_fallback
 
 
 def test_successful_execution():

@@ -1,15 +1,10 @@
 import logging
-import re
 from copy import deepcopy
-from typing import List, Optional
 
-from annotated_types import Not
 from openai import OpenAI
 
 from ....components import SelfPrompt
-from ....misc.console import ConsoleStyle
-from ....symbol import Symbol
-from ....utils import CustomUserWarning, encode_media_frames
+from ....utils import CustomUserWarning
 from ...base import Engine
 from ...mixin.deepseek import DeepSeekMixin
 from ...settings import SYMAI_CONFIG
@@ -22,7 +17,7 @@ logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
 class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
-    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
+    def __init__(self, api_key: str | None = None, model: str | None = None):
         super().__init__()
         self.config = deepcopy(SYMAI_CONFIG)
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
@@ -140,20 +135,20 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
 
         payload = argument.prop.payload
         if argument.prop.payload:
-            system += f"<ADDITIONAL CONTEXT/>\n{str(payload)}\n\n"
+            system += f"<ADDITIONAL CONTEXT/>\n{payload!s}\n\n"
 
-        examples: List[str] = argument.prop.examples
+        examples: list[str] = argument.prop.examples
         if examples and len(examples) > 0:
-            system += f"<EXAMPLES/>\n{str(examples)}\n\n"
+            system += f"<EXAMPLES/>\n{examples!s}\n\n"
 
         if argument.prop.prompt is not None and len(argument.prop.prompt) > 0:
             val = str(argument.prop.prompt)
             system += f"<INSTRUCTION/>\n{val}\n\n"
 
-        user += f"{str(argument.prop.processed_input)}"
+        user += f"{argument.prop.processed_input!s}"
 
         if argument.prop.template_suffix:
-            system += f' You will only generate content for the placeholder `{str(argument.prop.template_suffix)}` following the instructions and the provided context information.\n\n'
+            system += f' You will only generate content for the placeholder `{argument.prop.template_suffix!s}` following the instructions and the provided context information.\n\n'
 
         user_prompt = { "role": "user", "content": user }
 

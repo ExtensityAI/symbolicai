@@ -1,18 +1,17 @@
 import logging
 
 from openai import OpenAI
-from typing import Optional
 
 # suppress openai logging
 logging.getLogger("openai").setLevel(logging.WARNING)
 
+from ....symbol import Result
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
-from ....symbol import Result
 
 
 class TTSEngine(Engine):
-    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
+    def __init__(self, api_key: str | None = None, model: str | None = None):
         super().__init__()
         self.config = SYMAI_CONFIG
         self.api_key = self.config['TEXT_TO_SPEECH_ENGINE_API_KEY'] if api_key is None else api_key

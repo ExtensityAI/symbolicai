@@ -1,8 +1,6 @@
 import base64
 import logging
 import tempfile
-from pathlib import Path
-from typing import Optional
 
 import openai
 import requests
@@ -53,8 +51,8 @@ class GPTImageEngine(Engine):
     """
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        model: Optional[str] = None,
+        api_key: str | None = None,
+        model: str | None = None,
     ):
         super().__init__()
         self.config = SYMAI_CONFIG

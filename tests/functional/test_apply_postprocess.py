@@ -2,8 +2,11 @@ from typing import Any
 
 import pytest
 
-from symai.functional import (ConstraintViolationException,
-                              ProbabilisticBooleanMode, _apply_postprocessors)
+from symai.functional import (
+    ConstraintViolationException,
+    ProbabilisticBooleanMode,
+    _apply_postprocessors,
+)
 from symai.post_processors import PostProcessor
 
 

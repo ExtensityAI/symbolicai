@@ -2,8 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from symai.backend.engines.speech_to_text.engine_local_whisper import \
-    WhisperResult
+from symai.backend.engines.speech_to_text.engine_local_whisper import WhisperResult
 from symai.backend.settings import SYMAI_CONFIG
 from symai.extended import Interface
 from symai.utils import CustomUserWarning, semassert
@@ -33,4 +32,4 @@ def test_whisper_language_detection():
     stt = Interface("whisper")
     rsp = stt(audiofile, "detect_language")
     assert isinstance(rsp, WhisperResult), f"Expected WhisperResult, got {type(rsp)}"
-    semassert("en" == rsp)
+    semassert(rsp == "en")

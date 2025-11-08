@@ -3,15 +3,13 @@ import json
 import os
 import pickle
 import uuid
-from typing import (TYPE_CHECKING, Any, Callable, Dict, Iterable, List,
-                    Optional, Tuple, Type, Union)
+from collections.abc import Callable, Iterable
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import torch
-from pydantic import ValidationError
 
 from .. import core, core_ext
-from ..models import CustomConstraint, LengthConstraint, LLMDataModel
 from ..prompts import Prompt
 from ..utils import CustomUserWarning
 from .measures import calculate_frechet_distance, calculate_mmd
@@ -848,8 +846,8 @@ class OperatorPrimitives(Primitive):
         Returns:
             Symbol: A new Symbol object with the concatenated value.
         '''
-        if isinstance(self.value, str) and isinstance(other, str) or \
-            isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str):
+        if (isinstance(self.value, str) and isinstance(other, str)) or \
+            (isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str)):
             other = self._to_type(other)
             return self._to_type(f'{self.value}{other.value}')
         CustomUserWarning(f'This method is only supported for string concatenation! Got {type(self.value)} and {type(other)} instead.', raise_with=TypeError)
@@ -1172,7 +1170,7 @@ class CastingPrimitives(Primitive):
             return self
         return self._to_type(self.value, semantic=True)
 
-    def cast(self, as_type: Type) -> Any:
+    def cast(self, as_type: type) -> Any:
         '''
         Cast the Symbol's value to a specific type.
 
@@ -1184,7 +1182,7 @@ class CastingPrimitives(Primitive):
         '''
         return as_type(self.value)
 
-    def to(self, as_type: Type) -> Any:
+    def to(self, as_type: type) -> Any:
         '''
         Cast the Symbol's value to a specific type.
 
@@ -1250,7 +1248,7 @@ class IterationPrimitives(Primitive):
     This mixin contains functions that perform iteration operations on symbols or symbol values.
     The functions in this mixin are bound to the 'neurosymbolic' engine for evaluation.
     '''
-    def __getitem__(self, key: Union[str, int, slice]) -> 'Symbol':
+    def __getitem__(self, key: str | int | slice) -> 'Symbol':
         '''
         Get the item of the Symbol value with the specified key or index.
         If the Symbol value is a list, tuple, or numpy array, the key can be an integer or slice.
@@ -1278,7 +1276,7 @@ class IterationPrimitives(Primitive):
 
         return self._to_type(_func(self, key))
 
-    def __setitem__(self, key: Union[str, int, slice], value: Any) -> None:
+    def __setitem__(self, key: str | int | slice, value: Any) -> None:
         '''
         Set the item of the Symbol value with the specified key or index to the given value.
         If the Symbol value is a list, the key can be an integer or slice.
@@ -1314,7 +1312,7 @@ class IterationPrimitives(Primitive):
         except Exception:
             self._value = result # It was a string, or something failed (because } wasn't close, etc)
 
-    def __delitem__(self, key: Union[str, int]) -> None:
+    def __delitem__(self, key: str | int) -> None:
         '''
         Delete the item of the Symbol value with the specified key or index.
         If the Symbol value is a dictionary, the key can be a string or an integer.
@@ -1574,7 +1572,7 @@ class ExpressionHandlingPrimitives(Primitive):
         if not hasattr(self, '_accumulated_results'):
             self._accumulated_results = []
 
-    def get_results(self) -> List['Symbol']:
+    def get_results(self) -> list['Symbol']:
         '''
         Retrieves accumulated results from previous interpretations.
 
@@ -1589,7 +1587,7 @@ class ExpressionHandlingPrimitives(Primitive):
         self.init_results()
         self._accumulated_results = []
 
-    def interpret(self, prompt: Optional[str] = "Evaluate the symbolic expressions and return only the result:\n", accumulate: bool = False, **kwargs) -> 'Symbol':
+    def interpret(self, prompt: str | None = "Evaluate the symbolic expressions and return only the result:\n", accumulate: bool = False, **kwargs) -> 'Symbol':
         '''
         Evaluates simple symbolic expressions.
         Uses the core.expression decorator to create a _func method that evaluates the given expression.
@@ -1639,7 +1637,7 @@ class DataHandlingPrimitives(Primitive):
 
         return self._to_type(_func(self))
 
-    def summarize(self, context: Optional[str] = None, **kwargs) -> 'Symbol':
+    def summarize(self, context: str | None = None, **kwargs) -> 'Symbol':
         '''
         Summarizes the symbol value.
         Uses the core.summarize decorator with an optional context to create a _func method that summarizes the symbol value.
@@ -1670,7 +1668,7 @@ class DataHandlingPrimitives(Primitive):
 
         return self._to_type(_func(self))
 
-    def filter(self, criteria: str, include: Optional[bool] = False, **kwargs) -> 'Symbol':
+    def filter(self, criteria: str, include: bool | None = False, **kwargs) -> 'Symbol':
         '''
         Filters the symbol value based on a specified criteria.
         Uses the core.filtering decorator with the provided criteria and include flag to create a _func method to filter the symbol value.
@@ -1807,7 +1805,7 @@ class UniquenessPrimitives(Primitive):
     This mixin includes functions that work with unique aspects of symbol values, like extracting unique information or composing new unique symbols.
     Future functionalities might include finding duplicate information, defining levels of uniqueness, etc.
     '''
-    def unique(self, keys: Optional[List[str]] = [], **kwargs) -> 'Symbol':
+    def unique(self, keys: list[str] | None = [], **kwargs) -> 'Symbol':
         '''
         Extracts unique information from the symbol value, using provided keys.
         Uses the core.unique decorator with a list of keys to create a _func method that extracts unique data from the symbol value.
@@ -1844,7 +1842,7 @@ class PatternMatchingPrimitives(Primitive):
     This mixin houses functions that deal with ranking symbols, extracting details based on patterns, and correcting symbols.
     It will house future functionalities that involve sorting, complex pattern detections, advanced correction techniques etc.
     '''
-    def rank(self, measure: Optional[str] = 'alphanumeric', order: Optional[str] = 'desc', **kwargs) -> 'Symbol':
+    def rank(self, measure: str | None = 'alphanumeric', order: str | None = 'desc', **kwargs) -> 'Symbol':
         '''
         Ranks the symbol value based on a measure and a sort order.
         Uses the core.rank decorator with the specified measure and order to create a _func method that ranks the symbol value.
@@ -1899,7 +1897,7 @@ class PatternMatchingPrimitives(Primitive):
 
         return self._to_type(_func(self))
 
-    def translate(self, language: Optional[str] = 'English', **kwargs) -> 'Symbol':
+    def translate(self, language: str | None = 'English', **kwargs) -> 'Symbol':
         '''
         Translates the symbol value to the specified language.
         Uses the @core.translate decorator to translate the symbol's value to the specified language.
@@ -1917,7 +1915,7 @@ class PatternMatchingPrimitives(Primitive):
 
         return self._to_type(_func(self))
 
-    def choice(self, cases: List[str], default: str, **kwargs) -> 'Symbol':
+    def choice(self, cases: list[str], default: str, **kwargs) -> 'Symbol':
         '''
         Chooses one of the cases based on the symbol value.
         Uses the @core.case decorator, selects one of the cases based on the symbol's value.
@@ -1942,7 +1940,7 @@ class QueryHandlingPrimitives(Primitive):
     This mixin helps in transforming, preparing, and executing queries, and it is designed to be extendable as new ways of handling queries are developed.
     Future methods could potentially include query optimization, enhanced query formatting, multi-level query execution, query error handling, etc.
     '''
-    def query(self, context: str, prompt: Optional[str] = None, examples: Optional[List[Prompt]] = None, **kwargs) -> 'Symbol':
+    def query(self, context: str, prompt: str | None = None, examples: list[Prompt] | None = None, **kwargs) -> 'Symbol':
         '''
         Queries the symbol value based on a specified context.
         Uses the @core.query decorator, queries based on the context, prompt, and examples.
@@ -2004,7 +2002,7 @@ class ExecutionControlPrimitives(Primitive):
     This mixin represents the core methods for dealing with symbol execution.
     Possible future methods could potentially include async execution, pipeline chaining, execution profiling, improved error handling, version management, embedding more complex execution control structures etc.
     '''
-    def analyze(self, exception: Exception, query: Optional[str] = '', **kwargs) -> 'Symbol':
+    def analyze(self, exception: Exception, query: str | None = '', **kwargs) -> 'Symbol':
         '''Uses the @core.analyze decorator, analyzes an exception and returns a symbol.
 
         Args:
@@ -2120,7 +2118,7 @@ class ExecutionControlPrimitives(Primitive):
 
         return self._to_type(_func(self))
 
-    def stream(self, expr: 'Expression', token_ratio: Optional[float] = 0.6, **kwargs) -> 'Symbol':
+    def stream(self, expr: 'Expression', token_ratio: float | None = 0.6, **kwargs) -> 'Symbol':
         '''
         Streams the Symbol's value through an Expression object.
         This method divides the Symbol's value into chunks and processes each chunk through the given Expression object.
@@ -2156,7 +2154,7 @@ class ExecutionControlPrimitives(Primitive):
         else:
             yield expr(self, **kwargs)
 
-    def ftry(self, expr: 'Expression', retries: Optional[int] = 1, **kwargs) -> 'Symbol':
+    def ftry(self, expr: 'Expression', retries: int | None = 1, **kwargs) -> 'Symbol':
         # TODO: find a way to pass on the constraints and behavior from the self.expr to the corrected code
         '''
         Tries to evaluate a Symbol using a given Expression.
@@ -2198,33 +2196,32 @@ class ExecutionControlPrimitives(Primitive):
                 retry_cnt += 1
                 if retry_cnt > retries:
                     raise e
-                else:
-                    # analyze the error
-                    payload = f'[ORIGINAL_USER_PROMPT]\n{prompt["prompt_instruction"]}\n\n' if 'prompt_instruction' in prompt else ''
-                    payload = payload + f'[ORIGINAL_USER_DATA]\n{code}\n\n[ORIGINAL_GENERATED_OUTPUT]\n{prompt["out_msg"]}'
-                    probe   = sym.analyze(query="What is the issue in this expression?", payload=payload, exception=e)
-                    # attempt to correct the error
-                    payload = f'[ORIGINAL_USER_PROMPT]\n{prompt["prompt_instruction"]}\n\n' if 'prompt_instruction' in prompt else ''
-                    payload = payload + f'[ANALYSIS]\n{probe}\n\n'
-                    context = f'Try to correct the error of the original user request based on the analysis above: \n [GENERATED_OUTPUT]\n{prompt["out_msg"]}\n\n'
-                    constraints = expr.constraints if hasattr(expr, 'constraints') else []
+                # analyze the error
+                payload = f'[ORIGINAL_USER_PROMPT]\n{prompt["prompt_instruction"]}\n\n' if 'prompt_instruction' in prompt else ''
+                payload = payload + f'[ORIGINAL_USER_DATA]\n{code}\n\n[ORIGINAL_GENERATED_OUTPUT]\n{prompt["out_msg"]}'
+                probe   = sym.analyze(query="What is the issue in this expression?", payload=payload, exception=e)
+                # attempt to correct the error
+                payload = f'[ORIGINAL_USER_PROMPT]\n{prompt["prompt_instruction"]}\n\n' if 'prompt_instruction' in prompt else ''
+                payload = payload + f'[ANALYSIS]\n{probe}\n\n'
+                context = f'Try to correct the error of the original user request based on the analysis above: \n [GENERATED_OUTPUT]\n{prompt["out_msg"]}\n\n'
+                constraints = expr.constraints if hasattr(expr, 'constraints') else []
 
-                    if hasattr(expr, 'post_processor'):
-                        post_processor = expr.post_processor
-                        sym = code.correct(
-                            context=context,
-                            exception=e,
-                            payload=payload,
-                            constraints=constraints,
-                            post_processor=post_processor
-                        )
-                    else:
-                        sym = code.correct(
-                            context=context,
-                            exception=e,
-                            payload=payload,
-                            constraints=constraints
-                        )
+                if hasattr(expr, 'post_processor'):
+                    post_processor = expr.post_processor
+                    sym = code.correct(
+                        context=context,
+                        exception=e,
+                        payload=payload,
+                        constraints=constraints,
+                        post_processor=post_processor
+                    )
+                else:
+                    sym = code.correct(
+                        context=context,
+                        exception=e,
+                        payload=payload,
+                        constraints=constraints
+                    )
 
 
 class DictHandlingPrimitives(Primitive):
@@ -2257,7 +2254,7 @@ class TemplateStylingPrimitives(Primitive):
     This mixin includes functionalities for stylizing symbols and applying templates.
     Future functionalities might include a variety of new stylizing methods, application of more complex templates, etc.
     '''
-    def template(that, template: str, placeholder: Optional[str] = '{{placeholder}}', **kwargs) -> 'Symbol':
+    def template(that, template: str, placeholder: str | None = '{{placeholder}}', **kwargs) -> 'Symbol':
         '''
         Applies a template to the Symbol.
         This method uses the @core.template decorator to apply the given template and placeholder to the Symbol.
@@ -2277,7 +2274,7 @@ class TemplateStylingPrimitives(Primitive):
 
         return _func(that)
 
-    def style(self, description: str, libraries: Optional[List] = [], **kwargs) -> 'Symbol':
+    def style(self, description: str, libraries: list | None = [], **kwargs) -> 'Symbol':
         '''
         Applies a style to the Symbol.
         This method uses the @core.style decorator to apply the given style description, libraries, and placeholder to the Symbol.
@@ -2406,7 +2403,7 @@ class EmbeddingPrimitives(Primitive):
             x = x.detach().cpu().numpy()
         return x.squeeze()[:, None]
 
-    def similarity(self, other: Union['Symbol', list, np.ndarray, torch.Tensor], metric: Union['cosine', 'angular-cosine', 'product', 'manhattan', 'euclidean', 'minkowski', 'jaccard'] = 'cosine', eps: float = 1e-8, normalize: Optional[Callable] = None, **kwargs) -> float:
+    def similarity(self, other: Union['Symbol', list, np.ndarray, torch.Tensor], metric: Union['cosine', 'angular-cosine', 'product', 'manhattan', 'euclidean', 'minkowski', 'jaccard'] = 'cosine', eps: float = 1e-8, normalize: Callable | None = None, **kwargs) -> float:
         '''
         Calculates the similarity between two Symbol objects using a specified metric.
         This method compares the values of two Symbol objects and calculates their similarity according to the specified metric.
@@ -2439,7 +2436,7 @@ class EmbeddingPrimitives(Primitive):
             val     = v.T@o / (np.sqrt(v.T@v) * np.sqrt(o.T@o) + eps)
         elif metric == 'angular-cosine':
             c       = kwargs.get('c', 1)
-            val     = 1 - (c * np.arccos((v.T@o / (np.sqrt(v.T@v) * np.sqrt(o.T@o) + eps))) / np.pi)
+            val     = 1 - (c * np.arccos(v.T@o / (np.sqrt(v.T@v) * np.sqrt(o.T@o) + eps)) / np.pi)
         elif metric == 'product':
             val     = v.T@o
         elif metric == 'manhattan':
@@ -2465,7 +2462,7 @@ class EmbeddingPrimitives(Primitive):
 
         return val
 
-    def distance(self, other: Union['Symbol', list, np.ndarray, torch.Tensor], kernel: Union['gaussian', 'rbf', 'laplacian', 'polynomial', 'sigmoid', 'linear', 'cauchy', 't-distribution', 'inverse-multiquadric', 'cosine', 'angular-cosine', 'frechet', 'mmd'] = 'gaussian',  eps: float = 1e-8, normalize: Optional[Callable] = None, **kwargs) -> float:
+    def distance(self, other: Union['Symbol', list, np.ndarray, torch.Tensor], kernel: Union['gaussian', 'rbf', 'laplacian', 'polynomial', 'sigmoid', 'linear', 'cauchy', 't-distribution', 'inverse-multiquadric', 'cosine', 'angular-cosine', 'frechet', 'mmd'] = 'gaussian',  eps: float = 1e-8, normalize: Callable | None = None, **kwargs) -> float:
         '''
         Calculates the kernel between two Symbol objects.
 
@@ -2497,7 +2494,7 @@ class EmbeddingPrimitives(Primitive):
             val     = np.exp(-gamma * np.sum((v - o)**2, axis=0))
         elif kernel == 'rbf':
             # vectors are expected to be normalized
-            bandwidth = kwargs.get('bandwidth', None)
+            bandwidth = kwargs.get('bandwidth')
             gamma     = kwargs.get('gamma', 1)
             d         = np.sum((v - o)**2, axis=0)
             if bandwidth is not None:
@@ -2536,10 +2533,10 @@ class EmbeddingPrimitives(Primitive):
             val     = 1 - (np.sum(v * o, axis=0) / (np.sqrt(np.sum(v**2, axis=0)) * np.sqrt(np.sum(o**2, axis=0)) + eps))
         elif kernel == 'angular-cosine':
             c       = kwargs.get('c', 1)
-            val     = c * np.arccos((np.sum(v * o, axis=0) / (np.sqrt(np.sum(v**2, axis=0)) * np.sqrt(np.sum(o**2, axis=0)) + eps))) / np.pi
+            val     = c * np.arccos(np.sum(v * o, axis=0) / (np.sqrt(np.sum(v**2, axis=0)) * np.sqrt(np.sum(o**2, axis=0)) + eps)) / np.pi
         elif kernel == 'frechet':
-            sigma1  = kwargs.get('sigma1', None)
-            sigma2  = kwargs.get('sigma2', None)
+            sigma1  = kwargs.get('sigma1')
+            sigma2  = kwargs.get('sigma2')
             assert sigma1 is not None and sigma2 is not None, 'Frechet distance requires covariance matrices for both inputs'
             v       = v.T
             o       = o.T
@@ -2558,7 +2555,7 @@ class EmbeddingPrimitives(Primitive):
         if normalize is not None:            val = normalize(val)
         return val
 
-    def zip(self, **kwargs) -> List[Tuple[str, List, Dict]]:
+    def zip(self, **kwargs) -> list[tuple[str, list, dict]]:
         '''
         Zips the Symbol's value with its embeddings and a query containing the value.
         This method zips the Symbol's value along with its embeddings and a query containing the value.
@@ -2726,7 +2723,7 @@ class PersistencePrimitives(Primitive):
 
         return func_name
 
-    def save(self, path: str, replace: Optional[bool] = False, serialize: Optional[bool] = True) -> None:
+    def save(self, path: str, replace: bool | None = False, serialize: bool | None = True) -> None:
         '''
         Save the current Symbol to a file.
 
@@ -2833,12 +2830,11 @@ class FineTuningPrimitives(Primitive):
             # return tensor
             return self._metadata.data
         # if the data is a numpy array, convert it to tensor
-        elif isinstance(self._metadata.data, np.ndarray):
+        if isinstance(self._metadata.data, np.ndarray):
             # convert to tensor
             self._metadata.data = torch.from_numpy(self._metadata.data)
             return self._metadata.data
-        else:
-            raise TypeError(f'Expected data to be a tensor or numpy array, got {type(self._metadata.data)}')
+        raise TypeError(f'Expected data to be a tensor or numpy array, got {type(self._metadata.data)}')
 
     @data.setter
     def data(self, data: torch.Tensor) -> None:

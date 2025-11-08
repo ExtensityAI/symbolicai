@@ -187,7 +187,8 @@ class RequestsEngine(Engine):
         processing consistent with the non-JS path.
         """
         try:
-            from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+            from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+            from playwright.sync_api import sync_playwright
             logging.getLogger("playwright").setLevel(logging.WARNING)
         except ImportError as exc:
             raise RuntimeError(

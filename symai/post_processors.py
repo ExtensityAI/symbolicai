@@ -1,15 +1,15 @@
 import ast
 import re
-import numpy as np
-
 from collections import namedtuple
 from typing import Any
+
+import numpy as np
 from sklearn.cluster import HDBSCAN
 
 
 class PostProcessor:
     def __call__(self, response, argument) -> Any:
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
 class StripPostProcessor(PostProcessor):
@@ -208,5 +208,4 @@ class ConfirmToBoolPostProcessor(PostProcessor):
         sym = Symbol(rsp)
         if sym.isinstanceof('confirming answer'):
             return True
-        else:
-            return False
+        return False

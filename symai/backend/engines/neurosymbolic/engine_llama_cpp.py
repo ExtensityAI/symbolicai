@@ -4,9 +4,7 @@ import logging
 from copy import deepcopy
 
 import aiohttp
-import httpx
 import nest_asyncio
-import requests
 
 from ....core import Argument
 from ....core_ext import retry
@@ -313,17 +311,17 @@ class LlamaCppEngine(Engine):
 
         payload = argument.prop.payload
         if argument.prop.payload:
-            user += f"<ADDITIONAL_CONTEXT/>\n{str(payload)}\n\n"
+            user += f"<ADDITIONAL_CONTEXT/>\n{payload!s}\n\n"
 
         examples: list[str] = argument.prop.examples
         if examples and len(examples) > 0:
-            user += f"<EXAMPLES/>\n{str(examples)}\n\n"
+            user += f"<EXAMPLES/>\n{examples!s}\n\n"
 
         if argument.prop.prompt is not None and len(argument.prop.prompt) > 0:
-            user += f"<INSTRUCTION/>\n{str(argument.prop.prompt)}\n\n"
+            user += f"<INSTRUCTION/>\n{argument.prop.prompt!s}\n\n"
 
         if argument.prop.template_suffix:
-            user += f" You will only generate content for the placeholder `{str(argument.prop.template_suffix)}` following the instructions and the provided context information.\n\n"
+            user += f" You will only generate content for the placeholder `{argument.prop.template_suffix!s}` following the instructions and the provided context information.\n\n"
 
         user += str(argument.prop.processed_input)
 

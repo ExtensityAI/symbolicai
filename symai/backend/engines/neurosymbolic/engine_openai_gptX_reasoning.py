@@ -7,7 +7,6 @@ import openai
 import tiktoken
 
 from ....components import SelfPrompt
-from ....misc.console import ConsoleStyle
 from ....symbol import Symbol
 from ....utils import CustomUserWarning, encode_media_frames
 from ...base import Engine
@@ -36,7 +35,7 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
         self.name = self.__class__.__name__
         try:
             self.tokenizer = tiktoken.encoding_for_model(self.model)
-        except Exception as e:
+        except Exception:
             self.tokenizer = tiktoken.get_encoding('o200k_base')
         self.max_context_tokens = self.api_max_context_tokens()
         self.max_response_tokens = self.api_max_response_tokens()
@@ -122,9 +121,7 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
             parts = _extract_pattern(content)
             for p in parts:
                 img_ = p.strip()
-                if img_.startswith('http'):
-                    image_files.append(img_)
-                elif img_.startswith('data:image'):
+                if img_.startswith('http') or img_.startswith('data:image'):
                     image_files.append(img_)
                 else:
                     max_frames_spacing = 50
@@ -319,7 +316,7 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
                 # OpenAI docs:
                     # "Important: when using JSON mode, you must also instruct the model
                     #  to produce JSON yourself via a developer or user message"
-                developer += f'<RESPONSE_FORMAT/>\nYou are a helpful assistant designed to output JSON.\n\n'
+                developer += '<RESPONSE_FORMAT/>\nYou are a helpful assistant designed to output JSON.\n\n'
 
         ref = argument.prop.instance
         static_ctxt, dyn_ctxt = ref.global_context
@@ -331,11 +328,11 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
 
         payload = argument.prop.payload
         if argument.prop.payload:
-            developer += f"<ADDITIONAL CONTEXT/>\n{str(payload)}\n\n"
+            developer += f"<ADDITIONAL CONTEXT/>\n{payload!s}\n\n"
 
         examples: list[str] = argument.prop.examples
         if examples and len(examples) > 0:
-            developer += f"<EXAMPLES/>\n{str(examples)}\n\n"
+            developer += f"<EXAMPLES/>\n{examples!s}\n\n"
 
         image_files = self._handle_image_content(str(argument.prop.processed_input))
 
@@ -352,7 +349,7 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
         user += f"{suffix}"
 
         if argument.prop.template_suffix:
-            developer += f' You will only generate content for the placeholder `{str(argument.prop.template_suffix)}` following the instructions and the provided context information.\n\n'
+            developer += f' You will only generate content for the placeholder `{argument.prop.template_suffix!s}` following the instructions and the provided context information.\n\n'
 
         if self.model == 'o1':
             images = [{ 'type': 'image_url', "image_url": { "url": file }} for file in image_files]

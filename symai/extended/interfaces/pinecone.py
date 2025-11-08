@@ -1,6 +1,5 @@
-from ... import core
+from ...backend.engines.index.engine_pinecone import PineconeIndexEngine, PineconeResult
 from ...symbol import Expression
-from ...backend.engines.index.engine_pinecone import PineconeResult, PineconeIndexEngine
 
 
 class pinecone(Expression):
@@ -14,8 +13,8 @@ class pinecone(Expression):
         index = self.index_name if index_name is None else index_name
         if   operation == "search":
             return self.get(query=stmt.embedding, index_name=index, ori_query=stmt.value, **kwargs)
-        elif operation == "add":
+        if operation == "add":
             return self.add(doc=stmt.zip(), index_name=index, **kwargs)
-        elif operation == "config":
+        if operation == "config":
             return self.index(path=stmt.value, index_name=index, **kwargs)
         raise NotImplementedError("Operation not supported")

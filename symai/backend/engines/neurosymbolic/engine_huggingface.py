@@ -1,8 +1,5 @@
-import json
 import logging
-import re
 from copy import deepcopy
-from typing import List, Optional
 
 import requests
 
@@ -20,7 +17,7 @@ class HFTokenizer:
     _server_endpoint = f"http://{SYMSERVER_CONFIG.get('host')}:{SYMSERVER_CONFIG.get('port')}"
 
     @staticmethod
-    def encode(text: str, add_special_tokens: bool = False) -> List[int]:
+    def encode(text: str, add_special_tokens: bool = False) -> list[int]:
         res = requests.post(f"{HFTokenizer._server_endpoint}/tokenize", json={
             "input": text,
             "add_special_tokens": add_special_tokens,
@@ -34,7 +31,7 @@ class HFTokenizer:
         return res['tokens']
 
     @staticmethod
-    def decode(tokens: List[int], skip_special_tokens: bool = True) -> str:
+    def decode(tokens: list[int], skip_special_tokens: bool = True) -> str:
         res = requests.post(f"{HFTokenizer._server_endpoint}/detokenize", json={
             "tokens": tokens,
             "skip_special_tokens": skip_special_tokens,
@@ -49,7 +46,7 @@ class HFTokenizer:
 
 
 class HFEngine(Engine):
-    def __init__(self, model: Optional[str] = None):
+    def __init__(self, model: str | None = None):
         super().__init__()
         self.config = deepcopy(SYMAI_CONFIG)
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
@@ -167,17 +164,17 @@ class HFEngine(Engine):
 
         payload = argument.prop.payload
         if argument.prop.payload:
-            user += f"<ADDITIONAL_CONTEXT/>\n{str(payload)}\n\n"
+            user += f"<ADDITIONAL_CONTEXT/>\n{payload!s}\n\n"
 
-        examples: List[str] = argument.prop.examples
+        examples: list[str] = argument.prop.examples
         if examples and len(examples) > 0:
-            user += f"<EXAMPLES/>\n{str(examples)}\n\n"
+            user += f"<EXAMPLES/>\n{examples!s}\n\n"
 
         if argument.prop.prompt is not None and len(argument.prop.prompt) > 0:
-            user += f"<INSTRUCTION/>\n{str(argument.prop.prompt)}\n\n"
+            user += f"<INSTRUCTION/>\n{argument.prop.prompt!s}\n\n"
 
         if argument.prop.template_suffix:
-            user += f" You will only generate content for the placeholder `{str(argument.prop.template_suffix)}` following the instructions and the provided context information.\n\n"
+            user += f" You will only generate content for the placeholder `{argument.prop.template_suffix!s}` following the instructions and the provided context information.\n\n"
 
         user += str(argument.prop.processed_input)
 

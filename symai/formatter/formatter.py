@@ -4,9 +4,9 @@ from beartype import beartype
 from beartype.typing import Any, Dict, List
 from tqdm import tqdm
 
-from .regex import CHUNK_REGEX
 from .. import core_ext
 from ..symbol import Expression, Symbol
+from .regex import CHUNK_REGEX
 
 
 class ParagraphFormatter(Expression):
