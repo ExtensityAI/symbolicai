@@ -76,15 +76,15 @@ class WhisperResult(Result):
     def get_bins(self, bin_size_s: int = 5 * 60) -> list[str]:
         tmps = list(map(self._seconds, re.findall(r"\b\d{2}:\d{2}:\d{2}\b", self._value)))
         value_pairs = list(zip(tmps, self._value.split("\n")))
-        bin = []
+        bin_segments = []
         result = []
         for tmp, seg in value_pairs:
-            bin.append(seg)
+            bin_segments.append(seg)
             if tmp == 0 or (tmp - bin_size_s) % bin_size_s != 0:
                 continue
-            result.append("\n".join(bin))
-            bin = []
-        result.append("\n".join(bin))
+            result.append("\n".join(bin_segments))
+            bin_segments = []
+        result.append("\n".join(bin_segments))
         return result
 
     def _seconds(self, tmp: str) -> int:
@@ -149,7 +149,7 @@ class WhisperEngine(Engine):
         elif prompt == 'decode':
             if show_pbar:
                 # Suppress tqdm warning; keep optional dependency lazy.
-                from tqdm import tqdm  # noqa: PLC0415
+                from tqdm import tqdm # noqa
                 pbar = tqdm(self._get_chunks(audio))
             else:
                 pbar = self._get_chunks(audio)

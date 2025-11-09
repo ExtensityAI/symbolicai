@@ -211,6 +211,6 @@ class ConfirmToBoolPostProcessor(PostProcessor):
             return False
         rsp = response.strip()
         # Lazy Symbol import prevents post_processors -> symbol -> core -> functional -> post_processors cycle.
-        from .symbol import Symbol  # noqa: PLC0415
+        from .symbol import Symbol # noqa
         sym = Symbol(rsp)
         return bool(sym.isinstanceof('confirming answer'))

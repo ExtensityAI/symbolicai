@@ -8,7 +8,7 @@ from prompt_toolkit import print_formatted_text
 
 from .console import ConsoleStyle
 
-print = print_formatted_text
+print = print_formatted_text # noqa
 
 class Loader:
     def __init__(self, desc="Loading...", end="\n", timeout=0.1):
@@ -58,4 +58,4 @@ class Loader:
         self.stop()
 
     def print(self, message):
-        print(message, style='ansigray')
+        print(message, style="ansigray")
