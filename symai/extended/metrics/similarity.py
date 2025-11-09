@@ -24,8 +24,7 @@ def dot_product(vectors, query_vector):
     :param query_vector: vector
     :return: dot product between the vector and the matrix of vectors
     """
-    similarities = np.dot(vectors, query_vector.T)
-    return similarities
+    return np.dot(vectors, query_vector.T)
 
 
 def cosine_similarity(vectors, query_vector):
@@ -37,8 +36,7 @@ def cosine_similarity(vectors, query_vector):
     """
     norm_vectors = get_norm_vector(vectors)
     norm_query_vector = get_norm_vector(query_vector)
-    similarities = np.dot(norm_vectors, norm_query_vector.T)
-    return similarities
+    return np.dot(norm_vectors, norm_query_vector.T)
 
 
 def euclidean_metric(vectors, query_vector, get_similarity_score=True):
@@ -51,7 +49,7 @@ def euclidean_metric(vectors, query_vector, get_similarity_score=True):
     """
     similarities = np.linalg.norm(vectors - query_vector, axis=1)
     if get_similarity_score:
-        similarities = 1 / (1 + similarities)
+        return 1 / (1 + similarities)
     return similarities
 
 
@@ -66,8 +64,7 @@ def derridaean_similarity(vectors, query_vector):
         return value + random.uniform(-0.2, 0.2)
 
     similarities = cosine_similarity(vectors, query_vector)
-    derrida_similarities = np.vectorize(random_change)(similarities)
-    return derrida_similarities
+    return np.vectorize(random_change)(similarities)
 
 
 def adams_similarity(vectors, query_vector):
@@ -81,8 +78,7 @@ def adams_similarity(vectors, query_vector):
         return 0.42
 
     similarities = cosine_similarity(vectors, query_vector)
-    adams_similarities = np.vectorize(adams_change)(similarities)
-    return adams_similarities
+    return np.vectorize(adams_change)(similarities)
 
 
 def ranking_algorithm_sort(vectors, query_vector, top_k=5, metric=cosine_similarity):

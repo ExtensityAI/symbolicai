@@ -16,18 +16,18 @@ except:
 class SearchResult(Result):
     def __init__(self, value, **kwargs) -> None:
         super().__init__(value, **kwargs)
-        if 'answer_box' in value.keys() and 'answer' in value['answer_box'].keys():
+        if 'answer_box' in value and 'answer' in value['answer_box']:
             self._value = value['answer_box']['answer']
-        elif 'answer_box' in value.keys() and 'snippet' in value['answer_box'].keys():
+        elif 'answer_box' in value and 'snippet' in value['answer_box']:
             self._value = value['answer_box']['snippet']
-        elif 'answer_box' in value.keys() and 'snippet_highlighted_words' in value['answer_box'].keys():
+        elif 'answer_box' in value and 'snippet_highlighted_words' in value['answer_box']:
             self._value = value['answer_box']["snippet_highlighted_words"][0]
-        elif 'organic_results' in value and 'snippet' in value["organic_results"][0].keys():
+        elif 'organic_results' in value and 'snippet' in value["organic_results"][0]:
             self._value = value["organic_results"][0]['snippet']
         else:
             self._value = value
 
-        if 'organic_results' in value.keys():
+        if 'organic_results' in value:
             self.results = value['organic_results']
             if len(self.results) > 0:
                 self.links = [r['link'] for r in self.results]
@@ -38,12 +38,10 @@ class SearchResult(Result):
             self.links = []
 
     def __str__(self) -> str:
-        json_str = json.dumps(self.raw, indent=2)
-        return json_str
+        return json.dumps(self.raw, indent=2)
 
     def _repr_html_(self) -> str:
-        json_str = json.dumps(self.raw, indent=2)
-        return json_str
+        return json.dumps(self.raw, indent=2)
 
 
 class SerpApiEngine(Engine):
@@ -73,7 +71,7 @@ class SerpApiEngine(Engine):
         kwargs   = argument.kwargs
         queries_ = queries if isinstance(queries, list) else [queries]
         rsp      = []
-        engine   = kwargs['engine'] if 'engine' in kwargs else self.engine
+        engine   = kwargs.get('engine', self.engine)
 
         for q in queries_:
             query = {

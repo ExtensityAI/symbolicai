@@ -13,7 +13,7 @@ class ApiLayerResult(Result):
         self.raw = text
         try:
             dict_ = self._to_symbol(text).ast()
-            self._value = dict_['all_text'] if 'all_text' in dict_ else f'OCR Engine Error: {text} - status code {status_code}'
+            self._value = dict_.get('all_text', f'OCR Engine Error: {text} - status code {status_code}')
         except:
             self._value = f'OCR Engine Error: {text} - status code {status_code}'
 

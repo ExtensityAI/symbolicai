@@ -157,9 +157,7 @@ The chatbot always reply in the following format
         def _func(_) -> str:
             pass
         if self.verbose: logger.debug(f'Narration:\n{prompt}\n')
-        res = _func(self)
-        res = res.replace(f'{self.name}: ', '').strip()
-        return res
+        return _func(self).replace(f'{self.name}: ', '').strip()
 
 class SymbiaChat(ChatBot):
     def __init__(self, name: str = 'Symbia', verbose: bool = False, **kwargs):
@@ -184,10 +182,7 @@ class SymbiaChat(ChatBot):
             self._last_user_input = usr
             if self.verbose: logger.debug(f'User:\n{usr}\n')
 
-            if len(str(usr)) > 0:
-                ctxt = str(self.detect_capability(usr))
-            else:
-                ctxt = '[DK]'
+            ctxt = str(self.detect_capability(usr)) if len(str(usr)) > 0 else '[DK]'
 
             if self.verbose: logger.debug(f'In-context:\n{ctxt}\n')
 
@@ -257,7 +252,7 @@ class SymbiaChat(ChatBot):
         return None
 
     def _memory_scratchpad(self, context, short_term_memory, long_term_memory):
-        scratchpad = f'''
+        return f'''
     [REFLECT](
 Query:      {self._last_user_input}
 Reflection: {self._extract_reflection(context)}
@@ -271,7 +266,6 @@ Reflection: {self._extract_reflection(context)}
 {long_term_memory}
 )
 '''
-        return scratchpad
 
 def run() -> None:
     chat = SymbiaChat()

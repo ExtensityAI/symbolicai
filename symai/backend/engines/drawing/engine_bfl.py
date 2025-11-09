@@ -19,7 +19,8 @@ class FluxResult(Result):
     def __init__(self, value, **kwargs):
         super().__init__(value, **kwargs)
         # unpack the result
-        path = tempfile.NamedTemporaryFile(suffix=".png", delete=False).name
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_file:
+            path = tmp_file.name
         url = value.get('result').get('sample')
         request = requests.get(url, allow_redirects=True)
         request.raise_for_status()

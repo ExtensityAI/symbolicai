@@ -68,9 +68,9 @@ class PythonEngine(Engine):
     def forward(self, argument):
         code = argument.prop.prepared_input
         kwargs = argument.kwargs
-        globals_ = kwargs['globals'] if 'globals' in kwargs else {}
-        locals_ = kwargs['locals']  if 'locals'  in kwargs else {}
-        input_handler = kwargs['input_handler'] if 'input_handler' in kwargs else None
+        globals_ = kwargs.get('globals', {})
+        locals_ = kwargs.get('locals', {})
+        input_handler = kwargs.get('input_handler')
         if input_handler:
             input_handler((code,))
 

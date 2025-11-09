@@ -1,7 +1,7 @@
 import importlib
 import inspect
 import pickle
-from typing import Any, Generic, TypeVar, Union
+from typing import Any
 
 import redis
 from fastapi import APIRouter, FastAPI, HTTPException, Security, status
@@ -33,11 +33,7 @@ def is_redis_running(host: str, port: int) -> bool:
         return False
 
 
-# Create a generic type variable
-T = TypeVar('T')
-
-
-class GenericRepository(Generic[T]):
+class GenericRepository[T]:
     def __init__(self, redis_client: redis.Redis, id_key: str, use_redis: bool = True):
         self.storage: dict[str, T] = {}  # In-memory dictionary to mock Redis
         self.use_redis     = use_redis
@@ -84,8 +80,7 @@ class GenericRepository(Generic[T]):
     def _retrieve_redis(self, item_id: str) -> T:
         item = self.redis_client.get(item_id)
         if item:
-            item = self._deserialize_object(item)
-            return item
+            return self._deserialize_object(item)
         return None
 
     def _delete_redis(self, item_id: str) -> bool:
@@ -116,7 +111,7 @@ expression_repository         = GenericRepository[Expression](redis_client, "exp
 component_class_types = {
     name: cls for name, cls in inspect.getmembers(importlib.import_module('symai.components'), inspect.isclass) if issubclass(cls, Expression)
 }
-component_instance_repository = GenericRepository[Union[Symbol, Expression]](redis_client, "comp_id", use_redis=use_redis)
+component_instance_repository = GenericRepository[Symbol | Expression](redis_client, "comp_id", use_redis=use_redis)
 
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 

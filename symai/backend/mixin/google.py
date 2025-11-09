@@ -10,7 +10,9 @@ class GoogleMixin:
     def api_max_context_tokens(self):
         if self.model.startswith('gemini-2.5-'):
             return 1_048_576
+        return None
 
     def api_max_response_tokens(self):
         if self.model == 'gemini-2.5-':
             return 65_536
+        return None

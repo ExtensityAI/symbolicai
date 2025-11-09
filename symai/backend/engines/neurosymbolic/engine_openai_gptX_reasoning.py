@@ -271,7 +271,7 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
                 openai.api_key = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
 
             callback = self.client.chat.completions.create
-            kwargs['model'] = kwargs['model'] if 'model' in kwargs else self.model
+            kwargs['model'] = kwargs.get('model', self.model)
 
             if except_remedy is not None:
                 res = except_remedy(self, e, callback, argument)
@@ -384,24 +384,28 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
 
     def _process_function_calls(self, res, metadata):
         hit = False
-        if hasattr(res, 'choices') and res.choices:
-            choice = res.choices[0]
-            if hasattr(choice, 'message') and choice.message:
-                if hasattr(choice.message, 'tool_calls') and choice.message.tool_calls:
-                    for tool_call in choice.message.tool_calls:
-                        if hit:
-                            CustomUserWarning("Multiple function calls detected in the response but only the first one will be processed.")
-                            break
-                        if hasattr(tool_call, 'function') and tool_call.function:
-                            try:
-                                args_dict = json.loads(tool_call.function.arguments)
-                            except json.JSONDecodeError:
-                                args_dict = {}
-                            metadata['function_call'] = {
-                                'name': tool_call.function.name,
-                                'arguments': args_dict
-                            }
-                            hit = True
+        if (
+            hasattr(res, 'choices')
+            and res.choices
+            and hasattr(res.choices[0], 'message')
+            and res.choices[0].message
+            and hasattr(res.choices[0].message, 'tool_calls')
+            and res.choices[0].message.tool_calls
+        ):
+            for tool_call in res.choices[0].message.tool_calls:
+                if hit:
+                    CustomUserWarning("Multiple function calls detected in the response but only the first one will be processed.")
+                    break
+                if hasattr(tool_call, 'function') and tool_call.function:
+                    try:
+                        args_dict = json.loads(tool_call.function.arguments)
+                    except json.JSONDecodeError:
+                        args_dict = {}
+                    metadata['function_call'] = {
+                        'name': tool_call.function.name,
+                        'arguments': args_dict
+                    }
+                    hit = True
         return metadata
 
     def _prepare_request_payload(self, messages, argument):
@@ -428,13 +432,12 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
                 kwargs['max_completion_tokens'] = max_tokens
             del kwargs['max_tokens']
 
-        if max_completion_tokens is not None:
-            if max_completion_tokens > self.max_response_tokens:
-                CustomUserWarning(
-                    f"Provided 'max_completion_tokens' ({max_completion_tokens}) exceeds max response tokens ({self.max_response_tokens}). "
-                    f"Truncating to {remaining_tokens} to avoid API failure."
-                )
-                kwargs['max_completion_tokens'] = remaining_tokens
+        if max_completion_tokens is not None and max_completion_tokens > self.max_response_tokens:
+            CustomUserWarning(
+                f"Provided 'max_completion_tokens' ({max_completion_tokens}) exceeds max response tokens ({self.max_response_tokens}). "
+                f"Truncating to {remaining_tokens} to avoid API failure."
+            )
+            kwargs['max_completion_tokens'] = remaining_tokens
 
         payload = {
             "messages": messages,

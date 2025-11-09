@@ -1,11 +1,10 @@
+import contextlib
 import itertools
 import warnings
 
 warnings.filterwarnings('ignore', module='pinecone')
-try:
+with contextlib.suppress(BaseException):
     from pinecone import Pinecone, ServerlessSpec
-except:
-    pass
 
 from .... import core_ext
 from ....symbol import Result
@@ -149,13 +148,13 @@ class PineconeIndexEngine(Engine):
             self.environment = kwargs['INDEXING_ENGINE_ENVIRONMENT']
 
     def _configure_index(self, **kwargs):
-        index_name = kwargs['index_name'] if 'index_name' in kwargs else self.index_name
+        index_name = kwargs.get('index_name', self.index_name)
 
-        del_ = kwargs['index_del'] if 'index_del' in kwargs else False
+        del_ = kwargs.get('index_del', False)
         if self.index is not None and del_:
             self.pinecone.delete_index(index_name)
 
-        get_ = kwargs['index_get'] if 'index_get' in kwargs else False
+        get_ = kwargs.get('index_get', False)
         if self.index is not None and get_:
             self.index = self.pinecone.Index(name=index_name)
 
@@ -183,9 +182,9 @@ class PineconeIndexEngine(Engine):
             self._configure_index(**kwargs)
 
         if operation == 'search':
-            index_top_k    = kwargs['index_top_k'] if 'index_top_k' in kwargs else self.index_top_k
-            index_values   = kwargs['index_values'] if 'index_values' in kwargs else self.index_values
-            index_metadata = kwargs['index_metadata'] if 'index_metadata' in kwargs else self.index_metadata
+            index_top_k = kwargs.get('index_top_k', self.index_top_k)
+            index_values = kwargs.get('index_values', self.index_values)
+            index_metadata = kwargs.get('index_metadata', self.index_metadata)
             rsp = self._query(embedding, index_top_k, index_values, index_metadata)
 
         elif operation == 'add':

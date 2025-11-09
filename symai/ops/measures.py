@@ -41,7 +41,7 @@ def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
     covmean, _ = linalg.sqrtm(sigma1.dot(sigma2), disp=False)
     if not np.isfinite(covmean).all():
         msg = ('fid calculation produces singular product; '
-            'adding %s to diagonal of cov estimates') % eps
+            f'adding {eps} to diagonal of cov estimates')
         print(msg)
         offset = np.eye(sigma1.shape[0]) * eps
         covmean = linalg.sqrtm((sigma1 + offset).dot(sigma2 + offset))
@@ -54,8 +54,7 @@ def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
         covmean = covmean.real
 
     tr_covmean = np.trace(covmean)
-    val = diff.dot(diff) + np.trace(sigma1) + np.trace(sigma2) - 2 * tr_covmean
-    return val
+    return diff.dot(diff) + np.trace(sigma1) + np.trace(sigma2) - 2 * tr_covmean
 
 
 def calculate_mmd(x, y, kernel='rbf', kernel_mul=2.0, kernel_num=5, fix_sigma=None, eps=1e-9):
@@ -66,10 +65,7 @@ def calculate_mmd(x, y, kernel='rbf', kernel_mul=2.0, kernel_num=5, fix_sigma=No
         total1 = np.expand_dims(total, 1)
         L2_distance = np.sum((total0 - total1) ** 2, axis=2)
 
-        if fix_sigma:
-            bandwidth = fix_sigma
-        else:
-            bandwidth = np.sum(L2_distance) / (n_samples ** 2 - n_samples + eps)
+        bandwidth = fix_sigma or np.sum(L2_distance) / (n_samples ** 2 - n_samples + eps)
         bandwidth /= kernel_mul ** (kernel_num // 2)
         bandwidth_list = [bandwidth * (kernel_mul ** i) for i in range(kernel_num)]
         kernel_val = [np.exp(-L2_distance / (bandwidth_temp + eps)) for bandwidth_temp in bandwidth_list]
@@ -77,8 +73,7 @@ def calculate_mmd(x, y, kernel='rbf', kernel_mul=2.0, kernel_num=5, fix_sigma=No
 
     def linear_mmd2(f_of_X, f_of_Y):
         delta = f_of_X.mean(axis=0) - f_of_Y.mean(axis=0)
-        loss = np.dot(delta, delta.T)
-        return loss
+        return np.dot(delta, delta.T)
 
     if kernel == 'linear':
         return linear_mmd2(x, y)
@@ -89,5 +84,5 @@ def calculate_mmd(x, y, kernel='rbf', kernel_mul=2.0, kernel_num=5, fix_sigma=No
         yy = np.mean(kernels[batch_size:, batch_size:])
         xy = np.mean(kernels[:batch_size, batch_size:])
         yx = np.mean(kernels[batch_size:, :batch_size])
-        loss = xx + yy - xy - yx
-        return loss
+        return xx + yy - xy - yx
+    return None

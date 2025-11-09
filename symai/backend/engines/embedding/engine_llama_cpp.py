@@ -119,10 +119,7 @@ class LlamaCppEmbeddingEngine(Engine):
         except Exception as e:
             raise ValueError(f"Request failed with error: {e!s}")
 
-        if res is not None:
-            output = [r["embedding"] for r in res] # B x 1 x D
-        else:
-            output = None
+        output = [r["embedding"] for r in res] if res is not None else None  # B x 1 x D
         metadata = {'raw_output': res}
 
         return [output], metadata

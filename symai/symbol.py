@@ -3,15 +3,13 @@ import html
 import json
 from collections.abc import Callable, Iterator
 from json import JSONEncoder
-from typing import Any, ClassVar, Generic, TypeVar
+from typing import Any, ClassVar
 
 import numpy as np
 from box import Box
 
 from . import core
 from .ops import SYMBOL_PRIMITIVES
-
-T = TypeVar('T')
 
 
 class SymbolEncoder(JSONEncoder):
@@ -207,7 +205,7 @@ class SymbolMeta(type):
         return cls
 
 
-class Symbol(Generic[T], metaclass=SymbolMeta):
+class Symbol(metaclass=SymbolMeta):
     _mixin: ClassVar[bool] = True
     _primitives: ClassVar[dict[str, type]] = SYMBOL_PRIMITIVES
     _metadata: ClassVar[Metadata] = Metadata()
@@ -257,7 +255,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
                 v._parent = self
                 self._children.append(v)
             # else if iterable, check if it contains symbols
-            elif (isinstance(v, list) or isinstance(v, tuple)) and not k.startswith('_'):
+            elif isinstance(v, (list, tuple)) and not k.startswith('_'):
                 for i in v:
                     _func(k, i)
 
@@ -274,7 +272,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
             value = args[0]
 
             # if the value is a primitive, store it as is
-            if isinstance(value, str) or isinstance(value, int) or isinstance(value, float) or isinstance(value, bool):
+            if isinstance(value, (str, int, float, bool)):
                 pass
 
             # if the value is a symbol, unwrap it
@@ -288,8 +286,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
                 value                    = value.value
 
             # if the value is a list, tuple, dict, or set, unwrap all nested symbols
-            elif isinstance(value, list) or isinstance(value, dict) or \
-                    isinstance(value, set) or isinstance(value, tuple):
+            elif isinstance(value, (list, dict, set, tuple)):
 
                 if isinstance(value, list):
                     value = [self._unwrap_symbols_args(v, nested=True) for v in value]
@@ -307,6 +304,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
 
         if len(args) > 1:
             return [self._unwrap_symbols_args(a, nested=True) if isinstance(a, Symbol) else a for a in args]
+        return None
 
     def _construct_dependency_graph(self, *value):
         '''
@@ -362,10 +360,9 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
             **kwargs
         }
         # configure standard primitives
-        if use_mixin and standard_primitives:
+        if use_mixin and standard_primitives and semantic:
             # allow to iterate over iterables for neuro-symbolic values
-            if semantic:
-                obj.__semantic__ = True
+            obj.__semantic__ = True
         # If metatype has additional runtime primitives, add them to the instance
         if Symbol._metadata._primitives is not None:
             for prim_name in list(Symbol._metadata._primitives.keys()):
@@ -501,9 +498,8 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
             # Convert primitive info tuples back to types
             primitives     = [primitive for primitive, name in primitives_info]
             # Create new cls with UnifiedMeta metaclass
-            cls            = SymbolMeta(base_cls.__name__, (base_cls, *tuple(primitives)), {})
-            obj            = cls()
-            return obj
+            cls = SymbolMeta(base_cls.__name__, (base_cls, *tuple(primitives)), {})
+            return cls()
         return base_cls()
 
     def __getstate__(self) -> dict[str, Any]:
@@ -569,8 +565,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
             return value
         # inherit kwargs for new symbol instance
         kwargs = {**self._kwargs, **kwargs}
-        sym    = type_(value, **kwargs)
-        return sym
+        return type_(value, **kwargs)
 
     def _to_type(self, value: Any, **kwargs) -> "Symbol":
         '''
@@ -587,8 +582,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
             return value
         # inherit kwargs for new symbol instance
         kwargs = {**self._kwargs, **kwargs}
-        sym    = type_(value, **kwargs)
-        return sym
+        return type_(value, **kwargs)
 
     @property
     def _symbol_type(self) -> "Symbol":
@@ -864,7 +858,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
         '''
         if self.value is None:
             return ''
-        if isinstance(self.value, list) or isinstance(self.value, np.ndarray) or isinstance(self.value, tuple):
+        if isinstance(self.value, (list, np.ndarray, tuple)):
             return str([str(v) for v in self.value])
         if isinstance(self.value, dict):
             return str({k: str(v) for k, v in self.value.items()})
@@ -905,7 +899,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
         Returns:
             Iterator: An iterator for the Symbol's value.
         '''
-        if isinstance(self.value, list) or isinstance(self.value, tuple) or isinstance(self.value, np.ndarray):
+        if isinstance(self.value, (list, tuple, np.ndarray)):
             return iter(self.value)
 
         return self.list('item').value.__iter__()

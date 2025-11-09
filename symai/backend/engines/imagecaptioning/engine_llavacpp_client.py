@@ -18,8 +18,7 @@ def image_to_byte_array(image: Image, format='PNG') -> bytes:
   # image.save expects a file-like as a argument
   image.save(imgByteArr, format=format)
   # Turn the BytesIO object back into a bytes object
-  imgByteArr = imgByteArr.getvalue()
-  return imgByteArr
+  return imgByteArr.getvalue()
 
 
 class LLaMAResult(Result):
@@ -87,7 +86,7 @@ class LLaMACppClientEngine(Engine):
         # Update the headers for multipart/form-data
         headers       = {'Content-Type': payload.content_type}
         api           = f'http://{self.host}:{self.port}/llava'
-        except_remedy = kwargs['except_remedy'] if 'except_remedy' in kwargs else None
+        except_remedy = kwargs.get('except_remedy')
         try:
             # use http localhost 8000 to send a request to the server
             rsp = requests.post(api, data=payload, headers=headers, timeout=self.timeout)

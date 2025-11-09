@@ -43,9 +43,8 @@ class OperatorPrimitives(Primitive):
         if not isinstance(other, self._symbol_type):
             other = self._to_type(other)
         # None shortcut
-        if not self.__disable_none_shortcut__:
-            if  self.value is None or other.value is None:
-                CustomUserWarning(f"unsupported {self._symbol_type.__class__} value operand type(s) for {op}: '{type(self.value)}' and '{type(other.value)}'", raise_with=TypeError)
+        if not self.__disable_none_shortcut__ and (self.value is None or other.value is None):
+            CustomUserWarning(f"unsupported {self._symbol_type.__class__} value operand type(s) for {op}: '{type(self.value)}' and '{type(other.value)}'", raise_with=TypeError)
         # try type specific function
         try:
             # try type specific function
@@ -78,7 +77,7 @@ class OperatorPrimitives(Primitive):
         if isinstance(self.value, bool):
             val = self.value
         elif self.value is not None:
-            val = True if self.value else False
+            val = bool(self.value)
 
         return val
 
@@ -851,6 +850,7 @@ class OperatorPrimitives(Primitive):
             other = self._to_type(other)
             return self._to_type(f'{self.value}{other.value}')
         CustomUserWarning(f'This method is only supported for string concatenation! Got {type(self.value)} and {type(other)} instead.', raise_with=TypeError)
+        return None
 
     def __rmatmul__(self, other: Any) -> 'Symbol':
         '''
@@ -916,6 +916,7 @@ class OperatorPrimitives(Primitive):
             return self._to_type(result)
 
         CustomUserWarning('Division operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
+        return None
 
 
     def __itruediv__(self, other: Any) -> 'Symbol':
@@ -935,6 +936,7 @@ class OperatorPrimitives(Primitive):
             return self
 
         CustomUserWarning('Division operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
+        return None
 
 
     def __floordiv__(self, other: Any) -> 'Symbol':
@@ -953,6 +955,7 @@ class OperatorPrimitives(Primitive):
             return self._to_type(result)
 
         CustomUserWarning('Floor division operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
+        return None
 
     def __rfloordiv__(self, other: Any) -> 'Symbol':
         '''
@@ -970,6 +973,7 @@ class OperatorPrimitives(Primitive):
             return self._to_type(result)
 
         CustomUserWarning('Floor division operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
+        return None
 
     def __ifloordiv__(self, other: Any) -> 'Symbol':
         '''
@@ -988,6 +992,7 @@ class OperatorPrimitives(Primitive):
             return self
 
         CustomUserWarning('Floor division operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
+        return None
 
     def __pow__(self, other: Any) -> 'Symbol':
         '''
@@ -1005,6 +1010,7 @@ class OperatorPrimitives(Primitive):
             return self._to_type(result)
 
         CustomUserWarning('Power operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
+        return None
 
 
     def __rpow__(self, other: Any) -> 'Symbol':
@@ -1023,6 +1029,7 @@ class OperatorPrimitives(Primitive):
             return self._to_type(result)
 
         CustomUserWarning('Power operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
+        return None
 
     def __ipow__(self, other: Any) -> 'Symbol':
         '''
@@ -1041,6 +1048,7 @@ class OperatorPrimitives(Primitive):
             return self
 
         CustomUserWarning('Power operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
+        return None
 
     def __mod__(self, other: Any) -> 'Symbol':
         '''
@@ -1058,6 +1066,7 @@ class OperatorPrimitives(Primitive):
             return self._to_type(result)
 
         CustomUserWarning('Modulo operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
+        return None
 
     def __rmod__(self, other: Any) -> 'Symbol':
         '''
@@ -1093,6 +1102,7 @@ class OperatorPrimitives(Primitive):
             return self
 
         CustomUserWarning('Modulo operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
+        return None
 
     def __mul__(self, other: Any) -> 'Symbol':
         '''
@@ -1110,6 +1120,7 @@ class OperatorPrimitives(Primitive):
             return self._to_type(result)
 
         CustomUserWarning('Multiply operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
+        return None
 
     def __rmul__(self, other: Any) -> 'Symbol':
         '''
@@ -1127,6 +1138,7 @@ class OperatorPrimitives(Primitive):
             return self._to_type(result)
 
         CustomUserWarning('Multiply operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
+        return None
 
     def __imul__(self, other: Any) -> 'Symbol':
         '''
@@ -1145,6 +1157,7 @@ class OperatorPrimitives(Primitive):
             return self
 
         CustomUserWarning('Multiply operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
+        return None
 
 
 class CastingPrimitives(Primitive):
@@ -2363,9 +2376,9 @@ class EmbeddingPrimitives(Primitive):
         '''
         # if the embedding is not yet computed, compute it
         if self._metadata.embedding is None:
-            if ((isinstance(self.value, list) or isinstance(self.value, tuple)) and all([type(x) == int or type(x) == float or type(x) == bool for x in self.value])) \
+            if (isinstance(self.value, (list, tuple)) and all([type(x) == int or type(x) == float or type(x) == bool for x in self.value])) \
                 or isinstance(self.value, np.ndarray):
-                if isinstance(self.value, list) or isinstance(self.value, tuple):
+                if isinstance(self.value, (list, tuple)):
                     assert len(self.value) > 0, 'Cannot compute embedding of empty list'
                     if isinstance(self.value[0], Symbol):
                         # convert each element to numpy array
@@ -2391,7 +2404,7 @@ class EmbeddingPrimitives(Primitive):
 
     def _ensure_numpy_format(self, x, cast=False):
         # if it is a Symbol, get its value
-        if not isinstance(x, np.ndarray) or not isinstance(x, torch.Tensor) or not isinstance(x, list):
+        if not isinstance(x, (np.ndarray, torch.Tensor, list)):
             if not isinstance(x, self._symbol_type): #@NOTE: enforce Symbol to avoid circular import
                 if not cast:
                     raise TypeError(f'Cannot compute similarity with type {type(x)}')
@@ -2399,7 +2412,7 @@ class EmbeddingPrimitives(Primitive):
             # evaluate the Symbol as an embedding
             x = x.embedding
         # if it is a list, convert it to numpy
-        if isinstance(x, list) or isinstance(x, tuple):
+        if isinstance(x, (list, tuple)):
             assert len(x) > 0, 'Cannot compute similarity with empty list'
             x = np.asarray(x)
         # if it is a tensor, convert it to numpy
@@ -2428,7 +2441,7 @@ class EmbeddingPrimitives(Primitive):
             NotImplementedError: If the given metric is not supported.
         '''
         v = self._ensure_numpy_format(self)
-        if isinstance(other, list) or isinstance(other, tuple):
+        if isinstance(other, (list, tuple)):
             o = []
             for i in range(len(other)):
                 o.append(self._ensure_numpy_format(other[i], cast=True))
@@ -2484,7 +2497,7 @@ class EmbeddingPrimitives(Primitive):
             NotImplementedError: If the given kernel is not supported.
         '''
         v = self._ensure_numpy_format(self)
-        if isinstance(other, list) or isinstance(other, tuple):
+        if isinstance(other, (list, tuple)):
             o = []
             for i in range(len(other)):
                 o.append(self._ensure_numpy_format(other[i], cast=True))
@@ -2554,9 +2567,9 @@ class EmbeddingPrimitives(Primitive):
 
         # get the kernel value(s)
         shape = val.shape
-        if len(shape) >= 1 and shape[0] > 1: val = val
-        else:                                val = val.item()
-        if normalize is not None:            val = normalize(val)
+        val = val if len(shape) >= 1 and shape[0] > 1 else val.item()
+        if normalize is not None:
+            val = normalize(val)
         return val
 
     def zip(self, **kwargs) -> list[tuple[str, list, dict]]:
@@ -2770,8 +2783,7 @@ class PersistencePrimitives(Primitive):
             Symbol: The loaded Symbol.
         '''
         with Path(path).open('rb') as f:
-            obj = pickle.load(f)
-        return obj
+            return pickle.load(f)
 
 
 class OutputHandlingPrimitives(Primitive):

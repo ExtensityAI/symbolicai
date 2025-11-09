@@ -190,8 +190,7 @@ class Aggregator(Symbol):
             if obj._path is not None:
                 path = obj._path.replace(SPECIAL_CONSTANT, '') + '.' + path
             obj = obj._parent
-        path = path[:-1] # remove last dot
-        return path
+        return path[:-1] # remove last dot
 
     def __or__(self, other: Any) -> Any:
         self.add(other)
@@ -215,8 +214,7 @@ class Aggregator(Symbol):
     @property
     def value(self):
         if self.map is not None:
-            res = np.asarray(self.map(np.asarray(self._value, dtype=np.float32)))
-            return res
+            return np.asarray(self.map(np.asarray(self._value, dtype=np.float32)))
         return np.asarray(self._value, dtype=np.float32)
 
     @property
@@ -281,7 +279,7 @@ class Aggregator(Symbol):
                 self.add(entries.get())
                 return
 
-            if isinstance(entries, np.ndarray) or isinstance(entries, np.float32):
+            if isinstance(entries, (np.ndarray, np.float32)):
                 entries = entries.squeeze()
 
             self.entries.append(entries)
@@ -292,7 +290,7 @@ class Aggregator(Symbol):
 
     def keys(self):
         # Get all key names of items that have the SPECIAL_CONSTANT prefix
-        return [key.replace(SPECIAL_CONSTANT, '') for key in self.__dict__.keys() if not key.startswith('_') and \
+        return [key.replace(SPECIAL_CONSTANT, '') for key in self.__dict__ if not key.startswith('_') and \
                 key.replace(SPECIAL_CONSTANT, '') not in EXCLUDE_LIST]
 
     @property

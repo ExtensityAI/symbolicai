@@ -42,11 +42,8 @@ class CLIPEngine(Engine):
             if isinstance(img, bytes):
                 images.append(Image.open(BytesIO(img)))
             elif isinstance(img, str):
-                if img.startswith('http'):
-                    image_ = requests.get(img, stream=True).raw
-                else:
-                    image_ = img
-                image = Image.open(image_)
+                image_source = requests.get(img, stream=True).raw if img.startswith('http') else img
+                image = Image.open(image_source)
                 images.append(image)
         return images
 

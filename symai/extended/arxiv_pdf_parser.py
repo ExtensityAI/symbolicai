@@ -36,7 +36,7 @@ class ArxivPdfParser(Expression):
                 try:
                     pdf_files.append(future.result())
                 except Exception as exc:
-                    print('%r generated an exception: %s' % (url, exc))
+                    print(f"{url!r} generated an exception: {exc}")
 
         if len(pdf_files) == 0:
             return None

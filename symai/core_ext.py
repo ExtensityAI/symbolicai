@@ -66,8 +66,7 @@ def parallel(expressions: list[Callable], worker: int = mp.cpu_count() // 2):
             # Run expressions in parallel
             parallel_func = _parallel(func, expressions, worker=worker)
             # Call the proxy function to execute in parallel and capture results
-            results = parallel_func(*args, **kwargs)
-            return results
+            return parallel_func(*args, **kwargs)
         return wrapper
     return decorator_parallel
 
@@ -171,6 +170,7 @@ def _retry_func(
 
             if max_delay >= 0:
                 _delay = min(_delay, max_delay)
+    return None
 
 
 async def _aretry_func(
@@ -204,6 +204,7 @@ async def _aretry_func(
 
             if max_delay >= 0:
                 _delay = min(_delay, max_delay)
+    return None
 
 
 def cache(
@@ -239,9 +240,7 @@ def _cache_registry_func(
 
     if in_memory and cache_file.exists():
         with cache_file.open('rb') as f:
-            call = pickle.load(f)
-
-        return call
+            return pickle.load(f)
 
     call = func(*args, **kwargs)
     with cache_file.open('wb') as f:

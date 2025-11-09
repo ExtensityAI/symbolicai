@@ -198,24 +198,28 @@ class GroqEngine(Engine):
 
     def _process_function_calls(self, res, metadata):
         hit = False
-        if hasattr(res, 'choices') and res.choices:
-            choice = res.choices[0]
-            if hasattr(choice, 'message') and choice.message:
-                if hasattr(choice.message, 'tool_calls') and choice.message.tool_calls:
-                    for tool_call in choice.message.tool_calls:
-                        if hasattr(tool_call, 'function') and tool_call.function:
-                            if hit:
-                                CustomUserWarning("Multiple function calls detected in the response but only the first one will be processed.")
-                                break
-                            try:
-                                args_dict = json.loads(tool_call.function.arguments)
-                            except json.JSONDecodeError:
-                                args_dict = {}
-                            metadata['function_call'] = {
-                                'name': tool_call.function.name,
-                                'arguments': args_dict
-                            }
-                            hit = True
+        if (
+            hasattr(res, 'choices')
+            and res.choices
+            and hasattr(res.choices[0], 'message')
+            and res.choices[0].message
+            and hasattr(res.choices[0].message, 'tool_calls')
+            and res.choices[0].message.tool_calls
+        ):
+            for tool_call in res.choices[0].message.tool_calls:
+                if hasattr(tool_call, 'function') and tool_call.function:
+                    if hit:
+                        CustomUserWarning("Multiple function calls detected in the response but only the first one will be processed.")
+                        break
+                    try:
+                        args_dict = json.loads(tool_call.function.arguments)
+                    except json.JSONDecodeError:
+                        args_dict = {}
+                    metadata['function_call'] = {
+                        'name': tool_call.function.name,
+                        'arguments': args_dict
+                    }
+                    hit = True
         return metadata
 
     def _prepare_request_payload(self, messages, argument):

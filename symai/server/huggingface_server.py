@@ -148,7 +148,7 @@ def chat_completions(request: ChatCompletionRequest):
     new_tokens = outputs.sequences[0][inputs.input_ids.shape[-1]:]
     generated_text = tokenizer.decode(new_tokens, skip_special_tokens=True)
 
-    response = {
+    return {
         "choices": [
             {
                 "message": {
@@ -177,8 +177,6 @@ def chat_completions(request: ChatCompletionRequest):
             "model_chat_format": tokenizer.chat_template,
         }
     }
-
-    return response
 
 @app.post("/tokenize")
 def tokenize(request: TokenizeRequest):

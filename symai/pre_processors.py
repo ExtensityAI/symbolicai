@@ -324,8 +324,7 @@ class SelfToInputPreProcessor(PreProcessor):
         self.skip = skip if skip is not None else []
 
     def __call__(self, argument) -> Any:
-        input_ = f'{argument.prop.instance!s}\n'
-        return input_
+        return f'{argument.prop.instance!s}\n'
 
 
 class DataTemplatePreProcessor(PreProcessor):
@@ -349,8 +348,7 @@ class ConsoleInputPreProcessor(PreProcessor):
         self.skip = skip if skip is not None else []
 
     def __call__(self, argument) -> Any:
-        input_ = f'\n{argument.args[0]!s}\n$> '
-        return input_
+        return f'\n{argument.args[0]!s}\n$> '
 
 
 class ConsolePreProcessor(PreProcessor):

@@ -92,10 +92,9 @@ class ValidationFunction(Function):
             seed = 42
 
         rnd = np.random.RandomState(seed=seed)
-        seeds = rnd.randint(
+        return rnd.randint(
             0, np.iinfo(np.int16).max, size=num_seeds, dtype=np.int16
         ).tolist()
-        return seeds
 
     def simplify_validation_errors(self, error: ValidationError) -> str:
         """
@@ -577,9 +576,12 @@ class contract:
             wrapped_self._contract_timing[it]["act_execution"] = time.perf_counter() - op_start
 
         act_sig = inspect.signature(act_method)
-        if act_sig.return_annotation != inspect.Signature.empty and inspect.isclass(act_sig.return_annotation):
-            if not isinstance(act_output, act_sig.return_annotation):
-                raise TypeError(f"'act' method returned {type(act_output).__name__}, expected {act_sig.return_annotation.__name__}.")
+        if (
+            act_sig.return_annotation != inspect.Signature.empty
+            and inspect.isclass(act_sig.return_annotation)
+            and not isinstance(act_output, act_sig.return_annotation)
+        ):
+            raise TypeError(f"'act' method returned {type(act_output).__name__}, expected {act_sig.return_annotation.__name__}.")
 
         logger.success("'act' method executed successfully!")
         return act_output
@@ -648,7 +650,7 @@ class contract:
 
                 # 3. Validate output type and prepare for original_forward
                 output = self._validate_output(wrapped_self, current_input, output_type, it, **validation_kwargs)
-                wrapped_self.contract_successful = True if output is not None else False
+                wrapped_self.contract_successful = output is not None
                 wrapped_self.contract_result = output
                 wrapped_self.contract_exception = None
 
@@ -849,14 +851,13 @@ class BaseStrategy(TypeValidationFunction):
         pass
 
     def forward(self, *args, **kwargs):
-        result = super().forward(
+        return super().forward(
             *args,
             payload=self.payload,
             template_suffix=self.template,
             response_format={"type": "json_object"},
             **kwargs,
         )
-        return result
 
     @property
     def payload(self):

@@ -120,10 +120,7 @@ class Import(Expression):
         module_path_obj = Path(module)
         is_local_path = module_path_obj.exists() and module_path_obj.is_dir()
 
-        if is_local_path:
-            package_path = module_path_obj
-        else:
-            package_path = BASE_PACKAGE_PATH / module
+        package_path = module_path_obj if is_local_path else BASE_PACKAGE_PATH / module
 
         with (package_path / 'package.json').open() as f:
             pkg = json.load(f)
@@ -155,10 +152,7 @@ class Import(Expression):
         module_path_obj = Path(module)
         is_local_path = module_path_obj.exists() and module_path_obj.is_dir()
 
-        if is_local_path:
-            package_path = module_path_obj
-        else:
-            package_path = BASE_PACKAGE_PATH / module
+        package_path = module_path_obj if is_local_path else BASE_PACKAGE_PATH / module
 
         with (package_path / 'package.json').open() as f:
             pkg = json.load(f)
@@ -181,12 +175,11 @@ class Import(Expression):
                     if expr['type'] == expressions:
                         try:
                             module_obj = importlib.import_module(relative_module_path)
-                            module_class = getattr(module_obj, expr['type'])
-                            return module_class
+                            return getattr(module_obj, expr['type'])
                         except (ImportError, ModuleNotFoundError) as e:
                             logger.error(f"Error importing module {relative_module_path}: {e}")
                             raise
-                elif isinstance(expressions, list) or isinstance(expressions, tuple):
+                elif isinstance(expressions, (list, tuple)):
                     if expr['type'] in expressions:
                         try:
                             module_obj = importlib.import_module(relative_module_path)

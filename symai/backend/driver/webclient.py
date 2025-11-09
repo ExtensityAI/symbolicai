@@ -1,3 +1,4 @@
+import contextlib
 import os
 from pathlib import Path
 
@@ -57,10 +58,8 @@ class add_path:
         sys.path.insert(0, self.path)
 
     def __exit__(self, exc_type, exc_value, traceback):
-        try:
+        with contextlib.suppress(ValueError):
             sys.path.remove(self.path)
-        except ValueError:
-            pass
 
 
 def wait_for(condition_function, timeout):
@@ -155,7 +154,7 @@ def contains_text(check_pattern, search_pattern, link, driver_handler, script=No
     with page_loaded(driver, check_pattern, debug=debug):
         if script is not None: script(driver, args)
     rsp = re.search(search_pattern, driver.page_source)
-    return True if rsp else False
+    return bool(rsp)
 
 
 def download_images(driver, args):

@@ -24,14 +24,14 @@ class LlamaCppTokenizer:
 
     @staticmethod
     async def _encode(text: str) -> list[int]:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(f"{LlamaCppTokenizer._server_endpoint}/tokenize", json={
-                "content": text,
-            }) as res:
-                if res.status != 200:
-                    CustomUserWarning(f"Request failed with status code: {res.status}", raise_with=ValueError)
-                res = await res.json()
-                return res['tokens']
+        async with aiohttp.ClientSession() as session, session.post(
+            f"{LlamaCppTokenizer._server_endpoint}/tokenize",
+            json={"content": text},
+        ) as res:
+            if res.status != 200:
+                CustomUserWarning(f"Request failed with status code: {res.status}", raise_with=ValueError)
+            res = await res.json()
+            return res['tokens']
 
     @staticmethod
     def encode(text: str) -> list[int]:
@@ -44,14 +44,14 @@ class LlamaCppTokenizer:
 
     @staticmethod
     async def _decode(tokens: list[int]) -> str:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(f"{LlamaCppTokenizer._server_endpoint}/detokenize", json={
-                "tokens": tokens,
-            }) as res:
-                if res.status != 200:
-                    CustomUserWarning(f"Request failed with status code: {res.status}", raise_with=ValueError)
-                res = await res.json()
-                return res['content']
+        async with aiohttp.ClientSession() as session, session.post(
+            f"{LlamaCppTokenizer._server_endpoint}/detokenize",
+            json={"tokens": tokens},
+        ) as res:
+            if res.status != 200:
+                CustomUserWarning(f"Request failed with status code: {res.status}", raise_with=ValueError)
+            res = await res.json()
+            return res['content']
 
     @staticmethod
     def decode(tokens: list[int]) -> str:
@@ -191,14 +191,13 @@ class LlamaCppEngine(Engine):
                 sock_connect=self.timeout_params['connect'],
                 sock_read=self.timeout_params['read']
             )
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.post(
-                    f"{self.server_endpoint}/v1/chat/completions",
-                    json=payload
-                ) as res:
-                    if res.status != 200:
-                        CustomUserWarning(f"Request failed with status code: {res.status}", raise_with=ValueError)
-                    return await res.json()
+            async with aiohttp.ClientSession(timeout=timeout) as session, session.post(
+                f"{self.server_endpoint}/v1/chat/completions",
+                json=payload
+            ) as res:
+                if res.status != 200:
+                    CustomUserWarning(f"Request failed with status code: {res.status}", raise_with=ValueError)
+                return await res.json()
 
         return await _make_request()
 

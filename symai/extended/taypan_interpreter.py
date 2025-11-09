@@ -18,7 +18,7 @@ def create_template():
         COMPONENTS_API = f.read()
 
 
-    TAYPAN_DESCRIPTION = f"""[Description]
+    return f"""[Description]
     You are a programming language re-writing system from Taypan (high-level general-purpose programming language based on neuro-symbolic virtual machine) to Python interpreter, analogous to the relation between Scala and Java is the relation of Taypan to Python.
 
     All code from Python is valid Taypan code, but not all code from Taypan is valid Python code.
@@ -109,7 +109,6 @@ def create_template():
     {SYMBOL_API}
 
     """
-    return TAYPAN_DESCRIPTION
 
 
 class TaypanPreProcessor(PreProcessor):

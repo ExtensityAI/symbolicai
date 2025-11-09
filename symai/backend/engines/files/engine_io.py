@@ -1,3 +1,4 @@
+import contextlib
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,11 +15,8 @@ _TIKA_INITIALIZED = False
 def _ensure_tika_vm():
     global _TIKA_INITIALIZED
     if not _TIKA_INITIALIZED:
-        try:
+        with contextlib.suppress(Exception):
             tika.initVM()
-        except Exception:
-            # If initVM fails, we still attempt unpack.from_file which may auto-init
-            pass
         logging.getLogger('tika').setLevel(logging.CRITICAL)
         _TIKA_INITIALIZED = True
 
@@ -103,10 +101,7 @@ class FileEngine(Engine):
 
         _ensure_tika_vm()
         file_ = unpack.from_file(str(path_obj))
-        if 'content' in file_:
-            content = file_['content']
-        else:
-            content = str(file_)
+        content = file_['content'] if 'content' in file_ else str(file_)
 
         if content is None:
             return None
@@ -148,8 +143,7 @@ class FileEngine(Engine):
         with new_file_path.open('wb') as f:
             f.writelines(txtx)
 
-        fixed_pdf = pypdf.PdfReader(str(new_file_path))
-        return fixed_pdf
+        return pypdf.PdfReader(str(new_file_path))
 
     def read_text(self, pdf_reader, page_range, argument):
         txt = []
@@ -175,7 +169,7 @@ class FileEngine(Engine):
             page_range = None
             if 'slice' in kwargs:
                 page_range = kwargs['slice']
-                if isinstance(page_range, tuple) or isinstance(page_range, list):
+                if isinstance(page_range, (tuple, list)):
                     page_range = slice(*page_range)
 
             rsp = ''

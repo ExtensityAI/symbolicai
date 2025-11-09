@@ -256,6 +256,7 @@ class Solver(Expression):
             raise NotImplementedError('This feature is not yet implemented.')
         else:
             return "Sorry, something went wrong. Please check if your backend is available and try again or report an issue to the devs. :("
+        return None
 
 
 def process_query(args) -> None:

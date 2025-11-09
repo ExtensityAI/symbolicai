@@ -83,6 +83,4 @@ class HtmlStyleTemplate(Expression):
                                               template=HTML_TEMPLATE_STYLE,
                                               placeholder='{{placeholder}}',
                                               **kwargs)) for html in html_data]
-        res = '\n'.join(style_data)
-        res = Symbol(res)
-        return res
+        return Symbol('\n'.join(style_data))

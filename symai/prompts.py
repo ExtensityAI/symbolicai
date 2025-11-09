@@ -99,7 +99,7 @@ class PromptRegistry:
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
-                    cls._instance = super(PromptRegistry, cls).__new__(cls)
+                    cls._instance = super().__new__(cls)
                     cls._instance._default_language = PromptLanguage.ENGLISH
                     cls._instance._default_model = ModelName.ALL
                     cls._instance._model_fallback = True
