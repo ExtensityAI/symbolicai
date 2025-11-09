@@ -1,4 +1,5 @@
 import base64
+import contextlib
 import logging
 import tempfile
 from pathlib import Path
@@ -30,7 +31,8 @@ class GPTImageResult(Result):
         for item in value.data:
             has_url = hasattr(item, "url")
             has_b64 = hasattr(item, "b64_json")
-            path = tempfile.NamedTemporaryFile(suffix=".png", delete=False).name
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_file:
+                path = tmp_file.name
             if has_url and item.url is not None:
                 request = requests.get(item.url, allow_redirects=True)
                 request.raise_for_status()
@@ -108,10 +110,9 @@ class GPTImageEngine(Engine):
 
         n = kwargs.get("n", 1)
 
-        if "size" in kwargs:
-            if isinstance(kwargs["size"], int):
-                s = kwargs["size"]
-                kwargs["size"] = f"{s}x{s}"
+        if "size" in kwargs and isinstance(kwargs["size"], int):
+            s = kwargs["size"]
+            kwargs["size"] = f"{s}x{s}"
 
         except_remedy = kwargs.get("except_remedy", None)
 
@@ -159,34 +160,28 @@ class GPTImageEngine(Engine):
                 img_paths = kwargs["image_path"]
                 if not isinstance(img_paths, (list, tuple)):
                     img_paths = [img_paths]
-                # open all images
-                image_files = [Path(p).open("rb") for p in img_paths]
-                # optional mask (only for the first image)
-                mask_file = None
-                if "mask_path" in kwargs and kwargs["mask_path"] is not None:
-                    mask_file = Path(kwargs["mask_path"]).open("rb")
-                # construct API args
-                edit_kwargs = {
-                    "model": model,
-                    "image": image_files if len(image_files) > 1 else image_files[0],
-                    "prompt": prompt,
-                    "n": n,
-                    "size": kwargs.get("size"),
-                }
+                with contextlib.ExitStack() as stack:
+                    image_files = [stack.enter_context(Path(p).open("rb")) for p in img_paths]
+                    mask_file = None
+                    if "mask_path" in kwargs and kwargs["mask_path"] is not None:
+                        mask_file = stack.enter_context(Path(kwargs["mask_path"]).open("rb"))
+                    # construct API args
+                    edit_kwargs = {
+                        "model": model,
+                        "image": image_files if len(image_files) > 1 else image_files[0],
+                        "prompt": prompt,
+                        "n": n,
+                        "size": kwargs.get("size"),
+                    }
 
-                if model.startswith("gpt-image-"):
-                    edit_kwargs["quality"] = kwargs.get("quality", "auto")
+                    if model.startswith("gpt-image-"):
+                        edit_kwargs["quality"] = kwargs.get("quality", "auto")
 
-                if mask_file:
-                    edit_kwargs["mask"] = mask_file
-                callback = openai.images.edit
+                    if mask_file:
+                        edit_kwargs["mask"] = mask_file
+                    callback = openai.images.edit
 
-                res = openai.images.edit(**edit_kwargs)
-                # clean up file handles
-                for f in image_files:
-                    f.close()
-                if mask_file:
-                    mask_file.close()
+                    res = openai.images.edit(**edit_kwargs)
             else:
                 raise ValueError(f"Unknown image operation: {operation}")
 

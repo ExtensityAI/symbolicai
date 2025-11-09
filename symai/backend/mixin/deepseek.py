@@ -8,7 +8,9 @@ class DeepSeekMixin:
     def api_max_context_tokens(self):
         if self.model == 'deepseek-reasoner':
             return 64_000
+        return None
 
     def api_max_response_tokens(self):
         if self.model == 'deepseek-reasoner':
             return 8_000
+        return None

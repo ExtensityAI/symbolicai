@@ -64,8 +64,7 @@ def _cast_return_type(rsp: Any, return_constraint: type, engine_probabilistic_bo
         pass
     elif issubclass(return_constraint, BaseModel):
         # pydantic model
-        rsp = return_constraint(data=rsp)
-        return rsp
+        return return_constraint(data=rsp)
     elif str(return_constraint) == str(type(rsp)):
         return rsp
     elif return_constraint in (list, tuple, set, dict):
@@ -185,12 +184,10 @@ def _execute_query_fallback(func, instance, argument, error=None, stack_trace=No
         raise error # re-raise the original error
     if rsp is not None:
         # fallback was implemented
-        rsp = dict(data=rsp, error=error, stack_trace=stack_trace)
-        return rsp
+        return dict(data=rsp, error=error, stack_trace=stack_trace)
     if argument.prop.default is not None:
         # no fallback implementation, but default value is set
-        rsp = dict(data=argument.prop.default, error=error, stack_trace=stack_trace)
-        return rsp
+        return dict(data=argument.prop.default, error=error, stack_trace=stack_trace)
     raise error
 
 
@@ -244,8 +241,7 @@ def _execute_query(engine, argument) -> list[object]:
     engine.prepare(argument)
     if argument.prop.preview:
         return engine.preview(argument)
-    outputs = engine(argument) # currently only supports single query
-    return outputs
+    return engine(argument) # currently only supports single query
 
 
 def _process_query(
@@ -310,7 +306,7 @@ class EngineRepository:
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
-            cls._instance = super(EngineRepository, cls).__new__(cls, *args, **kwargs)
+            cls._instance = super().__new__(cls)
             cls._instance.__init__()  # Explicitly call __init__
         return cls._instance
 
@@ -377,7 +373,7 @@ class EngineRepository:
                 return engine
 
         # Otherwise, fallback to normal lookup:
-        if engine_name not in self._engines.keys():
+        if engine_name not in self._engines:
             subpackage_name = engine_name.replace('-', '_')
             subpackage = importlib.import_module(f"{engines.__package__}.{subpackage_name}", None)
             if subpackage is None:

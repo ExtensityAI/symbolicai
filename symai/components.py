@@ -208,7 +208,6 @@ class Stream(Expression):
         res = sym.stream(expr=self.expr,
                          char_token_ratio=self.char_token_ratio,
                          **kwargs)
-
         if self.retrieval is not None:
             res = list(res)
             if self.retrieval == 'all':
@@ -217,8 +216,7 @@ class Stream(Expression):
                 res = sorted(res, key=lambda x: len(x), reverse=True)
                 return res[0]
             if self.retrieval == 'contains':
-                res = [r for r in res if self.expr in r]
-                return res
+                return [r for r in res if self.expr in r]
             raise ValueError(f"Invalid retrieval method: {self.retrieval}")
 
         return res
@@ -256,6 +254,7 @@ class Trace(Expression):
         Expression.command(verbose=False, engines=self.engines)
         if self.expr is not None:
             return self.expr.__exit__(type, value, traceback)
+        return None
 
 
 class Analyze(Expression):
@@ -292,6 +291,7 @@ class Log(Expression):
         Expression.command(logging=False, engines=self.engines)
         if self.expr is not None:
             return self.expr.__exit__(type, value, traceback)
+        return None
 
 
 class Template(Expression):
@@ -670,10 +670,10 @@ class PrepareData(Function):
             instruct = argument.prop.prompt
             context  = argument.prop.context
             return """{
-    'context': '%s',
-    'instruction': '%s',
+    'context': '{context}',
+    'instruction': '{instruction}',
     'result': 'TODO: Replace this with the expected result.'
-}""" % (context, instruct)
+}""".format(context=context, instruction=instruct)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -801,9 +801,7 @@ class SimilarityClassification(Expression):
         @core_ext.cache(in_memory=self.in_memory)
         def embed_classes(self):
             opts = map(Symbol, self.classes)
-            embeddings = [opt.embed() for opt in opts]
-
-            return embeddings
+            return [opt.embed() for opt in opts]
 
         return embed_classes(self)
 
@@ -831,12 +829,7 @@ class Indexer(Expression):
     @staticmethod
     def replace_special_chars(index: str):
         # replace special characters that are not for path
-        index = str(index)
-        index = index.replace('-', '')
-        index = index.replace('_', '')
-        index = index.replace(' ', '')
-        index = index.lower()
-        return index
+        return str(index).replace('-', '').replace('_', '').replace(' ', '').lower()
 
     def __init__(
             self,
@@ -892,6 +885,7 @@ class Indexer(Expression):
             indices = f.read().split('\n')
             if self.index_name in indices:
                 return True
+        return False
 
     def forward(
             self,
@@ -916,8 +910,7 @@ class Indexer(Expression):
             that.retrieval = res
             if raw_result:
                 return res
-            rsp = Symbol(res).query(prompt='From the retrieved data, select the most relevant information.', context=query)
-            return rsp
+            return Symbol(res).query(prompt='From the retrieved data, select the most relevant information.', context=query)
         return _func
 
 
@@ -1133,16 +1126,17 @@ class MetadataTracker(Expression):
         if not self._trace:
             return None
 
-        if event == 'return' and frame.f_code.co_name == 'forward':
-            # Check if this is an engine forward call
-            if ('self' in frame.f_locals
-                and
-                isinstance(frame.f_locals['self'], Engine)):
-                _, metadata = arg  # arg contains return value on 'return' event
-                engine_name = frame.f_locals['self'].__class__.__name__
-                model_name = frame.f_locals['self'].model
-                self._metadata[(self._metadata_id, engine_name, model_name)] = metadata
-                self._metadata_id += 1
+        if (
+            event == 'return'
+            and frame.f_code.co_name == 'forward'
+            and 'self' in frame.f_locals
+            and isinstance(frame.f_locals['self'], Engine)
+        ):
+            _, metadata = arg  # arg contains return value on 'return' event
+            engine_name = frame.f_locals['self'].__class__.__name__
+            model_name = frame.f_locals['self'].model
+            self._metadata[(self._metadata_id, engine_name, model_name)] = metadata
+            self._metadata_id += 1
 
         return self._trace_calls
 
@@ -1217,30 +1211,37 @@ class MetadataTracker(Expression):
                 accumulated['time'] += metadata['time']
 
             # Handle usage stats accumulation
-            if 'raw_output' in metadata and 'raw_output' in accumulated:
-                if hasattr(metadata['raw_output'], 'usage') and hasattr(accumulated['raw_output'], 'usage'):
-                    current_usage = metadata['raw_output'].usage
-                    accumulated_usage = accumulated['raw_output'].usage
+            if (
+                'raw_output' in metadata
+                and 'raw_output' in accumulated
+                and hasattr(metadata['raw_output'], 'usage')
+                and hasattr(accumulated['raw_output'], 'usage')
+            ):
+                current_usage = metadata['raw_output'].usage
+                accumulated_usage = accumulated['raw_output'].usage
 
-                    # Accumulate token counts
-                    for attr in ['completion_tokens', 'prompt_tokens', 'total_tokens']:
-                        if hasattr(current_usage, attr) and hasattr(accumulated_usage, attr):
-                            setattr(accumulated_usage, attr,
-                                    getattr(accumulated_usage, attr) + getattr(current_usage, attr))
+                # Accumulate token counts
+                for attr in ['completion_tokens', 'prompt_tokens', 'total_tokens']:
+                    if hasattr(current_usage, attr) and hasattr(accumulated_usage, attr):
+                        setattr(
+                            accumulated_usage,
+                            attr,
+                            getattr(accumulated_usage, attr) + getattr(current_usage, attr),
+                        )
 
-                    # Handle nested token details if they exist
-                    for detail_attr in ['completion_tokens_details', 'prompt_tokens_details']:
-                        if hasattr(current_usage, detail_attr) and hasattr(accumulated_usage, detail_attr):
-                            current_details = getattr(current_usage, detail_attr)
-                            accumulated_details = getattr(accumulated_usage, detail_attr)
+                # Handle nested token details if they exist
+                for detail_attr in ['completion_tokens_details', 'prompt_tokens_details']:
+                    if hasattr(current_usage, detail_attr) and hasattr(accumulated_usage, detail_attr):
+                        current_details = getattr(current_usage, detail_attr)
+                        accumulated_details = getattr(accumulated_usage, detail_attr)
 
-                            # Accumulate all numeric attributes in the details
-                            for attr in dir(current_details):
-                                if not attr.startswith('_') and hasattr(accumulated_details, attr):
-                                    current_val = getattr(current_details, attr)
-                                    accumulated_val = getattr(accumulated_details, attr)
-                                    if isinstance(current_val, (int, float)) and isinstance(accumulated_val, (int, float)):
-                                        setattr(accumulated_details, attr, accumulated_val + current_val)
+                        # Accumulate all numeric attributes in the details
+                        for attr in dir(current_details):
+                            if not attr.startswith('_') and hasattr(accumulated_details, attr):
+                                current_val = getattr(current_details, attr)
+                                accumulated_val = getattr(accumulated_details, attr)
+                                if isinstance(current_val, (int, float)) and isinstance(accumulated_val, (int, float)):
+                                    setattr(accumulated_details, attr, accumulated_val + current_val)
 
         return accumulated
 

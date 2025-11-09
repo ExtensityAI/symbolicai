@@ -77,9 +77,7 @@ def generate_emoji_pattern(file_name):
         else:
             pattern_parts.append(''.join(f'\\U{ord(c):08x}' for c in code))
 
-    emoji_pattern = '(?:' + '|'.join(pattern_parts) + ')'
-
-    return emoji_pattern
+    return '(?:' + '|'.join(pattern_parts) + ')'
 
 # Usage
 file_name = 'emoji.pytxt'

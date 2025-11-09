@@ -33,7 +33,8 @@ class AnthropicMixin:
            self.model == 'claude-3-opus-20240229' or \
            self.model == 'claude-3-sonnet-20240229' or \
            self.model == 'claude-3-haiku-20240307':
-            return 200_000
+           return 200_000
+        return None
 
     def api_max_response_tokens(self):
         if self.model == 'claude-sonnet-4-0' or \
@@ -53,4 +54,5 @@ class AnthropicMixin:
            self.model == 'clade-3-opus-20240229' or \
            self.model == 'claude-3-sonnet-20240229' or \
            self.model == 'claude-3-haiku-20240307':
-            return 4_096
+           return 4_096
+        return None

@@ -14,7 +14,7 @@ class UserInputEngine(Engine):
         msg = argument.prop.prepared_input
         kwargs = argument.kwargs
 
-        mock = kwargs['mock'] if 'mock' in kwargs else False
+        mock = kwargs.get('mock', False)
         if mock: # mock user input
             print(msg, end='') # print prompt
             rsp = mock

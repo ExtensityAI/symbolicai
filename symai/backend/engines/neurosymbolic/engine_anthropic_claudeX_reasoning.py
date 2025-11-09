@@ -191,7 +191,7 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
                 anthropic.api_key = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
 
             callback = self.client.messages.create
-            kwargs['model'] = kwargs['model'] if 'model' in kwargs else self.model
+            kwargs['model'] = kwargs.get('model', self.model)
 
             if except_remedy is not None:
                 res = except_remedy(self, e, callback, argument)
@@ -388,18 +388,16 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
                         thinking_content += chunk.delta.thinking
                     elif isinstance(chunk.delta, TextDelta):
                         text_content += chunk.delta.text
-                    elif isinstance(chunk.delta, InputJSONDelta):
-                        if chunk.index in active_tool_calls:
-                            active_tool_calls[chunk.index]['input_json_str'] += chunk.delta.partial_json
-                elif isinstance(chunk, RawContentBlockStopEvent):
-                    if chunk.index in active_tool_calls:
-                        tool_call_info = active_tool_calls.pop(chunk.index)
-                        try:
-                            tool_call_info['input'] = json.loads(tool_call_info['input_json_str'])
-                        except json.JSONDecodeError as e:
-                            logging.error(f"Failed to parse JSON for tool call {tool_call_info['name']}: {e}. Raw JSON: '{tool_call_info['input_json_str']}'")
-                            tool_call_info['input'] = {}
-                        tool_calls_raw.append(tool_call_info)
+                    elif isinstance(chunk.delta, InputJSONDelta) and chunk.index in active_tool_calls:
+                        active_tool_calls[chunk.index]['input_json_str'] += chunk.delta.partial_json
+                elif isinstance(chunk, RawContentBlockStopEvent) and chunk.index in active_tool_calls:
+                    tool_call_info = active_tool_calls.pop(chunk.index)
+                    try:
+                        tool_call_info['input'] = json.loads(tool_call_info['input_json_str'])
+                    except json.JSONDecodeError as e:
+                        logging.error(f"Failed to parse JSON for tool call {tool_call_info['name']}: {e}. Raw JSON: '{tool_call_info['input_json_str']}'")
+                        tool_call_info['input'] = {}
+                    tool_calls_raw.append(tool_call_info)
 
             function_call_data = None
             if tool_calls_raw:
@@ -444,3 +442,4 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
             }
 
         CustomUserWarning(f"Unexpected response type from Anthropic API: {type(res)}", raise_with=ValueError)
+        return {}
