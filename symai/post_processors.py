@@ -110,8 +110,7 @@ class CodeExtractPostProcessor(PostProcessor):
             else:
                 pattern = r'```(?:\w*\n)?' + re.escape(str(tag)) + r'\n(.*?)(?:```|$)'
             matches = re.findall(pattern, str(response), re.DOTALL)
-            code = "\n".join(matches).strip()
-            return code
+            return "\n".join(matches).strip()
         except Exception:
             # If any error occurs during processing, return the original response
             return response
@@ -206,6 +205,4 @@ class ConfirmToBoolPostProcessor(PostProcessor):
         rsp = response.strip()
         from .symbol import Symbol
         sym = Symbol(rsp)
-        if sym.isinstanceof('confirming answer'):
-            return True
-        return False
+        return bool(sym.isinstanceof('confirming answer'))

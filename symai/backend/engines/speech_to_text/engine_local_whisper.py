@@ -1,3 +1,4 @@
+import contextlib
 import re
 from collections.abc import Iterable
 from itertools import takewhile
@@ -44,10 +45,7 @@ class WhisperTimestampsFormatter(Expression):
                     start = prev_end
                 else:
                     start += prev_end
-                if start + delta > 30:
-                    end = 30
-                else:
-                    end = start + delta
+                end = 30 if start + delta > 30 else start + delta
                 prev_end = end
                 result.append(f"{self._format_to_hours(start + (i*30))} {self._get_sentence(head)}")
         return "\n".join(result)
@@ -66,8 +64,7 @@ class WhisperTimestampsFormatter(Expression):
         seconds %= 3600
         minutes = int(seconds // 60)
         seconds %= 60
-        formatted_time = f"{hours:02d}:{minutes:02d}:{int(seconds):02d}"
-        return formatted_time
+        return f"{hours:02d}:{minutes:02d}:{int(seconds):02d}"
 
 
 class WhisperResult(Result):
@@ -202,7 +199,5 @@ class WhisperEngine(Engine):
             yield torch.tensor(it[i:min(i + batch, size)]).to(self.model.device)
 
     def _try_compile(self):
-        try:
+        with contextlib.suppress(Exception):
             self.model = torch.compile(self.model)
-        except Exception:
-            pass

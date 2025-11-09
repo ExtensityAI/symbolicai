@@ -31,3 +31,4 @@ class naive_vectordb(Expression):
             self.config(path=query, index_name=index, storage_file=storage_file, **kwargs)
             return None
         CustomUserWarning(f"Operation not supported: {operation}", raise_with=NotImplementedError)
+        return None

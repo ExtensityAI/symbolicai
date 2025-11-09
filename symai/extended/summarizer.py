@@ -8,7 +8,7 @@ class Summarizer(Expression):
         if filters is None:
             filters = []
         super().__init__(**kwargs)
-        filters = filters if isinstance(filters, list) or isinstance(filters, tuple) else [filters]
+        filters = filters if isinstance(filters, (list, tuple)) else [filters]
         self.data_stream = Stream(Sequence(
             Clean(),
             Translate(),

@@ -36,3 +36,4 @@ class ProcessorPipeline:
                 assert isinstance(processor, PostProcessor), f"Expected PostProcessor, got {type(processor)}"
                 response = processor(response, argument, **kwds)
             return response
+        return None

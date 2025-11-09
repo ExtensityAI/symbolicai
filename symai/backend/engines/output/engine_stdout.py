@@ -15,10 +15,7 @@ class OutputEngine(Engine):
         args = [] if args is None else args
         kwargs = {} if kwargs is None else kwargs
         if expr:
-            if processed:
-                res = expr(processed, *args, **kwargs)
-            else:
-                res = expr(*args, **kwargs)
+            res = expr(processed, *args, **kwargs) if processed else expr(*args, **kwargs)
 
         metadata = {}
         result   = {

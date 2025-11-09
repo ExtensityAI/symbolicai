@@ -51,7 +51,7 @@ class Blip2Engine(Engine):
 
         image, prompt = argument.prop.prepared_input
         kwargs        = argument.kwargs
-        except_remedy = kwargs['except_remedy'] if 'except_remedy' in kwargs else None
+        except_remedy = kwargs.get('except_remedy')
 
         if 'http' in image:
             image = Image.open(requests.get(image, stream=True).raw).convert('RGB')

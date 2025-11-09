@@ -62,14 +62,14 @@ def create_object_from_string(str_class):
                 value = parse_value(value)
                 dir(value)
                 if hasattr(value, '__dict__'):
-                    for k in value.__dict__.keys():
+                    for k in value.__dict__:
                         v = getattr(value, k)
                         if type(v) == str:
                             value[k.strip("'")] = v.strip("'")
             elif value.startswith('{') and value.endswith('}'):
                 value = parse_value(value)
                 new_value = {}
-                for k in value.keys():
+                for k in value:
                     v = value[k]
                     if type(v) == str:
                         v = v.strip("'")
@@ -94,13 +94,11 @@ def create_object_from_string(str_class):
             res = ast.literal_eval(value)
             if isinstance(res, dict):
                 return {k: parse_value(v) for k, v in res.items()}
-            if isinstance(res, list) or isinstance(res, tuple) or isinstance(res, set):
+            if isinstance(res, (list, tuple, set)):
                 return [parse_value(v) for v in res]
             return res
         except:
             return value
 
     updated_attributes = updated_attributes_process(str_class)
-    obj = DynamicClass(**{key: parse_value(value) for key, value in updated_attributes})
-
-    return obj
+    return DynamicClass(**{key: parse_value(value) for key, value in updated_attributes})

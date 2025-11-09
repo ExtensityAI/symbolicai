@@ -81,7 +81,7 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
                 self.api_key = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
 
             callback = self.client.chat.completions.create
-            kwargs['model'] = kwargs['model'] if 'model' in kwargs else self.model
+            kwargs['model'] = kwargs.get('model', self.model)
 
             if except_remedy is not None:
                 res = except_remedy(self, e, callback, argument)

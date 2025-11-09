@@ -119,10 +119,7 @@ class VectorDB(Expression):
                 texts = []
                 # If a key is specified, extract the text from the dictionary using the key
                 if isinstance(key, str):
-                    if "." in key:
-                        key_chain = key.split(".")
-                    else:
-                        key_chain = [key]
+                    key_chain = key.split(".") if "." in key else [key]
                     for doc in documents:
                         for key in key_chain:
                             doc = doc[key]
@@ -195,6 +192,7 @@ class VectorDB(Expression):
         if not isinstance(documents, list):
             return self.add_document(documents, vectors)
         self.add_documents(documents, vectors)
+        return None
 
     def add_document(self, document: dict, vector=None):
         """

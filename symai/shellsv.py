@@ -204,8 +204,7 @@ def get_exec_prefix():
 def get_conda_env():
     # what conda env am I in (e.g., where is my Python process from)?
     ENVBIN = get_exec_prefix()
-    env_name = Path(ENVBIN).name
-    return env_name
+    return Path(ENVBIN).name
 
 # bind to 'Ctrl' + 'Space'
 @bindings.add(Keys.ControlSpace)
@@ -292,7 +291,7 @@ class FileHistory(History):
                 f.write(t.encode("utf-8"))
 
             for line in string.split("\n"):
-                write("%s\n" % line)
+                write(f"{line}\n")
 
 # Defining commands history
 def load_history(home_path=HOME_PATH, history_file='.bash_history'):
@@ -339,6 +338,7 @@ def disambiguate(cmds: str) -> tuple[str, int]:
         return cmd_out.stdout, 1
     if maybe_files is not None:
         return maybe_files, 2
+    return None
 
 # query language model
 def query_language_model(query: str, res=None, *args, **kwargs):
@@ -516,8 +516,7 @@ def retrieval_augmented_indexing(query: str, index_name = None, *_args, **_kwarg
         message = 'New session '
     else:
         message = f'Repository {url} cloned and ' if query.startswith('git@') or query.startswith('git:') else f'Directory {path} '
-    msg = f'{message}successfully indexed: {index_name}'
-    return msg
+    return f'{message}successfully indexed: {index_name}'
 
 def search_engine(query: str, res=None, *_args, **_kwargs):
     search = Interface('serpapi')
@@ -566,7 +565,7 @@ def handle_error(cmd, res, message, auto_query_on_error):
             try:
                 cmd = cmd.split('usage: ')[-1].split(' ')[0]
                 # get man page result for command
-                res = subprocess.run('man -P cat %s' % cmd,
+                res = subprocess.run(f'man -P cat {cmd}',
                                         check=False, shell=True,
                                         stdout=subprocess.PIPE)
                 stdout = res.stdout
@@ -688,12 +687,11 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
             rest = ' && '.join(cmds[1:])
             if '$1' in cmds[1]:
                 res  = str(res).replace('\n', r'\\n')
-                rest = rest.replace('$1', '"%s"' % res)
+                rest = rest.replace('$1', f'"{res}"')
                 res  = None
             cmd = rest
         # If it's a normal shell command with pipes or &&, pass it whole
-        res = run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
-        return res
+        return run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
 
     if cmd.startswith('?"') or cmd.startswith("?'") or cmd.startswith('?`'):
         cmd = cmd[1:]
@@ -852,14 +850,12 @@ def create_session(history, merged_completer):
     style = Style.from_dict(colors)
 
     # Session for the auto-completion
-    session = PromptSession(history=history,
-                            completer=merged_completer,
-                            complete_style=CompleteStyle.MULTI_COLUMN,
-                            reserve_space_for_menu=5,
-                            style=style,
-                            key_bindings=bindings)
-
-    return session
+    return PromptSession(history=history,
+                         completer=merged_completer,
+                         complete_style=CompleteStyle.MULTI_COLUMN,
+                         reserve_space_for_menu=5,
+                         style=style,
+                         key_bindings=bindings)
 
 def create_completer():
     # Load history

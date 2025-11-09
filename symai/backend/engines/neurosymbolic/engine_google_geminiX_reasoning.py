@@ -113,8 +113,7 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
             if doc_path.startswith('http'):
                 CustomUserWarning("URL documents not yet supported for Gemini")
                 return None
-            uploaded_file = genai.upload_file(doc_path)
-            return uploaded_file
+            return genai.upload_file(doc_path)
         except Exception as e:
             CustomUserWarning(f"Failed to process document: {e}")
             return None
@@ -215,8 +214,7 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
                 CustomUserWarning("URL videos not yet supported for Gemini")
                 return None
             # Upload local video
-            uploaded_file = genai.upload_file(video_path)
-            return uploaded_file
+            return genai.upload_file(video_path)
         except Exception as e:
             CustomUserWarning(f"Failed to process video: {e}")
             return None
@@ -234,8 +232,7 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
                 CustomUserWarning("URL audio not yet supported for Gemini")
                 return None
             # Upload local audio
-            uploaded_file = genai.upload_file(audio_path)
-            return uploaded_file
+            return genai.upload_file(audio_path)
         except Exception as e:
             CustomUserWarning(f"Failed to process audio: {e}")
             return None

@@ -207,14 +207,11 @@ class LLMDataModel(BaseModel):
             for name, field in type(self).model_fields.items()
             if (
                 not getattr(field, "exclude", False)
-                and not name == "section_header"
+                and name != "section_header"
             )
         ]
 
-        if field_list:
-            fields = "\n".join(field_list) + "\n"
-        else:
-            fields = ""
+        fields = "\n".join(field_list) + "\n" if field_list else ""
 
         if self.section_header and indent == 0:
             header = f"{indent_str}[[{self.section_header}]]\n"
