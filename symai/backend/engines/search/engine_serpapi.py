@@ -9,7 +9,7 @@ from ...settings import SYMAI_CONFIG
 
 try:
     from serpapi import GoogleSearch
-except:
+except ImportError:
     GoogleSearch = None
 
 
@@ -84,7 +84,7 @@ class SerpApiEngine(Engine):
             }
 
             # send to Google
-            with io.capture_output() as captured: # disables prints from GoogleSearch
+            with io.capture_output(): # disables prints from GoogleSearch
                 search = GoogleSearch(query)
                 res = search.get_dict()
 

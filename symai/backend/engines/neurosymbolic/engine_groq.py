@@ -129,8 +129,8 @@ class GroqEngine(Engine):
             CustomUserWarning('Need to provide a prompt instruction to the engine if raw_input is enabled.', raise_with=ValueError)
         value = argument.prop.processed_input
         # convert to dict if not already
-        if type(value) != list:
-            if type(value) != dict:
+        if not isinstance(value, list):
+            if not isinstance(value, dict):
                 value = {'role': 'user', 'content': str(value)}
             value = [value]
         return value
@@ -248,8 +248,10 @@ class GroqEngine(Engine):
         tool_choice = kwargs.get('tool_choice', 'auto' if kwargs.get('tools') else 'none')
         tools = kwargs.get('tools')
         if response_format and isinstance(response_format, dict) and response_format.get('type') == 'json_object':
-            if tool_choice in (None, 'none'): tool_choice = 'auto'
-            if tools: tools = None
+            if tool_choice in (None, 'none'):
+                tool_choice = 'auto'
+            if tools:
+                tools = None
 
         payload = {
             "messages": messages,

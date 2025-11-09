@@ -6,6 +6,7 @@ import os
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import cv2
 import httpx
@@ -14,6 +15,9 @@ from box import Box
 from PIL import Image
 
 from .misc.console import ConsoleStyle
+
+if TYPE_CHECKING:
+    from .components import MetadataTracker
 
 
 def encode_media_frames(file_path):

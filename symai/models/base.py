@@ -111,9 +111,9 @@ class LLMDataModel(BaseModel):
         }
 
         for type_class, formatter in formatters.items():
-            if type_class == type(None) and value is None:
+            if type_class is type(None) and value is None:
                 return formatter
-            if type_class != type(None) and isinstance(value, type_class):
+            if type_class is not type(None) and isinstance(value, type_class):
                 return formatter
 
         return self._format_primitive_field

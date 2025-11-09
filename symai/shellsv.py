@@ -464,6 +464,7 @@ def retrieval_augmented_indexing(query: str, index_name = None, *_args, **_kwarg
     global stateful_conversation
     sep = os.path.sep
     path = query
+    home_path = HOME_PATH
 
     # check if path contains overwrite flag
     overwrite = False
@@ -516,7 +517,6 @@ def retrieval_augmented_indexing(query: str, index_name = None, *_args, **_kwarg
         # creates index if not exists
         DocumentRetriever(index_name=index_name, file=file, overwrite=overwrite)
 
-    home_path = HOME_PATH
     symai_path = home_path / '.conversation_state'
     symai_path.parent.mkdir(parents=True, exist_ok=True)
     stateful_conversation = RetrievalConversationType(auto_print=False, index_name=index_name)

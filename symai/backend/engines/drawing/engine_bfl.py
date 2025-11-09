@@ -53,16 +53,12 @@ class DrawingEngine(Engine):
     def forward(self, argument):
         prompt = argument.prop.prepared_input
         kwargs = argument.kwargs
-        model = kwargs.get('model', self.model)
         width = kwargs.get('width', 1024)
         height = kwargs.get('height', 768)
         steps = kwargs.get('steps', 40)
-        prompt_upsampling = kwargs.get('prompt_upsampling', False)
         seed = kwargs.get('seed', None)
         guidance = kwargs.get('guidance', None)
         safety_tolerance = kwargs.get('safety_tolerance', 2)
-        interval = kwargs.get('interval', None)
-        output_format = kwargs.get('output_format', 'png')
         except_remedy = kwargs.get('except_remedy', None)
 
         headers = {

@@ -1,4 +1,5 @@
 import re
+from typing import TYPE_CHECKING
 
 from beartype import beartype
 from beartype.typing import Any, Dict, List
@@ -7,6 +8,9 @@ from tqdm import tqdm
 from .. import core_ext
 from ..symbol import Expression, Symbol
 from .regex import CHUNK_REGEX
+
+if TYPE_CHECKING:
+    from ..backend.engines.files.engine_io import TextContainer
 
 
 class ParagraphFormatter(Expression):

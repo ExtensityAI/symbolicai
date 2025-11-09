@@ -99,8 +99,8 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
             CustomUserWarning('A prompt instruction is required for DeepSeekXReasoningEngine when raw_input is enabled.', raise_with=ValueError)
         value = argument.prop.processed_input
         # convert to dict if not already
-        if type(value) != list:
-            if type(value) != dict:
+        if not isinstance(value, list):
+            if not isinstance(value, dict):
                 value = {'role': 'user', 'content': str(value)}
             value = [value]
         return value

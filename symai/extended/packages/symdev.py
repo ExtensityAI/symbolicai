@@ -51,7 +51,7 @@ class PackageInitializer:
         try:
             username = vals[0]
             package_name = vals[1]
-        except:
+        except IndexError:
             logger.error('Invalid package name: {git_username}/{package_name}')
             parser.print_help()
             exit(1)
