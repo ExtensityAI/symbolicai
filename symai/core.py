@@ -10,7 +10,6 @@ from . import prompts as prm
 from .functional import EngineRepository
 from .symbol import Expression, Metadata
 
-
 # Module-level singletons used to provide default prompt and processor instances.
 _PREPROCESSOR_EXPAND_FUNCTION = pre.ExpandFunctionPreProcessor()
 _PROMPT_CLEAN_TEXT = prm.CleanText()

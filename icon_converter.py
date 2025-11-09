@@ -1,6 +1,7 @@
 import os
 import platform
 import shutil
+
 import cairosvg
 from PIL import Image
 

@@ -1,10 +1,11 @@
 import os
 import platform
 import queue
-import customtkinter
-import threading
 import subprocess
-from customtkinter import CTkButton, CTkEntry, CTk, CTkProgressBar, CTkLabel, CTkTextbox
+import threading
+
+import customtkinter
+from customtkinter import CTk, CTkButton, CTkEntry, CTkLabel, CTkProgressBar, CTkTextbox
 
 
 def get_anaconda_url():
