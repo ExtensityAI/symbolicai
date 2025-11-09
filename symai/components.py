@@ -677,11 +677,11 @@ class PrepareData(Function):
             assert argument.prop.context is not None
             instruct = argument.prop.prompt
             context  = argument.prop.context
-            return """{
+            return f"""{{
     'context': '{context}',
-    'instruction': '{instruction}',
+    'instruction': '{instruct}',
     'result': 'TODO: Replace this with the expected result.'
-}""".format(context=context, instruction=instruct)
+}}"""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

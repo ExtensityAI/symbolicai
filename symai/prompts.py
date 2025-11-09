@@ -272,24 +272,26 @@ class PromptRegistry:
 
 class JsonPromptTemplate(Prompt):
     def __init__(self, query: str, json_format: dict):
-        super().__init__(["""Process the query over the data to create a Json format: <data_query> => [JSON_BEGIN]<json_output>[JSON_END].
---------------------------
-The json format is:
-{json_format}
---------------------------
-The generated output must follow the <json_output> formatting, however the keys and values must be replaced with the requested user data query results. Definition of the <data_query> := {query}
---------------------------
-Do not return anything other than a valid json format.
-Your first character must always be a""" \
-"""'{' and your last character must always be a '}', everything else follows the user specified instructions.
-Only use double quotes " for the keys and values.
-Start the generation process after [JSON_BEGIN] and end it with [JSON_END].
-Every key that has no semantic placeholder brackets around it (e.g. {placeholder}, {entity}, {attribute}, etc.) must be available in the generated json output.
-All semantic placeholders (e.g. {placeholder}, {entity}, {attribute}, etc.) must be replaced according to their wheather or not they are found in the data query results.
-DO NOT WRITE the semantic placeholders (e.g. {placeholder}, {entity}, {attribute}, etc.) in the generated json output.
---------------------------
-
-"""], query=query, json_format=str(json_format))
+        json_format_str = str(json_format)
+        prompt_template = (
+            "Process the query over the data to create a Json format: <data_query> => [JSON_BEGIN]<json_output>[JSON_END].\n"
+            "--------------------------\n"
+            "The json format is:\n"
+            f"{json_format_str}\n"
+            "--------------------------\n"
+            "The generated output must follow the <json_output> formatting, however the keys and values must be replaced with the requested user data query results. "
+            f"Definition of the <data_query> := {query}\n"
+            "--------------------------\n"
+            "Do not return anything other than a valid json format.\n"
+            "Your first character must always be a '{{' and your last character must always be a '}}', everything else follows the user specified instructions.\n"
+            'Only use double quotes " for the keys and values.\n'
+            "Start the generation process after [JSON_BEGIN] and end it with [JSON_END].\n"
+            "Every key that has no semantic placeholder brackets around it (e.g. {placeholder}, {entity}, {attribute}, etc.) must be available in the generated json output.\n"
+            "All semantic placeholders (e.g. {placeholder}, {entity}, {attribute}, etc.) must be replaced according to their wheather or not they are found in the data query results.\n"
+            "DO NOT WRITE the semantic placeholders (e.g. {placeholder}, {entity}, {attribute}, etc.) in the generated json output.\n"
+            "--------------------------\n\n"
+        )
+        super().__init__([prompt_template], query=query, json_format=json_format_str)
 
 
 class FuzzyEquals(Prompt):

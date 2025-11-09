@@ -68,6 +68,8 @@ class OptionsPreProcessor(PreProcessor):
 
 
 class ProblemClassifier(Expression):
+    __hash__ = Expression.__hash__
+
     @property
     def static_context(self):
         return PROBLEM_CATEGORY_CONTEXT
