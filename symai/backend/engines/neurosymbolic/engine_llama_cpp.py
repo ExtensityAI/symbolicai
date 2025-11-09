@@ -30,8 +30,8 @@ class LlamaCppTokenizer:
         ) as res:
             if res.status != 200:
                 CustomUserWarning(f"Request failed with status code: {res.status}", raise_with=ValueError)
-            res = await res.json()
-            return res['tokens']
+            response_json = await res.json()
+            return response_json['tokens']
 
     @staticmethod
     def encode(text: str) -> list[int]:
@@ -50,8 +50,8 @@ class LlamaCppTokenizer:
         ) as res:
             if res.status != 200:
                 CustomUserWarning(f"Request failed with status code: {res.status}", raise_with=ValueError)
-            res = await res.json()
-            return res['content']
+            response_json = await res.json()
+            return response_json['content']
 
     @staticmethod
     def decode(tokens: list[int]) -> str:

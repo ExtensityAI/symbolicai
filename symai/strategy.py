@@ -919,7 +919,7 @@ class Strategy(Expression):
         super().__init__(*args, **kwargs)
         self.logger = logging.getLogger(__name__)
 
-    def __new__(self, module: str, *_args, **_kwargs):
-        self._module = module
-        self.module_path = 'symai.extended.strategies'
-        return Strategy.load_module_class(self.module)
+    def __new__(cls, module: str, *_args, **_kwargs):
+        cls._module = module
+        cls.module_path = 'symai.extended.strategies'
+        return Strategy.load_module_class(cls.module)

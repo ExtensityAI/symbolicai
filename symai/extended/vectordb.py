@@ -121,9 +121,10 @@ class VectorDB(Expression):
                 if isinstance(key, str):
                     key_chain = key.split(".") if "." in key else [key]
                     for doc in documents:
+                        current_doc = doc
                         for key in key_chain:
-                            doc = doc[key]
-                        texts.append(doc.replace("\n", " "))
+                            current_doc = current_doc[key]
+                        texts.append(current_doc.replace("\n", " "))
                 # If no key is specified, extract the text from the dictionary using all keys
                 elif key is None:
                     for doc in documents:

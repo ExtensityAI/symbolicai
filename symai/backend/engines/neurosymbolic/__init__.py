@@ -29,3 +29,24 @@ ENGINE_MAPPING = {
     **dict.fromkeys(GROQ_CHAT_MODELS, GroqEngine),
     **dict.fromkeys(GROQ_REASONING_MODELS, GroqEngine),
 }
+
+__all__ = [
+                      "ANTHROPIC_CHAT_MODELS",
+                      "ANTHROPIC_REASONING_MODELS",
+                      "DEEPSEEK_CHAT_MODELS",
+                      "DEEPSEEK_REASONING_MODELS",
+                      "ENGINE_MAPPING",
+                      "GOOGLE_CHAT_MODELS",
+                      "GOOGLE_REASONING_MODELS",
+                      "GROQ_CHAT_MODELS",
+                      "GROQ_REASONING_MODELS",
+                      "OPENAI_CHAT_MODELS",
+                      "OPENAI_REASONING_MODELS",
+                      "ClaudeXChatEngine",
+                      "ClaudeXReasoningEngine",
+                      "DeepSeekXReasoningEngine",
+                      "GPTXChatEngine",
+                      "GPTXReasoningEngine",
+                      "GeminiXReasoningEngine",
+                      "GroqEngine",
+]

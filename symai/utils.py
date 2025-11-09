@@ -237,15 +237,15 @@ class RuntimeInfo:
             usage_per_engine = {}
             for (engine_name, model_name), data in usage_stats.items():
                 #!: This object interacts with `MetadataTracker`; its fields are mandatory and handled there
-                data = Box(data)
+                data_box = Box(data)
                 usage_per_engine[(engine_name, model_name)] = RuntimeInfo(
                     total_elapsed_time=total_elapsed_time,
-                    prompt_tokens=data.usage.prompt_tokens,
-                    completion_tokens=data.usage.completion_tokens,
-                    reasoning_tokens=data.completion_breakdown.reasoning_tokens,
-                    cached_tokens=data.prompt_breakdown.cached_tokens,
-                    total_calls=data.usage.total_calls,
-                    total_tokens=data.usage.total_tokens,
+                    prompt_tokens=data_box.usage.prompt_tokens,
+                    completion_tokens=data_box.usage.completion_tokens,
+                    reasoning_tokens=data_box.completion_breakdown.reasoning_tokens,
+                    cached_tokens=data_box.prompt_breakdown.cached_tokens,
+                    total_calls=data_box.usage.total_calls,
+                    total_tokens=data_box.usage.total_tokens,
                     cost_estimate=0, # Placeholder for cost estimate
                 )
             return usage_per_engine

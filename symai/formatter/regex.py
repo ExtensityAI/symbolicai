@@ -137,7 +137,7 @@ CHUNK_REGEX = re.compile(
     # 9. Quoted text, parenthetical phrases, or bracketed content (with length constraints)
     r"(?:"
     fr'(?<!\w)\"\"\"[^\""]{{0,{MAX_QUOTED_TEXT_LENGTH}}}\"\"\"(?!\w)'
-    r"|(?<!\w)['\"`''""][^\r\n]{{0,{MAX_QUOTED_TEXT_LENGTH}}}['\"`''](?!\w)"
+    r"|(?<!\w)['\"`][^\r\n]{{0,{MAX_QUOTED_TEXT_LENGTH}}}['\"`](?!\w)"
     fr"|\([^\r\n(){{0,{MAX_PARENTHETICAL_CONTENT_LENGTH}}}(?:\([^\r\n(){{0,{MAX_PARENTHETICAL_CONTENT_LENGTH}}}\)[^\r\n(){{0,{MAX_PARENTHETICAL_CONTENT_LENGTH}}}){{0,{MAX_NESTED_PARENTHESES}}}\)"
     fr"|\[[^\r\n\[\]{{0,{MAX_PARENTHETICAL_CONTENT_LENGTH}}}(?:\[[^\r\n\[\]{{0,{MAX_PARENTHETICAL_CONTENT_LENGTH}}}\][^\r\n\[\]{{0,{MAX_PARENTHETICAL_CONTENT_LENGTH}}}){{0,{MAX_NESTED_PARENTHESES}}}\]"
     fr"|\$[^\r\n$]{{0,{MAX_MATH_INLINE_LENGTH}}}\$"

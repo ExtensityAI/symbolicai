@@ -38,10 +38,6 @@ __version__   = SYMAI_VERSION
 __root_dir__  = config_manager.config_dir
 
 def _start_symai():
-    global _symai_config_
-    global _symsh_config_
-    global _symserver_config_
-
     # Create config directories if they don't exist
     config_manager._env_config_dir.mkdir(parents=True, exist_ok=True)
     config_manager._home_config_dir.mkdir(parents=True, exist_ok=True)
@@ -83,11 +79,11 @@ def _start_symai():
         sys.exit(1)
 
     # Load and manage configurations
-    _symai_config_ = config_manager.load_config('symai.config.json')
+    symai_config = config_manager.load_config('symai.config.json')
 
     # MIGRATE THE ENVIRONMENT VARIABLES
     # *==========================================================================================================*
-    if 'COLLECTION_URI' not in _symai_config_:
+    if 'COLLECTION_URI' not in symai_config:
         updates = {
             'COLLECTION_URI': "mongodb+srv://User:vt3epocXitd6WlQ6@extensityai.c1ajxxy.mongodb.net/?retryWrites=true&w=majority",
             'COLLECTION_DB': "ExtensityAI",
@@ -101,48 +97,49 @@ def _start_symai():
 
     # POST-MIGRATION CHECKS
     # *==============================================================================================================*
-    if 'TEXT_TO_SPEECH_ENGINE_API_KEY' not in _symai_config_:
+    if 'TEXT_TO_SPEECH_ENGINE_API_KEY' not in symai_config:
         updates = {
-            'TEXT_TO_SPEECH_ENGINE_API_KEY': _symai_config_.get('NEUROSYMBOLIC_ENGINE_API_KEY', '')
+            'TEXT_TO_SPEECH_ENGINE_API_KEY': symai_config.get('NEUROSYMBOLIC_ENGINE_API_KEY', '')
         }
         config_manager.migrate_config('symai.config.json', updates)
 
     # Load all configurations
-    _symai_config_ = config_manager.load_config('symai.config.json')
-    _symsh_config_ = config_manager.load_config('symsh.config.json')
-    _symserver_config_ = config_manager.load_config('symserver.config.json')
+    symai_config = config_manager.load_config('symai.config.json')
+    symsh_config = config_manager.load_config('symsh.config.json')
+    symserver_config = config_manager.load_config('symserver.config.json')
 
     # MIGRATE THE SHELL SPLASH SCREEN CONFIGURATION
     # *==============================================================================================================*
-    if 'show-splash-screen' not in _symsh_config_:
+    if 'show-splash-screen' not in symsh_config:
         config_manager.migrate_config('symsh.config.json', {'show-splash-screen': True})
 
     # CHECK IF THE USER HAS A NEUROSYMBOLIC API KEY
     # *==============================================================================================================*
     if not (
-        _symai_config_['NEUROSYMBOLIC_ENGINE_MODEL'].lower().startswith('llama') or \
-        _symai_config_['NEUROSYMBOLIC_ENGINE_MODEL'].lower().startswith('huggingface')) \
+        symai_config['NEUROSYMBOLIC_ENGINE_MODEL'].lower().startswith('llama') or \
+        symai_config['NEUROSYMBOLIC_ENGINE_MODEL'].lower().startswith('huggingface')) \
         and \
             (
-            _symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY'] is None or \
-            len(_symai_config_['NEUROSYMBOLIC_ENGINE_API_KEY']) == 0):
+            symai_config['NEUROSYMBOLIC_ENGINE_API_KEY'] is None or \
+            len(symai_config['NEUROSYMBOLIC_ENGINE_API_KEY']) == 0):
             # Try to fallback to the global (home) config if environment is not home
             if config_manager.config_dir != config_manager._home_config_dir:
                 show_intro_menu()
                 CustomUserWarning(f"You didn't configure your environment ({config_manager.config_dir})! Falling back to the global ({config_manager._home_config_dir}) configuration if it exists.")
                 # Force loading from home
-                _symai_config_ = config_manager.load_config('symai.config.json', fallback_to_home=True)
-                _symsh_config_ = config_manager.load_config('symsh.config.json', fallback_to_home=True)
-                _symserver_config_ = config_manager.load_config('symserver.config.json', fallback_to_home=True)
+                symai_config = config_manager.load_config('symai.config.json', fallback_to_home=True)
+                symsh_config = config_manager.load_config('symsh.config.json', fallback_to_home=True)
+                symserver_config = config_manager.load_config('symserver.config.json', fallback_to_home=True)
 
             # If still not valid, warn and exit
-            if not _symai_config_.get('NEUROSYMBOLIC_ENGINE_API_KEY'):
+            if not symai_config.get('NEUROSYMBOLIC_ENGINE_API_KEY'):
                 CustomUserWarning('The mandatory neuro-symbolic engine is not initialized. Please set NEUROSYMBOLIC_ENGINE_MODEL and NEUROSYMBOLIC_ENGINE_API_KEY.')
                 sys.exit(1)
 
-    settings.SYMAI_CONFIG = _symai_config_
-    settings.SYMSH_CONFIG = _symsh_config_
-    settings.SYMSERVER_CONFIG = _symserver_config_
+    settings.SYMAI_CONFIG = symai_config
+    settings.SYMSH_CONFIG = symsh_config
+    settings.SYMSERVER_CONFIG = symserver_config
+    return symai_config, symsh_config, symserver_config
 
 
 def run_server():
@@ -337,8 +334,7 @@ def setup_wizard(_symai_config_path_):
         "SUPPORT_COMMUNITY":              _support_comminity
     })
 
-
-_start_symai()
+_symai_config_, _symsh_config_, _symserver_config_ = _start_symai()
 
 from .backend.base import Engine
 from .components import Function, PrimitiveDisabler
@@ -353,3 +349,33 @@ from .prompts import Prompt, PromptLanguage, PromptRegistry
 from .shell import Shell
 from .strategy import Strategy
 from .symbol import Call, Expression, GlobalSymbolPrimitive, Metadata, Symbol
+
+__all__ = [
+    "SYMAI_VERSION",
+    "Call",
+    "Conversation",
+    "Engine",
+    "EngineRepository",
+    "Expression",
+    "Function",
+    "GlobalSymbolPrimitive",
+    "Import",
+    "Interface",
+    "Metadata",
+    "PostProcessor",
+    "PreProcessor",
+    "PrimitiveDisabler",
+    "Prompt",
+    "PromptLanguage",
+    "PromptRegistry",
+    "Shell",
+    "Strategy",
+    "Symbol",
+    "__root_dir__",
+    "__version__",
+    "config_manager",
+    "few_shot",
+    "run_server",
+    "setup_wizard",
+    "zero_shot",
+]

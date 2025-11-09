@@ -144,21 +144,23 @@ class Aggregator(Symbol):
     def _set_values(obj, dictionary, parent, strict: bool = True):
         # recursively reconstruct the object
         for key, value in dictionary.items():
-            if isinstance(value, dict):
+            attr_key = key
+            attr_value = value
+            if isinstance(attr_value, dict):
                 if parent is not None:
-                    obj._path = key
-                value = Aggregator._reconstruct(value, parent=parent, strict=strict)
-            if key.startswith(SPECIAL_CONSTANT):
-                key = key.replace(SPECIAL_CONSTANT, '')
-            if key == '_value':
+                    obj._path = attr_key
+                attr_value = Aggregator._reconstruct(attr_value, parent=parent, strict=strict)
+            if attr_key.startswith(SPECIAL_CONSTANT):
+                attr_key = attr_key.replace(SPECIAL_CONSTANT, '')
+            if attr_key == '_value':
                 try:
-                    value = np.asarray(value, dtype=np.float32)
+                    attr_value = np.asarray(attr_value, dtype=np.float32)
                 except Exception as e:
                     if strict:
                         msg = f'Could not set value of Aggregator object: {obj.path}! ERROR: {e}'
                         CustomUserWarning(msg)
                         raise Exception(msg) from e
-            obj.__setattr__(key, value)
+            obj.__setattr__(attr_key, attr_value)
 
     @staticmethod
     def _reconstruct(dictionary, parent = None, strict: bool = True):
@@ -257,22 +259,19 @@ class Aggregator(Symbol):
 
     def add(self, entries):
         # Add entries to the aggregator
-        if not self.active:
-            if self._finalized:
-                CustomUserWarning('Aggregator object is frozen!', raise_with=Exception)
-                return
+        if not self.active and self._finalized:
+            CustomUserWarning('Aggregator object is frozen!', raise_with=Exception)
+            return
         try:
             # Append a new entry to the aggregator
-            valid_types = (tuple, list, np.float32, np.float64, np.ndarray, torch.Tensor, int, float, bool, str)
-            assert isinstance(entries, valid_types) or isinstance(entries, Symbol), f'Entries must be a tuple, list, numpy array, torch tensor, integer, float, boolean, string, or Symbol! Got: {type(entries)}'
+            valid_types = (tuple, list, np.float32, np.float64, np.ndarray, torch.Tensor, int, float, bool, str, Symbol)
+            assert isinstance(entries, valid_types), f'Entries must be a tuple, list, numpy array, torch tensor, integer, float, boolean, string, or Symbol! Got: {type(entries)}'
             if isinstance(entries, torch.Tensor):
                 entries = entries.detach().cpu().numpy().astype(np.float32)
             elif isinstance(entries, (tuple, list)):
                 entries = np.asarray(entries, dtype=np.float32)
             elif isinstance(entries, bool):
                 entries = int(entries)
-            elif isinstance(entries, (int, float)):
-                entries = entries
             elif isinstance(entries, str):
                 entries = Symbol(entries).embedding.astype(np.float32)
             elif isinstance(entries, Symbol):

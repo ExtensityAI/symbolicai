@@ -76,9 +76,9 @@ class Import(Expression):
                 if requirements_file.exists():
                     with requirements_file.open() as f:
                         for dependency in f.readlines():
-                            dependency = dependency.strip()
-                            if dependency:
-                                subprocess.check_call([sys.executable, '-m', 'pip', 'install', dependency])
+                            dependency_name = dependency.strip()
+                            if dependency_name:
+                                subprocess.check_call([sys.executable, '-m', 'pip', 'install', dependency_name])
         except Exception as e:
             logger.error(f"Error installing from local path: {e}")
             raise
@@ -201,7 +201,7 @@ class Import(Expression):
         assert len(module_classes) == len(expressions), f"Not all expressions found in module '{module}'. Could not load {[expr for expr in expressions if expr not in module_classes_names]}"
         return module_classes
 
-    def __new__(self, module, auto_clone: bool = True, verbose: bool = False, local_path: str | None = None,
+    def __new__(cls, module, auto_clone: bool = True, verbose: bool = False, local_path: str | None = None,
                 submodules: bool = False, *args, **kwargs):
         """
         Import a module from GitHub or local path.

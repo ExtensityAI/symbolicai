@@ -39,6 +39,8 @@ class Primitive:
 
 
 class OperatorPrimitives(Primitive):
+    __hash__ = None
+
     def __try_type_specific_func(self, other, func, op: str | None = None):
         if not isinstance(other, self._symbol_type):
             other = self._to_type(other)
@@ -2490,9 +2492,7 @@ class EmbeddingPrimitives(Primitive):
         shape = val.shape
         if len(shape) >= 2 and min(shape) > 1:
             val = val.diagonal()
-        elif len(shape) >= 1 and shape[0] > 1:
-            val = val
-        else:
+        elif len(shape) < 1 or shape[0] <= 1:
             val = val.item()
         if normalize is not None:
             val = normalize(val)

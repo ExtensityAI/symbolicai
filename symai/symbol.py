@@ -352,10 +352,11 @@ class Symbol(metaclass=SymbolMeta):
         if not isinstance(primitives, list):
             primitives = [primitives]
         # Initialize instance as a combination of Symbol and the mixin primitive types
+        target_cls = cls
         if use_mixin:
             # create a new cls type that inherits from Symbol and the mixin primitive types
-            cls       = SymbolMeta(cls.__name__, (cls, *tuple(primitives)), {})
-        obj = super().__new__(cls)
+            target_cls = SymbolMeta(cls.__name__, (cls, *tuple(primitives)), {})
+        obj = super().__new__(target_cls)
         # store to inherit when creating new instances
         obj._kwargs = {
             'mixin': use_mixin,
@@ -812,11 +813,11 @@ class Symbol(metaclass=SymbolMeta):
             types = [type(self)]
 
         for type_ in types:
-            type_ = str(type_)
-            if type_ not in Symbol._dynamic_context:
-                Symbol._dynamic_context[type_] = []
+            type_key = str(type_)
+            if type_key not in Symbol._dynamic_context:
+                Symbol._dynamic_context[type_key] = []
 
-            Symbol._dynamic_context[type_].append(str(context))
+            Symbol._dynamic_context[type_key].append(str(context))
 
     def clear(self, types: list[type] | None = None) -> None:
         '''
@@ -830,12 +831,12 @@ class Symbol(metaclass=SymbolMeta):
             types = [type(self)]
 
         for type_ in types:
-            type_ = str(type_)
-            if type_ not in Symbol._dynamic_context:
-                Symbol._dynamic_context[type_] = []
+            type_key = str(type_)
+            if type_key not in Symbol._dynamic_context:
+                Symbol._dynamic_context[type_key] = []
                 return
 
-            Symbol._dynamic_context[type_].clear()
+            Symbol._dynamic_context[type_key].clear()
 
     def __len__(self) -> int:
         '''
@@ -966,7 +967,7 @@ class Symbol(metaclass=SymbolMeta):
 # Currently creating multiple lambda functions within class __new__ definition only links last lambda function to all new Symbol attribute assignments.
 # Need to contact Python developers to fix this bug.
 class Call:
-    def __new__(self, name, callable: Callable) -> Any:
+    def __new__(cls, name, callable: Callable) -> Any:
         '''
         Prepare a callable for use in a Symbol instance.
 
@@ -982,7 +983,7 @@ class Call:
 
 
 class GlobalSymbolPrimitive:
-    def __new__(self, name, callable: Callable) -> Any:
+    def __new__(cls, name, callable: Callable) -> Any:
         '''
         Prepare a callable for use in a Symbol instance.
 

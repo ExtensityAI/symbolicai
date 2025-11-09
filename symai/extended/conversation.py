@@ -184,12 +184,11 @@ class Conversation(SlidingWindowStringConcatMemory):
                 memory_shards.append(ms)
 
             length_memory_shards = len(memory_shards)
-            if length_memory_shards <= 3:
-                memory_shards = memory_shards
-            elif length_memory_shards <= 5:
-                memory_shards = memory_shards[:2] + memory_shards[-(length_memory_shards-2):]
-            else:
+            if length_memory_shards > 5:
                 memory_shards = memory_shards[:2] + memory_shards[-3:]
+            elif length_memory_shards > 3:
+                retained = memory_shards[-(length_memory_shards - 2):]
+                memory_shards = memory_shards[:2] + retained
 
             search_query = query | '\n' | '\n'.join(memory_shards)
             if kwargs.get('use_seo_opt'):

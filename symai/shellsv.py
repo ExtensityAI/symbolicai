@@ -1,5 +1,4 @@
 import argparse
-import glob
 import json
 import logging
 import os
@@ -12,6 +11,7 @@ import time
 import traceback
 from collections.abc import Iterable
 from pathlib import Path
+from types import SimpleNamespace
 
 #@TODO: refactor to use rich instead of prompt_toolkit
 from prompt_toolkit import HTML, PromptSession, print_formatted_text
@@ -65,12 +65,19 @@ if 'map-nt-cmd' not in SYMSH_CONFIG:
     with config_path.open('w') as f:
         json.dump(SYMSH_CONFIG, f, indent=4)
 
-print                     = print_formatted_text
-FunctionType              = Function
-ConversationType          = Conversation
-RetrievalConversationType = RetrievalAugmentedConversation
-use_styles                = False
-map_nt_cmd_enabled        = SYMSH_CONFIG['map-nt-cmd']
+print              = print_formatted_text
+map_nt_cmd_enabled = SYMSH_CONFIG['map-nt-cmd']
+
+_shell_state = SimpleNamespace(
+    function_type=Function,
+    conversation_type=Conversation,
+    retrieval_conversation_type=RetrievalAugmentedConversation,
+    use_styles=False,
+    stateful_conversation=None,
+    previous_kwargs=None,
+    previous_prefix=None,
+    exec_prefix="default",
+)
 
 SHELL_CONTEXT = """[Description]
 This shell program is the command interpreter on the Linux systems, MacOS and Windows PowerShell.
@@ -83,9 +90,6 @@ If no further specified, use as default the Linux/MacOS shell commands.
 If additional instructions are provided the follow the user query to produce the requested output.
 A well related and helpful answer with suggested improvements is preferred over "I don't know" or "I don't understand" answers or stating the obvious.
 """
-
-stateful_conversation = None
-previous_kwargs       = None
 
 def supports_ansi_escape():
     try:
@@ -138,17 +142,17 @@ class PathCompleter(Completer):
 
         for d in dirs_:
             # if starts with home directory, then replace it with ~
-            d = FileReader.expand_user_path(d)
-            yield Completion(d, start_position=-start_position,
-                             style='class:path-completion',
-                             selected_style='class:path-completion-selected')
+            directory_completion = FileReader.expand_user_path(d)
+            yield Completion(directory_completion, start_position=-start_position,
+                                 style='class:path-completion',
+                                 selected_style='class:path-completion-selected')
 
         for f in files_:
             # if starts with home directory, then replace it with ~
-            f = FileReader.expand_user_path(f)
-            yield Completion(f, start_position=-start_position,
-                             style='class:file-completion',
-                             selected_style='class:file-completion-selected')
+            file_completion = FileReader.expand_user_path(f)
+            yield Completion(file_completion, start_position=-start_position,
+                                 style='class:file-completion',
+                                 selected_style='class:file-completion-selected')
 
 class HistoryCompleter(WordCompleter):
     def get_completions(self, document, complete_event):
@@ -194,12 +198,11 @@ class MergedCompleter(Completer):
 
 # Create custom keybindings
 bindings = KeyBindings()
-previous_prefix = None
-exec_prefix = 'default'
 # Get a copy of the current environment
 default_env = os.environ.copy()
 
 def get_exec_prefix():
+    exec_prefix = _shell_state.exec_prefix
     return sys.exec_prefix if exec_prefix == 'default' else exec_prefix
 
 def get_conda_env():
@@ -211,7 +214,7 @@ def get_conda_env():
 @bindings.add(Keys.ControlSpace)
 def _(event):
     current_user_input = event.current_buffer.document.text
-    func = FunctionType(SHELL_CONTEXT)
+    func = _shell_state.function_type(SHELL_CONTEXT)
 
     bottom_toolbar = HTML(' <b>[f]</b> Print "f" <b>[x]</b> Abort.')
 
@@ -347,7 +350,10 @@ def disambiguate(cmds: str) -> tuple[str, int]:
 
 # query language model
 def query_language_model(query: str, res=None, *args, **kwargs):
-    global stateful_conversation, previous_kwargs
+    state = _shell_state
+    conversation = state.stateful_conversation
+    previous_kwargs = state.previous_kwargs
+    conversation_cls = state.conversation_type
     home_path = HOME_PATH
     symai_path = home_path / '.conversation_state'
     plugin = SYMSH_CONFIG.get('plugin_prefix')
@@ -384,20 +390,23 @@ def query_language_model(query: str, res=None, *args, **kwargs):
     #    - Create new conversation state if none exists
     if (query.startswith('!"') or query.startswith("!'") or query.startswith('!`')):
         symai_path.parent.mkdir(parents=True, exist_ok=True)
-        stateful_conversation = ConversationType(auto_print=False)
-        ConversationType.save_conversation_state(stateful_conversation, symai_path)
+        conversation = conversation_cls(auto_print=False)
+        conversation_cls.save_conversation_state(conversation, symai_path)
         # Special case: if query starts with !" and has a prefix, run the prefix command and store the output
         if plugin is not None:
             with Loader(desc="Inference ...", end=""):
                 cmd = query[1:].strip('\'"')
                 cmd = f"symrun {plugin} '{cmd}' --disable-pbar"
                 cmd_out = run_shell_command(cmd, auto_query_on_error=True)
-                stateful_conversation.store(cmd_out)
-                ConversationType.save_conversation_state(stateful_conversation, symai_path)
+                conversation.store(cmd_out)
+                conversation_cls.save_conversation_state(conversation, symai_path)
+                state.stateful_conversation = conversation
+                state.previous_kwargs = previous_kwargs
                 return cmd_out
     elif query.startswith('."') or query.startswith(".'") or query.startswith('.`'):
         try:
-            stateful_conversation = stateful_conversation.load_conversation_state(symai_path)
+            conversation = conversation.load_conversation_state(symai_path)
+            state.stateful_conversation = conversation
         except Exception:
             with ConsoleStyle('error') as console:
                 console.print('No conversation state found. Please start a new conversation.')
@@ -405,11 +414,13 @@ def query_language_model(query: str, res=None, *args, **kwargs):
         if plugin is not None:
             with Loader(desc="Inference ...", end=""):
                 query = query[1:].strip('\'"')
-                answer = stateful_conversation(query).value
+                answer = conversation(query).value
                 cmd = f"symrun {plugin} '{answer}' --disable-pbar"
                 cmd_out = run_shell_command(cmd, auto_query_on_error=True)
-                stateful_conversation.store(cmd_out)
-                ConversationType.save_conversation_state(stateful_conversation, symai_path)
+                conversation.store(cmd_out)
+                conversation_cls.save_conversation_state(conversation, symai_path)
+                state.stateful_conversation = conversation
+                state.previous_kwargs = previous_kwargs
                 return cmd_out
     cmd = None
     if '|' in query:
@@ -430,9 +441,13 @@ def query_language_model(query: str, res=None, *args, **kwargs):
                      for quote in ['"', "'", '`'])
 
         if is_stateful:
-            func = stateful_conversation
+            func = conversation
         else:
-            func = FunctionType(payload) if order == 1 else ConversationType(file_link=payload, auto_print=False)
+            func = (
+                state.function_type(payload)
+                if order == 1
+                else state.conversation_type(file_link=payload, auto_print=False)
+            )
 
         if is_stateful:
             if order == 1:
@@ -443,25 +458,27 @@ def query_language_model(query: str, res=None, *args, **kwargs):
     else:
         if  query.startswith('."') or query.startswith(".'") or query.startswith('.`') or\
             query.startswith('!"') or query.startswith("!'") or query.startswith('!`'):
-            func = stateful_conversation
+            func = conversation
         else:
-            func = FunctionType(SHELL_CONTEXT)
+            func = state.function_type(SHELL_CONTEXT)
 
     with Loader(desc="Inference ...", end=""):
         if res is not None:
             query = f"[Context]\n{res}\n\n[Query]\n{query}"
         msg = func(query, *args, **kwargs)
 
-    if stateful_conversation is not None and (
+    if conversation is not None and (
         query.startswith('."') or query.startswith(".'") or query.startswith('.`') or
         query.startswith('!"') or query.startswith("!'") or query.startswith('!`')
     ):
-        ConversationType.save_conversation_state(stateful_conversation, symai_path)
+        conversation_cls.save_conversation_state(conversation, symai_path)
 
+    state.stateful_conversation = conversation
+    state.previous_kwargs = previous_kwargs
     return msg
 
 def retrieval_augmented_indexing(query: str, index_name = None, *_args, **_kwargs):
-    global stateful_conversation
+    state = _shell_state
     sep = os.path.sep
     path = query
     home_path = HOME_PATH
@@ -519,7 +536,8 @@ def retrieval_augmented_indexing(query: str, index_name = None, *_args, **_kwarg
 
     symai_path = home_path / '.conversation_state'
     symai_path.parent.mkdir(parents=True, exist_ok=True)
-    stateful_conversation = RetrievalConversationType(auto_print=False, index_name=index_name)
+    stateful_conversation = state.retrieval_conversation_type(auto_print=False, index_name=index_name)
+    state.stateful_conversation = stateful_conversation
     Conversation.save_conversation_state(stateful_conversation, symai_path)
     if use_index_name:
         message = 'New session '
@@ -533,7 +551,7 @@ def search_engine(query: str, res=None, *_args, **_kwargs):
         search_query = Symbol(query).extract('search engine optimized query')
         res = search(search_query)
     with Loader(desc="Inference ...", end=""):
-        func = FunctionType(query)
+        func = _shell_state.function_type(query)
         msg = func(res, payload=res)
         # write a temp dump file with the query and results
         home_path = HOME_PATH
@@ -598,7 +616,7 @@ def run_shell_command(cmd: str, prev=None, auto_query_on_error: bool=False, stdo
     conda_env = get_exec_prefix()
     # copy default_env
     new_env = default_env.copy()
-    if exec_prefix != 'default':
+    if _shell_state.exec_prefix != 'default':
         # remove current env from PATH
         new_env["PATH"] = new_env["PATH"].replace(sys.exec_prefix, conda_env)
     # Execute the command
@@ -676,7 +694,7 @@ def map_nt_cmd(cmd: str, map_nt_cmd_enabled: bool = True):
     return cmd
 
 def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
-    global exec_prefix, previous_prefix
+    state = _shell_state
 
     # map commands to windows if needed
     cmd = map_nt_cmd(cmd)
@@ -730,15 +748,16 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
         env_path = env_base / req_env
         if not env_path.exists():
             return f'Environment {req_env} does not exist!'
-        previous_prefix = exec_prefix
-        exec_prefix = str(env_path)
-        return exec_prefix
+        state.previous_prefix = state.exec_prefix
+        state.exec_prefix = str(env_path)
+        return state.exec_prefix
 
     elif cmd.startswith('conda deactivate'):
-        if previous_prefix is not None:
-            exec_prefix = previous_prefix
-        if previous_prefix == 'default':
-            previous_prefix = None
+        prev_prefix = state.previous_prefix
+        if prev_prefix is not None:
+            state.exec_prefix = prev_prefix
+        if prev_prefix == 'default':
+            state.previous_prefix = None
         return get_exec_prefix()
 
     elif cmd.startswith('conda'):
@@ -789,10 +808,11 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
 def save_conversation():
     home_path = HOME_PATH
     symai_path = home_path / '.conversation_state'
-    Conversation.save_conversation_state(stateful_conversation, symai_path)
+    Conversation.save_conversation_state(_shell_state.stateful_conversation, symai_path)
 
 # Function to listen for user input and execute commands
 def listen(session: PromptSession, word_comp: WordCompleter, auto_query_on_error: bool=False, verbose: bool=False):
+    state = _shell_state
     with patch_stdout():
         while True:
             try:
@@ -825,12 +845,12 @@ def listen(session: PromptSession, word_comp: WordCompleter, auto_query_on_error
                     continue
 
                 if cmd == 'quit' or cmd == 'exit' or cmd == 'q':
-                    if stateful_conversation is not None:
+                    if state.stateful_conversation is not None:
                         save_conversation()
-                    if not use_styles:
+                    if not state.use_styles:
                         CustomUserWarning('Goodbye!')
                     else:
-                        func = FunctionType('Give short goodbye')
+                        func = _shell_state.function_type('Give short goodbye')
                         CustomUserWarning(func('bye'))
                     os._exit(0)
                 else:
@@ -879,12 +899,16 @@ def create_completer():
     return history, word_comp, merged_completer
 
 def run(auto_query_on_error=False, conversation_style=None, verbose=False):
-    global FunctionType, ConversationType, RetrievalConversationType, use_styles
+    state = _shell_state
     if conversation_style is not None and conversation_style != '':
         CustomUserWarning(f'Loading style: {conversation_style}')
         styles_ = Import.load_module_class(conversation_style)
-        FunctionType, ConversationType, RetrievalConversationType = styles_
-        use_styles = True
+        (
+            state.function_type,
+            state.conversation_type,
+            state.retrieval_conversation_type,
+        ) = styles_
+        state.use_styles = True
 
     if SYMSH_CONFIG['show-splash-screen']:
         show_intro_menu()

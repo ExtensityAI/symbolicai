@@ -13,16 +13,16 @@ class Interface(Expression):
         super().__init__(*args, **kwargs)
         self.logger = logging.getLogger(__name__)
 
-    def __new__(self, module: str, *args, **kwargs):
+    def __new__(cls, module: str, *args, **kwargs):
         module = str(module)
         # if `/` in module, assume github repo; else assume local module
         if "/" in module:
             return Import(module)
         module = module.lower()
         module = module.replace("-", "_")
-        self._module = module
-        self.module_path = f"symai.extended.interfaces.{module}"
-        return Interface.load_module_class(self.module_path, self._module)(*args, **kwargs)
+        cls._module = module
+        cls.module_path = f"symai.extended.interfaces.{module}"
+        return Interface.load_module_class(cls.module_path, cls._module)(*args, **kwargs)
 
     def __call__(self, *_args, **_kwargs):
         CustomUserWarning(f"Interface {self._module} is not callable.", raise_with=NotImplementedError)

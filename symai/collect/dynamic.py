@@ -49,33 +49,36 @@ def create_object_from_string(str_class):
         content = str_class.split('ChatCompletionMessage(content=')[-1].split(", role=")[0][1:-1]
         updated_attributes.append(('content', content))
         for key, value in attributes:
-            if key.startswith("'") and key.endswith("'"):
-                key = key.strip("'")
-            if key.startswith('"') and key.endswith('"'):
-                key = key.strip('"')
-            if value.startswith("'") and value.endswith("'"):
-                value = value.strip("'")
-            if value.startswith('"') and value.endswith('"'):
-                value = value.strip('"')
+            attr_key = key
+            attr_value = value
+            if attr_key.startswith("'") and attr_key.endswith("'"):
+                attr_key = attr_key.strip("'")
+            if attr_key.startswith('"') and attr_key.endswith('"'):
+                attr_key = attr_key.strip('"')
+            if attr_value.startswith("'") and attr_value.endswith("'"):
+                attr_value = attr_value.strip("'")
+            if attr_value.startswith('"') and attr_value.endswith('"'):
+                attr_value = attr_value.strip('"')
 
-            if value.startswith('[') and value.endswith(']'):
-                value = parse_value(value)
-                dir(value)
-                if hasattr(value, '__dict__'):
-                    for k in value.__dict__:
-                        v = getattr(value, k)
+            if attr_value.startswith('[') and attr_value.endswith(']'):
+                parsed_value = parse_value(attr_value)
+                attr_value = parsed_value
+                dir(attr_value)
+                if hasattr(attr_value, '__dict__'):
+                    for k in attr_value.__dict__:
+                        v = getattr(attr_value, k)
                         if isinstance(v, str):
-                            value[k.strip("'")] = v.strip("'")
-            elif value.startswith('{') and value.endswith('}'):
-                value = parse_value(value)
+                            attr_value[k.strip("'")] = v.strip("'")
+            elif attr_value.startswith('{') and attr_value.endswith('}'):
+                parsed_value = parse_value(attr_value)
                 new_value = {}
-                for k in value:
-                    v = value[k]
+                for k in parsed_value:
+                    v = parsed_value[k]
                     if isinstance(v, str):
                         v = v.strip("'")
                     new_value[k.strip("'")] = v
-                value = new_value
-            updated_attributes.append((key, value))
+                attr_value = new_value
+            updated_attributes.append((attr_key, attr_value))
         return updated_attributes
 
     def parse_value(value):

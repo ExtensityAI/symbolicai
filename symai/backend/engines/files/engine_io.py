@@ -11,15 +11,14 @@ from ....utils import CustomUserWarning
 from ...base import Engine
 
 # Initialize Tika lazily to avoid spawning JVMs prematurely for all workers
-_TIKA_INITIALIZED = False
+_TIKA_STATE = {"initialized": False}
 
 def _ensure_tika_vm():
-    global _TIKA_INITIALIZED
-    if not _TIKA_INITIALIZED:
+    if not _TIKA_STATE["initialized"]:
         with contextlib.suppress(Exception):
             tika.initVM()
         logging.getLogger('tika').setLevel(logging.CRITICAL)
-        _TIKA_INITIALIZED = True
+        _TIKA_STATE["initialized"] = True
 
 
 @dataclass

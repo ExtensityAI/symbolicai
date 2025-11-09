@@ -41,23 +41,23 @@ class VectorDBResult(Result):
         if not self.value:
             return
         for i, match in enumerate(self.value):
-            match = match.strip()
-            if match.startswith('# ----[FILE_START]') and '# ----[FILE_END]' in match:
-                m = match.split('[FILE_CONTENT]:')[-1].strip()
+            match_value = match.strip()
+            if match_value.startswith('# ----[FILE_START]') and '# ----[FILE_END]' in match_value:
+                m = match_value.split('[FILE_CONTENT]:')[-1].strip()
                 splits = m.split('# ----[FILE_END]')
                 assert len(splits) >= 2, f'Invalid file format: {splits}'
                 content = splits[0]
                 file_name = ','.join(splits[1:]) # TODO: check why there are multiple file names
                 yield file_name.strip(), content.strip()
             else:
-                yield i+1, match
+                yield i+1, match_value
 
     def __str__(self):
         str_view = ''
         for filename, content in self._unpack_matches():
             # indent each line of the content
-            content = '\n'.join(['  ' + line for line in content.split('\n')])
-            str_view += f'* {filename}\n{content}\n\n'
+            content_view = '\n'.join(['  ' + line for line in content.split('\n')])
+            str_view += f'* {filename}\n{content_view}\n\n'
         return f'''
 [RESULT]
 {'-=-' * 13}
