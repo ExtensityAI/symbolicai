@@ -833,7 +833,7 @@ class contract:
 
 
 class BaseStrategy(TypeValidationFunction):
-    def __init__(self, data_model: BaseModel, *args, **kwargs):
+    def __init__(self, data_model: BaseModel, *_args, **kwargs):
         super().__init__(
             retry_params=dict(tries=8, delay=0.015, backoff=1.25, jitter=0.0, max_delay=0.25, graceful=False),
             **kwargs,
@@ -875,7 +875,7 @@ class Strategy(Expression):
         super().__init__(*args, **kwargs)
         self.logger = logging.getLogger(__name__)
 
-    def __new__(self, module: str, *args, **kwargs):
+    def __new__(self, module: str, *_args, **_kwargs):
         self._module = module
         self.module_path = 'symai.extended.strategies'
         return Strategy.load_module_class(self.module)

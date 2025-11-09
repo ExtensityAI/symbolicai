@@ -94,7 +94,7 @@ def supports_ansi_escape():
         return False
 
 class PathCompleter(Completer):
-    def get_completions(self, document, complete_event):
+    def get_completions(self, document, _complete_event):
         complete_word = document.get_word_before_cursor(WORD=True)
         sep = os.path.sep
         if complete_word.startswith(f'~{sep}'):
@@ -220,11 +220,11 @@ def _(event):
 
     cancel = [False]
     @kb.add('f')
-    def _(event):
+    def _(_event):
         print('You pressed `f`.')
 
     @kb.add('x')
-    def _(event):
+    def _(_event):
         " Send Abort (control-c) signal. "
         cancel[0] = True
         os.kill(os.getpid(), signal.SIGINT)
@@ -451,7 +451,7 @@ def query_language_model(query: str, res=None, *args, **kwargs):
 
     return msg
 
-def retrieval_augmented_indexing(query: str, index_name = None, *args, **kwargs):
+def retrieval_augmented_indexing(query: str, index_name = None, *_args, **_kwargs):
     global stateful_conversation
     sep = os.path.sep
     path = query
@@ -519,7 +519,7 @@ def retrieval_augmented_indexing(query: str, index_name = None, *args, **kwargs)
     msg = f'{message}successfully indexed: {index_name}'
     return msg
 
-def search_engine(query: str, res=None, *args, **kwargs):
+def search_engine(query: str, res=None, *_args, **_kwargs):
     search = Interface('serpapi')
     with Loader(desc="Searching ...", end=""):
         search_query = Symbol(query).extract('search engine optimized query')

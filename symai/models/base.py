@@ -116,11 +116,11 @@ class LLMDataModel(BaseModel):
 
         return self._format_primitive_field
 
-    def _format_none_field(self, key: str, value: Any, indent: int, visited: set, depth: int) -> str:
+    def _format_none_field(self, key: str, _value: Any, indent: int, _visited: set, _depth: int) -> str:
         """Format a None value."""
         return f"{' ' * indent}{key}: None"
 
-    def _format_enum_field(self, key: str, value: Enum, indent: int, visited: set, depth: int) -> str:
+    def _format_enum_field(self, key: str, value: Enum, indent: int, _visited: set, _depth: int) -> str:
         """Format an Enum value."""
         return f"{' ' * indent}{key}: {value.value}"
 
@@ -190,7 +190,7 @@ class LLMDataModel(BaseModel):
         visited.discard(obj_id)
         return f"{indent_str}{key}:\n" + "\n".join(items) if key else "\n".join(items)
 
-    def _format_primitive_field(self, key: str, value: Any, indent: int, visited: set, depth: int) -> str:
+    def _format_primitive_field(self, key: str, value: Any, indent: int, _visited: set, _depth: int) -> str:
         """Format a primitive field."""
         return f"{' ' * indent}{key}: {value}"
 
@@ -934,7 +934,7 @@ class LLMDataModel(BaseModel):
         return LLMDataModel._generate_primitive_value(field_type)
 
     @classmethod
-    def _format_json_example(cls, obj: Any, indent: int = 0) -> str:
+    def _format_json_example(cls, obj: Any, _indent: int = 0) -> str:
         """Format an object as a JSON string representation."""
         return json.dumps(obj, indent=2, default=str)
 

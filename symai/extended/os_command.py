@@ -78,7 +78,7 @@ class OSCommand(Expression):
         if len(programs) == 0:
             raise Exception('No programs specified!')
 
-    def execute_os_command(self, *args, **kwargs):
+    def execute_os_command(self, *args, **_kwargs):
         command = args[0]
         print(f'Executing {self.os_platform} command: {command}')
         if 'linux' in self.os_platform.lower():

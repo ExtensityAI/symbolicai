@@ -95,7 +95,7 @@ class VectorDBIndexEngine(Engine):
             index_metric=_default_index_metric,
             index_dict=_index_dict,
             index_storage_file=_index_storage_file,
-            **kwargs
+            **_kwargs
         ):
         super().__init__()
         self.config = deepcopy(SYMAI_CONFIG)
