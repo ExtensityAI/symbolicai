@@ -170,7 +170,7 @@ class TypeValidationFunction(ValidationFunction):
         *args,
         **kwargs,
     ):
-        super().__init__(retry_params=retry_params, verbose=verbose, *args, **kwargs)
+        super().__init__(*args, retry_params=retry_params, verbose=verbose, **kwargs)
         self.input_data_model = None
         self.output_data_model = None
         self.accumulate_errors = accumulate_errors
@@ -679,21 +679,21 @@ class contract:
                     wrapped_self._contract_timing[it]["forward_execution"] = time.perf_counter() - op_start
                 wrapped_self._contract_timing[it]["contract_execution"] = time.perf_counter() - contract_start
 
-                if not isinstance(output, output_type):
-                    logger.error(f"Output type mismatch: {type(output)}")
-                    if self.remedy_retry_params["graceful"]:
-                        # In graceful mode, skip type mismatch error and return raw output
-                        if hasattr(output_type, '_is_dynamic_model') and output_type._is_dynamic_model and hasattr(output, 'value'):
-                            return output.value
-                        return output
-                    raise TypeError(
-                        f"Expected output to be an instance of {output_type}, "
-                        f"but got {type(output)}! Forward method must return an instance of {output_type}!"
-                    )
-                if not wrapped_self.contract_successful:
-                    logger.warning("Contract validation failed!")
-                else:
-                    logger.success("Contract validation successful!")
+            if not isinstance(output, output_type):
+                logger.error(f"Output type mismatch: {type(output)}")
+                if self.remedy_retry_params["graceful"]:
+                    # In graceful mode, skip type mismatch error and return raw output
+                    if hasattr(output_type, '_is_dynamic_model') and output_type._is_dynamic_model and hasattr(output, 'value'):
+                        return output.value
+                    return output
+                raise TypeError(
+                    f"Expected output to be an instance of {output_type}, "
+                    f"but got {type(output)}! Forward method must return an instance of {output_type}!"
+                )
+            if not wrapped_self.contract_successful:
+                logger.warning("Contract validation failed!")
+            else:
+                logger.success("Contract validation successful!")
 
             if hasattr(output_type, '_is_dynamic_model') and output_type._is_dynamic_model:
                 return output.value
