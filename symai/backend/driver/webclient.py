@@ -16,6 +16,8 @@ import urllib.request
 import warnings
 from random import choice
 
+from ...utils import CustomUserWarning
+
 try:
     warnings.filterwarnings('ignore', module='chromedriver')
     warnings.filterwarnings('ignore', module='selenium')
@@ -37,10 +39,10 @@ try:
 except Exception as e:
     webdriver = None
     if "No module named 'selenium'" in str(e):
-        print(f"ERROR: {e}")
-        print("ERROR: Please install selenium with `pip install selenium`")
+        CustomUserWarning(f"ERROR: {e}")
+        CustomUserWarning("ERROR: Please install selenium with `pip install selenium`")
     else:
-        print(f"ERROR: {e}")
+        CustomUserWarning(f"ERROR: {e}")
 
 
 
@@ -68,7 +70,9 @@ def wait_for(condition_function, timeout):
         if condition_function():
             return True
         time.sleep(0.1)
-    raise Exception('Server does not respond to request with appropriate content. Check link or script.')
+    msg = 'Server does not respond to request with appropriate content. Check link or script.'
+    CustomUserWarning(msg)
+    raise Exception(msg)
 
 
 class page_loaded:
@@ -82,7 +86,8 @@ class page_loaded:
         pass
 
     def page_has_loaded(self):
-        if self.debug: print(self.driver.page_source)
+        if self.debug:
+            CustomUserWarning(self.driver.page_source)
         return re.search(self.check_pattern, self.driver.page_source)
 
     def __exit__(self, *_):
@@ -106,22 +111,31 @@ def _connect_brower(debug, proxy=None):
         driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
     except Exception as e1:
         try:
-            print("ERROR REMEDY: Trying to use Chrome as an alternative.")
+            CustomUserWarning("ERROR REMEDY: Trying to use Chrome as an alternative.")
             options = FirefoxOptions()
             add_options(options, proxy)
             driver = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()), options=options)
         except Exception as e2:
-            print(f"Issue with finding an appropriate driver version. Your current browser might be newer than the driver. Please either downgrade Chrome or try to install a proper chromedriver manually.\nOriginal error: {e1}; Remedy attempt error: {e2}")
+            CustomUserWarning(
+                "Issue with finding an appropriate driver version. Your current browser might be newer than the driver. "
+                "Please either downgrade Chrome or try to install a proper chromedriver manually.\n"
+                f"Original error: {e1}; Remedy attempt error: {e2}"
+            )
             try:
-                print("ERROR REMEDY: Trying to use Edge as an alternative.")
+                CustomUserWarning("ERROR REMEDY: Trying to use Edge as an alternative.")
                 options = EdgeOptions()
                 if proxy: options.add_argument(f"--proxy-server=socks5://{proxy.host}:{proxy.port}")
                 add_options(options, proxy)
                 driver = webdriver.Edge(service=EdgeService(EdgeChromiumDriverManager().install()), options=options)
             except Exception as e3:
-                print(f"Issue with finding an appropriate driver version. Your current browser might be newer than the driver. Please either downgrade Chrome or try to install a proper chromedriver manually.\nOriginal error: {e1}; Remedy attempt error: {e2}; Second remedy attempt error: {e3}")
+                CustomUserWarning(
+                    "Issue with finding an appropriate driver version. Your current browser might be newer than the driver. "
+                    "Please either downgrade Chrome or try to install a proper chromedriver manually.\n"
+                    f"Original error: {e1}; Remedy attempt error: {e2}; Second remedy attempt error: {e3}"
+                )
                 raise e3 from e2
-    if debug: print("Chrome Headless Browser Invoked")
+    if debug:
+        CustomUserWarning("Chrome Headless Browser Invoked")
 
     return driver
 
@@ -148,8 +162,11 @@ def contains_text(check_pattern, search_pattern, link, driver_handler, script=No
     try:
         driver.get(link)
     except WebDriverException as e:
-        print(f"ERROR: {e}")
-        print("ERROR: Please install a proper driver for your browser. You can find the appropriate driver here: https://selenium-python.readthedocs.io/installation.html#drivers")
+        CustomUserWarning(f"ERROR: {e}")
+        CustomUserWarning(
+            "ERROR: Please install a proper driver for your browser. You can find the appropriate driver here: "
+            "https://selenium-python.readthedocs.io/installation.html#drivers"
+        )
         return False
     with page_loaded(driver, check_pattern, debug=debug):
         if script is not None: script(driver, args)
@@ -189,7 +206,7 @@ def run_selenium_test(debug=False):
                        .replace('.', '')\
                        .replace(',', '')
 
-    print(text)
+    CustomUserWarning(text)
     #text = "women sitting in the park" #names.get_full_name()
 
     # input String
@@ -209,7 +226,7 @@ def run_selenium_test(debug=False):
                                args=[pattern])
         timestamp = time.time() - now
         now = time.time()
-        print(f"{result} - time: {timestamp}")
+        CustomUserWarning(f"{result} - time: {timestamp}")
         cnt += 1
 
 

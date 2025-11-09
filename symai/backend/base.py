@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from ..collect import CollectionRepository, rec_serialize
+from ..utils import CustomUserWarning
 from .settings import HOME_PATH
 
 ENGINE_UNREGISTERED = '<UNREGISTERED/>'
@@ -57,12 +58,12 @@ class Engine(ABC):
         req_time = time.time() - start_time
         metadata['time'] = req_time
         if self.time_clock:
-            print(f"{argument.prop.func}: {req_time} sec")
+            CustomUserWarning(f"{argument.prop.func}: {req_time} sec")
         log['Output'] = res
         if self.verbose:
             view   = {k: v for k, v in list(log['Input'].items()) if k != 'self'}
             input_ = f"{str(log['Input']['self'])[:50]}, {argument.prop.func!s}, {view!s}"
-            print(input_[:150], str(log['Output'])[:100])
+            CustomUserWarning(f"{input_[:150]} {str(log['Output'])[:100]}")
         if self.logging:
             self.logger.log(self.log_level, log)
 
@@ -172,7 +173,7 @@ class BatchEngine(Engine):
 
         total_time = time.time() - start_time
         if self.time_clock:
-            print(f"Total execution time: {total_time} sec")
+            CustomUserWarning(f"Total execution time: {total_time} sec")
 
         return_list = []
 
@@ -191,4 +192,6 @@ class BatchEngine(Engine):
         return return_list
 
     def forward(self, arguments: list[Any]) -> tuple[list[Any], list[dict]]:
-        raise NotImplementedError("Subclasses must implement forward method")
+        msg = "Subclasses must implement forward method"
+        CustomUserWarning(msg)
+        raise NotImplementedError(msg)

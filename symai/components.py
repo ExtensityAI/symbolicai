@@ -203,7 +203,12 @@ class Stream(Expression):
             if len(vals) == 1:
                 self.expr = vals[0]
             else:
-                raise ValueError(f"This component does either not inherit from TrackerTraceable or has an invalid number of component declarations: {len(vals)}! Only one component that inherits from TrackerTraceable is allowed in the with stream clause.")
+                CustomUserWarning(
+                    "This component does either not inherit from TrackerTraceable or has an invalid number of component "
+                    f"declarations: {len(vals)}! Only one component that inherits from TrackerTraceable is allowed in the "
+                    "with stream clause.",
+                    raise_with=ValueError,
+                )
 
         res = sym.stream(expr=self.expr,
                          char_token_ratio=self.char_token_ratio,
@@ -217,7 +222,7 @@ class Stream(Expression):
                 return res[0]
             if self.retrieval == 'contains':
                 return [r for r in res if self.expr in r]
-            raise ValueError(f"Invalid retrieval method: {self.retrieval}")
+            CustomUserWarning(f"Invalid retrieval method: {self.retrieval}", raise_with=ValueError)
 
         return res
 
@@ -349,7 +354,7 @@ class Metric(Expression):
             elif len(sym.value.shape) == 2:
                 pass
             else:
-                raise ValueError(f'Invalid shape: {sym.value.shape}')
+                CustomUserWarning(f'Invalid shape: {sym.value.shape}', raise_with=ValueError)
             # normalize between 0 and 1 and sum to 1
             sym._value = np.exp(sym.value) / (np.exp(sym.value).sum() + self.eps)
         return sym
@@ -972,7 +977,7 @@ class FunctionWithUsage(Function):
 
     def print_verbose(self, msg):
         if self.verbose:
-            print(msg)
+            CustomUserWarning(msg)
 
     def _format_usage(self, prompt_tokens, completion_tokens, total_tokens):
         return Box(
@@ -1025,7 +1030,7 @@ class FunctionWithUsage(Function):
             self.total_tokens += total_tokens
         else:
             if self.missing_usage_exception and "preview" not in kwargs:
-                raise Exception("Missing usage in metadata of neursymbolic engine")
+                CustomUserWarning("Missing usage in metadata of neursymbolic engine", raise_with=Exception)
             prompt_tokens = 0
             completion_tokens = 0
             total_tokens = 0
@@ -1307,7 +1312,7 @@ class DynamicEngine(Expression):
         try:
             engine_class = ENGINE_MAPPING.get(self.model)
             if engine_class is None:
-                raise ValueError(f"Unsupported model '{self.model}'")
+                CustomUserWarning(f"Unsupported model '{self.model}'", raise_with=ValueError)
             return engine_class(api_key=self.api_key, model=self.model)
         except Exception as e:
-            raise ValueError(f"Failed to create engine for model '{self.model}': {e!s}")
+            CustomUserWarning(f"Failed to create engine for model '{self.model}': {e!s}", raise_with=ValueError)

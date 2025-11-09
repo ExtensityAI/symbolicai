@@ -39,6 +39,7 @@ from .menu.screen import show_intro_menu
 from .misc.console import ConsoleStyle
 from .misc.loader import Loader
 from .symbol import Symbol
+from .utils import CustomUserWarning
 
 logging.getLogger("prompt_toolkit").setLevel(logging.ERROR)
 logging.getLogger("asyncio").setLevel(logging.ERROR)
@@ -220,7 +221,7 @@ def _(event):
     cancel = [False]
     @kb.add('f')
     def _(_event):
-        print('You pressed `f`.')
+        CustomUserWarning('You pressed `f`.')
 
     @kb.add('x')
     def _(_event):
@@ -325,16 +326,20 @@ def disambiguate(cmds: str) -> tuple[str, int]:
     maybe_files = FileReader.extract_files(cmds)
     # if cmd follows file(s) or file(s) follows cmd throw error as not supported
     if maybe_files is not None and has_at_least_one_cmd:
-        raise ValueError('Cannot disambiguate commands that have both files and commands or multiple commands. Please provide correct order of commands. '
-                         'Supported are: '
-                         'query | file [file ...] (e.g. "what do these files have in common?" | file1 [file2 ...]) '
-                         'and '
-                         'query | cmd (e.g. "what flags can I use with rg?" | rg --help)')
+        msg = (
+            'Cannot disambiguate commands that have both files and commands or multiple commands. Please provide '
+            'correct order of commands. Supported are: query | file [file ...] (e.g. "what do these files have in '
+            'common?" | file1 [file2 ...]) and query | cmd (e.g. "what flags can I use with rg?" | rg --help)'
+        )
+        CustomUserWarning(msg)
+        raise ValueError(msg)
     # now check order of commands and keep correct order
     if shutil.which(maybe_cmd) is not None:
         cmd_out = subprocess.run(cmds, check=False, capture_output=True, text=True, shell=True)
         if not cmd_out.stdout:
-            raise ValueError(f'Command not found or failed. Error: {cmd_out.stderr}')
+            msg = f'Command not found or failed. Error: {cmd_out.stderr}'
+            CustomUserWarning(msg)
+            raise ValueError(msg)
         return cmd_out.stdout, 1
     if maybe_files is not None:
         return maybe_files, 2
@@ -354,7 +359,9 @@ def query_language_model(query: str, res=None, *args, **kwargs):
         # check if kwargs format is last in query otherwise raise error
         splits = query.split(f'{splitter}')
         if previous_kwargs is None and '=' not in splits[-1] and ',' not in splits[-1]:
-            raise ValueError('Kwargs format must be last in query.')
+            msg = 'Kwargs format must be last in query.'
+            CustomUserWarning(msg)
+            raise ValueError(msg)
         if previous_kwargs is not None and '=' not in splits[-1] and ',' not in splits[-1]:
             # use previous kwargs
             cmd_kwargs = previous_kwargs
@@ -408,11 +415,13 @@ def query_language_model(query: str, res=None, *args, **kwargs):
     if '|' in query:
         cmds = query.split('|')
         if len(cmds) > 2:
-            raise ValueError('Cannot disambiguate commands that have more than 1 pipes. Please provide correct order of commands. '
-                              'Supported are: '
-                              'query | file [file ...] (e.g. "what do these files have in common?" | file1 [file2 ...]) '
-                              'and '
-                              'query | cmd (e.g. "what flags can I use with rg?" | rg --help)')
+            msg = (
+                'Cannot disambiguate commands that have more than 1 pipes. Please provide correct order of commands. '
+                'Supported are: query | file [file ...] (e.g. "what do these files have in common?" | file1 [file2 ...]) '
+                'and query | cmd (e.g. "what flags can I use with rg?" | rg --help)'
+            )
+            CustomUserWarning(msg)
+            raise ValueError(msg)
         query = cmds[0]
         payload, order = disambiguate(cmds[1].strip())
         # check if we're in a stateful conversation
@@ -502,7 +511,7 @@ def retrieval_augmented_indexing(query: str, index_name = None, *_args, **_kwarg
 
         index_name = path.split(sep)[-1] if index_name is None else index_name
         index_name = Indexer.replace_special_chars(index_name)
-        print(f'Indexing {index_name} ...')
+        CustomUserWarning(f'Indexing {index_name} ...')
 
         # creates index if not exists
         DocumentRetriever(index_name=index_name, file=file, overwrite=overwrite)
@@ -559,7 +568,7 @@ def handle_error(cmd, res, message, auto_query_on_error):
     stderr = res.stderr
     if stderr and auto_query_on_error:
         rsp = stderr.decode('utf-8')
-        print(rsp)
+        CustomUserWarning(rsp)
         msg = msg | f"\n{rsp}"
         if 'usage:' in rsp:
             try:
@@ -662,7 +671,7 @@ def map_nt_cmd(cmd: str, map_nt_cmd_enabled: bool = True):
             original_cmd = cmd
             cmd = re.sub(linux_cmd, windows_cmd, cmd)
             if cmd != original_cmd:
-                print(f'symsh >> command "{original_cmd}" mapped to "{cmd}"\n')
+                CustomUserWarning(f'symsh >> command "{original_cmd}" mapped to "{cmd}"\n')
 
     return cmd
 
@@ -819,10 +828,10 @@ def listen(session: PromptSession, word_comp: WordCompleter, auto_query_on_error
                     if stateful_conversation is not None:
                         save_conversation()
                     if not use_styles:
-                        print('Goodbye!')
+                        CustomUserWarning('Goodbye!')
                     else:
                         func = FunctionType('Give short goodbye')
-                        print(func('bye'))
+                        CustomUserWarning(func('bye'))
                     os._exit(0)
                 else:
                     msg = process_command(cmd, auto_query_on_error=auto_query_on_error)
@@ -834,11 +843,11 @@ def listen(session: PromptSession, word_comp: WordCompleter, auto_query_on_error
                 word_comp.words.append(cmd)
 
             except KeyboardInterrupt:
-                print()
+                CustomUserWarning('')
                 pass
 
             except Exception as e:
-                print(e)
+                CustomUserWarning(str(e))
                 if verbose:
                     traceback.print_exc()
                 pass
@@ -872,7 +881,7 @@ def create_completer():
 def run(auto_query_on_error=False, conversation_style=None, verbose=False):
     global FunctionType, ConversationType, RetrievalConversationType, use_styles
     if conversation_style is not None and conversation_style != '':
-        print('Loading style:', conversation_style)
+        CustomUserWarning(f'Loading style: {conversation_style}')
         styles_ = Import.load_module_class(conversation_style)
         FunctionType, ConversationType, RetrievalConversationType = styles_
         use_styles = True

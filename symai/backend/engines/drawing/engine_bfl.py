@@ -6,6 +6,7 @@ from pathlib import Path
 import requests
 
 from ....symbol import Result
+from ....utils import CustomUserWarning
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
 
@@ -94,7 +95,10 @@ class DrawingEngine(Engine):
                 data = response.json()
                 request_id = data.get("id")
                 if not request_id:
-                    raise Exception(f"Failed to get request ID! Response payload: {data}")
+                    CustomUserWarning(
+                        f"Failed to get request ID! Response payload: {data}",
+                        raise_with=Exception,
+                    )
 
                 while True:
                     time.sleep(5)
@@ -119,7 +123,7 @@ class DrawingEngine(Engine):
 
             metadata = {}
             return [rsp], metadata
-        raise Exception(f"Unknown operation: {kwargs['operation']}")
+        CustomUserWarning(f"Unknown operation: {kwargs['operation']}", raise_with=Exception)
 
     def prepare(self, argument):
         argument.prop.prepared_input = str(argument.prop.processed_input)

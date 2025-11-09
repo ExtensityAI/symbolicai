@@ -143,7 +143,7 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
                     elif len(buffer) == 1:
                         image_files.append(f"data:image/{ext};base64,{buffer[0]}")
                     else:
-                        print('No frames found or error in encoding frames')
+                        CustomUserWarning('No frames found or error in encoding frames')
         return image_files
 
     def _remove_vision_pattern(self, text: str) -> str:

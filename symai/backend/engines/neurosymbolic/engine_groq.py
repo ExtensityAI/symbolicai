@@ -54,10 +54,10 @@ class GroqEngine(Engine):
             self.seed = kwargs['seed']
 
     def compute_required_tokens(self, messages):
-        raise NotImplementedError("Token counting not implemented for this engine.")
+        CustomUserWarning("Token counting not implemented for this engine.", raise_with=NotImplementedError)
 
     def compute_remaining_tokens(self, prompts: list) -> int:
-        raise NotImplementedError("Token counting not implemented for this engine.")
+        CustomUserWarning("Token counting not implemented for this engine.", raise_with=NotImplementedError)
 
     def _handle_prefix(self, model_name: str) -> str:
         """Handle prefix for model name."""

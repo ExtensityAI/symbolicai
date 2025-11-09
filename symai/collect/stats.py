@@ -10,6 +10,7 @@ import torch
 
 from ..ops.primitives import OperatorPrimitives
 from ..symbol import Symbol
+from ..utils import CustomUserWarning
 
 SPECIAL_CONSTANT = '__aggregate_'
 EXCLUDE_LIST     = ['_ipython_canary_method_should_not_exist_', '__custom_documentations__']
@@ -63,7 +64,7 @@ class Aggregator(Symbol):
             elif not isinstance(self._value, (list, tuple)):
                 self._value = [self._value]
         elif value is not None:
-            raise Exception(f'Aggregator object must be of type Aggregator or Symbol! Got: {type(value)}')
+            CustomUserWarning(f'Aggregator object must be of type Aggregator or Symbol! Got: {type(value)}', raise_with=Exception)
         else:
             self._value = []
         self._raise_error   = raise_error
@@ -102,7 +103,7 @@ class Aggregator(Symbol):
             self.__dict__[name] = self.__dict__[f'{SPECIAL_CONSTANT}{name}']
             return self.__dict__.get(name)
         if not self._active and name not in self.__dict__:
-            raise Exception(f'Aggregator object is frozen! No attribute {name} found!')
+            CustomUserWarning(f'Aggregator object is frozen! No attribute {name} found!', raise_with=Exception)
         return self.__dict__.get(name)
 
     def __setattr__(self, name, value):
@@ -154,7 +155,9 @@ class Aggregator(Symbol):
                     value = np.asarray(value, dtype=np.float32)
                 except Exception as e:
                     if strict:
-                        raise Exception(f'Could not set value of Aggregator object: {obj.path}! ERROR: {e}') from e
+                        msg = f'Could not set value of Aggregator object: {obj.path}! ERROR: {e}'
+                        CustomUserWarning(msg)
+                        raise Exception(msg) from e
             obj.__setattr__(key, value)
 
     @staticmethod
@@ -256,8 +259,8 @@ class Aggregator(Symbol):
         # Add entries to the aggregator
         if not self.active:
             if self._finalized:
-                raise Exception('Aggregator object is frozen!')
-            return
+                CustomUserWarning('Aggregator object is frozen!', raise_with=Exception)
+                return
         try:
             # Append a new entry to the aggregator
             assert type(entries) in [tuple, list, np.float32, np.float64, np.ndarray, torch.Tensor, int, float, bool, str] or isinstance(entries, Symbol), f'Entries must be a tuple, list, numpy array, torch tensor, integer, float, boolean, string, or Symbol! Got: {type(entries)}'
@@ -284,9 +287,11 @@ class Aggregator(Symbol):
 
             self.entries.append(entries)
         except Exception as e:
+            msg = f'Could not add entries to Aggregator object! Please verify type or original error: {e}'
             if self._raise_error:
-                raise Exception(f'Could not add entries to Aggregator object! Please verify type or original error: {e}') from e
-            print(f'Could not add entries to Aggregator object! Please verify type or original error: {e}')
+                CustomUserWarning(msg)
+                raise Exception(msg) from e
+            CustomUserWarning(msg)
 
     def keys(self):
         # Get all key names of items that have the SPECIAL_CONSTANT prefix
@@ -323,7 +328,7 @@ class Aggregator(Symbol):
             if name == 'map':
                 self.__setattr__(name, value)
             else:
-                raise Exception('Aggregator object is frozen!')
+                CustomUserWarning('Aggregator object is frozen!', raise_with=Exception)
         self.__setattr__ = raise_exception
         def get_attribute(*args, **kwargs):
             return self.__dict__.get(*args, **kwargs)
@@ -342,7 +347,7 @@ class Aggregator(Symbol):
     def clear(self):
         # Clear the entries of the aggregator
         if self._finalized:
-            raise Exception('Aggregator object is frozen!')
+            CustomUserWarning('Aggregator object is frozen!', raise_with=Exception)
         self._value = []
 
     def sum(self, axis=0):

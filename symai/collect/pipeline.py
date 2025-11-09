@@ -9,6 +9,7 @@ from pymongo.database import Database
 from pymongo.mongo_client import MongoClient
 
 from ..backend.settings import SYMAI_CONFIG
+from ..utils import CustomUserWarning
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +63,7 @@ class CollectionRepository:
             self.client.admin.command('ping')
             return True
         except Exception as e:
-            print("Connection failed: " + str(e))
+            CustomUserWarning(f"Connection failed: {e}")
             return False
 
     def add(self, forward: Any, engine: Any, metadata: dict[str, Any] | None = None) -> Any:
@@ -134,7 +135,7 @@ class CollectionRepository:
             self.client     = False
             self.db         = None
             self.collection = None
-            print("[WARN] MongoClient: Connection failed: " + str(e))
+            CustomUserWarning(f"[WARN] MongoClient: Connection failed: {e}")
 
     def close(self) -> None:
         if self.client is not None:

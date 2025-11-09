@@ -2,6 +2,7 @@ import json
 
 from .exceptions import ConstraintViolationException, InvalidPropertyException
 from .symbol import Symbol
+from .utils import CustomUserWarning
 
 
 class DictFormatConstraint:
@@ -11,7 +12,7 @@ class DictFormatConstraint:
         elif isinstance(format, dict):
             self.format = format
         else:
-            raise InvalidPropertyException(f"Unsupported format type: {type(format)}")
+            CustomUserWarning(f"Unsupported format type: {type(format)}", raise_with=InvalidPropertyException)
 
     def __call__(self, input: Symbol):
         input = Symbol(input)
@@ -19,18 +20,20 @@ class DictFormatConstraint:
             try:
                 gen_dict = json.loads(input.value)
             except json.JSONDecodeError as e:
-                raise ConstraintViolationException(f"Invalid JSON: ```json\n{input.value}\n```\n{e}")
+                msg = f"Invalid JSON: ```json\n{input.value}\n```\n{e}"
+                CustomUserWarning(msg)
+                raise ConstraintViolationException(msg)
             return DictFormatConstraint.check_keys(self.format, gen_dict)
         if input.value_type == dict:
             return DictFormatConstraint.check_keys(self.format, input.value)
-        raise ConstraintViolationException(f"Unsupported input type: {input.value_type}")
+        CustomUserWarning(f"Unsupported input type: {input.value_type}", raise_with=ConstraintViolationException)
 
     @staticmethod
     def check_keys(json_format, gen_dict):
         for key, value in json_format.items():
             if (not str(key).startswith('{') and not str(key).endswith('}') and \
                 key not in gen_dict) or not isinstance(gen_dict[key], type(value)):
-                raise ConstraintViolationException(f"Key `{key}` not found or type `{type(key)}` mismatch")
+                CustomUserWarning(f"Key `{key}` not found or type `{type(key)}` mismatch", raise_with=ConstraintViolationException)
             if isinstance(gen_dict[key], dict):
                 # on a dictionary, descend recursively
                 return DictFormatConstraint.check_keys(value, gen_dict[key])
