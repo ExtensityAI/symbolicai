@@ -1,15 +1,21 @@
+from __future__ import annotations
+
 import json
 import logging
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from bson.objectid import ObjectId
-from pymongo.collection import Collection
-from pymongo.database import Database
 from pymongo.mongo_client import MongoClient
 
 from ..backend.settings import SYMAI_CONFIG
 from ..utils import CustomUserWarning
+
+if TYPE_CHECKING:
+    from pymongo.collection import Collection
+    from pymongo.database import Database
+else:
+    Collection = Database = Any
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +54,7 @@ class CollectionRepository:
         self.db: Database | None             = None
         self.collection: Collection | None   = None
 
-    def __enter__(self) -> 'CollectionRepository':
+    def __enter__(self) -> CollectionRepository:
         self.connect()
         return self
 

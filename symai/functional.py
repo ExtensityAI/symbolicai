@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import ast
-import builtins
 import importlib
 import inspect
 import pkgutil
@@ -10,7 +9,6 @@ import traceback
 import warnings
 from collections.abc import Callable
 from enum import Enum
-from types import ModuleType
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
@@ -19,8 +17,6 @@ from pydantic import BaseModel
 from .backend import engines
 from .backend.base import ENGINE_UNREGISTERED, Engine
 from .context import CURRENT_ENGINE_VAR
-from .post_processors import PostProcessor
-from .pre_processors import PreProcessor
 from .prompts import (
     ProbabilisticBooleanModeMedium,
     ProbabilisticBooleanModeStrict,
@@ -29,7 +25,14 @@ from .prompts import (
 from .utils import CustomUserWarning
 
 if TYPE_CHECKING:
+    from types import ModuleType
+
     from .core import Argument
+    from .post_processors import PostProcessor
+    from .pre_processors import PreProcessor
+else:
+    ModuleType = type(importlib)
+    PostProcessor = PreProcessor = Any
 
 
 class ConstraintViolationException(Exception):
@@ -390,12 +393,12 @@ class EngineRepository:
         return engine
 
     @staticmethod
-    def list() -> builtins.list[str]:
+    def list() -> list[str]:
         self = EngineRepository()
         return dict(self._engines.items())
 
     @staticmethod
-    def command(engines: builtins.list[str], *args, **kwargs) -> Any:
+    def command(engines: list[str], *args, **kwargs) -> Any:
         self = EngineRepository()
         if isinstance(engines, str):
             engines = [engines]
