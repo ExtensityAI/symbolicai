@@ -78,9 +78,8 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         system_content = None
 
         for msg in messages:
-            if not isinstance(msg, list):
-                msg = [msg]
-            for part in msg:
+            msg_parts = msg if isinstance(msg, list) else [msg]
+            for part in msg_parts:
                 if isinstance(part, str):
                     role = 'user'
                     content_str = part

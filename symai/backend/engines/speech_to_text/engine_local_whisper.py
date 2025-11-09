@@ -26,10 +26,10 @@ class WhisperTimestampsFormatter(Expression):
     def forward(self, response: list[str]) -> str:
         result = []
         for i, interval in enumerate(response):
-            interval = self._filter_empty_string(interval)
+            interval_tokens = self._filter_empty_string(interval)
             prev_end = 0.0
             prev_start = 0.0
-            for head, tail in zip(interval[::2], interval[1::2]):
+            for head, tail in zip(interval_tokens[::2], interval_tokens[1::2]):
                 start = self._get_timestamp(head)
                 end = self._get_timestamp(tail)
                 if start >= prev_end:
