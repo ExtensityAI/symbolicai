@@ -212,7 +212,7 @@ class VectorDB(Expression):
         elif len(vector) != self.vectors.shape[1]:
             CustomUserWarning("All vectors must have the same length.", raise_with=ValueError)
         # convert the vector to a numpy array if it is not already
-        if type(vector) == list:
+        if isinstance(vector, list):
             vector = np.array(vector)
         self.vectors = np.vstack([self.vectors, vector]).astype(np.float32)
         self.documents.append(document)
@@ -358,7 +358,7 @@ class VectorDB(Expression):
         assert self.vectors is not None, "Error: Cannot query the database without prior insertion / initialization."
         top_k = top_k or self.index_top_k
         query_vector = self.embedding_function([query])[0] if vector is None else vector
-        if type(query_vector) == list:
+        if isinstance(query_vector, list):
             query_vector = np.array(query_vector)
         ranked_results, similarities = ranking_algorithm_sort(
             self.vectors, query_vector, top_k=top_k, metric=self.similarity_metric

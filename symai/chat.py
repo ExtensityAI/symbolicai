@@ -73,7 +73,8 @@ class ChatBot(Expression):
             if do == 'SAVE':
                 self.long_term_memory(f'{self.name}: {reflection}', operation='add', top_k=self.long_term_mem_top_k, index_name=self.index_name)
                 self.long_term_memory('save', operation='config', index_name=self.index_name)
-                if self.verbose: logger.debug(f'Store new long-term memory:\n{reflection}\n')
+                if self.verbose:
+                    logger.debug(f'Store new long-term memory:\n{reflection}\n')
                 message = f'{self.name} inform the user that the memory was stored.'
             elif do == 'DUPLICATE':
                 message = f'{self.name} engages the user in a conversation about the duplicate topic, showing the user she remembered the past interaction.'
@@ -158,7 +159,8 @@ The chatbot always reply in the following format
         @core.zero_shot(prompt=prompt, **kwargs)
         def _func(_) -> str:
             pass
-        if self.verbose: logger.debug(f'Narration:\n{prompt}\n')
+        if self.verbose:
+            logger.debug(f'Narration:\n{prompt}\n')
         return _func(self).replace(f'{self.name}: ', '').strip()
 
 class SymbiaChat(ChatBot):
@@ -182,11 +184,13 @@ class SymbiaChat(ChatBot):
                 loop = False # break the loop after the first iteration
 
             self._last_user_input = usr
-            if self.verbose: logger.debug(f'User:\n{usr}\n')
+            if self.verbose:
+                logger.debug(f'User:\n{usr}\n')
 
             ctxt = str(self.detect_capability(usr)) if len(str(usr)) > 0 else '[DK]'
 
-            if self.verbose: logger.debug(f'In-context:\n{ctxt}\n')
+            if self.verbose:
+                logger.debug(f'In-context:\n{ctxt}\n')
 
             if '[EXIT]' in ctxt:
                 self.message = self.narrate(f'{self.name} writes friendly goodbye message.', context=None, end=True)

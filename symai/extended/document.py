@@ -1,11 +1,14 @@
 from collections.abc import Callable
 from pathlib import Path
-from typing import Union
+from typing import TYPE_CHECKING, Union
 
 from ..components import FileReader, Indexer
 from ..formatter import ParagraphFormatter
 from ..symbol import Expression, Symbol
 from ..utils import CustomUserWarning
+
+if TYPE_CHECKING:
+    from ..backend.engines.files.engine_io import TextContainer
 
 _DEFAULT_PARAGRAPH_FORMATTER = ParagraphFormatter()
 

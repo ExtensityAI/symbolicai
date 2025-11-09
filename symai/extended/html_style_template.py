@@ -76,7 +76,7 @@ class HtmlStyleTemplate(Expression):
         These strings are combined into a single `Symbol` object which is then clustered.
         Finally, the `render` method applies the `html_template` to the clustered `Symbol` and returns the result.
         """
-        if type(sym) != Symbol:
+        if not isinstance(sym, Symbol):
             sym = Symbol(sym)
         html_data = list(self.html_stream(sym, **kwargs))
         style_data = [str(self.style_template(html,

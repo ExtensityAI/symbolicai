@@ -20,7 +20,7 @@ def create_dynamic_class(class_name, **kwargs):
 
 def parse_custom_class_instances(s):
     pattern = r"(\w+)\((.*?)\)"
-    if type(s) != str:
+    if not isinstance(s, str):
         return s
     matches = re.finditer(pattern, s)
 
@@ -29,7 +29,7 @@ def parse_custom_class_instances(s):
         class_args = match.group(2)
         try:
             parsed_args = ast.literal_eval(f'{{{class_args}}}')
-        except:
+        except (ValueError, SyntaxError):
             parsed_args = create_object_from_string(class_args)
         class_instance = create_dynamic_class(class_name, **parsed_args)
         s = s.replace(match.group(0), repr(class_instance))
@@ -64,14 +64,14 @@ def create_object_from_string(str_class):
                 if hasattr(value, '__dict__'):
                     for k in value.__dict__:
                         v = getattr(value, k)
-                        if type(v) == str:
+                        if isinstance(v, str):
                             value[k.strip("'")] = v.strip("'")
             elif value.startswith('{') and value.endswith('}'):
                 value = parse_value(value)
                 new_value = {}
                 for k in value:
                     v = value[k]
-                    if type(v) == str:
+                    if isinstance(v, str):
                         v = v.strip("'")
                     new_value[k.strip("'")] = v
                 value = new_value
@@ -81,7 +81,7 @@ def create_object_from_string(str_class):
     def parse_value(value):
         try:
             value = parse_custom_class_instances(value)
-            if type(value) != str:
+            if not isinstance(value, str):
                 return value
             if value.startswith('['):
                 value = value[1:-1]
@@ -97,7 +97,7 @@ def create_object_from_string(str_class):
             if isinstance(res, (list, tuple, set)):
                 return [parse_value(v) for v in res]
             return res
-        except:
+        except (ValueError, SyntaxError):
             return value
 
     updated_attributes = updated_attributes_process(str_class)

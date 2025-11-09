@@ -34,7 +34,6 @@ class TTSEngine(Engine):
             self.model_id = kwargs['TEXT_TO_SPEECH_ENGINE_MODEL']
 
     def forward(self, argument):
-        kwargs              = argument.kwargs
         voice, path, prompt = argument.prop.prepared_input
 
         rsp = self.client.audio.speech.create(

@@ -58,16 +58,16 @@ class Graph(Expression):
             r = _func(self, s)
             rec = str(r)
             lines = rec.split('\n')
-            for l in lines:
-                l = l.strip()
-                if len(l) > 0:
-                    csv = l.split(',')
+            for line in lines:
+                stripped_line = line.strip()
+                if len(stripped_line) > 0:
+                    csv = stripped_line.split(',')
                     try:
                         if len(csv) == 3 and \
                             csv[0].strip() != '' and \
                                 csv[1].strip() != '' and \
                                     int(csv[2].strip()) > 0:
-                            res += l + '\n'
+                            res += stripped_line + '\n'
                     except Exception as e:
                         if self.verbose:
                             CustomUserWarning(str(e))

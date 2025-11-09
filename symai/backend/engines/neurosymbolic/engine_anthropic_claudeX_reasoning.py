@@ -223,8 +223,8 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
             raise ValueError(msg)
         system = NOT_GIVEN
         prompt = copy(argument.prop.processed_input)
-        if type(prompt) != list:
-            if type(prompt) != dict:
+        if not isinstance(prompt, list):
+            if not isinstance(prompt, dict):
                 prompt = {'role': 'user', 'content': str(prompt)}
             prompt = [prompt]
         if len(prompt) > 1:
@@ -348,7 +348,7 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         metadata_anthropic = kwargs.get('metadata', NOT_GIVEN)
         max_tokens = kwargs.get('max_tokens', self.max_response_tokens)
 
-        if stop != NOT_GIVEN and type(stop) != list:
+        if stop != NOT_GIVEN and not isinstance(stop, list):
             stop = [stop]
 
         #@NOTE: Anthropic fails if stop is not raw string, so cast it to r'…'

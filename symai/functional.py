@@ -10,7 +10,7 @@ import warnings
 from collections.abc import Callable
 from enum import Enum
 from types import ModuleType
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 from pydantic import BaseModel
@@ -21,6 +21,9 @@ from .context import CURRENT_ENGINE_VAR
 from .post_processors import PostProcessor
 from .pre_processors import PreProcessor
 from .utils import CustomUserWarning
+
+if TYPE_CHECKING:
+    from .core import Argument
 
 
 class ConstraintViolationException(Exception):
@@ -59,7 +62,7 @@ def _probabilistic_bool(rsp: str, mode=ProbabilisticBooleanMode.TOLERANT) -> boo
 
 
 def _cast_return_type(rsp: Any, return_constraint: type, engine_probabilistic_boolean_mode: ProbabilisticBooleanMode) -> Any:
-    if return_constraint == inspect._empty:
+    if return_constraint is inspect._empty:
         # do not cast if return type is not specified
         pass
     elif issubclass(return_constraint, BaseModel):
@@ -76,7 +79,7 @@ def _cast_return_type(rsp: Any, return_constraint: type, engine_probabilistic_bo
             res = rsp
         assert res is not None, f"Return type cast failed! Check if the return type is correct or post_processors output matches desired format: {rsp!s}"
         return res
-    elif return_constraint == bool:
+    elif return_constraint is bool:
         if len(rsp) <= 0:
             return False
         return _probabilistic_bool(rsp, mode=engine_probabilistic_boolean_mode)
@@ -85,7 +88,7 @@ def _cast_return_type(rsp: Any, return_constraint: type, engine_probabilistic_bo
             # hard cast to return type fallback
             rsp = return_constraint(rsp)
         except (ValueError, TypeError):
-            if return_constraint == int:
+            if return_constraint is int:
                 CustomUserWarning(f"Cannot convert {rsp} to int", raise_with=ConstraintViolationException)
             warnings.warn(f"Failed to cast {rsp} to {return_constraint}", stacklevel=2)
             return rsp
@@ -130,16 +133,16 @@ def _limit_number_results(rsp: Any, argument, return_type):
     limit_ = argument.prop.limit if argument.prop.limit else (len(rsp) if hasattr(rsp, '__len__') else None)
     # the following line is different from original code to make it work for iterable return types when the limit is 1
     if limit_ is not None:
-        if return_type == str and isinstance(rsp, list):
+        if return_type is str and isinstance(rsp, list):
             return '\n'.join(rsp[:limit_])
-        if return_type == list:
+        if return_type is list:
             return rsp[:limit_]
-        if return_type == dict:
+        if return_type is dict:
             keys = list(rsp.keys())
             return {k: rsp[k] for k in keys[:limit_]}
-        if return_type == set:
+        if return_type is set:
             return set(list(rsp)[:limit_])
-        if return_type == tuple:
+        if return_type is tuple:
             return tuple(list(rsp)[:limit_])
     return rsp
 

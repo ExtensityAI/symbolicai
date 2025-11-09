@@ -95,7 +95,8 @@ class LLaMACppClientEngine(Engine):
         except Exception as e:
             if except_remedy is None:
                 raise e
-            callback = lambda: requests.post(api, data=payload, headers=headers, timeout=self.timeout)
+            def callback():
+                return requests.post(api, data=payload, headers=headers, timeout=self.timeout)
             res = except_remedy(self, e, callback, argument)
 
         metadata = {}

@@ -16,7 +16,7 @@ class DictFormatConstraint:
 
     def __call__(self, input: Symbol):
         input = Symbol(input)
-        if input.value_type == str:
+        if input.value_type is str:
             try:
                 gen_dict = json.loads(input.value)
             except json.JSONDecodeError as e:
@@ -24,7 +24,7 @@ class DictFormatConstraint:
                 CustomUserWarning(msg)
                 raise ConstraintViolationException(msg)
             return DictFormatConstraint.check_keys(self.format, gen_dict)
-        if input.value_type == dict:
+        if input.value_type is dict:
             return DictFormatConstraint.check_keys(self.format, input.value)
         CustomUserWarning(f"Unsupported input type: {input.value_type}", raise_with=ConstraintViolationException)
 

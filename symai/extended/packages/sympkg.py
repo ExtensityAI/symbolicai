@@ -37,15 +37,17 @@ class PackageHandler:
 
         parser.add_argument('command', help='Subcommand to run')
         args = parser.parse_args(sys.argv[1:2])
-        if len(args.command) > 1 and not hasattr(self, args.command):
+        command_aliases = {'l': 'list_packages'}
+        command = command_aliases.get(args.command, args.command)
+        if len(command) > 1 and not hasattr(self, command):
             args.package = args.command
             self.i(args)
-        elif len(args.command) == 1 and not hasattr(self, args.command):
+        elif len(command) == 1 and not hasattr(self, command):
             logger.error('Unrecognized command')
             parser.print_help()
             exit(1)
         else:
-            getattr(self, args.command)()
+            getattr(self, command)()
 
     def i(self, args = None):
         parser = argparse.ArgumentParser(
@@ -70,7 +72,7 @@ class PackageHandler:
         args = parser.parse_args(sys.argv[2:])
         Import.remove(args.package)
 
-    def l(self):
+    def list_packages(self):
         CustomUserWarning(pprint.pformat(Import.list_installed()))
 
     def u(self):

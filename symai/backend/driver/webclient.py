@@ -95,7 +95,8 @@ class page_loaded:
 
 
 def add_options(options, proxy):
-    if proxy: options.add_argument(f"--proxy-server=socks5://{proxy.host}:{proxy.port}")
+    if proxy:
+        options.add_argument(f"--proxy-server=socks5://{proxy.host}:{proxy.port}")
     options.add_argument('--ignore-certificate-errors')
     options.add_argument('--incognito')
     options.add_argument("--headless")
@@ -124,7 +125,8 @@ def _connect_brower(debug, proxy=None):
             try:
                 CustomUserWarning("ERROR REMEDY: Trying to use Edge as an alternative.")
                 options = EdgeOptions()
-                if proxy: options.add_argument(f"--proxy-server=socks5://{proxy.host}:{proxy.port}")
+                if proxy:
+                    options.add_argument(f"--proxy-server=socks5://{proxy.host}:{proxy.port}")
                 add_options(options, proxy)
                 driver = webdriver.Edge(service=EdgeService(EdgeChromiumDriverManager().install()), options=options)
             except Exception as e3:
@@ -169,16 +171,15 @@ def contains_text(check_pattern, search_pattern, link, driver_handler, script=No
         )
         return False
     with page_loaded(driver, check_pattern, debug=debug):
-        if script is not None: script(driver, args)
+        if script is not None:
+            script(driver, args)
     rsp = re.search(search_pattern, driver.page_source)
     return bool(rsp)
 
 
 def download_images(driver, args):
-    src = driver.find_element_by_xpath("//div[@class='bRMDJf islir']/descendant-or-self::*[img]").get_attribute("src")
     imgs = driver.find_elements_by_tag_name('img')
     p = args[0]
-    uri = []
     for i in imgs:
         data = i.get_attribute("src")
         if data and data.startswith('data'):

@@ -159,8 +159,12 @@ class Linker(Metadata):
         '''
         # search all results and return the first one that matches the name
         res = []
+        def match_(key, search_name):
+            if strict:
+                return str(search_name) == str(key)
+            return str(search_name).lower() in str(key).lower()
+
         for k in list(self.results.keys()):
-            match_ = lambda k, name: str(name).lower() in str(k).lower() if not strict else str(name) == str(k)
             if match_(k, name):
                 res.append(self.results[k])
         if single:
@@ -1172,7 +1176,7 @@ class Result(Expression):
         try:
             # try to make the values easily accessible
             self.raw = Box(value)
-        except:
+        except Exception:
             # otherwise, store the unprocessed view
             self.raw = value
 

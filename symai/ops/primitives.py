@@ -4,7 +4,7 @@ import pickle
 import uuid
 from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any, Literal, Union
 
 import numpy as np
 import torch
@@ -2378,7 +2378,7 @@ class EmbeddingPrimitives(Primitive):
         '''
         # if the embedding is not yet computed, compute it
         if self._metadata.embedding is None:
-            if (isinstance(self.value, (list, tuple)) and all([type(x) == int or type(x) == float or type(x) == bool for x in self.value])) \
+            if (isinstance(self.value, (list, tuple)) and all(isinstance(x, (int, float, bool)) for x in self.value)) \
                 or isinstance(self.value, np.ndarray):
                 if isinstance(self.value, (list, tuple)):
                     assert len(self.value) > 0, 'Cannot compute embedding of empty list'
@@ -2424,7 +2424,14 @@ class EmbeddingPrimitives(Primitive):
             x = x.detach().cpu().numpy()
         return x.squeeze()[:, None]
 
-    def similarity(self, other: Union['Symbol', list, np.ndarray, torch.Tensor], metric: Union['cosine', 'angular-cosine', 'product', 'manhattan', 'euclidean', 'minkowski', 'jaccard'] = 'cosine', eps: float = 1e-8, normalize: Callable | None = None, **kwargs) -> float:
+    def similarity(
+        self,
+        other: Union['Symbol', list, np.ndarray, torch.Tensor],
+        metric: Literal['cosine', 'angular-cosine', 'product', 'manhattan', 'euclidean', 'minkowski', 'jaccard'] = 'cosine',
+        eps: float = 1e-8,
+        normalize: Callable | None = None,
+        **kwargs,
+    ) -> float:
         '''
         Calculates the similarity between two Symbol objects using a specified metric.
         This method compares the values of two Symbol objects and calculates their similarity according to the specified metric.
@@ -2481,14 +2488,25 @@ class EmbeddingPrimitives(Primitive):
 
         # get the similarity value(s)
         shape = val.shape
-        if len(shape) >= 2 and min(shape) > 1: val = val.diagonal()
-        elif len(shape) >= 1 and shape[0] > 1: val = val
-        else:                                  val = val.item()
-        if normalize is not None:              val = normalize(val)
+        if len(shape) >= 2 and min(shape) > 1:
+            val = val.diagonal()
+        elif len(shape) >= 1 and shape[0] > 1:
+            val = val
+        else:
+            val = val.item()
+        if normalize is not None:
+            val = normalize(val)
 
         return val
 
-    def distance(self, other: Union['Symbol', list, np.ndarray, torch.Tensor], kernel: Union['gaussian', 'rbf', 'laplacian', 'polynomial', 'sigmoid', 'linear', 'cauchy', 't-distribution', 'inverse-multiquadric', 'cosine', 'angular-cosine', 'frechet', 'mmd'] = 'gaussian',  eps: float = 1e-8, normalize: Callable | None = None, **kwargs) -> float:
+    def distance(
+        self,
+        other: Union['Symbol', list, np.ndarray, torch.Tensor],
+        kernel: Literal['gaussian', 'rbf', 'laplacian', 'polynomial', 'sigmoid', 'linear', 'cauchy', 't-distribution', 'inverse-multiquadric', 'cosine', 'angular-cosine', 'frechet', 'mmd'] = 'gaussian',
+        eps: float = 1e-8,
+        normalize: Callable | None = None,
+        **kwargs,
+    ) -> float:
         '''
         Calculates the kernel between two Symbol objects.
 
@@ -2611,9 +2629,9 @@ class EmbeddingPrimitives(Primitive):
         query  = [{'text': str(self.value[i])} for i in range(len(self.value))]
 
         # convert embeds to list if it is a tensor or numpy array
-        if type(embeds) == np.ndarray:
+        if isinstance(embeds, np.ndarray):
             embeds = embeds.tolist()
-        elif type(embeds) == torch.Tensor:
+        elif isinstance(embeds, torch.Tensor):
             embeds = embeds.cpu().numpy().tolist()
 
         return list(zip(idx, embeds, query))

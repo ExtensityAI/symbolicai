@@ -188,11 +188,16 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
                     mime_type, _ = mimetypes.guess_type(local_file_path)
                     if mime_type is None: # Fallback MIME type determination
                         file_ext = local_file_path.suffix.lower().lstrip('.')
-                        if file_ext == 'jpg': mime_type = 'image/jpeg'
-                        elif file_ext == 'png': mime_type = 'image/png'
-                        elif file_ext == 'gif': mime_type = 'image/gif'
-                        elif file_ext == 'webp': mime_type = 'image/webp'
-                        else: mime_type = 'application/octet-stream'
+                        if file_ext == 'jpg':
+                            mime_type = 'image/jpeg'
+                        elif file_ext == 'png':
+                            mime_type = 'image/png'
+                        elif file_ext == 'gif':
+                            mime_type = 'image/gif'
+                        elif file_ext == 'webp':
+                            mime_type = 'image/webp'
+                        else:
+                            mime_type = 'application/octet-stream'
 
                     image_parts.append(genai.types.Part(inline_data=genai.types.Blob(mime_type=mime_type, data=image_bytes)))
 

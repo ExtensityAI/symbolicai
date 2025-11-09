@@ -217,8 +217,8 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
             raise ValueError(msg)
         system = NOT_GIVEN
         prompt = copy(argument.prop.processed_input)
-        if type(prompt) != list:
-            if type(prompt) != dict:
+        if not isinstance(prompt, list):
+            if not isinstance(prompt, dict):
                 prompt = {'role': 'user', 'content': str(prompt)}
             prompt = [prompt]
         if len(prompt) > 1:
@@ -332,7 +332,7 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
         tool_choice = kwargs.get('tool_choice', NOT_GIVEN)
         metadata_anthropic = kwargs.get('metadata', NOT_GIVEN)
 
-        if stop != NOT_GIVEN and type(stop) != list:
+        if stop != NOT_GIVEN and not isinstance(stop, list):
             stop = [stop]
 
         #@NOTE: Anthropic fails if stop is not raw string, so cast it to r'…'

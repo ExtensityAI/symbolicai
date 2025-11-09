@@ -278,8 +278,8 @@ class LlamaCppEngine(Engine):
         if not argument.prop.processed_input:
             CustomUserWarning('Need to provide a prompt instruction to the engine if raw_input is enabled.', raise_with=ValueError)
         value = argument.prop.processed_input
-        if type(value) != list:
-            if type(value) != dict:
+        if not isinstance(value, list):
+            if not isinstance(value, dict):
                 value = {'role': 'user', 'content': str(value)}
             value = [value]
         return value
