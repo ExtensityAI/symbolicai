@@ -7,7 +7,6 @@ import pkgutil
 import sys
 import traceback
 import warnings
-from collections.abc import Callable
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
@@ -25,12 +24,14 @@ from .prompts import (
 from .utils import CustomUserWarning
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from types import ModuleType
 
     from .core import Argument
     from .post_processors import PostProcessor
     from .pre_processors import PreProcessor
 else:
+    Callable = Any
     ModuleType = type(importlib)
     PostProcessor = PreProcessor = Any
 
@@ -188,14 +189,14 @@ def _execute_query_fallback(func, instance, argument, error=None, stack_trace=No
             **argument.signature_kwargs,
         )
     except Exception:
-        raise error # re-raise the original error
+        raise error from None  # Re-raise the original error without chaining fallback failure.
     if rsp is not None:
         # fallback was implemented
         return {"data": rsp, "error": error, "stack_trace": stack_trace}
     if argument.prop.default is not None:
         # no fallback implementation, but default value is set
         return {"data": argument.prop.default, "error": error, "stack_trace": stack_trace}
-    raise error
+    raise error from None
 
 
 def _process_query_single(engine,

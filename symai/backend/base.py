@@ -179,7 +179,7 @@ class BatchEngine(Engine):
 
         return_list = []
 
-        for arg, result, metadata in zip(arguments, results, metadata_list):
+        for arg, result, metadata in zip(arguments, results, metadata_list, strict=False):
             if metadata is not None:
                 metadata['time'] = total_time / len(arguments)
 

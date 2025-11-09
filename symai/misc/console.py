@@ -14,7 +14,7 @@ from pygments.lexers.python import PythonLexer
 from pygments.lexers.shell import BashLexer
 
 logger = logging.getLogger(__name__)
-print = print_formatted_text
+print = print_formatted_text # noqa
 
 
 class ConsoleStyle:

@@ -1,6 +1,6 @@
 from . import primitives as _primitives
 
-__all__ = getattr(_primitives, "__all__", None)
+__all__ = getattr(_primitives, "__all__", None) # noqa
 if __all__ is None:
     __all__ = [name for name in dir(_primitives) if not name.startswith("_")]
 
