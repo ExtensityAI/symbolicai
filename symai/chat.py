@@ -44,7 +44,7 @@ class ChatBot(Expression):
         self.detect_memory_usage = InContextClassification(MemoryCapabilities())
         self._last_user_input: str = ''
 
-    def repeat(self, query, **kwargs):
+    def repeat(self, query, **_kwargs):
         return self.narrate('Symbia does not understand and asks to repeat and give more context.', prompt=query)
 
     def narrate(self, message: str, context: str = None, category: str = None, end: bool = False, **kwargs) -> Symbol:
@@ -117,7 +117,7 @@ class ChatBot(Expression):
     @staticmethod
     def _init_custom_input_postprocessor(that):
         class CustomInputPostProcessor(ConsolePostProcessor):
-            def __call__(self, rsp, argument):
+            def __call__(self, rsp, _argument):
                 that.short_term_memory.store(f'User: {rsp!s}')
                 return rsp
         return CustomInputPostProcessor

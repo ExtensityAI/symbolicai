@@ -98,7 +98,7 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
             logging.error(f"Gemini count_tokens failed: {e}")
             CustomUserWarning(f"Error counting tokens for Gemini: {e!s}", raise_with=RuntimeError)
 
-    def compute_remaining_tokens(self, prompts: list) -> int:
+    def compute_remaining_tokens(self, _prompts: list) -> int:
         CustomUserWarning("Token counting not implemented for Gemini", raise_with=NotImplementedError)
 
     def _handle_document_content(self, content: str):

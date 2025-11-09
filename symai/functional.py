@@ -367,7 +367,7 @@ class EngineRepository:
                         logger.error(f"Failed to register engine {attribute!s}: {e!s}")
 
     @staticmethod
-    def get(engine_name: str, *args, **kwargs):
+    def get(engine_name: str, *_args, **_kwargs):
 
         self = EngineRepository()
         # First check if we're in the context manager that dynamically changes models
@@ -421,7 +421,7 @@ class EngineRepository:
         raise ValueError(f"No engine named {engine} is registered.")
 
     @staticmethod
-    def bind_property(engine: str, property: str, *args, **kwargs):
+    def bind_property(engine: str, property: str, *_args, **_kwargs):
         self = EngineRepository()
         """Bind a property to a specific engine."""
         engine = self.get(engine)

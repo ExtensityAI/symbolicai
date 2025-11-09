@@ -58,7 +58,7 @@ class GenericRepository(Generic[T]):
         """Deserialize the byte object back into a Python object of type T."""
         return pickle.loads(serialized_item)
 
-    def _serialize_object(self, item_id: str, item: T) -> None:
+    def _serialize_object(self, _item_id: str, item: T) -> None:
         return pickle.dumps(item)
 
     def _store_memory(self, item_id: str, item: T) -> None:
@@ -148,7 +148,7 @@ def get_api_key(api_key_header: str = Security(api_key_header) if API_KEY else N
     )
 
 @app.post("/symbol/")
-def create_symbol(symbol_request: CreateSymbolRequest, api_key: str = Security(get_api_key)):
+def create_symbol(symbol_request: CreateSymbolRequest, _api_key: str = Security(get_api_key)):
     symbol = Symbol(symbol_request.value, static_context=symbol_request.static_context)
     symbol_id = symbol_repository.uid()
     symbol_repository.set(symbol_id, symbol)
@@ -156,7 +156,7 @@ def create_symbol(symbol_request: CreateSymbolRequest, api_key: str = Security(g
 
 
 @app.get("/symbol/{symbol_id}/")
-def get_symbol(symbol_id: str, api_key: str = Security(get_api_key)):
+def get_symbol(symbol_id: str, _api_key: str = Security(get_api_key)):
     symbol = symbol_repository.get(symbol_id)
     if symbol is None:
         raise HTTPException(status_code=404, detail="Symbol not found")
@@ -164,7 +164,7 @@ def get_symbol(symbol_id: str, api_key: str = Security(get_api_key)):
 
 
 @app.patch("/symbol/{symbol_id}/")
-def update_symbol(symbol_id: str, update_request: UpdateSymbolRequest, api_key: str = Security(get_api_key)):
+def update_symbol(symbol_id: str, update_request: UpdateSymbolRequest, _api_key: str = Security(get_api_key)):
     symbol = symbol_repository.get(symbol_id)
     if symbol is None:
         raise HTTPException(status_code=404, detail="Symbol not found")
@@ -175,7 +175,7 @@ def update_symbol(symbol_id: str, update_request: UpdateSymbolRequest, api_key: 
 
 
 @app.delete("/symbol/{symbol_id}/")
-def delete_symbol(symbol_id: str, api_key: str = Security(get_api_key)):
+def delete_symbol(symbol_id: str, _api_key: str = Security(get_api_key)):
     symbol = symbol_repository.delete(symbol_id)
     if symbol is None:
         raise HTTPException(status_code=404, detail="Symbol not found")
@@ -184,7 +184,7 @@ def delete_symbol(symbol_id: str, api_key: str = Security(get_api_key)):
 
 @app.post("/symbol/{symbol_id}/{method_name}/")
 @core_ext.error_logging(debug=DEBUG)
-def operate_on_symbol(symbol_id: str, method_name: str, method_request: SymbolMethodRequest, api_key: str = Security(get_api_key)):
+def operate_on_symbol(symbol_id: str, method_name: str, method_request: SymbolMethodRequest, _api_key: str = Security(get_api_key)):
     symbol = symbol_repository.get(symbol_id)
     if symbol is None:
         raise HTTPException(status_code=404, detail="Symbol not found")
@@ -207,7 +207,7 @@ class UpdateExpressionRequest(BaseModel):
 
 
 @app.post("/expression/")
-def create_expression(expression_request: CreateExpressionRequest, api_key: str = Security(get_api_key)):
+def create_expression(expression_request: CreateExpressionRequest, _api_key: str = Security(get_api_key)):
     expression = Expression(expression_request.value)
     expression_id = expression_repository.uid()
     expression_repository.set(expression_id, expression)
@@ -215,7 +215,7 @@ def create_expression(expression_request: CreateExpressionRequest, api_key: str 
 
 
 @app.get("/expression/{expression_id}/")
-def get_expression(expression_id: str, api_key: str = Security(get_api_key)):
+def get_expression(expression_id: str, _api_key: str = Security(get_api_key)):
     expression = expression_repository.get(expression_id)
     if expression is None:
         raise HTTPException(status_code=404, detail="Expression not found")
@@ -224,7 +224,7 @@ def get_expression(expression_id: str, api_key: str = Security(get_api_key)):
 
 @app.post("/expression/{expression_id}/call/")
 @core_ext.error_logging(debug=DEBUG)
-def call_expression(expression_id: str, method_request: SymbolMethodRequest, api_key: str = Security(get_api_key)):
+def call_expression(expression_id: str, method_request: SymbolMethodRequest, _api_key: str = Security(get_api_key)):
     # Retrieve the expression instance by ID
     expression = expression_repository.get(expression_id)
     if expression is None:
@@ -235,7 +235,7 @@ def call_expression(expression_id: str, method_request: SymbolMethodRequest, api
 
 @app.post("/expression/{expression_id}/{method_name}/")
 @core_ext.error_logging(debug=DEBUG)
-def operate_on_expression(expression_id: str, method_name: str, method_request: SymbolMethodRequest, api_key: str = Security(get_api_key)):
+def operate_on_expression(expression_id: str, method_name: str, method_request: SymbolMethodRequest, _api_key: str = Security(get_api_key)):
     expression = expression_repository.get(expression_id)
     if expression is None:
         raise HTTPException(status_code=404, detail="Expression not found")
@@ -247,7 +247,7 @@ def operate_on_expression(expression_id: str, method_name: str, method_request: 
 
 
 @app.patch("/expression/{expression_id}/")
-def update_expression(expression_id: str, update_request: UpdateExpressionRequest, api_key: str = Security(get_api_key)):
+def update_expression(expression_id: str, update_request: UpdateExpressionRequest, _api_key: str = Security(get_api_key)):
     expression = expression_repository.get(expression_id)
     if expression is None:
         raise HTTPException(status_code=404, detail="Expression not found")
@@ -258,7 +258,7 @@ def update_expression(expression_id: str, update_request: UpdateExpressionReques
 
 
 @app.delete("/expression/{expression_id}/")
-def delete_expression(expression_id: str, api_key: str = Security(get_api_key)):
+def delete_expression(expression_id: str, _api_key: str = Security(get_api_key)):
     expression = expression_repository.delete(expression_id)
     if expression is None:
         raise HTTPException(status_code=404, detail="Expression not found")
@@ -295,7 +295,7 @@ class UpdateComponentRequest(BaseModel):
 
 
 @app.post("/components/")
-def create_component(request: CreateComponentGenericRequest, api_key: str = Security(get_api_key)):
+def create_component(request: CreateComponentGenericRequest, _api_key: str = Security(get_api_key)):
     # Retrieve the class from the repository
     cls = component_class_types.get(request.class_name)
     if cls is None:
@@ -309,7 +309,7 @@ def create_component(request: CreateComponentGenericRequest, api_key: str = Secu
 
 
 @app.get("/components/{instance_id}/")
-def get_component(instance_id: str, api_key: str = Security(get_api_key)):
+def get_component(instance_id: str, _api_key: str = Security(get_api_key)):
     # Retrieve an instance by its ID from the repository
     instance = component_instance_repository.get(instance_id)
     if instance is None:
@@ -320,7 +320,7 @@ def get_component(instance_id: str, api_key: str = Security(get_api_key)):
 # Endpoint to execute a command on a component instance
 @app.post("/components/call/")
 @core_ext.error_logging(debug=DEBUG)
-def generic_forward(request: GenericRequest, api_key: str = Security(get_api_key)):
+def generic_forward(request: GenericRequest, _api_key: str = Security(get_api_key)):
     # Dynamically import the class from components module based on request.class_name
     components_module = importlib.import_module('.components', package='symai')
     cls = getattr(components_module, request.class_name)
@@ -338,7 +338,7 @@ def generic_forward(request: GenericRequest, api_key: str = Security(get_api_key
 
 
 @app.patch("/components/{instance_id}/")
-def update_component(instance_id: str, update_request: UpdateComponentRequest, api_key: str = Security(get_api_key)):
+def update_component(instance_id: str, update_request: UpdateComponentRequest, _api_key: str = Security(get_api_key)):
     instance = component_instance_repository.get(instance_id)
     if instance is None:
         raise HTTPException(status_code=404, detail="Component instance not found")
@@ -349,7 +349,7 @@ def update_component(instance_id: str, update_request: UpdateComponentRequest, a
 
 
 @app.delete("/components/{instance_id}/")
-def delete_component(instance_id: str, api_key: str = Security(get_api_key)):
+def delete_component(instance_id: str, _api_key: str = Security(get_api_key)):
     instance = component_instance_repository.delete(instance_id)
     if instance is None:
         raise HTTPException(status_code=404, detail="Component instance not found")
@@ -383,7 +383,7 @@ class UpdateExtendedRequest(BaseModel):
 
 # Create endpoints for each of the extended classes
 @app.post("/extended/")
-def create_extended(request: CreateExtendedRequest, api_key: str = Security(get_api_key)):
+def create_extended(request: CreateExtendedRequest, _api_key: str = Security(get_api_key)):
     # Dynamically retrieve the extended class
     extended_class = extended_class_types.get(request.class_name)
     if extended_class is None:
@@ -399,7 +399,7 @@ def create_extended(request: CreateExtendedRequest, api_key: str = Security(get_
 # Endpoint to execute a command on a component instance
 @app.post("/extended/call/")
 @core_ext.error_logging(debug=DEBUG)
-def extended_forward(request: GenericRequest, api_key: str = Security(get_api_key)):
+def extended_forward(request: GenericRequest, _api_key: str = Security(get_api_key)):
     # Dynamically import the class from components module based on request.class_name
     try:
         # get request.class_name from extended_types if it's a type of extended_types
@@ -428,7 +428,7 @@ def extended_forward(request: GenericRequest, api_key: str = Security(get_api_ke
 
 
 @app.get("/extended/{instance_id}/")
-def get_extended(instance_id: str, api_key: str = Security(get_api_key)):
+def get_extended(instance_id: str, _api_key: str = Security(get_api_key)):
     # Retrieve an instance by its ID
     extended_instance = extended_instance_repository.get(instance_id)
     if extended_instance is None:
@@ -437,7 +437,7 @@ def get_extended(instance_id: str, api_key: str = Security(get_api_key)):
 
 
 @app.patch("/extended/{instance_id}/")
-def update_extended(instance_id: str, update_request: UpdateExtendedRequest, api_key: str = Security(get_api_key)):
+def update_extended(instance_id: str, update_request: UpdateExtendedRequest, _api_key: str = Security(get_api_key)):
     # Retrieve the instance by its ID
     extended_instance = extended_instance_repository.get(instance_id)
     if extended_instance is None:
@@ -450,7 +450,7 @@ def update_extended(instance_id: str, update_request: UpdateExtendedRequest, api
 
 
 @app.delete("/extended/{instance_id}/")
-def delete_extended(instance_id: str, api_key: str = Security(get_api_key)):
+def delete_extended(instance_id: str, _api_key: str = Security(get_api_key)):
     # Attempt to delete the instance by its ID
     success = extended_instance_repository.delete(instance_id)
     if not success:

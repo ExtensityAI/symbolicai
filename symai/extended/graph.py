@@ -35,7 +35,7 @@ class Graph(Expression):
         self.sym_return_type = Graph
         self.verbose         = verbose
 
-    def process_symbol(self, s, *args, **kwargs):
+    def process_symbol(self, s, *_args, **kwargs):
         res = ''
 
         @core.few_shot(prompt="Extract relationships between entities:\n",
@@ -71,7 +71,7 @@ class Graph(Expression):
                         pass
         return res
 
-    def forward(self, sym: Symbol, **kwargs) -> Symbol:
+    def forward(self, sym: Symbol, **_kwargs) -> Symbol:
         res = 'source,target,value\n'
         sym_list = self.formatter(sym).value
         if self.n_workers == 1:

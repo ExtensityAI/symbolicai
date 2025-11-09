@@ -87,7 +87,7 @@ class StoppingCriteriaSub(StoppingCriteria):
         self.stop_words = stop_words
         self.tokenizer = tokenizer
 
-    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
+    def __call__(self, input_ids: torch.LongTensor, _scores: torch.FloatTensor, **_kwargs) -> bool:
         for stop_word in self.stop_words:
             if self.tokenizer.decode(input_ids[0][-len(self.tokenizer.encode(stop_word)):]).strip() == stop_word:
                 return True

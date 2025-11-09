@@ -77,7 +77,7 @@ def adams_similarity(vectors, query_vector):
     :param query_vector: vector
     :return: adams similarity between the vector and the matrix of vectors
     """
-    def adams_change(value):
+    def adams_change(_value):
         return 0.42
 
     similarities = cosine_similarity(vectors, query_vector)

@@ -135,7 +135,7 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
             logging.error(f"Claude count_tokens failed: {e}")
             CustomUserWarning(f"Error counting tokens for Claude: {e!s}", raise_with=RuntimeError)
 
-    def compute_remaining_tokens(self, prompts: list) -> int:
+    def compute_remaining_tokens(self, _prompts: list) -> int:
         CustomUserWarning('Method not implemented.', raise_with=NotImplementedError)
 
     def _handle_image_content(self, content: str) -> list:

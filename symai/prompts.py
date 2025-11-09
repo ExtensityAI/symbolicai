@@ -36,7 +36,7 @@ class Prompt:
     def value(self) -> list[str]:
         return self._value
 
-    def __call__(self, *args: Any, **kwds: Any) -> list["Prompt"]:
+    def __call__(self, *_args: Any, **_kwds: Any) -> list["Prompt"]:
         return self.value
 
     def __str__(self) -> str:
