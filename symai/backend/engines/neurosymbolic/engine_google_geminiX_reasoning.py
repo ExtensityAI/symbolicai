@@ -94,7 +94,7 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
             count_response = self.client.models.count_tokens(model=self.model, contents=api_contents)
             return count_response.total_tokens
         except Exception as e:
-            logging.error(f"Gemini count_tokens failed: {e}")
+            CustomUserWarning(f"Gemini count_tokens failed: {e}")
             CustomUserWarning(f"Error counting tokens for Gemini: {e!s}", raise_with=RuntimeError)
 
     def compute_remaining_tokens(self, _prompts: list) -> int:
@@ -345,7 +345,7 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
         except Exception as e:
             if self.api_key is None or self.api_key == '':
                 msg = 'Google API key is not set. Please set it in the config file or pass it as an argument to the command method.'
-                logging.error(msg)
+                CustomUserWarning(msg)
                 if self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] is None or self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] == '':
                     CustomUserWarning(msg, raise_with=ValueError)
                 self.api_key = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
