@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from typing import Any, ClassVar
 
 import aiohttp
 import nest_asyncio
@@ -15,7 +16,7 @@ logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 class LlamaCppEmbeddingEngine(Engine):
-    _retry_params = {
+    _retry_params: ClassVar[dict[str, Any]] = {
         'tries': 5,
         'delay': 2,
         'max_delay': 60,
@@ -23,7 +24,7 @@ class LlamaCppEmbeddingEngine(Engine):
         'jitter': (1, 5),
         'graceful': True
     }
-    _timeout_params = {
+    _timeout_params: ClassVar[dict[str, Any]] = {
         'read': None,
         'connect': None,
     }

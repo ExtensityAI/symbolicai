@@ -133,7 +133,7 @@ class Conversation(SlidingWindowStringConcatMemory):
             CustomUserWarning("Index not supported for conversation class.", raise_with=NotImplementedError)
         return self
 
-    def commit(self, target_file: str = None, formatter: Callable | None = None):
+    def commit(self, target_file: str | None = None, formatter: Callable | None = None):
         if target_file and isinstance(target_file, str):
             file_link = target_file
         else:

@@ -172,8 +172,8 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
         """Prepares the request payload from the argument."""
         kwargs = argument.kwargs
         # 16/03/2025
-        # Not Supported Features：Function Call、Json Output、FIM (Beta)
-        # Not Supported Parameters：temperature、top_p、presence_penalty、frequency_penalty、logprobs、top_logprobs
+        # Not Supported Features: Function Call、Json Output、FIM (Beta)
+        # Not Supported Parameters: temperature、top_p、presence_penalty、frequency_penalty、logprobs、top_logprobs
         return {
             "model": kwargs.get('model', self.model),
             "seed": kwargs.get('seed', self.seed),

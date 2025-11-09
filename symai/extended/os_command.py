@@ -61,7 +61,7 @@ Write an executable command that starts a process according to the user query, p
 
 class OSCommand(Expression):
     def __init__(self, programs:        list[str],
-                       metadata:   dict[str, str] = None,
+                       metadata:   dict[str, str] | None = None,
                        verbose:              bool = False,
                        os_platform:           str = 'auto',
                        **kwargs):

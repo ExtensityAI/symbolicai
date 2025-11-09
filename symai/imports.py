@@ -138,7 +138,7 @@ class Import(Expression):
                     relative_module_path = f"{module_name}.{expr['module'].replace('/', '.')}"
                 else:
                     module_parts = module.split('/')
-                    relative_module_path = '.'.join(module_parts + [expr['module'].replace('/', '.')])
+                    relative_module_path = '.'.join([*module_parts, expr['module'].replace('/', '.')])
 
                 try:
                     module_class = getattr(importlib.import_module(relative_module_path), expr['type'])
@@ -175,7 +175,7 @@ class Import(Expression):
                 else:
                     # For GitHub packages
                     module_parts = module.split('/')
-                    relative_module_path = '.'.join(module_parts + [expr['module'].replace('/', '.')])
+                    relative_module_path = '.'.join([*module_parts, expr['module'].replace('/', '.')])
 
                 if isinstance(expressions, str):
                     if expr['type'] == expressions:
@@ -245,7 +245,7 @@ class Import(Expression):
         expr = pkg['run']
         module_rel = expr['module'].replace('/', '.')
         module_parts = module.split('/')
-        relative_module_path = '.'.join(module_parts + [module_rel])
+        relative_module_path = '.'.join([*module_parts, module_rel])
         class_ = expr['type']
         if verbose:
             logger.info(f"Loading module '{relative_module_path}.{expr['type']}'")
@@ -256,7 +256,7 @@ class Import(Expression):
         raise Exception("Cannot call Import class directly. Use Import.load_module_class(module) instead.")
 
     @staticmethod
-    def install(module: str, local_path: str = None, submodules: bool = False):
+    def install(module: str, local_path: str | None = None, submodules: bool = False):
         """Install a package from GitHub or a local path.
 
         Args:

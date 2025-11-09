@@ -4,7 +4,7 @@ from ..symbol import Expression, Symbol
 
 
 class Summarizer(Expression):
-    def __init__(self, filters: list[Expression] = None, **kwargs):
+    def __init__(self, filters: list[Expression] | None = None, **kwargs):
         if filters is None:
             filters = []
         super().__init__(**kwargs)

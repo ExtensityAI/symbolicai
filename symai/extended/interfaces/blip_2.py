@@ -8,7 +8,7 @@ class blip_2(Expression):
         super().__init__(*args, **kwargs)
         self.name = self.__class__.__name__
 
-    def __call__(self, image: str = None, query: str = None, **kwargs) -> "blip_2":
+    def __call__(self, image: str | None = None, query: str | None = None, **kwargs) -> "blip_2":
         @core.caption(image=image, prompt=query, **kwargs)
         def _func(_) -> str:
             pass

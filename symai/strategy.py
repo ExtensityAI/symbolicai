@@ -3,6 +3,7 @@ import logging
 import time
 from collections import defaultdict
 from collections.abc import Callable
+from typing import ClassVar
 
 import numpy as np
 from beartype import beartype
@@ -28,7 +29,7 @@ class ValidationFunction(Function):
       • Error simplification
     """
     # Have some default retry params that don't add overhead
-    _default_retry_params = dict(
+    _default_retry_params: ClassVar[dict[str, int | float | bool]] = dict(
         tries=8,
         delay=0.015,
         backoff=1.25,
@@ -39,7 +40,7 @@ class ValidationFunction(Function):
 
     def __init__(
         self,
-        retry_params: dict[str, int | float | bool] = None,
+        retry_params: dict[str, int | float | bool] | None = None,
         verbose: bool = False,
         *args,
         **kwargs,
@@ -371,7 +372,7 @@ Important guidelines:
 
 @beartype
 class contract:
-    _default_remedy_retry_params = dict(
+    _default_remedy_retry_params: ClassVar[dict[str, int | float | bool]] = dict(
         tries=8,
         delay=0.015,
         backoff=1.25,

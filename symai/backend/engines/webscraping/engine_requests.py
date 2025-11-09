@@ -10,6 +10,7 @@ service disruption.
 import io
 import logging
 import re
+from typing import ClassVar
 from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
 
 import requests
@@ -56,14 +57,14 @@ class RequestsEngine(Engine):
     the requests session stay aligned.
     """
 
-    COMMON_BYPASS_COOKIES = {
+    COMMON_BYPASS_COOKIES: ClassVar[dict[str, str]] = {
         # Some forums display consent or age gates once if a friendly cookie is set.
         "cookieconsent_status": "allow",
         "accepted_cookies": "yes",
         "age_verified": "1",
     }
 
-    DEFAULT_HEADERS = {
+    DEFAULT_HEADERS: ClassVar[dict[str, str]] = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
                       "AppleWebKit/537.36 (KHTML, like Gecko) "
                       "Chrome/120.0.0.0 Safari/537.36",
@@ -72,7 +73,7 @@ class RequestsEngine(Engine):
         "DNT": "1",
     }
 
-    _SAMESITE_CANONICAL = {
+    _SAMESITE_CANONICAL: ClassVar[dict[str, str]] = {
         "strict": "Strict",
         "lax": "Lax",
         "none": "None",
@@ -180,7 +181,7 @@ class RequestsEngine(Engine):
             return resp
         return self.session.get(target, timeout=timeout, allow_redirects=True)
 
-    def _fetch_with_playwright(self, url: str, wait_selector: str = None, wait_until: str = "networkidle", timeout: float = None):
+    def _fetch_with_playwright(self, url: str, wait_selector: str | None = None, wait_until: str = "networkidle", timeout: float | None = None):
         """
         Render the target URL in a headless browser to execute JavaScript and
         return a synthetic ``requests.Response`` object to keep downstream

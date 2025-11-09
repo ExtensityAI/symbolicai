@@ -3,6 +3,7 @@ import re
 
 #@TODO: refactor to use rich instead of prompt_toolkit
 from html import escape as escape_html
+from typing import ClassVar
 
 import pygments
 from prompt_toolkit import HTML, print_formatted_text
@@ -17,7 +18,7 @@ print = print_formatted_text
 
 
 class ConsoleStyle:
-    style_types = {
+    style_types: ClassVar[dict[str, str]] = {
         'alert':     'orange',
         'error':     'ansired',
         'warn':      'ansiyellow',

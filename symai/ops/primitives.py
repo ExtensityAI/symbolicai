@@ -39,7 +39,7 @@ class Primitive:
 
 
 class OperatorPrimitives(Primitive):
-    def __try_type_specific_func(self, other, func, op: str = None):
+    def __try_type_specific_func(self, other, func, op: str | None = None):
         if not isinstance(other, self._symbol_type):
             other = self._to_type(other)
         # None shortcut
@@ -1163,7 +1163,7 @@ class CastingPrimitives(Primitive):
     @property
     def sem(self) -> "Symbol":
         """
-        Return a semantic view of this Symbol. 
+        Return a semantic view of this Symbol.
         (Useful after calling `.syn` in a chain.)
         """
         if getattr(self, "__semantic__", False):
@@ -2631,7 +2631,7 @@ class IOHandlingPrimitives(Primitive):
             return self.sym_return_type(self.value if condition else '') | res
         return self._to_type(self.value if condition else '') | self._to_type(res)
 
-    def open(self, path: str = None, **kwargs) -> 'Symbol':
+    def open(self, path: str | None = None, **kwargs) -> 'Symbol':
         '''
         Open a file and store its content in an Expression object as a string.
 

@@ -1,5 +1,6 @@
 import itertools
 from copy import deepcopy
+from typing import ClassVar
 
 from ....extended.vectordb import VectorDB
 from ....symbol import Result
@@ -85,8 +86,8 @@ class VectorDBIndexEngine(Engine):
     _default_index_dims = 768
     _default_index_top_k = 5
     _default_index_metric = 'cosine'
-    _index_dict = {}
-    _index_storage_file = None
+    _index_dict: ClassVar[dict[str, object]] = {}
+    _index_storage_file: ClassVar[str | None] = None
     def __init__(
             self,
             index_name=_default_index_name,

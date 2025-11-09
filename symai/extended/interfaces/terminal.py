@@ -8,5 +8,5 @@ class terminal(Expression):
         super().__init__(*args, **kwargs)
         self.name = self.__class__.__name__
 
-    def __call__(self, command: str = None, **kwargs) -> "terminal":
+    def __call__(self, command: str | None = None, **kwargs) -> "terminal":
         return self.sym_return_type(process_command(command, **kwargs))

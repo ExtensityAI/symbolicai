@@ -82,7 +82,7 @@ class GroqEngine(Engine):
                 thinking_content = None
 
         cleaned_content = re.sub(think_pattern, '', content, flags=re.DOTALL).strip()
-        cleaned_output = [cleaned_content] + output[1:]
+        cleaned_output = [cleaned_content, *output[1:]]
 
         return thinking_content, cleaned_output
 
