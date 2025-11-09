@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from tqdm import tqdm
 
@@ -36,23 +37,24 @@ class FileMerger(Expression):
 
         for root, dirs, files in progress:
             for file in files:
-                file_path = os.path.join(root, file)
+                file_path = Path(root) / file
+                file_path_str = file_path.as_posix()
                 # Exclude files with the specified names in the path
-                if any(exclude in file_path for exclude in self.file_excludes):
+                if any(exclude in file_path_str for exclude in self.file_excludes):
                     continue
 
                 # Look only for files with the specified endings
                 if file.endswith(tuple(self.file_endings)):
                     # Read in the file using the FileReader
-                    file_content = self.reader(file_path, **kwargs).value
+                    file_content = self.reader(file_path_str, **kwargs).value
 
                     # escape file name spaces
-                    file_path = file_path.replace(" ", "\\ ")
+                    file_path_escaped = file_path_str.replace(" ", "\\ ")
 
                     # Append start and end markers for each file
-                    file_content = f"# ----[FILE_START]<PART1/1>{file_path}[FILE_CONTENT]:\n" + \
+                    file_content = f"# ----[FILE_START]<PART1/1>{file_path_escaped}[FILE_CONTENT]:\n" + \
                                    file_content + \
-                                   f"\n# ----[FILE_END]{file_path}\n"
+                                   f"\n# ----[FILE_END]{file_path_escaped}\n"
 
                     # Merge the file contents
                     merged_file += file_content

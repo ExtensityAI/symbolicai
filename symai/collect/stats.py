@@ -2,6 +2,7 @@ import json
 import re
 from collections.abc import Callable
 from json import JSONEncoder
+from pathlib import Path
 from typing import Any, Union
 
 import numpy as np
@@ -239,12 +240,12 @@ class Aggregator(Symbol):
         return json.dumps(self, cls=AggregatorJSONEncoder)
 
     def save(self, path: str):
-        with open(path, 'w') as f:
+        with Path(path).open('w') as f:
             json.dump(self, f, cls=AggregatorJSONEncoder)
 
     @staticmethod
     def load(path: str, strict: bool = True):
-        with open(path) as f:
+        with Path(path).open() as f:
             json_ = json.load(f)
         return Aggregator._reconstruct(json_, strict=strict)
 

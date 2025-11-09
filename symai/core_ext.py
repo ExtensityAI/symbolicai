@@ -3,7 +3,6 @@ import atexit
 import functools
 import logging
 import multiprocessing as mp
-import os
 import pickle
 import random
 import threading
@@ -234,16 +233,18 @@ def _cache_registry_func(
         *args, **kwargs
     ):
 
-    if not os.path.exists(cache_path): os.makedirs(cache_path)
+    cache_dir = Path(cache_path)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_file = cache_dir / func.__qualname__
 
-    if in_memory and os.path.exists(Path(cache_path) / func.__qualname__):
-        with open(Path(cache_path) / func.__qualname__, 'rb') as f:
+    if in_memory and cache_file.exists():
+        with cache_file.open('rb') as f:
             call = pickle.load(f)
 
         return call
 
     call = func(*args, **kwargs)
-    with open(Path(cache_path) / func.__qualname__, 'wb') as f:
+    with cache_file.open('wb') as f:
         pickle.dump(call , f)
 
     return call

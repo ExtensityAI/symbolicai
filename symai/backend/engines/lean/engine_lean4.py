@@ -1,7 +1,8 @@
-import os
 import subprocess
 import tempfile
 from typing import Any
+
+from pathlib import Path
 
 import docker
 import paramiko
@@ -60,7 +61,7 @@ class LeanEngine(Engine):
         self.ssh_host: str = ssh_host
         self.ssh_port: int = ssh_port
         self.ssh_user: str = ssh_user
-        self.ssh_key_path: str = os.path.expanduser(ssh_key_path)
+        self.ssh_key_path: Path = Path(ssh_key_path).expanduser()
         self.docker_client: docker.DockerClient = docker.from_env()
         self.container: docker.models.containers.Container = self._ensure_container()
         self.name = self.__class__.__name__
@@ -113,11 +114,11 @@ class LeanEngine(Engine):
         """
         with tempfile.NamedTemporaryFile("w", delete=False) as temp_dockerfile:
             temp_dockerfile.write(dockerfile)
-            dockerfile_path: str = temp_dockerfile.name
+            dockerfile_path = Path(temp_dockerfile.name)
 
         image: docker.models.images.Image
-        image, _ = self.docker_client.images.build(path=os.path.dirname(dockerfile_path), dockerfile=dockerfile_path, tag="lean4-container-image")
-        os.remove(dockerfile_path)
+        image, _ = self.docker_client.images.build(path=str(dockerfile_path.parent), dockerfile=str(dockerfile_path), tag="lean4-container-image")
+        dockerfile_path.unlink()
 
         container: docker.models.containers.Container = self.docker_client.containers.run(
             image.id,
@@ -132,11 +133,12 @@ class LeanEngine(Engine):
         Sets up SSH access to the Docker container, including generating an SSH key pair if necessary,
         and configuring the container to accept SSH connections using the generated key.
         """
-        if not os.path.exists(self.ssh_key_path):
-            subprocess.run(['ssh-keygen', '-t', 'rsa', '-b', '2048', '-f', self.ssh_key_path, '-N', ''], check=True)
+        if not self.ssh_key_path.exists():
+            subprocess.run(['ssh-keygen', '-t', 'rsa', '-b', '2048', '-f', str(self.ssh_key_path), '-N', ''], check=True)
 
         subprocess.run(['docker', 'exec', self.container.id, 'mkdir', '-p', '/root/.ssh'], check=True)
-        subprocess.run(['docker', 'cp', f'{self.ssh_key_path}.pub', f'{self.container.id}:/root/.ssh/authorized_keys'], check=True)
+        public_key_path = self.ssh_key_path.parent / f'{self.ssh_key_path.name}.pub'
+        subprocess.run(['docker', 'cp', str(public_key_path), f'{self.container.id}:/root/.ssh/authorized_keys'], check=True)
         subprocess.run(['docker', 'exec', self.container.id, 'chmod', '600', '/root/.ssh/authorized_keys'], check=True)
         subprocess.run(['docker', 'exec', self.container.id, 'chown', 'root:root', '/root/.ssh/authorized_keys'], check=True)
 
@@ -154,12 +156,12 @@ class LeanEngine(Engine):
 
         rsp: LeanResult | None = None
         err: str | None = None
-        tmpfile_path: str | None = None
+        tmpfile_path: Path | None = None
         metadata: dict[str, Any] = {}
         try:
             with tempfile.NamedTemporaryFile(delete=False, suffix=".lean") as tmpfile:
                 tmpfile.write(code.encode())
-                tmpfile_path = tmpfile.name
+                tmpfile_path = Path(tmpfile.name)
 
             output, exec_metadata = self._execute_lean(tmpfile_path)
             metadata.update(exec_metadata)
@@ -173,8 +175,8 @@ class LeanEngine(Engine):
             metadata.update({'status': 'error', 'message': err})
             print(f"Error during Lean execution: {err}")
         finally:
-            if tmpfile_path and os.path.exists(tmpfile_path):
-                os.remove(tmpfile_path)
+            if tmpfile_path and tmpfile_path.exists():
+                tmpfile_path.unlink()
             if self.container:
                 print(f"Killing Docker container '{self.container.id}'...")
                 self.container.remove(force=True)
@@ -194,7 +196,7 @@ class LeanEngine(Engine):
         try:
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            ssh.connect(self.ssh_host, port=self.ssh_port, username=self.ssh_user, key_filename=self.ssh_key_path)
+            ssh.connect(self.ssh_host, port=self.ssh_port, username=self.ssh_user, key_filename=str(self.ssh_key_path))
 
             elan_path: str = "/usr/local/elan/bin/elan"
             lean_path: str = "/usr/local/elan/bin/lean"
@@ -206,7 +208,7 @@ class LeanEngine(Engine):
             print("SSH Command Error:", error)
 
             sftp = ssh.open_sftp()
-            remote_path: str = f"/root/{os.path.basename(filepath)}"
+            remote_path: str = f"/root/{Path(filepath).name}"
             sftp.put(filepath, remote_path)
             sftp.close()
 

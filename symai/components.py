@@ -1,7 +1,6 @@
 import copy
 import inspect
 import json
-import os
 import re
 import sys
 from collections import defaultdict
@@ -475,11 +474,11 @@ class ExcludeFilter(Expression):
 class FileWriter(Expression):
     def __init__(self, path: str, **kwargs):
         super().__init__(**kwargs)
-        self.path = path
+        self.path = Path(path)
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
         sym = self._to_symbol(sym)
-        with open(self.path, 'w') as f:
+        with self.path.open('w') as f:
             f.write(str(sym))
 
 
@@ -494,9 +493,7 @@ class FileReader(Expression):
         assert len(_splits) == 1 or len(_splits) == 2, 'Invalid file link format.'
         _tmp     = Path(_tmp)
         # check if file exists and is a file
-        if os.path.exists(_tmp) and os.path.isfile(_tmp):
-            return True
-        return False
+        return _tmp.is_file()
 
     @staticmethod
     def get_files(folder_path: str, max_depth: int = 1) -> list[str]:
@@ -862,15 +859,15 @@ class Indexer(Expression):
     def register(self):
         # check if index already exists in indices.txt and append if not
         change = False
-        with open(self.path) as f:
+        with self.path.open() as f:
             indices = f.read().split('\n')
             # filter out empty strings
             indices = [i for i in indices if i]
-            if self.index_name not in indices:
+        if self.index_name not in indices:
                 indices.append(self.index_name)
                 change = True
         if change:
-            with open(self.path, 'w') as f:
+            with self.path.open('w') as f:
                 f.write('\n'.join(indices))
 
     def exists(self) -> bool:
@@ -878,7 +875,7 @@ class Indexer(Expression):
         path = HOME_PATH / 'indices.txt'
         if not path.exists():
             return False
-        with open(path) as f:
+        with path.open() as f:
             indices = f.read().split('\n')
             if self.index_name in indices:
                 return True

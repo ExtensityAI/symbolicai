@@ -46,7 +46,7 @@ class OCREngine(Engine):
 
         if image_url.startswith("file://"):
             file_path = Path(image_url[7:]).resolve()
-            with open(file_path, "rb") as file:
+            with file_path.open("rb") as file:
                 payload = file.read()
             url      = "https://api.apilayer.com/image_to_text/upload"
             response = requests.request("POST", url, headers=self.headers, data=payload)

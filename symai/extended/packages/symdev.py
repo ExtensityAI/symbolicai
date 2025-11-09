@@ -13,8 +13,8 @@ class PackageInitializer:
     def __init__(self):
         self.package_dir = Path(config_manager.config_dir) / 'packages'
 
-        if not os.path.exists(self.package_dir):
-            os.makedirs(self.package_dir)
+        if not self.package_dir.exists():
+            self.package_dir.mkdir(parents=True)
 
         os.chdir(self.package_dir)
 
@@ -56,22 +56,25 @@ class PackageInitializer:
             parser.print_help()
             exit(1)
 
-        package_path = os.path.join(self.package_dir, username, package_name)
-        if os.path.exists(package_path):
+        package_path = self.package_dir / username / package_name
+        if package_path.exists():
             logger.info('Package already exists')
             exit(1)
 
         logger.info('Creating package...')
-        os.makedirs(package_path)
-        os.makedirs(os.path.join(package_path, 'src'))
+        package_path.mkdir(parents=True)
+        src_path = package_path / 'src'
+        src_path.mkdir(parents=True)
 
-        with open(os.path.join(package_path, '.gitignore'), 'w'): pass
-        with open(os.path.join(package_path, 'LICENSE'), 'w') as f:
+        with (package_path / '.gitignore').open('w'):
+            pass
+        with (package_path / 'LICENSE').open('w') as f:
             f.write('MIT License')
-        with open(os.path.join(package_path, 'README.md'), 'w') as f:
+        with (package_path / 'README.md').open('w') as f:
             f.write('# ' + package_name + '\n## <Project Description>')
-        with open(os.path.join(package_path, 'requirements.txt'), 'w'): pass
-        with open(os.path.join(package_path, 'package.json'), 'w') as f:
+        with (package_path / 'requirements.txt').open('w'):
+            pass
+        with (package_path / 'package.json').open('w') as f:
             json.dump({
                 'version': '0.0.1',
                 'name': username+'/'+package_name,
@@ -80,7 +83,7 @@ class PackageInitializer:
                 'run': {'module': 'src/func', 'type': 'MyExpression'},
                 'dependencies': []
             }, f, indent=4)
-        with open(os.path.join(package_path, 'src', 'func.py'), 'w') as f:
+        with (src_path / 'func.py').open('w') as f:
             f.write("""from symai import Expression, Function
 
 
@@ -99,7 +102,7 @@ class MyExpression(Expression):
         data = self._to_symbol(data)
         self.fn.format(template=template)
         return self.fn(data, *args, **kwargs)""")
-            logger.success('Package created successfully at: ' + package_path)
+            logger.success('Package created successfully at: ' + str(package_path))
 
 
 def run() -> None:

@@ -11,6 +11,7 @@ import sys
 import time
 import traceback
 from collections.abc import Iterable
+from pathlib import Path
 
 #@TODO: refactor to use rich instead of prompt_toolkit
 from prompt_toolkit import HTML, PromptSession, print_formatted_text
@@ -45,14 +46,14 @@ logging.getLogger("subprocess").setLevel(logging.ERROR)
 
 # load json config from home directory root
 home_path = HOME_PATH
-config_path = os.path.join(home_path, 'symsh.config.json')
+config_path = home_path / 'symsh.config.json'
 # migrate config from old path
 if 'colors' not in SYMSH_CONFIG:
     __new_config__ = {"colors": SYMSH_CONFIG}
     # add command in config
     SYMSH_CONFIG = __new_config__
     # save config
-    with open(config_path, 'w') as f:
+    with config_path.open('w') as f:
         json.dump(__new_config__, f, indent=4)
 
 # make sure map-nt-cmd is in config
@@ -60,7 +61,7 @@ if 'map-nt-cmd' not in SYMSH_CONFIG:
     # add command in config
     SYMSH_CONFIG['map-nt-cmd'] = True
     # save config
-    with open(config_path, 'w') as f:
+    with config_path.open('w') as f:
         json.dump(SYMSH_CONFIG, f, indent=4)
 
 print                     = print_formatted_text
@@ -100,7 +101,15 @@ class PathCompleter(Completer):
             complete_word = FileReader.expand_user_path(complete_word)
 
         # list all files and directories in current directory
-        files = list(glob.glob(complete_word + '*'))
+        complete_path = Path(complete_word)
+        if complete_word.endswith(sep):
+            parent = complete_path
+            pattern = '*'
+        else:
+            baseline = Path()
+            parent = complete_path.parent if complete_path.parent != baseline else baseline
+            pattern = f"{complete_path.name}*" if complete_path.name else '*'
+        files = [str(path) for path in parent.glob(pattern)]
         if len(files) == 0:
             return None
 
@@ -108,6 +117,7 @@ class PathCompleter(Completer):
         files_ = []
 
         for file in files:
+            path_obj = Path(file)
             # split the command into words by space (ignore escaped spaces)
             command_words = document.text.split(' ')
             if len(command_words) > 1:
@@ -117,14 +127,13 @@ class PathCompleter(Completer):
             else:
                 start_position = len(document.text)
             # if there is a space in the file name, then escape it
-            if ' ' in file:
-                file = file.replace(' ', '\\ ')
-            if (document.text.startswith('cd') or document.text.startswith('mkdir')) and os.path.isfile(file):
+            display_name = file.replace(' ', '\\ ') if ' ' in file else file
+            if (document.text.startswith('cd') or document.text.startswith('mkdir')) and path_obj.is_file():
                 continue
-            if os.path.isdir(file):
-                dirs_.append(file)
+            if path_obj.is_dir():
+                dirs_.append(display_name)
             else:
-                files_.append(file)
+                files_.append(display_name)
 
         for d in dirs_:
             # if starts with home directory, then replace it with ~
@@ -195,7 +204,7 @@ def get_exec_prefix():
 def get_conda_env():
     # what conda env am I in (e.g., where is my Python process from)?
     ENVBIN = get_exec_prefix()
-    env_name = os.path.basename(ENVBIN)
+    env_name = Path(ENVBIN).name
     return env_name
 
 # bind to 'Ctrl' + 'Space'
@@ -256,14 +265,14 @@ class FileHistory(History):
     '''
 
     def __init__(self, filename: str) -> None:
-        self.filename = filename
+        self.filename = Path(filename)
         super().__init__()
 
     def load_history_strings(self) -> Iterable[str]:
         lines: list[str] = []
 
-        if os.path.exists(self.filename):
-            with open(self.filename) as f:
+        if self.filename.exists():
+            with self.filename.open() as f:
                 lines = f.readlines()
                 # Remove comments and empty lines.
                 lines = [line for line in lines if line.strip() and not line.startswith("#")]
@@ -277,7 +286,7 @@ class FileHistory(History):
 
     def store_string(self, string: str) -> None:
         # Save to file.
-        with open(self.filename, "ab") as f:
+        with self.filename.open("ab") as f:
 
             def write(t: str) -> None:
                 f.write(t.encode("utf-8"))
@@ -287,7 +296,7 @@ class FileHistory(History):
 
 # Defining commands history
 def load_history(home_path=HOME_PATH, history_file='.bash_history'):
-    history_file_path = os.path.join(home_path, history_file)
+    history_file_path = home_path / history_file
     history = FileHistory(history_file_path)
     return history, list(history.load_history_strings())
 
@@ -335,7 +344,7 @@ def disambiguate(cmds: str) -> tuple[str, int]:
 def query_language_model(query: str, res=None, *args, **kwargs):
     global stateful_conversation, previous_kwargs
     home_path = HOME_PATH
-    symai_path = os.path.join(home_path, '.conversation_state')
+    symai_path = home_path / '.conversation_state'
     plugin = SYMSH_CONFIG.get('plugin_prefix')
 
     # check and extract kwargs from query if any
@@ -367,7 +376,7 @@ def query_language_model(query: str, res=None, *args, **kwargs):
     #    - Load existing conversation state if it exists
     #    - Create new conversation state if none exists
     if (query.startswith('!"') or query.startswith("!'") or query.startswith('!`')):
-        os.makedirs(os.path.dirname(symai_path), exist_ok=True)
+        symai_path.parent.mkdir(parents=True, exist_ok=True)
         stateful_conversation = ConversationType(auto_print=False)
         ConversationType.save_conversation_state(stateful_conversation, symai_path)
         # Special case: if query starts with !" and has a prefix, run the prefix command and store the output
@@ -469,16 +478,17 @@ def retrieval_augmented_indexing(query: str, index_name = None, *args, **kwargs)
         # check if path contains git flag
         if path.startswith('git@'):
             overwrite = True
-            repo_path = os.path.join(home_path, 'temp')
-            cloner = RepositoryCloner(repo_path=repo_path)
-            url = path[4:]
-            if 'http' not in url:
-                url = 'https://' + url
-            url = url.replace('.com:', '.com/')
-            # if ends with '.git' then remove it
-            if url.endswith('.git'):
-                url = url[:-4]
-            path = cloner(url)
+            repo_path = home_path / 'temp'
+            with Loader(desc="Cloning repo ...", end=""):
+                cloner = RepositoryCloner(repo_path=str(repo_path))
+                url = path[4:]
+                if 'http' not in url:
+                    url = 'https://' + url
+                url = url.replace('.com:', '.com/')
+                # if ends with '.git' then remove it
+                if url.endswith('.git'):
+                    url = url[:-4]
+                path = cloner(url)
 
         # merge files
         merger = FileMerger()
@@ -498,8 +508,8 @@ def retrieval_augmented_indexing(query: str, index_name = None, *args, **kwargs)
         DocumentRetriever(index_name=index_name, file=file, overwrite=overwrite)
 
     home_path = HOME_PATH
-    symai_path = os.path.join(home_path, '.conversation_state')
-    os.makedirs(os.path.dirname(symai_path), exist_ok=True)
+    symai_path = home_path / '.conversation_state'
+    symai_path.parent.mkdir(parents=True, exist_ok=True)
     stateful_conversation = RetrievalConversationType(auto_print=False, index_name=index_name)
     Conversation.save_conversation_state(stateful_conversation, symai_path)
     if use_index_name:
@@ -519,9 +529,9 @@ def search_engine(query: str, res=None, *args, **kwargs):
         msg = func(res, payload=res)
         # write a temp dump file with the query and results
         home_path = HOME_PATH
-        symai_path = os.path.join(home_path, '.search_dump')
-        os.makedirs(os.path.dirname(symai_path), exist_ok=True)
-        with open(symai_path, 'w') as f:
+        symai_path = home_path / '.search_dump'
+        symai_path.parent.mkdir(parents=True, exist_ok=True)
+        with symai_path.open('w') as f:
             f.write(f'[SEARCH_QUERY]:\n{search_query}\n[RESULTS]\n{res}\n[MESSAGE]\n{msg}')
     return msg
 
@@ -529,12 +539,12 @@ def set_default_module(cmd: str):
     if cmd.startswith('set-plugin'):
         module = cmd.split('set-plugin')[-1].strip()
         SYMSH_CONFIG['plugin_prefix'] = module
-        with open(config_path, 'w') as f:
+        with config_path.open('w') as f:
             json.dump(SYMSH_CONFIG, f, indent=4)
         msg = f"Default plugin set to '{module}'"
     elif cmd == 'unset-plugin':
         SYMSH_CONFIG['plugin_prefix'] = None
-        with open(config_path, 'w') as f:
+        with config_path.open('w') as f:
             json.dump(SYMSH_CONFIG, f, indent=4)
         msg = "Default plugin unset"
     elif cmd == 'get-plugin':
@@ -699,23 +709,22 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
     if cmd.startswith('man symsh'):
         # read symsh.md file and print it
         # get symsh path
-        pkg_path = os.path.dirname(os.path.abspath(__file__))
-        symsh_path = os.path.join(pkg_path, 'symsh.md')
-        with open(symsh_path, encoding="utf8") as f:
+        pkg_path = Path(__file__).resolve().parent
+        symsh_path = pkg_path / 'symsh.md'
+        with symsh_path.open(encoding="utf8") as f:
             return f.read()
 
     elif cmd.startswith('conda activate'):
         # check conda execution prefix and verify if environment exists
-        env = sys.exec_prefix
-        path_ = sep.join(env.split(sep)[:-1])
-        env_base = os.path.join(sep, path_)
+        env = Path(sys.exec_prefix)
+        env_base = env.parent
         req_env = cmd.split(' ')[2]
         # check if environment exists
-        env_path = os.path.join(env_base, req_env)
-        if not os.path.exists(env_path):
+        env_path = env_base / req_env
+        if not env_path.exists():
             return f'Environment {req_env} does not exist!'
         previous_prefix = exec_prefix
-        exec_prefix = os.path.join(env_base, req_env)
+        exec_prefix = str(env_path)
         return exec_prefix
 
     elif cmd.startswith('conda deactivate'):
@@ -726,9 +735,12 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
         return get_exec_prefix()
 
     elif cmd.startswith('conda'):
-        env = get_exec_prefix()
-        env_base = os.path.join(sep, *env.split(sep)[:-2])
-        cmd = cmd.replace('conda', os.path.join(env_base, "condabin", "conda"))
+        env = Path(get_exec_prefix())
+        try:
+            env_base = env.parents[1]
+        except IndexError:
+            env_base = env.parent
+        cmd = cmd.replace('conda', str(env_base / "condabin" / "conda"))
         return run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
 
     elif cmd.startswith('cd'):
@@ -745,7 +757,7 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
         except PermissionError as e:
             return e
 
-    elif os.path.isdir(cmd):
+    elif Path(cmd).is_dir():
         try:
             # replace ~ with home directory
             cmd = FileReader.expand_user_path(cmd)
@@ -769,7 +781,7 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
 
 def save_conversation():
     home_path = HOME_PATH
-    symai_path = os.path.join(home_path, '.conversation_state')
+    symai_path = home_path / '.conversation_state'
     Conversation.save_conversation_state(stateful_conversation, symai_path)
 
 # Function to listen for user input and execute commands
@@ -780,24 +792,25 @@ def listen(session: PromptSession, word_comp: WordCompleter, auto_query_on_error
                 git_branch = get_git_branch()
                 conda_env = get_conda_env()
                 # get directory from the shell
-                cur_working_dir = os.getcwd()
                 sep = os.path.sep
-                if cur_working_dir.startswith(sep):
-                    cur_working_dir = FileReader.expand_user_path(cur_working_dir)
-                paths = cur_working_dir.split(sep)
+                cur_working_dir = Path.cwd()
+                cur_working_dir_str = str(cur_working_dir)
+                if cur_working_dir_str.startswith(sep):
+                    cur_working_dir_str = FileReader.expand_user_path(cur_working_dir_str)
+                paths = cur_working_dir_str.split(sep)
                 prev_paths = sep.join(paths[:-1])
                 last_path = paths[-1]
 
                 # Format the prompt
                 if len(paths) > 1:
-                    cur_working_dir = f'{prev_paths}{sep}<b>{last_path}</b>'
+                    cur_working_dir_str = f'{prev_paths}{sep}<b>{last_path}</b>'
                 else:
-                    cur_working_dir = f'<b>{last_path}</b>'
+                    cur_working_dir_str = f'<b>{last_path}</b>'
 
                 if git_branch:
-                    prompt = HTML(f"<ansiblue>{cur_working_dir}</ansiblue><ansiwhite> on git:[</ansiwhite><ansigreen>{git_branch}</ansigreen><ansiwhite>]</ansiwhite> <ansiwhite>conda:[</ansiwhite><ansimagenta>{conda_env}</ansimagenta><ansiwhite>]</ansiwhite> <ansicyan><b>symsh:</b> ❯</ansicyan> ")
+                    prompt = HTML(f"<ansiblue>{cur_working_dir_str}</ansiblue><ansiwhite> on git:[</ansiwhite><ansigreen>{git_branch}</ansigreen><ansiwhite>]</ansiwhite> <ansiwhite>conda:[</ansiwhite><ansimagenta>{conda_env}</ansimagenta><ansiwhite>]</ansiwhite> <ansicyan><b>symsh:</b> ❯</ansicyan> ")
                 else:
-                    prompt = HTML(f"<ansiblue>{cur_working_dir}</ansiblue> <ansiwhite>conda:[</ansiwhite><ansimagenta>{conda_env}</ansimagenta><ansiwhite>]</ansiwhite> <ansicyan><b>symsh:</b> ❯</ansicyan> ")
+                    prompt = HTML(f"<ansiblue>{cur_working_dir_str}</ansiblue> <ansiwhite>conda:[</ansiwhite><ansimagenta>{conda_env}</ansimagenta><ansiwhite>]</ansiwhite> <ansicyan><b>symsh:</b> ❯</ansicyan> ")
 
                 # Read user input
                 cmd = session.prompt(prompt)
@@ -873,8 +886,8 @@ def run(auto_query_on_error=False, conversation_style=None, verbose=False):
         # set show splash screen to false
         SYMSH_CONFIG['show-splash-screen'] = False
         # save config
-        _config_path =  HOME_PATH / 'symsh.config.json'
-        with open(_config_path, 'w') as f:
+        _config_path = HOME_PATH / 'symsh.config.json'
+        with _config_path.open('w') as f:
             json.dump(SYMSH_CONFIG, f, indent=4)
     if 'plugin_prefix' not in SYMSH_CONFIG:
         SYMSH_CONFIG['plugin_prefix'] = None

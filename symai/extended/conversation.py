@@ -1,8 +1,8 @@
-import os
 import pickle
 from collections.abc import Callable
 from datetime import datetime
 from typing import Any
+from pathlib import Path
 
 from ..components import FileReader
 from ..formatter import TextContainerFormatter
@@ -95,19 +95,20 @@ class Conversation(SlidingWindowStringConcatMemory):
     @staticmethod
     def save_conversation_state(conversation: "Conversation", file_path: str) -> None:
         # Check if path exists and create it if it doesn't
-        dir_path = os.path.dirname(file_path)
-        os.makedirs(dir_path, exist_ok=True)
+        path_obj = Path(file_path)
+        path_obj.parent.mkdir(parents=True, exist_ok=True)
         # Save the conversation object as a pickle file
-        with open(file_path, 'wb') as handle:
+        with path_obj.open('wb') as handle:
             pickle.dump(conversation, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     def load_conversation_state(self, path: str) -> "Conversation":
         # Check if the file exists and it's not empty
-        if os.path.exists(path):
-            if os.path.getsize(path) <= 0:
+        path_obj = Path(path)
+        if path_obj.exists():
+            if path_obj.stat().st_size <= 0:
                 raise Exception("File is empty.")
             # Load the conversation object from a pickle file
-            with open(path, 'rb') as handle:
+            with path_obj.open('rb') as handle:
                 conversation_state = pickle.load(handle)
         else:
             raise Exception("File does not exist or is empty.")
@@ -150,7 +151,7 @@ class Conversation(SlidingWindowStringConcatMemory):
             if formatter:
                 val = formatter(val)
             # if file does not exist, create it
-            with open(file_link, 'w') as file:
+            with Path(file_link).open('w') as file:
                 file.write(str(val))
         else:
             raise Exception('File link is not set or a set of files.')

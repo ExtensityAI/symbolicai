@@ -1,5 +1,5 @@
-import os
 import re
+from pathlib import Path
 
 # Define variables for magic numbers
 MAX_HEADING_LENGTH = 7
@@ -32,13 +32,13 @@ LOOKAHEAD_RANGE = 100  # Number of characters to look ahead for a sentence bound
 
 # Define emoji ranges
 def generate_emoji_pattern(file_name):
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    file_path = os.path.join(current_dir, file_name)
+    current_dir = Path(__file__).resolve().parent
+    file_path = current_dir / file_name
 
     emoji_codes = set()
 
     try:
-        with open(file_path, encoding='utf-8') as file:
+        with file_path.open(encoding='utf-8') as file:
             for line in file:
                 # Skip comments and empty lines
                 if line.strip() and not line.startswith('#'):

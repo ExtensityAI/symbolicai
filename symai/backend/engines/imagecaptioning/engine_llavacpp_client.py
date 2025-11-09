@@ -1,6 +1,7 @@
 import io
 import json
 import logging
+from pathlib import Path
 
 import requests
 from PIL.Image import Image
@@ -73,7 +74,7 @@ class LLaMACppClientEngine(Engine):
             im_bytes = image_to_byte_array(image['content'], format=format_)
         else:
             # Convert image to bytes, open as binary
-            with open(image['content'], 'rb') as f:
+            with Path(image['content']).open('rb') as f:
                 im_bytes = f.read()
         # Create multipart/form-data payload
         payload      = MultipartEncoder(

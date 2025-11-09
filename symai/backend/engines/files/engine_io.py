@@ -1,5 +1,4 @@
 import logging
-import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -71,18 +70,20 @@ class FileEngine(Engine):
                 else:
                     slices_.append(int(s))
 
+        path_obj = Path(file_path)
+
         # check if file exists
-        assert os.path.exists(file_path), f'File does not exist: {file_path}'
+        assert path_obj.exists(), f'File does not exist: {file_path}'
 
         # verify if file is empty
-        if os.path.getsize(file_path) <= 0:
+        if path_obj.stat().st_size <= 0:
             return ''
 
         # For common plain-text extensions, avoid Tika overhead
-        ext = Path(file_path).suffix.lower()
+        ext = path_obj.suffix.lower()
         if ext in {'.txt', '.md', '.py', '.json', '.yaml', '.yml', '.csv', '.tsv', '.log'}:
             try:
-                with open(file_path, encoding='utf-8', errors='ignore') as f:
+                with path_obj.open(encoding='utf-8', errors='ignore') as f:
                     content = f.read()
                 if content is None:
                     return None
@@ -101,7 +102,7 @@ class FileEngine(Engine):
                 pass
 
         _ensure_tika_vm()
-        file_ = unpack.from_file(str(file_path))
+        file_ = unpack.from_file(str(path_obj))
         if 'content' in file_:
             content = file_['content']
         else:
@@ -135,18 +136,19 @@ class FileEngine(Engine):
 
     def fix_pdf(self, file_path: str):
         # opens the file for reading
-        with open(file_path, 'rb') as p:
+        path_obj = Path(file_path)
+        with path_obj.open('rb') as p:
             txt = (p.readlines())
 
         # get the new list terminating correctly
         txtx = self.reset_eof_of_pdf_return_stream(txt)
 
         # write to new pdf
-        new_file_path = f'{file_path}_fixed.pdf'
-        with open(new_file_path, 'wb') as f:
+        new_file_path = Path(f'{file_path}_fixed.pdf')
+        with new_file_path.open('wb') as f:
             f.writelines(txtx)
 
-        fixed_pdf = pypdf.PdfReader(new_file_path)
+        fixed_pdf = pypdf.PdfReader(str(new_file_path))
         return fixed_pdf
 
     def read_text(self, pdf_reader, page_range, argument):
@@ -178,7 +180,7 @@ class FileEngine(Engine):
 
             rsp = ''
             try:
-                with open(str(path), 'rb') as f:
+                with Path(path).open('rb') as f:
                     # creating a pdf reader object
                     pdf_reader = pypdf.PdfReader(f)
                     rsp = self.read_text(pdf_reader, page_range, argument)

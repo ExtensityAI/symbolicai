@@ -1,5 +1,4 @@
 import logging
-import os
 import time
 from abc import ABC
 from typing import Any
@@ -20,7 +19,7 @@ class Engine(ABC):
         self.collection.connect()
         # create formatter
         __root_dir__  = HOME_PATH
-        os.makedirs(__root_dir__, exist_ok=True)
+        __root_dir__.mkdir(parents=True, exist_ok=True)
         __file_path__ = __root_dir__ / "engine.log"
         logging.basicConfig(filename=__file_path__, filemode="a", format='%(asctime)s %(name)s %(levelname)s %(message)s')
         self.logger     = logging.getLogger()

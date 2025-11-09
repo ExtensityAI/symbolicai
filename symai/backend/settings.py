@@ -1,5 +1,4 @@
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -57,14 +56,14 @@ class SymAIConfig:
         config_path = self.get_config_path(filename, fallback_to_home=fallback_to_home)
         if not config_path.exists():
             return {}
-        with open(config_path, encoding='utf-8') as f:
+        with config_path.open(encoding='utf-8') as f:
             return json.load(f)
 
     def save_config(self, filename: str, data: dict, fallback_to_home: bool = False) -> None:
         """Saves JSON data to the determined config location."""
         config_path = self.get_config_path(filename, fallback_to_home=fallback_to_home)
-        os.makedirs(config_path.parent, exist_ok=True)
-        with open(config_path, 'w', encoding='utf-8') as f:
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        with config_path.open('w', encoding='utf-8') as f:
             json.dump(data, f, indent=4)
 
     def migrate_config(self, filename: str, updates: dict) -> None:

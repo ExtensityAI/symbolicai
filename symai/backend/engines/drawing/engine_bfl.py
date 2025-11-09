@@ -1,6 +1,7 @@
 import logging
 import tempfile
 import time
+from pathlib import Path
 
 import requests
 
@@ -22,7 +23,7 @@ class FluxResult(Result):
         url = value.get('result').get('sample')
         request = requests.get(url, allow_redirects=True)
         request.raise_for_status()
-        with open(path, "wb") as f:
+        with Path(path).open("wb") as f:
             f.write(request.content)
         self._value = [path]
 

@@ -1,10 +1,10 @@
 import ast
 import json
-import os
 import pickle
 import uuid
 from collections.abc import Callable, Iterable
 from typing import TYPE_CHECKING, Any, Union
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -2735,22 +2735,24 @@ class PersistencePrimitives(Primitive):
         Returns:
             Symbol: The current Symbol.
         '''
-        file_path = path
+        file_path = Path(path)
 
         if not replace:
             cnt = 0
-            while os.path.exists(file_path):
-                filename, file_extension = os.path.splitext(path)
-                file_path = f'{filename}_{cnt}{file_extension}'
+            candidate = file_path
+            while candidate.exists():
+                candidate = candidate.with_name(f'{file_path.stem}_{cnt}{file_path.suffix}')
                 cnt += 1
+            file_path = candidate
 
         if serialize:
             # serialize the object via pickle instead of writing the string
-            path_ = str(file_path) + '.pkl' if not str(file_path).endswith('.pkl') else str(file_path)
-            with open(path_, 'wb') as f:
+            path_str = str(file_path)
+            pickle_path = Path(path_str if path_str.endswith('.pkl') else f'{path_str}.pkl')
+            with pickle_path.open('wb') as f:
                 pickle.dump(self, file=f)
         else:
-            with open(str(file_path), 'w') as f:
+            with file_path.open('w') as f:
                 f.write(str(self))
 
     def load(self, path: str) -> Any:
@@ -2763,7 +2765,7 @@ class PersistencePrimitives(Primitive):
         Returns:
             Symbol: The loaded Symbol.
         '''
-        with open(path, 'rb') as f:
+        with Path(path).open('rb') as f:
             obj = pickle.load(f)
         return obj
 
