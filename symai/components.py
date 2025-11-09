@@ -929,8 +929,8 @@ class PrimitiveDisabler(Expression):
         self._original_primitives = defaultdict(list)
 
     def __enter__(self):
-        # Avoid circular imports; import locally
-        from .symbol import Symbol
+        # Import Symbol lazily so components does not clash with symbol during load.
+        from .symbol import Symbol  # noqa: PLC0415 - defer import until context manager entry
 
         frame = inspect.currentframe()
         f_locals = frame.f_back.f_locals
@@ -1311,7 +1311,8 @@ class DynamicEngine(Expression):
 
     def _create_engine_instance(self):
         """Create an engine instance based on the model name."""
-        from .backend.engines.neurosymbolic import ENGINE_MAPPING
+        # Deferred to avoid components <-> neurosymbolic engine circular imports.
+        from .backend.engines.neurosymbolic import ENGINE_MAPPING  # noqa: PLC0415
         try:
             engine_class = ENGINE_MAPPING.get(self.model)
             if engine_class is None:

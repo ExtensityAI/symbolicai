@@ -1,10 +1,11 @@
+import sys
+import traceback
+
 from ....symbol import Result
 from ...base import Engine
 
 
 def full_stack():
-    import sys
-    import traceback
     exc = sys.exc_info()[0]
     stack = traceback.extract_stack()[-10:-1]  # last one would be full_stack()
     if exc is not None:                        # i.e. an exception is present

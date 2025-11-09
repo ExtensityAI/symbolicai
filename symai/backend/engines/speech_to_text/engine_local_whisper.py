@@ -148,8 +148,8 @@ class WhisperEngine(Engine):
             rsp = max(probs, key=probs.get)
         elif prompt == 'decode':
             if show_pbar:
-                # supress tqdm warning
-                from tqdm import tqdm
+                # Suppress tqdm warning; keep optional dependency lazy.
+                from tqdm import tqdm  # noqa: PLC0415
                 pbar = tqdm(self._get_chunks(audio))
             else:
                 pbar = self._get_chunks(audio)
