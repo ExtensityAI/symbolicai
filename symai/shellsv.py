@@ -65,7 +65,7 @@ if 'map-nt-cmd' not in SYMSH_CONFIG:
     with config_path.open('w') as f:
         json.dump(SYMSH_CONFIG, f, indent=4)
 
-print              = print_formatted_text
+print = print_formatted_text # noqa
 map_nt_cmd_enabled = SYMSH_CONFIG['map-nt-cmd']
 
 _shell_state = SimpleNamespace(

@@ -146,7 +146,7 @@ def run_server():
     _symserver_config_ = {}
     if settings.SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL").startswith("llama") or settings.SYMAI_CONFIG.get("EMBEDDING_ENGINE_MODEL").startswith("llama"):
         # Keep optional llama_cpp dependencies lazy.
-        from .server.llama_cpp_server import llama_cpp_server  # noqa: PLC0415
+        from .server.llama_cpp_server import llama_cpp_server # noqa
 
         command, args = llama_cpp_server()
         _symserver_config_.update(zip(args[::2], args[1::2]))
@@ -167,7 +167,7 @@ def run_server():
 
     elif settings.SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL").startswith("huggingface"):
         # HuggingFace server stack is optional; import only when requested.
-        from .server.huggingface_server import huggingface_server  # noqa: PLC0415
+        from .server.huggingface_server import huggingface_server # noqa
 
         command, args = huggingface_server()
         _symserver_config_.update(vars(args))
@@ -338,19 +338,19 @@ def setup_wizard(_symai_config_path_):
 
 _symai_config_, _symsh_config_, _symserver_config_ = _start_symai()
 
-from .backend.base import Engine  # noqa E402
-from .components import Function, PrimitiveDisabler  # noqa E402
-from .core import few_shot, zero_shot  # noqa E402
-from .extended import Conversation  # noqa E402
-from .functional import EngineRepository  # noqa E402
-from .imports import Import  # noqa E402
-from .interfaces import Interface  # noqa E402
-from .post_processors import PostProcessor  # noqa E402
-from .pre_processors import PreProcessor  # noqa E402
-from .prompts import Prompt, PromptLanguage, PromptRegistry  # noqa E402
-from .shell import Shell  # noqa E402
-from .strategy import Strategy  # noqa E402
-from .symbol import Call, Expression, GlobalSymbolPrimitive, Metadata, Symbol  # noqa E402
+from .backend.base import Engine # noqa
+from .components import Function, PrimitiveDisabler  # noqa
+from .core import few_shot, zero_shot  # noqa
+from .extended import Conversation  # noqa
+from .functional import EngineRepository  # noqa
+from .imports import Import  # noqa
+from .interfaces import Interface  # noqa
+from .post_processors import PostProcessor  # noqa
+from .pre_processors import PreProcessor  # noqa
+from .prompts import Prompt, PromptLanguage, PromptRegistry  # noqa
+from .shell import Shell  # noqa
+from .strategy import Strategy  # noqa
+from .symbol import Call, Expression, GlobalSymbolPrimitive, Metadata, Symbol  # noqa
 
 __all__ = [
     "SYMAI_VERSION",

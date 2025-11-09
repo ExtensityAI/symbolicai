@@ -15,18 +15,18 @@ class DictFormatConstraint:
             CustomUserWarning(f"Unsupported format type: {type(format)}", raise_with=InvalidPropertyException)
 
     def __call__(self, input: Symbol):
-        input = Symbol(input)
-        if input.value_type is str:
+        input_symbol = Symbol(input)
+        if input_symbol.value_type is str:
             try:
-                gen_dict = json.loads(input.value)
+                gen_dict = json.loads(input_symbol.value)
             except json.JSONDecodeError as e:
-                msg = f"Invalid JSON: ```json\n{input.value}\n```\n{e}"
+                msg = f"Invalid JSON: ```json\n{input_symbol.value}\n```\n{e}"
                 CustomUserWarning(msg)
                 raise ConstraintViolationException(msg)
             return DictFormatConstraint.check_keys(self.format, gen_dict)
-        if input.value_type is dict:
-            return DictFormatConstraint.check_keys(self.format, input.value)
-        CustomUserWarning(f"Unsupported input type: {input.value_type}", raise_with=ConstraintViolationException)
+        if input_symbol.value_type is dict:
+            return DictFormatConstraint.check_keys(self.format, input_symbol.value)
+        CustomUserWarning(f"Unsupported input type: {input_symbol.value_type}", raise_with=ConstraintViolationException)
         return False
 
     @staticmethod

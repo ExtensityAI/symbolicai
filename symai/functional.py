@@ -326,7 +326,7 @@ class EngineRepository:
     @staticmethod
     def register_from_plugin(id: str, plugin: str, selected_engine: str | None = None, allow_engine_override: bool = False, *args, **kwargs) -> None:
         # Lazy import keeps functional -> imports -> symbol -> core -> functional cycle broken.
-        from .imports import Import  # noqa: PLC0415
+        from .imports import Import # noqa
         types = Import.load_module_class(plugin)
         # filter out engine class type
         engines = [t for t in types if issubclass(t, Engine) and t is not Engine]
@@ -444,7 +444,7 @@ class EngineRepository:
 
         # 2) Fallback: walk ONLY current thread frames (legacy behavior)
         # Keeping DynamicEngine import lazy prevents functional importing components before it finishes loading.
-        from .components import DynamicEngine  # noqa: PLC0415
+        from .components import DynamicEngine # noqa
         try:
             frame = sys._getframe()
         except Exception:

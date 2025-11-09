@@ -8,7 +8,7 @@ from fastapi import APIRouter, FastAPI, HTTPException, Security, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
-from redis.exceptions import ConnectionError
+from redis.exceptions import ConnectionError as RedisConnectionError
 
 from symai.backend import settings
 
@@ -29,7 +29,7 @@ def is_redis_running(host: str, port: int) -> bool:
         r.ping()
         CustomUserWarning(f"Redis server is running at {host}:{port}")
         return True
-    except ConnectionError:
+    except RedisConnectionError:
         CustomUserWarning(f"Redis server is not running at {host}:{port} or is not reachable - falling back to in-memory storage")
         return False
 

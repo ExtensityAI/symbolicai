@@ -1,9 +1,10 @@
 import gzip
 import logging
 import pickle
+from collections.abc import Mapping
 from copy import deepcopy
 from pathlib import Path
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import numpy as np
 
@@ -195,7 +196,7 @@ class VectorDB(Expression):
         self.add_documents(documents, vectors)
         return None
 
-    def add_document(self, document: dict, vector=None):
+    def add_document(self, document: Mapping[str, Any], vector=None):
         """
         Adds a document to the database.
 

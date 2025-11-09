@@ -427,16 +427,17 @@ def filtering(criteria: str,
                     **decorator_kwargs)
 
 
-def map(instruction: str,
-       default: str | None = None,
-       prompt: str = "Transform each element in the input based on the instruction. Preserve container type and elements that don't match the instruction:\n",
-       examples: prm.Prompt = _PROMPT_MAP_EXPRESSION,
-       constraints: list[Callable] | None = None,
-       limit: int | None = 1,
-       stop: str | None = None,
-       pre_processors: list[pre.PreProcessor] | None = None,
-       post_processors: list[post.PostProcessor] | None = None,
-       **decorator_kwargs):
+def map( # noqa: A001
+        instruction: str,
+        default: str | None = None,
+        prompt: str = "Transform each element in the input based on the instruction. Preserve container type and elements that don't match the instruction:\n",
+        examples: prm.Prompt = _PROMPT_MAP_EXPRESSION,
+        constraints: list[Callable] | None = None,
+        limit: int | None = 1,
+        stop: str | None = None,
+        pre_processors: list[pre.PreProcessor] | None = None,
+        post_processors: list[post.PostProcessor] | None = None,
+        **decorator_kwargs):
     """Semantic mapping operation that applies an instruction to each element in an iterable."""
     if post_processors is None:
         post_processors = [post.StripPostProcessor(), post.ASTPostProcessor()]
@@ -515,16 +516,17 @@ def compare(default: bool = False,
                     **decorator_kwargs)
 
 
-def convert(format: str,
-            default: str | None = None,
-            prompt: str = "Translate the following text into {} format.\n",
-            examples: prm.Prompt = _PROMPT_FORMAT,
-            constraints: list[Callable] | None = None,
-            limit: int | None = 1,
-            stop: str | None = None,
-            pre_processors: list[pre.PreProcessor] | None = None,
-            post_processors: list[post.PostProcessor] | None = None,
-            **decorator_kwargs):
+def convert(
+        format: str,
+        default: str | None = None,
+        prompt: str = "Translate the following text into {} format.\n",
+        examples: prm.Prompt = _PROMPT_FORMAT,
+        constraints: list[Callable] | None = None,
+        limit: int | None = 1,
+        stop: str | None = None,
+        pre_processors: list[pre.PreProcessor] | None = None,
+        post_processors: list[post.PostProcessor] | None = None,
+        **decorator_kwargs):
     """Transformation operation from one format to another."""
     if post_processors is None:
         post_processors = [post.StripPostProcessor()]
