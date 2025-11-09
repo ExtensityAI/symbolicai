@@ -89,6 +89,7 @@ class OSCommand(Expression):
         if 'mac' in self.os_platform.lower():
             return [subprocess.run(["bash", "-c", str(command)], check=False)]
         CustomUserWarning('Unsupported platform!', raise_with=Exception)
+        return []
 
     def forward(self, sym: Symbol, **kwargs) -> Expression:
         sym = self._to_symbol(sym)

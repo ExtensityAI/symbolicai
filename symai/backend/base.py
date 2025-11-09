@@ -191,7 +191,7 @@ class BatchEngine(Engine):
             return_list.append((result, metadata))
         return return_list
 
-    def forward(self, arguments: list[Any]) -> tuple[list[Any], list[dict]]:
+    def forward(self, _arguments: list[Any]) -> tuple[list[Any], list[dict]]:
         msg = "Subclasses must implement forward method"
         CustomUserWarning(msg)
         raise NotImplementedError(msg)

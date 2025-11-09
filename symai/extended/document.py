@@ -76,3 +76,4 @@ class DocumentRetriever(Expression):
         if maybe_path.is_file():
             return self.reader(source, with_metadata=with_metadata, **kwargs)
         CustomUserWarning(f"Invalid source: {source}; must be a file, directory, or string", raise_with=ValueError)
+        return []

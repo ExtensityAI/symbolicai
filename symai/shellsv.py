@@ -324,7 +324,7 @@ def disambiguate(cmds: str) -> tuple[str, int]:
         4. query | cmd cmd ...
         5. query | file | cmd
     '''
-    has_at_least_one_cmd = any([shutil.which(cmd) is not None for cmd in cmds.split(' ')])
+    has_at_least_one_cmd = any(shutil.which(cmd) is not None for cmd in cmds.split(' '))
     maybe_cmd   = cmds.split(' ')[0].strip() # get first command
     maybe_files = FileReader.extract_files(cmds)
     # if cmd follows file(s) or file(s) follows cmd throw error as not supported

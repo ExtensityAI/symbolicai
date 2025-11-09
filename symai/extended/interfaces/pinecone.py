@@ -19,3 +19,4 @@ class pinecone(Expression):
         if operation == "config":
             return self.index(path=stmt.value, index_name=index, **kwargs)
         CustomUserWarning("Operation not supported", raise_with=NotImplementedError)
+        return None

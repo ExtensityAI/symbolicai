@@ -120,6 +120,7 @@ class DrawingEngine(Engine):
             metadata = {}
             return [rsp], metadata
         CustomUserWarning(f"Unknown operation: {kwargs['operation']}", raise_with=Exception)
+        return [], {}
 
     def prepare(self, argument):
         argument.prop.prepared_input = str(argument.prop.processed_input)

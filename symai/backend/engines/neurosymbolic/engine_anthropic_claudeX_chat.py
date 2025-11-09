@@ -131,7 +131,7 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
             logging.error(f"Claude count_tokens failed: {e}")
             CustomUserWarning(f"Error counting tokens for Claude: {e!s}", raise_with=RuntimeError)
 
-    def compute_remaining_tokens(self, prompts: list) -> int:
+    def compute_remaining_tokens(self, _prompts: list) -> int:
         CustomUserWarning('Method not implemented.', raise_with=NotImplementedError)
 
     def _handle_image_content(self, content: str) -> list:
@@ -195,7 +195,7 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
                 CustomUserWarning(f'Error during generation. Caused by: {e}', raise_with=ValueError)
 
         if payload['stream']:
-            res = [_ for _ in res] # Unpack the iterator to a list
+            res = list(res) # Unpack the iterator to a list
         metadata = {'raw_output': res}
         response_data = self._collect_response(res)
 

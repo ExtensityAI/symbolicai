@@ -27,6 +27,7 @@ class DictFormatConstraint:
         if input.value_type is dict:
             return DictFormatConstraint.check_keys(self.format, input.value)
         CustomUserWarning(f"Unsupported input type: {input.value_type}", raise_with=ConstraintViolationException)
+        return False
 
     @staticmethod
     def check_keys(json_format, gen_dict):
