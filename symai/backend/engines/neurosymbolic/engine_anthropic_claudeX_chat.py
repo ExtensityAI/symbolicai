@@ -128,7 +128,7 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
             count_response = self.client.messages.count_tokens(**count_params)
             return count_response.input_tokens
         except Exception as e:
-            logging.error(f"Claude count_tokens failed: {e}")
+            CustomUserWarning(f"Claude count_tokens failed: {e}")
             CustomUserWarning(f"Error counting tokens for Claude: {e!s}", raise_with=RuntimeError)
 
     def compute_remaining_tokens(self, _prompts: list) -> int:
@@ -181,7 +181,7 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
         except Exception as e:
             if anthropic.api_key is None or anthropic.api_key == '':
                 msg = 'Anthropic API key is not set. Please set it in the config file or pass it as an argument to the command method.'
-                logging.error(msg)
+                CustomUserWarning(msg)
                 if self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] is None or self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] == '':
                     CustomUserWarning(msg, raise_with=ValueError)
                 anthropic.api_key = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
@@ -376,7 +376,7 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
                     try:
                         tool_call_info['input'] = json.loads(tool_call_info['input_json_str'])
                     except json.JSONDecodeError as e:
-                        logging.error(f"Failed to parse JSON for tool call {tool_call_info['name']}: {e}. Raw JSON: '{tool_call_info['input_json_str']}'")
+                        CustomUserWarning(f"Failed to parse JSON for tool call {tool_call_info['name']}: {e}. Raw JSON: '{tool_call_info['input_json_str']}'")
                         tool_call_info['input'] = {}
                     tool_calls_raw.append(tool_call_info)
 
