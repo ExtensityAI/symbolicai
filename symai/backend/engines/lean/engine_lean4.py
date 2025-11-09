@@ -200,7 +200,7 @@ class LeanEngine(Engine):
             elan_path: str = "/usr/local/elan/bin/elan"
             lean_path: str = "/usr/local/elan/bin/lean"
 
-            stdin, stdout, stderr = ssh.exec_command(f"{elan_path} default stable && {lean_path} --version")
+            _stdin, stdout, stderr = ssh.exec_command(f"{elan_path} default stable && {lean_path} --version")
             output: str = stdout.read().decode()
             error: str = stderr.read().decode()
             print("SSH Command Output:", output)
@@ -211,7 +211,7 @@ class LeanEngine(Engine):
             sftp.put(filepath, remote_path)
             sftp.close()
 
-            stdin, stdout, stderr = ssh.exec_command(f"{lean_path} {remote_path}")
+            _stdin, stdout, stderr = ssh.exec_command(f"{lean_path} {remote_path}")
             output = stdout.read().decode()
             error = stderr.read().decode()
 

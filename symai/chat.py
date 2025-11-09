@@ -47,7 +47,7 @@ class ChatBot(Expression):
     def repeat(self, query, **_kwargs):
         return self.narrate('Symbia does not understand and asks to repeat and give more context.', prompt=query)
 
-    def narrate(self, message: str, context: str = None, category: str = None, end: bool = False, **kwargs) -> Symbol:
+    def narrate(self, message: str, context: str | None = None, category: str | None = None, end: bool = False, **kwargs) -> Symbol:
         reflection = context if context is not None else ''
         ltmem_recall = 'No memories retrieved.'
         stmem_recall = '\n'.join(self.short_term_memory.recall())

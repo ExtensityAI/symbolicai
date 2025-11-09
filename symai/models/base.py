@@ -92,7 +92,7 @@ class LLMDataModel(BaseModel):
         """Check if a field has a default value."""
         return field_info.default != ... and field_info.default != PydanticUndefined
 
-    def format_field(self, key: str, value: Any, indent: int = 0, visited: set = None, depth: int = 0) -> str:
+    def format_field(self, key: str, value: Any, indent: int = 0, visited: set | None = None, depth: int = 0) -> str:
         """Formats a field value for string representation, handling nested structures."""
         visited = visited or set()
         formatter = self._get_formatter_for_value(value)
@@ -194,7 +194,7 @@ class LLMDataModel(BaseModel):
         """Format a primitive field."""
         return f"{' ' * indent}{key}: {value}"
 
-    def __str__(self, indent: int = 0, visited: set = None, depth: int = 0) -> str:
+    def __str__(self, indent: int = 0, visited: set | None = None, depth: int = 0) -> str:
         """
         Converts the model into a formatted string for LLM prompts.
         Handles indentation for nested models and includes an optional section header.
@@ -282,7 +282,7 @@ class LLMDataModel(BaseModel):
 
     @classmethod
     def _format_schema_field(cls, name: str, field_schema: dict, required: bool,
-                            definitions: dict, indent_level: int, visited: set = None) -> str:
+                            definitions: dict, indent_level: int, visited: set | None = None) -> str:
         """Format a single schema field without descriptions (kept for definitions)."""
         visited = visited or set()
 
@@ -332,7 +332,7 @@ class LLMDataModel(BaseModel):
 
     @classmethod
     def _format_schema_fields(cls, properties: dict, schema: dict, definitions: dict,
-                             indent_level: int, visited: set = None) -> str:
+                             indent_level: int, visited: set | None = None) -> str:
         """Format multiple schema fields."""
         visited = visited or set()
         required_fields = set(schema.get("required", []))
@@ -887,7 +887,8 @@ class LLMDataModel(BaseModel):
 
         # Enums
         if isinstance(origin, type) and issubclass(origin, Enum):
-            return list(origin)[0].value if list(origin) else "enum_value"
+            first_member = next(iter(origin), None)
+            return first_member.value if first_member is not None else "enum_value"
 
         # Literals
         if origin is Literal:

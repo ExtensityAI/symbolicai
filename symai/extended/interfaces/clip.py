@@ -10,7 +10,7 @@ class clip(Expression):
         super().__init__(*args, **kwargs)
         self.name = self.__class__.__name__
 
-    def __call__(self, image: str | bytes = None, text: list[str] = None, **kwargs) -> "clip":
+    def __call__(self, image: str | bytes | None = None, text: list[str] | None = None, **kwargs) -> "clip":
         @core.text_vision(image=image, text=text, **kwargs)
         def _func(_) -> np.ndarray:
             pass
