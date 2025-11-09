@@ -2384,12 +2384,13 @@ class EmbeddingPrimitives(Primitive):
                 or isinstance(self.value, np.ndarray):
                 if isinstance(self.value, (list, tuple)):
                     assert len(self.value) > 0, 'Cannot compute embedding of empty list'
-                    if isinstance(self.value[0], Symbol):
+                    symbol_type = self._symbol_type
+                    if isinstance(self.value[0], symbol_type):
                         # convert each element to numpy array
                         self._metadata.embedding = np.asarray([x.embedding for x in self.value])
                     elif isinstance(self.value[0], str):
                         # embed each string
-                        self._metadata.embedding = np.asarray([Symbol(x).embedding for x in self.value])
+                        self._metadata.embedding = np.asarray([symbol_type(x).embedding for x in self.value])
                     else:
                         # convert to numpy array
                         self._metadata.embedding = np.asarray(self.value)
