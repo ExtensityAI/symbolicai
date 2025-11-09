@@ -74,9 +74,9 @@ class HFEngine(Engine):
         if 'except_remedy' in kwargs:
             self.except_remedy = kwargs['except_remedy']
 
-    def compute_required_tokens(self, messages) -> int:
+    def compute_required_tokens(self, _messages) -> int:
         CustomUserWarning('Not implemented for HFEngine. Please use the tokenizer directly to compute tokens.', raise_with=NotImplementedError)
-    def compute_remaining_tokens(self, prompts: list) -> int:
+    def compute_remaining_tokens(self, _prompts: list) -> int:
         CustomUserWarning('Not implemented for HFEngine. Please use the tokenizer directly to compute tokens.', raise_with=NotImplementedError)
     def forward(self, argument):
         kwargs  = argument.kwargs

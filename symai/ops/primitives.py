@@ -1425,7 +1425,7 @@ class StringHelperPrimitives(Primitive):
     '''
     This mixin contains functions that provide additional help for symbols or their values.
     '''
-    def split(self, delimiter: str, **kwargs) -> 'Symbol':
+    def split(self, delimiter: str, **_kwargs) -> 'Symbol':
         '''
         Splits the symbol value by a specified delimiter.
         Uses the core.split decorator to create a _func method that splits the symbol value by the specified delimiter.
@@ -1440,7 +1440,7 @@ class StringHelperPrimitives(Primitive):
         assert isinstance(self.value, str), f'self.value must be a string, got {type(self.value)}'
         return self._to_type([*self.value.split(delimiter)])
 
-    def join(self, delimiter: str = ' ', **kwargs) -> 'Symbol':
+    def join(self, delimiter: str = ' ', **_kwargs) -> 'Symbol':
         '''
         Joins the symbol value with a specified delimiter.
 
@@ -1454,7 +1454,7 @@ class StringHelperPrimitives(Primitive):
         assert isinstance(self.value, Iterable), f'value must be an iterable, got {type(self.value)}'
         return self._to_type(delimiter.join(self.value))
 
-    def startswith(self, prefix: str, **kwargs) -> bool:
+    def startswith(self, prefix: str, **_kwargs) -> bool:
         '''
         Checks if the symbol value starts with a specified prefix.
         Uses the core.startswith decorator to create a _func method that checks if the symbol value starts with the specified prefix.
@@ -1477,7 +1477,7 @@ class StringHelperPrimitives(Primitive):
 
         return _func(self, prefix)
 
-    def endswith(self, suffix: str, **kwargs) -> bool:
+    def endswith(self, suffix: str, **_kwargs) -> bool:
         '''
         Checks if the symbol value ends with a specified suffix.
         Uses the core.endswith decorator to create a _func method that checks if the symbol value ends with the specified suffix.
@@ -2256,7 +2256,7 @@ class TemplateStylingPrimitives(Primitive):
     This mixin includes functionalities for stylizing symbols and applying templates.
     Future functionalities might include a variety of new stylizing methods, application of more complex templates, etc.
     '''
-    def template(that, template: str, placeholder: str | None = '{{placeholder}}', **kwargs) -> 'Symbol':
+    def template(that, template: str, placeholder: str | None = '{{placeholder}}', **_kwargs) -> 'Symbol':
         '''
         Applies a template to the Symbol.
         This method uses the @core.template decorator to apply the given template and placeholder to the Symbol.
@@ -2792,7 +2792,7 @@ class OutputHandlingPrimitives(Primitive):
             Symbol: The resulting Symbol after the output operation.
         '''
         @core.output(**kwargs)
-        def _func(_, *func_args, **func_kwargs):
+        def _func(_, *_func_args, **_func_kwargs):
             return self.value
 
         return self._to_type(_func(self, self.value, *args))

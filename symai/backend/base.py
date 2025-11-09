@@ -122,7 +122,7 @@ class Engine(ABC):
     def prepare(self, argument):
         raise NotImplementedError
 
-    def command(self, *args, **kwargs):
+    def command(self, *_args, **kwargs):
         if kwargs.get('verbose'):
             self.verbose = kwargs['verbose']
         if kwargs.get('logging'):

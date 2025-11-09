@@ -13,7 +13,7 @@ class PostProcessor:
 
 
 class StripPostProcessor(PostProcessor):
-    def __call__(self, response, argument) -> Any:
+    def __call__(self, response, _argument) -> Any:
         if response is None:
             return None
         if not isinstance(response, str):
@@ -53,13 +53,13 @@ class TemplatePostProcessor(PostProcessor):
 
 
 class SplitNewLinePostProcessor(PostProcessor):
-    def __call__(self, response, argument) -> Any:
+    def __call__(self, response, _argument) -> Any:
         tmp = response.split('\n')
         return [t.strip() for t in tmp if len(t.strip()) > 0]
 
 
 class JsonTruncatePostProcessor(PostProcessor):
-    def __call__(self, response, argument) -> Any:
+    def __call__(self, response, _argument) -> Any:
         count_b = response.count('[JSON_BEGIN]')
         count_e = response.count('[JSON_END]')
         if count_b > 1 or count_e > 1:
@@ -80,7 +80,7 @@ class JsonTruncatePostProcessor(PostProcessor):
 
 
 class JsonTruncateMarkdownPostProcessor(PostProcessor):
-    def __call__(self, response, argument) -> Any:
+    def __call__(self, response, _argument) -> Any:
         count_b = response.count('```json')
         count_e = response.count('```')
         if count_b > 1 or count_e > 2:
@@ -101,7 +101,7 @@ class JsonTruncateMarkdownPostProcessor(PostProcessor):
 
 
 class CodeExtractPostProcessor(PostProcessor):
-    def __call__(self, response, argument, tag=None, **kwargs) -> Any:
+    def __call__(self, response, _argument, tag=None, **_kwargs) -> Any:
         if '```' not in str(response):
             return response
         try:
@@ -118,7 +118,7 @@ class CodeExtractPostProcessor(PostProcessor):
 
 
 class WolframAlphaPostProcessor(PostProcessor):
-    def __call__(self, response, argument) -> Any:
+    def __call__(self, response, _argument) -> Any:
         try:
             res = next(response.value.results).text
             response._value = res
@@ -135,7 +135,7 @@ class WolframAlphaPostProcessor(PostProcessor):
 
 
 class SplitPipePostProcessor(PostProcessor):
-    def __call__(self, response, argument) -> Any:
+    def __call__(self, response, _argument) -> Any:
         tmp = response if isinstance(response, list) else [response]
         tmp = [r.split('|') for r in tmp if len(r.strip()) > 0]
         tmp = sum(tmp, [])
@@ -152,7 +152,7 @@ class NotifySubscriberPostProcessor(PostProcessor):
 
 
 class ASTPostProcessor(PostProcessor):
-    def __call__(self, response, *args, **kwargs) -> Any:
+    def __call__(self, response, *_args, **_kwargs) -> Any:
         try:
             val = ast.literal_eval(response.strip())
             return self._recursive_parse(val)
@@ -186,21 +186,21 @@ class ConsolePostProcessor(PostProcessor):
 
 
 class TakeLastPostProcessor(PostProcessor):
-    def __call__(self, response, argument) -> Any:
+    def __call__(self, response, _argument) -> Any:
         return response[-1]
 
 
 class ExpandFunctionPostProcessor(PostProcessor):
-    def __call__(self, response, argument) -> Any:
+    def __call__(self, response, _argument) -> Any:
         return 'def ' + response
 
 
 class CaseInsensitivePostProcessor(PostProcessor):
-    def __call__(self, response, argument) -> Any:
+    def __call__(self, response, _argument) -> Any:
         return str(response).lower()
 
 class ConfirmToBoolPostProcessor(PostProcessor):
-    def __call__(self, response, argument) -> Any:
+    def __call__(self, response, _argument) -> Any:
         if response is None:
             return False
         rsp = response.strip()

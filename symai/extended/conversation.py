@@ -17,7 +17,7 @@ _DEFAULT_TEXT_CONTAINER_FORMATTER = TextContainerFormatter(text_split=4)
 
 
 class CodeFormatter:
-    def __call__(self, value: str, *args: Any, **kwds: Any) -> Any:
+    def __call__(self, value: str, *_args: Any, **_kwds: Any) -> Any:
         # extract code from chat conversations or ```<language>\n{code}\n``` blocks
         return Symbol(value).extract('Only extract code without ``` block markers or chat conversations')
 
@@ -80,16 +80,16 @@ class Conversation(SlidingWindowStringConcatMemory):
         if self.index_name is not None:
             CustomUserWarning("Index not supported for conversation class.", raise_with=NotImplementedError)
 
-    def store_system_message(self, message: str, *args, **kwargs):
+    def store_system_message(self, message: str, *_args, **_kwargs):
         val = f"[SYSTEM_INSTRUCTION::]: <<<\n{message!s}\n>>>\n"
         self.store(val)
 
-    def store_file(self, file_path: str, *args, **kwargs):
+    def store_file(self, file_path: str, *_args, **_kwargs):
         content = self.reader(file_path)
         val = f"[DATA::{file_path}]: <<<\n{content!s}\n>>>\n"
         self.store(val)
 
-    def store_url(self, url: str, *args, **kwargs):
+    def store_url(self, url: str, *_args, **_kwargs):
         content = self.scraper(url)
         val = f"[DATA::{url}]: <<<\n{content!s}\n>>>\n"
         self.store(val)

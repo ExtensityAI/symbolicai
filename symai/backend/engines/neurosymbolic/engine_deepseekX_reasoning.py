@@ -54,13 +54,13 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
         if 'seed' in kwargs:
             self.seed = kwargs['seed']
 
-    def compute_required_tokens(self, messages):
+    def compute_required_tokens(self, _messages):
         CustomUserWarning('Method "compute_required_tokens" not implemented for DeepSeekXReasoningEngine.', raise_with=NotImplementedError)
 
-    def compute_remaining_tokens(self, prompts: list) -> int:
+    def compute_remaining_tokens(self, _prompts: list) -> int:
         CustomUserWarning('Method "compute_remaining_tokens" not implemented for DeepSeekXReasoningEngine.', raise_with=NotImplementedError)
 
-    def truncate(self, prompts: list[dict], truncation_percentage: float | None, truncation_type: str) -> list[dict]:
+    def truncate(self, _prompts: list[dict], _truncation_percentage: float | None, _truncation_type: str) -> list[dict]:
         CustomUserWarning('Method "truncate" not implemented for DeepSeekXReasoningEngine.', raise_with=NotImplementedError)
 
     def forward(self, argument):

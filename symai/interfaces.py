@@ -24,7 +24,7 @@ class Interface(Expression):
         self.module_path = f"symai.extended.interfaces.{module}"
         return Interface.load_module_class(self.module_path, self._module)(*args, **kwargs)
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *_args, **_kwargs):
         CustomUserWarning(f"Interface {self._module} is not callable.", raise_with=NotImplementedError)
 
     @staticmethod

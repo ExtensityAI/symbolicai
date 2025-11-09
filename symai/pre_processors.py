@@ -481,7 +481,7 @@ class CleanTextMessagePreProcessor(PreProcessor):
 
 
 class PredictionMessagePreProcessor(PreProcessor):
-    def __call__(self, argument) -> Any:
+    def __call__(self, _argument) -> Any:
         return 'Prediction:'
 
 

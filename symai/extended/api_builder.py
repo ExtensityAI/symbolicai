@@ -125,7 +125,7 @@ class APIExecutor(Expression):
     def _runnable(self):
         return self.executor._runnable
 
-    def forward(self, request: Symbol, **kwargs) -> Symbol:
+    def forward(self, request: Symbol, **_kwargs) -> Symbol:
         self._request = self._to_symbol(request)
         if self._verbose: print('[REQUEST]', self._request)
         # Generate the code to implement the API call

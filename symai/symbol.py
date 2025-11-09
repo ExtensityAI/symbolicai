@@ -322,7 +322,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
                 # add new instance to children of previous instance
                 self._children.append(v)
 
-    def __new__(cls, *args,
+    def __new__(cls, *_args,
                 mixin: bool | None = None,
                 primitives: list[type] | None = None,
                 callables: list[tuple[str, Callable]] | None = None,
@@ -765,7 +765,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
         '''
         return self._children
 
-    def _root_link(self, sym: Any, **kwargs) -> Any:
+    def _root_link(self, sym: Any, **_kwargs) -> Any:
         '''
         Call the forward method and assign the result to the graph value attribute.
 
@@ -1159,7 +1159,7 @@ class Expression(Symbol):
 
 
 class Result(Expression):
-    def __init__(self, value = None, *args, **kwargs):
+    def __init__(self, value = None, *_args, **kwargs):
         '''
         Create a Result object that stores the results operations, including the raw result, value and metadata, if any.
 

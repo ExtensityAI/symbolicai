@@ -60,7 +60,7 @@ class GraphViz(Expression):
                             select_menu=select_menu,
                             filter_menu=filter_menu)
 
-    def forward(self, sym: Symbol, file_path: str, **kwargs):
+    def forward(self, sym: Symbol, file_path: str, **_kwargs):
         nodes = [str(n) if n.value else n.__repr__(simplified=True) for n in sym.nodes]
         edges = [(str(e[0]) if e[0].value else e[0].__repr__(simplified=True),
                   str(e[1]) if e[1].value else e[1].__repr__(simplified=True)) for e in sym.edges]
@@ -337,7 +337,7 @@ class Metric(Expression):
         self.normalize  = normalize
         self.eps        = eps
 
-    def forward(self, sym: Symbol, **kwargs) -> Symbol:
+    def forward(self, sym: Symbol, **_kwargs) -> Symbol:
         sym = self._to_symbol(sym)
         assert sym.value_type == np.ndarray or sym.value_type == list, 'Metric can only be applied to numpy arrays or lists.'
         if sym.value_type == list:
@@ -373,7 +373,7 @@ class Query(TrackerTraceable):
         super().__init__(**kwargs)
         self.prompt: str = prompt
 
-    def forward(self, sym: Symbol, context: Symbol = None, *args, **kwargs) -> Symbol:
+    def forward(self, sym: Symbol, context: Symbol = None, *_args, **kwargs) -> Symbol:
         sym = self._to_symbol(sym)
         return sym.query(prompt=self.prompt, context=context, **kwargs)
 
@@ -484,7 +484,7 @@ class FileWriter(Expression):
         super().__init__(**kwargs)
         self.path = Path(path)
 
-    def forward(self, sym: Symbol, **kwargs) -> Symbol:
+    def forward(self, sym: Symbol, **_kwargs) -> Symbol:
         sym = self._to_symbol(sym)
         with self.path.open('w') as f:
             f.write(str(sym))
@@ -718,7 +718,7 @@ class ExpressionBuilder(Function):
         super().__init__('Generate the code following the instructions:', **kwargs)
         self.processors = ProcessorPipeline([StripPostProcessor(), CodeExtractPostProcessor()])
 
-    def forward(self, instruct, *args, **kwargs):
+    def forward(self, instruct, *_args, **_kwargs):
         result = super().forward(instruct)
         return self.processors(str(result), None)
 
@@ -896,7 +896,7 @@ class Indexer(Expression):
     def forward(
             self,
             data: Symbol | None = None,
-            raw_result: bool = False,
+            _raw_result: bool = False,
         ) -> Symbol:
         that = self
         if data is not None:
@@ -909,7 +909,7 @@ class Indexer(Expression):
             # we save the index
             that.config(None, save=True, index_name=that.index_name, index_dims=that.new_dim)
 
-        def _func(query, *args, **kwargs) -> Union[Symbol, 'VectorDBResult']:
+        def _func(query, *_args, **kwargs) -> Union[Symbol, 'VectorDBResult']:
             raw_result = kwargs.get('raw_result') or that.raw_result
             query_emb = Symbol(query).embed(new_dim=that.new_dim).value
             res = that.get(query_emb, index_name=that.index_name, index_top_k=that.top_k, ori_query=query, index_dims=that.new_dim, **kwargs)
@@ -945,7 +945,7 @@ class PrimitiveDisabler(Expression):
             for func in self._primitives:
                 if hasattr(sym, func):
                     self._original_primitives[sym_name].append((func, getattr(sym, func)))
-                    setattr(sym, func, lambda *args, **kwargs: None)
+                    setattr(sym, func, lambda *_args, **_kwargs: None)
 
     def _enable_primitives(self):
         for sym_name, sym in self._symbols.items():
@@ -1110,7 +1110,7 @@ class MetadataTracker(Expression):
             return f'"{value}"'
         return f"\n\t    {value}"
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *_args, **_kwargs):
         cls._lock = getattr(cls, '_lock', Lock())
         with cls._lock:
             instance = super().__new__(cls)
@@ -1259,7 +1259,7 @@ class MetadataTracker(Expression):
 
 class DynamicEngine(Expression):
     """Context manager for dynamically switching neurosymbolic engine models."""
-    def __init__(self, model: str, api_key: str, debug: bool = False, **kwargs):
+    def __init__(self, model: str, api_key: str, _debug: bool = False, **_kwargs):
         super().__init__()
         self.model = model
         self.api_key = api_key
@@ -1268,7 +1268,7 @@ class DynamicEngine(Expression):
         self.engine_instance = None
         self._ctx_token = None
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *_args, **_kwargs):
         cls._lock = getattr(cls, '_lock', Lock())
         with cls._lock:
             instance = super().__new__(cls)

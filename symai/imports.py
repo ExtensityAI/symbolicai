@@ -252,7 +252,7 @@ class Import(Expression):
         module_class = getattr(importlib.import_module(relative_module_path), class_)
         return module_class(*args, **kwargs)
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *_args, **_kwargs):
         raise Exception("Cannot call Import class directly. Use Import.load_module_class(module) instead.")
 
     @staticmethod
@@ -287,7 +287,7 @@ class Import(Expression):
         if is_local_path:
             # For local path, remove directly
             if module_path_obj.exists():
-                def del_rw(action, name, exc):
+                def del_rw(_action, name, _exc):
                     path_obj = Path(name)
                     path_obj.chmod(stat.S_IWRITE)
                     path_obj.unlink()
@@ -299,7 +299,7 @@ class Import(Expression):
             # For GitHub modules, remove from packages directory
             module_path = BASE_PACKAGE_PATH / module
             if module_path.exists():
-                def del_rw(action, name, exc):
+                def del_rw(_action, name, _exc):
                     path_obj = Path(name)
                     path_obj.chmod(stat.S_IWRITE)
                     path_obj.unlink()

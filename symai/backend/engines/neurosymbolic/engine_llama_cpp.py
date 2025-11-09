@@ -110,11 +110,11 @@ class LlamaCppEngine(Engine):
         if 'except_remedy' in kwargs:
             self.except_remedy = kwargs['except_remedy']
 
-    def compute_required_tokens(self, messages) -> int:
+    def compute_required_tokens(self, _messages) -> int:
         #@TODO: quite non-trivial how to handle this with the llama.cpp server
         CustomUserWarning('Not implemented for llama.cpp!', raise_with=NotImplementedError)
 
-    def compute_remaining_tokens(self, prompts: list) -> int:
+    def compute_remaining_tokens(self, _prompts: list) -> int:
         #@TODO: quite non-trivial how to handle this with the llama.cpp server
         CustomUserWarning('Not implemented for llama.cpp!', raise_with=NotImplementedError)
 

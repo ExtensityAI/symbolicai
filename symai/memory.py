@@ -28,20 +28,20 @@ class SlidingWindowListMemory(Memory):
         self._window_size: int  = window_size
         self._max_size: int     = max_size
 
-    def store(self, query: str, *args, **kwargs):
+    def store(self, query: str, *_args, **_kwargs):
         self._memory.append(query)
         if len(self._memory) > self._max_size:
             self._memory = self._memory[-self._max_size:]
 
-    def forget(self, query: Symbol, *args, **kwargs):
+    def forget(self, query: Symbol, *_args, **_kwargs):
         self._memory.remove(query)
 
-    def recall(self, *args, **kwargs):
+    def recall(self, *_args, **_kwargs):
         return self._memory[-self._window_size:]
 
 
 class SlidingWindowStringConcatMemory(Memory):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *_args, **kwargs):
         super().__init__(**kwargs)
         self._memory: str       = ''
         self.marker: str        = '[--++=|=++--]'
@@ -72,7 +72,7 @@ class SlidingWindowStringConcatMemory(Memory):
         # append to string to memory
         self._memory += f'{query!s}{self.marker}'
 
-    def forget(self, query: Symbol, *args, **kwargs):
+    def forget(self, query: Symbol, *_args, **_kwargs):
         # remove substring from memory
         sym = Symbol(self._memory)
         self._memory = str(sym - query)
@@ -100,12 +100,12 @@ class VectorDatabaseMemory(Memory):
         self.top_k: int    = top_k
         self.index_name    = index_name
 
-    def store(self, query: str , *args, **kwargs):
+    def store(self, query: str , *_args, **_kwargs):
         if not self.enabled: return
 
         self.add(Symbol(query).zip(), index_name=self.index_name)
 
-    def recall(self, query: str, *args, **kwargs):
+    def recall(self, query: str, *_args, **_kwargs):
         if not self.enabled: return None
 
         res = self.get(Symbol(query).embed().value, index_top_k=self.top_k, index_name=self.index_name).ast()

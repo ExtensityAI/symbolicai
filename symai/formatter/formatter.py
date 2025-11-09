@@ -109,7 +109,7 @@ class ParagraphFormatter(Expression):
                 paragraphs.append(text)
         return paragraphs
 
-    def forward(self, sym: Symbol, *args, **kwargs) -> Symbol:
+    def forward(self, sym: Symbol, *_args, **_kwargs) -> Symbol:
         sym = self._to_symbol(sym)
         # split text paragraph-wise and index each paragraph separately
         self.elements = self.split_files(sym.value)
@@ -134,7 +134,7 @@ class SentenceFormatter(Expression):
 
         return sentences
 
-    def forward(self, sym: Symbol, *args, **kwargs) -> Symbol:
+    def forward(self, sym: Symbol, *_args, **_kwargs) -> Symbol:
         sym = self._to_symbol(sym)
         # split text sentence-wise and index each sentence separately
         self.elements = self.split_sentences(sym.value)
@@ -156,7 +156,7 @@ class RegexFormatter(Expression):
 
         return chunks
 
-    def forward(self, sym: Symbol, *args, **kwargs) -> Symbol:
+    def forward(self, sym: Symbol, *_args, **_kwargs) -> Symbol:
         sym = self._to_symbol(sym)
         # split text sentence-wise and index each sentence separately
         self.elements = self.split_sentences(sym.value)
@@ -176,7 +176,7 @@ class TextContainerFormatter(Expression):
         self.text_split = text_split
 
     @beartype
-    def forward(self, sym: Symbol, *args, **kwargs) -> Symbol:
+    def forward(self, sym: Symbol, *_args, **_kwargs) -> Symbol:
         if isinstance(sym.value, list):
             containers = [container for pdf in sym.value for container in pdf]
         chunks = [text for container in tqdm(containers) for text in self._chunk(container)]
