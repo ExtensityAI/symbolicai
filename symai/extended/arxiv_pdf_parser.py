@@ -7,6 +7,7 @@ import requests
 
 from ..backend.settings import HOME_PATH
 from ..symbol import Expression, Symbol
+from ..utils import CustomUserWarning
 from .file_merger import FileMerger
 
 
@@ -36,7 +37,7 @@ class ArxivPdfParser(Expression):
                 try:
                     pdf_files.append(future.result())
                 except Exception as exc:
-                    print(f"{url!r} generated an exception: {exc}")
+                    CustomUserWarning(f"{url!r} generated an exception: {exc}")
 
         if len(pdf_files) == 0:
             return None

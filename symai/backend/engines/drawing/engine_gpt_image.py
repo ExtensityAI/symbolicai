@@ -8,6 +8,7 @@ import openai
 import requests
 
 from ....symbol import Result
+from ....utils import CustomUserWarning
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
 
@@ -106,7 +107,7 @@ class GPTImageEngine(Engine):
         operation = kwargs.get("operation")
 
         if operation is None:
-            raise ValueError("Operation not specified!")
+            CustomUserWarning("Operation not specified!", raise_with=ValueError)
 
         n = kwargs.get("n", 1)
 
@@ -183,7 +184,7 @@ class GPTImageEngine(Engine):
 
                     res = openai.images.edit(**edit_kwargs)
             else:
-                raise ValueError(f"Unknown image operation: {operation}")
+                CustomUserWarning(f"Unknown image operation: {operation}", raise_with=ValueError)
 
         except Exception as e:
             if except_remedy is None:

@@ -7,6 +7,7 @@ from ..post_processors import StripPostProcessor
 from ..pre_processors import PreProcessor
 from ..prompts import Prompt
 from ..symbol import Expression, Symbol
+from ..utils import CustomUserWarning
 
 _DEFAULT_SENTENCE_FORMATTER = SentenceFormatter()
 
@@ -52,7 +53,8 @@ class Graph(Expression):
             pass
 
         if len(str(s)) > 0:
-            if self.verbose: print(s)
+            if self.verbose:
+                CustomUserWarning(str(s))
             r = _func(self, s)
             rec = str(r)
             lines = rec.split('\n')
@@ -67,7 +69,8 @@ class Graph(Expression):
                                     int(csv[2].strip()) > 0:
                             res += l + '\n'
                     except Exception as e:
-                        if self.verbose: print(e)
+                        if self.verbose:
+                            CustomUserWarning(str(e))
                         pass
         return res
 

@@ -4,6 +4,7 @@ from git import Repo
 
 from ..backend.settings import HOME_PATH
 from ..symbol import Expression
+from ..utils import CustomUserWarning
 
 
 class RepositoryCloner(Expression):
@@ -35,24 +36,24 @@ class RepositoryCloner(Expression):
         """
         repo_name = url.split('/')[-1].replace('.git', '')
         if (self.repo_dir / repo_name).is_dir():
-            print(f'Repository {repo_name} already exists. Checking for updates...')
+            CustomUserWarning(f'Repository {repo_name} already exists. Checking for updates...')
             try:
                 repo = Repo(self.repo_dir / repo_name)
                 current = repo.head.commit
                 repo.remotes.origin.pull()
                 if current != repo.head.commit:
-                    print(f'Repository {repo_name} updated.')
+                    CustomUserWarning(f'Repository {repo_name} updated.')
                 else:
-                    print(f'Repository {repo_name} is up-to-date.')
+                    CustomUserWarning(f'Repository {repo_name} is up-to-date.')
             except Exception as e:
-                print(f'An error occurred: {e}')
+                CustomUserWarning(f'An error occurred: {e}')
                 raise e
         else:
-            print(f'Cloning repository {repo_name}...')
+            CustomUserWarning(f'Cloning repository {repo_name}...')
             try:
                 Repo.clone_from(url, self.repo_dir / repo_name)
-                print(f'Repository {repo_name} cloned successfully.')
+                CustomUserWarning(f'Repository {repo_name} cloned successfully.')
             except Exception as e:
-                print(f'Failed to clone the repository. An error occurred: {e}')
+                CustomUserWarning(f'Failed to clone the repository. An error occurred: {e}')
                 raise e
         return str(self.repo_dir / repo_name)

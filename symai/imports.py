@@ -11,6 +11,7 @@ from loguru import logger
 
 from .backend.settings import HOME_PATH
 from .symbol import Expression
+from .utils import CustomUserWarning
 
 logging.getLogger("subprocess").setLevel(logging.ERROR)
 
@@ -191,7 +192,9 @@ class Import(Expression):
                             logger.error(f"Error importing module {relative_module_path}: {e}")
                             raise
                 else:
-                    raise Exception("Invalid type for 'expressions'. Must be str, list or tuple.")
+                    msg = "Invalid type for 'expressions'. Must be str, list or tuple."
+                    CustomUserWarning(msg)
+                    raise Exception(msg)
 
         assert len(module_classes) > 0, f"Expression '{expressions}' not found in module '{module}'"
         module_classes_names = [str(class_.__name__) for class_ in module_classes]
@@ -219,7 +222,9 @@ class Import(Expression):
             # If module is a local path
             package_path = module_path_obj
             if not (package_path / 'package.json').exists():
-                raise ValueError(f"No package.json found in {module}")
+                msg = f"No package.json found in {module}"
+                CustomUserWarning(msg)
+                raise ValueError(msg)
 
             with (package_path / 'package.json').open() as f:
                 pkg = json.load(f)
@@ -234,7 +239,9 @@ class Import(Expression):
             with (BASE_PACKAGE_PATH / module / 'package.json').open() as f:
                 pkg = json.load(f)
         if 'run' not in pkg:
-            raise Exception(f"Module '{module}' has no 'run' expression defined.")
+            msg = f"Module '{module}' has no 'run' expression defined."
+            CustomUserWarning(msg)
+            raise Exception(msg)
         expr = pkg['run']
         module_rel = expr['module'].replace('/', '.')
         module_parts = module.split('/')
@@ -246,7 +253,9 @@ class Import(Expression):
         return module_class(*args, **kwargs)
 
     def __call__(self, *_args, **_kwargs):
-        raise Exception("Cannot call Import class directly. Use Import.load_module_class(module) instead.")
+        msg = "Cannot call Import class directly. Use Import.load_module_class(module) instead."
+        CustomUserWarning(msg)
+        raise Exception(msg)
 
     @staticmethod
     def install(module: str, local_path: str | None = None, submodules: bool = False):

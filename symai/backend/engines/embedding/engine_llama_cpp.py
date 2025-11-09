@@ -58,13 +58,13 @@ class LlamaCppEmbeddingEngine(Engine):
 
     def _validate_timeout_params(self, timeout_params):
         if not isinstance(timeout_params, dict):
-            raise ValueError("timeout_params must be a dictionary")
+            CustomUserWarning("timeout_params must be a dictionary", raise_with=ValueError)
         assert all(key in timeout_params for key in ['read', 'connect']), "Available keys: ['read', 'connect']"
         return timeout_params
 
     def _validate_retry_params(self, retry_params):
         if not isinstance(retry_params, dict):
-            raise ValueError("retry_params must be a dictionary")
+            CustomUserWarning("retry_params must be a dictionary", raise_with=ValueError)
         assert all(key in retry_params for key in ['tries', 'delay', 'max_delay', 'backoff', 'jitter', 'graceful']), \
             "Available keys: ['tries', 'delay', 'max_delay', 'backoff', 'jitter', 'graceful']"
         return retry_params
@@ -75,7 +75,9 @@ class LlamaCppEmbeddingEngine(Engine):
         try:
             current_loop = asyncio.get_event_loop()
             if current_loop.is_closed():
-                raise RuntimeError("Event loop is closed.")
+                msg = "Event loop is closed."
+                CustomUserWarning(msg)
+                raise RuntimeError(msg)
             return current_loop
         except RuntimeError:
             new_loop = asyncio.new_event_loop()
@@ -95,7 +97,7 @@ class LlamaCppEmbeddingEngine(Engine):
                 json={"content": text, "embd_normalize": embd_normalize}
             ) as res:
                 if res.status != 200:
-                    raise ValueError(f"Request failed with status code: {res.status}")
+                    CustomUserWarning(f"Request failed with status code: {res.status}", raise_with=ValueError)
                 return await res.json()
 
         return await _make_request()
@@ -109,7 +111,7 @@ class LlamaCppEmbeddingEngine(Engine):
 
         new_dim = kwargs.get('new_dim')
         if new_dim:
-            raise NotImplementedError("new_dim is not yet supported")
+            CustomUserWarning("new_dim is not yet supported", raise_with=NotImplementedError)
 
         nest_asyncio.apply()
         loop = self._get_event_loop()
@@ -117,7 +119,7 @@ class LlamaCppEmbeddingEngine(Engine):
         try:
             res = loop.run_until_complete(self._arequest(inp, embd_normalize))
         except Exception as e:
-            raise ValueError(f"Request failed with error: {e!s}")
+            CustomUserWarning(f"Request failed with error: {e!s}", raise_with=ValueError)
 
         output = [r["embedding"] for r in res] if res is not None else None  # B x 1 x D
         metadata = {'raw_output': res}

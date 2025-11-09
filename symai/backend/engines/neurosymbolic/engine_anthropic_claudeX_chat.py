@@ -133,7 +133,7 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
             CustomUserWarning(f"Error counting tokens for Claude: {e!s}", raise_with=RuntimeError)
 
     def compute_remaining_tokens(self, prompts: list) -> int:
-        raise NotImplementedError('Method not implemented.')
+        CustomUserWarning('Method not implemented.', raise_with=NotImplementedError)
 
     def _handle_image_content(self, content: str) -> list:
         """Handle image content by processing vision patterns and returning image file data."""
@@ -212,7 +212,9 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
 
     def _prepare_raw_input(self, argument):
         if not argument.prop.processed_input:
-            raise ValueError('Need to provide a prompt instruction to the engine if `raw_input` is enabled!')
+            msg = 'Need to provide a prompt instruction to the engine if `raw_input` is enabled!'
+            CustomUserWarning(msg)
+            raise ValueError(msg)
         system = NOT_GIVEN
         prompt = copy(argument.prop.processed_input)
         if type(prompt) != list:
@@ -301,7 +303,9 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
 
             res = self_prompter({'user': user, 'system': system})
             if res is None:
-                raise ValueError("Self-prompting failed!")
+                msg = "Self-prompting failed!"
+                CustomUserWarning(msg)
+                raise ValueError(msg)
 
             if len(image_files) > 0:
                 user_prompt = { "role": "user", "content": [

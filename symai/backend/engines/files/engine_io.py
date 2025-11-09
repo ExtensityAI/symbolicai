@@ -7,6 +7,7 @@ import pypdf
 import tika
 from tika import unpack
 
+from ....utils import CustomUserWarning
 from ...base import Engine
 
 # Initialize Tika lazily to avoid spawning JVMs prematurely for all workers
@@ -123,7 +124,7 @@ class FileEngine(Engine):
         for i, x in enumerate(pdf_stream_in[::-1]):
             if b'%%EOF' in x:
                 actual_line = len(pdf_stream_in)-i
-                print(f'EOF found at line position {-i} = actual {actual_line}, with value {x}')
+                CustomUserWarning(f'EOF found at line position {-i} = actual {actual_line}, with value {x}')
                 break
 
         # return the list up to that point
@@ -179,7 +180,7 @@ class FileEngine(Engine):
                     pdf_reader = pypdf.PdfReader(f)
                     rsp = self.read_text(pdf_reader, page_range, argument)
             except Exception as e:
-                print(f'Error reading PDF: {e} | {path}')
+                CustomUserWarning(f'Error reading PDF: {e} | {path}')
                 if 'fix_pdf' not in kwargs or not kwargs['fix_pdf']:
                     raise e
                 fixed_pdf = self.fix_pdf(str(path))
@@ -189,11 +190,11 @@ class FileEngine(Engine):
             try:
                 rsp = self._read_slice_file(path, argument)
             except Exception as e:
-                print(f'Error reading empty file: {e} | {path}')
+                CustomUserWarning(f'Error reading empty file: {e} | {path}')
                 raise e
 
         if rsp is None:
-            raise Exception(f'Error reading file - empty result: {path}')
+            CustomUserWarning(f'Error reading file - empty result: {path}', raise_with=Exception)
 
         metadata = {}
 

@@ -218,7 +218,9 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
 
     def _prepare_raw_input(self, argument):
         if not argument.prop.processed_input:
-            raise ValueError('Need to provide a prompt instruction to the engine if `raw_input` is enabled!')
+            msg = 'Need to provide a prompt instruction to the engine if `raw_input` is enabled!'
+            CustomUserWarning(msg)
+            raise ValueError(msg)
         system = NOT_GIVEN
         prompt = copy(argument.prop.processed_input)
         if type(prompt) != list:

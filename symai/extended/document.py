@@ -5,6 +5,7 @@ from typing import Union
 from ..components import FileReader, Indexer
 from ..formatter import ParagraphFormatter
 from ..symbol import Expression, Symbol
+from ..utils import CustomUserWarning
 
 _DEFAULT_PARAGRAPH_FORMATTER = ParagraphFormatter()
 
@@ -71,4 +72,4 @@ class DocumentRetriever(Expression):
             return self.reader(files, with_metadata=with_metadata, **kwargs)
         if maybe_path.is_file():
             return self.reader(source, with_metadata=with_metadata, **kwargs)
-        raise ValueError(f"Invalid source: {source}; must be a file, directory, or string")
+        CustomUserWarning(f"Invalid source: {source}; must be a file, directory, or string", raise_with=ValueError)

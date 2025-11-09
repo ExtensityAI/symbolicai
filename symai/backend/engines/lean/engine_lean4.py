@@ -7,6 +7,7 @@ import docker
 import paramiko
 
 from ....symbol import Result
+from ....utils import CustomUserWarning
 from ...base import Engine
 
 
@@ -88,7 +89,7 @@ class LeanEngine(Engine):
             existing_container: docker.models.containers.Container = self.docker_client.containers.get(container_name)
             existing_container.remove(force=True)
         except docker.errors.NotFound:
-            print(f"No existing container named '{container_name}' found. Proceeding to create a new one.")
+            CustomUserWarning(f"No existing container named '{container_name}' found. Proceeding to create a new one.")
 
         dockerfile: str = """
         FROM buildpack-deps:buster
@@ -172,12 +173,12 @@ class LeanEngine(Engine):
         except Exception as e:
             err = str(e)
             metadata.update({'status': 'error', 'message': err})
-            print(f"Error during Lean execution: {err}")
+            CustomUserWarning(f"Error during Lean execution: {err}")
         finally:
             if tmpfile_path and tmpfile_path.exists():
                 tmpfile_path.unlink()
             if self.container:
-                print(f"Killing Docker container '{self.container.id}'...")
+                CustomUserWarning(f"Killing Docker container '{self.container.id}'...")
                 self.container.remove(force=True)
 
         return [rsp] if rsp else [], metadata
@@ -203,8 +204,8 @@ class LeanEngine(Engine):
             _stdin, stdout, stderr = ssh.exec_command(f"{elan_path} default stable && {lean_path} --version")
             output: str = stdout.read().decode()
             error: str = stderr.read().decode()
-            print("SSH Command Output:", output)
-            print("SSH Command Error:", error)
+            CustomUserWarning(f"SSH Command Output: {output}")
+            CustomUserWarning(f"SSH Command Error: {error}")
 
             sftp = ssh.open_sftp()
             remote_path: str = f"/root/{Path(filepath).name}"
@@ -225,7 +226,7 @@ class LeanEngine(Engine):
             return output, {'status': 'success'}
 
         except Exception as e:
-            raise RuntimeError(f"SSH command execution failed: {e!s}")
+            CustomUserWarning(f"SSH command execution failed: {e!s}", raise_with=RuntimeError)
 
     def prepare(self, argument: Any) -> None:
         """

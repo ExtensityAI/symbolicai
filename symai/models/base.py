@@ -8,6 +8,8 @@ from attr import dataclass
 from pydantic import BaseModel, Field, create_model, model_validator
 from pydantic_core import PydanticUndefined
 
+from ..utils import CustomUserWarning
+
 
 @dataclass
 class LengthConstraint:
@@ -45,7 +47,7 @@ class LLMDataModel(BaseModel):
             if cls._is_const_field(field_info):
                 const_value = cls._get_const_value(field_info)
                 if field_name in values and values[field_name] != const_value:
-                    raise ValueError(f'{field_name} must be {const_value!r}')
+                    CustomUserWarning(f'{field_name} must be {const_value!r}', raise_with=ValueError)
         return values
 
     @staticmethod

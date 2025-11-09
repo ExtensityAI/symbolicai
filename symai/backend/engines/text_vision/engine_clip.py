@@ -6,6 +6,7 @@ import torch
 from PIL import Image
 from transformers import CLIPModel, CLIPProcessor
 
+from ....utils import CustomUserWarning
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
 
@@ -70,7 +71,7 @@ class CLIPEngine(Engine):
             logits_per_image  = outputs.logits_per_image  # this is the image-text similarity score
             rsp               = logits_per_image.softmax(dim=1)  # we can take the softmax to get the label probabilities
         else:
-            raise NotImplementedError("CLIPEngine requires either image or text input.")
+            CustomUserWarning("CLIPEngine requires either image or text input.", raise_with=NotImplementedError)
 
         rsp = rsp.squeeze().detach().cpu().numpy()
 

@@ -161,9 +161,9 @@ def run_server():
         try:
             subprocess.run(command, check=True)
         except KeyboardInterrupt:
-            print("Server stopped!")
+            CustomUserWarning("Server stopped!")
         except Exception as e:
-            print(f"Error running server: {e}")
+            CustomUserWarning(f"Error running server: {e}")
         finally:
             config_manager.save_config("symserver.config.json", {'online': False})
 
@@ -179,13 +179,17 @@ def run_server():
         try:
             command(host=args.host, port=args.port)
         except KeyboardInterrupt:
-            print("Server stopped!")
+            CustomUserWarning("Server stopped!")
         except Exception as e:
-            print(f"Error running server: {e}")
+            CustomUserWarning(f"Error running server: {e}")
         finally:
             config_manager.save_config("symserver.config.json", {'online': False})
     else:
-        raise CustomUserWarning("You're trying to run a local server without a valid neuro-symbolic engine model. Please set a valid model in your configuration file. Current available options are 'llamacpp' and 'huggingface'.")
+        msg = (
+            "You're trying to run a local server without a valid neuro-symbolic engine model. "
+            "Please set a valid model in your configuration file. Current available options are 'llamacpp' and 'huggingface'."
+        )
+        CustomUserWarning(msg, raise_with=ValueError)
 
 
 # *==============================================================================================================*

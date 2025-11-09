@@ -21,14 +21,18 @@ class Prompt:
                 elif isinstance(v, Prompt):
                     self._value += v.value
                 else:
-                    raise ValueError(f"List of values must be strings or Prompts, not {type(v)}")
+                    msg = f"List of values must be strings or Prompts, not {type(v)}"
+                    CustomUserWarning(msg)
+                    raise ValueError(msg)
         elif isinstance(value, Prompt):
             self._value += value.value
         elif isinstance(value, Callable):
             res = value()
             self._value += res.value
         else:
-            raise TypeError(f"Prompt value must be of type str, List[str], Prompt, or List[Prompt], not {type(value)}")
+            msg = f"Prompt value must be of type str, List[str], Prompt, or List[Prompt], not {type(value)}"
+            CustomUserWarning(msg)
+            raise TypeError(msg)
         self.dynamic_value = []
         self.format_kwargs = format_kwargs
 
@@ -48,11 +52,17 @@ class Prompt:
                 template_ = '{'+k+'}'
                 count = val_.count(template_)
                 if count <= 0:
-                    raise TemplatePropertyException(f"Template property `{k}` not found.")
+                    msg = f"Template property `{k}` not found."
+                    CustomUserWarning(msg)
+                    raise TemplatePropertyException(msg)
                 if count > 1:
-                    raise TemplatePropertyException(f"Template property {k} found multiple times ({count}), expected only once.")
+                    msg = f"Template property {k} found multiple times ({count}), expected only once."
+                    CustomUserWarning(msg)
+                    raise TemplatePropertyException(msg)
                 if v is None:
-                    raise TemplatePropertyException(f"Invalid value: Template property {k} is None.")
+                    msg = f"Invalid value: Template property {k} is None."
+                    CustomUserWarning(msg)
+                    raise TemplatePropertyException(msg)
                 val_ = val_.replace(template_, v)
         return val_
 
@@ -167,9 +177,12 @@ class PromptRegistry:
         if self._model_fallback and model != ModelName.ALL:
             return self._retrieve_value(dictionary, ModelName.ALL, lang, key)
 
-        raise ValueError(
-            f"Prompt value {key} not found for language {lang} and model {model} (fallback: {self._model_fallback})"
+        msg = (
+            f"Prompt value {key} not found for language {lang} and model {model} "
+            f"(fallback: {self._model_fallback})"
         )
+        CustomUserWarning(msg)
+        raise ValueError(msg)
 
     def register_value(
         self,

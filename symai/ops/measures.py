@@ -1,6 +1,8 @@
 import numpy as np
 from scipy import linalg
 
+from ..utils import CustomUserWarning
+
 
 def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
     """Numpy implementation of the Frechet Distance.
@@ -42,7 +44,7 @@ def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
     if not np.isfinite(covmean).all():
         msg = ('fid calculation produces singular product; '
             f'adding {eps} to diagonal of cov estimates')
-        print(msg)
+        CustomUserWarning(msg)
         offset = np.eye(sigma1.shape[0]) * eps
         covmean = linalg.sqrtm((sigma1 + offset).dot(sigma2 + offset))
 
@@ -50,7 +52,7 @@ def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
     if np.iscomplexobj(covmean):
         if not np.allclose(np.diagonal(covmean).imag, 0, atol=1e-3):
             m = np.max(np.abs(covmean.imag))
-            raise ValueError(f'Imaginary component {m}')
+            CustomUserWarning(f'Imaginary component {m}', raise_with=ValueError)
         covmean = covmean.real
 
     tr_covmean = np.trace(covmean)

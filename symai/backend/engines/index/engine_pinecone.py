@@ -8,6 +8,7 @@ with contextlib.suppress(BaseException):
 
 from .... import core_ext
 from ....symbol import Result
+from ....utils import CustomUserWarning
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
 
@@ -136,7 +137,7 @@ class PineconeIndexEngine(Engine):
     def id(self) -> str:
         if SYMAI_CONFIG['INDEXING_ENGINE_API_KEY']:
             if Pinecone is None:
-                print('Pinecone is not installed. Please install it with `pip install symbolicai[pinecone]`.')
+                CustomUserWarning('Pinecone is not installed. Please install it with `pip install symbolicai[pinecone]`.')
             return 'index'
         return super().id() # default to unregistered
 
@@ -195,7 +196,7 @@ class PineconeIndexEngine(Engine):
             self._configure_index(**kwargs)
 
         else:
-            raise ValueError('Invalid operation')
+            CustomUserWarning('Invalid operation', raise_with=ValueError)
 
         metadata = {}
 
