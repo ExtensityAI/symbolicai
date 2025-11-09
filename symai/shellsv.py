@@ -304,7 +304,7 @@ def load_history(home_path=HOME_PATH, history_file='.bash_history'):
 def get_git_branch():
     try:
         git_process = subprocess.Popen(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = git_process.communicate()
+        stdout, _stderr = git_process.communicate()
         if git_process.returncode == 0:
             return stdout.strip().decode('utf-8')
     except FileNotFoundError:
@@ -808,9 +808,9 @@ def listen(session: PromptSession, word_comp: WordCompleter, auto_query_on_error
                     cur_working_dir_str = f'<b>{last_path}</b>'
 
                 if git_branch:
-                    prompt = HTML(f"<ansiblue>{cur_working_dir_str}</ansiblue><ansiwhite> on git:[</ansiwhite><ansigreen>{git_branch}</ansigreen><ansiwhite>]</ansiwhite> <ansiwhite>conda:[</ansiwhite><ansimagenta>{conda_env}</ansimagenta><ansiwhite>]</ansiwhite> <ansicyan><b>symsh:</b> ❯</ansicyan> ")
+                    prompt = HTML(f"<ansiblue>{cur_working_dir_str}</ansiblue><ansiwhite> on git:[</ansiwhite><ansigreen>{git_branch}</ansigreen><ansiwhite>]</ansiwhite> <ansiwhite>conda:[</ansiwhite><ansimagenta>{conda_env}</ansimagenta><ansiwhite>]</ansiwhite> <ansicyan><b>symsh:</b> ></ansicyan> ")
                 else:
-                    prompt = HTML(f"<ansiblue>{cur_working_dir_str}</ansiblue> <ansiwhite>conda:[</ansiwhite><ansimagenta>{conda_env}</ansimagenta><ansiwhite>]</ansiwhite> <ansicyan><b>symsh:</b> ❯</ansicyan> ")
+                    prompt = HTML(f"<ansiblue>{cur_working_dir_str}</ansiblue> <ansiwhite>conda:[</ansiwhite><ansimagenta>{conda_env}</ansimagenta><ansiwhite>]</ansiwhite> <ansicyan><b>symsh:</b> ></ansicyan> ")
 
                 # Read user input
                 cmd = session.prompt(prompt)

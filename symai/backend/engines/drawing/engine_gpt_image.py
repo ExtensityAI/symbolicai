@@ -46,7 +46,7 @@ class GPTImageResult(Result):
 
 class GPTImageEngine(Engine):
     """
-    A drop‐in engine for OpenAI's unified Images API,
+    A drop-in engine for OpenAI's unified Images API,
     supporting gpt-image-1, dall-e-2, dall-e-3,
     with all the extra parameters (background, moderation, etc).
     """
@@ -82,7 +82,7 @@ class GPTImageEngine(Engine):
 
     def command(self, *args, **kwargs):
         """
-        Allow hot‐swapping API key or model at runtime.
+        Allow hot-swapping API key or model at runtime.
         """
         super().command(*args, **kwargs)
         if "DRAWING_ENGINE_API_KEY" in kwargs:

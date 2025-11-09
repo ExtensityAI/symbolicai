@@ -356,7 +356,7 @@ class Metric(Expression):
 
 
 class Style(Expression):
-    def __init__(self, description: str, libraries: list[str] = None, **kwargs):
+    def __init__(self, description: str, libraries: list[str] | None = None, **kwargs):
         if libraries is None:
             libraries = []
         super().__init__(**kwargs)
@@ -596,7 +596,7 @@ class Function(TrackerTraceable):
                  pre_processors: list[PreProcessor] | None   = None,
                  post_processors: list[PostProcessor] | None = None,
                  default: object | None       = None,
-                 constraints: list[Callable]     = None,
+                 constraints: list[Callable] | None     = None,
                  return_type: type | None     = str,
                  sym_return_type: type | None = Symbol,
                  origin_type: type | None     = Expression,

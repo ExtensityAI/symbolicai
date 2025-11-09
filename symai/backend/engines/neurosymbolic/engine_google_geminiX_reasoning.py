@@ -305,7 +305,7 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
 
     def forward(self, argument):
         kwargs = argument.kwargs
-        system, prompt = argument.prop.prepared_input
+        _system, prompt = argument.prop.prepared_input
         payload = self._prepare_request_payload(argument)
         except_remedy = kwargs.get('except_remedy')
 

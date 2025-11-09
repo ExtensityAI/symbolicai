@@ -312,7 +312,7 @@ class FuzzyEquals(Prompt):
             "['zz', 'yy', 'xx'] == 'ZZ | YY | XX' =>True",
             "'House, Mouse, CARS' == 'house | mouse | cars' =>True",
             "'we hav teh most efective systeem in the citi.' == 'We have the most effective system in the city.' =>True",
-            "【Ｓｅｍａｎｔｉｃ░ｐｒｏｇｒａｍｍｉｎｇ】 == 'semantic programming' =>True",
+            "'[SEMANTIC_PROGRAMMING]' == 'semantic programming' =>True",
             "'e' == 'constant' =>True",
             "'e' == '2.718...' =>True",
             "1/3 == '0.30...' =>False"
@@ -583,7 +583,7 @@ class FewShotPattern(Prompt):
 class StartsWith(Prompt):
     def __init__(self):
         super().__init__([
-            # Semantic examples – understanding concepts (positive cases)
+            # Semantic examples - understanding concepts (positive cases)
             "'The apple fell from the tree.' startswith 'fruit' =>True",
             "'The red rose bloomed in spring.' startswith 'flower' =>True",
             "'My dog loves to play fetch.' startswith 'animal' =>True",
@@ -599,7 +599,7 @@ class StartsWith(Prompt):
             "'The earthquake shook the entire city.' startswith 'natural disaster' =>True",
             "'She invested in stocks and bonds.' startswith 'finance' =>True",
             "'The police officer directed traffic.' startswith 'law enforcement' =>True",
-            # Semantic examples – negative cases
+            # Semantic examples - negative cases
             "'The book was very interesting.' startswith 'vehicle' =>False",
             "'The mountain peak was covered in snow.' startswith 'ocean' =>False",
             "'She played the piano beautifully.' startswith 'sports' =>False",
@@ -612,7 +612,7 @@ class StartsWith(Prompt):
 class EndsWith(Prompt):
     def __init__(self):
         super().__init__([
-            # Semantic examples – understanding concepts (positive cases)
+            # Semantic examples - understanding concepts (positive cases)
             "'She sliced a ripe banana.' endswith 'fruit' =>True",
             "'He adopted a small puppy.' endswith 'animal' =>True",
             "'They commuted by train.' endswith 'vehicle' =>True",
@@ -623,7 +623,7 @@ class EndsWith(Prompt):
             "'He flew to Spain.' endswith 'country' =>True",
             "'The chef baked fresh bread.' endswith 'food' =>True",
             "'They filmed a documentary about dolphins.' endswith 'animal' =>True",
-            # Semantic examples – negative cases
+            # Semantic examples - negative cases
             "'The sun set behind the mountains.' endswith 'vehicle' =>False",
             "'He repaired the motorcycle.' endswith 'instrument' =>False",
             "'They enjoyed a salad.' endswith 'building' =>False",
@@ -698,7 +698,7 @@ class SimpleSymbolicExpression(Prompt):
             '"x² = 9" or "x = 4" =>Either x² = 9 or x = 4.',
             '"x² = 9" xor "x = 4" =>Exactly one of x² = 9 or x = 4, but not both.',
             '"x² = 9" implies "x = ±3" =>If x² = 9, then x = ±3.',
-            '"f′(x) = 0" ++ "f has a local extremum" =>A critical point indicates f has a local extremum.',
+            '"f prime (x) = 0" ++ "f has a local extremum" =>A critical point indicates f has a local extremum.',
             '"a² + b² = c²" * "c = 13" =>In the right-triangle where c = 13, a² + b² = 169.',
             '"limₓ→0 sin x / x = 1" and "x approaches 0" =>As x approaches 0, sin x / x tends to 1.',
             """"SELECT name FROM customers" + "WHERE city = 'Paris'" =>SELECT name FROM customers WHERE city = 'Paris'.""",
@@ -707,7 +707,7 @@ class SimpleSymbolicExpression(Prompt):
             """"x > 3" and "x < 7" =>3 < x < 7.""",
             """"a divides b" implies "b mod a = 0" =>If a divides b, then b mod a = 0.""",
             """"p" xor "not p" =>Exactly one of p or not p, but not both.""",
-            """"f′(x) exists" ++ "f(x) continuous" =>A differentiable function is necessarily continuous.""",
+            """"f prime (x) exists" ++ "f(x) continuous" =>A differentiable function is necessarily continuous.""",
             """"SELECT * FROM orders" / "status = 'PENDING'" =>If status = 'PENDING', SELECT * FROM orders.""",
             """"x = 2" + "y = 3" * "z = x + y" =>With x = 2 and y = 3, z = 5.""",
             """"temperature rises" >> "ice melts" =>Because temperature rises, ice melts."""
@@ -732,7 +732,7 @@ class LogicExpression(Prompt):
             # AND
             "expr 'All humans are mortal' and 'Socrates is a human' =>'Therefore, Socrates is mortal.'",
             "expr 'If it rains, the ground gets wet' and 'It is raining' =>'Therefore, the ground gets wet.'",
-            "expr 'The sky is blue' and 'The sky is not blue' =>'Contradiction – both cannot be true together.'",
+            "expr 'The sky is blue' and 'The sky is not blue' =>'Contradiction - both cannot be true together.'",
             # OR
             "expr 'It is Monday' or 'It is a holiday' =>'Either it is Monday, a holiday, or possibly both.'",
             "expr 'Alice is at home' or 'Bob is at home' =>'Alice or Bob is at home, perhaps both.'",

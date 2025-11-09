@@ -138,7 +138,7 @@ class SplitPipePostProcessor(PostProcessor):
     def __call__(self, response, _argument) -> Any:
         tmp = response if isinstance(response, list) else [response]
         tmp = [r.split('|') for r in tmp if len(r.strip()) > 0]
-        tmp = sum(tmp, [])
+        tmp = [item for group in tmp for item in group]
         return [t.strip() for t in tmp if len(t.strip()) > 0]
 
 

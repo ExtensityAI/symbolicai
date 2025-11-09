@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 from copy import deepcopy
+from typing import Any, ClassVar
 
 import aiohttp
 import nest_asyncio
@@ -63,7 +64,7 @@ class LlamaCppTokenizer:
 
 
 class LlamaCppEngine(Engine):
-    _retry_params = {
+    _retry_params: ClassVar[dict[str, Any]] = {
         'tries': 5,
         'delay': 2,
         'max_delay': 60,
@@ -71,7 +72,7 @@ class LlamaCppEngine(Engine):
         'jitter': (1, 5),
         'graceful': True
     }
-    _timeout_params = {
+    _timeout_params: ClassVar[dict[str, Any]] = {
         'read': None,
         'connect': None,
     }

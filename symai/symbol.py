@@ -3,7 +3,7 @@ import html
 import json
 from collections.abc import Callable, Iterator
 from json import JSONEncoder
-from typing import Any, Generic, TypeVar
+from typing import Any, ClassVar, Generic, TypeVar
 
 import numpy as np
 from box import Box
@@ -208,12 +208,13 @@ class SymbolMeta(type):
 
 
 class Symbol(Generic[T], metaclass=SymbolMeta):
-    _mixin                = True
-    _primitives           = SYMBOL_PRIMITIVES
-    _metadata             = Metadata()
-    _metadata._primitives = {}
-    _dynamic_context: dict[str, list[str]] = {}
-    _RESERVED_PROPERTIES = {'graph', 'linker', 'parent', 'children', 'metadata', 'value', 'root', 'nodes', 'edges', 'global_context', 'static_context', 'dynamic_context', 'shape'}
+    _mixin: ClassVar[bool] = True
+    _primitives: ClassVar[dict[str, type]] = SYMBOL_PRIMITIVES
+    _metadata: ClassVar[Metadata] = Metadata()
+    _metadata_primitives: ClassVar[dict[str, Callable]] = {}
+    _metadata._primitives = _metadata_primitives
+    _dynamic_context: ClassVar[dict[str, list[str]]] = {}
+    _RESERVED_PROPERTIES: ClassVar[set[str]] = {'graph', 'linker', 'parent', 'children', 'metadata', 'value', 'root', 'nodes', 'edges', 'global_context', 'static_context', 'dynamic_context', 'shape'}
 
     def __init__(self, *value, static_context: str | None = '', dynamic_context: str | None = None, **kwargs) -> None:
         '''
@@ -350,7 +351,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
         # Initialize instance as a combination of Symbol and the mixin primitive types
         if use_mixin:
             # create a new cls type that inherits from Symbol and the mixin primitive types
-            cls       = SymbolMeta(cls.__name__, (cls,) + tuple(primitives), {})
+            cls       = SymbolMeta(cls.__name__, (cls, *tuple(primitives)), {})
         obj = super().__new__(cls)
         # store to inherit when creating new instances
         obj._kwargs = {
@@ -458,7 +459,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
         It returns a tuple that contains:
         - A callable object that when called produces a new object (e.g., the class of the object)
         - A tuple of arguments for the callable object
-        - Optionally, the state which will be passed to the object’s `__setstate__` method
+        - Optionally, the state which will be passed to the object's `__setstate__` method
 
         Returns:
             tuple: A tuple containing the callable object, the arguments for the callable object, and the state of the object.
@@ -476,7 +477,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
         # The __reduce__ method returns:
         # - A callable object that when called produces a new object (e.g., the class of the object)
         # - A tuple of arguments for the callable object
-        # - Optionally, the state which will be passed to the object’s `__setstate__` method
+        # - Optionally, the state which will be passed to the object's `__setstate__` method
         return (self._reconstruct_class, (base_cls, self._mixin, primitives), state)
 
     def __reduce_ex__(self, protocol):
@@ -500,7 +501,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
             # Convert primitive info tuples back to types
             primitives     = [primitive for primitive, name in primitives_info]
             # Create new cls with UnifiedMeta metaclass
-            cls            = SymbolMeta(base_cls.__name__, (base_cls,) + tuple(primitives), {})
+            cls            = SymbolMeta(base_cls.__name__, (base_cls, *tuple(primitives)), {})
             obj            = cls()
             return obj
         return base_cls()
@@ -793,7 +794,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
                 res_.root._parent = prev
             ref.root_link.results[self.__repr__()] = res_
 
-    def adapt(self, context: str, types: list[type] = None) -> None:
+    def adapt(self, context: str, types: list[type] | None = None) -> None:
         '''
         Update the dynamic context with a given runtime context.
 
@@ -816,7 +817,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
 
             Symbol._dynamic_context[type_].append(str(context))
 
-    def clear(self, types: list[type] = None) -> None:
+    def clear(self, types: list[type] | None = None) -> None:
         '''
         Clear the dynamic context associated with this symbol type.
         '''
@@ -1096,7 +1097,7 @@ class Expression(Symbol):
         raise NotImplementedError
 
     @staticmethod
-    def command(engines: list[str] = None, **kwargs) -> 'Symbol':
+    def command(engines: list[str] | None = None, **kwargs) -> 'Symbol':
         '''
         Execute command(s) on engines.
 

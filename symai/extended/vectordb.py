@@ -3,6 +3,7 @@ import logging
 import pickle
 from copy import deepcopy
 from pathlib import Path
+from typing import ClassVar
 
 import numpy as np
 
@@ -24,15 +25,15 @@ logging.getLogger('datasets').setLevel(logging.WARNING)
 
 
 class VectorDB(Expression):
-    _default_documents = []
-    _default_vectors = None
-    _default_batch_size = 2048
-    _default_similarity_metric = "cosine"
-    _default_embedding_function = None
-    _default_index_dims = 768
-    _default_top_k = 5
-    _default_storage_path = HOME_PATH / "localdb"
-    _default_index_name = "dataindex"
+    _default_documents: ClassVar[list] = []
+    _default_vectors: ClassVar[np.ndarray | None] = None
+    _default_batch_size: ClassVar[int] = 2048
+    _default_similarity_metric: ClassVar[str] = "cosine"
+    _default_embedding_function: ClassVar[object | None] = None
+    _default_index_dims: ClassVar[int] = 768
+    _default_top_k: ClassVar[int] = 5
+    _default_storage_path: ClassVar[Path] = HOME_PATH / "localdb"
+    _default_index_name: ClassVar[str] = "dataindex"
     def __init__(
         self,
         documents=_default_documents,
@@ -257,7 +258,7 @@ class VectorDB(Expression):
         self.vectors   = None
         self.documents = []
 
-    def save(self, storage_file: str = None):
+    def save(self, storage_file: str | None = None):
         """
         Saves the database to a file.
 
@@ -281,7 +282,7 @@ class VectorDB(Expression):
             with storage_file.open("wb") as f:
                 pickle.dump(data, f)
 
-    def load(self, storage_file : str = None):
+    def load(self, storage_file : str | None = None):
         """
         Loads the database from a file.
 
