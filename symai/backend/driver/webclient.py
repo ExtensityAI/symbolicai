@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 os.environ['WDM_LOG'] = 'false' # disable webdriver-manager logging
 
@@ -137,7 +138,8 @@ def connect_browsers(debug, proxy):
 
 
 def dump_page_source(driver, file_path="dump.log"):
-    with open(file_path, "wb") as err_file:
+    path = Path(file_path)
+    with path.open("wb") as err_file:
         err_file.write(driver.page_source.encode("utf-8"))
 
 
@@ -167,9 +169,11 @@ def download_images(driver, args):
             response = urllib.request.urlopen(data)
             n = i.get_attribute("data-iml")
             if n:
-                if not os.path.exists(f'data/{p}'):
-                    os.makedirs(f'data/{p}')
-                with open(f'data/{p}/{n}.jpg', 'wb') as f:
+                data_dir = Path('data') / p
+                if not data_dir.exists():
+                    data_dir.mkdir(parents=True, exist_ok=True)
+                file_path = data_dir / f'{n}.jpg'
+                with file_path.open('wb') as f:
                     f.write(response.file.read())
 
 
@@ -181,7 +185,7 @@ def run_selenium_test(debug=False):
     cnt = 0
     now = time.time()
 
-    with open('data/text_demo.txt') as f:
+    with Path('data/text_demo.txt').open() as f:
         text = f.read().replace('\n', '')\
                        .replace('.', '')\
                        .replace(',', '')

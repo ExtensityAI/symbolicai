@@ -43,13 +43,13 @@ def _start_symai():
     global _symserver_config_
 
     # Create config directories if they don't exist
-    os.makedirs(config_manager._env_config_dir, exist_ok=True)
-    os.makedirs(config_manager._home_config_dir, exist_ok=True)
+    config_manager._env_config_dir.mkdir(parents=True, exist_ok=True)
+    config_manager._home_config_dir.mkdir(parents=True, exist_ok=True)
 
     # CREATE THE SHELL CONFIGURATION FILE IF IT DOES NOT EXIST YET
     # *==============================================================================================================*
     _symsh_config_path_ = config_manager.get_config_path('symsh.config.json')
-    if not os.path.exists(_symsh_config_path_):
+    if not _symsh_config_path_.exists():
         config_manager.save_config('symsh.config.json', {
             "colors": {
                 "completion-menu.completion.current": "bg:#323232 #212121",
@@ -71,13 +71,13 @@ def _start_symai():
     # CREATE A SERVER CONFIGURATION FILE IF IT DOES NOT EXIST YET
     # *==============================================================================================================*
     _symserver_config_path_ = config_manager.get_config_path('symserver.config.json')
-    if not os.path.exists(_symserver_config_path_):
+    if not _symserver_config_path_.exists():
         config_manager.save_config('symserver.config.json', {})
 
     # Get appropriate config path (debug mode handling is now in config_manager)
     _symai_config_path_ = config_manager.get_config_path('symai.config.json')
 
-    if not os.path.exists(_symai_config_path_):
+    if not _symai_config_path_.exists():
         setup_wizard(_symai_config_path_)
         CustomUserWarning(f'No configuration file found for the environment. A new configuration file has been created at {_symai_config_path_}. Please configure your environment.')
         sys.exit(1)
@@ -218,7 +218,7 @@ def display_config():
     debug_branch = tree.add("[yellow]Debug Mode Config (CWD)[/yellow]")
     debug_config = config_manager._debug_dir / 'symai.config.json'
     if debug_config.exists():
-        with open(debug_config) as f:
+        with debug_config.open() as f:
             content = json.load(f)
         debug_branch.add(f"📄 [green]{debug_config}[/green]\n{format_config_content(content)}")
     else:
@@ -235,7 +235,7 @@ def display_config():
     for config_file, icon in env_configs.items():
         config_path = config_manager._env_config_dir / config_file
         if config_path.exists():
-            with open(config_path) as f:
+            with config_path.open() as f:
                 content = json.load(f)
             env_branch.add(f"{icon} [green]{config_path}[/green]\n{format_config_content(content)}")
         else:
@@ -246,7 +246,7 @@ def display_config():
     for config_file, icon in env_configs.items():
         config_path = config_manager._home_config_dir / config_file
         if config_path.exists():
-            with open(config_path) as f:
+            with config_path.open() as f:
                 content = json.load(f)
             home_branch.add(f"{icon} [green]{config_path}[/green]\n{format_config_content(content)}")
         else:

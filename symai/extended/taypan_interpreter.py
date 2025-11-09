@@ -1,4 +1,3 @@
-import os
 import pathlib
 
 from ..core import *
@@ -8,14 +7,14 @@ from ..symbol import Expression, Symbol
 
 
 def create_template():
-    package_path = os.path.dirname(pathlib.Path(__file__).parent.absolute())
+    package_path = pathlib.Path(__file__).parent.absolute()
 
 
-    with open(os.path.join(package_path, 'symbol.py')) as f:
+    with (package_path / 'symbol.py').open() as f:
         SYMBOL_API = f.read()
 
 
-    with open(os.path.join(package_path, 'components.py')) as f:
+    with (package_path / 'components.py').open() as f:
         COMPONENTS_API = f.read()
 
 

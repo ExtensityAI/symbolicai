@@ -17,8 +17,8 @@ class PackageRunner:
         self.package_dir = Path(config_manager.config_dir) / 'packages'
         self.aliases_file = self.package_dir / 'aliases.json'
 
-        if not os.path.exists(self.package_dir):
-            os.makedirs(self.package_dir)
+        if not self.package_dir.exists():
+            self.package_dir.mkdir(parents=True)
 
         os.chdir(self.package_dir)
 
@@ -46,14 +46,14 @@ class PackageRunner:
                 exit(1)
 
     def load_aliases(self):
-        if not os.path.exists(self.aliases_file):
+        if not self.aliases_file.exists():
             return {}
 
-        with open(self.aliases_file) as f:
+        with self.aliases_file.open() as f:
             return json.load(f)
 
     def save_aliases(self, aliases):
-        with open(self.aliases_file, 'w') as f:
+        with self.aliases_file.open('w') as f:
             json.dump(aliases, f)
 
     def console(self, header: str, output: object | None = None):
@@ -95,7 +95,8 @@ class PackageRunner:
                 kwargs['submodules'] = True
 
             # Check if package is a local path
-            if os.path.exists(package) and os.path.isdir(package):
+            package_path = Path(package)
+            if package_path.exists() and package_path.is_dir():
                 # Local path - pass directly
                 expr = Import(package, **kwargs)
             else:
