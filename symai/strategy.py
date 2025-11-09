@@ -30,14 +30,14 @@ class ValidationFunction(Function):
       • Error simplification
     """
     # Have some default retry params that don't add overhead
-    _default_retry_params: ClassVar[dict[str, int | float | bool]] = dict(
-        tries=8,
-        delay=0.015,
-        backoff=1.25,
-        jitter=0.0,
-        max_delay=0.25,
-        graceful=False
-    )
+    _default_retry_params: ClassVar[dict[str, int | float | bool]] = {
+        "tries": 8,
+        "delay": 0.015,
+        "backoff": 1.25,
+        "jitter": 0.0,
+        "max_delay": 0.25,
+        "graceful": False,
+    }
 
     def __init__(
         self,
@@ -130,7 +130,7 @@ class ValidationFunction(Function):
         _delay = min(base + jit, self.retry_params['max_delay'])
         time.sleep(_delay)
 
-    def remedy_prompt(self, *args, **kwargs):
+    def remedy_prompt(self, *_args, **_kwargs):
         """
         Abstract or base remedy prompt method.
         Child classes typically override this to include additional context needed for correction.
@@ -383,14 +383,14 @@ Important guidelines:
 
 @beartype
 class contract:
-    _default_remedy_retry_params: ClassVar[dict[str, int | float | bool]] = dict(
-        tries=8,
-        delay=0.015,
-        backoff=1.25,
-        jitter=0.0,
-        max_delay=0.25,
-        graceful=False
-    )
+    _default_remedy_retry_params: ClassVar[dict[str, int | float | bool]] = {
+        "tries": 8,
+        "delay": 0.015,
+        "backoff": 1.25,
+        "jitter": 0.0,
+        "max_delay": 0.25,
+        "graceful": False,
+    }
 
     def __init__(
         self,
@@ -880,7 +880,14 @@ class contract:
 class BaseStrategy(TypeValidationFunction):
     def __init__(self, data_model: BaseModel, *_args, **kwargs):
         super().__init__(
-            retry_params=dict(tries=8, delay=0.015, backoff=1.25, jitter=0.0, max_delay=0.25, graceful=False),
+            retry_params={
+                "tries": 8,
+                "delay": 0.015,
+                "backoff": 1.25,
+                "jitter": 0.0,
+                "max_delay": 0.25,
+                "graceful": False,
+            },
             **kwargs,
         )
         super().register_expected_data_model(data_model, attach_to="output")

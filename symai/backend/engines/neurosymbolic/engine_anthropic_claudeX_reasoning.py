@@ -198,7 +198,7 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
                 CustomUserWarning(f'Error during generation. Caused by: {e}', raise_with=ValueError)
 
         if payload['stream']:
-            res = [_ for _ in res] # Unpack the iterator to a list
+            res = list(res) # Unpack the iterator to a list
         metadata = {'raw_output': res}
         response_data = self._collect_response(res)
 

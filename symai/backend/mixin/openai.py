@@ -86,7 +86,9 @@ class OpenAIMixin:
            self.model == 'gpt-4.1-mini' or \
            self.model == 'gpt-4.1-nano':
             return 1_047_576
-        CustomUserWarning(f'Unsupported model: {self.model}', raise_with=ValueError)
+        msg = f'Unsupported model: {self.model}'
+        CustomUserWarning(msg)
+        raise ValueError(msg)
 
     def api_max_response_tokens(self):
         if self.model == 'davinci-002':
@@ -122,7 +124,9 @@ class OpenAIMixin:
            self.model == 'gpt-5-nano' or \
            self.model == 'gpt-5-chat-latest':
             return 128_000
-        CustomUserWarning(f'Unsupported model: {self.model}', raise_with=ValueError)
+        msg = f'Unsupported model: {self.model}'
+        CustomUserWarning(msg)
+        raise ValueError(msg)
 
     def api_embedding_dims(self):
         if self.model == 'text-embedding-ada-002':
@@ -131,5 +135,7 @@ class OpenAIMixin:
             return 1_536
         if self.model == 'text-embedding-3-large':
             return 3_072
-        CustomUserWarning(f'Unsupported model: {self.model}', raise_with=ValueError)
+        msg = f'Unsupported model: {self.model}'
+        CustomUserWarning(msg)
+        raise ValueError(msg)
 from ...utils import CustomUserWarning

@@ -59,6 +59,7 @@ def _probabilistic_bool(rsp: str, mode=ProbabilisticBooleanMode.TOLERANT) -> boo
         # allow for probabilistic boolean / fault tolerance
         return val in ProbabilisticBooleanModeTolerant
     CustomUserWarning(f"Invalid mode {mode} for probabilistic boolean!", raise_with=ValueError)
+    return False
 
 
 def _cast_return_type(rsp: Any, return_constraint: type, engine_probabilistic_boolean_mode: ProbabilisticBooleanMode) -> Any:
@@ -187,10 +188,10 @@ def _execute_query_fallback(func, instance, argument, error=None, stack_trace=No
         raise error # re-raise the original error
     if rsp is not None:
         # fallback was implemented
-        return dict(data=rsp, error=error, stack_trace=stack_trace)
+        return {"data": rsp, "error": error, "stack_trace": stack_trace}
     if argument.prop.default is not None:
         # no fallback implementation, but default value is set
-        return dict(data=argument.prop.default, error=error, stack_trace=stack_trace)
+        return {"data": argument.prop.default, "error": error, "stack_trace": stack_trace}
     raise error
 
 
@@ -307,7 +308,7 @@ class EngineRepository:
         if '_engines' not in self.__dict__:  # ensures _engines is only set once
             self._engines: dict[str, Engine] = {}
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *_args, **_kwargs):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance.__init__()  # Explicitly call __init__
@@ -407,6 +408,7 @@ class EngineRepository:
                 # Call the command function for the engine with provided arguments
                 return engine.command(*args, **kwargs)
         CustomUserWarning(f"No engine named <{engine_name}> is registered.", raise_with=ValueError)
+        return None
 
     @staticmethod
     def query(engine: str, *args, **kwargs) -> tuple:
@@ -418,6 +420,7 @@ class EngineRepository:
                 return _process_query_single(engine, *args, **kwargs)
             return _process_query(engine, *args, **kwargs)
         CustomUserWarning(f"No engine named {engine} is registered.", raise_with=ValueError)
+        return None
 
     @staticmethod
     def bind_property(engine: str, property: str, *_args, **_kwargs):
@@ -427,6 +430,7 @@ class EngineRepository:
         if engine:
             return getattr(engine, property, None)
         CustomUserWarning(f"No engine named {engine} is registered.", raise_with=ValueError)
+        return None
 
     def get_dynamic_engine_instance(self):
         # 1) Primary: use ContextVar (fast, async-safe)

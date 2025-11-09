@@ -83,7 +83,7 @@ class Any(Expression):
         self.expr: list[Expression] = expr
 
     def forward(self, *args, **kwargs) -> Symbol:
-        return self.sym_return_type(any([e() for e in self.expr(*args, **kwargs)]))
+        return self.sym_return_type(any(e() for e in self.expr(*args, **kwargs)))
 
 
 class All(Expression):
@@ -92,7 +92,7 @@ class All(Expression):
         self.expr: list[Expression] = expr
 
     def forward(self, *args, **kwargs) -> Symbol:
-        return self.sym_return_type(all([e() for e in self.expr(*args, **kwargs)]))
+        return self.sym_return_type(all(e() for e in self.expr(*args, **kwargs)))
 
 
 class Try(Expression):
