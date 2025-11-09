@@ -60,7 +60,8 @@ def encode_media_frames(file_path):
         video.release()
         return base64Frames, ext
     msg = f"File extension {ext} not supported"
-    CustomUserWarning(msg, raise_with=ValueError)
+    CustomUserWarning(msg)
+    raise ValueError(msg)
 
 
 def encode_image_local(image_path):
