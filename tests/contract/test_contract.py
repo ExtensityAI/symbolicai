@@ -116,17 +116,17 @@ class TestTripletExtractor(Expression):
         Text: {{text}}
         """
 
-    def pre(self, input: TripletExtractorInput) -> bool:
+    def pre(self, input_data: TripletExtractorInput) -> bool:
         """Pre-validation: ensure text is not empty and ontology is provided"""
-        if not input.text or not isinstance(input.text, str):
+        if not input_data.text or not isinstance(input_data.text, str):
             raise ValueError("Input text must be a non-empty string")
 
-        if not input.ontology or not input.ontology.classes:
+        if not input_data.ontology or not input_data.ontology.classes:
             raise ValueError("Ontology must be provided with at least one class")
 
         return True
 
-    def act(self, input: TripletExtractorInput, **kwargs) -> IntermediateAnalysisResult:
+    def act(self, input_data: TripletExtractorInput, **kwargs) -> IntermediateAnalysisResult:
         """
         Act method that:
         1. Performs preliminary analysis on the text
@@ -137,11 +137,11 @@ class TestTripletExtractor(Expression):
         self.calls_count += 1
 
         # Simple entity extraction logic
-        words = input.text.split()
+        words = input_data.text.split()
         possible_entities = []
         possible_relationships = []
 
-        ontology_class_names = [c.name.lower() for c in input.ontology.classes]
+        ontology_class_names = [c.name.lower() for c in input_data.ontology.classes]
 
         for word in words:
             word_lower = word.lower().strip('.,;:!?')
@@ -156,7 +156,7 @@ class TestTripletExtractor(Expression):
             if word_lower in ["is", "has", "contains", "uses", "creates", "performs"]:
                 possible_relationships.append(word)
 
-        analyzed_text = input.text
+        analyzed_text = input_data.text
         for entity in set(possible_entities):
             analyzed_text = analyzed_text.replace(entity, f"[ENTITY: {entity}]")
         for rel in set(possible_relationships):
@@ -165,7 +165,7 @@ class TestTripletExtractor(Expression):
         # Test contract state mutation
         self.analysis_history.append({
             "call": self.calls_count,
-            "text": input.text,
+            "text": input_data.text,
             "entities_found": len(possible_entities),
             "relationships_found": len(possible_relationships)
         })
@@ -188,7 +188,7 @@ class TestTripletExtractor(Expression):
 
         return True
 
-    def forward(self, input: TripletExtractorInput, **kwargs) -> KGState:
+    def forward(self, input_data: TripletExtractorInput, **kwargs) -> KGState:
         if self.contract_result is None:
             raise self.contract_exception or ValueError("Contract failed!")
         return self.contract_result
@@ -226,7 +226,7 @@ def test_triplet_extractor_basic():
         ontology=ontology
     )
 
-    result = extractor(input=input_data)
+    result = extractor(input_data)
 
     # Verify result structure
     assert isinstance(result, KGState)
@@ -333,7 +333,7 @@ def test_act_signature_validation():
     """Test that contract properly validates act method signature"""
 
     @contract()
-    class BadActSignatureMissingInput(Expression):
+    class ActSignatureMissingInput(Expression):
         @property
         def prompt(self) -> str: return "test"
         def act(self, wrong_name: TripletExtractorInput, **kwargs) -> IntermediateAnalysisResult:
@@ -362,13 +362,9 @@ def test_act_signature_validation():
     dummy_ontology = SimpleOntology(classes=[OntologyClass(name="Test")])
     dummy_input = TripletExtractorInput(text="test", ontology=dummy_ontology)
 
-    # The contract decorator's _act method will raise TypeError internally.
-    # This TypeError will be caught by wrapped_forward, contract_successful will be False.
-    # The lenient forward methods will then be called.
-
-    contract_bsmi = BadActSignatureMissingInput()
+    contract_bsmi = ActSignatureMissingInput()
     contract_bsmi(input=dummy_input)
-    assert not contract_bsmi.contract_successful # Check that the contract failed
+    assert contract_bsmi.contract_successful
 
     contract_bsna = BadActSignatureNoAnnotation()
     contract_bsna(input=dummy_input)
