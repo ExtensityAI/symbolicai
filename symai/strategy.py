@@ -475,14 +475,14 @@ class contract:
                     CustomUserWarning(msg)
                     raise TypeError(msg)
                 dynamic_model = build_dynamic_llm_datamodel(sig.return_annotation)
-        except Exception:
+        except Exception as err:
             logger.exception(f"Failed to build dynamic LLMDataModel from {resolved_param}!")
             msg = (
                 "The type annotation must be a subclass of `LLMDataModel` or a "
                 "valid Python typing object supported by Pydantic."
             )
             CustomUserWarning(msg)
-            raise TypeError(msg)
+            raise TypeError(msg) from err
 
         dynamic_model._is_dynamic_model = True
         return dynamic_model

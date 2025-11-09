@@ -2637,7 +2637,7 @@ class EmbeddingPrimitives(Primitive):
         elif isinstance(embeds, torch.Tensor):
             embeds = embeds.cpu().numpy().tolist()
 
-        return list(zip(idx, embeds, query))
+        return list(zip(idx, embeds, query, strict=False))
 
 
 class IOHandlingPrimitives(Primitive):

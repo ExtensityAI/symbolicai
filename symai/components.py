@@ -801,7 +801,7 @@ class SimilarityClassification(Expression):
         usr_embed    = x.embed()
         embeddings   = self._dynamic_cache()
         similarities = [usr_embed.similarity(emb, metric=self.metric) for emb in embeddings]
-        similarities = sorted(zip(self.classes, similarities), key=lambda x: x[1], reverse=True)
+        similarities = sorted(zip(self.classes, similarities, strict=False), key=lambda x: x[1], reverse=True)
 
         return Symbol(similarities[0][0])
 

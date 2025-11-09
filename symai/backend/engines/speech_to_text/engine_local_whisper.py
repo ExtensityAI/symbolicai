@@ -29,7 +29,7 @@ class WhisperTimestampsFormatter(Expression):
             interval_tokens = self._filter_empty_string(interval)
             prev_end = 0.0
             prev_start = 0.0
-            for head, tail in zip(interval_tokens[::2], interval_tokens[1::2]):
+            for head, tail in zip(interval_tokens[::2], interval_tokens[1::2], strict=False):
                 start = self._get_timestamp(head)
                 end = self._get_timestamp(tail)
                 if start >= prev_end:
@@ -75,7 +75,7 @@ class WhisperResult(Result):
 
     def get_bins(self, bin_size_s: int = 5 * 60) -> list[str]:
         tmps = list(map(self._seconds, re.findall(r"\b\d{2}:\d{2}:\d{2}\b", self._value)))
-        value_pairs = list(zip(tmps, self._value.split("\n")))
+        value_pairs = list(zip(tmps, self._value.split("\n"), strict=False))
         bin_segments = []
         result = []
         for tmp, seg in value_pairs:
