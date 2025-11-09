@@ -98,8 +98,10 @@ class Engine(ABC):
         return ENGINE_UNREGISTERED
 
     def preview(self, argument):
-        # used here to avoid circular import
-        from ..symbol import Symbol
+        # Used here to avoid backend.base <-> symbol circular import.
+        from ..symbol import (  # noqa: PLC0415 - lazy import prevents backend.base <-> symbol recursion
+            Symbol,
+        )
         class Preview(Symbol):
             def __repr__(self) -> str:
                 '''
