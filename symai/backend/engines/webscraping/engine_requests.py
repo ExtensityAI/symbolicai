@@ -189,8 +189,9 @@ class RequestsEngine(Engine):
         processing consistent with the non-JS path.
         """
         try:
-            from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
-            from playwright.sync_api import sync_playwright
+            # Playwright is optional; import only when JS rendering is requested.
+            from playwright.sync_api import TimeoutError as PlaywrightTimeoutError  # noqa: PLC0415
+            from playwright.sync_api import sync_playwright  # noqa: PLC0415
             logging.getLogger("playwright").setLevel(logging.WARNING)
         except ImportError as exc:
             msg = "Playwright is not installed. Install symbolicai[webscraping] with Playwright extras to enable render_js."

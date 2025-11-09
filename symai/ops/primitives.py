@@ -679,8 +679,8 @@ class OperatorPrimitives(Primitive):
         Returns:
             Symbol: A new symbol with the result of the OR operation.
         '''
-        # exclude the evaluation for the Aggregator class
-        from ..collect.stats import Aggregator
+        # Exclude the evaluation for the Aggregator class; keep import local to avoid ops.primitives <-> collect.stats cycle.
+        from ..collect.stats import Aggregator  # noqa: PLC0415
         if isinstance(other, Aggregator):
             return NotImplemented
 
@@ -708,8 +708,8 @@ class OperatorPrimitives(Primitive):
         Returns:
             Symbol: A new Symbol object with the concatenated value.
         '''
-        # exclude the evaluation for the Aggregator class
-        from ..collect.stats import Aggregator
+        # Exclude the evaluation for the Aggregator class; keep import local to avoid ops.primitives <-> collect.stats cycle.
+        from ..collect.stats import Aggregator  # noqa: PLC0415
         if isinstance(other, Aggregator):
             return NotImplemented
 
@@ -738,8 +738,8 @@ class OperatorPrimitives(Primitive):
         Returns:
             Symbol: A new Symbol object with the concatenated value.
         '''
-        # exclude the evaluation for the Aggregator class
-        from ..collect.stats import Aggregator
+        # Exclude the evaluation for the Aggregator class; keep import local to avoid ops.primitives <-> collect.stats cycle.
+        from ..collect.stats import Aggregator  # noqa: PLC0415
         if isinstance(other, Aggregator):
             return NotImplemented
 
@@ -1307,7 +1307,8 @@ class IterationPrimitives(Primitive):
         Raises:
             KeyError: If the key or index is not found in the Symbol value.
         '''
-        from ..post_processors import ASTPostProcessor
+        # Local import avoids ops.primitives -> post_processors -> symbol -> ops circular load.
+        from ..post_processors import ASTPostProcessor  # noqa: PLC0415
 
         if not isinstance(self.value, (str, dict, list)):
             CustomUserWarning(f'Setting item is not supported for {type(self.value)}. Supported types are str, dict, and list.', raise_with=TypeError)
@@ -1341,7 +1342,8 @@ class IterationPrimitives(Primitive):
         Raises:
             KeyError: If the key or index is not found in the Symbol value.
         '''
-        from ..post_processors import ASTPostProcessor
+        # Local import avoids ops.primitives -> post_processors -> symbol -> ops circular load.
+        from ..post_processors import ASTPostProcessor  # noqa: PLC0415
 
         if not isinstance(self.value, (str, dict, list)):
             CustomUserWarning(f'Setting item is not supported for {type(self.value)}. Supported types are str, dict, and list.', raise_with=TypeError)

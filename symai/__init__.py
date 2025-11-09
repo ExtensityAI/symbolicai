@@ -145,7 +145,8 @@ def _start_symai():
 def run_server():
     _symserver_config_ = {}
     if settings.SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL").startswith("llama") or settings.SYMAI_CONFIG.get("EMBEDDING_ENGINE_MODEL").startswith("llama"):
-        from .server.llama_cpp_server import llama_cpp_server
+        # Keep optional llama_cpp dependencies lazy.
+        from .server.llama_cpp_server import llama_cpp_server  # noqa: PLC0415
 
         command, args = llama_cpp_server()
         _symserver_config_.update(zip(args[::2], args[1::2]))
@@ -165,7 +166,8 @@ def run_server():
             config_manager.save_config("symserver.config.json", {'online': False})
 
     elif settings.SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL").startswith("huggingface"):
-        from .server.huggingface_server import huggingface_server
+        # HuggingFace server stack is optional; import only when requested.
+        from .server.huggingface_server import huggingface_server  # noqa: PLC0415
 
         command, args = huggingface_server()
         _symserver_config_.update(vars(args))
