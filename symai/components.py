@@ -36,7 +36,6 @@ from .prompts import JsonPromptTemplate, Prompt
 from .symbol import Expression, Metadata, Symbol
 from .utils import CustomUserWarning
 
-
 _DEFAULT_PARAGRAPH_FORMATTER = ParagraphFormatter()
 
 

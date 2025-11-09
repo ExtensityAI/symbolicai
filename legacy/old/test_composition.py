@@ -8,8 +8,8 @@ import numpy as np
 # from notebooks.examples.sql import SQL
 from symai import *
 from symai.chat import SymbiaChat
-from symai.extended import *
 from symai.components import *
+from symai.extended import *
 
 # for debugging
 # attention this constantly overwrites the keys config file
@@ -691,7 +691,9 @@ modified:   tests/test_composition.py
         self.assertTrue('Hallo Welt!' in res, res)
 
     def test_setup_engine(self):
-        from symai.backend.engines.neurosymbolic.engine_openai_gptX_completion import GPTXCompletionEngine
+        from symai.backend.engines.neurosymbolic.engine_openai_gptX_completion import (
+            GPTXCompletionEngine,
+        )
         class TestEngine(GPTXCompletionEngine):
             def prepare(self, argument):
                 argument.prop.prepared_input = ['Write about cats.']

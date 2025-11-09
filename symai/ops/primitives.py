@@ -3,8 +3,8 @@ import json
 import pickle
 import uuid
 from collections.abc import Callable, Iterable
-from typing import TYPE_CHECKING, Any, Union
 from pathlib import Path
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import torch

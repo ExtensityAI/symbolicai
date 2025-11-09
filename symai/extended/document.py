@@ -6,7 +6,6 @@ from ..components import FileReader, Indexer
 from ..formatter import ParagraphFormatter
 from ..symbol import Expression, Symbol
 
-
 _DEFAULT_PARAGRAPH_FORMATTER = ParagraphFormatter()
 
 

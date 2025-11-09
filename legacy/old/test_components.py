@@ -1,7 +1,8 @@
 import unittest
 
-import torch
 import numpy as np
+import torch
+
 import symai as ai
 from symai.components import *
 
