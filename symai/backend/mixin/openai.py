@@ -1,3 +1,5 @@
+from ...utils import CustomUserWarning
+
 SUPPORTED_COMPLETION_MODELS = [
     'davinci-002',
 ]
@@ -138,4 +140,3 @@ class OpenAIMixin:
         msg = f'Unsupported model: {self.model}'
         CustomUserWarning(msg)
         raise ValueError(msg)
-from ...utils import CustomUserWarning

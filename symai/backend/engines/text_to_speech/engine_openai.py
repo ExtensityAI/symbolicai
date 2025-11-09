@@ -2,12 +2,12 @@ import logging
 
 from openai import OpenAI
 
-# suppress openai logging
-logging.getLogger("openai").setLevel(logging.WARNING)
-
 from ....symbol import Result
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
+
+# suppress openai logging
+logging.getLogger("openai").setLevel(logging.WARNING)
 
 
 class TTSEngine(Engine):

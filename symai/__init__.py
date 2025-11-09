@@ -336,19 +336,19 @@ def setup_wizard(_symai_config_path_):
 
 _symai_config_, _symsh_config_, _symserver_config_ = _start_symai()
 
-from .backend.base import Engine
-from .components import Function, PrimitiveDisabler
-from .core import few_shot, zero_shot
-from .extended import Conversation
-from .functional import EngineRepository
-from .imports import Import
-from .interfaces import Interface
-from .post_processors import PostProcessor
-from .pre_processors import PreProcessor
-from .prompts import Prompt, PromptLanguage, PromptRegistry
-from .shell import Shell
-from .strategy import Strategy
-from .symbol import Call, Expression, GlobalSymbolPrimitive, Metadata, Symbol
+from .backend.base import Engine  # noqa E402
+from .components import Function, PrimitiveDisabler  # noqa E402
+from .core import few_shot, zero_shot  # noqa E402
+from .extended import Conversation  # noqa E402
+from .functional import EngineRepository  # noqa E402
+from .imports import Import  # noqa E402
+from .interfaces import Interface  # noqa E402
+from .post_processors import PostProcessor  # noqa E402
+from .pre_processors import PreProcessor  # noqa E402
+from .prompts import Prompt, PromptLanguage, PromptRegistry  # noqa E402
+from .shell import Shell  # noqa E402
+from .strategy import Strategy  # noqa E402
+from .symbol import Call, Expression, GlobalSymbolPrimitive, Metadata, Symbol  # noqa E402
 
 __all__ = [
     "SYMAI_VERSION",

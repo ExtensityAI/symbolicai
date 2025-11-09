@@ -1112,6 +1112,7 @@ class Expression(Symbol):
         '''
         if engines is None:
             engines = ['all']
+
         @core.command(engines=engines, **kwargs)
         def _func(_):
             pass

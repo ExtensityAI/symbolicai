@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import builtins
 import importlib
 import inspect
 import pkgutil
@@ -20,6 +21,11 @@ from .backend.base import ENGINE_UNREGISTERED, Engine
 from .context import CURRENT_ENGINE_VAR
 from .post_processors import PostProcessor
 from .pre_processors import PreProcessor
+from .prompts import (
+    ProbabilisticBooleanModeMedium,
+    ProbabilisticBooleanModeStrict,
+    ProbabilisticBooleanModeTolerant,
+)
 from .utils import CustomUserWarning
 
 if TYPE_CHECKING:
@@ -37,13 +43,7 @@ class ProbabilisticBooleanMode(Enum):
 
 
 ENGINE_PROBABILISTIC_BOOLEAN_MODE = ProbabilisticBooleanMode.MEDIUM
-import builtins
 
-from .prompts import (
-    ProbabilisticBooleanModeMedium,
-    ProbabilisticBooleanModeStrict,
-    ProbabilisticBooleanModeTolerant,
-)
 
 
 def _probabilistic_bool(rsp: str, mode=ProbabilisticBooleanMode.TOLERANT) -> bool:
