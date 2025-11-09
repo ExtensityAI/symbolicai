@@ -1,6 +1,7 @@
 import base64
 import logging
 import tempfile
+from pathlib import Path
 
 import openai
 import requests
@@ -33,11 +34,11 @@ class GPTImageResult(Result):
             if has_url and item.url is not None:
                 request = requests.get(item.url, allow_redirects=True)
                 request.raise_for_status()
-                with open(path, "wb") as f:
+                with Path(path).open("wb") as f:
                     f.write(request.content)
             elif has_b64 and item.b64_json is not None:
                 raw = base64.b64decode(item.b64_json)
-                with open(path, "wb") as f:
+                with Path(path).open("wb") as f:
                     f.write(raw)
             imgs.append(path)
         self._value = imgs
@@ -143,7 +144,7 @@ class GPTImageEngine(Engine):
             elif operation == "variation":
                 assert "image_path" in kwargs, "image_path required for variation"
                 callback = openai.images.create_variation
-                with open(kwargs["image_path"], "rb") as img:
+                with Path(kwargs["image_path"]).open("rb") as img:
                     res = openai.images.create_variation(
                         model=model,
                         image=img,
@@ -159,11 +160,11 @@ class GPTImageEngine(Engine):
                 if not isinstance(img_paths, (list, tuple)):
                     img_paths = [img_paths]
                 # open all images
-                image_files = [open(p, "rb") for p in img_paths]
+                image_files = [Path(p).open("rb") for p in img_paths]
                 # optional mask (only for the first image)
                 mask_file = None
                 if "mask_path" in kwargs and kwargs["mask_path"] is not None:
-                    mask_file = open(kwargs["mask_path"], "rb")
+                    mask_file = Path(kwargs["mask_path"]).open("rb")
                 # construct API args
                 edit_kwargs = {
                     "model": model,

@@ -1,7 +1,7 @@
-import os
 import re
 import shutil
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 
 import requests
 
@@ -24,8 +24,8 @@ class ArxivPdfParser(Expression):
         pdf_urls = ["https://arxiv.org/pdf/" + (f"{url.split('/')[-1]}.pdf" if 'pdf' not in url else {url.split('/')[-1]}) for url in urls]
 
         # Create temporary folder in the home directory
-        output_path = os.path.join(HOME_PATH, "temp/downloads")
-        os.makedirs(output_path, exist_ok=True)
+        output_path = HOME_PATH / "temp" / "downloads"
+        output_path.mkdir(parents=True, exist_ok=True)
 
         pdf_files = []
         with ThreadPoolExecutor() as executor:
@@ -42,7 +42,7 @@ class ArxivPdfParser(Expression):
             return None
 
         # Merge all pdfs into one file
-        merged_file = self.merger(output_path, **kwargs)
+        merged_file = self.merger(str(output_path), **kwargs)
 
         # Return the merged file as a Symbol
         return_file = self._to_symbol(merged_file)
@@ -55,7 +55,7 @@ class ArxivPdfParser(Expression):
     def download_pdf(self, url, output_path):
         # Download pdfs
         response = requests.get(url)
-        file = os.path.join(output_path, f'{url.split("/")[-1]}')
-        with open(file, 'wb') as f:
+        file_path = Path(output_path) / f'{url.split("/")[-1]}'
+        with file_path.open('wb') as f:
             f.write(response.content)
-        return file
+        return str(file_path)

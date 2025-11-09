@@ -1,6 +1,5 @@
 import gzip
 import logging
-import os
 import pickle
 from copy import deepcopy
 from pathlib import Path
@@ -32,7 +31,7 @@ class VectorDB(Expression):
     _default_embedding_function = None
     _default_index_dims = 768
     _default_top_k = 5
-    _default_storage_path = os.path.join(HOME_PATH, "localdb")
+    _default_storage_path = HOME_PATH / "localdb"
     _default_index_name = "dataindex"
     def __init__(
         self,
@@ -79,9 +78,8 @@ class VectorDB(Expression):
             CustomUserWarning("Similarity metric not supported. Please use either 'dot', 'cosine', 'euclidean', 'adams', or 'derrida'.", raise_with=ValueError)
 
         if load_on_init:
-            # If load_on_init is a string, use it as the storage file
-            if isinstance(load_on_init, str):
-                path = os.path.join(load_on_init, f"{self.index_name}.pkl")
+            if isinstance(load_on_init, (str, Path)):
+                path = Path(load_on_init) / f"{self.index_name}.pkl"
                 self.load(path)
             else:
                 self.load()
@@ -270,17 +268,17 @@ class VectorDB(Expression):
 
         """
         if storage_file is None:
-            # use path to home directory by default
-            storage_path = os.path.join(HOME_PATH, "localdb")
-            os.makedirs(storage_path, exist_ok=True)
-            storage_file = os.path.join(storage_path, f"{self.index_name}.pkl")
+            storage_file = HOME_PATH / "localdb" / f"{self.index_name}.pkl"
+            storage_file.parent.mkdir(parents=True, exist_ok=True)
+        else:
+            storage_file = Path(storage_file)
 
         data = {"vectors": self.vectors, "documents": self.documents}
-        if storage_file.endswith(".gz"):
+        if storage_file.suffix == ".gz":
             with gzip.open(storage_file, "wb") as f:
                 pickle.dump(data, f)
         else:
-            with open(storage_file, "wb") as f:
+            with storage_file.open("wb") as f:
                 pickle.dump(data, f)
 
     def load(self, storage_file : str = None):
@@ -294,21 +292,20 @@ class VectorDB(Expression):
 
         """
         if storage_file is None:
-            # use path to home directory by default
-            storage_path = os.path.join(HOME_PATH, "localdb")
-            # create dir on first load if never used
-            os.makedirs(storage_path, exist_ok=True)
-            storage_file = os.path.join(storage_path, f"{self.index_name}.pkl")
+            storage_file = HOME_PATH / "localdb" / f"{self.index_name}.pkl"
+            storage_file.parent.mkdir(parents=True, exist_ok=True)
+        else:
+            storage_file = Path(storage_file)
 
         # return since nothing to load
-        if not os.path.exists(storage_file):
+        if not storage_file.exists():
             return
 
-        if storage_file.endswith(".gz"):
+        if storage_file.suffix == ".gz":
             with gzip.open(storage_file, "rb") as f:
                 data = pickle.load(f)
         else:
-            with open(storage_file, "rb") as f:
+            with storage_file.open("rb") as f:
                 data = pickle.load(f)
 
         self.vectors = data["vectors"].astype(np.float32) if data["vectors"] is not None else None
@@ -333,11 +330,11 @@ class VectorDB(Expression):
         # use path to home directory by default
         storage_path = symai_folder / "localdb"
         # create dir on first load if never used
-        os.makedirs(storage_path, exist_ok=True)
+        storage_path.mkdir(parents=True, exist_ok=True)
         storage_file = storage_path / f"{index_name}.pkl"
         if storage_file.exists():
             # remove the file
-            os.remove(storage_file)
+            storage_file.unlink()
         self.clear()
 
     def forward(self, query=None, vector=None, top_k=None, return_similarities=True):

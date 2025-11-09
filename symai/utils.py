@@ -5,6 +5,7 @@ import inspect
 import os
 import warnings
 from dataclasses import dataclass
+from pathlib import Path
 
 import cv2
 import httpx
@@ -63,7 +64,7 @@ def encode_image_local(image_path):
 
     assert ext.lower() in ['jpg', 'jpeg', 'png', 'webp'], f"File extension '{ext}' not supported! Available extensions: ['jpg', 'jpeg', 'png', 'webp']"
 
-    with open(image_path, "rb") as image_file:
+    with Path(image_path).open("rb") as image_file:
         enc_im = base64.b64encode(image_file.read()).decode('utf-8')
 
     return [enc_im], ext
