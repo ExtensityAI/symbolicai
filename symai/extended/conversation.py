@@ -1,8 +1,8 @@
 import pickle
 from collections.abc import Callable
 from datetime import datetime
-from typing import Any
 from pathlib import Path
+from typing import Any
 
 from ..components import FileReader
 from ..formatter import TextContainerFormatter
@@ -12,7 +12,6 @@ from ..symbol import Symbol
 from ..utils import CustomUserWarning, deprecated
 from .document import DocumentRetriever
 from .seo_query_optimizer import SEOQueryOptimizer
-
 
 _DEFAULT_TEXT_CONTAINER_FORMATTER = TextContainerFormatter(text_split=4)
 

@@ -1,4 +1,5 @@
 from symai.backend.engines.lean.engine_lean4 import LeanEngine
+
 # Example usage
 if __name__ == "__main__":
     # Initialize LeanEngine
