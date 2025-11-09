@@ -1,6 +1,6 @@
 import pathlib
 
-from ..core import *
+from ..core import zero_shot
 from ..post_processors import CodeExtractPostProcessor
 from ..pre_processors import PreProcessor
 from ..symbol import Expression, Symbol
