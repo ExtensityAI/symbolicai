@@ -793,7 +793,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
                 res_.root._parent = prev
             ref.root_link.results[self.__repr__()] = res_
 
-    def adapt(self, context: str, types: list[type] = []) -> None:
+    def adapt(self, context: str, types: list[type] = None) -> None:
         '''
         Update the dynamic context with a given runtime context.
 
@@ -802,6 +802,8 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
             type (Type): The type used to update the dynamic context
 
         '''
+        if types is None:
+            types = []
         if not isinstance(types, list):
             types = [types]
         if len(types) == 0:
@@ -814,10 +816,12 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
 
             Symbol._dynamic_context[type_].append(str(context))
 
-    def clear(self, types: list[type] = []) -> None:
+    def clear(self, types: list[type] = None) -> None:
         '''
         Clear the dynamic context associated with this symbol type.
         '''
+        if types is None:
+            types = []
         if not isinstance(types, list):
             types = [types]
         if len(types) == 0:
@@ -1092,7 +1096,7 @@ class Expression(Symbol):
         raise NotImplementedError
 
     @staticmethod
-    def command(engines: list[str] = ['all'], **kwargs) -> 'Symbol':
+    def command(engines: list[str] = None, **kwargs) -> 'Symbol':
         '''
         Execute command(s) on engines.
 
@@ -1103,6 +1107,8 @@ class Expression(Symbol):
         Returns:
             Symbol: An Expression object representing the command execution result.
         '''
+        if engines is None:
+            engines = ['all']
         @core.command(engines=engines, **kwargs)
         def _func(_):
             pass

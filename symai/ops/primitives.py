@@ -1805,7 +1805,7 @@ class UniquenessPrimitives(Primitive):
     This mixin includes functions that work with unique aspects of symbol values, like extracting unique information or composing new unique symbols.
     Future functionalities might include finding duplicate information, defining levels of uniqueness, etc.
     '''
-    def unique(self, keys: list[str] | None = [], **kwargs) -> 'Symbol':
+    def unique(self, keys: list[str] | None = None, **kwargs) -> 'Symbol':
         '''
         Extracts unique information from the symbol value, using provided keys.
         Uses the core.unique decorator with a list of keys to create a _func method that extracts unique data from the symbol value.
@@ -1816,6 +1816,8 @@ class UniquenessPrimitives(Primitive):
         Returns:
             Symbol: A new symbol with the unique information.
         '''
+        if keys is None:
+            keys = []
         @core.unique(keys=keys, **kwargs)
         def _func(_) -> str:
             pass
@@ -2274,7 +2276,7 @@ class TemplateStylingPrimitives(Primitive):
 
         return _func(that)
 
-    def style(self, description: str, libraries: list | None = [], **kwargs) -> 'Symbol':
+    def style(self, description: str, libraries: list | None = None, **kwargs) -> 'Symbol':
         '''
         Applies a style to the Symbol.
         This method uses the @core.style decorator to apply the given style description, libraries, and placeholder to the Symbol.
@@ -2288,6 +2290,8 @@ class TemplateStylingPrimitives(Primitive):
         Returns:
             Symbol: A Symbol object with the style applied.
         '''
+        if libraries is None:
+            libraries = []
         @core.style(description=description, libraries=libraries, **kwargs)
         def _func(_):
             pass

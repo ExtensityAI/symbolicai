@@ -143,7 +143,7 @@ class LLaMACppClientEngine(Engine):
             parts = suffix.split('\n>>>\n')
             # first parts are the system instructions
             c = 0
-            for i, p in enumerate(parts):
+            for _i, p in enumerate(parts):
                 if 'SYSTEM_INSTRUCTION' in p:
                     system += f"{p}\n"
                     c += 1

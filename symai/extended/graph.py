@@ -8,6 +8,8 @@ from ..pre_processors import PreProcessor
 from ..prompts import Prompt
 from ..symbol import Expression, Symbol
 
+_DEFAULT_SENTENCE_FORMATTER = SentenceFormatter()
+
 GRAPH_DESCRIPTION = """[Description]
 Build source-target relationship pairs for named entities based for the [DATA] section. The [DATA] section contains one sentence.
 Format all extracted pairs in a CSV format with the following columns: source, target, count.
@@ -26,7 +28,7 @@ class Graph(Expression):
     def static_context(self) -> str:
         return GRAPH_DESCRIPTION
 
-    def __init__(self, formatter: Callable = SentenceFormatter(), n_workers: int = 1, verbose: bool = False, **kwargs):
+    def __init__(self, formatter: Callable = _DEFAULT_SENTENCE_FORMATTER, n_workers: int = 1, verbose: bool = False, **kwargs):
         super().__init__(**kwargs)
         self.formatter       = formatter
         self.n_workers       = n_workers
@@ -82,4 +84,4 @@ class Graph(Expression):
             res += r
         return res
 
-
+_DEFAULT_SENTENCE_FORMATTER = SentenceFormatter()

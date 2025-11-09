@@ -12,8 +12,12 @@ class FileMerger(Expression):
     Class to merge contents of multiple files into one, specified by their file endings and root path.
     Files specified in the exclude list will not be included.
     """
-    def __init__(self, file_endings: list[str] = ['.py', '.md', '.txt', '.sh', '.pdf', '.json', '.yaml', '.java', '.cpp', '.hpp', '.c', '.h', '.js', '.css', '.html', '.xml', '.csv', '.tsv', '.yml', '.rst', '.ipynb', '.tex', '.bib'],
-                       file_excludes: list[str] = ['__init__.py', '__pycache__', 'LICENSE', 'requirements.txt', 'environment.yaml', '.git'], **kwargs):
+    def __init__(self, file_endings: list[str] = None,
+                       file_excludes: list[str] = None, **kwargs):
+        if file_excludes is None:
+            file_excludes = ['__init__.py', '__pycache__', 'LICENSE', 'requirements.txt', 'environment.yaml', '.git']
+        if file_endings is None:
+            file_endings = ['.py', '.md', '.txt', '.sh', '.pdf', '.json', '.yaml', '.java', '.cpp', '.hpp', '.c', '.h', '.js', '.css', '.html', '.xml', '.csv', '.tsv', '.yml', '.rst', '.ipynb', '.tex', '.bib']
         super().__init__(**kwargs)
         self.file_endings = file_endings
         self.file_excludes = file_excludes
@@ -35,7 +39,7 @@ class FileMerger(Expression):
         # use os.walk to recursively search for files in the root path
         progress = tqdm(os.walk(root_path), desc=tqdm_desc)
 
-        for root, dirs, files in progress:
+        for root, _dirs, files in progress:
             for file in files:
                 file_path = Path(root) / file
                 file_path_str = file_path.as_posix()

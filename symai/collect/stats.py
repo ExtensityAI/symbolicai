@@ -74,10 +74,12 @@ class Aggregator(Symbol):
 
     def __new__(cls, *args,
             mixin: bool | None = None,
-            primitives: list[type] | None = [OperatorPrimitives], # only inherit arithmetic primitives
+            primitives: list[type] | None = None, # only inherit arithmetic primitives
             callables: list[tuple[str, Callable]] | None = None,
             semantic: bool = False,
             **kwargs) -> "Symbol":
+        if primitives is None:
+            primitives = [OperatorPrimitives]
         return super().__new__(cls, *args,
                          mixin=mixin,
                          primitives=primitives,

@@ -37,6 +37,9 @@ from .symbol import Expression, Metadata, Symbol
 from .utils import CustomUserWarning
 
 
+_DEFAULT_PARAGRAPH_FORMATTER = ParagraphFormatter()
+
+
 class GraphViz(Expression):
     def __init__(self,
                  notebook = True,
@@ -124,7 +127,7 @@ class Choice(Expression):
 
     def forward(self, sym: Symbol, *args, **kwargs) -> Symbol:
         sym = self._to_symbol(sym)
-        return sym.choice(cases=self.cases, default=self.default, *args, **kwargs)
+        return sym.choice(*args, cases=self.cases, default=self.default, **kwargs)
 
 
 class Output(Expression):
@@ -137,7 +140,7 @@ class Output(Expression):
     def forward(self, *args, **kwargs) -> Expression:
         kwargs['verbose'] = self.verbose
         kwargs['handler'] = self.handler
-        return self.output(expr=self.expr, *args, **kwargs)
+        return self.output(*args, expr=self.expr, **kwargs)
 
 
 class Sequence(TrackerTraceable):
@@ -194,7 +197,7 @@ class Stream(Expression):
         if self._trace:
             local_vars = self._previous_frame.f_locals
             vals = []
-            for key, var in local_vars.items():
+            for _key, var in local_vars.items():
                 if isinstance(var, TrackerTraceable):
                     vals.append(var)
 
@@ -231,7 +234,9 @@ class Stream(Expression):
 
 
 class Trace(Expression):
-    def __init__(self, expr: Expression | None = None, engines=['all'], **kwargs):
+    def __init__(self, expr: Expression | None = None, engines=None, **kwargs):
+        if engines is None:
+            engines = ['all']
         super().__init__(**kwargs)
         self.expr: Expression = expr
         self.engines: list[str] = engines
@@ -261,11 +266,13 @@ class Analyze(Expression):
         self.query: str | None = query
 
     def forward(self, sym: Symbol, *args, **kwargs) -> Symbol:
-        return sym.analyze(exception=self.exception, query=self.query, *args, **kwargs)
+        return sym.analyze(*args, exception=self.exception, query=self.query, **kwargs)
 
 
 class Log(Expression):
-    def __init__(self, expr: Expression | None = None, engines=['all'], **kwargs):
+    def __init__(self, expr: Expression | None = None, engines=None, **kwargs):
+        if engines is None:
+            engines = ['all']
         super().__init__(**kwargs)
         self.expr: Expression = expr
         self.engines: list[str] = engines
@@ -350,7 +357,9 @@ class Metric(Expression):
 
 
 class Style(Expression):
-    def __init__(self, description: str, libraries: list[str] = [], **kwargs):
+    def __init__(self, description: str, libraries: list[str] = None, **kwargs):
+        if libraries is None:
+            libraries = []
         super().__init__(**kwargs)
         self.description: str = description
         self.libraries: list[str] = libraries
@@ -588,11 +597,13 @@ class Function(TrackerTraceable):
                  pre_processors: list[PreProcessor] | None   = None,
                  post_processors: list[PostProcessor] | None = None,
                  default: object | None       = None,
-                 constraints: list[Callable]     = [],
+                 constraints: list[Callable]     = None,
                  return_type: type | None     = str,
                  sym_return_type: type | None = Symbol,
                  origin_type: type | None     = Expression,
                  *args, **kwargs):
+        if constraints is None:
+            constraints = []
         super().__init__(**kwargs)
         chars       = ascii_lowercase + ascii_uppercase
         self.name   = 'func_' + ''.join(sample(chars, 15))
@@ -627,13 +638,16 @@ class Function(TrackerTraceable):
         if 'fn' in kwargs:
             self.prompt = kwargs['fn']
             del kwargs['fn']
-        @core.few_shot(prompt=self.prompt,
-                  examples=self.examples,
-                  pre_processors=self.pre_processors,
-                  post_processors=self.post_processors,
-                  constraints=self.constraints,
-                  default=self.default,
-                  *self.args, **self.kwargs)
+        @core.few_shot(
+            *self.args,
+            prompt=self.prompt,
+            examples=self.examples,
+            pre_processors=self.pre_processors,
+            post_processors=self.post_processors,
+            constraints=self.constraints,
+            default=self.default,
+            **self.kwargs
+        )
         def _func(_, *args, **kwargs) -> self.return_type:
             pass
         _type = type(self.name, (self.origin_type, ), {
@@ -830,7 +844,7 @@ class Indexer(Expression):
             index_name: str = DEFAULT,
             top_k: int = 8,
             batch_size: int = 20,
-            formatter: Callable = ParagraphFormatter(),
+            formatter: Callable = _DEFAULT_PARAGRAPH_FORMATTER,
             auto_add=False,
             raw_result: bool = False,
             new_dim: int = 1536,

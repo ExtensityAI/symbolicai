@@ -1,6 +1,6 @@
 import logging
 import time
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import Any
 
 from ..collect import CollectionRepository, rec_serialize
@@ -114,9 +114,11 @@ class Engine(ABC):
 
         return Preview(argument), {}
 
+    @abstractmethod
     def forward(self, *args: Any, **kwds: Any) -> list[str]:
         raise NotADirectoryError
 
+    @abstractmethod
     def prepare(self, argument):
         raise NotImplementedError
 

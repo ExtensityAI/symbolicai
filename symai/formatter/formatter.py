@@ -22,7 +22,7 @@ class ParagraphFormatter(Expression):
             # split text file-wise and create a map of file names and their contents
             files = {}
             split_text = input_.split('# ----[FILE_START]')
-            for i, file in enumerate(split_text):
+            for _i, file in enumerate(split_text):
                 if not file.strip():
                     continue
                 _, content_file = file.split('[FILE_CONTENT]:')

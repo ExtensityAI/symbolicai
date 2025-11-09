@@ -14,6 +14,9 @@ from .document import DocumentRetriever
 from .seo_query_optimizer import SEOQueryOptimizer
 
 
+_DEFAULT_TEXT_CONTAINER_FORMATTER = TextContainerFormatter(text_split=4)
+
+
 class CodeFormatter:
     def __call__(self, value: str, *args: Any, **kwds: Any) -> Any:
         # extract code from chat conversations or ```<language>\n{code}\n``` blocks
@@ -276,7 +279,7 @@ class RetrievalAugmentedConversation(Conversation):
             max_depth: int | None = 0,
             auto_print: bool = True,
             top_k: int = 5,
-            formatter: Callable = TextContainerFormatter(text_split=4),
+            formatter: Callable = _DEFAULT_TEXT_CONTAINER_FORMATTER,
             overwrite: bool = False,
             truncation_percentage: float = 0.8,
             truncation_type: str = 'head',
@@ -286,7 +289,7 @@ class RetrievalAugmentedConversation(Conversation):
             **kwargs
         ):
 
-        super().__init__(auto_print=auto_print, truncation_percentage=truncation_percentage, truncation_type=truncation_type, with_metadata=with_metadata, *kwargs)
+        super().__init__(auto_print=auto_print, truncation_percentage=truncation_percentage, truncation_type=truncation_type, with_metadata=with_metadata, **kwargs)
 
         self.retriever = DocumentRetriever(
             source=folder_path,
