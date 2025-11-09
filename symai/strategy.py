@@ -415,15 +415,15 @@ class contract:
         else:
             logger.enable(__name__)
 
-    def _is_valid_input(self, input):
-        if input is None:
+    def _is_valid_input(self, input_value):
+        if input_value is None:
             logger.error("No `input` argument provided!")
             msg = "Please provide an `input` argument."
             CustomUserWarning(msg)
             raise ValueError(msg)
-        if not isinstance(input, LLMDataModel):
-            logger.error(f"Invalid input type: {type(input)}")
-            msg = f"Expected input to be of type `LLMDataModel`, got {type(input)}"
+        if not isinstance(input_value, LLMDataModel):
+            logger.error(f"Invalid input type: {type(input_value)}")
+            msg = f"Expected input to be of type `LLMDataModel`, got {type(input_value)}"
             CustomUserWarning(msg)
             raise TypeError(msg)
         return True
@@ -447,10 +447,23 @@ class contract:
         )
         sig = inspect.signature(original_forward)
         try:
+            resolved_param = None
             # Fallback: look at the relevant part of the function signature
             # depending on whether we deal with an *input* or *output*
             if context == "input":
                 param = sig.parameters.get("input")
+                if param is None:
+                    for candidate in sig.parameters.values():
+                        if candidate.name == "self":
+                            continue
+                        if candidate.kind in (
+                            inspect.Parameter.POSITIONAL_ONLY,
+                            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                            inspect.Parameter.KEYWORD_ONLY,
+                        ):
+                            param = candidate
+                            break
+                resolved_param = param
                 if param is None or param.annotation == inspect._empty:
                     msg = "Failed to infer type from input parameter annotation"
                     CustomUserWarning(msg)
@@ -463,7 +476,7 @@ class contract:
                     raise TypeError(msg)
                 dynamic_model = build_dynamic_llm_datamodel(sig.return_annotation)
         except Exception:
-            logger.exception(f"Failed to build dynamic LLMDataModel from {sig.parameters.get('input')}!")
+            logger.exception(f"Failed to build dynamic LLMDataModel from {resolved_param}!")
             msg = (
                 "The type annotation must be a subclass of `LLMDataModel` or a "
                 "valid Python typing object supported by Pydantic."
@@ -482,7 +495,7 @@ class contract:
             raise e
         return data_model
 
-    def _validate_input(self, wrapped_self, input, it, **remedy_kwargs):
+    def _validate_input(self, wrapped_self, input_value, it, **remedy_kwargs):
         logger.info("Starting input validation...")
         if self.pre_remedy:
             logger.info("Validating pre-conditions with remedy...")
@@ -494,34 +507,38 @@ class contract:
 
             op_start = time.perf_counter()
             try:
-                assert wrapped_self.pre(input)
+                assert wrapped_self.pre(input_value)
                 logger.success("Pre-condition validation successful!")
-                return input
+                return input_value
             except Exception:
                 logger.exception("Pre-condition validation failed!")
-                self.f_type_validation_remedy.register_expected_data_model(input, attach_to="output", override=True)
-                input = self._try_remedy_with_exception(prompt=wrapped_self.prompt, f_semantic_conditions=[wrapped_self.pre], **remedy_kwargs)
+                self.f_type_validation_remedy.register_expected_data_model(input_value, attach_to="output", override=True)
+                input_value = self._try_remedy_with_exception(
+                    prompt=wrapped_self.prompt,
+                    f_semantic_conditions=[wrapped_self.pre],
+                    **remedy_kwargs,
+                )
             finally:
                 wrapped_self._contract_timing[it]["input_validation"] = time.perf_counter() - op_start
-            return input
+            return input_value
         if hasattr(wrapped_self, 'pre'):
             logger.info("Validating pre-conditions without remedy...")
             op_start = time.perf_counter()
             try:
-                assert wrapped_self.pre(input)
+                assert wrapped_self.pre(input_value)
             except Exception as e:
                 logger.exception("Pre-condition validation failed")
                 raise e
             finally:
                 wrapped_self._contract_timing[it]["input_validation"] = time.perf_counter() - op_start
             logger.success("Pre-condition validation successful!")
-            return input
+            return input_value
         logger.info("Skip; no pre-condition validation was required!")
-        return input
+        return input_value
 
-    def _validate_output(self, wrapped_self, input, output, it, **remedy_kwargs):
+    def _validate_output(self, wrapped_self, input_value, output, it, **remedy_kwargs):
         logger.info("Starting output validation...")
-        self.f_type_validation_remedy.register_expected_data_model(input, attach_to="input", override=True)
+        self.f_type_validation_remedy.register_expected_data_model(input_value, attach_to="input", override=True)
         self.f_type_validation_remedy.register_expected_data_model(output, attach_to="output", override=True)
 
         op_start = time.perf_counter()
@@ -575,12 +592,24 @@ class contract:
     def _validate_act_method(self, act_method):
         act_sig = inspect.signature(act_method)
         params = list(act_sig.parameters.values())
-        if not params or params[0].name != 'input':
-            msg = "'act' method first parameter must be named 'input'"
+
+        first_param = None
+        for param in params:
+            if param.name == "self":
+                continue
+            if param.kind in (
+                inspect.Parameter.POSITIONAL_ONLY,
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            ):
+                first_param = param
+                break
+
+        if first_param is None:
+            msg = "'act' method must accept at least one positional parameter after `self`."
             CustomUserWarning(msg)
             raise TypeError(msg)
-        if params[0].annotation == inspect._empty:
-            msg = "'act' method parameter 'input' must have a type annotation'"
+        if first_param.annotation == inspect._empty:
+            msg = f"'act' method parameter '{first_param.name}' must have a type annotation."
             CustomUserWarning(msg)
             raise TypeError(msg)
         if act_sig.return_annotation == inspect._empty:
@@ -589,22 +618,22 @@ class contract:
             raise TypeError(msg)
         return True
 
-    def _act(self, wrapped_self, input, it, **act_kwargs):
+    def _act(self, wrapped_self, input_value, it, **act_kwargs):
         act_method = getattr(wrapped_self, 'act', None)
         if not callable(act_method):
             # Propagate the input if no act method is defined
-            return input
+            return input_value
 
         assert self._validate_act_method(act_method)
 
-        is_dynamic_model = getattr(input, '_is_dynamic_model', False)
-        input = input if not is_dynamic_model else input.value
+        is_dynamic_model = getattr(input_value, '_is_dynamic_model', False)
+        input_value = input_value if not is_dynamic_model else input_value.value
 
         logger.info(f"Executing 'act' method on {wrapped_self.__class__.__name__}…")
 
         op_start = time.perf_counter()
         try:
-            act_output = act_method(input, **act_kwargs)
+            act_output = act_method(input_value, **act_kwargs)
         except Exception as e:
             logger.exception("'act' method execution failed")
             raise e
@@ -644,18 +673,51 @@ class contract:
             wrapped_self._contract_timing = defaultdict(dict)
             logger.info("Contract initialization complete!")
 
-        def wrapped_forward(wrapped_self, **kwargs):
+        def wrapped_forward(wrapped_self, *args, **kwargs):
             logger.info("Starting contract execution...")
             it = len(wrapped_self._contract_timing) # the len is the __call__ op_start
             contract_start = time.perf_counter()
 
-            input = kwargs.pop("input", None)
-            input_type = None
+            sig = inspect.signature(original_forward)
+            params = list(sig.parameters.values())
+            input_param = None
+            for param in params:
+                if param.name == "self":
+                    continue
+                if param.kind in (
+                    inspect.Parameter.POSITIONAL_ONLY,
+                    inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                    inspect.Parameter.KEYWORD_ONLY,
+                ):
+                    input_param = param
+                    break
+            input_param_name = input_param.name if input_param else None
+
+            args_list = list(args)
+            original_kwargs = dict(kwargs)
+            kwargs_without_input = dict(kwargs)
+            input_value = None
+            input_source = None
+
+            if args_list:
+                input_value = args_list[0]
+                input_source = ("args", 0)
+            elif input_param_name and input_param_name in kwargs_without_input:
+                input_value = kwargs_without_input.pop(input_param_name)
+                input_source = ("kwargs", input_param_name)
+            elif "input" in kwargs_without_input:
+                input_value = kwargs_without_input.pop("input")
+                input_source = ("kwargs", "input")
+            else:
+                input_value = original_kwargs.get("input")
+                input_source = ("fallback_kw", "input")
+
+            input_type_model = None
             try:
-                assert self._is_valid_input(input)
+                assert self._is_valid_input(input_value)
             except TypeError:
-                input_type = self._try_dynamic_type_annotation(original_forward, context="input")
-                input = input_type(value=input)
+                input_type_model = self._try_dynamic_type_annotation(original_forward, context="input")
+                input_value = input_type_model(value=input_value)
 
             maybe_payload = getattr(wrapped_self, "payload", None)
             maybe_template = wrapped_self.template
@@ -665,12 +727,11 @@ class contract:
 
             # Create validation kwargs that include all original kwargs plus payload and template
             validation_kwargs = {
-                **kwargs,
+                **kwargs_without_input,
                 "payload": maybe_payload,
                 "template_suffix": maybe_template
             }
 
-            sig = inspect.signature(original_forward)
             output_type = sig.return_annotation
             try:
                 assert self._is_valid_output(output_type)
@@ -678,18 +739,24 @@ class contract:
                 output_type = self._try_dynamic_type_annotation(original_forward, context="output")
 
             output = None
-            current_input = input
+            current_input_value = input_value
             try:
                 # 1. Start with original input and apply pre-validation
-                maybe_new_input = self._validate_input(wrapped_self, current_input, it, **validation_kwargs)
-                if maybe_new_input is not None:
-                    current_input = maybe_new_input
+                maybe_new_input_value = self._validate_input(wrapped_self, current_input_value, it, **validation_kwargs)
+                if maybe_new_input_value is not None:
+                    current_input_value = maybe_new_input_value
 
                 # 2. Check if 'act' method exists and execute it
-                current_input = self._act(wrapped_self, current_input, it, **validation_kwargs)
+                current_input_value = self._act(wrapped_self, current_input_value, it, **validation_kwargs)
 
                 # 3. Validate output type and prepare for original_forward
-                output = self._validate_output(wrapped_self, current_input, output_type, it, **validation_kwargs)
+                output = self._validate_output(
+                    wrapped_self,
+                    current_input_value,
+                    output_type,
+                    it,
+                    **validation_kwargs,
+                )
                 wrapped_self.contract_successful = output is not None
                 wrapped_self.contract_result = output
                 wrapped_self.contract_exception = None
@@ -706,18 +773,30 @@ class contract:
                 logger.info("Executing original forward method...")
 
                 # If contract was successful, use the processed input (after pre-validation and act, both optional)
-                # `current_input` at this stage is the result of the try block's processing up to the point of exception,
+                # `current_input_value` at this stage is the result of the try block's processing up to the point of exception,
                 # or the full processing if successful.
                 # If contract failed, use original_input (fallback).
-                forward_input = current_input if wrapped_self.contract_successful else input
+                forward_input_value = current_input_value if wrapped_self.contract_successful else input_value
 
                 # Prepare kwargs for original_forward
-                forward_kwargs = kwargs.copy()
-                forward_kwargs['input'] = forward_input
+                forward_kwargs = original_kwargs.copy()
+
+                if input_param_name:
+                    if input_param_name in forward_kwargs or input_source == ("kwargs", input_param_name):
+                        forward_kwargs[input_param_name] = forward_input_value
+                    elif input_source == ("args", 0) and len(args_list) > 0:
+                        args_list[0] = forward_input_value
+                    else:
+                        forward_kwargs[input_param_name] = forward_input_value
+                else:
+                    forward_kwargs['input'] = forward_input_value
+
+                if input_param_name and input_param_name != "input" and "input" in forward_kwargs:
+                    forward_kwargs.pop("input")
 
                 try:
                     op_start = time.perf_counter()
-                    output = original_forward(wrapped_self, **forward_kwargs)
+                    output = original_forward(wrapped_self, *args_list, **forward_kwargs)
                 finally:
                     wrapped_self._contract_timing[it]["forward_execution"] = time.perf_counter() - op_start
                 wrapped_self._contract_timing[it]["contract_execution"] = time.perf_counter() - contract_start

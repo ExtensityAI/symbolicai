@@ -157,10 +157,10 @@ This method defines the pre-conditions for your contract. It's called with the v
 
 The `act` method provides an optional intermediate processing step that occurs *after* input pre-validation (and potential pre-remedy) and *before* the main output validation/generation phase (`_validate_output`).
 
-*   **Signature**: `def act(self, input: YourInputModelOrActInputModel, **kwargs) -> YourIntermediateModel:`
-    *   The `input` parameter **must be named `input`** and be type-hinted with an `LLMDataModel` subclass.
-    *   It must have a return type annotation, also an `LLMDataModel` subclass. This can be a different type than the input, allowing `act` to transform the data.
-    *   `**kwargs` from the original call (excluding `'input'`) are passed to `act`.
+*   **Signature**: `def act(self, act_input: YourInputModelOrActInputModel, **kwargs) -> YourIntermediateModel:`
+    *   The decorator treats the **first positional or positional-or-keyword parameter after `self`** as the contract input. You can keep naming it `input` for clarity, but any valid identifier works.
+    *   That parameter must be type-hinted with an `LLMDataModel` subclass (or a Python type that can be wrapped dynamically). The method must also declare a return type annotation so the contract knows which `LLMDataModel` to build next.
+    *   `**kwargs` from the original call—excluding the canonical input argument—are passed through to `act`.
 *   **Behavior**:
     *   Perform transformations on the `input`, computations, or state updates on `self`.
     *   The object returned by `act` becomes the `current_input` for the `_validate_output` stage (where the LLM is typically called to generate the final output type).
@@ -205,10 +205,11 @@ This method defines the post-conditions. It's called by `_validate_output` with 
 
 This is your class's original `forward` method, containing the primary logic. The `@contract` decorator wraps this method.
 
-*   **Signature**: `def forward(self, input: YourInputModel, **kwargs) -> YourOutputModel:`
-    *   The `input` parameter **must be named `input`** and be type-hinted with an `LLMDataModel` subclass that matches (or is compatible with) the input to `pre` and `act`.
-    *   It **must have a return type annotation** (e.g., `-> YourOutputModel`), which must be an `LLMDataModel` subclass. This declared type is crucial for the contract's type validation and output generation phases.
-    *   It **must not use positional arguments (`*args`)**; only keyword arguments are supported for the main input. Other `**kwargs` are passed through to the neurosymbolic engine.
+*   **Signature**: `def forward(self, model_input: YourInputModel, **kwargs) -> YourOutputModel:`
+    *   The decorator binds the **first positional or positional-or-keyword parameter after `self`** as the canonical contract input. Naming the parameter `input` is still idiomatic, but any identifier works.
+    *   That parameter must be type-hinted with an `LLMDataModel` subclass (or a Python type that the decorator can wrap dynamically) compatible with your `pre`/`act` expectations.
+    *   The method **must have a return type annotation** (e.g., `-> YourOutputModel`), which must be an `LLMDataModel` subclass. This declared type is crucial for the contract's type validation and output generation phases.
+    *   Calls may use positional or keyword arguments interchangeably; any remaining `**kwargs` are forwarded unchanged to your logic and downstream engines.
 *   **Behavior**:
     *   This method is **always called** by the contract's `wrapped_forward` (in its `finally` block), regardless of whether the preceding contract validations (`pre`, `act`, `post`, remedies) succeeded or failed.
     *   **Developer Responsibility**: Inside your `forward` method, you *must* check `self.contract_successful` and/or `self.contract_result`.
@@ -219,9 +220,9 @@ This is your class's original `forward` method, containing the primary logic. Th
                 ```python
                 raise self.contract_exception or ValueError("Contract failed!")
                 ```
-    *   The `input` argument received by *this* `forward` method (the one you write) depends on whether the contract succeeded:
-        *   If `contract_successful == True`: `input` is the `current_input` from `wrapped_forward` which was used by `_validate_output`. This `current_input` is the output of `_act` if `act` is defined, otherwise it's the output of `_validate_input`.
-        *   If `contract_successful == False`: `input` is the `original_input` (the raw input to the contract call, after initial type validation by `_is_valid_input` but before `pre` or `act` modifications).
+    *   The argument bound to your first non-`self` parameter (e.g., `model_input`) depends on whether the contract succeeded:
+        *   If `contract_successful == True`: that argument is the `current_input` from `wrapped_forward` which was used by `_validate_output`. This `current_input` is the output of `_act` if `act` is defined, otherwise it's the output of `_validate_input`.
+        *   If `contract_successful == False`: that argument is the `original_input` (the raw value provided to the contract call, after initial type validation by `_is_valid_input` but before `pre` or `act` modifications).
 
 ```python
     def forward(self, input: MyInput, **kwargs) -> MyOutput:
@@ -236,6 +237,16 @@ This is your class's original `forward` method, containing the primary logic. Th
         final_result.result += " (Forward processed)" # Example of further work
         return final_result
 ```
+
+#### Input Binding Rules
+
+The contract wrapper now resolves the canonical input value without requiring an `input=` keyword argument. The resolution order is:
+
+1.  The first positional argument supplied when you call the contracted instance (i.e., `my_expr(my_input)`).
+2.  If no positional value is provided, the first positional-or-keyword parameter defined after `self` in your `forward` signature (for example, `model_input`) is fetched from `**kwargs`.
+3.  As a backwards-compatible fallback, an explicit `input=` keyword argument is still accepted.
+
+The resolved object is then passed consistently through `_is_valid_input`, `pre`, `act`, `_validate_output`, and finally your original `forward` method. All remaining keyword arguments are forwarded untouched.
 
 #### Error Handling and Propagation
 
@@ -285,17 +296,17 @@ To illustrate, say you want a non-trivial `title: str` in your output object, bu
 
 ## Contract Execution Flow
 
-When you call an instance of your contracted class (e.g., `my_instance(input=my_input_data)`), the `wrapped_forward` method (created by the `@contract` decorator) executes the following sequence:
+When you call an instance of your contracted class (e.g., `my_instance(my_input_data)` or `my_instance(input=my_input_data)`), the `wrapped_forward` method (created by the `@contract` decorator) executes the following sequence:
 
 0.  **Return Type Annotation Validation & Dynamic Wrapping (`_is_valid_output` + `_try_dynamic_type_annotation`)**:
     *   Inspects your `forward` method's return type annotation (`sig.return_annotation`).
     *   Ensures you provided a return type annotation and it’s a subclass of `LLMDataModel`.
     *   If the annotation is a native Python/typing type (e.g., `str`, `list[int]`, `Optional[...]`), the system automatically builds a dynamic `LLMDataModel` wrapper for the output type, allowing subsequent validation and unwrapping.
 
-1.  **Initial Input Validation & Dynamic Wrapping (`_is_valid_input` + `_try_dynamic_type_annotation`)**:
-    *   Checks if the provided `input` kwarg is an instance of `LLMDataModel`. Fails fast if not.
-    *   Extracts the `original_input` object.
-    *   If the `input` is a native Python type (and not an `LLMDataModel`), the system inspects your `forward` signature to infer the expected Python type and automatically wraps your primitive or container in a temporary `LLMDataModel` for validation (via `_try_dynamic_type_annotation`).
+1.  **Initial Input Collection & Dynamic Wrapping (`_is_valid_input` + `_try_dynamic_type_annotation`)**:
+    *   Determines the canonical contract input by prioritizing the first positional argument after `self`. If no positional value is provided, it falls back to the first compatible keyword (preferring the corresponding parameter name, then `input` for backward compatibility).
+    *   Validates that canonical value with `_is_valid_input` and stores it as `original_input`.
+    *   If the value is a native Python type (and not already an `LLMDataModel`), the system inspects your `forward` signature to infer the expected Python type and automatically wraps your primitive or container in a temporary `LLMDataModel` for validation (via `_try_dynamic_type_annotation`).
 
 2.  **Pre-condition Validation (`_validate_input`)**:
     *   The `current_input` (initially `original_input`) is passed to your `pre(input)` method.
@@ -304,7 +315,7 @@ When you call an instance of your contracted class (e.g., `my_instance(input=my_
 
 3.  **Intermediate Action (`_act`)**:
     *   If your class defines an `act` method:
-        *   Its signature is validated (parameter named `input`, `LLMDataModel` type hints for input and output).
+        *   Its signature is validated to ensure the first positional (or positional-or-keyword) parameter after `self` is type-hinted, and the return annotation is present.
         *   `act(current_input, **act_kwargs)` is called. `current_input` here is the output from the pre-condition validation step.
         *   The result of `act` becomes the new `current_input`.
         *   The actual type of `act`'s return value is checked against its annotation.
@@ -332,7 +343,7 @@ When you call an instance of your contracted class (e.g., `my_instance(input=my_
     *   It determines the `forward_input` for your original `forward` method:
         *   If `self.contract_successful` is `True`, `forward_input` is the `current_input` that successfully passed through `_act` and was used by `_validate_output`.
         *   If `self.contract_successful` is `False`, `forward_input` is the `original_input`.
-    *   Your class's original `forward(self, input=forward_input, **kwargs)` method is called.
+    *   Your class's original `forward` method is invoked with that canonical input reinserted (as the first positional argument or matching keyword) alongside the untouched auxiliary `**kwargs`.
     *   The value returned by *your* `forward` method becomes the ultimate return value of the contract call.
     *   A final output type check is performed on this returned value against your `forward` method's declared return type annotation. If the contract is configured with `graceful=True`, this final type check is skipped instead of raising a `TypeError`.
 
