@@ -190,8 +190,8 @@ def detokenize(request: DetokenizeRequest):
 
 def huggingface_server():
     # Lazy imports keep optional server dependencies out of module import path.
-    from functools import partial  # noqa: PLC0415
+    from functools import partial # noqa
+    import uvicorn # noqa
 
-    import uvicorn  # noqa: PLC0415
     command = partial(uvicorn.run, app)
     return command, args

@@ -39,7 +39,7 @@ class FileEngine(Engine):
     def _read_slice_file(self, file_path, argument):
         # check if file is empty
         with_metadata = argument.kwargs.get('with_metadata', False)
-        id            = Path(argument.prop.prepared_input).stem.replace(' ', '_')
+        file_id       = Path(argument.prop.prepared_input).stem.replace(' ', '_')
         if file_path is None or file_path.strip() == '':
             return None
 
@@ -94,7 +94,7 @@ class FileEngine(Engine):
                     lines = new_content
                 content = '\n'.join(lines)
                 content = content.encode('utf8', 'ignore').decode('utf8', 'ignore')
-                return content if not with_metadata else [TextContainer(id, None, content)]
+                return content if not with_metadata else [TextContainer(file_id, None, content)]
             except Exception:
                 # Fallback to Tika if plain read fails
                 pass
@@ -114,7 +114,7 @@ class FileEngine(Engine):
             content = new_content
         content = '\n'.join(content)
         content = content.encode('utf8', 'ignore').decode('utf8', 'ignore')
-        return content if not with_metadata else [TextContainer(id, None, content)]
+        return content if not with_metadata else [TextContainer(file_id, None, content)]
 
 
     def reset_eof_of_pdf_return_stream(self, pdf_stream_in: list):
@@ -149,13 +149,13 @@ class FileEngine(Engine):
         txt = []
         n_pages  = len(pdf_reader.pages)
         with_metadata = argument.kwargs.get('with_metadata', False)
-        id       = Path(argument.prop.prepared_input).stem.replace(' ', '_')
+        file_id       = Path(argument.prop.prepared_input).stem.replace(' ', '_')
         for i in range(n_pages)[slice(0, n_pages) if page_range is None else page_range]:
             page = pdf_reader.pages[i]
             extracted = page.extract_text()
             extracted = extracted.encode('utf8', 'ignore').decode('utf8', 'ignore')
             if with_metadata:
-                txt.append(TextContainer(id, str(i), extracted))
+                txt.append(TextContainer(file_id, str(i), extracted))
             else:
                 txt.append(extracted)
 

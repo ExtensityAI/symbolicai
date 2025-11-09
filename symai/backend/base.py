@@ -99,7 +99,7 @@ class Engine(ABC):
 
     def preview(self, argument):
         # Used here to avoid backend.base <-> symbol circular import.
-        from ..symbol import (  # noqa: PLC0415 - lazy import prevents backend.base <-> symbol recursion
+        from ..symbol import ( # noqa
             Symbol,
         )
         class Preview(Symbol):
