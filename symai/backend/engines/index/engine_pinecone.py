@@ -2,15 +2,15 @@ import contextlib
 import itertools
 import warnings
 
-warnings.filterwarnings('ignore', module='pinecone')
-with contextlib.suppress(BaseException):
-    from pinecone import Pinecone, ServerlessSpec
-
 from .... import core_ext
 from ....symbol import Result
 from ....utils import CustomUserWarning
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
+
+warnings.filterwarnings('ignore', module='pinecone')
+with contextlib.suppress(BaseException):
+    from pinecone import Pinecone, ServerlessSpec
 
 
 def chunks(iterable, batch_size=100):

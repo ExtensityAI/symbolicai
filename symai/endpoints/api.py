@@ -114,6 +114,21 @@ component_class_types = {
 }
 component_instance_repository = GenericRepository[Symbol | Expression](redis_client, "comp_id", use_redis=use_redis)
 
+
+def _load_extended_types():
+    """Load extended classes lazily to avoid premature engine initialization."""
+    extended_module = importlib.import_module('symai.extended')
+    personas_module = importlib.import_module('symai.extended.personas')
+    sales_module = importlib.import_module('symai.extended.personas.sales')
+    student_module = importlib.import_module('symai.extended.personas.student')
+    return [
+        extended_module.Conversation,
+        personas_module.Persona,
+        personas_module.Dialogue,
+        student_module.MaxTenner,
+        sales_module.ErikJames,
+    ]
+
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 ### Symbols Endpoints ###
@@ -356,13 +371,8 @@ def delete_component(instance_id: str, _api_key: str = Security(get_api_key)):
 
 ### Selectively register the endpoints with the API router ###
 
-# extended imports
-from ..extended import Conversation
-from ..extended.personas import Dialogue, Persona
-from ..extended.personas.sales import ErikJames
-from ..extended.personas.student import MaxTenner
-
-extended_types = [Conversation, Persona, Dialogue, MaxTenner, ErikJames]
+# extended types loaded lazily to avoid early engine configuration
+extended_types = _load_extended_types()
 # Register only the extended types from the extended_types Union
 extended_class_types         = {c.__name__: c for c in extended_types}
 extended_instance_repository = GenericRepository[extended_types](redis_client, "ext_id", use_redis=use_redis)
