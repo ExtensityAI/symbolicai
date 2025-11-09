@@ -1,22 +1,19 @@
 import contextlib
-import os
-from pathlib import Path
-
-os.environ['WDM_LOG'] = 'false' # disable webdriver-manager logging
-
 import logging
-
-logging.getLogger('WDM').setLevel(logging.NOTSET)
-
+import os
 import random
 import re
 import sys
 import time
 import urllib.request
 import warnings
+from pathlib import Path
 from random import choice
 
 from ...utils import CustomUserWarning
+
+os.environ['WDM_LOG'] = 'false'  # disable webdriver-manager logging
+logging.getLogger('WDM').setLevel(logging.NOTSET)
 
 try:
     warnings.filterwarnings('ignore', module='chromedriver')
