@@ -7,6 +7,9 @@ from ..formatter import ParagraphFormatter
 from ..symbol import Expression, Symbol
 
 
+_DEFAULT_PARAGRAPH_FORMATTER = ParagraphFormatter()
+
+
 class DocumentRetriever(Expression):
     def __init__(
             self,
@@ -15,7 +18,7 @@ class DocumentRetriever(Expression):
             index_name: str = Indexer.DEFAULT,
             top_k: int = 5,
             max_depth: int = 1,
-            formatter: Callable = ParagraphFormatter(),
+            formatter: Callable = _DEFAULT_PARAGRAPH_FORMATTER,
             overwrite: bool = False,
             with_metadata: bool = False,
             raw_result: bool | None = False,

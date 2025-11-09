@@ -65,7 +65,9 @@ class CollectionRepository:
             print("Connection failed: " + str(e))
             return False
 
-    def add(self, forward: Any, engine: Any, metadata: dict[str, Any] = {}) -> Any:
+    def add(self, forward: Any, engine: Any, metadata: dict[str, Any] = None) -> Any:
+        if metadata is None:
+            metadata = {}
         if not self.support_community:
             return None
         record = {

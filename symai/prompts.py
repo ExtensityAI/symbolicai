@@ -1,5 +1,4 @@
 import threading
-from abc import ABC
 from collections.abc import Callable
 from enum import Enum
 from typing import Any
@@ -7,7 +6,7 @@ from typing import Any
 from .exceptions import TemplatePropertyException
 
 
-class Prompt(ABC):
+class Prompt:
     stop_token = 'EOF'
 
     def __init__(self, value, **format_kwargs):

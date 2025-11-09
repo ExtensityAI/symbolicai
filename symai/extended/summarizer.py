@@ -4,7 +4,9 @@ from ..symbol import Expression, Symbol
 
 
 class Summarizer(Expression):
-    def __init__(self, filters: list[Expression] = [], **kwargs):
+    def __init__(self, filters: list[Expression] = None, **kwargs):
+        if filters is None:
+            filters = []
         super().__init__(**kwargs)
         filters = filters if isinstance(filters, list) or isinstance(filters, tuple) else [filters]
         self.data_stream = Stream(Sequence(

@@ -73,7 +73,7 @@ def _cast_return_type(rsp: Any, return_constraint: type, engine_probabilistic_bo
             res = ast.literal_eval(rsp)
         except Exception:
             logger.warning(f"Failed to cast return type to {return_constraint} for {rsp!s}")
-            warnings.warn(f"Failed to cast return type to {return_constraint}")  # Add warning for test
+            warnings.warn(f"Failed to cast return type to {return_constraint}", stacklevel=2)  # Add warning for test
             res = rsp
         assert res is not None, f"Return type cast failed! Check if the return type is correct or post_processors output matches desired format: {rsp!s}"
         return res
@@ -88,7 +88,7 @@ def _cast_return_type(rsp: Any, return_constraint: type, engine_probabilistic_bo
         except (ValueError, TypeError):
             if return_constraint == int:
                 raise ConstraintViolationException(f"Cannot convert {rsp} to int")
-            warnings.warn(f"Failed to cast {rsp} to {return_constraint}")
+            warnings.warn(f"Failed to cast {rsp} to {return_constraint}", stacklevel=2)
             return rsp
     return rsp
 
@@ -174,7 +174,13 @@ def _execute_query_fallback(func, instance, argument, error=None, stack_trace=No
     providing error context to the fallback function, and maintaining the same return format.
     """
     try:
-        rsp = func(instance, error=error, stack_trace=stack_trace, *argument.args, **argument.signature_kwargs)
+        rsp = func(
+            instance,
+            *argument.args,
+            error=error,
+            stack_trace=stack_trace,
+            **argument.signature_kwargs,
+        )
     except Exception:
         raise error # re-raise the original error
     if rsp is not None:
@@ -191,13 +197,15 @@ def _execute_query_fallback(func, instance, argument, error=None, stack_trace=No
 def _process_query_single(engine,
                           instance,
                           func: Callable,
-                          constraints: list[Callable] = [],
+                          constraints: list[Callable] = None,
                           default: object | None = None,
                           limit: int = 1,
                           trials: int = 1,
                           pre_processors: list[PreProcessor] | None = None,
                           post_processors: list[PostProcessor] | None = None,
                           argument=None):
+    if constraints is None:
+        constraints = []
     if pre_processors and not isinstance(pre_processors, list):
         pre_processors = [pre_processors]
     if post_processors and not isinstance(post_processors, list):
@@ -244,7 +252,7 @@ def _process_query(
         engine: Engine,
         instance: Any,
         func: Callable,
-        constraints: list[Callable] = [],
+        constraints: list[Callable] = None,
         default: object | None = None,
         limit: int | None = None,
         trials: int = 1,
@@ -253,6 +261,8 @@ def _process_query(
         argument: Argument = None,
     ) -> Any:
 
+    if constraints is None:
+        constraints = []
     if pre_processors and not isinstance(pre_processors, list):
         pre_processors = [pre_processors]
     if post_processors and not isinstance(post_processors, list):
