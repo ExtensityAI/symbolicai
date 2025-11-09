@@ -4,6 +4,7 @@ from enum import Enum
 from typing import Any
 
 from .exceptions import TemplatePropertyException
+from .utils import CustomUserWarning
 
 
 class Prompt:

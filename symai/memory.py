@@ -101,12 +101,14 @@ class VectorDatabaseMemory(Memory):
         self.index_name    = index_name
 
     def store(self, query: str , *_args, **_kwargs):
-        if not self.enabled: return
+        if not self.enabled:
+            return
 
         self.add(Symbol(query).zip(), index_name=self.index_name)
 
     def recall(self, query: str, *_args, **_kwargs):
-        if not self.enabled: return None
+        if not self.enabled:
+            return None
 
         res = self.get(Symbol(query).embed().value, index_top_k=self.top_k, index_name=self.index_name).ast()
 

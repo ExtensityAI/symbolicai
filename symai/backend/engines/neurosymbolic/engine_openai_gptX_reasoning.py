@@ -91,7 +91,7 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
         for message in messages:
             num_tokens += tokens_per_message
             for key, value in message.items():
-                if type(value) == str:
+                if isinstance(value, str):
                     num_tokens += len(self.tokenizer.encode(value, disallowed_special=()))
                 else:
                     for v in value:
@@ -290,8 +290,8 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
             CustomUserWarning('Need to provide a prompt instruction to the engine if raw_input is enabled.', raise_with=ValueError)
         value = argument.prop.processed_input
         # convert to dict if not already
-        if type(value) != list:
-            if type(value) != dict:
+        if not isinstance(value, list):
+            if not isinstance(value, dict):
                 value = {'role': 'user', 'content': str(value)}
             value = [value]
         return value

@@ -37,8 +37,10 @@ class PackageRunner:
 
             parser.add_argument('command', help='Subcommand to run')
             args = parser.parse_args(sys.argv[1:2])
-            getattr(self, args.command)()
-        except:
+            command_aliases = {'l': 'list_aliases'}
+            command = command_aliases.get(args.command, args.command)
+            getattr(self, command)()
+        except Exception:
             if len(sys.argv) > 1:
                 self.run_alias()
             else:
@@ -135,7 +137,7 @@ class PackageRunner:
         self.save_aliases(aliases)
         self.console(f"Alias {args.alias} => {args.package} created successfully.")
 
-    def l(self):
+    def list_aliases(self):
         aliases = self.load_aliases()
         # format the aliases output as a table of key value pairs
         self.console("Aliases:\n------------------")

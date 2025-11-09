@@ -14,7 +14,7 @@ class ApiLayerResult(Result):
         try:
             dict_ = self._to_symbol(text).ast()
             self._value = dict_.get('all_text', f'OCR Engine Error: {text} - status code {status_code}')
-        except:
+        except Exception:
             self._value = f'OCR Engine Error: {text} - status code {status_code}'
 
 
@@ -41,7 +41,6 @@ class OCREngine(Engine):
             }
 
     def forward(self, argument):
-        kwargs    = argument.kwargs
         image_url = argument.prop.image
 
         if image_url.startswith("file://"):

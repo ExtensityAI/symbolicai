@@ -263,16 +263,17 @@ class Aggregator(Symbol):
                 return
         try:
             # Append a new entry to the aggregator
-            assert type(entries) in [tuple, list, np.float32, np.float64, np.ndarray, torch.Tensor, int, float, bool, str] or isinstance(entries, Symbol), f'Entries must be a tuple, list, numpy array, torch tensor, integer, float, boolean, string, or Symbol! Got: {type(entries)}'
-            if type(entries) == torch.Tensor:
+            valid_types = (tuple, list, np.float32, np.float64, np.ndarray, torch.Tensor, int, float, bool, str)
+            assert isinstance(entries, valid_types) or isinstance(entries, Symbol), f'Entries must be a tuple, list, numpy array, torch tensor, integer, float, boolean, string, or Symbol! Got: {type(entries)}'
+            if isinstance(entries, torch.Tensor):
                 entries = entries.detach().cpu().numpy().astype(np.float32)
-            elif type(entries) in [tuple, list]:
+            elif isinstance(entries, (tuple, list)):
                 entries = np.asarray(entries, dtype=np.float32)
-            elif type(entries) in [int, float]:
-                entries = entries
-            elif type(entries) == bool:
+            elif isinstance(entries, bool):
                 entries = int(entries)
-            elif type(entries) == str:
+            elif isinstance(entries, (int, float)):
+                entries = entries
+            elif isinstance(entries, str):
                 entries = Symbol(entries).embedding.astype(np.float32)
             elif isinstance(entries, Symbol):
                 # use this to avoid recursion on map setter

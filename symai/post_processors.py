@@ -161,7 +161,7 @@ class ASTPostProcessor(PostProcessor):
         try:
             val = ast.literal_eval(response.strip())
             return self._recursive_parse(val)
-        except:
+        except (ValueError, SyntaxError):
             return response
 
     def _recursive_parse(self, obj):
@@ -169,7 +169,7 @@ class ASTPostProcessor(PostProcessor):
         if isinstance(obj, str):
             try:
                 return self._recursive_parse(ast.literal_eval(obj))
-            except:
+            except (ValueError, SyntaxError):
                 return obj
         elif isinstance(obj, list):
             return [self._recursive_parse(item) for item in obj]

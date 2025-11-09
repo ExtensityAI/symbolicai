@@ -9,7 +9,7 @@ from pathlib import Path
 from random import sample
 from string import ascii_lowercase, ascii_uppercase
 from threading import Lock
-from typing import Union
+from typing import TYPE_CHECKING, Union
 
 import numpy as np
 from box import Box
@@ -35,6 +35,9 @@ from .processor import ProcessorPipeline
 from .prompts import JsonPromptTemplate, Prompt
 from .symbol import Expression, Metadata, Symbol
 from .utils import CustomUserWarning
+
+if TYPE_CHECKING:
+    from .backend.engines.index.engine_vectordb import VectorDBResult
 
 _DEFAULT_PARAGRAPH_FORMATTER = ParagraphFormatter()
 
@@ -344,8 +347,8 @@ class Metric(Expression):
 
     def forward(self, sym: Symbol, **_kwargs) -> Symbol:
         sym = self._to_symbol(sym)
-        assert sym.value_type == np.ndarray or sym.value_type == list, 'Metric can only be applied to numpy arrays or lists.'
-        if sym.value_type == list:
+        assert sym.value_type is np.ndarray or sym.value_type is list, 'Metric can only be applied to numpy arrays or lists.'
+        if sym.value_type is list:
             sym._value = np.array(sym.value)
         # compute normalization between 0 and 1
         if self.normalize:
