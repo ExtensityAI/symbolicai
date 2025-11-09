@@ -24,7 +24,8 @@ def encode_media_frames(file_path):
         return encode_image_local(file_path)
     if ext.lower() == 'gif':
         if file_path.startswith('http'):
-            raise ValueError("GIF files from URLs are not supported. Please download the file and try again.")
+            msg = "GIF files from URLs are not supported. Please download the file and try again."
+            CustomUserWarning(msg, raise_with=ValueError)
 
         ext = 'jpeg'
         # get frames from gif
@@ -39,7 +40,8 @@ def encode_media_frames(file_path):
         return base64Frames, ext
     if ext.lower() == 'mp4' or ext.lower() == 'avi' or ext.lower() == 'mov':
         if file_path.startswith('http'):
-            raise ValueError("Video files from URLs are not supported. Please download the file and try again.")
+            msg = "Video files from URLs are not supported. Please download the file and try again."
+            CustomUserWarning(msg, raise_with=ValueError)
 
         ext = 'jpeg'
         video = cv2.VideoCapture(file_path)
@@ -53,7 +55,8 @@ def encode_media_frames(file_path):
             base64Frames.append(base64.b64encode(buffer).decode("utf-8"))
         video.release()
         return base64Frames, ext
-    raise ValueError(f"File extension {ext} not supported")
+    msg = f"File extension {ext} not supported"
+    CustomUserWarning(msg, raise_with=ValueError)
 
 
 def encode_image_local(image_path):

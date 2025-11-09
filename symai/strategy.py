@@ -17,6 +17,7 @@ from rich.table import Table
 from .components import Function
 from .models import LLMDataModel, TypeValidationError, build_dynamic_llm_datamodel
 from .symbol import Expression
+from .utils import CustomUserWarning
 
 
 class ValidationFunction(Function):
@@ -134,7 +135,9 @@ class ValidationFunction(Function):
         Abstract or base remedy prompt method.
         Child classes typically override this to include additional context needed for correction.
         """
-        raise NotImplementedError("Each child class needs its own remedy_prompt implementation.")
+        msg = "Each child class needs its own remedy_prompt implementation."
+        CustomUserWarning(msg)
+        raise NotImplementedError(msg)
 
     def display_panel(self, content, title, border_style="cyan", style="#f0eee6", padding=(1,2)):
         """
@@ -180,11 +183,15 @@ class TypeValidationFunction(ValidationFunction):
         assert attach_to in ["input", "output"], f"Invalid attach_to value: {attach_to}; must be either 'input' or 'output'"
         if attach_to == "input":
             if self.input_data_model is not None and not override:
-                raise ValueError("There is already a data model attached to the input. If you want to override it, set `override=True`.")
+                msg = "There is already a data model attached to the input. If you want to override it, set `override=True`."
+                CustomUserWarning(msg)
+                raise ValueError(msg)
             self.input_data_model = data_model
         elif attach_to == "output":
             if self.output_data_model is not None and not override:
-                raise ValueError("There is already a data model attached to the output. If you want to override it, set `override=True`.")
+                msg = "There is already a data model attached to the output. If you want to override it, set `override=True`."
+                CustomUserWarning(msg)
+                raise ValueError(msg)
             self.output_data_model = data_model
 
     def remedy_prompt(self, prompt: str, output: str, errors: str) -> str:
@@ -269,7 +276,12 @@ Important guidelines:
 
     def forward(self, prompt: str, f_semantic_conditions: list[Callable] | None = None, *args, **kwargs):
         if self.output_data_model is None:
-            raise ValueError("While the input data model is optional, the output data model must be provided. Please register it before calling the `forward` method.")
+            msg = (
+                "While the input data model is optional, the output data model must be provided. "
+                "Please register it before calling the `forward` method."
+            )
+            CustomUserWarning(msg)
+            raise ValueError(msg)
         validation_context = kwargs.pop('validation_context', {})
         # Force JSON mode
         kwargs["response_format"] = {"type": "json_object"}
@@ -406,19 +418,27 @@ class contract:
     def _is_valid_input(self, input):
         if input is None:
             logger.error("No `input` argument provided!")
-            raise ValueError("Please provide an `input` argument.")
+            msg = "Please provide an `input` argument."
+            CustomUserWarning(msg)
+            raise ValueError(msg)
         if not isinstance(input, LLMDataModel):
             logger.error(f"Invalid input type: {type(input)}")
-            raise TypeError(f"Expected input to be of type `LLMDataModel`, got {type(input)}")
+            msg = f"Expected input to be of type `LLMDataModel`, got {type(input)}"
+            CustomUserWarning(msg)
+            raise TypeError(msg)
         return True
 
     def _is_valid_output(self, output_type):
         if output_type == inspect._empty:
             logger.error("Missing return type annotation!")
-            raise ValueError("The contract requires a return type annotation.")
+            msg = "The contract requires a return type annotation."
+            CustomUserWarning(msg)
+            raise ValueError(msg)
         if not issubclass(output_type, LLMDataModel):
             logger.error(f"Invalid return type: {output_type}")
-            raise TypeError("The return type annotation must be a subclass of `LLMDataModel`.")
+            msg = "The return type annotation must be a subclass of `LLMDataModel`."
+            CustomUserWarning(msg)
+            raise TypeError(msg)
         return True
 
     def _try_dynamic_type_annotation(self, original_forward, *, context: str = "input"):
@@ -432,18 +452,24 @@ class contract:
             if context == "input":
                 param = sig.parameters.get("input")
                 if param is None or param.annotation == inspect._empty:
-                    raise TypeError("Failed to infer type from input parameter annotation")
+                    msg = "Failed to infer type from input parameter annotation"
+                    CustomUserWarning(msg)
+                    raise TypeError(msg)
                 dynamic_model = build_dynamic_llm_datamodel(param.annotation)
             else:  # context == "output"
                 if sig.return_annotation == inspect._empty:
-                    raise TypeError("Failed to infer type from return annotation")
+                    msg = "Failed to infer type from return annotation"
+                    CustomUserWarning(msg)
+                    raise TypeError(msg)
                 dynamic_model = build_dynamic_llm_datamodel(sig.return_annotation)
         except Exception:
             logger.exception(f"Failed to build dynamic LLMDataModel from {sig.parameters.get('input')}!")
-            raise TypeError(
+            msg = (
                 "The type annotation must be a subclass of `LLMDataModel` or a "
                 "valid Python typing object supported by Pydantic."
             )
+            CustomUserWarning(msg)
+            raise TypeError(msg)
 
         dynamic_model._is_dynamic_model = True
         return dynamic_model
@@ -462,7 +488,9 @@ class contract:
             logger.info("Validating pre-conditions with remedy...")
             if not hasattr(wrapped_self, 'pre'):
                 logger.error("Pre-condition function not defined!")
-                raise Exception("Pre-condition function not defined. Please define a `pre` method if you want to enforce pre-conditions through a remedy.")
+                msg = "Pre-condition function not defined. Please define a `pre` method if you want to enforce pre-conditions through a remedy."
+                CustomUserWarning(msg)
+                raise Exception(msg)
 
             op_start = time.perf_counter()
             try:
@@ -513,7 +541,9 @@ class contract:
             logger.info("Validating post-conditions with remedy...")
             if not hasattr(wrapped_self, "post"):
                 logger.error("Post-condition function not defined!")
-                raise Exception("Post-condition function not defined. Please define a `post` method if you want to enforce post-conditions through a remedy.")
+                msg = "Post-condition function not defined. Please define a `post` method if you want to enforce post-conditions through a remedy."
+                CustomUserWarning(msg)
+                raise Exception(msg)
 
             op_start = time.perf_counter()
             try:
@@ -546,11 +576,17 @@ class contract:
         act_sig = inspect.signature(act_method)
         params = list(act_sig.parameters.values())
         if not params or params[0].name != 'input':
-            raise TypeError("'act' method first parameter must be named 'input'")
+            msg = "'act' method first parameter must be named 'input'"
+            CustomUserWarning(msg)
+            raise TypeError(msg)
         if params[0].annotation == inspect._empty:
-            raise TypeError("'act' method parameter 'input' must have a type annotation'")
+            msg = "'act' method parameter 'input' must have a type annotation'"
+            CustomUserWarning(msg)
+            raise TypeError(msg)
         if act_sig.return_annotation == inspect._empty:
-            raise TypeError("'act' method must have a return type annotation'")
+            msg = "'act' method must have a return type annotation'"
+            CustomUserWarning(msg)
+            raise TypeError(msg)
         return True
 
     def _act(self, wrapped_self, input, it, **act_kwargs):
@@ -581,7 +617,9 @@ class contract:
             and inspect.isclass(act_sig.return_annotation)
             and not isinstance(act_output, act_sig.return_annotation)
         ):
-            raise TypeError(f"'act' method returned {type(act_output).__name__}, expected {act_sig.return_annotation.__name__}.")
+            msg = f"'act' method returned {type(act_output).__name__}, expected {act_sig.return_annotation.__name__}."
+            CustomUserWarning(msg)
+            raise TypeError(msg)
 
         logger.success("'act' method executed successfully!")
         return act_output
@@ -596,7 +634,9 @@ class contract:
 
             if not hasattr(wrapped_self, "prompt"):
                 logger.error("Prompt attribute not defined!")
-                raise Exception("Please define a static `prompt` attribute that describes what the contract must do.")
+                msg = "Please define a static `prompt` attribute that describes what the contract must do."
+                CustomUserWarning(msg)
+                raise Exception(msg)
 
             wrapped_self.contract_successful = False
             wrapped_self.contract_result = None
@@ -689,10 +729,12 @@ class contract:
                     if hasattr(output_type, '_is_dynamic_model') and output_type._is_dynamic_model and hasattr(output, 'value'):
                         return output.value
                     return output
-                raise TypeError(
+                msg = (
                     f"Expected output to be an instance of {output_type}, "
                     f"but got {type(output)}! Forward method must return an instance of {output_type}!"
                 )
+                CustomUserWarning(msg)
+                raise TypeError(msg)
             if not wrapped_self.contract_successful:
                 logger.warning("Contract validation failed!")
             else:

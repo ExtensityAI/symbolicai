@@ -6,6 +6,8 @@ from typing import Any
 import numpy as np
 from sklearn.cluster import HDBSCAN
 
+from .utils import CustomUserWarning
+
 
 class PostProcessor:
     def __call__(self, response, argument) -> Any:
@@ -63,7 +65,9 @@ class JsonTruncatePostProcessor(PostProcessor):
         count_b = response.count('[JSON_BEGIN]')
         count_e = response.count('[JSON_END]')
         if count_b > 1 or count_e > 1:
-            raise ValueError("More than one [JSON_BEGIN] or [JSON_END] found. Please only generate one JSON response.")
+            msg = "More than one [JSON_BEGIN] or [JSON_END] found. Please only generate one JSON response."
+            CustomUserWarning(msg)
+            raise ValueError(msg)
         # cut off everything until the first '{'
         start_idx = response.find('{')
         response = response[start_idx:]
@@ -84,7 +88,9 @@ class JsonTruncateMarkdownPostProcessor(PostProcessor):
         count_b = response.count('```json')
         count_e = response.count('```')
         if count_b > 1 or count_e > 2:
-            raise ValueError("More than one ```json Markdown found. Please only generate one JSON response.")
+            msg = "More than one ```json Markdown found. Please only generate one JSON response."
+            CustomUserWarning(msg)
+            raise ValueError(msg)
         # cut off everything until the first '{'
         start_idx = response.find('{')
         response = response[start_idx:]
@@ -180,7 +186,8 @@ class ASTPostProcessor(PostProcessor):
 class ConsolePostProcessor(PostProcessor):
     def __call__(self, response, argument) -> Any:
         verbose = argument.prop.verbose
-        if verbose: print(f"Argument: {argument}")
+        if verbose:
+            CustomUserWarning(f"Argument: {argument}")
         return response
 
 

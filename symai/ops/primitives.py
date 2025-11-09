@@ -1083,7 +1083,9 @@ class OperatorPrimitives(Primitive):
         if result is not None:
             return self._to_type(result)
 
-        raise NotImplementedError('Modulo operation not supported! Might change in the future.') from self._metadata._error
+        msg = 'Modulo operation not supported! Might change in the future.'
+        CustomUserWarning(msg)
+        raise NotImplementedError(msg) from self._metadata._error
 
     def __imod__(self, other: Any) -> 'Symbol':
         '''
@@ -2407,7 +2409,9 @@ class EmbeddingPrimitives(Primitive):
         if not isinstance(x, (np.ndarray, torch.Tensor, list)):
             if not isinstance(x, self._symbol_type): #@NOTE: enforce Symbol to avoid circular import
                 if not cast:
-                    raise TypeError(f'Cannot compute similarity with type {type(x)}')
+                    msg = f'Cannot compute similarity with type {type(x)}'
+                    CustomUserWarning(msg)
+                    raise TypeError(msg)
                 x = self._symbol_type(x)
             # evaluate the Symbol as an embedding
             x = x.embedding
@@ -2468,7 +2472,12 @@ class EmbeddingPrimitives(Primitive):
             union = np.maximum(v, o)
             val = np.sum(intersection, axis=0, keepdims=True) / (np.sum(union, axis=0, keepdims=True) + eps)
         else:
-            raise NotImplementedError(f"Similarity metric {metric} not implemented. Available metrics: 'cosine', 'angular-cosine', 'product', 'manhattan', 'euclidean', 'minkowski', 'jaccard'")
+            msg = (
+                f"Similarity metric {metric} not implemented. Available metrics: "
+                "'cosine', 'angular-cosine', 'product', 'manhattan', 'euclidean', 'minkowski', 'jaccard'"
+            )
+            CustomUserWarning(msg)
+            raise NotImplementedError(msg)
 
         # get the similarity value(s)
         shape = val.shape
@@ -2563,7 +2572,9 @@ class EmbeddingPrimitives(Primitive):
             o       = o.T
             val     = calculate_mmd(v, o, eps=eps)
         else:
-            raise NotImplementedError(f"Kernel function {kernel} not implemented. Available functions: 'gaussian'")
+            msg = "Kernel function {kernel} not implemented. Available functions: 'gaussian'"
+            CustomUserWarning(msg.format(kernel=kernel))
+            raise NotImplementedError(msg.format(kernel=kernel))
 
         # get the kernel value(s)
         shape = val.shape
@@ -2591,7 +2602,9 @@ class EmbeddingPrimitives(Primitive):
         elif isinstance(self.value, list):
             pass
         else:
-            raise ValueError(f'Expected id to be a string, got {type(self.value)}')
+            msg = f'Expected id to be a string, got {type(self.value)}'
+            CustomUserWarning(msg)
+            raise ValueError(msg)
 
         embeds = self.embed(**kwargs).value
         idx    = [str(uuid.uuid4()) for _ in range(len(self.value))]
@@ -2668,7 +2681,9 @@ class IOHandlingPrimitives(Primitive):
 
         path = path if path is not None else self.value
         if path is None:
-            raise ValueError('Path is not provided; either provide a path or set the value of the Symbol to the path')
+            msg = 'Path is not provided; either provide a path or set the value of the Symbol to the path'
+            CustomUserWarning(msg)
+            raise ValueError(msg)
 
         @core.opening(path=path, **kwargs)
         def _func(_):
@@ -2852,7 +2867,9 @@ class FineTuningPrimitives(Primitive):
             # convert to tensor
             self._metadata.data = torch.from_numpy(self._metadata.data)
             return self._metadata.data
-        raise TypeError(f'Expected data to be a tensor or numpy array, got {type(self._metadata.data)}')
+        msg = f'Expected data to be a tensor or numpy array, got {type(self._metadata.data)}'
+        CustomUserWarning(msg)
+        raise TypeError(msg)
 
     @data.setter
     def data(self, data: torch.Tensor) -> None:

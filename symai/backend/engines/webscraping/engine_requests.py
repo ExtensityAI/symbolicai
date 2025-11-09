@@ -20,6 +20,7 @@ from pdfminer.high_level import extract_text
 from requests.structures import CaseInsensitiveDict
 
 from ....symbol import Result
+from ....utils import CustomUserWarning
 from ...base import Engine
 
 logging.getLogger("pdfminer").setLevel(logging.WARNING)
@@ -192,9 +193,9 @@ class RequestsEngine(Engine):
             from playwright.sync_api import sync_playwright
             logging.getLogger("playwright").setLevel(logging.WARNING)
         except ImportError as exc:
-            raise RuntimeError(
-                "Playwright is not installed. Install symbolicai[webscraping] with Playwright extras to enable render_js."
-            ) from exc
+            msg = "Playwright is not installed. Install symbolicai[webscraping] with Playwright extras to enable render_js."
+            CustomUserWarning(msg)
+            raise RuntimeError(msg) from exc
 
         timeout_seconds = timeout if timeout is not None else self.timeout
         timeout_ms = max(int(timeout_seconds * 1000), 0)
@@ -256,7 +257,9 @@ class RequestsEngine(Engine):
                     headers["Content-Type"] = "text/html; charset=utf-8"
 
                 if navigation_error and not content:
-                    raise requests.exceptions.Timeout(f"Playwright timed out while rendering {url}") from navigation_error
+                    msg = f"Playwright timed out while rendering {url}"
+                    CustomUserWarning(msg)
+                    raise requests.exceptions.Timeout(msg) from navigation_error
             finally:
                 context.close()
                 browser.close()

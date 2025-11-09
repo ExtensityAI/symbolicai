@@ -10,6 +10,7 @@ from box import Box
 
 from . import core
 from .ops import SYMBOL_PRIMITIVES
+from .utils import CustomUserWarning
 
 
 class SymbolEncoder(JSONEncoder):
@@ -409,7 +410,9 @@ class Symbol(metaclass=SymbolMeta):
             value = self.value if self.value is not None else None
             if isinstance(value, Exception):
                 raise value
-            raise AttributeError(f'<class \'{self.__class__.__name__}\'> or nested value of {type(value)!s} have no attribute \'{name}\'')
+            msg = f"<class '{self.__class__.__name__}'> or nested value of {type(value)!s} have no attribute '{name}'"
+            CustomUserWarning(msg)
+            raise AttributeError(msg)
         except AttributeError as ex:
             # if has attribute and is public function
             if hasattr(self.value, name) and not name.startswith('_'):

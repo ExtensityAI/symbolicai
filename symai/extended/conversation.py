@@ -108,12 +108,12 @@ class Conversation(SlidingWindowStringConcatMemory):
         path_obj = Path(path)
         if path_obj.exists():
             if path_obj.stat().st_size <= 0:
-                raise Exception("File is empty.")
+                CustomUserWarning("File is empty.", raise_with=Exception)
             # Load the conversation object from a pickle file
             with path_obj.open('rb') as handle:
                 conversation_state = pickle.load(handle)
         else:
-            raise Exception("File does not exist or is empty.")
+            CustomUserWarning("File does not exist or is empty.", raise_with=Exception)
 
         # Create a new instance of the `Conversation` class and restore
         # the state from the saved conversation
@@ -144,7 +144,7 @@ class Conversation(SlidingWindowStringConcatMemory):
                 file_link = file_link[0]
             else:
                 file_link = None # cannot commit to multiple files
-                raise Exception('Cannot commit to multiple files.')
+                CustomUserWarning('Cannot commit to multiple files.', raise_with=Exception)
         if file_link:
             # if file extension is .py, then format code
             format_ = formatter
@@ -156,7 +156,7 @@ class Conversation(SlidingWindowStringConcatMemory):
             with Path(file_link).open('w') as file:
                 file.write(str(val))
         else:
-            raise Exception('File link is not set or a set of files.')
+            CustomUserWarning('File link is not set or a set of files.', raise_with=Exception)
 
     def save(self, path: str, replace: bool = False) -> Symbol:
         return Symbol(self._memory).save(path, replace=replace)
@@ -197,7 +197,7 @@ class Conversation(SlidingWindowStringConcatMemory):
             memory = self.index(search_query, *args, **kwargs)
 
             if 'raw_result' in kwargs:
-                print(memory)
+                CustomUserWarning(str(memory))
 
         payload = ''
         # if payload is set, then add it to the memory
@@ -216,7 +216,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         # if user is requesting to preview the response, then return only the preview result
         if kwargs.get('preview'):
             if self.auto_print:
-                print(res)
+                CustomUserWarning(str(res))
             return res
 
         ### --- asses memory update --- ###
@@ -232,7 +232,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         # WARN: DO NOT PROCESS THE RES BY REMOVING `<<<` AND `>>>` TAGS
 
         if self.auto_print:
-            print(res)
+            CustomUserWarning(str(res))
         return res
 
 
@@ -326,7 +326,7 @@ class RetrievalAugmentedConversation(Conversation):
         memory = self.index(query, *args, **kwargs)
 
         if 'raw_result' in kwargs:
-            print(memory)
+            CustomUserWarning(str(memory))
             return memory
 
         prompt = self.build_tag(self.user_tag, query)
@@ -341,5 +341,5 @@ class RetrievalAugmentedConversation(Conversation):
         self.store(val)
 
         if self.auto_print:
-            print(res)
+            CustomUserWarning(str(res))
         return res
