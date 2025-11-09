@@ -428,13 +428,13 @@ def extended_forward(request: GenericRequest, _api_key: str = Security(get_api_k
             return result.json()  # Convert to dictionary if it's a complex type
         return {"result": result}  # Return as is if it's a primitive type
     except ImportError as e:
-        raise HTTPException(status_code=404, detail=f"Module not found: {e!s}")
+        raise HTTPException(status_code=404, detail=f"Module not found: {e!s}") from e
     except AttributeError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except TypeError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An error occurred: {e!s}")
+        raise HTTPException(status_code=500, detail=f"An error occurred: {e!s}") from e
 
 
 @app.get("/extended/{instance_id}/")

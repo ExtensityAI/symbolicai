@@ -149,7 +149,7 @@ def run_server():
         from .server.llama_cpp_server import llama_cpp_server # noqa
 
         command, args = llama_cpp_server()
-        _symserver_config_.update(zip(args[::2], args[1::2]))
+        _symserver_config_.update(zip(args[::2], args[1::2], strict=False))
         _symserver_config_['online'] = True
 
         config_manager.save_config("symserver.config.json", _symserver_config_)

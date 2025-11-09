@@ -22,7 +22,7 @@ class DictFormatConstraint:
             except json.JSONDecodeError as e:
                 msg = f"Invalid JSON: ```json\n{input_symbol.value}\n```\n{e}"
                 CustomUserWarning(msg)
-                raise ConstraintViolationException(msg)
+                raise ConstraintViolationException(msg) from e
             return DictFormatConstraint.check_keys(self.format, gen_dict)
         if input_symbol.value_type is dict:
             return DictFormatConstraint.check_keys(self.format, input_symbol.value)

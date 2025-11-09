@@ -168,7 +168,7 @@ class VectorDB(Expression):
             return [
                 {"document": document, "vector": vector.tolist(), "index": index}
                 for index, (document, vector) in enumerate(
-                    zip(self.documents, self.vectors)
+                    zip(self.documents, self.vectors, strict=False)
                 )
             ]
         return [
@@ -247,7 +247,7 @@ class VectorDB(Expression):
         if not documents:
             return
         vectors = vectors or np.array(self.embedding_function(documents)).astype(np.float32)
-        for vector, document in zip(vectors, documents):
+        for vector, document in zip(vectors, documents, strict=False):
             self.add_document(document, vector)
 
     def clear(self):
@@ -366,5 +366,5 @@ class VectorDB(Expression):
             self.vectors, query_vector, top_k=top_k, metric=self.similarity_metric
         )
         if return_similarities:
-            return list(zip([self.documents[index] for index in ranked_results], similarities))
+            return list(zip([self.documents[index] for index in ranked_results], similarities, strict=False))
         return [self.documents[index] for index in ranked_results]
