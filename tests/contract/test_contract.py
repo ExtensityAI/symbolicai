@@ -208,6 +208,50 @@ class TestTripletExtractor(Expression):
 # ============================
 ##############################
 
+
+def test_contract_wrapper_strips_validation_context():
+    decorator = contract()
+
+    class DummyWrapped:
+        def __init__(self):
+            self._contract_timing = {0: {}}
+
+    wrapped_instance = DummyWrapped()
+    sentinel = object()
+    original_kwargs = {
+        "input": TripletExtractorInput(
+            text="dummy",
+            ontology=SimpleOntology(classes=[OntologyClass(name="Test")]),
+        ),
+        "validation_context": {"foo": "bar"},
+    }
+    forwarded_input = TripletExtractorInput(
+        text="coerced",
+        ontology=SimpleOntology(classes=[OntologyClass(name="Test")]),
+    )
+
+    def original_forward(self, input: TripletExtractorInput, validation_context=sentinel):
+        assert validation_context is sentinel
+        return input
+
+    result = decorator._execute_forward_call(
+        wrapped_self=wrapped_instance,
+        original_forward=original_forward,
+        args_list=[],
+        original_kwargs=original_kwargs,
+        input_param_name="input",
+        input_source=("kwargs", "input"),
+        forward_input_value=forwarded_input,
+        it=0,
+        contract_start=time.perf_counter(),
+    )
+
+    assert result is forwarded_input
+    assert "validation_context" in original_kwargs
+    assert "forward_execution" in wrapped_instance._contract_timing[0]
+    assert "contract_execution" in wrapped_instance._contract_timing[0]
+
+
 @pytest.mark.mandatory
 def test_triplet_extractor_basic():
     """Test basic functionality of the triplet extractor with act (the happy path!)"""
