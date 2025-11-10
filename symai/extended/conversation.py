@@ -176,7 +176,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         # if user is requesting to preview the response, then return only the preview result
         if kwargs.get('preview'):
             if self.auto_print:
-                print(str(res)) # noqa: T201
+                UserMessage(str(res), style="text")
             return res
 
         ### --- asses memory update --- ###
@@ -186,7 +186,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         # WARN: DO NOT PROCESS THE RES BY REMOVING `<<<` AND `>>>` TAGS
 
         if self.auto_print:
-            print(str(res)) # noqa: T201
+            UserMessage(str(res), style="text")
         return res
 
     def _apply_truncation_overrides(self, kwargs: dict[str, Any]) -> dict[str, Any]:
@@ -222,7 +222,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         memory = self.index(search_query, *args, **kwargs)
 
         if 'raw_result' in kwargs:
-            print(str(memory)) # noqa: T201
+            UserMessage(str(memory), style="text")
         return memory
 
     def _build_payload(self, kwargs: dict[str, Any], memory) -> str:
@@ -334,7 +334,7 @@ class RetrievalAugmentedConversation(Conversation):
         memory = self.index(query, *args, **kwargs)
 
         if 'raw_result' in kwargs:
-            print(str(memory)) # noqa: T201
+            UserMessage(str(memory), style="text")
             return memory
 
         prompt = self.build_tag(self.user_tag, query)
@@ -349,5 +349,5 @@ class RetrievalAugmentedConversation(Conversation):
         self.store(val)
 
         if self.auto_print:
-            print(str(res)) # noqa: T201
+            UserMessage(str(res), style="text")
         return res

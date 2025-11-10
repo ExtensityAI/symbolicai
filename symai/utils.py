@@ -143,8 +143,8 @@ class Args:
 class UserMessage:
     def __init__(self, message: str, stacklevel: int = 1, style: str = "warn", raise_with: Exception | None = None) -> None:
         if os.environ.get('SYMAI_WARNINGS', '1') == '1':
-            caller   = inspect.getframeinfo(inspect.stack()[stacklevel][0])
-            lineno   = caller.lineno
+            caller = inspect.getframeinfo(inspect.stack()[stacklevel][0])
+            lineno = caller.lineno
             filename = caller.filename
             filename = filename[filename.find('symbolicai'):]
             with ConsoleStyle(style) as console:
