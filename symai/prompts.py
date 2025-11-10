@@ -4,7 +4,7 @@ from enum import Enum
 from typing import Any
 
 from .exceptions import TemplatePropertyException
-from .utils import CustomUserWarning
+from .utils import UserMessage
 
 
 class Prompt:
@@ -23,7 +23,7 @@ class Prompt:
                     self._value += v.value
                 else:
                     msg = f"List of values must be strings or Prompts, not {type(v)}"
-                    CustomUserWarning(msg)
+                    UserMessage(msg)
                     raise ValueError(msg)
         elif isinstance(value, Prompt):
             self._value += value.value
@@ -32,7 +32,7 @@ class Prompt:
             self._value += res.value
         else:
             msg = f"Prompt value must be of type str, List[str], Prompt, or List[Prompt], not {type(value)}"
-            CustomUserWarning(msg)
+            UserMessage(msg)
             raise TypeError(msg)
         self.dynamic_value = []
         self.format_kwargs = format_kwargs
@@ -54,15 +54,15 @@ class Prompt:
                 count = val_.count(template_)
                 if count <= 0:
                     msg = f"Template property `{k}` not found."
-                    CustomUserWarning(msg)
+                    UserMessage(msg)
                     raise TemplatePropertyException(msg)
                 if count > 1:
                     msg = f"Template property {k} found multiple times ({count}), expected only once."
-                    CustomUserWarning(msg)
+                    UserMessage(msg)
                     raise TemplatePropertyException(msg)
                 if v is None:
                     msg = f"Invalid value: Template property {k} is None."
-                    CustomUserWarning(msg)
+                    UserMessage(msg)
                     raise TemplatePropertyException(msg)
                 val_ = val_.replace(template_, v)
         return val_
@@ -182,7 +182,7 @@ class PromptRegistry:
             f"Prompt value {key} not found for language {lang} and model {model} "
             f"(fallback: {self._model_fallback})"
         )
-        CustomUserWarning(msg)
+        UserMessage(msg)
         raise ValueError(msg)
 
     def register_value(

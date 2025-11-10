@@ -7,7 +7,7 @@ import openai
 
 from ....components import SelfPrompt
 from ....core_ext import retry
-from ....utils import CustomUserWarning
+from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
 
@@ -36,7 +36,7 @@ class GroqEngine(Engine):
         try:
             self.client = openai.OpenAI(api_key=openai.api_key, base_url="https://api.groq.com/openai/v1")
         except Exception as e:
-            CustomUserWarning(f'Failed to initialize OpenAI client. Please check your OpenAI library version. Caused by: {e}', raise_with=ValueError)
+            UserMessage(f'Failed to initialize OpenAI client. Please check your OpenAI library version. Caused by: {e}', raise_with=ValueError)
 
     def id(self) -> str:
         if self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and \
@@ -54,10 +54,10 @@ class GroqEngine(Engine):
             self.seed = kwargs['seed']
 
     def compute_required_tokens(self, _messages):
-        CustomUserWarning("Token counting not implemented for this engine.", raise_with=NotImplementedError)
+        UserMessage("Token counting not implemented for this engine.", raise_with=NotImplementedError)
 
     def compute_remaining_tokens(self, _prompts: list) -> int:
-        CustomUserWarning("Token counting not implemented for this engine.", raise_with=NotImplementedError)
+        UserMessage("Token counting not implemented for this engine.", raise_with=NotImplementedError)
 
     def _handle_prefix(self, model_name: str) -> str:
         """Handle prefix for model name."""
@@ -100,9 +100,9 @@ class GroqEngine(Engine):
         except Exception as e:
             if openai.api_key is None or openai.api_key == '':
                 msg = 'Groq API key is not set. Please set it in the config file or pass it as an argument to the command method.'
-                CustomUserWarning(msg)
+                UserMessage(msg)
                 if self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] is None or self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] == '':
-                    CustomUserWarning(msg, raise_with=ValueError)
+                    UserMessage(msg, raise_with=ValueError)
                 openai.api_key = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
 
             callback = self.client.chat.completions.create
@@ -111,7 +111,7 @@ class GroqEngine(Engine):
             if except_remedy is not None:
                 res = except_remedy(self, e, callback, argument)
             else:
-                CustomUserWarning(f'Error during generation. Caused by: {e}', raise_with=ValueError)
+                UserMessage(f'Error during generation. Caused by: {e}', raise_with=ValueError)
 
         metadata = {'raw_output': res}
         if payload.get('tools'):
@@ -126,7 +126,7 @@ class GroqEngine(Engine):
 
     def _prepare_raw_input(self, argument):
         if not argument.prop.processed_input:
-            CustomUserWarning('Need to provide a prompt instruction to the engine if raw_input is enabled.', raise_with=ValueError)
+            UserMessage('Need to provide a prompt instruction to the engine if raw_input is enabled.', raise_with=ValueError)
         value = argument.prop.processed_input
         # convert to dict if not already
         if not isinstance(value, list):
@@ -186,7 +186,7 @@ class GroqEngine(Engine):
 
             res = self_prompter({'user': user, 'system': system})
             if res is None:
-                CustomUserWarning("Self-prompting failed!", raise_with=ValueError)
+                UserMessage("Self-prompting failed!", raise_with=ValueError)
 
             user_prompt = { "role": "user", "content": res['user'] }
             system = res['system']
@@ -209,7 +209,7 @@ class GroqEngine(Engine):
             for tool_call in res.choices[0].message.tool_calls:
                 if hasattr(tool_call, 'function') and tool_call.function:
                     if hit:
-                        CustomUserWarning("Multiple function calls detected in the response but only the first one will be processed.")
+                        UserMessage("Multiple function calls detected in the response but only the first one will be processed.")
                         break
                     try:
                         args_dict = json.loads(tool_call.function.arguments)
@@ -235,12 +235,12 @@ class GroqEngine(Engine):
             "stream_options",
         ]:
             if param in kwargs:
-                CustomUserWarning(f"The parameter {param} is not supported by the Groq API. It will be ignored.")
+                UserMessage(f"The parameter {param} is not supported by the Groq API. It will be ignored.")
                 del kwargs[param]
 
         n = kwargs.get('n', 1)
         if n > 1:
-            CustomUserWarning("If N is supplied, it must be equal to 1. We default to 1 to not crash your program.")
+            UserMessage("If N is supplied, it must be equal to 1. We default to 1 to not crash your program.")
             n = 1
 
         # Handle Groq JSON-mode quirk: JSON Object Mode internally uses a constrainer tool.

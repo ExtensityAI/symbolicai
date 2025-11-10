@@ -11,7 +11,7 @@ from loguru import logger
 
 from .backend.settings import HOME_PATH
 from .symbol import Expression
-from .utils import CustomUserWarning
+from .utils import UserMessage
 
 logging.getLogger("subprocess").setLevel(logging.ERROR)
 
@@ -193,7 +193,7 @@ class Import(Expression):
                             raise
                 else:
                     msg = "Invalid type for 'expressions'. Must be str, list or tuple."
-                    CustomUserWarning(msg)
+                    UserMessage(msg)
                     raise Exception(msg)
 
         assert len(module_classes) > 0, f"Expression '{expressions}' not found in module '{module}'"
@@ -223,7 +223,7 @@ class Import(Expression):
             package_path = module_path_obj
             if not (package_path / 'package.json').exists():
                 msg = f"No package.json found in {module}"
-                CustomUserWarning(msg)
+                UserMessage(msg)
                 raise ValueError(msg)
 
             with (package_path / 'package.json').open() as f:
@@ -240,7 +240,7 @@ class Import(Expression):
                 pkg = json.load(f)
         if 'run' not in pkg:
             msg = f"Module '{module}' has no 'run' expression defined."
-            CustomUserWarning(msg)
+            UserMessage(msg)
             raise Exception(msg)
         expr = pkg['run']
         module_rel = expr['module'].replace('/', '.')
@@ -254,7 +254,7 @@ class Import(Expression):
 
     def __call__(self, *_args, **_kwargs):
         msg = "Cannot call Import class directly. Use Import.load_module_class(module) instead."
-        CustomUserWarning(msg)
+        UserMessage(msg)
         raise Exception(msg)
 
     @staticmethod

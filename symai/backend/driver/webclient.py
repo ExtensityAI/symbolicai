@@ -10,7 +10,7 @@ import warnings
 from pathlib import Path
 from random import choice
 
-from ...utils import CustomUserWarning
+from ...utils import UserMessage
 
 os.environ['WDM_LOG'] = 'false'  # disable webdriver-manager logging
 logging.getLogger('WDM').setLevel(logging.NOTSET)
@@ -36,10 +36,10 @@ try:
 except Exception as e:
     webdriver = None
     if "No module named 'selenium'" in str(e):
-        CustomUserWarning(f"ERROR: {e}")
-        CustomUserWarning("ERROR: Please install selenium with `pip install selenium`")
+        UserMessage(f"ERROR: {e}")
+        UserMessage("ERROR: Please install selenium with `pip install selenium`")
     else:
-        CustomUserWarning(f"ERROR: {e}")
+        UserMessage(f"ERROR: {e}")
 
 
 
@@ -68,7 +68,7 @@ def wait_for(condition_function, timeout):
             return True
         time.sleep(0.1)
     msg = 'Server does not respond to request with appropriate content. Check link or script.'
-    CustomUserWarning(msg)
+    UserMessage(msg)
     raise Exception(msg)
 
 
@@ -84,7 +84,7 @@ class page_loaded:
 
     def page_has_loaded(self):
         if self.debug:
-            CustomUserWarning(self.driver.page_source)
+            UserMessage(self.driver.page_source)
         return re.search(self.check_pattern, self.driver.page_source)
 
     def __exit__(self, *_):
@@ -109,32 +109,32 @@ def _connect_brower(debug, proxy=None):
         driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
     except Exception as e1:
         try:
-            CustomUserWarning("ERROR REMEDY: Trying to use Chrome as an alternative.")
+            UserMessage("ERROR REMEDY: Trying to use Chrome as an alternative.")
             options = FirefoxOptions()
             add_options(options, proxy)
             driver = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()), options=options)
         except Exception as e2:
-            CustomUserWarning(
+            UserMessage(
                 "Issue with finding an appropriate driver version. Your current browser might be newer than the driver. "
                 "Please either downgrade Chrome or try to install a proper chromedriver manually.\n"
                 f"Original error: {e1}; Remedy attempt error: {e2}"
             )
             try:
-                CustomUserWarning("ERROR REMEDY: Trying to use Edge as an alternative.")
+                UserMessage("ERROR REMEDY: Trying to use Edge as an alternative.")
                 options = EdgeOptions()
                 if proxy:
                     options.add_argument(f"--proxy-server=socks5://{proxy.host}:{proxy.port}")
                 add_options(options, proxy)
                 driver = webdriver.Edge(service=EdgeService(EdgeChromiumDriverManager().install()), options=options)
             except Exception as e3:
-                CustomUserWarning(
+                UserMessage(
                     "Issue with finding an appropriate driver version. Your current browser might be newer than the driver. "
                     "Please either downgrade Chrome or try to install a proper chromedriver manually.\n"
                     f"Original error: {e1}; Remedy attempt error: {e2}; Second remedy attempt error: {e3}"
                 )
                 raise e3 from e2
     if debug:
-        CustomUserWarning("Chrome Headless Browser Invoked")
+        UserMessage("Chrome Headless Browser Invoked")
 
     return driver
 
@@ -161,8 +161,8 @@ def contains_text(check_pattern, search_pattern, link, driver_handler, script=No
     try:
         driver.get(link)
     except WebDriverException as e:
-        CustomUserWarning(f"ERROR: {e}")
-        CustomUserWarning(
+        UserMessage(f"ERROR: {e}")
+        UserMessage(
             "ERROR: Please install a proper driver for your browser. You can find the appropriate driver here: "
             "https://selenium-python.readthedocs.io/installation.html#drivers"
         )
@@ -204,7 +204,7 @@ def run_selenium_test(debug=False):
                        .replace('.', '')\
                        .replace(',', '')
 
-    CustomUserWarning(text)
+    UserMessage(text)
     #text = "women sitting in the park" #names.get_full_name()
 
     # input String
@@ -224,7 +224,7 @@ def run_selenium_test(debug=False):
                                args=[pattern])
         timestamp = time.time() - now
         now = time.time()
-        CustomUserWarning(f"{result} - time: {timestamp}")
+        UserMessage(f"{result} - time: {timestamp}")
         cnt += 1
 
 

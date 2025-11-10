@@ -8,7 +8,7 @@ import openai
 import requests
 
 from ....symbol import Result
-from ....utils import CustomUserWarning
+from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
 
@@ -107,7 +107,7 @@ class GPTImageEngine(Engine):
         operation = kwargs.get("operation")
 
         if operation is None:
-            CustomUserWarning("Operation not specified!", raise_with=ValueError)
+            UserMessage("Operation not specified!", raise_with=ValueError)
 
         n = kwargs.get("n", 1)
 
@@ -146,7 +146,7 @@ class GPTImageEngine(Engine):
             return openai.images.create_variation
         if operation == "edit":
             return openai.images.edit
-        CustomUserWarning(f"Unknown image operation: {operation}", raise_with=ValueError)
+        UserMessage(f"Unknown image operation: {operation}", raise_with=ValueError)
         return openai.images.generate
 
     def _dispatch_operation(self, operation, prompt, model, n, kwargs):
@@ -156,7 +156,7 @@ class GPTImageEngine(Engine):
             return self._execute_variation(model, n, kwargs)
         if operation == "edit":
             return self._execute_edit(prompt, model, n, kwargs)
-        return CustomUserWarning(f"Unknown image operation: {operation}", raise_with=ValueError)
+        return UserMessage(f"Unknown image operation: {operation}", raise_with=ValueError)
 
     def _execute_create(self, prompt, model, n, kwargs):
         create_kwargs = {

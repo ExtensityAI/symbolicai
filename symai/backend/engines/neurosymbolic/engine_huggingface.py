@@ -3,7 +3,7 @@ from copy import deepcopy
 
 import requests
 
-from ....utils import CustomUserWarning
+from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG, SYMSERVER_CONFIG
 
@@ -24,7 +24,7 @@ class HFTokenizer:
         })
 
         if res.status_code != 200:
-            CustomUserWarning(f"Request failed with status code: {res.status_code}", raise_with=ValueError)
+            UserMessage(f"Request failed with status code: {res.status_code}", raise_with=ValueError)
 
         res = res.json()
 
@@ -38,7 +38,7 @@ class HFTokenizer:
         })
 
         if res.status_code != 200:
-            CustomUserWarning(f"Request failed with status code: {res.status_code}", raise_with=ValueError)
+            UserMessage(f"Request failed with status code: {res.status_code}", raise_with=ValueError)
 
         res = res.json()
 
@@ -55,7 +55,7 @@ class HFEngine(Engine):
         if self.id() != 'neurosymbolic':
             return
         if not SYMSERVER_CONFIG.get('online'):
-            CustomUserWarning('You are using the huggingface engine, but the server endpoint is not started. Please start the server with `symserver [--args]` or run `symserver --help` to see the available options for this engine.', raise_with=ValueError)
+            UserMessage('You are using the huggingface engine, but the server endpoint is not started. Please start the server with `symserver [--args]` or run `symserver --help` to see the available options for this engine.', raise_with=ValueError)
         self.server_endpoint = f"http://{SYMSERVER_CONFIG.get('host')}:{SYMSERVER_CONFIG.get('port')}"
         self.tokenizer = HFTokenizer # backwards compatibility with how we handle tokenization, i.e. self.tokenizer().encode(...)
         self.name = self.__class__.__name__
@@ -75,9 +75,9 @@ class HFEngine(Engine):
             self.except_remedy = kwargs['except_remedy']
 
     def compute_required_tokens(self, _messages) -> int:
-        CustomUserWarning('Not implemented for HFEngine. Please use the tokenizer directly to compute tokens.', raise_with=NotImplementedError)
+        UserMessage('Not implemented for HFEngine. Please use the tokenizer directly to compute tokens.', raise_with=NotImplementedError)
     def compute_remaining_tokens(self, _prompts: list) -> int:
-        CustomUserWarning('Not implemented for HFEngine. Please use the tokenizer directly to compute tokens.', raise_with=NotImplementedError)
+        UserMessage('Not implemented for HFEngine. Please use the tokenizer directly to compute tokens.', raise_with=NotImplementedError)
     def forward(self, argument):
         kwargs  = argument.kwargs
         prompts = argument.prop.prepared_input
@@ -114,7 +114,7 @@ class HFEngine(Engine):
             })
 
             if res.status_code != 200:
-                CustomUserWarning(f"Request failed with status code: {res.status_code}", raise_with=ValueError)
+                UserMessage(f"Request failed with status code: {res.status_code}", raise_with=ValueError)
 
             res = res.json()
 
@@ -122,7 +122,7 @@ class HFEngine(Engine):
             if except_remedy is not None:
                 res = except_remedy(self, e, argument)
             else:
-                CustomUserWarning(f'Error during generation. Caused by: {e}', raise_with=ValueError)
+                UserMessage(f'Error during generation. Caused by: {e}', raise_with=ValueError)
 
         metadata = {'raw_output': res}
 
@@ -132,7 +132,7 @@ class HFEngine(Engine):
 
     def _prepare_raw_input(self, argument):
         if not argument.prop.processed_input:
-            CustomUserWarning('Need to provide a prompt instruction to the engine if raw_input is enabled.', raise_with=ValueError)
+            UserMessage('Need to provide a prompt instruction to the engine if raw_input is enabled.', raise_with=ValueError)
         value = argument.prop.processed_input
         if not isinstance(value, list):
             if not isinstance(value, dict):

@@ -8,7 +8,7 @@ from PIL.Image import Image
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 
 from ....symbol import Result
-from ....utils import CustomUserWarning
+from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
 
@@ -109,7 +109,7 @@ class LLaMACppClientEngine(Engine):
     def prepare(self, argument):
         if argument.prop.raw_input:
             if not argument.prop.processed_input:
-                CustomUserWarning('Need to provide a prompt instruction to the engine if raw_input is enabled.', raise_with=ValueError)
+                UserMessage('Need to provide a prompt instruction to the engine if raw_input is enabled.', raise_with=ValueError)
             argument.prop.prepared_input = argument.prop.processed_input
             return
 

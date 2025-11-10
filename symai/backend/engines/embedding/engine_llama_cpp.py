@@ -6,7 +6,7 @@ import aiohttp
 import nest_asyncio
 
 from ....core_ext import retry
-from ....utils import CustomUserWarning
+from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG, SYMSERVER_CONFIG
 
@@ -39,7 +39,7 @@ class LlamaCppEmbeddingEngine(Engine):
         if self.id() != 'embedding':
             return
         if not SYMSERVER_CONFIG.get('online'):
-            CustomUserWarning('You are using the llama.cpp embedding engine, but the server endpoint is not started. Please start the server with `symserver [--args]`.', raise_with=ValueError)
+            UserMessage('You are using the llama.cpp embedding engine, but the server endpoint is not started. Please start the server with `symserver [--args]`.', raise_with=ValueError)
 
         self.server_endpoint = f"http://{SYMSERVER_CONFIG.get('--host')}:{SYMSERVER_CONFIG.get('--port')}"
         self.timeout_params = self._validate_timeout_params(timeout_params)
@@ -58,13 +58,13 @@ class LlamaCppEmbeddingEngine(Engine):
 
     def _validate_timeout_params(self, timeout_params):
         if not isinstance(timeout_params, dict):
-            CustomUserWarning("timeout_params must be a dictionary", raise_with=ValueError)
+            UserMessage("timeout_params must be a dictionary", raise_with=ValueError)
         assert all(key in timeout_params for key in ['read', 'connect']), "Available keys: ['read', 'connect']"
         return timeout_params
 
     def _validate_retry_params(self, retry_params):
         if not isinstance(retry_params, dict):
-            CustomUserWarning("retry_params must be a dictionary", raise_with=ValueError)
+            UserMessage("retry_params must be a dictionary", raise_with=ValueError)
         assert all(key in retry_params for key in ['tries', 'delay', 'max_delay', 'backoff', 'jitter', 'graceful']), \
             "Available keys: ['tries', 'delay', 'max_delay', 'backoff', 'jitter', 'graceful']"
         return retry_params
@@ -76,7 +76,7 @@ class LlamaCppEmbeddingEngine(Engine):
             current_loop = asyncio.get_event_loop()
             if current_loop.is_closed():
                 msg = "Event loop is closed."
-                CustomUserWarning(msg)
+                UserMessage(msg)
                 raise RuntimeError(msg)
             return current_loop
         except RuntimeError:
@@ -97,7 +97,7 @@ class LlamaCppEmbeddingEngine(Engine):
                 json={"content": text, "embd_normalize": embd_normalize}
             ) as res:
                 if res.status != 200:
-                    CustomUserWarning(f"Request failed with status code: {res.status}", raise_with=ValueError)
+                    UserMessage(f"Request failed with status code: {res.status}", raise_with=ValueError)
                 return await res.json()
 
         return await _make_request()
@@ -111,7 +111,7 @@ class LlamaCppEmbeddingEngine(Engine):
 
         new_dim = kwargs.get('new_dim')
         if new_dim:
-            CustomUserWarning("new_dim is not yet supported", raise_with=NotImplementedError)
+            UserMessage("new_dim is not yet supported", raise_with=NotImplementedError)
 
         nest_asyncio.apply()
         loop = self._get_event_loop()
@@ -119,7 +119,7 @@ class LlamaCppEmbeddingEngine(Engine):
         try:
             res = loop.run_until_complete(self._arequest(inp, embd_normalize))
         except Exception as e:
-            CustomUserWarning(f"Request failed with error: {e!s}", raise_with=ValueError)
+            UserMessage(f"Request failed with error: {e!s}", raise_with=ValueError)
 
         output = [r["embedding"] for r in res] if res is not None else None  # B x 1 x D
         metadata = {'raw_output': res}

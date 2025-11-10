@@ -17,7 +17,7 @@ from anthropic.types import (
 )
 
 from ....components import SelfPrompt
-from ....utils import CustomUserWarning, encode_media_frames
+from ....utils import UserMessage, encode_media_frames
 from ...base import Engine
 from ...mixin.anthropic import AnthropicMixin
 from ...settings import SYMAI_CONFIG
@@ -84,7 +84,7 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
                     role = part.get('role')
                     content_str = str(part.get('content', ''))
                 else:
-                    CustomUserWarning(f"Unsupported message part type: {type(part)}", raise_with=ValueError)
+                    UserMessage(f"Unsupported message part type: {type(part)}", raise_with=ValueError)
 
                 if role == 'system':
                     system_content = content_str
@@ -128,11 +128,11 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
             count_response = self.client.messages.count_tokens(**count_params)
             return count_response.input_tokens
         except Exception as e:
-            CustomUserWarning(f"Claude count_tokens failed: {e}")
-            CustomUserWarning(f"Error counting tokens for Claude: {e!s}", raise_with=RuntimeError)
+            UserMessage(f"Claude count_tokens failed: {e}")
+            UserMessage(f"Error counting tokens for Claude: {e!s}", raise_with=RuntimeError)
 
     def compute_remaining_tokens(self, _prompts: list) -> int:
-        CustomUserWarning('Method not implemented.', raise_with=NotImplementedError)
+        UserMessage('Method not implemented.', raise_with=NotImplementedError)
 
     def _handle_image_content(self, content: str) -> list:
         """Handle image content by processing vision patterns and returning image file data."""
@@ -158,7 +158,7 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
                 elif len(buffer) == 1:
                     image_files.append({'data': buffer[0], 'media_type': f'image/{ext}', 'type': 'base64'})
                 else:
-                    CustomUserWarning('No frames found for image!')
+                    UserMessage('No frames found for image!')
         return image_files
 
     def _remove_vision_pattern(self, text: str) -> str:
@@ -181,9 +181,9 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
         except Exception as e:
             if anthropic.api_key is None or anthropic.api_key == '':
                 msg = 'Anthropic API key is not set. Please set it in the config file or pass it as an argument to the command method.'
-                CustomUserWarning(msg)
+                UserMessage(msg)
                 if self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] is None or self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] == '':
-                    CustomUserWarning(msg, raise_with=ValueError)
+                    UserMessage(msg, raise_with=ValueError)
                 anthropic.api_key = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
 
             callback = self.client.messages.create
@@ -192,7 +192,7 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
             if except_remedy is not None:
                 res = except_remedy(self, e, callback, argument)
             else:
-                CustomUserWarning(f'Error during generation. Caused by: {e}', raise_with=ValueError)
+                UserMessage(f'Error during generation. Caused by: {e}', raise_with=ValueError)
 
         if payload['stream']:
             res = list(res) # Unpack the iterator to a list
@@ -212,7 +212,7 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
     def _prepare_raw_input(self, argument):
         if not argument.prop.processed_input:
             msg = 'Need to provide a prompt instruction to the engine if `raw_input` is enabled!'
-            CustomUserWarning(msg)
+            UserMessage(msg)
             raise ValueError(msg)
         system = NOT_GIVEN
         prompt = copy(argument.prop.processed_input)
@@ -303,7 +303,7 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
             res = self_prompter({'user': user, 'system': system})
             if res is None:
                 msg = "Self-prompting failed!"
-                CustomUserWarning(msg)
+                UserMessage(msg)
                 raise ValueError(msg)
 
             if len(image_files) > 0:
@@ -376,14 +376,14 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
                     try:
                         tool_call_info['input'] = json.loads(tool_call_info['input_json_str'])
                     except json.JSONDecodeError as e:
-                        CustomUserWarning(f"Failed to parse JSON for tool call {tool_call_info['name']}: {e}. Raw JSON: '{tool_call_info['input_json_str']}'")
+                        UserMessage(f"Failed to parse JSON for tool call {tool_call_info['name']}: {e}. Raw JSON: '{tool_call_info['input_json_str']}'")
                         tool_call_info['input'] = {}
                     tool_calls_raw.append(tool_call_info)
 
             function_call_data = None
             if tool_calls_raw:
                 if len(tool_calls_raw) > 1:
-                    CustomUserWarning("Multiple tool calls detected in the stream but only the first one will be processed.")
+                    UserMessage("Multiple tool calls detected in the stream but only the first one will be processed.")
                 function_call_data = {
                     'name': tool_calls_raw[0]['name'],
                     'arguments': tool_calls_raw[0]['input']
@@ -405,7 +405,7 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
                     text_content += content_block.text
                 elif isinstance(content_block, ToolUseBlock):
                     if hit_tool_use:
-                        CustomUserWarning("Multiple tool use blocks detected in the response but only the first one will be processed.")
+                        UserMessage("Multiple tool use blocks detected in the response but only the first one will be processed.")
                     else:
                         function_call_data = {
                             'name': content_block.name,
@@ -417,5 +417,5 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
                 "function_call": function_call_data
             }
 
-        CustomUserWarning(f"Unexpected response type from Anthropic API: {type(res)}", raise_with=ValueError)
+        UserMessage(f"Unexpected response type from Anthropic API: {type(res)}", raise_with=ValueError)
         return {}

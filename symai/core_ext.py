@@ -16,7 +16,7 @@ from loguru import logger
 
 from . import __root_dir__
 from .functional import EngineRepository
-from .utils import CustomUserWarning
+from .utils import UserMessage
 
 logging.getLogger("multiprocessing").setLevel(logging.ERROR)
 
@@ -263,7 +263,7 @@ def error_logging(debug: bool = False):
                 logger.error(e)
                 if debug:
                     # Simple message:
-                    CustomUserWarning(f'Function: {func.__name__} call failed. Error: {e}')
+                    UserMessage(f'Function: {func.__name__} call failed. Error: {e}')
                     # print traceback
                     traceback.print_exc()
                 raise e

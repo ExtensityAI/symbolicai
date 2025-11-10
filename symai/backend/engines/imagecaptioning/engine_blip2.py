@@ -9,7 +9,7 @@ except ImportError:
 
 from PIL import Image
 
-from ....utils import CustomUserWarning
+from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
 
@@ -43,7 +43,7 @@ class Blip2Engine(Engine):
 
     def forward(self, argument):
         if load_model_and_preprocess is None:
-            CustomUserWarning('Blip2 is not installed. Please install it with `pip install symbolicai[blip2]`', raise_with=ImportError)
+            UserMessage('Blip2 is not installed. Please install it with `pip install symbolicai[blip2]`', raise_with=ImportError)
         if self.model is None:
             self.model, self.vis_processors, self.txt_processors  = load_model_and_preprocess(name       = self.name_id,
                                                                                               model_type = self.model_id,

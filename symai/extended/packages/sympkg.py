@@ -8,7 +8,7 @@ from loguru import logger
 
 from ... import config_manager
 from ...imports import Import
-from ...utils import CustomUserWarning
+from ...utils import UserMessage
 
 
 class PackageHandler:
@@ -73,7 +73,7 @@ class PackageHandler:
         Import.remove(args.package)
 
     def list_packages(self):
-        CustomUserWarning(pprint.pformat(Import.list_installed()))
+        UserMessage(pprint.pformat(Import.list_installed()))
 
     def u(self):
         parser = argparse.ArgumentParser(

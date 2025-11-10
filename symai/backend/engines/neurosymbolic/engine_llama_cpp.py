@@ -9,7 +9,7 @@ import nest_asyncio
 
 from ....core import Argument
 from ....core_ext import retry
-from ....utils import CustomUserWarning
+from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG, SYMSERVER_CONFIG
 
@@ -29,7 +29,7 @@ class LlamaCppTokenizer:
             json={"content": text},
         ) as res:
             if res.status != 200:
-                CustomUserWarning(f"Request failed with status code: {res.status}", raise_with=ValueError)
+                UserMessage(f"Request failed with status code: {res.status}", raise_with=ValueError)
             response_json = await res.json()
             return response_json['tokens']
 
@@ -49,7 +49,7 @@ class LlamaCppTokenizer:
             json={"tokens": tokens},
         ) as res:
             if res.status != 200:
-                CustomUserWarning(f"Request failed with status code: {res.status}", raise_with=ValueError)
+                UserMessage(f"Request failed with status code: {res.status}", raise_with=ValueError)
             response_json = await res.json()
             return response_json['content']
 
@@ -90,7 +90,7 @@ class LlamaCppEngine(Engine):
         if self.id() != 'neurosymbolic':
             return
         if not SYMSERVER_CONFIG.get('online'):
-            CustomUserWarning('You are using the llama.cpp engine, but the server endpoint is not started. Please start the server with `symserver [--args]` or run `symserver --help` to see the available options for this engine.', raise_with=ValueError)
+            UserMessage('You are using the llama.cpp engine, but the server endpoint is not started. Please start the server with `symserver [--args]` or run `symserver --help` to see the available options for this engine.', raise_with=ValueError)
         self.server_endpoint = f"http://{SYMSERVER_CONFIG.get('--host')}:{SYMSERVER_CONFIG.get('--port')}"
         self.tokenizer = LlamaCppTokenizer # backwards compatibility with how we handle tokenization, i.e. self.tokenizer().encode(...)
         self.timeout_params = self._validate_timeout_params(timeout_params)
@@ -113,21 +113,21 @@ class LlamaCppEngine(Engine):
 
     def compute_required_tokens(self, _messages) -> int:
         #@TODO: quite non-trivial how to handle this with the llama.cpp server
-        CustomUserWarning('Not implemented for llama.cpp!', raise_with=NotImplementedError)
+        UserMessage('Not implemented for llama.cpp!', raise_with=NotImplementedError)
 
     def compute_remaining_tokens(self, _prompts: list) -> int:
         #@TODO: quite non-trivial how to handle this with the llama.cpp server
-        CustomUserWarning('Not implemented for llama.cpp!', raise_with=NotImplementedError)
+        UserMessage('Not implemented for llama.cpp!', raise_with=NotImplementedError)
 
     def _validate_timeout_params(self, timeout_params):
         if not isinstance(timeout_params, dict):
-            CustomUserWarning("timeout_params must be a dictionary", raise_with=ValueError)
+            UserMessage("timeout_params must be a dictionary", raise_with=ValueError)
         assert all(key in timeout_params for key in ['read', 'connect']), "Available keys: ['read', 'connect']"
         return timeout_params
 
     def _validate_retry_params(self, retry_params):
         if not isinstance(retry_params, dict):
-            CustomUserWarning("retry_params must be a dictionary", raise_with=ValueError)
+            UserMessage("retry_params must be a dictionary", raise_with=ValueError)
         assert all(key in retry_params for key in ['tries', 'delay', 'max_delay', 'backoff', 'jitter', 'graceful']), "Available keys: ['tries', 'delay', 'max_delay', 'backoff', 'jitter', 'graceful']"
         return retry_params
 
@@ -137,7 +137,7 @@ class LlamaCppEngine(Engine):
         try:
             current_loop = asyncio.get_event_loop()
             if current_loop.is_closed():
-                CustomUserWarning("Event loop is closed.", raise_with=RuntimeError)
+                UserMessage("Event loop is closed.", raise_with=RuntimeError)
             return current_loop
         except RuntimeError:
             new_loop = asyncio.new_event_loop()
@@ -196,7 +196,7 @@ class LlamaCppEngine(Engine):
                 json=payload
             ) as res:
                 if res.status != 200:
-                    CustomUserWarning(f"Request failed with status code: {res.status}", raise_with=ValueError)
+                    UserMessage(f"Request failed with status code: {res.status}", raise_with=ValueError)
                 return await res.json()
 
         return await _make_request()
@@ -223,7 +223,7 @@ class LlamaCppEngine(Engine):
         try:
             res = loop.run_until_complete(self._arequest(payload))
         except Exception as e:
-            CustomUserWarning(f'Error during generation. Caused by: {e}', raise_with=ValueError)
+            UserMessage(f'Error during generation. Caused by: {e}', raise_with=ValueError)
 
         metadata = {'raw_output': res}
 
@@ -257,7 +257,7 @@ class LlamaCppEngine(Engine):
                     continue
                 function = tool_call.get('function') or {}
                 if hit:
-                    CustomUserWarning("Multiple function calls detected in the response but only the first one will be processed.")
+                    UserMessage("Multiple function calls detected in the response but only the first one will be processed.")
                     return metadata
                 arguments = function.get('arguments')
                 try:
@@ -276,7 +276,7 @@ class LlamaCppEngine(Engine):
 
     def _prepare_raw_input(self, argument):
         if not argument.prop.processed_input:
-            CustomUserWarning('Need to provide a prompt instruction to the engine if raw_input is enabled.', raise_with=ValueError)
+            UserMessage('Need to provide a prompt instruction to the engine if raw_input is enabled.', raise_with=ValueError)
         value = argument.prop.processed_input
         if not isinstance(value, list):
             if not isinstance(value, dict):

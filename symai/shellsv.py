@@ -39,7 +39,7 @@ from .menu.screen import show_intro_menu
 from .misc.console import ConsoleStyle
 from .misc.loader import Loader
 from .symbol import Symbol
-from .utils import CustomUserWarning
+from .utils import UserMessage
 
 logging.getLogger("prompt_toolkit").setLevel(logging.ERROR)
 logging.getLogger("asyncio").setLevel(logging.ERROR)
@@ -224,7 +224,7 @@ def _(event):
     cancel = [False]
     @kb.add('f')
     def _(_event):
-        CustomUserWarning('You pressed `f`.')
+        UserMessage('You pressed `f`.')
 
     @kb.add('x')
     def _(_event):
@@ -334,14 +334,14 @@ def disambiguate(cmds: str) -> tuple[str, int]:
             'correct order of commands. Supported are: query | file [file ...] (e.g. "what do these files have in '
             'common?" | file1 [file2 ...]) and query | cmd (e.g. "what flags can I use with rg?" | rg --help)'
         )
-        CustomUserWarning(msg)
+        UserMessage(msg)
         raise ValueError(msg)
     # now check order of commands and keep correct order
     if shutil.which(maybe_cmd) is not None:
         cmd_out = subprocess.run(cmds, check=False, capture_output=True, text=True, shell=True)
         if not cmd_out.stdout:
             msg = f'Command not found or failed. Error: {cmd_out.stderr}'
-            CustomUserWarning(msg)
+            UserMessage(msg)
             raise ValueError(msg)
         return cmd_out.stdout, 1
     if maybe_files is not None:
@@ -366,7 +366,7 @@ def query_language_model(query: str, res=None, *args, **kwargs):
         splits = query.split(f'{splitter}')
         if previous_kwargs is None and '=' not in splits[-1] and ',' not in splits[-1]:
             msg = 'Kwargs format must be last in query.'
-            CustomUserWarning(msg)
+            UserMessage(msg)
             raise ValueError(msg)
         if previous_kwargs is not None and '=' not in splits[-1] and ',' not in splits[-1]:
             # use previous kwargs
@@ -431,7 +431,7 @@ def query_language_model(query: str, res=None, *args, **kwargs):
                 'Supported are: query | file [file ...] (e.g. "what do these files have in common?" | file1 [file2 ...]) '
                 'and query | cmd (e.g. "what flags can I use with rg?" | rg --help)'
             )
-            CustomUserWarning(msg)
+            UserMessage(msg)
             raise ValueError(msg)
         query = cmds[0]
         payload, order = disambiguate(cmds[1].strip())
@@ -529,7 +529,7 @@ def retrieval_augmented_indexing(query: str, index_name = None, *_args, **_kwarg
 
         index_name = path.split(sep)[-1] if index_name is None else index_name
         index_name = Indexer.replace_special_chars(index_name)
-        CustomUserWarning(f'Indexing {index_name} ...')
+        UserMessage(f'Indexing {index_name} ...')
 
         # creates index if not exists
         DocumentRetriever(index_name=index_name, file=file, overwrite=overwrite)
@@ -586,7 +586,7 @@ def handle_error(cmd, res, message, auto_query_on_error):
     stderr = res.stderr
     if stderr and auto_query_on_error:
         rsp = stderr.decode('utf-8')
-        CustomUserWarning(rsp)
+        UserMessage(rsp)
         msg = msg | f"\n{rsp}"
         if 'usage:' in rsp:
             try:
@@ -689,7 +689,7 @@ def map_nt_cmd(cmd: str, map_nt_cmd_enabled: bool = True):
             original_cmd = cmd
             cmd = re.sub(linux_cmd, windows_cmd, cmd)
             if cmd != original_cmd:
-                CustomUserWarning(f'symsh >> command "{original_cmd}" mapped to "{cmd}"\n')
+                UserMessage(f'symsh >> command "{original_cmd}" mapped to "{cmd}"\n')
 
     return cmd
 
@@ -848,10 +848,10 @@ def listen(session: PromptSession, word_comp: WordCompleter, auto_query_on_error
                     if state.stateful_conversation is not None:
                         save_conversation()
                     if not state.use_styles:
-                        CustomUserWarning('Goodbye!')
+                        UserMessage('Goodbye!')
                     else:
                         func = _shell_state.function_type('Give short goodbye')
-                        CustomUserWarning(func('bye'))
+                        UserMessage(func('bye'))
                     os._exit(0)
                 else:
                     msg = process_command(cmd, auto_query_on_error=auto_query_on_error)
@@ -863,11 +863,11 @@ def listen(session: PromptSession, word_comp: WordCompleter, auto_query_on_error
                 word_comp.words.append(cmd)
 
             except KeyboardInterrupt:
-                CustomUserWarning('')
+                UserMessage('')
                 pass
 
             except Exception as e:
-                CustomUserWarning(str(e))
+                UserMessage(str(e))
                 if verbose:
                     traceback.print_exc()
                 pass
@@ -901,7 +901,7 @@ def create_completer():
 def run(auto_query_on_error=False, conversation_style=None, verbose=False):
     state = _shell_state
     if conversation_style is not None and conversation_style != '':
-        CustomUserWarning(f'Loading style: {conversation_style}')
+        UserMessage(f'Loading style: {conversation_style}')
         styles_ = Import.load_module_class(conversation_style)
         (
             state.function_type,

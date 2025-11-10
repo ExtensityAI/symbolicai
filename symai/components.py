@@ -34,7 +34,7 @@ from .pre_processors import JsonPreProcessor, PreProcessor
 from .processor import ProcessorPipeline
 from .prompts import JsonPromptTemplate, Prompt
 from .symbol import Expression, Metadata, Symbol
-from .utils import CustomUserWarning
+from .utils import UserMessage
 
 if TYPE_CHECKING:
     from .backend.engines.index.engine_vectordb import VectorDBResult
@@ -206,7 +206,7 @@ class Stream(Expression):
             if len(vals) == 1:
                 self.expr = vals[0]
             else:
-                CustomUserWarning(
+                UserMessage(
                     "This component does either not inherit from TrackerTraceable or has an invalid number of component "
                     f"declarations: {len(vals)}! Only one component that inherits from TrackerTraceable is allowed in the "
                     "with stream clause.",
@@ -225,7 +225,7 @@ class Stream(Expression):
                 return res[0]
             if self.retrieval == 'contains':
                 return [r for r in res if self.expr in r]
-            CustomUserWarning(f"Invalid retrieval method: {self.retrieval}", raise_with=ValueError)
+            UserMessage(f"Invalid retrieval method: {self.retrieval}", raise_with=ValueError)
 
         return res
 
@@ -357,7 +357,7 @@ class Metric(Expression):
             elif len(sym.value.shape) == 2:
                 pass
             else:
-                CustomUserWarning(f'Invalid shape: {sym.value.shape}', raise_with=ValueError)
+                UserMessage(f'Invalid shape: {sym.value.shape}', raise_with=ValueError)
             # normalize between 0 and 1 and sum to 1
             sym._value = np.exp(sym.value) / (np.exp(sym.value).sum() + self.eps)
         return sym
@@ -571,7 +571,7 @@ class FileReader(Expression):
             if FileReader.exists(file):
                 not_skipped.append(file)
             else:
-                CustomUserWarning(f'Skipping file: {file}')
+                UserMessage(f'Skipping file: {file}')
         return not_skipped
 
     def forward(self, files: str | list[str], **kwargs) -> Expression:
@@ -794,7 +794,7 @@ class SimilarityClassification(Expression):
         self.in_memory = in_memory
 
         if self.in_memory:
-            CustomUserWarning(f'Caching mode is enabled! It is your responsability to empty the .cache folder if you did changes to the classes. The cache is located at {HOME_PATH}/cache')
+            UserMessage(f'Caching mode is enabled! It is your responsability to empty the .cache folder if you did changes to the classes. The cache is located at {HOME_PATH}/cache')
 
     def forward(self, x: Symbol) -> Symbol:
         x            = self._to_symbol(x)
@@ -980,7 +980,7 @@ class FunctionWithUsage(Function):
 
     def print_verbose(self, msg):
         if self.verbose:
-            CustomUserWarning(msg)
+            UserMessage(msg)
 
     def _format_usage(self, prompt_tokens, completion_tokens, total_tokens):
         return Box(
@@ -1033,7 +1033,7 @@ class FunctionWithUsage(Function):
             self.total_tokens += total_tokens
         else:
             if self.missing_usage_exception and "preview" not in kwargs:
-                CustomUserWarning("Missing usage in metadata of neursymbolic engine", raise_with=Exception)
+                UserMessage("Missing usage in metadata of neursymbolic engine", raise_with=Exception)
             prompt_tokens = 0
             completion_tokens = 0
             total_tokens = 0
@@ -1151,7 +1151,7 @@ class MetadataTracker(Expression):
     def _accumulate_completion_token_details(self):
         """Parses the return object and accumulates completion token details per token type"""
         if not self._metadata:
-            CustomUserWarning("No metadata available to generate usage details.")
+            UserMessage("No metadata available to generate usage details.")
             return {}
 
         token_details = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
@@ -1193,7 +1193,7 @@ class MetadataTracker(Expression):
                     logger.warning(f"Tracking {engine_name} is not supported.")
                     continue
             except Exception as e:
-                CustomUserWarning(f"Failed to parse metadata for {engine_name}: {e}", raise_with=AttributeError)
+                UserMessage(f"Failed to parse metadata for {engine_name}: {e}", raise_with=AttributeError)
 
         # Convert to normal dict
         return {**token_details}
@@ -1201,7 +1201,7 @@ class MetadataTracker(Expression):
     def _accumulate_metadata(self):
         """Accumulates metadata across all tracked engine calls."""
         if not self._metadata:
-            CustomUserWarning("No metadata available to generate usage details.")
+            UserMessage("No metadata available to generate usage details.")
             return {}
 
         # Use first entry as base
@@ -1316,7 +1316,7 @@ class DynamicEngine(Expression):
         try:
             engine_class = ENGINE_MAPPING.get(self.model)
             if engine_class is None:
-                CustomUserWarning(f"Unsupported model '{self.model}'", raise_with=ValueError)
+                UserMessage(f"Unsupported model '{self.model}'", raise_with=ValueError)
             return engine_class(api_key=self.api_key, model=self.model)
         except Exception as e:
-            CustomUserWarning(f"Failed to create engine for model '{self.model}': {e!s}", raise_with=ValueError)
+            UserMessage(f"Failed to create engine for model '{self.model}': {e!s}", raise_with=ValueError)

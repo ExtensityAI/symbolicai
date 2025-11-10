@@ -9,7 +9,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from openai import OpenAI
 
 from ....symbol import Result
-from ....utils import CustomUserWarning
+from ....utils import UserMessage
 from ...base import Engine
 from ...mixin import OPENAI_CHAT_MODELS, OPENAI_REASONING_MODELS
 from ...settings import SYMAI_CONFIG
@@ -40,7 +40,7 @@ class SearchResult(Result):
     def __init__(self, value, **kwargs) -> None:
         super().__init__(value, **kwargs)
         if value.get('error'):
-            CustomUserWarning(value['error'], raise_with=ValueError)
+            UserMessage(value['error'], raise_with=ValueError)
         try:
             text, annotations = self._extract_text_and_annotations(value)
             if text is None:
@@ -56,7 +56,7 @@ class SearchResult(Result):
 
         except Exception as e:
             self._value = None
-            CustomUserWarning(f"Failed to parse response: {e}", raise_with=ValueError)
+            UserMessage(f"Failed to parse response: {e}", raise_with=ValueError)
 
     def _extract_text(self, value) -> str | None:
         if isinstance(value.get('output_text'), str) and value.get('output_text'):
@@ -244,7 +244,7 @@ class GPTXSearchEngine(Engine):
         try:
             self.client = OpenAI(api_key=self.api_key)
         except Exception as e:
-            CustomUserWarning(f"Failed to initialize OpenAI client: {e}", raise_with=ValueError)
+            UserMessage(f"Failed to initialize OpenAI client: {e}", raise_with=ValueError)
 
     def id(self) -> str:
         if self.config.get('SEARCH_ENGINE_API_KEY') and \
@@ -350,7 +350,7 @@ class GPTXSearchEngine(Engine):
             res = self.client.responses.create(**payload)
             res = SearchResult(res.dict())
         except Exception as e:
-            CustomUserWarning(f"Failed to make request: {e}", raise_with=ValueError)
+            UserMessage(f"Failed to make request: {e}", raise_with=ValueError)
 
         metadata = {"raw_output": res.raw}
         output   = [res]

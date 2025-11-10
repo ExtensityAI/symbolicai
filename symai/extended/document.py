@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Union
 from ..components import FileReader, Indexer
 from ..formatter import ParagraphFormatter
 from ..symbol import Expression, Symbol
-from ..utils import CustomUserWarning
+from ..utils import UserMessage
 
 if TYPE_CHECKING:
     from ..backend.engines.files.engine_io import TextContainer
@@ -75,5 +75,5 @@ class DocumentRetriever(Expression):
             return self.reader(files, with_metadata=with_metadata, **kwargs)
         if maybe_path.is_file():
             return self.reader(source, with_metadata=with_metadata, **kwargs)
-        CustomUserWarning(f"Invalid source: {source}; must be a file, directory, or string", raise_with=ValueError)
+        UserMessage(f"Invalid source: {source}; must be a file, directory, or string", raise_with=ValueError)
         return []

@@ -1,10 +1,10 @@
 from symai.backend.engines.index.engine_vectordb import VectorDBResult
 from symai.backend.settings import HOME_PATH, SYMAI_CONFIG
 from symai.extended import Interface
-from symai.utils import CustomUserWarning
+from symai.utils import UserMessage
 
 if not bool(SYMAI_CONFIG.get("EMBEDDING_ENGINE_API_KEY")):
-    CustomUserWarning(
+    UserMessage(
         "Since no EMBEDDING_ENGINE_API_KEY key is set, the embedding engine will try to default to a local embedding model based on SentenceTransformers and 'ExtensityAI/embeddings' plugin. Make sure you use an 'EMBEDDING_ENGINE_MODEL' that is compatible with SentenceTransformers (e.g., 'all-mpnet-base-v2')."
     )
 

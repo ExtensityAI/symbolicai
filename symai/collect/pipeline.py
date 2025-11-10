@@ -9,7 +9,7 @@ from bson.objectid import ObjectId
 from pymongo.mongo_client import MongoClient
 
 from ..backend.settings import SYMAI_CONFIG
-from ..utils import CustomUserWarning
+from ..utils import UserMessage
 
 if TYPE_CHECKING:
     from pymongo.collection import Collection
@@ -69,7 +69,7 @@ class CollectionRepository:
             self.client.admin.command('ping')
             return True
         except Exception as e:
-            CustomUserWarning(f"Connection failed: {e}")
+            UserMessage(f"Connection failed: {e}")
             return False
 
     def add(self, forward: Any, engine: Any, metadata: dict[str, Any] | None = None) -> Any:
@@ -141,7 +141,7 @@ class CollectionRepository:
             self.client     = False
             self.db         = None
             self.collection = None
-            CustomUserWarning(f"[WARN] MongoClient: Connection failed: {e}")
+            UserMessage(f"[WARN] MongoClient: Connection failed: {e}")
 
     def close(self) -> None:
         if self.client is not None:

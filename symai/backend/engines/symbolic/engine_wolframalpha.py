@@ -1,14 +1,14 @@
 from copy import deepcopy
 
 from ....symbol import Result
-from ....utils import CustomUserWarning
+from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
 
 try:
     import wolframalpha as wa
 except ImportError:
-    CustomUserWarning("WolframAlpha is not installed. Please install it with `pip install symbolicai[wolframalpha]`", raise_with=ImportError)
+    UserMessage("WolframAlpha is not installed. Please install it with `pip install symbolicai[wolframalpha]`", raise_with=ImportError)
 
 
 class WolframResult(Result):
@@ -45,7 +45,7 @@ class WolframAlphaEngine(Engine):
             rsp = self.client.query(queries)
             rsp = WolframResult(rsp)
         except Exception as e:
-            CustomUserWarning(f'Failed to interact with WolframAlpha: {e}.\n\n If you are getting an error related to "assert", that is a well-known issue with WolframAlpha. There is a manual fix for this issue: https://github.com/jaraco/wolframalpha/pull/34/commits/6eb3828ee812f65592e00629710fc027d40e7bd1', raise_with=ValueError)
+            UserMessage(f'Failed to interact with WolframAlpha: {e}.\n\n If you are getting an error related to "assert", that is a well-known issue with WolframAlpha. There is a manual fix for this issue: https://github.com/jaraco/wolframalpha/pull/34/commits/6eb3828ee812f65592e00629710fc027d40e7bd1', raise_with=ValueError)
 
         metadata = {}
 

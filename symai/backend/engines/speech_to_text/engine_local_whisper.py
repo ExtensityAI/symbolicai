@@ -6,7 +6,7 @@ from itertools import takewhile
 import torch
 
 from ....symbol import Expression, Result
-from ....utils import CustomUserWarning
+from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
 
@@ -110,7 +110,7 @@ class WhisperEngine(Engine):
             try:
                 self.model = whisper.load_model(self.model_id, device=device)
             except RuntimeError:
-                CustomUserWarning(f"Whisper failed to load model on device {device}. Fallback to {device_fallback}.")
+                UserMessage(f"Whisper failed to load model on device {device}. Fallback to {device_fallback}.")
                 self.model = whisper.load_model(self.model_id, device=device_fallback)
             self.old_model_id = self.model_id
 
@@ -119,7 +119,7 @@ class WhisperEngine(Engine):
     def id(self) -> str:
         if self.config['SPEECH_TO_TEXT_ENGINE_MODEL']:
             if whisper is None:
-                CustomUserWarning("Whisper is not installed. Please install it with `pip install symbolicai[whisper]`", raise_with=ImportError)
+                UserMessage("Whisper is not installed. Please install it with `pip install symbolicai[whisper]`", raise_with=ImportError)
             return 'speech-to-text'
         return super().id() # default to unregistered
 
@@ -175,7 +175,7 @@ class WhisperEngine(Engine):
             else:
                 rsp = " ".join(self.text)
         else:
-            CustomUserWarning(f"Unknown whisper command prompt: {prompt}", raise_with=ValueError)
+            UserMessage(f"Unknown whisper command prompt: {prompt}", raise_with=ValueError)
 
         metadata = {}
         rsp = WhisperResult(rsp)

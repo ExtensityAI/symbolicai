@@ -4,7 +4,7 @@ import logging
 import requests
 
 from ....symbol import Result
-from ....utils import CustomUserWarning
+from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
 
@@ -18,12 +18,12 @@ class SearchResult(Result):
     def __init__(self, value, **kwargs) -> None:
         super().__init__(value, **kwargs)
         if value.get('error'):
-            CustomUserWarning(value['error'], raise_with=ValueError)
+            UserMessage(value['error'], raise_with=ValueError)
         try:
             self._value = value['choices'][0]['message']['content']
         except Exception as e:
             self._value = None
-            CustomUserWarning(f"Failed to parse response: {e}", raise_with=ValueError)
+            UserMessage(f"Failed to parse response: {e}", raise_with=ValueError)
 
     def __str__(self) -> str:
         try:
@@ -91,7 +91,7 @@ class PerplexityEngine(Engine):
             res = requests.post("https://api.perplexity.ai/chat/completions", json=payload, headers=headers)
             res = SearchResult(res.json())
         except Exception as e:
-            CustomUserWarning(f"Failed to make request: {e}", raise_with=ValueError)
+            UserMessage(f"Failed to make request: {e}", raise_with=ValueError)
 
         metadata = {"raw_output": res.raw}
         output   = [res]

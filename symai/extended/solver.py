@@ -11,7 +11,7 @@ from ..post_processors import CodeExtractPostProcessor, StripPostProcessor
 from ..pre_processors import PreProcessor
 from ..prompts import Prompt
 from ..symbol import Expression, Symbol
-from ..utils import CustomUserWarning
+from ..utils import UserMessage
 from .conversation import Conversation
 
 #############################################################################################
@@ -216,7 +216,7 @@ class SATSolver(Expression):
             m = S.model()
             # Return the solution
             return m[query]
-        CustomUserWarning("Cannot solve the puzzle. Returned: " + str(r))
+        UserMessage("Cannot solve the puzzle. Returned: " + str(r))
         return None
 
 
@@ -249,14 +249,14 @@ class Solver(Expression):
 
         if problem == 'Arithmetics formula' or problem == 'Equations':
             formula = self.rewrite_formula(sym, **kwargs)
-            CustomUserWarning(str(formula))
+            UserMessage(str(formula))
         elif problem == 'Implication and logical expressions':
             res     = self.conv(sym, **kwargs)
             code    = self.pp(str(res), None, tag="python")
             formula = self.solver(code, lambda: 'German')
-            CustomUserWarning(str(formula))
+            UserMessage(str(formula))
         elif problem == 'Probability and statistics' or problem == 'Linear algebra' or problem == 'Linguistic problem with relations':
-            CustomUserWarning('This feature is not yet implemented.', raise_with=NotImplementedError)
+            UserMessage('This feature is not yet implemented.', raise_with=NotImplementedError)
         else:
             return "Sorry, something went wrong. Please check if your backend is available and try again or report an issue to the devs. :("
         return None
@@ -266,7 +266,7 @@ def process_query(args) -> None:
     query = args.query
     solver = Solver()
     res = solver(query)
-    CustomUserWarning(str(res))
+    UserMessage(str(res))
 
 
 def run() -> None:

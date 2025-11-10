@@ -5,7 +5,7 @@ from .backend.mixin import OPENAI_CHAT_MODELS, OPENAI_REASONING_MODELS
 from .backend.settings import SYMAI_CONFIG
 from .imports import Import
 from .symbol import Expression
-from .utils import CustomUserWarning
+from .utils import UserMessage
 
 
 class Interface(Expression):
@@ -25,7 +25,7 @@ class Interface(Expression):
         return Interface.load_module_class(cls.module_path, cls._module)(*args, **kwargs)
 
     def __call__(self, *_args, **_kwargs):
-        CustomUserWarning(f"Interface {self._module} is not callable.", raise_with=NotImplementedError)
+        UserMessage(f"Interface {self._module} is not callable.", raise_with=NotImplementedError)
 
     @staticmethod
     def load_module_class(module_path, class_name):

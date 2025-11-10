@@ -1,5 +1,5 @@
 
-from ....utils import CustomUserWarning
+from ....utils import UserMessage
 from ...base import Engine
 
 
@@ -17,7 +17,7 @@ class UserInputEngine(Engine):
 
         mock = kwargs.get('mock', False)
         if mock: # mock user input
-            CustomUserWarning(msg)
+            UserMessage(msg)
             rsp = mock
         else:
             rsp = input(msg)

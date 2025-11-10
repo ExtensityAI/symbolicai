@@ -3,7 +3,7 @@ import subprocess
 
 from ..post_processors import CodeExtractPostProcessor
 from ..symbol import Expression, Symbol
-from ..utils import CustomUserWarning
+from ..utils import UserMessage
 
 Context = """[DESCRIPTION]:
 Adapt the user query to an OS patform command (commands must be executable in terminal, shell, bash or powershell)!
@@ -77,18 +77,18 @@ class OSCommand(Expression):
         if self.os_platform == 'auto':
             self.os_platform = platform.platform()
         if len(programs) == 0:
-            CustomUserWarning('No programs specified!', raise_with=Exception)
+            UserMessage('No programs specified!', raise_with=Exception)
 
     def execute_os_command(self, *args, **_kwargs):
         command = args[0]
-        CustomUserWarning(f'Executing {self.os_platform} command: {command}')
+        UserMessage(f'Executing {self.os_platform} command: {command}')
         if 'linux' in self.os_platform.lower():
             return [subprocess.run(["bash", "-c", str(command)], check=False)]
         if 'windows' in self.os_platform.lower():
             return [subprocess.run(["powershell", "-Command", str(command)], check=False)]
         if 'mac' in self.os_platform.lower():
             return [subprocess.run(["bash", "-c", str(command)], check=False)]
-        CustomUserWarning('Unsupported platform!', raise_with=Exception)
+        UserMessage('Unsupported platform!', raise_with=Exception)
         return []
 
     def forward(self, sym: Symbol, **kwargs) -> Expression:

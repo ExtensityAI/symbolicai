@@ -1,6 +1,6 @@
 from ... import core
 from ...symbol import Expression
-from ...utils import CustomUserWarning
+from ...utils import UserMessage
 
 
 class console(Expression):
@@ -12,7 +12,7 @@ class console(Expression):
         def _handler(payload):
             args_ = payload.get('args', ())
             message = ' '.join(str(arg) for arg in args_)
-            CustomUserWarning(message)
+            UserMessage(message)
 
         kwargs['handler'] = _handler
         @core.output(**kwargs)
