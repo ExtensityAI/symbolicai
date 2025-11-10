@@ -55,32 +55,42 @@ class ConsoleStyle:
         style = self.style_types.get(self.style_type, self.style_types['default'])
 
         if style == self.style_types['code']:
-            # Split the message using ``` as delimiter
-            segments = re.split(r'(```)', message)
-            is_code = False
-            for segment in segments:
-                if segment == '```':
-                    is_code = not is_code
-                    continue
-                if is_code:
-                    # Determine lexer
-                    if 'python' in segment.lower():
-                        lexer = PythonLexer()
-                    elif 'javascript' in segment.lower() or 'typescript' in segment.lower():
-                        lexer = JavascriptLexer()
-                    elif 'c++' in segment.lower():
-                        lexer = CppLexer()
-                    else:
-                        lexer = BashLexer()
-                    # Print highlighted code
-                    tokens = list(pygments.lex("```" + segment + "```", lexer))
-                    print(PygmentsTokens(tokens), end='')
-                else:
-                    # Print the segment normally
-                    print(segment, end='\n')
-        elif style == self.style_types['default']:
+            self._print_code_message(message)
+            return
+        if style == self.style_types['default']:
             print(message)
-        elif style == self.style_types['custom']:
-            print(HTML(f'<style fg="{self.color}">{content_for_html}</style>'))
-        else:
-            print(HTML(f'<style fg="{style}">{content_for_html}</style>'))
+            return
+        if style == self.style_types['custom']:
+            self._print_html(self.color, content_for_html)
+            return
+        self._print_html(style, content_for_html)
+
+    def _print_code_message(self, message: str) -> None:
+        segments = re.split(r'(```)', message)
+        is_code_segment = False
+        for segment in segments:
+            if segment == '```':
+                is_code_segment = not is_code_segment
+                continue
+            if is_code_segment:
+                self._print_code_segment(segment)
+                continue
+            print(segment, end='\n')
+
+    def _print_code_segment(self, segment: str) -> None:
+        lexer = self._select_lexer(segment)
+        tokens = list(pygments.lex("```" + segment + "```", lexer))
+        print(PygmentsTokens(tokens), end='')
+
+    def _select_lexer(self, segment: str):
+        lowered_segment = segment.lower()
+        if 'python' in lowered_segment:
+            return PythonLexer()
+        if 'javascript' in lowered_segment or 'typescript' in lowered_segment:
+            return JavascriptLexer()
+        if 'c++' in lowered_segment:
+            return CppLexer()
+        return BashLexer()
+
+    def _print_html(self, color: str, content: str) -> None:
+        print(HTML(f'<style fg="{color}">{content}</style>'))
