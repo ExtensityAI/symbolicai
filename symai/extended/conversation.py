@@ -9,7 +9,7 @@ from ..formatter import TextContainerFormatter
 from ..interfaces import Interface
 from ..memory import SlidingWindowStringConcatMemory
 from ..symbol import Symbol
-from ..utils import CustomUserWarning, deprecated
+from ..utils import UserMessage, deprecated
 from .document import DocumentRetriever
 from .seo_query_optimizer import SEOQueryOptimizer
 
@@ -63,7 +63,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         self.indexer = None
         self.index = None
         if index_name is not None:
-            CustomUserWarning("Index not supported for conversation class.", raise_with=NotImplementedError)
+            UserMessage("Index not supported for conversation class.", raise_with=NotImplementedError)
 
     def __getstate__(self):
         state = super().__getstate__().copy()
@@ -78,7 +78,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         self.seo_opt = SEOQueryOptimizer()
         self.reader = FileReader()
         if self.index_name is not None:
-            CustomUserWarning("Index not supported for conversation class.", raise_with=NotImplementedError)
+            UserMessage("Index not supported for conversation class.", raise_with=NotImplementedError)
 
     def store_system_message(self, message: str, *_args, **_kwargs):
         val = f"[SYSTEM_INSTRUCTION::]: <<<\n{message!s}\n>>>\n"
@@ -108,12 +108,12 @@ class Conversation(SlidingWindowStringConcatMemory):
         path_obj = Path(path)
         if path_obj.exists():
             if path_obj.stat().st_size <= 0:
-                CustomUserWarning("File is empty.", raise_with=Exception)
+                UserMessage("File is empty.", raise_with=Exception)
             # Load the conversation object from a pickle file
             with path_obj.open('rb') as handle:
                 conversation_state = pickle.load(handle)
         else:
-            CustomUserWarning("File does not exist or is empty.", raise_with=Exception)
+            UserMessage("File does not exist or is empty.", raise_with=Exception)
 
         # Create a new instance of the `Conversation` class and restore
         # the state from the saved conversation
@@ -130,7 +130,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         self.seo_opt = SEOQueryOptimizer()
         self.reader = FileReader()
         if self.index_name is not None:
-            CustomUserWarning("Index not supported for conversation class.", raise_with=NotImplementedError)
+            UserMessage("Index not supported for conversation class.", raise_with=NotImplementedError)
         return self
 
     def commit(self, target_file: str | None = None, formatter: Callable | None = None):
@@ -144,7 +144,7 @@ class Conversation(SlidingWindowStringConcatMemory):
                 file_link = file_link[0]
             else:
                 file_link = None # cannot commit to multiple files
-                CustomUserWarning('Cannot commit to multiple files.', raise_with=Exception)
+                UserMessage('Cannot commit to multiple files.', raise_with=Exception)
         if file_link:
             # if file extension is .py, then format code
             format_ = formatter
@@ -156,7 +156,7 @@ class Conversation(SlidingWindowStringConcatMemory):
             with Path(file_link).open('w') as file:
                 file.write(str(val))
         else:
-            CustomUserWarning('File link is not set or a set of files.', raise_with=Exception)
+            UserMessage('File link is not set or a set of files.', raise_with=Exception)
 
     def save(self, path: str, replace: bool = False) -> Symbol:
         return Symbol(self._memory).save(path, replace=replace)

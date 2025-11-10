@@ -10,7 +10,7 @@ import torch
 
 from ..ops.primitives import OperatorPrimitives
 from ..symbol import Symbol
-from ..utils import CustomUserWarning
+from ..utils import UserMessage
 
 SPECIAL_CONSTANT = '__aggregate_'
 EXCLUDE_LIST     = ['_ipython_canary_method_should_not_exist_', '__custom_documentations__']
@@ -64,7 +64,7 @@ class Aggregator(Symbol):
             elif not isinstance(self._value, (list, tuple)):
                 self._value = [self._value]
         elif value is not None:
-            CustomUserWarning(f'Aggregator object must be of type Aggregator or Symbol! Got: {type(value)}', raise_with=Exception)
+            UserMessage(f'Aggregator object must be of type Aggregator or Symbol! Got: {type(value)}', raise_with=Exception)
         else:
             self._value = []
         self._raise_error   = raise_error
@@ -103,7 +103,7 @@ class Aggregator(Symbol):
             self.__dict__[name] = self.__dict__[f'{SPECIAL_CONSTANT}{name}']
             return self.__dict__.get(name)
         if not self._active and name not in self.__dict__:
-            CustomUserWarning(f'Aggregator object is frozen! No attribute {name} found!', raise_with=Exception)
+            UserMessage(f'Aggregator object is frozen! No attribute {name} found!', raise_with=Exception)
         return self.__dict__.get(name)
 
     def __setattr__(self, name, value):
@@ -158,7 +158,7 @@ class Aggregator(Symbol):
                 except Exception as e:
                     if strict:
                         msg = f'Could not set value of Aggregator object: {obj.path}! ERROR: {e}'
-                        CustomUserWarning(msg)
+                        UserMessage(msg)
                         raise Exception(msg) from e
             obj.__setattr__(attr_key, attr_value)
 
@@ -260,7 +260,7 @@ class Aggregator(Symbol):
     def add(self, entries):
         # Add entries to the aggregator
         if not self.active and self._finalized:
-            CustomUserWarning('Aggregator object is frozen!', raise_with=Exception)
+            UserMessage('Aggregator object is frozen!', raise_with=Exception)
             return
         try:
             processed_entries = self._prepare_entries(entries)
@@ -271,9 +271,9 @@ class Aggregator(Symbol):
         except Exception as e:
             msg = f'Could not add entries to Aggregator object! Please verify type or original error: {e}'
             if self._raise_error:
-                CustomUserWarning(msg)
+                UserMessage(msg)
                 raise Exception(msg) from e
-            CustomUserWarning(msg)
+            UserMessage(msg)
 
     def _prepare_entries(self, entries):
         valid_types = (tuple, list, np.float32, np.float64, np.ndarray, torch.Tensor, int, float, bool, str, Symbol)
@@ -335,7 +335,7 @@ class Aggregator(Symbol):
             if name == 'map':
                 self.__setattr__(name, value)
             else:
-                CustomUserWarning('Aggregator object is frozen!', raise_with=Exception)
+                UserMessage('Aggregator object is frozen!', raise_with=Exception)
         self.__setattr__ = raise_exception
         def get_attribute(*args, **kwargs):
             return self.__dict__.get(*args, **kwargs)
@@ -354,7 +354,7 @@ class Aggregator(Symbol):
     def clear(self):
         # Clear the entries of the aggregator
         if self._finalized:
-            CustomUserWarning('Aggregator object is frozen!', raise_with=Exception)
+            UserMessage('Aggregator object is frozen!', raise_with=Exception)
         self._value = []
 
     def sum(self, axis=0):

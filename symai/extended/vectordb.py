@@ -11,7 +11,7 @@ import numpy as np
 from ..backend.settings import HOME_PATH, SYMAI_CONFIG
 from ..interfaces import Interface
 from ..symbol import Expression, Symbol
-from ..utils import CustomUserWarning
+from ..utils import UserMessage
 from .metrics import (
     adams_similarity,
     cosine_similarity,
@@ -77,7 +77,7 @@ class VectorDB(Expression):
         elif "adams" in similarity_metric:
             self.similarity_metric = adams_similarity
         else:
-            CustomUserWarning("Similarity metric not supported. Please use either 'dot', 'cosine', 'euclidean', 'adams', or 'derrida'.", raise_with=ValueError)
+            UserMessage("Similarity metric not supported. Please use either 'dot', 'cosine', 'euclidean', 'adams', or 'derrida'.", raise_with=ValueError)
 
         if load_on_init:
             if isinstance(load_on_init, (str, Path)):
@@ -147,7 +147,7 @@ class VectorDB(Expression):
                 for i in range(emb.shape[0]):
                     embeddings.append(emb[i])
             else:
-                CustomUserWarning("Embeddings must be a 1D or 2D array.", raise_with=ValueError)
+                UserMessage("Embeddings must be a 1D or 2D array.", raise_with=ValueError)
         return embeddings
 
     def dict(self, vectors=False):
@@ -212,7 +212,7 @@ class VectorDB(Expression):
         if self.vectors is None:
             self.vectors = np.empty((0, len(vector)), dtype=np.float32)
         elif len(vector) != self.vectors.shape[1]:
-            CustomUserWarning("All vectors must have the same length.", raise_with=ValueError)
+            UserMessage("All vectors must have the same length.", raise_with=ValueError)
         # convert the vector to a numpy array if it is not already
         if isinstance(vector, list):
             vector = np.array(vector)

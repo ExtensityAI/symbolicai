@@ -4,7 +4,7 @@ from typing import ClassVar
 
 from ....extended.vectordb import VectorDB
 from ....symbol import Result
-from ....utils import CustomUserWarning
+from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
 
@@ -132,7 +132,7 @@ class VectorDBIndexEngine(Engine):
 
         if operation == 'search':
             if isinstance(query, list) and len(query) > 1:
-                CustomUserWarning('VectorDB indexing engine does not support multiple queries. Pass a single string query instead.', raise_with=ValueError)
+                UserMessage('VectorDB indexing engine does not support multiple queries. Pass a single string query instead.', raise_with=ValueError)
             query_vector = self.index[index_name].embedding_function([query])[0]
             results = self.index[index_name](vector=query_vector, top_k=top_k, return_similarities=similarities)
             rsp = [{'metadata': {'text': result}} for result in results]
@@ -155,9 +155,9 @@ class VectorDBIndexEngine(Engine):
             elif kwargs.get('purge', maybe_as_prompt == 'purge'):
                 self.purge(index_name)
             else:
-                CustomUserWarning('Invalid configuration; please use either "load", "save", or "purge".', raise_with=ValueError)
+                UserMessage('Invalid configuration; please use either "load", "save", or "purge".', raise_with=ValueError)
         else:
-            CustomUserWarning('Invalid operation; please use either "search", "add", or "config".', raise_with=ValueError)
+            UserMessage('Invalid operation; please use either "search", "add", or "config".', raise_with=ValueError)
 
         metadata = {}
         rsp = VectorDBResult(rsp, query[0], None)

@@ -11,7 +11,7 @@ import torch
 
 from .. import core, core_ext
 from ..prompts import Prompt
-from ..utils import CustomUserWarning
+from ..utils import UserMessage
 from .measures import calculate_frechet_distance, calculate_mmd
 
 if TYPE_CHECKING:
@@ -46,14 +46,14 @@ class OperatorPrimitives(Primitive):
             other = self._to_type(other)
         # None shortcut
         if not self.__disable_none_shortcut__ and (self.value is None or other.value is None):
-            CustomUserWarning(f"unsupported {self._symbol_type.__class__} value operand type(s) for {op}: '{type(self.value)}' and '{type(other.value)}'", raise_with=TypeError)
+            UserMessage(f"unsupported {self._symbol_type.__class__} value operand type(s) for {op}: '{type(self.value)}' and '{type(other.value)}'", raise_with=TypeError)
         # try type specific function
         try:
             # try type specific function
             value = func(self, other)
             if value is NotImplemented:
                 operation = '' if op is None else op
-                CustomUserWarning(f"unsupported {self._symbol_type.__class__} value operand type(s) for {operation}: '{type(self.value)}' and '{type(other.value)}'", raise_with=TypeError)
+                UserMessage(f"unsupported {self._symbol_type.__class__} value operand type(s) for {operation}: '{type(self.value)}' and '{type(other.value)}'", raise_with=TypeError)
             return value
         except Exception as ex:
             self._metadata._error = ex
@@ -65,7 +65,7 @@ class OperatorPrimitives(Primitive):
         This function raises an error if the neuro-symbolic engine is disabled.
         '''
         if self.__disable_nesy_engine__:
-            CustomUserWarning(f"unsupported {self.__class__} value operand type(s) for {func.__name__}: '{type(self.value)}'", raise_with=TypeError)
+            UserMessage(f"unsupported {self.__class__} value operand type(s) for {func.__name__}: '{type(self.value)}'", raise_with=TypeError)
 
     def __bool__(self) -> bool:
         '''
@@ -851,7 +851,7 @@ class OperatorPrimitives(Primitive):
             (isinstance(self.value, str) and isinstance(other, self._symbol_type) and isinstance(other.value, str)):
             other = self._to_type(other)
             return self._to_type(f'{self.value}{other.value}')
-        CustomUserWarning(f'This method is only supported for string concatenation! Got {type(self.value)} and {type(other)} instead.', raise_with=TypeError)
+        UserMessage(f'This method is only supported for string concatenation! Got {type(self.value)} and {type(other)} instead.', raise_with=TypeError)
         return None
 
     def __rmatmul__(self, other: Any) -> 'Symbol':
@@ -917,7 +917,7 @@ class OperatorPrimitives(Primitive):
         if result is not None:
             return self._to_type(result)
 
-        CustomUserWarning('Division operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
+        UserMessage('Division operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
         return None
 
 
@@ -937,7 +937,7 @@ class OperatorPrimitives(Primitive):
             self._value = result
             return self
 
-        CustomUserWarning('Division operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
+        UserMessage('Division operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
         return None
 
 
@@ -956,7 +956,7 @@ class OperatorPrimitives(Primitive):
         if result is not None:
             return self._to_type(result)
 
-        CustomUserWarning('Floor division operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
+        UserMessage('Floor division operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
         return None
 
     def __rfloordiv__(self, other: Any) -> 'Symbol':
@@ -974,7 +974,7 @@ class OperatorPrimitives(Primitive):
         if result is not None:
             return self._to_type(result)
 
-        CustomUserWarning('Floor division operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
+        UserMessage('Floor division operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
         return None
 
     def __ifloordiv__(self, other: Any) -> 'Symbol':
@@ -993,7 +993,7 @@ class OperatorPrimitives(Primitive):
             self._value = result
             return self
 
-        CustomUserWarning('Floor division operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
+        UserMessage('Floor division operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
         return None
 
     def __pow__(self, other: Any) -> 'Symbol':
@@ -1011,7 +1011,7 @@ class OperatorPrimitives(Primitive):
         if result is not None:
             return self._to_type(result)
 
-        CustomUserWarning('Power operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
+        UserMessage('Power operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
         return None
 
 
@@ -1030,7 +1030,7 @@ class OperatorPrimitives(Primitive):
         if result is not None:
             return self._to_type(result)
 
-        CustomUserWarning('Power operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
+        UserMessage('Power operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
         return None
 
     def __ipow__(self, other: Any) -> 'Symbol':
@@ -1049,7 +1049,7 @@ class OperatorPrimitives(Primitive):
             self._value = result
             return self
 
-        CustomUserWarning('Power operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
+        UserMessage('Power operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
         return None
 
     def __mod__(self, other: Any) -> 'Symbol':
@@ -1067,7 +1067,7 @@ class OperatorPrimitives(Primitive):
         if result is not None:
             return self._to_type(result)
 
-        CustomUserWarning('Modulo operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
+        UserMessage('Modulo operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
         return None
 
     def __rmod__(self, other: Any) -> 'Symbol':
@@ -1086,7 +1086,7 @@ class OperatorPrimitives(Primitive):
             return self._to_type(result)
 
         msg = 'Modulo operation not supported! Might change in the future.'
-        CustomUserWarning(msg)
+        UserMessage(msg)
         raise NotImplementedError(msg) from self._metadata._error
 
     def __imod__(self, other: Any) -> 'Symbol':
@@ -1105,7 +1105,7 @@ class OperatorPrimitives(Primitive):
             self._value = result
             return self
 
-        CustomUserWarning('Modulo operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
+        UserMessage('Modulo operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
         return None
 
     def __mul__(self, other: Any) -> 'Symbol':
@@ -1123,7 +1123,7 @@ class OperatorPrimitives(Primitive):
         if result is not None:
             return self._to_type(result)
 
-        CustomUserWarning('Multiply operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
+        UserMessage('Multiply operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
         return None
 
     def __rmul__(self, other: Any) -> 'Symbol':
@@ -1141,7 +1141,7 @@ class OperatorPrimitives(Primitive):
         if result is not None:
             return self._to_type(result)
 
-        CustomUserWarning('Multiply operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
+        UserMessage('Multiply operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
         return None
 
     def __imul__(self, other: Any) -> 'Symbol':
@@ -1160,7 +1160,7 @@ class OperatorPrimitives(Primitive):
             self._value = result
             return self
 
-        CustomUserWarning('Multiply operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
+        UserMessage('Multiply operation not supported semantically! Might change in the future.', raise_with=NotImplementedError)
         return None
 
 
@@ -1285,7 +1285,7 @@ class IterationPrimitives(Primitive):
             try:
                 return self.value[key]
             except Exception:
-                CustomUserWarning(f'Key {key} not found in {self.value}', raise_with=Exception)
+                UserMessage(f'Key {key} not found in {self.value}', raise_with=Exception)
 
         @core.getitem()
         def _func(_, index: str):
@@ -1311,14 +1311,14 @@ class IterationPrimitives(Primitive):
         from ..post_processors import ASTPostProcessor # noqa
 
         if not isinstance(self.value, (str, dict, list)):
-            CustomUserWarning(f'Setting item is not supported for {type(self.value)}. Supported types are str, dict, and list.', raise_with=TypeError)
+            UserMessage(f'Setting item is not supported for {type(self.value)}. Supported types are str, dict, and list.', raise_with=TypeError)
 
         if not self.__semantic__:
             try:
                 self.value[key] = value
                 return
             except Exception:
-                CustomUserWarning(f'Key {key} not found in {self.value}', raise_with=Exception)
+                UserMessage(f'Key {key} not found in {self.value}', raise_with=Exception)
 
         @core.setitem()
         def _func(_, index: str, value: str):
@@ -1346,14 +1346,14 @@ class IterationPrimitives(Primitive):
         from ..post_processors import ASTPostProcessor # noqa
 
         if not isinstance(self.value, (str, dict, list)):
-            CustomUserWarning(f'Setting item is not supported for {type(self.value)}. Supported types are str, dict, and list.', raise_with=TypeError)
+            UserMessage(f'Setting item is not supported for {type(self.value)}. Supported types are str, dict, and list.', raise_with=TypeError)
 
         if not self.__semantic__:
             try:
                 del self.value[key]
                 return
             except Exception:
-                CustomUserWarning(f'Key {key} not found in {self.value}', raise_with=Exception)
+                UserMessage(f'Key {key} not found in {self.value}', raise_with=Exception)
 
         @core.delitem()
         def _func(_, index: str):
@@ -1724,7 +1724,7 @@ class DataHandlingPrimitives(Primitive):
         try:
             iter(self.value)
         except TypeError:
-            CustomUserWarning('Map can only be applied to iterable objects', raise_with=AssertionError)
+            UserMessage('Map can only be applied to iterable objects', raise_with=AssertionError)
 
         @core.map(instruction=instruction, **kwargs)
         def _func(_):
@@ -2415,7 +2415,7 @@ class EmbeddingPrimitives(Primitive):
             if not isinstance(x, self._symbol_type): #@NOTE: enforce Symbol to avoid circular import
                 if not cast:
                     msg = f'Cannot compute similarity with type {type(x)}'
-                    CustomUserWarning(msg)
+                    UserMessage(msg)
                     raise TypeError(msg)
                 x = self._symbol_type(x)
             # evaluate the Symbol as an embedding
@@ -2488,7 +2488,7 @@ class EmbeddingPrimitives(Primitive):
                 f"Similarity metric {metric} not implemented. Available metrics: "
                 "'cosine', 'angular-cosine', 'product', 'manhattan', 'euclidean', 'minkowski', 'jaccard'"
             )
-            CustomUserWarning(msg)
+            UserMessage(msg)
             raise NotImplementedError(msg)
 
         # get the similarity value(s)
@@ -2594,7 +2594,7 @@ class EmbeddingPrimitives(Primitive):
             val     = calculate_mmd(v, o, eps=eps)
         else:
             msg = "Kernel function {kernel} not implemented. Available functions: 'gaussian'"
-            CustomUserWarning(msg.format(kernel=kernel))
+            UserMessage(msg.format(kernel=kernel))
             raise NotImplementedError(msg.format(kernel=kernel))
 
         # get the kernel value(s)
@@ -2624,7 +2624,7 @@ class EmbeddingPrimitives(Primitive):
             pass
         else:
             msg = f'Expected id to be a string, got {type(self.value)}'
-            CustomUserWarning(msg)
+            UserMessage(msg)
             raise ValueError(msg)
 
         embeds = self.embed(**kwargs).value
@@ -2703,7 +2703,7 @@ class IOHandlingPrimitives(Primitive):
         path = path if path is not None else self.value
         if path is None:
             msg = 'Path is not provided; either provide a path or set the value of the Symbol to the path'
-            CustomUserWarning(msg)
+            UserMessage(msg)
             raise ValueError(msg)
 
         @core.opening(path=path, **kwargs)
@@ -2889,7 +2889,7 @@ class FineTuningPrimitives(Primitive):
             self._metadata.data = torch.from_numpy(self._metadata.data)
             return self._metadata.data
         msg = f'Expected data to be a tensor or numpy array, got {type(self._metadata.data)}'
-        CustomUserWarning(msg)
+        UserMessage(msg)
         raise TypeError(msg)
 
     @data.setter

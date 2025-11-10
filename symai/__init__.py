@@ -13,7 +13,7 @@ from rich.tree import Tree
 from .backend import settings
 from .menu.screen import show_intro_menu
 from .misc.console import ConsoleStyle
-from .utils import CustomUserWarning
+from .utils import UserMessage
 
 # do not remove - hides the libraries' debug messages
 logging.getLogger("urllib3").setLevel(logging.WARNING)
@@ -75,7 +75,7 @@ def _start_symai():
 
     if not _symai_config_path_.exists():
         setup_wizard(_symai_config_path_)
-        CustomUserWarning(f'No configuration file found for the environment. A new configuration file has been created at {_symai_config_path_}. Please configure your environment.')
+        UserMessage(f'No configuration file found for the environment. A new configuration file has been created at {_symai_config_path_}. Please configure your environment.')
         sys.exit(1)
 
     # Load and manage configurations
@@ -125,7 +125,7 @@ def _start_symai():
             # Try to fallback to the global (home) config if environment is not home
             if config_manager.config_dir != config_manager._home_config_dir:
                 show_intro_menu()
-                CustomUserWarning(f"You didn't configure your environment ({config_manager.config_dir})! Falling back to the global ({config_manager._home_config_dir}) configuration if it exists.")
+                UserMessage(f"You didn't configure your environment ({config_manager.config_dir})! Falling back to the global ({config_manager._home_config_dir}) configuration if it exists.")
                 # Force loading from home
                 symai_config = config_manager.load_config('symai.config.json', fallback_to_home=True)
                 symsh_config = config_manager.load_config('symsh.config.json', fallback_to_home=True)
@@ -133,7 +133,7 @@ def _start_symai():
 
             # If still not valid, warn and exit
             if not symai_config.get('NEUROSYMBOLIC_ENGINE_API_KEY'):
-                CustomUserWarning('The mandatory neuro-symbolic engine is not initialized. Please set NEUROSYMBOLIC_ENGINE_MODEL and NEUROSYMBOLIC_ENGINE_API_KEY.')
+                UserMessage('The mandatory neuro-symbolic engine is not initialized. Please set NEUROSYMBOLIC_ENGINE_MODEL and NEUROSYMBOLIC_ENGINE_API_KEY.')
                 sys.exit(1)
 
     settings.SYMAI_CONFIG = symai_config
@@ -159,9 +159,9 @@ def run_server():
         try:
             subprocess.run(command, check=True)
         except KeyboardInterrupt:
-            CustomUserWarning("Server stopped!")
+            UserMessage("Server stopped!")
         except Exception as e:
-            CustomUserWarning(f"Error running server: {e}")
+            UserMessage(f"Error running server: {e}")
         finally:
             config_manager.save_config("symserver.config.json", {'online': False})
 
@@ -178,9 +178,9 @@ def run_server():
         try:
             command(host=args.host, port=args.port)
         except KeyboardInterrupt:
-            CustomUserWarning("Server stopped!")
+            UserMessage("Server stopped!")
         except Exception as e:
-            CustomUserWarning(f"Error running server: {e}")
+            UserMessage(f"Error running server: {e}")
         finally:
             config_manager.save_config("symserver.config.json", {'online': False})
     else:
@@ -188,7 +188,7 @@ def run_server():
             "You're trying to run a local server without a valid neuro-symbolic engine model. "
             "Please set a valid model in your configuration file. Current available options are 'llamacpp' and 'huggingface'."
         )
-        CustomUserWarning(msg, raise_with=ValueError)
+        UserMessage(msg, raise_with=ValueError)
 
 
 # *==============================================================================================================*

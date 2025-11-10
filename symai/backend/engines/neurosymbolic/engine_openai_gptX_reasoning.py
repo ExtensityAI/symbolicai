@@ -8,7 +8,7 @@ import tiktoken
 
 from ....components import SelfPrompt
 from ....symbol import Symbol
-from ....utils import CustomUserWarning, encode_media_frames
+from ....utils import UserMessage, encode_media_frames
 from ...base import Engine
 from ...mixin.openai import OpenAIMixin
 from ...settings import SYMAI_CONFIG
@@ -44,7 +44,7 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
         try:
             self.client = openai.Client(api_key=openai.api_key)
         except Exception as e:
-            CustomUserWarning(f'Failed to initialize OpenAI client. Please check your OpenAI library version. Caused by: {e}', raise_with=ValueError)
+            UserMessage(f'Failed to initialize OpenAI client. Please check your OpenAI library version. Caused by: {e}', raise_with=ValueError)
 
     def id(self) -> str:
         if self.config.get('NEUROSYMBOLIC_ENGINE_MODEL') and \
@@ -81,7 +81,7 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
             tokens_per_message = 3
             tokens_per_name = 1
         else:
-            CustomUserWarning(
+            UserMessage(
                 f"'num_tokens_from_messages()' is not implemented for model {self.model}. "
                 "See https://cookbook.openai.com/examples/how_to_count_tokens_with_tiktoken for information on how messages are converted to tokens.",
                 raise_with=NotImplementedError
@@ -131,7 +131,7 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
                         max_used_frames, img_ = img_.split(':')
                         max_used_frames = int(max_used_frames)
                         if max_used_frames < 1 or max_used_frames > max_frames_spacing:
-                            CustomUserWarning(f"Invalid max_used_frames value: {max_used_frames}. Expected value between 1 and {max_frames_spacing}", raise_with=ValueError)
+                            UserMessage(f"Invalid max_used_frames value: {max_used_frames}. Expected value between 1 and {max_frames_spacing}", raise_with=ValueError)
                     buffer, ext = encode_media_frames(img_)
                     if len(buffer) > 1:
                         step = len(buffer) // max_frames_spacing # max frames spacing
@@ -143,7 +143,7 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
                     elif len(buffer) == 1:
                         image_files.append(f"data:image/{ext};base64,{buffer[0]}")
                     else:
-                        CustomUserWarning('No frames found or error in encoding frames')
+                        UserMessage('No frames found or error in encoding frames')
         return image_files
 
     def _remove_vision_pattern(self, text: str) -> str:
@@ -160,7 +160,7 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
 
         if len(prompts) != 2 and all(prompt['role'] in ['developer', 'user'] for prompt in prompts):
             # Only support developer and user prompts
-            CustomUserWarning(f"Token truncation currently supports only two messages, from 'user' and 'developer' (got {len(prompts)}). Returning original prompts.")
+            UserMessage(f"Token truncation currently supports only two messages, from 'user' and 'developer' (got {len(prompts)}). Returning original prompts.")
             return prompts
 
         if truncation_percentage is None:
@@ -187,10 +187,10 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
                         # Image content; return original since not supported
                         return prompts
                 else:
-                    CustomUserWarning(f"Invalid content type: {type(content_item)}. Format input according to the documentation. See https://platform.openai.com/docs/api-reference/chat/create?lang=python", raise_with=ValueError)
+                    UserMessage(f"Invalid content type: {type(content_item)}. Format input according to the documentation. See https://platform.openai.com/docs/api-reference/chat/create?lang=python", raise_with=ValueError)
         else:
             # Unknown input format
-            CustomUserWarning(f"Unknown content type: {type(user_prompt['content'])}. Format input according to the documentation. See https://platform.openai.com/docs/api-reference/chat/create?lang=python", raise_with=ValueError)
+            UserMessage(f"Unknown content type: {type(user_prompt['content'])}. Format input according to the documentation. See https://platform.openai.com/docs/api-reference/chat/create?lang=python", raise_with=ValueError)
 
         system_token_count = len(system_tokens)
         user_token_count = len(user_tokens)
@@ -205,7 +205,7 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
         if total_tokens <= max_prompt_tokens:
             return prompts
 
-        CustomUserWarning(
+        UserMessage(
             f"Executing {truncation_type} truncation to fit within {max_prompt_tokens} tokens. "
             f"Combined prompts ({total_tokens} tokens) exceed maximum allowed tokens "
             f"of {max_prompt_tokens} ({truncation_percentage*100:.1f}% of context). "
@@ -265,9 +265,9 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
         except Exception as e:
             if openai.api_key is None or openai.api_key == '':
                 msg = 'OpenAI API key is not set. Please set it in the config file or pass it as an argument to the command method.'
-                CustomUserWarning(msg)
+                UserMessage(msg)
                 if self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] is None or self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] == '':
-                    CustomUserWarning(msg, raise_with=ValueError)
+                    UserMessage(msg, raise_with=ValueError)
                 openai.api_key = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
 
             callback = self.client.chat.completions.create
@@ -276,7 +276,7 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
             if except_remedy is not None:
                 res = except_remedy(self, e, callback, argument)
             else:
-                CustomUserWarning(f'Error during generation. Caused by: {e}', raise_with=ValueError)
+                UserMessage(f'Error during generation. Caused by: {e}', raise_with=ValueError)
 
         metadata = {'raw_output': res}
         if payload.get('tools'):
@@ -287,7 +287,7 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
 
     def _prepare_raw_input(self, argument):
         if not argument.prop.processed_input:
-            CustomUserWarning('Need to provide a prompt instruction to the engine if raw_input is enabled.', raise_with=ValueError)
+            UserMessage('Need to provide a prompt instruction to the engine if raw_input is enabled.', raise_with=ValueError)
         value = argument.prop.processed_input
         # convert to dict if not already
         if not isinstance(value, list):
@@ -365,7 +365,7 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
             self_prompter = SelfPrompt()
             res = self_prompter({'user': user, 'developer': developer})
             if res is None:
-                CustomUserWarning("Self-prompting failed!", raise_with=ValueError)
+                UserMessage("Self-prompting failed!", raise_with=ValueError)
 
             if len(image_files) > 0:
                 user_prompt = { "role": "user", "content": [
@@ -394,7 +394,7 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
         ):
             for tool_call in res.choices[0].message.tool_calls:
                 if hit:
-                    CustomUserWarning("Multiple function calls detected in the response but only the first one will be processed.")
+                    UserMessage("Multiple function calls detected in the response but only the first one will be processed.")
                     break
                 if hasattr(tool_call, 'function') and tool_call.function:
                     try:
@@ -417,13 +417,13 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
         remaining_tokens = self.compute_remaining_tokens(messages)
 
         if max_tokens is not None:
-            CustomUserWarning(
+            UserMessage(
                 "'max_tokens' is now deprecated in favor of 'max_completion_tokens', and is not compatible with o1 series models. "
                 "We handle this conversion by default for you for now but we won't in the future. "
                 "See: https://platform.openai.com/docs/api-reference/chat/create"
             )
             if max_tokens > self.max_response_tokens:
-                CustomUserWarning(
+                UserMessage(
                     f"Provided 'max_tokens' ({max_tokens}) exceeds max response tokens ({self.max_response_tokens}). "
                     f"Truncating to {remaining_tokens} to avoid API failure."
                 )
@@ -433,7 +433,7 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
             del kwargs['max_tokens']
 
         if max_completion_tokens is not None and max_completion_tokens > self.max_response_tokens:
-            CustomUserWarning(
+            UserMessage(
                 f"Provided 'max_completion_tokens' ({max_completion_tokens}) exceeds max response tokens ({self.max_response_tokens}). "
                 f"Truncating to {remaining_tokens} to avoid API failure."
             )

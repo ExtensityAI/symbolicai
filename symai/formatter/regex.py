@@ -1,7 +1,7 @@
 import re
 from pathlib import Path
 
-from ..utils import CustomUserWarning
+from ..utils import UserMessage
 
 # Define variables for magic numbers
 MAX_HEADING_LENGTH = 7
@@ -62,10 +62,10 @@ def generate_emoji_pattern(file_name):
                     #         pass
 
     except FileNotFoundError:
-        CustomUserWarning(f"Error: File '{file_name}' not found in {current_dir}")
+        UserMessage(f"Error: File '{file_name}' not found in {current_dir}")
         return None
     except Exception as e:
-        CustomUserWarning(f"Error reading file: {e}")
+        UserMessage(f"Error reading file: {e}")
         return None
 
     # Sort the emoji codes
