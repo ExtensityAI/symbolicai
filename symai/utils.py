@@ -29,7 +29,7 @@ def encode_media_frames(file_path):
     if ext.lower() == 'gif':
         if file_path.startswith('http'):
             msg = "GIF files from URLs are not supported. Please download the file and try again."
-            CustomUserWarning(msg, raise_with=ValueError)
+            UserMessage(msg, raise_with=ValueError)
 
         ext = 'jpeg'
         # get frames from gif
@@ -45,7 +45,7 @@ def encode_media_frames(file_path):
     if ext.lower() == 'mp4' or ext.lower() == 'avi' or ext.lower() == 'mov':
         if file_path.startswith('http'):
             msg = "Video files from URLs are not supported. Please download the file and try again."
-            CustomUserWarning(msg, raise_with=ValueError)
+            UserMessage(msg, raise_with=ValueError)
 
         ext = 'jpeg'
         video = cv2.VideoCapture(file_path)
@@ -60,7 +60,7 @@ def encode_media_frames(file_path):
         video.release()
         return base64Frames, ext
     msg = f"File extension {ext} not supported"
-    CustomUserWarning(msg)
+    UserMessage(msg)
     raise ValueError(msg)
 
 
@@ -140,16 +140,18 @@ class Args:
                 setattr(self, key, value)
 
 
-class CustomUserWarning:
-    def __init__(self, message: str, stacklevel: int = 1, raise_with: Exception | None = None) -> None:
+class UserMessage:
+    def __init__(self, message: str, stacklevel: int = 1, style: str = "warn", raise_with: Exception | None = None) -> None:
         if os.environ.get('SYMAI_WARNINGS', '1') == '1':
             caller   = inspect.getframeinfo(inspect.stack()[stacklevel][0])
             lineno   = caller.lineno
             filename = caller.filename
             filename = filename[filename.find('symbolicai'):]
-            with ConsoleStyle('warn') as console:
-                # Escape content to avoid HTML parsing errors from model text like <|constrain|>JSON
-                console.print(f"{filename}:{lineno}: {UserWarning.__name__}: {message}", escape=True)
+            with ConsoleStyle(style) as console:
+                if style == "warn":
+                    console.print(f"{filename}:{lineno}: {UserWarning.__name__}: {message}", escape=True)
+                else:
+                    console.print(f"{message}", escape=True)
         # Always raise the warning if raise_with is provided
         if raise_with is not None:
             raise raise_with(message)
@@ -174,7 +176,7 @@ def semassert(condition: bool, message: str = ""):
     if not condition:
         base_msg = "Assertion failed due to model capability limitations in handling this type of semantic computation"
         full_msg = f"{base_msg}. {message}" if message else base_msg
-        CustomUserWarning(f"⚠️  SEMANTIC ASSERT: {full_msg}")
+        UserMessage(f"⚠️  SEMANTIC ASSERT: {full_msg}")
         return False
     return True
 
@@ -229,7 +231,7 @@ class RuntimeInfo:
             try:
                 return RuntimeInfo.from_usage_stats(tracker.usage, total_elapsed_time)
             except Exception as e:
-                CustomUserWarning(f"Failed to parse metadata: {e}", raise_with=ValueError)
+                UserMessage(f"Failed to parse metadata: {e}", raise_with=ValueError)
         return RuntimeInfo(0, 0, 0, 0, 0, 0, 0, 0)
 
     @staticmethod

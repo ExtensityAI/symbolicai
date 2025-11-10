@@ -3,7 +3,7 @@ import json
 from IPython.utils import io
 
 from ....symbol import Result
-from ....utils import CustomUserWarning
+from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
 
@@ -55,7 +55,7 @@ class SerpApiEngine(Engine):
     def id(self) -> str:
         if self.config.get('SEARCH_ENGINE_API_KEY') and self.config.get('SEARCH_ENGINE_MODEL') == "google": # only support Google for now
             if GoogleSearch is None:
-                CustomUserWarning('SerpApi is not installed. Please install it with `pip install symbolicai[serpapi]`')
+                UserMessage('SerpApi is not installed. Please install it with `pip install symbolicai[serpapi]`')
             return 'search'
         return super().id() # default to unregistered
 

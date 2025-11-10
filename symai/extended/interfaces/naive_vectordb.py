@@ -1,6 +1,6 @@
 from ...backend.engines.index.engine_vectordb import VectorDBIndexEngine, VectorDBResult
 from ...symbol import Expression
-from ...utils import CustomUserWarning
+from ...utils import UserMessage
 
 
 class naive_vectordb(Expression):
@@ -30,5 +30,5 @@ class naive_vectordb(Expression):
         if operation == "config":
             self.config(path=query, index_name=index, storage_file=storage_file, **kwargs)
             return None
-        CustomUserWarning(f"Operation not supported: {operation}", raise_with=NotImplementedError)
+        UserMessage(f"Operation not supported: {operation}", raise_with=NotImplementedError)
         return None

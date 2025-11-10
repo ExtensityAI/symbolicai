@@ -1,4 +1,4 @@
-from ...utils import CustomUserWarning
+from ...utils import UserMessage
 
 SUPPORTED_COMPLETION_MODELS = [
     'davinci-002',
@@ -89,7 +89,7 @@ class OpenAIMixin:
            self.model == 'gpt-4.1-nano':
             return 1_047_576
         msg = f'Unsupported model: {self.model}'
-        CustomUserWarning(msg)
+        UserMessage(msg)
         raise ValueError(msg)
 
     def api_max_response_tokens(self):
@@ -127,7 +127,7 @@ class OpenAIMixin:
            self.model == 'gpt-5-chat-latest':
             return 128_000
         msg = f'Unsupported model: {self.model}'
-        CustomUserWarning(msg)
+        UserMessage(msg)
         raise ValueError(msg)
 
     def api_embedding_dims(self):
@@ -138,5 +138,5 @@ class OpenAIMixin:
         if self.model == 'text-embedding-3-large':
             return 3_072
         msg = f'Unsupported model: {self.model}'
-        CustomUserWarning(msg)
+        UserMessage(msg)
         raise ValueError(msg)

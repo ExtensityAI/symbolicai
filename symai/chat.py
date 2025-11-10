@@ -12,7 +12,7 @@ from .post_processors import ConsolePostProcessor, StripPostProcessor
 from .pre_processors import ConsoleInputPreProcessor
 from .prompts import MemoryCapabilities, SymbiaCapabilities
 from .symbol import Expression, Symbol
-from .utils import CustomUserWarning
+from .utils import UserMessage
 
 logging.getLogger('charset_normalizer').setLevel(logging.ERROR)
 
@@ -88,7 +88,7 @@ class ChatBot(Expression):
         reply = f'{self.name}: {self._narration(message, self._last_user_input, reflection, context, ltmem_recall, stmem_recall, **kwargs)}'
 
         if end:
-            CustomUserWarning(f'\n\n{reply}')
+            UserMessage(f'\n\n{reply}')
 
         return Symbol(reply)
 

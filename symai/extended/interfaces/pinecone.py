@@ -1,6 +1,6 @@
 from ...backend.engines.index.engine_pinecone import PineconeIndexEngine, PineconeResult
 from ...symbol import Expression
-from ...utils import CustomUserWarning
+from ...utils import UserMessage
 
 
 class pinecone(Expression):
@@ -18,5 +18,5 @@ class pinecone(Expression):
             return self.add(doc=stmt.zip(), index_name=index, **kwargs)
         if operation == "config":
             return self.index(path=stmt.value, index_name=index, **kwargs)
-        CustomUserWarning("Operation not supported", raise_with=NotImplementedError)
+        UserMessage("Operation not supported", raise_with=NotImplementedError)
         return None

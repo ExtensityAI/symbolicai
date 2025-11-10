@@ -14,7 +14,7 @@ from symai.backend import settings
 
 from .. import core_ext
 from ..symbol import Expression, Symbol
-from ..utils import CustomUserWarning
+from ..utils import UserMessage
 
 # Configure Redis server connection parameters and executable path
 HOST  = 'localhost'
@@ -27,10 +27,10 @@ def is_redis_running(host: str, port: int) -> bool:
     try:
         r = redis.Redis(host=host, port=port)
         r.ping()
-        CustomUserWarning(f"Redis server is running at {host}:{port}")
+        UserMessage(f"Redis server is running at {host}:{port}")
         return True
     except RedisConnectionError:
-        CustomUserWarning(f"Redis server is not running at {host}:{port} or is not reachable - falling back to in-memory storage")
+        UserMessage(f"Redis server is not running at {host}:{port} or is not reachable - falling back to in-memory storage")
         return False
 
 
@@ -338,7 +338,7 @@ def generic_forward(request: GenericRequest, _api_key: str = Security(get_api_ke
     # Check if cls is subclass of Expression and instantiate
     if not issubclass(cls, components_module.Expression):
         msg = "The provided class name must be a subclass of Expression"
-        CustomUserWarning(msg)
+        UserMessage(msg)
         raise ValueError(msg)
     # Initialize the class with provided init_args, requiring unpacking **kwargs
     instance = cls(*request.init_args, **request.init_kwargs)
@@ -416,7 +416,7 @@ def extended_forward(request: GenericRequest, _api_key: str = Security(get_api_k
         # iterate over the extended_type Union and check if the class name is in the __dict__
         if cls is None:
             msg = f"Class {request.class_name} not found in extended types"
-            CustomUserWarning(msg)
+            UserMessage(msg)
             raise ImportError(msg)
         # Initialize the class with provided init_args and init_kwargs
         instance = cls(*request.init_args, **request.init_kwargs)
