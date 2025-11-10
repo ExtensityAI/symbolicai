@@ -105,27 +105,23 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
             value = [value]
         return value
 
-    def prepare(self, argument):
-        if argument.prop.raw_input:
-            argument.prop.prepared_input = self._prepare_raw_input(argument)
-            return
-
+    def _build_system_prompt(self, argument):
         _non_verbose_output = """<META_INSTRUCTION/>\nYou do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc. Never add meta instructions information to your output!\n\n"""
-        user:   str = ""
         system: str = ""
+        prop = argument.prop
 
-        if argument.prop.suppress_verbose_output:
+        if prop.suppress_verbose_output:
             system += _non_verbose_output
         system = f'{system}\n' if system and len(system) > 0 else ''
 
-        if argument.prop.response_format:
-            _rsp_fmt = argument.prop.response_format
+        if prop.response_format:
+            _rsp_fmt = prop.response_format
             if not (_rsp_fmt.get('type') is not None):
                 UserMessage('Response format type is required! Expected format `{"type": "json_object"}` or other supported types.', raise_with=AssertionError)
             system += _non_verbose_output
             system += f'<RESPONSE_FORMAT/>\n{_rsp_fmt["type"]}\n\n'
 
-        ref = argument.prop.instance
+        ref = prop.instance
         static_ctxt, dyn_ctxt = ref.global_context
         if len(static_ctxt) > 0:
             system += f"<STATIC CONTEXT/>\n{static_ctxt}\n\n"
@@ -133,35 +129,48 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
         if len(dyn_ctxt) > 0:
             system += f"<DYNAMIC CONTEXT/>\n{dyn_ctxt}\n\n"
 
-        payload = argument.prop.payload
-        if argument.prop.payload:
+        payload = prop.payload
+        if prop.payload:
             system += f"<ADDITIONAL CONTEXT/>\n{payload!s}\n\n"
 
-        examples: list[str] = argument.prop.examples
+        examples: list[str] = prop.examples
         if examples and len(examples) > 0:
             system += f"<EXAMPLES/>\n{examples!s}\n\n"
 
-        if argument.prop.prompt is not None and len(argument.prop.prompt) > 0:
-            val = str(argument.prop.prompt)
+        if prop.prompt is not None and len(prop.prompt) > 0:
+            val = str(prop.prompt)
             system += f"<INSTRUCTION/>\n{val}\n\n"
 
-        user += f"{argument.prop.processed_input!s}"
+        if prop.template_suffix:
+            system += f' You will only generate content for the placeholder `{prop.template_suffix!s}` following the instructions and the provided context information.\n\n'
 
-        if argument.prop.template_suffix:
-            system += f' You will only generate content for the placeholder `{argument.prop.template_suffix!s}` following the instructions and the provided context information.\n\n'
+        return system
 
-        user_prompt = { "role": "user", "content": user }
+    def _build_user_prompt(self, argument):
+        return {"role": "user", "content": f"{argument.prop.processed_input!s}"}
 
-        # First check if the `Symbol` instance has the flag set, otherwise check if it was passed as an argument to a method
-        if argument.prop.instance._kwargs.get('self_prompt', False) or argument.prop.self_prompt:
+    def _apply_self_prompt(self, argument, system, user_prompt):
+        prop = argument.prop
+        if prop.instance._kwargs.get('self_prompt', False) or prop.self_prompt:
             self_prompter = SelfPrompt()
 
-            res = self_prompter({'user': user, 'system': system})
+            res = self_prompter({'user': user_prompt['content'], 'system': system})
             if res is None:
                 UserMessage("Self-prompting failed for DeepSeekXReasoningEngine.", raise_with=ValueError)
 
             user_prompt = { "role": "user", "content": res['user'] }
             system = res['system']
+
+        return system, user_prompt
+
+    def prepare(self, argument):
+        if argument.prop.raw_input:
+            argument.prop.prepared_input = self._prepare_raw_input(argument)
+            return
+
+        system = self._build_system_prompt(argument)
+        user_prompt = self._build_user_prompt(argument)
+        system, user_prompt = self._apply_self_prompt(argument, system, user_prompt)
 
         argument.prop.prepared_input = [
             { "role": "system", "content": system },
