@@ -1,5 +1,6 @@
 import ast
 import json
+import numbers
 import pickle
 import uuid
 from collections.abc import Callable, Iterable
@@ -2427,7 +2428,170 @@ class EmbeddingPrimitives(Primitive):
         # if it is a tensor, convert it to numpy
         elif isinstance(x, torch.Tensor):
             x = x.detach().cpu().numpy()
-        return x.squeeze()[:, None]
+        else:
+            x = np.asarray(x)
+
+        x = np.squeeze(x)
+        if x.ndim == 0:
+            x = x[None]
+
+        return x[:, None]
+
+    def _prepare_embedding_operand(self, operand):
+        if isinstance(operand, (list, tuple)):
+            if self._is_numeric_sequence(operand):
+                return self._ensure_numpy_format(operand, cast=True)
+            formatted = [
+                self._ensure_numpy_format(item, cast=True) for item in operand
+            ]
+            return np.concatenate(formatted, axis=1)
+        return self._ensure_numpy_format(operand, cast=True)
+
+    def _is_numeric_sequence(self, operand: Iterable):
+        for item in operand:
+            if isinstance(item, (list, tuple, np.ndarray, torch.Tensor, self._symbol_type)):
+                return False
+            if isinstance(item, (numbers.Real, np.generic)):
+                continue
+            return False
+        return True
+
+    def _get_similarity_handler(self, metric, eps, kwargs):
+        def _cosine_similarity(lhs, rhs):
+            return lhs.T@rhs / (np.sqrt(lhs.T@lhs) * np.sqrt(rhs.T@rhs) + eps)
+
+        def _angular_cosine_similarity(lhs, rhs):
+            c = kwargs.get('c', 1)
+            return 1 - (c * np.arccos(lhs.T@rhs / (np.sqrt(lhs.T@lhs) * np.sqrt(rhs.T@rhs) + eps)) / np.pi)
+
+        def _product_similarity(lhs, rhs):
+            return lhs.T@rhs
+
+        def _manhattan_similarity(lhs, rhs):
+            return np.abs(lhs - rhs).sum(axis=0, keepdims=True)
+
+        def _euclidean_similarity(lhs, rhs):
+            return np.sqrt(np.sum((lhs - rhs)**2, axis=0, keepdims=True))
+
+        def _minkowski_similarity(lhs, rhs):
+            p = kwargs.get('p', 3)
+            return np.sum(np.abs(lhs - rhs)**p, axis=0, keepdims=True)**(1/p)
+
+        def _jaccard_similarity(lhs, rhs):
+            intersection = np.minimum(lhs, rhs)
+            union = np.maximum(lhs, rhs)
+            return np.sum(intersection, axis=0, keepdims=True) / (np.sum(union, axis=0, keepdims=True) + eps)
+
+        metric_handlers = {
+            'cosine': _cosine_similarity,
+            'angular-cosine': _angular_cosine_similarity,
+            'product': _product_similarity,
+            'manhattan': _manhattan_similarity,
+            'euclidean': _euclidean_similarity,
+            'minkowski': _minkowski_similarity,
+            'jaccard': _jaccard_similarity,
+        }
+
+        handler = metric_handlers.get(metric)
+        if handler is None:
+            msg = (
+                f"Similarity metric {metric} not implemented. Available metrics: "
+                "'cosine', 'angular-cosine', 'product', 'manhattan', 'euclidean', 'minkowski', 'jaccard'"
+            )
+            UserMessage(msg)
+            raise NotImplementedError(msg)
+        return handler
+
+    def _get_kernel_handler(self, kernel):
+        kernel_handlers = {
+            'gaussian': self._kernel_gaussian,
+            'rbf': self._kernel_rbf,
+            'laplacian': self._kernel_laplacian,
+            'polynomial': self._kernel_polynomial,
+            'sigmoid': self._kernel_sigmoid,
+            'linear': self._kernel_linear,
+            'cauchy': self._kernel_cauchy,
+            't-distribution': self._kernel_t_distribution,
+            'inverse-multiquadric': self._kernel_inverse_multiquadric,
+            'cosine': self._kernel_cosine,
+            'angular-cosine': self._kernel_angular_cosine,
+            'frechet': self._kernel_frechet,
+            'mmd': self._kernel_mmd,
+        }
+
+        handler = kernel_handlers.get(kernel)
+        if handler is None:
+            msg = "Kernel function {kernel} not implemented. Available functions: 'gaussian'"
+            UserMessage(msg.format(kernel=kernel))
+            raise NotImplementedError(msg.format(kernel=kernel))
+        return handler
+
+    def _kernel_gaussian(self, lhs, rhs, _eps, kwargs):
+        gamma = kwargs.get('gamma', 1)
+        return np.exp(-gamma * np.sum((lhs - rhs)**2, axis=0))
+
+    def _kernel_rbf(self, lhs, rhs, _eps, kwargs):
+        bandwidth = kwargs.get('bandwidth')
+        gamma = kwargs.get('gamma', 1)
+        distance_sq = np.sum((lhs - rhs)**2, axis=0)
+        if bandwidth is not None:
+            val = 0
+            for a in bandwidth:
+                gamma = 1.0 / (2 * a)
+                val += np.exp(-gamma * distance_sq)
+            return val
+        return np.exp(-gamma * distance_sq)
+
+    def _kernel_laplacian(self, lhs, rhs, _eps, kwargs):
+        gamma = kwargs.get('gamma', 1)
+        return np.exp(-gamma * np.sum(np.abs(lhs - rhs), axis=0))
+
+    def _kernel_polynomial(self, lhs, rhs, _eps, kwargs):
+        gamma = kwargs.get('gamma', 1)
+        degree = kwargs.get('degree', 3)
+        coef = kwargs.get('coef', 1)
+        return (gamma * np.sum((lhs * rhs), axis=0) + coef)**degree
+
+    def _kernel_sigmoid(self, lhs, rhs, _eps, kwargs):
+        gamma = kwargs.get('gamma', 1)
+        coef = kwargs.get('coef', 1)
+        return np.tanh(gamma * np.sum((lhs * rhs), axis=0) + coef)
+
+    def _kernel_linear(self, lhs, rhs, _eps, _kwargs):
+        return np.sum((lhs * rhs), axis=0)
+
+    def _kernel_cauchy(self, lhs, rhs, _eps, kwargs):
+        gamma = kwargs.get('gamma', 1)
+        return 1 / (1 + np.sum((lhs - rhs)**2, axis=0) / gamma)
+
+    def _kernel_t_distribution(self, lhs, rhs, _eps, kwargs):
+        gamma = kwargs.get('gamma', 1)
+        degree = kwargs.get('degree', 1)
+        return 1 / (1 + (np.sum((lhs - rhs)**2, axis=0) / (gamma * degree))**(degree + 1) / 2)
+
+    def _kernel_inverse_multiquadric(self, lhs, rhs, _eps, kwargs):
+        gamma = kwargs.get('gamma', 1)
+        return 1 / np.sqrt(np.sum((lhs - rhs)**2, axis=0) / gamma**2 + 1)
+
+    def _kernel_cosine(self, lhs, rhs, eps, _kwargs):
+        numerator = np.sum(lhs * rhs, axis=0)
+        denominator = np.sqrt(np.sum(lhs**2, axis=0)) * np.sqrt(np.sum(rhs**2, axis=0)) + eps
+        return 1 - (numerator / denominator)
+
+    def _kernel_angular_cosine(self, lhs, rhs, eps, kwargs):
+        c = kwargs.get('c', 1)
+        numerator = np.sum(lhs * rhs, axis=0)
+        denominator = np.sqrt(np.sum(lhs**2, axis=0)) * np.sqrt(np.sum(rhs**2, axis=0)) + eps
+        return c * np.arccos(numerator / denominator) / np.pi
+
+    def _kernel_frechet(self, lhs, rhs, eps, kwargs):
+        sigma1 = kwargs.get('sigma1')
+        sigma2 = kwargs.get('sigma2')
+        assert sigma1 is not None and sigma2 is not None, 'Frechet distance requires covariance matrices for both inputs'
+        return calculate_frechet_distance(lhs.T, sigma1, rhs.T, sigma2, eps)
+
+    def _kernel_mmd(self, lhs, rhs, eps, _kwargs):
+        return calculate_mmd(lhs.T, rhs.T, eps=eps)
 
     def similarity(
         self,
@@ -2457,39 +2621,9 @@ class EmbeddingPrimitives(Primitive):
             NotImplementedError: If the given metric is not supported.
         '''
         v = self._ensure_numpy_format(self)
-        if isinstance(other, (list, tuple)):
-            o = []
-            for i in range(len(other)):
-                o.append(self._ensure_numpy_format(other[i], cast=True))
-            o = np.concatenate(o, axis=1)
-        else:
-            o = self._ensure_numpy_format(other, cast=True)
-
-        if   metric == 'cosine':
-            val     = v.T@o / (np.sqrt(v.T@v) * np.sqrt(o.T@o) + eps)
-        elif metric == 'angular-cosine':
-            c       = kwargs.get('c', 1)
-            val     = 1 - (c * np.arccos(v.T@o / (np.sqrt(v.T@v) * np.sqrt(o.T@o) + eps)) / np.pi)
-        elif metric == 'product':
-            val     = v.T@o
-        elif metric == 'manhattan':
-            val     = np.abs(v - o).sum(axis=0, keepdims=True)
-        elif metric == 'euclidean':
-            val     = np.sqrt(np.sum((v - o)**2, axis=0, keepdims=True))
-        elif metric == 'minkowski':
-            p       = kwargs.get('p', 3)
-            val     = np.sum(np.abs(v - o)**p, axis=0, keepdims=True)**(1/p)
-        elif metric == 'jaccard':
-            intersection = np.minimum(v, o)
-            union = np.maximum(v, o)
-            val = np.sum(intersection, axis=0, keepdims=True) / (np.sum(union, axis=0, keepdims=True) + eps)
-        else:
-            msg = (
-                f"Similarity metric {metric} not implemented. Available metrics: "
-                "'cosine', 'angular-cosine', 'product', 'manhattan', 'euclidean', 'minkowski', 'jaccard'"
-            )
-            UserMessage(msg)
-            raise NotImplementedError(msg)
+        o = self._prepare_embedding_operand(other)
+        handler = self._get_similarity_handler(metric, eps, kwargs)
+        val = handler(v, o)
 
         # get the similarity value(s)
         shape = val.shape
@@ -2527,75 +2661,9 @@ class EmbeddingPrimitives(Primitive):
             NotImplementedError: If the given kernel is not supported.
         '''
         v = self._ensure_numpy_format(self)
-        if isinstance(other, (list, tuple)):
-            o = []
-            for i in range(len(other)):
-                o.append(self._ensure_numpy_format(other[i], cast=True))
-            o = np.concatenate(o, axis=1)
-        else:
-            o = self._ensure_numpy_format(other, cast=True)
-
-        # compute the kernel value
-        if   kernel == 'gaussian':
-            gamma   = kwargs.get('gamma', 1)
-            val     = np.exp(-gamma * np.sum((v - o)**2, axis=0))
-        elif kernel == 'rbf':
-            # vectors are expected to be normalized
-            bandwidth = kwargs.get('bandwidth')
-            gamma     = kwargs.get('gamma', 1)
-            d         = np.sum((v - o)**2, axis=0)
-            if bandwidth is not None:
-                val   = 0
-                for a in bandwidth:
-                    gamma = 1.0 / (2 * a)
-                    val  += np.exp(-gamma * d)
-            else:
-                # if no bandwidth is given, default to the gaussian kernel
-                val = np.exp(-gamma * d)
-        elif kernel == 'laplacian':
-            gamma   = kwargs.get('gamma', 1)
-            val     = np.exp(-gamma * np.sum(np.abs(v - o), axis=0))
-        elif kernel == 'polynomial':
-            gamma   = kwargs.get('gamma', 1)
-            degree  = kwargs.get('degree', 3)
-            coef    = kwargs.get('coef', 1)
-            val     = (gamma * np.sum((v * o), axis=0) + coef)**degree
-        elif kernel == 'sigmoid':
-            gamma   = kwargs.get('gamma', 1)
-            coef    = kwargs.get('coef', 1)
-            val     = np.tanh(gamma * np.sum((v * o), axis=0) + coef)
-        elif kernel == 'linear':
-            val     = np.sum((v * o), axis=0)
-        elif kernel == 'cauchy':
-            gamma   = kwargs.get('gamma', 1)
-            val     = 1 / (1 + np.sum((v - o)**2, axis=0) / gamma)
-        elif kernel == 't-distribution':
-            gamma   = kwargs.get('gamma', 1)
-            degree  = kwargs.get('degree', 1)
-            val     = 1 / (1 + (np.sum((v - o)**2, axis=0) / (gamma * degree))**(degree + 1) / 2)
-        elif kernel == 'inverse-multiquadric':
-            gamma   = kwargs.get('gamma', 1)
-            val     = 1 / np.sqrt(np.sum((v - o)**2, axis=0) / gamma**2 + 1)
-        elif kernel == 'cosine':
-            val     = 1 - (np.sum(v * o, axis=0) / (np.sqrt(np.sum(v**2, axis=0)) * np.sqrt(np.sum(o**2, axis=0)) + eps))
-        elif kernel == 'angular-cosine':
-            c       = kwargs.get('c', 1)
-            val     = c * np.arccos(np.sum(v * o, axis=0) / (np.sqrt(np.sum(v**2, axis=0)) * np.sqrt(np.sum(o**2, axis=0)) + eps)) / np.pi
-        elif kernel == 'frechet':
-            sigma1  = kwargs.get('sigma1')
-            sigma2  = kwargs.get('sigma2')
-            assert sigma1 is not None and sigma2 is not None, 'Frechet distance requires covariance matrices for both inputs'
-            v       = v.T
-            o       = o.T
-            val     = calculate_frechet_distance(v, sigma1, o, sigma2, eps)
-        elif kernel == 'mmd':
-            v       = v.T
-            o       = o.T
-            val     = calculate_mmd(v, o, eps=eps)
-        else:
-            msg = "Kernel function {kernel} not implemented. Available functions: 'gaussian'"
-            UserMessage(msg.format(kernel=kernel))
-            raise NotImplementedError(msg.format(kernel=kernel))
+        o = self._prepare_embedding_operand(other)
+        handler = self._get_kernel_handler(kernel)
+        val = handler(v, o, eps, kwargs)
 
         # get the kernel value(s)
         shape = val.shape
