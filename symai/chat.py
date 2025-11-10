@@ -88,7 +88,7 @@ class ChatBot(Expression):
         reply = f'{self.name}: {self._narration(message, self._last_user_input, reflection, context, ltmem_recall, stmem_recall, **kwargs)}'
 
         if end:
-            UserMessage(f'\n\n{reply}')
+            UserMessage(f'\n\n{reply}', text="extensity")
 
         return Symbol(reply)
 
