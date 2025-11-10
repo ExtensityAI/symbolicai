@@ -66,37 +66,47 @@ def _probabilistic_bool(rsp: str, mode=ProbabilisticBooleanMode.TOLERANT) -> boo
     return False
 
 
+def _cast_collection_response(rsp: Any, return_constraint: type) -> Any:
+    try:
+        res = ast.literal_eval(rsp)
+    except Exception:
+        logger.warning(f"Failed to cast return type to {return_constraint} for {rsp!s}")
+        warnings.warn(f"Failed to cast return type to {return_constraint}", stacklevel=2)
+        res = rsp
+    assert res is not None, f"Return type cast failed! Check if the return type is correct or post_processors output matches desired format: {rsp!s}"
+    return res
+
+
+def _cast_boolean_response(rsp: Any, mode: ProbabilisticBooleanMode) -> bool:
+    if len(rsp) <= 0:
+        return False
+    return _probabilistic_bool(rsp, mode=mode)
+
+
+def _cast_with_fallback(rsp: Any, return_constraint: type) -> Any:
+    try:
+        return return_constraint(rsp)
+    except (ValueError, TypeError):
+        if return_constraint is int:
+            UserMessage(f"Cannot convert {rsp} to int", raise_with=ConstraintViolationException)
+        warnings.warn(f"Failed to cast {rsp} to {return_constraint}", stacklevel=2)
+        return rsp
+
+
 def _cast_return_type(rsp: Any, return_constraint: type, engine_probabilistic_boolean_mode: ProbabilisticBooleanMode) -> Any:
     if return_constraint is inspect._empty:
-        # do not cast if return type is not specified
-        pass
-    elif issubclass(return_constraint, BaseModel):
+        return rsp
+    if issubclass(return_constraint, BaseModel):
         # pydantic model
         return return_constraint(data=rsp)
-    elif str(return_constraint) == str(type(rsp)):
+    if str(return_constraint) == str(type(rsp)):
         return rsp
-    elif return_constraint in (list, tuple, set, dict):
-        try:
-            res = ast.literal_eval(rsp)
-        except Exception:
-            logger.warning(f"Failed to cast return type to {return_constraint} for {rsp!s}")
-            warnings.warn(f"Failed to cast return type to {return_constraint}", stacklevel=2)  # Add warning for test
-            res = rsp
-        assert res is not None, f"Return type cast failed! Check if the return type is correct or post_processors output matches desired format: {rsp!s}"
-        return res
-    elif return_constraint is bool:
-        if len(rsp) <= 0:
-            return False
-        return _probabilistic_bool(rsp, mode=engine_probabilistic_boolean_mode)
-    elif not isinstance(rsp, return_constraint):
-        try:
-            # hard cast to return type fallback
-            rsp = return_constraint(rsp)
-        except (ValueError, TypeError):
-            if return_constraint is int:
-                UserMessage(f"Cannot convert {rsp} to int", raise_with=ConstraintViolationException)
-            warnings.warn(f"Failed to cast {rsp} to {return_constraint}", stacklevel=2)
-            return rsp
+    if return_constraint in (list, tuple, set, dict):
+        return _cast_collection_response(rsp, return_constraint)
+    if return_constraint is bool:
+        return _cast_boolean_response(rsp, mode=engine_probabilistic_boolean_mode)
+    if not isinstance(rsp, return_constraint):
+        return _cast_with_fallback(rsp, return_constraint)
     return rsp
 
 def _apply_postprocessors(outputs, return_constraint, post_processors, argument, mode=ENGINE_PROBABILISTIC_BOOLEAN_MODE):
@@ -244,6 +254,44 @@ def _process_query_single(engine,
     return limited_result
 
 
+def _normalize_processors(pre_processors: list[PreProcessor] | PreProcessor | None,
+                          post_processors: list[PostProcessor] | PostProcessor | None) -> tuple[list[PreProcessor] | None, list[PostProcessor] | None]:
+    if pre_processors and not isinstance(pre_processors, list):
+        pre_processors = [pre_processors]
+    if post_processors and not isinstance(post_processors, list):
+        post_processors = [post_processors]
+    return pre_processors, post_processors
+
+
+def _run_query_with_retries(
+        engine: Engine,
+        argument: Any,
+        func: Callable,
+        instance: Any,
+        trials: int,
+        return_constraint: type,
+        post_processors: list[PostProcessor] | None,
+    ) -> tuple[Any, Any]:
+    try_cnt = 0
+    rsp = None
+    metadata = None
+    while try_cnt < trials:
+        try_cnt += 1
+        try:
+            outputs = _execute_query(engine, argument)
+            rsp, metadata = _apply_postprocessors(outputs, return_constraint, post_processors, argument)
+            break
+        except Exception as error:
+            stack_trace = traceback.format_exc()
+            logger.error(f"Failed to execute query: {error!s}")
+            logger.error(f"Stack trace: {stack_trace}")
+            if try_cnt < trials:
+                continue
+            rsp = _execute_query_fallback(func, instance, argument, error=error, stack_trace=stack_trace)
+            metadata = None
+    return rsp, metadata
+
+
 def _execute_query(engine, argument) -> list[object]:
     # build prompt and query engine
     engine.prepare(argument)
@@ -267,10 +315,7 @@ def _process_query(
 
     if constraints is None:
         constraints = []
-    if pre_processors and not isinstance(pre_processors, list):
-        pre_processors = [pre_processors]
-    if post_processors and not isinstance(post_processors, list):
-        post_processors = [post_processors]
+    pre_processors, post_processors = _normalize_processors(pre_processors, post_processors)
 
     argument = _prepare_argument(argument, engine, instance, func, constraints, default, limit, trials, pre_processors, post_processors)
     return_constraint = argument.prop.return_constraint
@@ -279,24 +324,11 @@ def _process_query(
     if not argument.prop.raw_input:
         argument.prop.processed_input = processed_input
 
-    try_cnt = 0
-    while try_cnt < trials:
-        try_cnt += 1
-        try:
-            outputs = _execute_query(engine, argument)
-            rsp, metadata = _apply_postprocessors(outputs, return_constraint, post_processors, argument)
-            if argument.prop.preview:
-                if argument.prop.return_metadata:
-                    return rsp, metadata
-                return rsp
-
-        except Exception as e:
-            stack_trace = traceback.format_exc()
-            logger.error(f"Failed to execute query: {e!s}")
-            logger.error(f"Stack trace: {stack_trace}")
-            if try_cnt < trials:
-                continue
-            rsp = _execute_query_fallback(func, instance, argument, error=e, stack_trace=stack_trace)
+    rsp, metadata = _run_query_with_retries(engine, argument, func, instance, trials, return_constraint, post_processors)
+    if argument.prop.preview:
+        if argument.prop.return_metadata:
+            return rsp, metadata
+        return rsp
 
     if not argument.prop.raw_output:
         rsp = _limit_number_results(rsp, argument, return_constraint)
