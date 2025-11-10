@@ -1198,6 +1198,50 @@ class MetadataTracker(Expression):
         # Convert to normal dict
         return {**token_details}
 
+    def _can_accumulate_engine(self, engine_name: str) -> bool:
+        supported_engines = ("GPTXChatEngine", "GPTXReasoningEngine", "GPTXSearchEngine")
+        return engine_name in supported_engines
+
+    def _accumulate_time_field(self, accumulated: dict, metadata: dict) -> None:
+        if 'time' in metadata and 'time' in accumulated:
+            accumulated['time'] += metadata['time']
+
+    def _accumulate_usage_fields(self, accumulated: dict, metadata: dict) -> None:
+        if 'raw_output' not in metadata or 'raw_output' not in accumulated:
+            return
+
+        metadata_raw_output = metadata['raw_output']
+        accumulated_raw_output = accumulated['raw_output']
+        if not hasattr(metadata_raw_output, 'usage') or not hasattr(accumulated_raw_output, 'usage'):
+            return
+
+        current_usage = metadata_raw_output.usage
+        accumulated_usage = accumulated_raw_output.usage
+
+        for attr in ['completion_tokens', 'prompt_tokens', 'total_tokens']:
+            if hasattr(current_usage, attr) and hasattr(accumulated_usage, attr):
+                setattr(
+                    accumulated_usage,
+                    attr,
+                    getattr(accumulated_usage, attr) + getattr(current_usage, attr),
+                )
+
+        for detail_attr in ['completion_tokens_details', 'prompt_tokens_details']:
+            if not hasattr(current_usage, detail_attr) or not hasattr(accumulated_usage, detail_attr):
+                continue
+
+            current_details = getattr(current_usage, detail_attr)
+            accumulated_details = getattr(accumulated_usage, detail_attr)
+
+            for attr in dir(current_details):
+                if attr.startswith('_') or not hasattr(accumulated_details, attr):
+                    continue
+
+                current_val = getattr(current_details, attr)
+                accumulated_val = getattr(accumulated_details, attr)
+                if isinstance(current_val, (int, float)) and isinstance(accumulated_val, (int, float)):
+                    setattr(accumulated_details, attr, accumulated_val + current_val)
+
     def _accumulate_metadata(self):
         """Accumulates metadata across all tracked engine calls."""
         if not self._metadata:
@@ -1210,46 +1254,12 @@ class MetadataTracker(Expression):
 
         # Skipz first entry
         for (_, engine_name), metadata in list(self._metadata.items())[1:]:
-            if engine_name not in ("GPTXChatEngine", "GPTXReasoningEngine", "GPTXSearchEngine"):
+            if not self._can_accumulate_engine(engine_name):
                 logger.warning(f"Metadata accumulation for {engine_name} is not supported. Try `.usage` instead for now.")
                 continue
 
-            # Accumulate time if it exists
-            if 'time' in metadata and 'time' in accumulated:
-                accumulated['time'] += metadata['time']
-
-            # Handle usage stats accumulation
-            if (
-                'raw_output' in metadata
-                and 'raw_output' in accumulated
-                and hasattr(metadata['raw_output'], 'usage')
-                and hasattr(accumulated['raw_output'], 'usage')
-            ):
-                current_usage = metadata['raw_output'].usage
-                accumulated_usage = accumulated['raw_output'].usage
-
-                # Accumulate token counts
-                for attr in ['completion_tokens', 'prompt_tokens', 'total_tokens']:
-                    if hasattr(current_usage, attr) and hasattr(accumulated_usage, attr):
-                        setattr(
-                            accumulated_usage,
-                            attr,
-                            getattr(accumulated_usage, attr) + getattr(current_usage, attr),
-                        )
-
-                # Handle nested token details if they exist
-                for detail_attr in ['completion_tokens_details', 'prompt_tokens_details']:
-                    if hasattr(current_usage, detail_attr) and hasattr(accumulated_usage, detail_attr):
-                        current_details = getattr(current_usage, detail_attr)
-                        accumulated_details = getattr(accumulated_usage, detail_attr)
-
-                        # Accumulate all numeric attributes in the details
-                        for attr in dir(current_details):
-                            if not attr.startswith('_') and hasattr(accumulated_details, attr):
-                                current_val = getattr(current_details, attr)
-                                accumulated_val = getattr(accumulated_details, attr)
-                                if isinstance(current_val, (int, float)) and isinstance(accumulated_val, (int, float)):
-                                    setattr(accumulated_details, attr, accumulated_val + current_val)
+            self._accumulate_time_field(accumulated, metadata)
+            self._accumulate_usage_fields(accumulated, metadata)
 
         return accumulated
 
