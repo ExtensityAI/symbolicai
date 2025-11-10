@@ -74,49 +74,7 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
             self.model = kwargs['NEUROSYMBOLIC_ENGINE_MODEL']
 
     def compute_required_tokens(self, messages) -> int:
-        claude_messages = []
-        system_content = None
-
-        for msg in messages:
-            msg_parts = msg if isinstance(msg, list) else [msg]
-            for part in msg_parts:
-                if isinstance(part, str):
-                    role = 'user'
-                    content_str = part
-                elif isinstance(part, dict):
-                    role = part.get('role')
-                    content_str = str(part.get('content', ''))
-                else:
-                    UserMessage(f"Unsupported message part type: {type(part)}", raise_with=ValueError)
-
-                if role == 'system':
-                    system_content = content_str
-                    continue
-
-                if role in ['user', 'assistant']:
-                    message_content = []
-
-                    image_content = self._handle_image_content(content_str)
-                    message_content.extend(image_content)
-
-                    text_content = self._remove_vision_pattern(content_str)
-                    if text_content:
-                        message_content.append({
-                            "type": "text",
-                            "text": text_content
-                        })
-
-                    if message_content:
-                        if len(message_content) == 1 and message_content[0].get('type') == 'text':
-                            claude_messages.append({
-                                'role': role,
-                                'content': message_content[0]['text']
-                            })
-                        else:
-                            claude_messages.append({
-                                'role': role,
-                                'content': message_content
-                            })
+        claude_messages, system_content = self._normalize_messages_for_claude(messages)
 
         if not claude_messages:
             return 0
@@ -133,6 +91,60 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         except Exception as e:
             UserMessage(f"Claude count_tokens failed: {e}")
             UserMessage(f"Error counting tokens for Claude: {e!s}", raise_with=RuntimeError)
+
+    def _normalize_messages_for_claude(self, messages):
+        claude_messages = []
+        system_content = None
+
+        for msg in messages:
+            msg_parts = msg if isinstance(msg, list) else [msg]
+            for part in msg_parts:
+                role, content_str = self._extract_role_and_content(part)
+                if role == 'system':
+                    system_content = content_str
+                    continue
+
+                if role in ['user', 'assistant']:
+                    message_payload = self._build_message_payload(role, content_str)
+                    if message_payload:
+                        claude_messages.append(message_payload)
+
+        return claude_messages, system_content
+
+    def _extract_role_and_content(self, part):
+        if isinstance(part, str):
+            return 'user', part
+        if isinstance(part, dict):
+            return part.get('role'), str(part.get('content', ''))
+        UserMessage(f"Unsupported message part type: {type(part)}", raise_with=ValueError)
+        return None, ''
+
+    def _build_message_payload(self, role, content_str):
+        message_content = []
+
+        image_content = self._handle_image_content(content_str)
+        message_content.extend(image_content)
+
+        text_content = self._remove_vision_pattern(content_str)
+        if text_content:
+            message_content.append({
+                "type": "text",
+                "text": text_content
+            })
+
+        if not message_content:
+            return None
+
+        if len(message_content) == 1 and message_content[0].get('type') == 'text':
+            return {
+                'role': role,
+                'content': message_content[0]['text']
+            }
+
+        return {
+            'role': role,
+            'content': message_content
+        }
 
     def compute_remaining_tokens(self, _prompts: list) -> int:
         UserMessage('Method not implemented.', raise_with=NotImplementedError)
@@ -243,19 +255,35 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
             return
 
         _non_verbose_output = """<META_INSTRUCTION/>\nYou do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc. Never add meta instructions information to your output!\n\n"""
-        user:   str = ""
-        system: str = ""
+        image_files = self._handle_image_content(str(argument.prop.processed_input))
+        system = self._build_system_prompt(argument, _non_verbose_output, image_files)
+        user_text = self._build_user_text(argument, image_files)
+
+        if not user_text:
+            # Anthropic doesn't allow empty user prompts; force it
+            user_text = "N/A"
+
+        system, user_prompt = self._apply_self_prompt_if_needed(
+            argument,
+            system,
+            user_text,
+            image_files
+        )
+
+        argument.prop.prepared_input = (system, [user_prompt])
+
+    def _build_system_prompt(self, argument, non_verbose_output, image_files):
+        system = ""
 
         if argument.prop.suppress_verbose_output:
-            system += _non_verbose_output
-        system = f'{system}\n' if system and len(system) > 0 else ''
+            system = f"{non_verbose_output}\n"
 
         if argument.prop.response_format:
-            _rsp_fmt = argument.prop.response_format
-            if not (_rsp_fmt.get('type') is not None):
+            response_format = argument.prop.response_format
+            if not (response_format.get('type') is not None):
                 UserMessage('Response format type is required! Expected format `{"type": "json_object"}` or other supported types. Refer to Anthropic documentation for details.', raise_with=AssertionError)
-            system += _non_verbose_output
-            system += f'<RESPONSE_FORMAT/>\n{_rsp_fmt["type"]}\n\n'
+            system += non_verbose_output
+            system += f"<RESPONSE_FORMAT/>\n{response_format['type']}\n\n"
 
         ref = argument.prop.instance
         static_ctxt, dyn_ctxt = ref.global_context
@@ -266,66 +294,66 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
             system += f"<DYNAMIC_CONTEXT/>\n{dyn_ctxt}\n\n"
 
         payload = argument.prop.payload
-        if argument.prop.payload:
+        if payload:
             system += f"<ADDITIONAL_CONTEXT/>\n{payload!s}\n\n"
 
         examples: list[str] = argument.prop.examples
         if examples and len(examples) > 0:
             system += f"<EXAMPLES/>\n{examples!s}\n\n"
 
-        image_files = self._handle_image_content(str(argument.prop.processed_input))
-
         if argument.prop.prompt is not None and len(argument.prop.prompt) > 0:
-            val = str(argument.prop.prompt)
+            value = str(argument.prop.prompt)
             if len(image_files) > 0:
-                val = self._remove_vision_pattern(val)
-            system += f"<INSTRUCTION/>\n{val}\n\n"
+                value = self._remove_vision_pattern(value)
+            system += f"<INSTRUCTION/>\n{value}\n\n"
 
-        suffix: str = str(argument.prop.processed_input)
+        return self._append_template_suffix(system, argument.prop.template_suffix)
+
+    def _build_user_text(self, argument, image_files):
+        suffix = str(argument.prop.processed_input)
         if len(image_files) > 0:
             suffix = self._remove_vision_pattern(suffix)
+        return suffix
 
-        user += f"{suffix}"
-
-        if not len(user):
-            # Anthropic doesn't allow empty user prompts; force it
-            user = "N/A"
-
-        if argument.prop.template_suffix:
-            system += f' You will only generate content for the placeholder `{argument.prop.template_suffix!s}` following the instructions and the provided context information.\n\n'
-
-        if len(image_files) > 0:
-            images = [{ 'type': 'image', "source": im } for im in image_files]
-            user_prompt = { "role": "user", "content": [
-                *images,
-                { 'type': 'text', 'text': user }
-            ]}
-        else:
-            user_prompt = { "role": "user", "content": user }
-
-        # First check if the `Symbol` instance has the flag set, otherwise check if it was passed as an argument to a method
-        if argument.prop.instance._kwargs.get('self_prompt', False) or argument.prop.self_prompt:
-            self_prompter = SelfPrompt()
-
-            res = self_prompter(
-                {'user': user, 'system': system},
-                max_tokens=argument.kwargs.get('max_tokens', self.max_response_tokens),
-                thinking=argument.kwargs.get('thinking', NOT_GIVEN),
+    def _append_template_suffix(self, system, template_suffix):
+        if template_suffix:
+            return system + (
+                f' You will only generate content for the placeholder `{template_suffix!s}` '
+                'following the instructions and the provided context information.\n\n'
             )
-            if res is None:
-                UserMessage("Self-prompting failed to return a response.", raise_with=ValueError)
+        return system
 
-            if len(image_files) > 0:
-                user_prompt = { "role": "user", "content": [
+    def _apply_self_prompt_if_needed(self, argument, system, user_text, image_files):
+        if not self._is_self_prompt_enabled(argument):
+            return system, self._format_user_prompt(user_text, image_files)
+
+        self_prompter = SelfPrompt()
+        response = self_prompter(
+            {'user': user_text, 'system': system},
+            max_tokens=argument.kwargs.get('max_tokens', self.max_response_tokens),
+            thinking=argument.kwargs.get('thinking', NOT_GIVEN),
+        )
+        if response is None:
+            UserMessage("Self-prompting failed to return a response.", raise_with=ValueError)
+
+        updated_prompt = self._format_user_prompt(response['user'], image_files)
+        return response['system'], updated_prompt
+
+    def _is_self_prompt_enabled(self, argument):
+        return argument.prop.instance._kwargs.get('self_prompt', False) or argument.prop.self_prompt
+
+    def _format_user_prompt(self, user_text, image_files):
+        if len(image_files) > 0:
+            images = [{'type': 'image', 'source': im} for im in image_files]
+            return {
+                'role': 'user',
+                'content': [
                     *images,
-                    { 'type': 'text', 'text': res['user'] }
-                ]}
-            else:
-                user_prompt = { "role": "user", "content": res['user'] }
+                    {'type': 'text', 'text': user_text}
+                ]
+            }
 
-            system = res['system']
-
-        argument.prop.prepared_input = (system, [user_prompt])
+        return {'role': 'user', 'content': user_text}
 
     def _prepare_request_payload(self, argument):
         kwargs = argument.kwargs
@@ -371,76 +399,116 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
 
     def _collect_response(self, res):
         if isinstance(res, list):
-            thinking_content = ''
-            text_content = ''
-            tool_calls_raw = []
-            active_tool_calls = {}
+            return self._collect_stream_response(res)
 
-            for chunk in res:
-                if isinstance(chunk, RawContentBlockStartEvent):
-                    if isinstance(chunk.content_block, ToolUseBlock):
-                        active_tool_calls[chunk.index] = {
-                            'id': chunk.content_block.id,
-                            'name': chunk.content_block.name,
-                            'input_json_str': ""
-                        }
-                elif isinstance(chunk, RawContentBlockDeltaEvent):
-                    if isinstance(chunk.delta, ThinkingDelta):
-                        thinking_content += chunk.delta.thinking
-                    elif isinstance(chunk.delta, TextDelta):
-                        text_content += chunk.delta.text
-                    elif isinstance(chunk.delta, InputJSONDelta) and chunk.index in active_tool_calls:
-                        active_tool_calls[chunk.index]['input_json_str'] += chunk.delta.partial_json
-                elif isinstance(chunk, RawContentBlockStopEvent) and chunk.index in active_tool_calls:
-                    tool_call_info = active_tool_calls.pop(chunk.index)
-                    try:
-                        tool_call_info['input'] = json.loads(tool_call_info['input_json_str'])
-                    except json.JSONDecodeError as e:
-                        UserMessage(f"Failed to parse JSON for tool call {tool_call_info['name']}: {e}. Raw JSON: '{tool_call_info['input_json_str']}'")
-                        tool_call_info['input'] = {}
-                    tool_calls_raw.append(tool_call_info)
-
-            function_call_data = None
-            if tool_calls_raw:
-                if len(tool_calls_raw) > 1:
-                    UserMessage("Multiple tool calls detected in the stream but only the first one will be processed.")
-                function_call_data = {
-                    'name': tool_calls_raw[0]['name'],
-                    'arguments': tool_calls_raw[0]['input']
-                }
-
-            return {
-                "thinking": thinking_content,
-                "text": text_content,
-                "function_call": function_call_data
-            }
-
-        # Non-streamed response (res is a Message object)
         if isinstance(res, Message):
-            thinking_content = ''
-            text_content = ''
-            function_call_data = None
-            hit = False
-
-            for content_block in res.content:
-                if isinstance(content_block, ThinkingBlock):
-                    thinking_content += content_block.thinking
-                elif isinstance(content_block, TextBlock):
-                    text_content += content_block.text
-                elif isinstance(content_block, ToolUseBlock):
-                    if hit:
-                        UserMessage("Multiple tool use blocks detected in the response but only the first one will be processed.")
-                    else:
-                        function_call_data = {
-                            'name': content_block.name,
-                            'arguments': content_block.input
-                        }
-                        hit = True
-            return {
-                "thinking": thinking_content,
-                "text": text_content,
-                "function_call": function_call_data
-            }
+            return self._collect_message_response(res)
 
         UserMessage(f"Unexpected response type from Anthropic API: {type(res)}", raise_with=ValueError)
         return {}
+
+    def _collect_stream_response(self, response_chunks):
+        accumulators = {'thinking': '', 'text': ''}
+        tool_calls_raw = []
+        active_tool_calls = {}
+
+        for chunk in response_chunks:
+            self._process_stream_chunk(chunk, accumulators, active_tool_calls, tool_calls_raw)
+
+        function_call_data = self._extract_function_call(tool_calls_raw)
+        return {
+            'thinking': accumulators['thinking'],
+            'text': accumulators['text'],
+            'function_call': function_call_data
+        }
+
+    def _process_stream_chunk(self, chunk, accumulators, active_tool_calls, tool_calls_raw):
+        if isinstance(chunk, RawContentBlockStartEvent):
+            self._register_tool_call(chunk, active_tool_calls)
+        elif isinstance(chunk, RawContentBlockDeltaEvent):
+            self._handle_delta_chunk(chunk, accumulators, active_tool_calls)
+        elif isinstance(chunk, RawContentBlockStopEvent):
+            self._finalize_tool_call(chunk, active_tool_calls, tool_calls_raw)
+
+    def _register_tool_call(self, chunk, active_tool_calls):
+        if isinstance(chunk.content_block, ToolUseBlock):
+            active_tool_calls[chunk.index] = {
+                'id': chunk.content_block.id,
+                'name': chunk.content_block.name,
+                'input_json_str': ""
+            }
+
+    def _handle_delta_chunk(self, chunk, accumulators, active_tool_calls):
+        if isinstance(chunk.delta, ThinkingDelta):
+            accumulators['thinking'] += chunk.delta.thinking
+        elif isinstance(chunk.delta, TextDelta):
+            accumulators['text'] += chunk.delta.text
+        elif isinstance(chunk.delta, InputJSONDelta) and chunk.index in active_tool_calls:
+            active_tool_calls[chunk.index]['input_json_str'] += chunk.delta.partial_json
+
+    def _finalize_tool_call(self, chunk, active_tool_calls, tool_calls_raw):
+        if chunk.index not in active_tool_calls:
+            return
+
+        tool_call_info = active_tool_calls.pop(chunk.index)
+        try:
+            tool_call_info['input'] = json.loads(tool_call_info['input_json_str'])
+        except json.JSONDecodeError as error:
+            UserMessage(
+                f"Failed to parse JSON for tool call {tool_call_info['name']}: {error}. Raw JSON: '{tool_call_info['input_json_str']}'"
+            )
+            tool_call_info['input'] = {}
+        tool_calls_raw.append(tool_call_info)
+
+    def _extract_function_call(self, tool_calls_raw):
+        if not tool_calls_raw:
+            return None
+
+        if len(tool_calls_raw) > 1:
+            UserMessage("Multiple tool calls detected in the stream but only the first one will be processed.")
+
+        first_call = tool_calls_raw[0]
+        return {
+            'name': first_call['name'],
+            'arguments': first_call['input']
+        }
+
+    def _collect_message_response(self, message):
+        accumulators = {'thinking': '', 'text': ''}
+        function_call_data = None
+        tool_call_detected = False
+
+        for content_block in message.content:
+            function_call_data, tool_call_detected = self._process_message_block(
+                content_block,
+                accumulators,
+                function_call_data,
+                tool_call_detected
+            )
+
+        return {
+            'thinking': accumulators['thinking'],
+            'text': accumulators['text'],
+            'function_call': function_call_data
+        }
+
+    def _process_message_block(self, content_block, accumulators, function_call_data, tool_call_detected):
+        if isinstance(content_block, ThinkingBlock):
+            accumulators['thinking'] += content_block.thinking
+            return function_call_data, tool_call_detected
+
+        if isinstance(content_block, TextBlock):
+            accumulators['text'] += content_block.text
+            return function_call_data, tool_call_detected
+
+        if isinstance(content_block, ToolUseBlock):
+            if tool_call_detected:
+                UserMessage("Multiple tool use blocks detected in the response but only the first one will be processed.")
+                return function_call_data, tool_call_detected
+
+            return {
+                'name': content_block.name,
+                'arguments': content_block.input
+            }, True
+
+        return function_call_data, tool_call_detected
