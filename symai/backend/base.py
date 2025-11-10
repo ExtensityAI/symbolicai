@@ -9,6 +9,15 @@ from .settings import HOME_PATH
 
 ENGINE_UNREGISTERED = '<UNREGISTERED/>'
 
+COLLECTION_LOGGING_ENGINES = {
+    'GPTXChatEngine',
+    'GPTXCompletionEngine',
+    'SerpApiEngine',
+    'WolframAlphaEngine',
+    'SeleniumEngine',
+    'OCREngine',
+}
+
 class Engine(ABC):
     def __init__(self) -> None:
         super().__init__()
@@ -42,19 +51,10 @@ class Engine(ABC):
         }
         start_time = time.time()
 
-        # check for global object based input handler
-        if hasattr(argument.prop.instance, '_metadata') and hasattr(argument.prop.instance._metadata, 'input_handler'):
-            input_handler = argument.prop.instance._metadata.input_handler if hasattr(argument.prop.instance._metadata, 'input_handler') else None
-            if input_handler is not None:
-                input_handler((argument.prop.processed_input, argument))
-        # check for kwargs based input handler
-        if argument.prop.input_handler is not None:
-            argument.prop.input_handler((argument.prop.processed_input, argument))
+        self._trigger_input_handlers(argument)
 
-        # execute the engine
         res, metadata = self.forward(argument)
 
-        # compute time
         req_time = time.time() - start_time
         metadata['time'] = req_time
         if self.time_clock:
@@ -67,32 +67,42 @@ class Engine(ABC):
         if self.logging:
             self.logger.log(self.log_level, log)
 
-        # share data statistics with the collection repository
-        if     str(self) == 'GPTXChatEngine' \
-            or str(self) == 'GPTXCompletionEngine' \
-            or str(self) == 'SerpApiEngine' \
-            or str(self) == 'WolframAlphaEngine' \
-            or str(self) == 'SeleniumEngine' \
-            or str(self) == 'OCREngine':
-            self.collection.add(
-                forward={'args': rec_serialize(argument.args), 'kwds': rec_serialize(argument.kwargs)},
-                engine=str(self),
-                metadata={
-                    'time': req_time,
-                    'data': rec_serialize(metadata),
-                    'argument': rec_serialize(argument)
-                }
-            )
+        if str(self) in COLLECTION_LOGGING_ENGINES:
+            self._record_collection_entry(argument, metadata, req_time)
 
-        # check for global object based output handler
-        if hasattr(argument.prop.instance, '_metadata') and hasattr(argument.prop.instance._metadata, 'output_handler'):
-            output_handler = argument.prop.instance._metadata.output_handler if hasattr(argument.prop.instance._metadata, 'output_handler') else None
-            if output_handler:
-                output_handler(res)
-        # check for kwargs based output handler
-        if argument.prop.output_handler:
-            argument.prop.output_handler((res, metadata))
+        self._trigger_output_handlers(argument, res, metadata)
         return res, metadata
+
+    def _trigger_input_handlers(self, argument: Any) -> None:
+        instance_metadata = getattr(argument.prop.instance, '_metadata', None)
+        if instance_metadata is not None:
+            input_handler = getattr(instance_metadata, 'input_handler', None)
+            if input_handler is not None:
+                input_handler((argument.prop.processed_input, argument))
+        argument_handler = argument.prop.input_handler
+        if argument_handler is not None:
+            argument_handler((argument.prop.processed_input, argument))
+
+    def _trigger_output_handlers(self, argument: Any, result: Any, metadata: dict | None) -> None:
+        instance_metadata = getattr(argument.prop.instance, '_metadata', None)
+        if instance_metadata is not None:
+            output_handler = getattr(instance_metadata, 'output_handler', None)
+            if output_handler:
+                output_handler(result)
+        argument_handler = argument.prop.output_handler
+        if argument_handler:
+            argument_handler((result, metadata))
+
+    def _record_collection_entry(self, argument: Any, metadata: dict, req_time: float) -> None:
+        self.collection.add(
+            forward={'args': rec_serialize(argument.args), 'kwds': rec_serialize(argument.kwargs)},
+            engine=str(self),
+            metadata={
+                'time': req_time,
+                'data': rec_serialize(metadata),
+                'argument': rec_serialize(argument)
+            }
+        )
 
     def id(self) -> str:
         return ENGINE_UNREGISTERED
@@ -160,36 +170,35 @@ class BatchEngine(Engine):
     def __call__(self, arguments: list[Any]) -> list[tuple[Any, dict]]:
         start_time = time.time()
         for arg in arguments:
-            if hasattr(arg.prop.instance, '_metadata') and hasattr(arg.prop.instance._metadata, 'input_handler'):
-                input_handler = getattr(arg.prop.instance._metadata, 'input_handler', None)
-                if input_handler is not None:
-                    input_handler((arg.prop.processed_input, arg))
-            if arg.prop.input_handler is not None:
-                arg.prop.input_handler((arg.prop.processed_input, arg))
+            self._trigger_input_handlers(arg)
 
-        try:
-            results, metadata_list = self.forward(arguments)
-        except Exception as e:
-            results = [e] * len(arguments)
-            metadata_list = [None] * len(arguments)
+        results, metadata_list = self._execute_batch(arguments)
 
         total_time = time.time() - start_time
         if self.time_clock:
             CustomUserWarning(f"Total execution time: {total_time} sec")
 
-        return_list = []
+        return self._prepare_batch_results(arguments, results, metadata_list, total_time)
 
+    def _execute_batch(self, arguments: list[Any]) -> tuple[list[Any], list[dict | None]]:
+        try:
+            return self.forward(arguments)
+        except Exception as error:
+            return [error] * len(arguments), [None] * len(arguments)
+
+    def _prepare_batch_results(
+        self,
+        arguments: list[Any],
+        results: list[Any],
+        metadata_list: list[dict | None],
+        total_time: float,
+    ) -> list[tuple[Any, dict | None]]:
+        return_list = []
         for arg, result, metadata in zip(arguments, results, metadata_list, strict=False):
             if metadata is not None:
                 metadata['time'] = total_time / len(arguments)
 
-            if hasattr(arg.prop.instance, '_metadata') and hasattr(arg.prop.instance._metadata, 'output_handler'):
-                output_handler = getattr(arg.prop.instance._metadata, 'output_handler', None)
-                if output_handler:
-                    output_handler(result)
-            if arg.prop.output_handler:
-                arg.prop.output_handler((result, metadata))
-
+            self._trigger_output_handlers(arg, result, metadata)
             return_list.append((result, metadata))
         return return_list
 
