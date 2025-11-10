@@ -66,6 +66,7 @@ dependencies = [
     "nest-asyncio>=1.6.0",
     "rich>=13.9.4",
     "playwright>=1.55.0",
+    "llvmlite>=0.45.1",
 ]
 
 [project.optional-dependencies]
@@ -75,7 +76,7 @@ hf           = ["transformers>=4.45.2", "accelerate>=0.33.0", "peft>=0.13.1", "d
 webscraping  = ["beautifulsoup4>=4.12.3", "trafilatura>=2.0.0", "pdfminer.six", "playwright>=1.45.0"]
 llama_cpp    = ["llama-cpp-python[server]>=0.3.7"] # handle separately since this dependency may not compile and require special maintenance
 wolframalpha = ["wolframalpha>=5.0.0"]
-whisper      = ["openai-whisper>=20240930", "numba>=0.60.0"]
+whisper      = ["openai-whisper>=20240930", "numba>=0.62.1", "llvmlite>=0.45.1"]
 serpapi      = ["google_search_results>=2.4.2"]
 services     = ["fastapi>=0.110.0", "redis>=5.0.2", "uvicorn>=0.27.1"]
 solver       = ["z3-solver>=4.12.6.0"]
