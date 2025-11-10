@@ -21,6 +21,47 @@ def _ensure_tika_vm():
         _TIKA_STATE["initialized"] = True
 
 
+def _int_or_none(value):
+    return int(value) if value != '' else None
+
+
+def _parse_slice_token(token):
+    if ':' not in token:
+        return int(token)
+    parts = token.split(':')
+    if len(parts) == 2:
+        start, end = parts
+        return slice(_int_or_none(start), _int_or_none(end), None)
+    if len(parts) == 3:
+        start, end, step = parts
+        return slice(_int_or_none(start), _int_or_none(end), _int_or_none(step))
+    return None
+
+
+def _parse_slice_spec(file_path):
+    if '[' not in file_path or ']' not in file_path:
+        return file_path, None
+    path_part, remainder = file_path.split('[', 1)
+    slice_section = remainder.split(']', 1)[0]
+    slices = []
+    for token in slice_section.split(','):
+        if token == '':
+            continue
+        parsed = _parse_slice_token(token)
+        if parsed is not None:
+            slices.append(parsed)
+    return path_part, slices or None
+
+
+def _apply_slices(lines, slices_):
+    if slices_ is None:
+        return lines
+    new_content = []
+    for slice_item in slices_:
+        new_content.extend(lines[slice_item])
+    return new_content
+
+
 @dataclass
 class TextContainer:
     id: str
@@ -44,29 +85,7 @@ class FileEngine(Engine):
             return None
 
         # check if file slice is used
-        slices_ = None
-        if '[' in file_path and ']' in file_path:
-            file_parts = file_path.split('[')
-            file_path = file_parts[0]
-            # remove string up to '[' and after ']'
-            slices_s = file_parts[1].split(']')[0].split(',')
-            slices_ = []
-            for s in slices_s:
-                if s == '':
-                    continue
-                if ':' in s:
-                    s_split = s.split(':')
-                    if len(s_split) == 2:
-                        start_slice = int(s_split[0]) if s_split[0] != '' else None
-                        end_slice = int(s_split[1]) if s_split[1] != '' else None
-                        slices_.append(slice(start_slice, end_slice, None))
-                    elif len(s_split) == 3:
-                        start_slice = int(s_split[0]) if s_split[0] != '' else None
-                        end_slice = int(s_split[1]) if s_split[1] != '' else None
-                        step_slice = int(s_split[2]) if s_split[2] != '' else None
-                        slices_.append(slice(start_slice, end_slice, step_slice))
-                else:
-                    slices_.append(int(s))
+        file_path, slices_ = _parse_slice_spec(file_path)
 
         path_obj = Path(file_path)
 
@@ -87,11 +106,7 @@ class FileEngine(Engine):
                     return None
                 # Apply slicing by lines, mirroring the Tika branch
                 lines = content.split('\n')
-                if slices_ is not None:
-                    new_content = []
-                    for s in slices_:
-                        new_content.extend(lines[s])
-                    lines = new_content
+                lines = _apply_slices(lines, slices_)
                 content = '\n'.join(lines)
                 content = content.encode('utf8', 'ignore').decode('utf8', 'ignore')
                 return content if not with_metadata else [TextContainer(file_id, None, content)]
@@ -107,11 +122,7 @@ class FileEngine(Engine):
             return None
         content = content.split('\n')
 
-        if slices_ is not None:
-            new_content = []
-            for s in slices_:
-                new_content.extend(content[s])
-            content = new_content
+        content = _apply_slices(content, slices_)
         content = '\n'.join(content)
         content = content.encode('utf8', 'ignore').decode('utf8', 'ignore')
         return content if not with_metadata else [TextContainer(file_id, None, content)]
