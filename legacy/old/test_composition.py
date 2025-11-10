@@ -318,7 +318,6 @@ test = 'it works'
 
     def test_list(self):
         sym = Symbol("""
-modified:   symai/backend/driver/webclient.py
 modified:   symai/backend/engine_gptX_completion.py
 modified:   symai/backend/engine_userinput.py
 modified:   symai/core.py
@@ -332,7 +331,7 @@ modified:   tests/test_composition.py
         iter_ = sym.list('file path')
         for res in iter_:
             cnt += 1
-        self.assertTrue(cnt == 9, cnt)
+        self.assertTrue(cnt == 8, cnt)
 
     def test_foreach(self):
         sym = Symbol('a, b, c, d, e, f, g')

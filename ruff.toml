@@ -48,7 +48,7 @@ ignore = [
   "B028",  # no explicit stacklevel; enable if you rely on warnings for users
   "PLW0603",  # global statement discouraged; often noisy in legacy code
   "G004", #  logging-f-string
-  "A002", #  argument-shadowing-builtin (needed for contracts; `input` is mandatory arg)
+  "A002", #  argument-shadowing-builtin
 ]
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
