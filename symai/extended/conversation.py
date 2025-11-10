@@ -167,72 +167,81 @@ class Conversation(SlidingWindowStringConcatMemory):
         return str(f"[{tag}{timestamp}]: <<<\n{query!s}\n>>>\n")
 
     def forward(self, query: str, *args, **kwargs):
-        # dynamic takes precedence over static
-        dynamic_truncation_percentage = kwargs.get('truncation_percentage', self.truncation_percentage)
-        dynamic_truncation_type = kwargs.get('truncation_type', self.truncation_type)
-        kwargs = {**kwargs, 'truncation_percentage': dynamic_truncation_percentage, 'truncation_type': dynamic_truncation_type}
-
+        kwargs = self._apply_truncation_overrides(kwargs)
         query = self._to_symbol(query)
-        memory = None
-
-        if self.index is not None:
-            memory_split = self._memory.split(self.marker)
-            memory_shards = []
-            for ms in memory_split:
-                if ms.strip() == '':
-                    continue
-                memory_shards.append(ms)
-
-            length_memory_shards = len(memory_shards)
-            if length_memory_shards > 5:
-                memory_shards = memory_shards[:2] + memory_shards[-3:]
-            elif length_memory_shards > 3:
-                retained = memory_shards[-(length_memory_shards - 2):]
-                memory_shards = memory_shards[:2] + retained
-
-            search_query = query | '\n' | '\n'.join(memory_shards)
-            if kwargs.get('use_seo_opt'):
-                search_query = self.seo_opt('[Query]:' | search_query)
-            memory = self.index(search_query, *args, **kwargs)
-
-            if 'raw_result' in kwargs:
-                CustomUserWarning(str(memory))
-
-        payload = ''
-        # if payload is set, then add it to the memory
-        if 'payload' in kwargs:
-            payload  = f"[Conversation Payload]:\n{kwargs.pop('payload')}\n"
-
-        index_memory = ''
-        # if index is set, then add it to the memory
-        if memory:
-            index_memory = f'[Index Retrieval]:\n{str(memory)[:1500]}\n'
-
-        payload = f'{index_memory}{payload}'
-        # perform a recall function using the query
+        memory = self._retrieve_index_memory(query, args, kwargs)
+        payload = self._build_payload(kwargs, memory)
         res = self.recall(query, *args, payload=payload, **kwargs)
 
         # if user is requesting to preview the response, then return only the preview result
         if kwargs.get('preview'):
             if self.auto_print:
-                CustomUserWarning(str(res))
+                print(str(res)) # noqa: T201
             return res
 
         ### --- asses memory update --- ###
 
-        # append the bot prompt to the memory
+        self._append_interaction_to_memory(query, res)
+
+        # WARN: DO NOT PROCESS THE RES BY REMOVING `<<<` AND `>>>` TAGS
+
+        if self.auto_print:
+            print(str(res)) # noqa: T201
+        return res
+
+    def _apply_truncation_overrides(self, kwargs: dict[str, Any]) -> dict[str, Any]:
+        dynamic_truncation_percentage = kwargs.get('truncation_percentage', self.truncation_percentage)
+        dynamic_truncation_type = kwargs.get('truncation_type', self.truncation_type)
+        return {
+            **kwargs,
+            'truncation_percentage': dynamic_truncation_percentage,
+            'truncation_type': dynamic_truncation_type,
+        }
+
+    def _retrieve_index_memory(self, query: Symbol, args: tuple[Any, ...], kwargs: dict[str, Any]):
+        if self.index is None:
+            return None
+
+        memory_split = self._memory.split(self.marker)
+        memory_shards = []
+        for shard in memory_split:
+            if shard.strip() == '':
+                continue
+            memory_shards.append(shard)
+
+        length_memory_shards = len(memory_shards)
+        if length_memory_shards > 5:
+            memory_shards = memory_shards[:2] + memory_shards[-3:]
+        elif length_memory_shards > 3:
+            retained = memory_shards[-(length_memory_shards - 2):]
+            memory_shards = memory_shards[:2] + retained
+
+        search_query = query | '\n' | '\n'.join(memory_shards)
+        if kwargs.get('use_seo_opt'):
+            search_query = self.seo_opt('[Query]:' | search_query)
+        memory = self.index(search_query, *args, **kwargs)
+
+        if 'raw_result' in kwargs:
+            print(str(memory)) # noqa: T201
+        return memory
+
+    def _build_payload(self, kwargs: dict[str, Any], memory) -> str:
+        payload = ''
+        if 'payload' in kwargs:
+            payload = f"[Conversation Payload]:\n{kwargs.pop('payload')}\n"
+
+        index_memory = ''
+        if memory:
+            index_memory = f'[Index Retrieval]:\n{str(memory)[:1500]}\n'
+        return f'{index_memory}{payload}'
+
+    def _append_interaction_to_memory(self, query: Symbol, res: Symbol) -> None:
         prompt = self.build_tag(self.user_tag, query)
         self.store(prompt)
 
         self._value = res.value # save last response
         val = self.build_tag(self.bot_tag, res)
         self.store(val)
-
-        # WARN: DO NOT PROCESS THE RES BY REMOVING `<<<` AND `>>>` TAGS
-
-        if self.auto_print:
-            CustomUserWarning(str(res))
-        return res
 
 
 RETRIEVAL_CONTEXT = """[Description]
@@ -325,7 +334,7 @@ class RetrievalAugmentedConversation(Conversation):
         memory = self.index(query, *args, **kwargs)
 
         if 'raw_result' in kwargs:
-            CustomUserWarning(str(memory))
+            print(str(memory)) # noqa: T201
             return memory
 
         prompt = self.build_tag(self.user_tag, query)
@@ -340,5 +349,5 @@ class RetrievalAugmentedConversation(Conversation):
         self.store(val)
 
         if self.auto_print:
-            CustomUserWarning(str(res))
+            print(str(res)) # noqa: T201
         return res
