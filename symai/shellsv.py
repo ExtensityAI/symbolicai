@@ -224,7 +224,7 @@ def _(event):
     cancel = [False]
     @kb.add('f')
     def _(_event):
-        UserMessage('You pressed `f`.')
+        UserMessage('You pressed `f`.', style="alert")
 
     @kb.add('x')
     def _(_event):
@@ -334,21 +334,145 @@ def disambiguate(cmds: str) -> tuple[str, int]:
             'correct order of commands. Supported are: query | file [file ...] (e.g. "what do these files have in '
             'common?" | file1 [file2 ...]) and query | cmd (e.g. "what flags can I use with rg?" | rg --help)'
         )
-        UserMessage(msg)
-        raise ValueError(msg)
+        UserMessage(msg, raise_with=ValueError)
     # now check order of commands and keep correct order
     if shutil.which(maybe_cmd) is not None:
         cmd_out = subprocess.run(cmds, check=False, capture_output=True, text=True, shell=True)
         if not cmd_out.stdout:
             msg = f'Command not found or failed. Error: {cmd_out.stderr}'
-            UserMessage(msg)
-            raise ValueError(msg)
+            UserMessage(msg, raise_with=ValueError)
         return cmd_out.stdout, 1
     if maybe_files is not None:
         return maybe_files, 2
     return None
 
 # query language model
+def _starts_with_prefix(query: str, prefix: str) -> bool:
+    return (
+        query.startswith(f'{prefix}"')
+        or query.startswith(f"{prefix}'")
+        or query.startswith(f'{prefix}`')
+    )
+
+
+def _is_new_conversation_query(query: str) -> bool:
+    return _starts_with_prefix(query, '!')
+
+
+def _is_followup_conversation_query(query: str) -> bool:
+    return _starts_with_prefix(query, '.')
+
+
+def _is_stateful_query(query: str) -> bool:
+    return any(_starts_with_prefix(query, prefix) for prefix in ['.', '!'])
+
+
+def _extract_query_kwargs(query: str, previous_kwargs, existing_kwargs):
+    if '--kwargs' not in query and '-kw' not in query:
+        return query, existing_kwargs, previous_kwargs
+
+    splitter = '--kwargs' if '--kwargs' in query else '-kw'
+    splits = query.split(splitter)
+    suffix = splits[-1]
+    if previous_kwargs is None and '=' not in suffix and ',' not in suffix:
+        msg = 'Kwargs format must be last in query.'
+        UserMessage(msg, raise_with=ValueError)
+    if previous_kwargs is not None and '=' not in suffix and ',' not in suffix:
+        cmd_kwargs = previous_kwargs
+    else:
+        query = splits[0].strip()
+        kwargs_str = suffix.strip()
+        cmd_kwargs = dict([kw.split('=') for kw in kwargs_str.split(',')])
+        cmd_kwargs = {k.strip(): Symbol(v.strip()).ast() for k, v in cmd_kwargs.items()}
+
+    previous_kwargs = cmd_kwargs
+    merged_kwargs = {**existing_kwargs, **cmd_kwargs}
+    return query, merged_kwargs, previous_kwargs
+
+
+def _process_new_conversation(query, conversation_cls, symai_path, plugin, previous_kwargs, state):
+    symai_path.parent.mkdir(parents=True, exist_ok=True)
+    conversation = conversation_cls(auto_print=False)
+    conversation_cls.save_conversation_state(conversation, symai_path)
+    state.stateful_conversation = conversation
+    if plugin is None:
+        return conversation, previous_kwargs, None, False
+    with Loader(desc="Inference ...", end=""):
+        cmd = query[1:].strip('\'"')
+        cmd = f"symrun {plugin} '{cmd}' --disable-pbar"
+        cmd_out = run_shell_command(cmd, auto_query_on_error=True)
+        conversation.store(cmd_out)
+        conversation_cls.save_conversation_state(conversation, symai_path)
+        state.stateful_conversation = conversation
+        state.previous_kwargs = previous_kwargs
+        return conversation, previous_kwargs, cmd_out, True
+
+
+def _process_followup_conversation(query, conversation, conversation_cls, symai_path, plugin, previous_kwargs, state):
+    try:
+        conversation = conversation.load_conversation_state(symai_path)
+        state.stateful_conversation = conversation
+    except Exception:
+        with ConsoleStyle('error') as console:
+            console.print('No conversation state found. Please start a new conversation.')
+        return conversation, previous_kwargs, None, True
+    if plugin is None:
+        return conversation, previous_kwargs, None, False
+    with Loader(desc="Inference ...", end=""):
+        trimmed_query = query[1:].strip('\'"')
+        answer = conversation(trimmed_query).value
+        cmd = f"symrun {plugin} '{answer}' --disable-pbar"
+        cmd_out = run_shell_command(cmd, auto_query_on_error=True)
+        conversation.store(cmd_out)
+        conversation_cls.save_conversation_state(conversation, symai_path)
+        state.stateful_conversation = conversation
+        state.previous_kwargs = previous_kwargs
+        return conversation, previous_kwargs, cmd_out, True
+
+
+def _handle_piped_query(query, conversation, state):
+    cmds = query.split('|')
+    if len(cmds) > 2:
+        msg = (
+            'Cannot disambiguate commands that have more than 1 pipes. Please provide correct order of commands. '
+            'Supported are: query | file [file ...] (e.g. "what do these files have in common?" | file1 [file2 ...]) '
+            'and query | cmd (e.g. "what flags can I use with rg?" | rg --help)'
+        )
+        UserMessage(msg, raise_with=ValueError)
+    base_query = cmds[0]
+    payload, order = disambiguate(cmds[1].strip())
+    is_stateful = _is_stateful_query(base_query)
+    if is_stateful:
+        func = conversation
+    else:
+        func = (
+            state.function_type(payload)
+            if order == 1
+            else state.conversation_type(file_link=payload, auto_print=False)
+        )
+    if is_stateful:
+        if order == 1:
+            func.store(payload)
+        elif order == 2:
+            for file in payload:
+                func.store_file(file)
+    return func, base_query
+
+
+def _select_function_for_query(query, conversation, state):
+    if '|' in query:
+        return _handle_piped_query(query, conversation, state)
+    if _is_stateful_query(query):
+        return conversation, query
+    return state.function_type(SHELL_CONTEXT), query
+
+
+def _should_save_conversation(conversation, query):
+    if conversation is None:
+        return False
+    return _is_stateful_query(query)
+
+
 def query_language_model(query: str, res=None, *args, **kwargs):
     state = _shell_state
     conversation = state.stateful_conversation
@@ -358,119 +482,30 @@ def query_language_model(query: str, res=None, *args, **kwargs):
     symai_path = home_path / '.conversation_state'
     plugin = SYMSH_CONFIG.get('plugin_prefix')
 
-    # check and extract kwargs from query if any
-    # format --kwargs key1=value1,key2=value2,key3=value3,...keyN=valueN
-    if '--kwargs' in query or '-kw' in query:
-        splitter = '--kwargs' if '--kwargs' in query else '-kw'
-        # check if kwargs format is last in query otherwise raise error
-        splits = query.split(f'{splitter}')
-        if previous_kwargs is None and '=' not in splits[-1] and ',' not in splits[-1]:
-            msg = 'Kwargs format must be last in query.'
-            UserMessage(msg)
-            raise ValueError(msg)
-        if previous_kwargs is not None and '=' not in splits[-1] and ',' not in splits[-1]:
-            # use previous kwargs
-            cmd_kwargs = previous_kwargs
-        else:
-            # remove kwargs from query
-            query = splits[0].strip()
-            # extract kwargs
-            kwargs_str = splits[-1].strip()
-            cmd_kwargs = dict([kw.split('=') for kw in kwargs_str.split(',')])
-            cmd_kwargs = {k.strip(): Symbol(v.strip()).ast() for k, v in cmd_kwargs.items()}
+    query, kwargs, previous_kwargs = _extract_query_kwargs(query, previous_kwargs, kwargs)
 
-        previous_kwargs = cmd_kwargs
-        # unpack cmd_kwargs to kwargs
-        kwargs = {**kwargs, **cmd_kwargs}
-
-    # Handle stateful conversations:
-    # 1. If query starts with !" (new conversation), create new conversation state
-    # 2. If query starts with ." (follow-up), either:
-    #    - Load existing conversation state if it exists
-    #    - Create new conversation state if none exists
-    if (query.startswith('!"') or query.startswith("!'") or query.startswith('!`')):
-        symai_path.parent.mkdir(parents=True, exist_ok=True)
-        conversation = conversation_cls(auto_print=False)
-        conversation_cls.save_conversation_state(conversation, symai_path)
-        # Special case: if query starts with !" and has a prefix, run the prefix command and store the output
-        if plugin is not None:
-            with Loader(desc="Inference ...", end=""):
-                cmd = query[1:].strip('\'"')
-                cmd = f"symrun {plugin} '{cmd}' --disable-pbar"
-                cmd_out = run_shell_command(cmd, auto_query_on_error=True)
-                conversation.store(cmd_out)
-                conversation_cls.save_conversation_state(conversation, symai_path)
-                state.stateful_conversation = conversation
-                state.previous_kwargs = previous_kwargs
-                return cmd_out
-    elif query.startswith('."') or query.startswith(".'") or query.startswith('.`'):
-        try:
-            conversation = conversation.load_conversation_state(symai_path)
-            state.stateful_conversation = conversation
-        except Exception:
-            with ConsoleStyle('error') as console:
-                console.print('No conversation state found. Please start a new conversation.')
-            return None
-        if plugin is not None:
-            with Loader(desc="Inference ...", end=""):
-                query = query[1:].strip('\'"')
-                answer = conversation(query).value
-                cmd = f"symrun {plugin} '{answer}' --disable-pbar"
-                cmd_out = run_shell_command(cmd, auto_query_on_error=True)
-                conversation.store(cmd_out)
-                conversation_cls.save_conversation_state(conversation, symai_path)
-                state.stateful_conversation = conversation
-                state.previous_kwargs = previous_kwargs
-                return cmd_out
-    cmd = None
-    if '|' in query:
-        cmds = query.split('|')
-        if len(cmds) > 2:
-            msg = (
-                'Cannot disambiguate commands that have more than 1 pipes. Please provide correct order of commands. '
-                'Supported are: query | file [file ...] (e.g. "what do these files have in common?" | file1 [file2 ...]) '
-                'and query | cmd (e.g. "what flags can I use with rg?" | rg --help)'
-            )
-            UserMessage(msg)
-            raise ValueError(msg)
-        query = cmds[0]
-        payload, order = disambiguate(cmds[1].strip())
-        # check if we're in a stateful conversation
-        is_stateful = query.startswith(('.', '!')) and any(query.startswith(f"{prefix}{quote}")
-                     for prefix in ['.', '!']
-                     for quote in ['"', "'", '`'])
-
-        if is_stateful:
-            func = conversation
-        else:
-            func = (
-                state.function_type(payload)
-                if order == 1
-                else state.conversation_type(file_link=payload, auto_print=False)
-            )
-
-        if is_stateful:
-            if order == 1:
-                func.store(payload)
-            elif order == 2:
-                for file in payload:
-                    func.store_file(file)
-    else:
-        if  query.startswith('."') or query.startswith(".'") or query.startswith('.`') or\
-            query.startswith('!"') or query.startswith("!'") or query.startswith('!`'):
-            func = conversation
-        else:
-            func = state.function_type(SHELL_CONTEXT)
-
+    if _is_new_conversation_query(query):
+        conversation, previous_kwargs, result, should_return = _process_new_conversation(
+            query, conversation_cls, symai_path, plugin, previous_kwargs, state
+        )
+        if should_return:
+            return result
+    elif _is_followup_conversation_query(query):
+        conversation, previous_kwargs, result, should_return = _process_followup_conversation(
+            query, conversation, conversation_cls, symai_path, plugin, previous_kwargs, state
+        )
+        if should_return:
+            return result
+    func, query = _select_function_for_query(query, conversation, state)
     with Loader(desc="Inference ...", end=""):
+        query_to_execute = query
         if res is not None:
-            query = f"[Context]\n{res}\n\n[Query]\n{query}"
-        msg = func(query, *args, **kwargs)
+            query_to_execute = f"[Context]\n{res}\n\n[Query]\n{query}"
+        msg = func(query_to_execute, *args, **kwargs)
+        if res is not None:
+            query = query_to_execute
 
-    if conversation is not None and (
-        query.startswith('."') or query.startswith(".'") or query.startswith('.`') or
-        query.startswith('!"') or query.startswith("!'") or query.startswith('!`')
-    ):
+    if _should_save_conversation(conversation, query):
         conversation_cls.save_conversation_state(conversation, symai_path)
 
     state.stateful_conversation = conversation
@@ -529,7 +564,7 @@ def retrieval_augmented_indexing(query: str, index_name = None, *_args, **_kwarg
 
         index_name = path.split(sep)[-1] if index_name is None else index_name
         index_name = Indexer.replace_special_chars(index_name)
-        UserMessage(f'Indexing {index_name} ...')
+        UserMessage(f'Indexing {index_name} ...', style="extensity")
 
         # creates index if not exists
         DocumentRetriever(index_name=index_name, file=file, overwrite=overwrite)
@@ -586,7 +621,7 @@ def handle_error(cmd, res, message, auto_query_on_error):
     stderr = res.stderr
     if stderr and auto_query_on_error:
         rsp = stderr.decode('utf-8')
-        UserMessage(rsp)
+        UserMessage(rsp, style="alert")
         msg = msg | f"\n{rsp}"
         if 'usage:' in rsp:
             try:
@@ -689,126 +724,207 @@ def map_nt_cmd(cmd: str, map_nt_cmd_enabled: bool = True):
             original_cmd = cmd
             cmd = re.sub(linux_cmd, windows_cmd, cmd)
             if cmd != original_cmd:
-                UserMessage(f'symsh >> command "{original_cmd}" mapped to "{cmd}"\n')
+                UserMessage(f'symsh >> command "{original_cmd}" mapped to "{cmd}"\n', style="extensity")
 
     return cmd
 
-def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
-    state = _shell_state
 
-    # map commands to windows if needed
-    cmd = map_nt_cmd(cmd)
+def _handle_plugin_commands(cmd: str):
     if cmd.startswith('set-plugin') or cmd == 'unset-plugin' or cmd == 'get-plugin':
         return set_default_module(cmd)
+    return None
 
-    sep = os.path.sep
-    # check for '&&' to also preserve pipes '|' in normal shell commands
-    if '" && ' in cmd or "' && " in cmd or '` && ' in cmd:
-        if is_llm_request(cmd):
-            # Process each command (the ones involving the LLM) separately
-            cmds = cmd.split(' && ')
-            if not is_llm_request(cmds[0]):
-                return ValueError('The first command must be a LLM request.')
-            # Process the first command as an LLM request
-            res = query_language_model(cmds[0], res=res)
-            rest = ' && '.join(cmds[1:])
-            if '$1' in cmds[1]:
-                res  = str(res).replace('\n', r'\\n')
-                rest = rest.replace('$1', f'"{res}"')
-                res  = None
-            cmd = rest
-        # If it's a normal shell command with pipes or &&, pass it whole
+
+def _handle_chained_llm_commands(cmd: str, res, auto_query_on_error: bool):
+    if '" && ' not in cmd and "' && " not in cmd and '` && ' not in cmd:
+        return None
+    if not is_llm_request(cmd):
         return run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
+    cmds = cmd.split(' && ')
+    if not is_llm_request(cmds[0]):
+        return ValueError('The first command must be a LLM request.')
+    first_res = query_language_model(cmds[0], res=res)
+    rest = ' && '.join(cmds[1:])
+    if len(cmds) > 1 and '$1' in cmds[1]:
+        first_res_str = str(first_res).replace('\n', r'\\n')
+        rest = rest.replace('$1', f'"{first_res_str}"')
+        first_res = None
+    return run_shell_command(rest, prev=first_res, auto_query_on_error=auto_query_on_error)
 
+
+def _handle_llm_or_search(cmd: str, res):
     if cmd.startswith('?"') or cmd.startswith("?'") or cmd.startswith('?`'):
-        cmd = cmd[1:]
-        return search_engine(cmd, res=res)
-
-    if  is_llm_request(cmd) or '...' in cmd:
+        query = cmd[1:]
+        return search_engine(query, res=res)
+    if is_llm_request(cmd) or '...' in cmd:
         return query_language_model(cmd, res=res)
+    return None
 
+
+def _handle_retrieval_commands(cmd: str):
     if cmd.startswith('*'):
-        cmd = cmd[1:]
-        return retrieval_augmented_indexing(cmd)
+        return retrieval_augmented_indexing(cmd[1:])
+    return None
 
+
+def _handle_man_command(cmd: str):
     if cmd.startswith('man symsh'):
-        # read symsh.md file and print it
-        # get symsh path
         pkg_path = Path(__file__).resolve().parent
         symsh_path = pkg_path / 'symsh.md'
-        with symsh_path.open(encoding="utf8") as f:
-            return f.read()
+        with symsh_path.open(encoding="utf8") as file_ptr:
+            return file_ptr.read()
+    return None
 
-    elif cmd.startswith('conda activate'):
-        # check conda execution prefix and verify if environment exists
+
+def _handle_conda_commands(cmd: str, state, res, auto_query_on_error: bool):
+    if cmd.startswith('conda activate'):
         env = Path(sys.exec_prefix)
         env_base = env.parent
         req_env = cmd.split(' ')[2]
-        # check if environment exists
         env_path = env_base / req_env
         if not env_path.exists():
             return f'Environment {req_env} does not exist!'
         state.previous_prefix = state.exec_prefix
         state.exec_prefix = str(env_path)
         return state.exec_prefix
-
-    elif cmd.startswith('conda deactivate'):
+    if cmd.startswith('conda deactivate'):
         prev_prefix = state.previous_prefix
         if prev_prefix is not None:
             state.exec_prefix = prev_prefix
         if prev_prefix == 'default':
             state.previous_prefix = None
         return get_exec_prefix()
-
-    elif cmd.startswith('conda'):
+    if cmd.startswith('conda'):
         env = Path(get_exec_prefix())
         try:
             env_base = env.parents[1]
         except IndexError:
             env_base = env.parent
-        cmd = cmd.replace('conda', str(env_base / "condabin" / "conda"))
-        return run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
+        cmd_rewritten = cmd.replace('conda', str(env_base / "condabin" / "conda"))
+        return run_shell_command(cmd_rewritten, prev=res, auto_query_on_error=auto_query_on_error)
+    return None
 
-    elif cmd.startswith('cd'):
+
+def _handle_directory_navigation(cmd: str):
+    sep = os.path.sep
+    if cmd.startswith('cd'):
         try:
-            # replace ~ with home directory
-            cmd = FileReader.expand_user_path(cmd)
-            # Change directory
-            path = ' '.join(cmd.split(' ')[1:])
+            cmd_expanded = FileReader.expand_user_path(cmd)
+            path = ' '.join(cmd_expanded.split(' ')[1:])
             if path.endswith(sep):
                 path = path[:-1]
             return os.chdir(path)
-        except FileNotFoundError as e:
-            return e
-        except PermissionError as e:
-            return e
-
-    elif Path(cmd).is_dir():
+        except FileNotFoundError as err:
+            return err
+        except PermissionError as err:
+            return err
+    cmd_path = FileReader.expand_user_path(cmd)
+    if Path(cmd).is_dir():
         try:
-            # replace ~ with home directory
-            cmd = FileReader.expand_user_path(cmd)
-            # Change directory
-            os.chdir(cmd)
-        except FileNotFoundError as e:
-            return e
-        except PermissionError as e:
-            return e
+            os.chdir(cmd_path)
+        except FileNotFoundError as err:
+            return err
+        except PermissionError as err:
+            return err
+    return None
 
-    elif cmd.startswith('ll'):
 
-        if os.name == 'nt':
-            cmd = cmd.replace('ll', 'dir')
-            return run_shell_command(cmd, prev=res)
-        cmd = cmd.replace('ll', 'ls -la')
-        return run_shell_command(cmd, prev=res)
+def _handle_ll_alias(cmd: str, res, auto_query_on_error: bool):
+    if not cmd.startswith('ll'):
+        return None
+    if os.name == 'nt':
+        rewritten = cmd.replace('ll', 'dir')
+        return run_shell_command(rewritten, prev=res)
+    rewritten = cmd.replace('ll', 'ls -la')
+    return run_shell_command(rewritten, prev=res)
 
-    else:
-        return run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
+
+def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
+    state = _shell_state
+
+    # map commands to windows if needed
+    cmd = map_nt_cmd(cmd)
+    plugin_result = _handle_plugin_commands(cmd)
+    if plugin_result is not None:
+        return plugin_result
+
+    chained_result = _handle_chained_llm_commands(cmd, res, auto_query_on_error)
+    if chained_result is not None:
+        return chained_result
+
+    llm_or_search = _handle_llm_or_search(cmd, res)
+    if llm_or_search is not None:
+        return llm_or_search
+
+    retrieval_result = _handle_retrieval_commands(cmd)
+    if retrieval_result is not None:
+        return retrieval_result
+
+    man_result = _handle_man_command(cmd)
+    if man_result is not None:
+        return man_result
+
+    conda_result = _handle_conda_commands(cmd, state, res, auto_query_on_error)
+    if conda_result is not None:
+        return conda_result
+
+    directory_result = _handle_directory_navigation(cmd)
+    if directory_result is not None:
+        return directory_result
+
+    ll_result = _handle_ll_alias(cmd, res, auto_query_on_error)
+    if ll_result is not None:
+        return ll_result
+
+    return run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
 
 def save_conversation():
     home_path = HOME_PATH
     symai_path = home_path / '.conversation_state'
     Conversation.save_conversation_state(_shell_state.stateful_conversation, symai_path)
+
+
+def _is_exit_command(cmd: str) -> bool:
+    return cmd in ['quit', 'exit', 'q']
+
+
+def _format_working_directory():
+    sep = os.path.sep
+    cur_working_dir = Path.cwd()
+    cur_working_dir_str = str(cur_working_dir)
+    if cur_working_dir_str.startswith(sep):
+        cur_working_dir_str = FileReader.expand_user_path(cur_working_dir_str)
+    paths = cur_working_dir_str.split(sep)
+    prev_paths = sep.join(paths[:-1])
+    last_path = paths[-1]
+    if len(paths) > 1:
+        return f'{prev_paths}{sep}<b>{last_path}</b>'
+    return f'<b>{last_path}</b>'
+
+
+def _build_prompt(git_branch, conda_env, cur_working_dir_str):
+    if git_branch:
+        return HTML(
+            f"<ansiblue>{cur_working_dir_str}</ansiblue><ansiwhite> on git:[</ansiwhite>"
+            f"<ansigreen>{git_branch}</ansigreen><ansiwhite>]</ansiwhite> <ansiwhite>conda:[</ansiwhite>"
+            f"<ansimagenta>{conda_env}</ansimagenta><ansiwhite>]</ansiwhite> <ansicyan><b>symsh:</b> ></ansicyan> "
+        )
+    return HTML(
+        f"<ansiblue>{cur_working_dir_str}</ansiblue> <ansiwhite>conda:[</ansiwhite>"
+        f"<ansimagenta>{conda_env}</ansimagenta><ansiwhite>]</ansiwhite> <ansicyan><b>symsh:</b> ></ansicyan> "
+    )
+
+
+def _handle_exit(state):
+    if state.stateful_conversation is not None:
+        save_conversation()
+    if not state.use_styles:
+        UserMessage('Goodbye!', style="extensity")
+    else:
+        func = _shell_state.function_type('Give short goodbye')
+        UserMessage(func('bye'), style="extensity")
+    os._exit(0)
+
 
 # Function to listen for user input and execute commands
 def listen(session: PromptSession, word_comp: WordCompleter, auto_query_on_error: bool=False, verbose: bool=False):
@@ -818,59 +934,28 @@ def listen(session: PromptSession, word_comp: WordCompleter, auto_query_on_error
             try:
                 git_branch = get_git_branch()
                 conda_env = get_conda_env()
-                # get directory from the shell
-                sep = os.path.sep
-                cur_working_dir = Path.cwd()
-                cur_working_dir_str = str(cur_working_dir)
-                if cur_working_dir_str.startswith(sep):
-                    cur_working_dir_str = FileReader.expand_user_path(cur_working_dir_str)
-                paths = cur_working_dir_str.split(sep)
-                prev_paths = sep.join(paths[:-1])
-                last_path = paths[-1]
-
-                # Format the prompt
-                if len(paths) > 1:
-                    cur_working_dir_str = f'{prev_paths}{sep}<b>{last_path}</b>'
-                else:
-                    cur_working_dir_str = f'<b>{last_path}</b>'
-
-                if git_branch:
-                    prompt = HTML(f"<ansiblue>{cur_working_dir_str}</ansiblue><ansiwhite> on git:[</ansiwhite><ansigreen>{git_branch}</ansigreen><ansiwhite>]</ansiwhite> <ansiwhite>conda:[</ansiwhite><ansimagenta>{conda_env}</ansimagenta><ansiwhite>]</ansiwhite> <ansicyan><b>symsh:</b> ></ansicyan> ")
-                else:
-                    prompt = HTML(f"<ansiblue>{cur_working_dir_str}</ansiblue> <ansiwhite>conda:[</ansiwhite><ansimagenta>{conda_env}</ansimagenta><ansiwhite>]</ansiwhite> <ansicyan><b>symsh:</b> ></ansicyan> ")
-
-                # Read user input
+                cur_working_dir_str = _format_working_directory()
+                prompt = _build_prompt(git_branch, conda_env, cur_working_dir_str)
                 cmd = session.prompt(prompt)
                 if cmd.strip() == '':
                     continue
 
-                if cmd == 'quit' or cmd == 'exit' or cmd == 'q':
-                    if state.stateful_conversation is not None:
-                        save_conversation()
-                    if not state.use_styles:
-                        UserMessage('Goodbye!')
-                    else:
-                        func = _shell_state.function_type('Give short goodbye')
-                        UserMessage(func('bye'))
-                    os._exit(0)
-                else:
-                    msg = process_command(cmd, auto_query_on_error=auto_query_on_error)
-                    if msg is not None:
-                        with ConsoleStyle('code') as console:
-                            console.print(msg)
+                if _is_exit_command(cmd):
+                    _handle_exit(state)
+                msg = process_command(cmd, auto_query_on_error=auto_query_on_error)
+                if msg is not None:
+                    with ConsoleStyle('code') as console:
+                        console.print(msg)
 
                 # Append the command to the word completer list
                 word_comp.words.append(cmd)
 
             except KeyboardInterrupt:
-                UserMessage('')
-                pass
-
+                UserMessage('', style="alert")
             except Exception as e:
-                UserMessage(str(e))
+                UserMessage(str(e), style="alert")
                 if verbose:
                     traceback.print_exc()
-                pass
 
 def create_session(history, merged_completer):
     colors = SYMSH_CONFIG['colors']
@@ -901,7 +986,7 @@ def create_completer():
 def run(auto_query_on_error=False, conversation_style=None, verbose=False):
     state = _shell_state
     if conversation_style is not None and conversation_style != '':
-        UserMessage(f'Loading style: {conversation_style}')
+        UserMessage(f'Loading style: {conversation_style}', style="extensity")
         styles_ = Import.load_module_class(conversation_style)
         (
             state.function_type,
