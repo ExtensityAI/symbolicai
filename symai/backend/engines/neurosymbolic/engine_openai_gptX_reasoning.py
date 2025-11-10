@@ -151,16 +151,79 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
         pattern = r'<<vision:(.*?):>>'
         return re.sub(pattern, '', text)
 
-    def truncate(self, prompts: list[dict], truncation_percentage: float | None, truncation_type: str) -> list[dict]:
-        """Main truncation method"""
-        def _slice_tokens(tokens, new_len, truncation_type):
-            """Slice tokens based on truncation type"""
-            new_len = max(100, new_len)  # Ensure minimum token length
-            return tokens[-new_len:] if truncation_type == 'head' else tokens[:new_len] # else 'tail'
+    def _slice_tokens(self, tokens, new_len, truncation_type):
+        """Slice tokens based on truncation type."""
+        new_len = max(100, new_len)  # Ensure minimum token length
+        return tokens[-new_len:] if truncation_type == 'head' else tokens[:new_len]  # else 'tail'
 
+    def _validate_truncation_prompts(self, prompts: list[dict]) -> bool:
+        """Validate prompt structure before truncation."""
         if len(prompts) != 2 and all(prompt['role'] in ['developer', 'user'] for prompt in prompts):
             # Only support developer and user prompts
-            UserMessage(f"Token truncation currently supports only two messages, from 'user' and 'developer' (got {len(prompts)}). Returning original prompts.")
+            UserMessage(
+                f"Token truncation currently supports only two messages, from 'user' and 'developer' (got {len(prompts)}). Returning original prompts."
+            )
+            return False
+        return True
+
+    def _collect_user_tokens(
+        self,
+        user_prompt: dict,
+    ) -> tuple[list[int], bool]:
+        """Collect user tokens and detect unsupported content."""
+        user_tokens: list[int] = []
+        user_content = user_prompt['content']
+        if isinstance(user_content, str):
+            user_tokens.extend(Symbol(user_content).tokens)
+            return user_tokens, False
+        if isinstance(user_content, list):
+            for content_item in user_content:
+                if isinstance(content_item, dict):
+                    if content_item.get('type') == 'text':
+                        user_tokens.extend(Symbol(content_item['text']).tokens)
+                    else:
+                        return user_tokens, True
+                else:
+                    UserMessage(
+                        f"Invalid content type: {type(content_item)}. Format input according to the documentation. See https://platform.openai.com/docs/api-reference/chat/create?lang=python",
+                        raise_with=ValueError,
+                    )
+            return user_tokens, False
+        return UserMessage(
+            f"Unknown content type: {type(user_prompt['content'])}. Format input according to the documentation. See https://platform.openai.com/docs/api-reference/chat/create?lang=python",
+            raise_with=ValueError,
+        )
+
+    def _truncate_single_prompt_exceed(
+        self,
+        system_tokens,
+        user_tokens,
+        system_token_count,
+        user_token_count,
+        max_prompt_tokens,
+        truncation_type,
+    ):
+        """Handle truncation when only one prompt exceeds the limit."""
+        half_limit = max_prompt_tokens / 2
+        if user_token_count > half_limit and system_token_count <= half_limit:
+            new_user_len = max_prompt_tokens - system_token_count
+            new_user_tokens = self._slice_tokens(user_tokens, new_user_len, truncation_type)
+            return [
+                {'role': 'developer', 'content': self.tokenizer.decode(system_tokens)},
+                {'role': 'user', 'content': [{'type': 'text', 'text': self.tokenizer.decode(new_user_tokens)}]},
+            ]
+        if system_token_count > half_limit and user_token_count <= half_limit:
+            new_system_len = max_prompt_tokens - user_token_count
+            new_system_tokens = self._slice_tokens(system_tokens, new_system_len, truncation_type)
+            return [
+                {'role': 'developer', 'content': self.tokenizer.decode(new_system_tokens)},
+                {'role': 'user', 'content': [{'type': 'text', 'text': self.tokenizer.decode(user_tokens)}]},
+            ]
+        return None
+
+    def truncate(self, prompts: list[dict], truncation_percentage: float | None, truncation_type: str) -> list[dict]:
+        """Main truncation method"""
+        if not self._validate_truncation_prompts(prompts):
             return prompts
 
         if truncation_percentage is None:
@@ -174,23 +237,9 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
         system_tokens = Symbol(system_prompt['content']).tokens
         user_tokens = []
 
-        if isinstance(user_prompt['content'], str):
-            # Default input format
-            user_tokens.extend(Symbol(user_prompt['content']).tokens)
-        elif isinstance(user_prompt['content'], list):
-            for content_item in user_prompt['content']:
-                # Image input format
-                if isinstance(content_item, dict):
-                    if content_item.get('type') == 'text':
-                        user_tokens.extend(Symbol(content_item['text']).tokens)
-                    else:
-                        # Image content; return original since not supported
-                        return prompts
-                else:
-                    UserMessage(f"Invalid content type: {type(content_item)}. Format input according to the documentation. See https://platform.openai.com/docs/api-reference/chat/create?lang=python", raise_with=ValueError)
-        else:
-            # Unknown input format
-            UserMessage(f"Unknown content type: {type(user_prompt['content'])}. Format input according to the documentation. See https://platform.openai.com/docs/api-reference/chat/create?lang=python", raise_with=ValueError)
+        user_tokens, should_return_original = self._collect_user_tokens(user_prompt)
+        if should_return_original:
+            return prompts
 
         system_token_count = len(system_tokens)
         user_token_count = len(user_tokens)
@@ -215,23 +264,16 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
             f"Choose 'truncation_type' as 'head' to keep the end of prompts or 'tail' to keep the beginning."
         )
 
-        # Case 1: Only user prompt exceeds
-        if user_token_count > max_prompt_tokens/2 and system_token_count <= max_prompt_tokens/2:
-            new_user_len = max_prompt_tokens - system_token_count
-            new_user_tokens = _slice_tokens(user_tokens, new_user_len, truncation_type)
-            return [
-                {'role': 'developer', 'content': self.tokenizer.decode(system_tokens)},
-                {'role': 'user', 'content': [{'type': 'text', 'text': self.tokenizer.decode(new_user_tokens)}]}
-            ]
-
-        # Case 2: Only developer prompt exceeds
-        if system_token_count > max_prompt_tokens/2 and user_token_count <= max_prompt_tokens/2:
-            new_system_len = max_prompt_tokens - user_token_count
-            new_system_tokens = _slice_tokens(system_tokens, new_system_len, truncation_type)
-            return [
-                {'role': 'developer', 'content': self.tokenizer.decode(new_system_tokens)},
-                {'role': 'user', 'content': [{'type': 'text', 'text': self.tokenizer.decode(user_tokens)}]}
-            ]
+        single_prompt_adjustment = self._truncate_single_prompt_exceed(
+            system_tokens,
+            user_tokens,
+            system_token_count,
+            user_token_count,
+            max_prompt_tokens,
+            truncation_type,
+        )
+        if single_prompt_adjustment is not None:
+            return single_prompt_adjustment
 
         # Case 3: Both exceed - reduce proportionally
         system_ratio = system_token_count / total_tokens
@@ -243,8 +285,8 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
         new_system_len += distribute_tokens // 2
         new_user_len += distribute_tokens // 2
 
-        new_system_tokens = _slice_tokens(system_tokens, new_system_len, truncation_type)
-        new_user_tokens = _slice_tokens(user_tokens, new_user_len, truncation_type)
+        new_system_tokens = self._slice_tokens(system_tokens, new_system_len, truncation_type)
+        new_user_tokens = self._slice_tokens(user_tokens, new_user_len, truncation_type)
 
         return [
             {'role': 'developer', 'content': self.tokenizer.decode(new_system_tokens)},
@@ -296,86 +338,164 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
             value = [value]
         return value
 
+    def _non_verbose_section(self, argument) -> str:
+        """Return non-verbose instruction section if needed."""
+        if argument.prop.suppress_verbose_output:
+            return (
+                "<META_INSTRUCTION/>\n"
+                "You do not output anything else, like verbose preambles or post explanation, such as "
+                "\"Sure, let me...\", \"Hope that was helpful...\", \"Yes, I can help you with that...\", etc. "
+                "Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use "
+                "indentation, etc. Never add meta instructions information to your output!\n\n"
+            )
+        return ''
+
+    def _response_format_section(self, argument) -> str:
+        """Return response format instructions if provided."""
+        if not argument.prop.response_format:
+            return ''
+        response_format = argument.prop.response_format
+        assert response_format.get('type') is not None, 'Expected format `{ "type": "json_object" }`! See https://platform.openai.com/docs/api-reference/chat/create#chat-create-response_format'
+        if response_format["type"] == "json_object":
+            return '<RESPONSE_FORMAT/>\nYou are a helpful assistant designed to output JSON.\n\n'
+        return ''
+
+    def _context_sections(self, argument) -> list[str]:
+        """Return static and dynamic context sections."""
+        sections: list[str] = []
+        static_ctxt, dyn_ctxt = argument.prop.instance.global_context
+        if len(static_ctxt) > 0:
+            sections.append(f"<STATIC CONTEXT/>\n{static_ctxt}\n\n")
+        if len(dyn_ctxt) > 0:
+            sections.append(f"<DYNAMIC CONTEXT/>\n{dyn_ctxt}\n\n")
+        return sections
+
+    def _additional_context_section(self, argument) -> str:
+        """Return additional payload context if any."""
+        if argument.prop.payload:
+            return f"<ADDITIONAL CONTEXT/>\n{argument.prop.payload!s}\n\n"
+        return ''
+
+    def _examples_section(self, argument) -> str:
+        """Return examples section if provided."""
+        examples: list[str] = argument.prop.examples
+        if examples and len(examples) > 0:
+            return f"<EXAMPLES/>\n{examples!s}\n\n"
+        return ''
+
+    def _instruction_section(self, argument, image_files: list[str]) -> str:
+        """Return instruction section, removing vision patterns when needed."""
+        prompt = argument.prop.prompt
+        if prompt is None or len(prompt) == 0:
+            return ''
+        value = str(prompt)
+        if len(image_files) > 0:
+            value = self._remove_vision_pattern(value)
+        return f"<INSTRUCTION/>\n{value}\n\n"
+
+    def _build_developer_prompt(self, argument, image_files: list[str]) -> str:
+        """Assemble developer prompt content."""
+        developer = self._non_verbose_section(argument)
+        developer = f'{developer}\n' if developer else ''
+
+        parts = [
+            self._response_format_section(argument),
+            *self._context_sections(argument),
+            self._additional_context_section(argument),
+            self._examples_section(argument),
+            self._instruction_section(argument, image_files),
+        ]
+        developer += ''.join(part for part in parts if part)
+
+        if argument.prop.template_suffix:
+            developer += (
+                f' You will only generate content for the placeholder `{argument.prop.template_suffix!s}` '
+                'following the instructions and the provided context information.\n\n'
+            )
+        return developer
+
+    def _build_user_suffix(self, argument, image_files: list[str]) -> str:
+        """Prepare user content suffix."""
+        suffix: str = str(argument.prop.processed_input)
+        if len(image_files) > 0:
+            suffix = self._remove_vision_pattern(suffix)
+        return suffix
+
+    def _construct_user_prompt(self, user_text: str, image_files: list[str]):
+        """Construct user prompt payload."""
+        if self.model in {
+                'o1',
+                'o3',
+                'o3-mini',
+                'o4-mini',
+                'gpt-5',
+                'gpt-5-mini',
+                'gpt-5-nano',
+            }:
+            images = [{'type': 'image_url', 'image_url': {'url': file}} for file in image_files]
+            user_prompt = {
+                "role": "user",
+                "content": [
+                    *images,
+                    {'type': 'text', 'text': user_text},
+                ],
+            }
+            return user_prompt, images
+        return {"role": "user", "content": user_text}, None
+
+    def _apply_self_prompt(
+        self,
+        argument,
+        user_prompt,
+        developer: str,
+        user_text: str,
+        images,
+        image_files: list[str],
+    ):
+        """Apply self-prompting when requested."""
+        instance = argument.prop.instance
+        if not (instance._kwargs.get('self_prompt', False) or argument.prop.self_prompt):
+            return user_prompt, developer
+
+        self_prompter = SelfPrompt()
+        res = self_prompter({'user': user_text, 'developer': developer})
+        if res is None:
+            UserMessage("Self-prompting failed!", raise_with=ValueError)
+
+        if len(image_files) > 0:
+            image_content = images if images is not None else [
+                {'type': 'image_url', 'image_url': {'url': file}} for file in image_files
+            ]
+            user_prompt = {
+                "role": "user",
+                "content": [
+                    *image_content,
+                    {'type': 'text', 'text': res['user']},
+                ],
+            }
+        else:
+            user_prompt = {"role": "user", "content": res['user']}
+
+        return user_prompt, res['developer']
+
     def prepare(self, argument):
         if argument.prop.raw_input:
             argument.prop.prepared_input = self._prepare_raw_input(argument)
             return
 
-        _non_verbose_output = """<META_INSTRUCTION/>\nYou do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc. Never add meta instructions information to your output!\n\n"""
-        user:   str = ""
-        developer: str = ""
-
-        if argument.prop.suppress_verbose_output:
-            developer += _non_verbose_output
-        developer = f'{developer}\n' if developer and len(developer) > 0 else ''
-
-        if argument.prop.response_format:
-            _rsp_fmt = argument.prop.response_format
-            assert _rsp_fmt.get('type') is not None, 'Expected format `{ "type": "json_object" }`! See https://platform.openai.com/docs/api-reference/chat/create#chat-create-response_format'
-            if _rsp_fmt["type"] == "json_object":
-                # OpenAI docs:
-                    # "Important: when using JSON mode, you must also instruct the model
-                    #  to produce JSON yourself via a developer or user message"
-                developer += '<RESPONSE_FORMAT/>\nYou are a helpful assistant designed to output JSON.\n\n'
-
-        ref = argument.prop.instance
-        static_ctxt, dyn_ctxt = ref.global_context
-        if len(static_ctxt) > 0:
-            developer += f"<STATIC CONTEXT/>\n{static_ctxt}\n\n"
-
-        if len(dyn_ctxt) > 0:
-            developer += f"<DYNAMIC CONTEXT/>\n{dyn_ctxt}\n\n"
-
-        payload = argument.prop.payload
-        if argument.prop.payload:
-            developer += f"<ADDITIONAL CONTEXT/>\n{payload!s}\n\n"
-
-        examples: list[str] = argument.prop.examples
-        if examples and len(examples) > 0:
-            developer += f"<EXAMPLES/>\n{examples!s}\n\n"
-
         image_files = self._handle_image_content(str(argument.prop.processed_input))
 
-        if argument.prop.prompt is not None and len(argument.prop.prompt) > 0:
-            val = str(argument.prop.prompt)
-            if len(image_files) > 0:
-                val = self._remove_vision_pattern(val)
-            developer += f"<INSTRUCTION/>\n{val}\n\n"
-
-        suffix: str = str(argument.prop.processed_input)
-        if len(image_files) > 0:
-            suffix = self._remove_vision_pattern(suffix)
-
-        user += f"{suffix}"
-
-        if argument.prop.template_suffix:
-            developer += f' You will only generate content for the placeholder `{argument.prop.template_suffix!s}` following the instructions and the provided context information.\n\n'
-
-        if self.model == 'o1':
-            images = [{ 'type': 'image_url', "image_url": { "url": file }} for file in image_files]
-            user_prompt = { "role": "user", "content": [
-                *images,
-                { 'type': 'text', 'text': user }
-            ]}
-        else:
-            user_prompt = { "role": "user", "content": user }
-
-        # First check if the `Symbol` instance has the flag set, otherwise check if it was passed as an argument to a method
-        if argument.prop.instance._kwargs.get('self_prompt', False) or argument.prop.self_prompt:
-            self_prompter = SelfPrompt()
-            res = self_prompter({'user': user, 'developer': developer})
-            if res is None:
-                UserMessage("Self-prompting failed!", raise_with=ValueError)
-
-            if len(image_files) > 0:
-                user_prompt = { "role": "user", "content": [
-                    *images,
-                    { 'type': 'text', 'text': res['user'] }
-                ]}
-            else:
-                user_prompt = { "role": "user", "content": res['user'] }
-
-            developer = res['developer']
+        developer = self._build_developer_prompt(argument, image_files)
+        user_text = self._build_user_suffix(argument, image_files)
+        user_prompt, images = self._construct_user_prompt(user_text, image_files)
+        user_prompt, developer = self._apply_self_prompt(
+            argument,
+            user_prompt,
+            developer,
+            user_text,
+            images,
+            image_files,
+        )
 
         argument.prop.prepared_input = [
             { "role": "developer", "content": developer },
