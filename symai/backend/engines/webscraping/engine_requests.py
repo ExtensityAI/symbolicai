@@ -10,7 +10,7 @@ service disruption.
 import io
 import logging
 import re
-from typing import ClassVar
+from typing import Any, ClassVar
 from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
 
 import requests
@@ -158,6 +158,56 @@ class RequestsEngine(Engine):
             payload["sameSite"] = same_site
         return payload
 
+    def _collect_playwright_cookies(self, hostname: str) -> list[dict[str, Any]]:
+        if not hostname:
+            return []
+        cookie_payload = []
+        for cookie in self.session.cookies:
+            payload = self._playwright_cookie_payload(cookie, hostname)
+            if payload:
+                cookie_payload.append(payload)
+        return cookie_payload
+
+    @staticmethod
+    def _add_cookies_to_context(context, cookie_payload: list[dict[str, Any]]) -> None:
+        if cookie_payload:
+            context.add_cookies(cookie_payload)
+
+    @staticmethod
+    def _navigate_playwright_page(page, url: str, wait_selector: str | None, wait_until: str, timeout_ms: int, timeout_error):
+        try:
+            response = page.goto(url, wait_until=wait_until, timeout=timeout_ms)
+            if wait_selector:
+                page.wait_for_selector(wait_selector, timeout=timeout_ms)
+            return response, None
+        except timeout_error as exc:
+            return None, exc
+
+    @staticmethod
+    def _safe_page_content(page) -> str:
+        try:
+            return page.content()
+        except Exception:
+            return ""
+
+    def _sync_cookies_from_context(self, context) -> None:
+        for cookie in context.cookies():
+            self.session.cookies.set(
+                cookie["name"],
+                cookie["value"],
+                domain=cookie.get("domain"),
+                path=cookie.get("path", "/"),
+            )
+
+    @staticmethod
+    def _rendered_response_metadata(page, response):
+        final_url = page.url
+        status = response.status if response is not None else 200
+        headers = CaseInsensitiveDict(response.headers if response is not None else {})
+        if "content-type" not in headers:
+            headers["Content-Type"] = "text/html; charset=utf-8"
+        return final_url, status, headers
+
     def _follow_meta_refresh(self, resp, timeout=15):
         """
         Some old forums use <meta http-equiv="refresh" content="0;url=...">
@@ -204,12 +254,7 @@ class RequestsEngine(Engine):
 
         parsed = urlparse(url)
         hostname = parsed.hostname or ""
-        cookie_payload = []
-        if hostname:
-            for cookie in self.session.cookies:
-                payload = self._playwright_cookie_payload(cookie, hostname)
-                if payload:
-                    cookie_payload.append(payload)
+        cookie_payload = self._collect_playwright_cookies(hostname)
 
         content = ""
         final_url = url
@@ -223,40 +268,22 @@ class RequestsEngine(Engine):
                 java_script_enabled=True,
                 ignore_https_errors=not self.verify_ssl,
             )
-            if cookie_payload:
-                context.add_cookies(cookie_payload)
-            page = context.new_page()
-
-            navigation_error = None
-            response = None
             try:
-                try:
-                    response = page.goto(url, wait_until=wait_until, timeout=timeout_ms)
-                    if wait_selector:
-                        page.wait_for_selector(wait_selector, timeout=timeout_ms)
-                except PlaywrightTimeoutError as exc:
-                    navigation_error = exc
+                self._add_cookies_to_context(context, cookie_payload)
+                page = context.new_page()
 
-                try:
-                    content = page.content()
-                except Exception:
-                    content = ""
+                response, navigation_error = self._navigate_playwright_page(
+                    page,
+                    url,
+                    wait_selector,
+                    wait_until,
+                    timeout_ms,
+                    PlaywrightTimeoutError,
+                )
+                content = self._safe_page_content(page)
+                self._sync_cookies_from_context(context)
 
-                # Always persist Playwright cookies back into the requests session.
-                for cookie in context.cookies():
-                    self.session.cookies.set(
-                        cookie["name"],
-                        cookie["value"],
-                        domain=cookie.get("domain"),
-                        path=cookie.get("path", "/"),
-                    )
-
-                final_url = page.url
-                status = response.status if response is not None else 200
-                headers = CaseInsensitiveDict(response.headers if response is not None else {})
-                if "content-type" not in headers:
-                    headers["Content-Type"] = "text/html; charset=utf-8"
-
+                final_url, status, headers = self._rendered_response_metadata(page, response)
                 if navigation_error and not content:
                     msg = f"Playwright timed out while rendering {url}"
                     CustomUserWarning(msg)
