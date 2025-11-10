@@ -27,7 +27,8 @@ exclude = [
     "node_modules",
     "site-packages",
     "venv",
-    "scripts"
+    "scripts",
+    "tests"
 ]
 
 line-length = 100
@@ -56,6 +57,9 @@ unfixable = []
 
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[lint.mccabe]
+max-complexity = 10
 
 [format]
 quote-style = "double"

@@ -3,7 +3,7 @@ import logging
 import time
 from collections import defaultdict
 from collections.abc import Callable
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import numpy as np
 from beartype import beartype
@@ -274,7 +274,7 @@ Important guidelines:
 </guidelines>
 """
 
-    def forward(self, prompt: str, f_semantic_conditions: list[Callable] | None = None, *args, **kwargs):
+    def _ensure_output_model(self):
         if self.output_data_model is None:
             msg = (
                 "While the input data model is optional, the output data model must be provided. "
@@ -282,102 +282,152 @@ Important guidelines:
             )
             CustomUserWarning(msg)
             raise ValueError(msg)
+
+    def _display_verbose_panels(self, prompt: str):
+        if not self.verbose:
+            return
+        for label, body in [
+            ("Prompt", prompt),
+            ("Input data model", self.input_data_model.simplify_json_schema() if self.input_data_model else 'N/A'),
+            ("Output data model", self.output_data_model.simplify_json_schema()),
+        ]:
+            self.display_panel(body, title=label)
+
+    def _check_semantic_conditions(
+        self,
+        result,
+        f_semantic_conditions: list[Callable] | None,
+    ) -> str | None:
+        if f_semantic_conditions is None:
+            return None
+        try:
+            assert all(
+                f(result if not getattr(self.output_data_model, '_is_dynamic_model', False) else result.value)
+                for f in f_semantic_conditions
+            )
+        except Exception as err:
+            return f"Semantic validation failed with:\n{err!s}"
+        return None
+
+    def _format_validation_error(self, error: Exception) -> str:
+        if isinstance(error, ValidationError):
+            return self.simplify_validation_errors(error)
+        return str(error)
+
+    def _handle_failed_validation_attempt(
+        self,
+        attempt_index: int,
+        prompt: str,
+        json_str: str,
+        errors: list[str],
+        error: Exception,
+        remedy_seeds: list[Any],
+        kwargs: dict,
+    ) -> str:
+        logger.info(f"Validation attempt {attempt_index + 1} failed, pausing before retry…")
+        self._pause(attempt_index)
+        error_str = self._format_validation_error(error)
+        errors.append(error_str)
+
+        logger.error("Validation errors identified!")
+        if self.verbose:
+            errors_report = "\n".join(errors) if self.accumulate_errors else error_str
+            title = f"Validation Errors ({'accumulated errors' if self.accumulate_errors else 'last error'})"
+            self.display_panel(errors_report, title=title, border_style="red")
+
+        logger.info("Updating remedy function context…")
+        context = self.remedy_prompt(
+            prompt=prompt,
+            output=json_str,
+            errors="\n".join(errors) if self.accumulate_errors else error_str,
+        )
+        self.remedy_function.clear()
+        self.remedy_function.adapt(context)
+        if self.verbose:
+            self.display_panel(self.remedy_function.dynamic_context, title="New Context")
+
+        json_str = self.remedy_function(seed=remedy_seeds[attempt_index], **kwargs).value
+        logger.info("Applied remedy function with updated context!")
+        return json_str
+
+    def _run_validation_attempts(
+        self,
+        prompt: str,
+        f_semantic_conditions: list[Callable] | None,
+        validation_context: dict,
+        remedy_seeds: list[Any],
+        json_str: str,
+        kwargs: dict,
+    ) -> tuple[Any | None, str, list[str]]:
+        errors: list[str] = []
+        result = None
+        total_attempts = self.retry_params["tries"] + 1
+        for attempt in range(total_attempts):
+            if attempt != self.retry_params["tries"]:
+                logger.info(f"Attempt {attempt + 1}/{self.retry_params['tries']}: Attempting validation…")
+            try:
+                result = self.output_data_model.model_validate_json(
+                    json_str,
+                    strict=False,
+                    context=validation_context,
+                )
+                semantic_error = self._check_semantic_conditions(result, f_semantic_conditions)
+                if semantic_error is not None:
+                    if attempt == total_attempts - 1:
+                        result = None
+                        errors.append(semantic_error)
+                        break
+                    raise AssertionError(semantic_error)
+                break
+            except Exception as error:
+                json_str = self._handle_failed_validation_attempt(
+                    attempt,
+                    prompt,
+                    json_str,
+                    errors,
+                    error,
+                    remedy_seeds,
+                    kwargs,
+                )
+        return result, json_str, errors
+
+    def _handle_validation_failure(self, prompt: str, json_str: str, errors: list[str]):
+        logger.error("All validation attempts failed!")
+        if self.retry_params['graceful']:
+            return
+        raise TypeValidationError(
+            prompt=prompt,
+            result=json_str,
+            violations=errors,
+        )
+
+    def forward(self, prompt: str, f_semantic_conditions: list[Callable] | None = None, *args, **kwargs):
+        self._ensure_output_model()
         validation_context = kwargs.pop('validation_context', {})
-        # Force JSON mode
         kwargs["response_format"] = {"type": "json_object"}
         logger.info("Initializing validation…")
-        if self.verbose:
-            for label, body in [
-                ("Prompt", prompt),
-                ("Input data model", self.input_data_model.simplify_json_schema() if self.input_data_model else 'N/A'),
-                ("Output data model", self.output_data_model.simplify_json_schema()),
-            ]:
-                self.display_panel(body, title=label)
+        self._display_verbose_panels(prompt)
 
-        # Zero shot the task
         context = self.zero_shot_prompt(prompt=prompt)
         json_str = super().forward(context, *args, **kwargs).value
 
         remedy_seeds = self.prepare_seeds(self.retry_params["tries"] + 1, **kwargs)
         logger.info(f"Prepared {len(remedy_seeds)} remedy seeds for validation attempts…")
 
-        result = None
-        errors = []
-        for i in range(self.retry_params["tries"] + 1):
-            if i != self.retry_params["tries"]:
-                logger.info(f"Attempt {i+1}/{self.retry_params['tries']}: Attempting validation…")
-            try:
-                #@NOTE: We use strict=False (default) to allow Pydantic's type coercion.
-                # This handles common LLM output issues like:
-                # - String keys "123" -> integer keys 123 for dict[int, ...] types
-                # - String numbers "42" -> int 42
-                # - Float 1.0 -> int 1
-                # These coercions are safe and helpful when dealing with JSON from LLMs,
-                # while still catching actual type errors (e.g., "not_a_number" -> int fails).
-                result = self.output_data_model.model_validate_json(json_str, strict=False, context=validation_context)
-                if f_semantic_conditions is not None:
-                    try:
-                        assert all(
-                            f(result if not getattr(self.output_data_model, '_is_dynamic_model', False) else result.value)
-                            for f in f_semantic_conditions
-                        )
-                    except Exception as e:
-                        # If we are in the last attempt and semantic validation fails, result will be None and we propagate the error
-                        if i == self.retry_params["tries"]:
-                            result = None
-                            errors.append(f"Semantic validation failed with:\n{e!s}")
-                            break # We break to avoid going into the remedy loop
-                        raise e
-                break
-            except Exception as e:
-                logger.info(f"Validation attempt {i+1} failed, pausing before retry…")
-
-                self._pause(i)
-
-                if isinstance(e, ValidationError):
-                    error_str = self.simplify_validation_errors(e)
-                else:
-                    error_str = str(e)
-
-                errors.append(error_str)
-
-                logger.error("Validation errors identified!")
-                if self.verbose:
-                    self.display_panel(
-                        "\n".join(errors) if self.accumulate_errors else error_str,
-                        title=f"Validation Errors ({'accumulated errors' if self.accumulate_errors else 'last error'})",
-                        border_style="red"
-                    )
-
-                # Update remedy function context
-                logger.info("Updating remedy function context…")
-                context = self.remedy_prompt(prompt=prompt, output=json_str, errors="\n".join(errors) if self.accumulate_errors else error_str)
-                self.remedy_function.clear()
-                self.remedy_function.adapt(context)
-                if self.verbose:
-                    self.display_panel(
-                        self.remedy_function.dynamic_context,
-                        title="New Context"
-                    )
-
-                # Apply the remedy function
-                json_str = self.remedy_function(seed=remedy_seeds[i], **kwargs).value
-                logger.info("Applied remedy function with updated context!")
+        result, json_str, errors = self._run_validation_attempts(
+            prompt,
+            f_semantic_conditions,
+            validation_context,
+            remedy_seeds,
+            json_str,
+            kwargs,
+        )
 
         if result is None:
-            logger.error("All validation attempts failed!")
-            if self.retry_params['graceful']:
-                return None
-            raise TypeValidationError(
-                prompt=prompt,
-                result=json_str,
-                violations=errors,
-            )
+            return self._handle_validation_failure(prompt, json_str, errors)
 
         logger.success("Validation completed successfully!")
-        # Clear artifacts from the remedy function
         self.remedy_function.clear()
-
         return result
 
 
@@ -391,6 +441,7 @@ class contract:
         "max_delay": 0.25,
         "graceful": False,
     }
+    _internal_forward_kwargs: ClassVar[set[str]] = {"validation_context"}
 
     def __init__(
         self,
@@ -653,10 +704,7 @@ class contract:
         logger.success("'act' method executed successfully!")
         return act_output
 
-    def __call__(self, cls):
-        original_init = cls.__init__
-        original_forward = cls.forward
-
+    def _build_wrapped_init(self, original_init):
         def __init__(wrapped_self, *args, **kwargs):
             logger.info("Initializing contract...")
             original_init(wrapped_self, *args, **kwargs)
@@ -673,157 +721,207 @@ class contract:
             wrapped_self._contract_timing = defaultdict(dict)
             logger.info("Contract initialization complete!")
 
+        return __init__
+
+    def _start_contract_execution(self, wrapped_self):
+        logger.info("Starting contract execution...")
+        it = len(wrapped_self._contract_timing)  # the len is the __call__ op_start
+        return it, time.perf_counter()
+
+    def _find_input_param_name(self, sig: inspect.Signature) -> str | None:
+        for param in sig.parameters.values():
+            if param.name == "self":
+                continue
+            if param.kind in (
+                inspect.Parameter.POSITIONAL_ONLY,
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                inspect.Parameter.KEYWORD_ONLY,
+            ):
+                return param.name
+        return None
+
+    def _prepare_forward_args(self, args, kwargs):
+        args_list = list(args)
+        kwargs_without_input = dict(kwargs)
+        original_kwargs = dict(kwargs)
+        return args_list, kwargs_without_input, original_kwargs
+
+    def _extract_input_value(
+        self,
+        args_list,
+        kwargs_without_input,
+        original_kwargs,
+        input_param_name: str | None,
+    ):
+        if args_list:
+            return args_list[0], ("args", 0)
+        if input_param_name and input_param_name in kwargs_without_input:
+            return kwargs_without_input.pop(input_param_name), ("kwargs", input_param_name)
+        if "input" in kwargs_without_input:
+            return kwargs_without_input.pop("input"), ("kwargs", "input")
+        return original_kwargs.get("input"), ("fallback_kw", "input")
+
+    def _coerce_input_value(self, original_forward, input_value):
+        try:
+            assert self._is_valid_input(input_value)
+            return input_value
+        except TypeError:
+            input_type_model = self._try_dynamic_type_annotation(original_forward, context="input")
+            return input_type_model(value=input_value)
+
+    def _collect_validation_kwargs(self, wrapped_self, kwargs_without_input):
+        maybe_payload = getattr(wrapped_self, "payload", None)
+        maybe_template = getattr(wrapped_self, "template", None)
+        if inspect.ismethod(maybe_template):
+            maybe_template = None
+        return {
+            **kwargs_without_input,
+            "payload": maybe_payload,
+            "template_suffix": maybe_template,
+        }
+
+    def _resolve_output_type(self, sig: inspect.Signature, original_forward):
+        output_type = sig.return_annotation
+        try:
+            assert self._is_valid_output(output_type)
+        except TypeError:
+            output_type = self._try_dynamic_type_annotation(original_forward, context="output")
+        return output_type
+
+    def _run_contract_pipeline(
+        self,
+        wrapped_self,
+        current_input_value,
+        output_type,
+        it,
+        validation_kwargs,
+    ):
+        output = None
+        try:
+            maybe_new_input = self._validate_input(wrapped_self, current_input_value, it, **validation_kwargs)
+            if maybe_new_input is not None:
+                current_input_value = maybe_new_input
+
+            current_input_value = self._act(wrapped_self, current_input_value, it, **validation_kwargs)
+
+            output = self._validate_output(
+                wrapped_self,
+                current_input_value,
+                output_type,
+                it,
+                **validation_kwargs,
+            )
+            wrapped_self.contract_successful = output is not None
+            wrapped_self.contract_result = output
+            wrapped_self.contract_exception = None
+        except Exception as exc:
+            logger.exception("Contract execution failed in main path!")
+            wrapped_self.contract_successful = False
+            wrapped_self.contract_exception = exc
+        return output, current_input_value
+
+    def _execute_forward_call(
+        self,
+        wrapped_self,
+        original_forward,
+        args_list,
+        original_kwargs,
+        input_param_name,
+        input_source,
+        forward_input_value,
+        it,
+        contract_start,
+    ):
+        forward_kwargs = original_kwargs.copy()
+        for internal_kw in self._internal_forward_kwargs:
+            forward_kwargs.pop(internal_kw, None)
+
+        logger.info("Executing original forward method...")
+
+        if input_param_name:
+            if input_param_name in forward_kwargs or input_source == ("kwargs", input_param_name):
+                forward_kwargs[input_param_name] = forward_input_value
+            elif input_source == ("args", 0) and args_list:
+                args_list[0] = forward_input_value
+            else:
+                forward_kwargs[input_param_name] = forward_input_value
+        else:
+            forward_kwargs['input'] = forward_input_value
+
+        if input_param_name and input_param_name != "input" and "input" in forward_kwargs:
+            forward_kwargs.pop("input")
+
+        try:
+            op_start = time.perf_counter()
+            output = original_forward(wrapped_self, *args_list, **forward_kwargs)
+        finally:
+            wrapped_self._contract_timing[it]["forward_execution"] = time.perf_counter() - op_start
+        wrapped_self._contract_timing[it]["contract_execution"] = time.perf_counter() - contract_start
+        return output
+
+    def _finalize_contract_output(self, output, output_type, wrapped_self):
+        if not isinstance(output, output_type):
+            logger.error(f"Output type mismatch: {type(output)}")
+            if self.remedy_retry_params["graceful"]:
+                if getattr(output_type, '_is_dynamic_model', False) and hasattr(output, 'value'):
+                    return output.value
+                return output
+            msg = (
+                f"Expected output to be an instance of {output_type}, "
+                f"but got {type(output)}! Forward method must return an instance of {output_type}!"
+            )
+            CustomUserWarning(msg)
+            raise TypeError(msg)
+        if not wrapped_self.contract_successful:
+            logger.warning("Contract validation failed!")
+        else:
+            logger.success("Contract validation successful!")
+
+        if getattr(output_type, '_is_dynamic_model', False):
+            return output.value
+        return output
+
+    def _contract_forward_impl(self, wrapped_self, original_forward, *args, **kwargs):
+        it, contract_start = self._start_contract_execution(wrapped_self)
+        sig = inspect.signature(original_forward)
+        input_param_name = self._find_input_param_name(sig)
+        args_list, kwargs_without_input, original_kwargs = self._prepare_forward_args(args, kwargs)
+        input_value, input_source = self._extract_input_value(args_list, kwargs_without_input, original_kwargs, input_param_name)
+        current_input_value = self._coerce_input_value(original_forward, input_value)
+        input_value = current_input_value
+        validation_kwargs = self._collect_validation_kwargs(wrapped_self, kwargs_without_input)
+        output_type = self._resolve_output_type(sig, original_forward)
+
+        output, current_input_value = self._run_contract_pipeline(
+            wrapped_self,
+            current_input_value,
+            output_type,
+            it,
+            validation_kwargs,
+        )
+
+        forward_input_value = current_input_value if wrapped_self.contract_successful else input_value
+        output = self._execute_forward_call(
+            wrapped_self,
+            original_forward,
+            args_list,
+            original_kwargs,
+            input_param_name,
+            input_source,
+            forward_input_value,
+            it,
+            contract_start,
+        )
+
+        return self._finalize_contract_output(output, output_type, wrapped_self)
+
+    def _build_wrapped_forward(self, original_forward):
         def wrapped_forward(wrapped_self, *args, **kwargs):
-            logger.info("Starting contract execution...")
-            it = len(wrapped_self._contract_timing) # the len is the __call__ op_start
-            contract_start = time.perf_counter()
+            return self._contract_forward_impl(wrapped_self, original_forward, *args, **kwargs)
 
-            sig = inspect.signature(original_forward)
-            params = list(sig.parameters.values())
-            input_param = None
-            for param in params:
-                if param.name == "self":
-                    continue
-                if param.kind in (
-                    inspect.Parameter.POSITIONAL_ONLY,
-                    inspect.Parameter.POSITIONAL_OR_KEYWORD,
-                    inspect.Parameter.KEYWORD_ONLY,
-                ):
-                    input_param = param
-                    break
-            input_param_name = input_param.name if input_param else None
+        return wrapped_forward
 
-            args_list = list(args)
-            original_kwargs = dict(kwargs)
-            kwargs_without_input = dict(kwargs)
-            input_value = None
-            input_source = None
-
-            if args_list:
-                input_value = args_list[0]
-                input_source = ("args", 0)
-            elif input_param_name and input_param_name in kwargs_without_input:
-                input_value = kwargs_without_input.pop(input_param_name)
-                input_source = ("kwargs", input_param_name)
-            elif "input" in kwargs_without_input:
-                input_value = kwargs_without_input.pop("input")
-                input_source = ("kwargs", "input")
-            else:
-                input_value = original_kwargs.get("input")
-                input_source = ("fallback_kw", "input")
-
-            input_type_model = None
-            try:
-                assert self._is_valid_input(input_value)
-            except TypeError:
-                input_type_model = self._try_dynamic_type_annotation(original_forward, context="input")
-                input_value = input_type_model(value=input_value)
-
-            maybe_payload = getattr(wrapped_self, "payload", None)
-            maybe_template = wrapped_self.template
-            if inspect.ismethod(maybe_template):
-                # `template` is a primitive in symbolicai case in which we actually don't have a template
-                maybe_template = None
-
-            # Create validation kwargs that include all original kwargs plus payload and template
-            validation_kwargs = {
-                **kwargs_without_input,
-                "payload": maybe_payload,
-                "template_suffix": maybe_template
-            }
-
-            output_type = sig.return_annotation
-            try:
-                assert self._is_valid_output(output_type)
-            except TypeError:
-                output_type = self._try_dynamic_type_annotation(original_forward, context="output")
-
-            output = None
-            current_input_value = input_value
-            try:
-                # 1. Start with original input and apply pre-validation
-                maybe_new_input_value = self._validate_input(wrapped_self, current_input_value, it, **validation_kwargs)
-                if maybe_new_input_value is not None:
-                    current_input_value = maybe_new_input_value
-
-                # 2. Check if 'act' method exists and execute it
-                current_input_value = self._act(wrapped_self, current_input_value, it, **validation_kwargs)
-
-                # 3. Validate output type and prepare for original_forward
-                output = self._validate_output(
-                    wrapped_self,
-                    current_input_value,
-                    output_type,
-                    it,
-                    **validation_kwargs,
-                )
-                wrapped_self.contract_successful = output is not None
-                wrapped_self.contract_result = output
-                wrapped_self.contract_exception = None
-
-            except Exception as e:
-                logger.exception("Contract execution failed in main path!")
-                wrapped_self.contract_successful = False
-                wrapped_self.contract_exception = e
-                # contract_result remains None or its value before the exception.
-                # final_output remains None or its value before the exception.
-                # The finally block's execution of original_forward will determine the actual returned value.
-            finally:
-                # Execute the original forward method with appropriate input
-                logger.info("Executing original forward method...")
-
-                # If contract was successful, use the processed input (after pre-validation and act, both optional)
-                # `current_input_value` at this stage is the result of the try block's processing up to the point of exception,
-                # or the full processing if successful.
-                # If contract failed, use original_input (fallback).
-                forward_input_value = current_input_value if wrapped_self.contract_successful else input_value
-
-                # Prepare kwargs for original_forward
-                forward_kwargs = original_kwargs.copy()
-
-                if input_param_name:
-                    if input_param_name in forward_kwargs or input_source == ("kwargs", input_param_name):
-                        forward_kwargs[input_param_name] = forward_input_value
-                    elif input_source == ("args", 0) and len(args_list) > 0:
-                        args_list[0] = forward_input_value
-                    else:
-                        forward_kwargs[input_param_name] = forward_input_value
-                else:
-                    forward_kwargs['input'] = forward_input_value
-
-                if input_param_name and input_param_name != "input" and "input" in forward_kwargs:
-                    forward_kwargs.pop("input")
-
-                try:
-                    op_start = time.perf_counter()
-                    output = original_forward(wrapped_self, *args_list, **forward_kwargs)
-                finally:
-                    wrapped_self._contract_timing[it]["forward_execution"] = time.perf_counter() - op_start
-                wrapped_self._contract_timing[it]["contract_execution"] = time.perf_counter() - contract_start
-
-            if not isinstance(output, output_type):
-                logger.error(f"Output type mismatch: {type(output)}")
-                if self.remedy_retry_params["graceful"]:
-                    # In graceful mode, skip type mismatch error and return raw output
-                    if hasattr(output_type, '_is_dynamic_model') and output_type._is_dynamic_model and hasattr(output, 'value'):
-                        return output.value
-                    return output
-                msg = (
-                    f"Expected output to be an instance of {output_type}, "
-                    f"but got {type(output)}! Forward method must return an instance of {output_type}!"
-                )
-                CustomUserWarning(msg)
-                raise TypeError(msg)
-            if not wrapped_self.contract_successful:
-                logger.warning("Contract validation failed!")
-            else:
-                logger.success("Contract validation successful!")
-
-            if hasattr(output_type, '_is_dynamic_model') and output_type._is_dynamic_model:
-                return output.value
-
-            return output
-
+    def _build_contract_perf_stats(self):
         def contract_perf_stats(wrapped_self):
             """Analyzes and prints timing statistics across all forward calls."""
             console = Console()
@@ -949,10 +1047,15 @@ class contract:
 
             return stats
 
-        cls.__init__ = __init__
-        cls.forward = wrapped_forward
-        cls.contract_perf_stats = contract_perf_stats
+        return contract_perf_stats
 
+    def __call__(self, cls):
+        original_init = cls.__init__
+        original_forward = cls.forward
+
+        cls.__init__ = self._build_wrapped_init(original_init)
+        cls.forward = self._build_wrapped_forward(original_forward)
+        cls.contract_perf_stats = self._build_contract_perf_stats()
         return cls
 
 
