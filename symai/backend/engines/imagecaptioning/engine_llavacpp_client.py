@@ -106,17 +106,15 @@ class LLaMACppClientEngine(Engine):
         output = rsp if isinstance(prompts, list) else rsp[0]
         return output, metadata
 
-    def prepare(self, argument):
-        if argument.prop.raw_input:
-            if not argument.prop.processed_input:
-                UserMessage('Need to provide a prompt instruction to the engine if raw_input is enabled.', raise_with=ValueError)
-            argument.prop.prepared_input = argument.prop.processed_input
-            return
+    def _handle_raw_input(self, argument) -> bool:
+        if not argument.prop.raw_input:
+            return False
+        if not argument.prop.processed_input:
+            UserMessage('Need to provide a prompt instruction to the engine if raw_input is enabled.', raise_with=ValueError)
+        argument.prop.prepared_input = argument.prop.processed_input
+        return True
 
-        user:   str = ""
-        system: str = ""
-        system = f'{system}\n' if system and len(system) > 0 else ''
-
+    def _append_context_sections(self, system: str, argument) -> str:
         ref = argument.prop.instance
         static_ctxt, dyn_ctxt = ref.global_context
         if len(static_ctxt) > 0:
@@ -133,30 +131,47 @@ class LLaMACppClientEngine(Engine):
         if examples and len(examples) > 0:
             system += f"[EXAMPLES]\n{examples!s}\n\n"
 
+        return system
+
+    def _build_user_instruction(self, argument) -> str:
+        user = ""
         if argument.prop.prompt is not None and len(argument.prop.prompt) > 0:
             val = str(argument.prop.prompt)
-            # in this engine, instructions are considered as user prompts
             user += f"[INSTRUCTION]\n{val}"
+        return user
 
-        suffix: str = str(argument.prop.processed_input)
-
+    def _extract_system_instructions(self, argument, system: str, suffix: str) -> tuple[str, str]:
         if '[SYSTEM_INSTRUCTION::]: <<<' in suffix and argument.prop.parse_system_instructions:
             parts = suffix.split('\n>>>\n')
-            # first parts are the system instructions
-            c = 0
-            for _i, p in enumerate(parts):
-                if 'SYSTEM_INSTRUCTION' in p:
-                    system += f"{p}\n"
-                    c += 1
+            consumed = 0
+            for part in parts:
+                if 'SYSTEM_INSTRUCTION' in part:
+                    system += f"{part}\n"
+                    consumed += 1
                 else:
                     break
-            # last part is the user input
-            suffix = '\n>>>\n'.join(parts[c:])
-        user += f"{suffix}"
+            suffix = '\n>>>\n'.join(parts[consumed:])
+        return system, suffix
 
+    def _append_template_suffix(self, user: str, argument) -> str:
         if argument.prop.template_suffix:
             user += f"\n[[PLACEHOLDER]]\n{argument.prop.template_suffix!s}\n\n"
             user += "Only generate content for the placeholder `[[PLACEHOLDER]]` following the instructions and context information. Do NOT write `[[PLACEHOLDER]]` or anything else in your output.\n\n"
+        return user
+
+    def prepare(self, argument):
+        if self._handle_raw_input(argument):
+            return
+
+        system: str = ""
+        system = f'{system}\n' if system and len(system) > 0 else ''
+        system = self._append_context_sections(system, argument)
+
+        user = self._build_user_instruction(argument)
+        suffix: str = str(argument.prop.processed_input)
+        system, suffix = self._extract_system_instructions(argument, system, suffix)
+        user += f"{suffix}"
+        user = self._append_template_suffix(user, argument)
 
         user_prompt = { "role": "user", "content": user }
         argument.prop.prepared_input = [
