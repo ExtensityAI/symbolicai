@@ -92,6 +92,52 @@ class VectorDB(Expression):
         else:
             self.model = lambda x: Symbol(x).embedding
 
+    def _unwrap_documents(self, documents):
+        if isinstance(documents, Symbol):
+            return documents.value
+        return documents
+
+    def _to_texts(self, documents, key):
+        if not isinstance(documents, list):
+            self._raise_texts_unassigned()
+        if len(documents) == 0:
+            return []
+        first_document = documents[0]
+        if isinstance(first_document, dict):
+            return self._texts_from_dicts(documents, key)
+        if isinstance(first_document, str):
+            return documents
+        return self._raise_texts_unassigned()
+
+    def _texts_from_dicts(self, documents, key):
+        if isinstance(key, str):
+            key_chain = key.split(".") if "." in key else [key]
+            return [self._resolve_key_chain(doc, key_chain).replace("\n", " ") for doc in documents]
+        if key is None:
+            return [
+                ", ".join([f"{dict_key}: {value}" for dict_key, value in doc.items()])
+                for doc in documents
+            ]
+        return self._raise_texts_unassigned()
+
+    def _resolve_key_chain(self, document, key_chain):
+        current_document = document
+        for chain_key in key_chain:
+            current_document = current_document[chain_key]
+        return current_document
+
+    def _embed_batch(self, batch):
+        emb = self.model(batch)
+        if len(emb.shape) == 1:
+            return [emb]
+        if len(emb.shape) == 2:
+            return [emb[index] for index in range(emb.shape[0])]
+        return UserMessage("Embeddings must be a 1D or 2D array.", raise_with=ValueError)
+
+    def _raise_texts_unassigned(self):
+        error_message = "local variable 'texts' referenced before assignment"
+        raise UnboundLocalError(error_message)
+
     def _get_embedding(self, documents, key=None):
         """
         Get embeddings from a list of documents.
@@ -108,46 +154,14 @@ class VectorDB(Expression):
         embeddings : numpy.ndarray
             A numpy array of embeddings.
         """
-        # unwrap the documents if they are a Symbol
-        if isinstance(documents, Symbol):
-            documents = documents.value
-        # if the documents are a list of Symbols, unwrap them
+        documents = self._unwrap_documents(documents)
         if len(documents) == 0:
             return []
-        if isinstance(documents, list):
-            # If the documents are a list of dictionaries, extract the text from the dictionary
-            if isinstance(documents[0], dict):
-                texts = []
-                # If a key is specified, extract the text from the dictionary using the key
-                if isinstance(key, str):
-                    key_chain = key.split(".") if "." in key else [key]
-                    for doc in documents:
-                        current_doc = doc
-                        for key in key_chain:
-                            current_doc = current_doc[key]
-                        texts.append(current_doc.replace("\n", " "))
-                # If no key is specified, extract the text from the dictionary using all keys
-                elif key is None:
-                    for doc in documents:
-                        text = ", ".join([f"{key}: {value}" for key, value in doc.items()])
-                        texts.append(text)
-            # If the documents are a list of strings, use the strings as the documents
-            elif isinstance(documents[0], str):
-                texts = documents
-            # If the documents are a list of lists, use the lists as the documents
-        batches = [texts[i : i + self.batch_size] for i in range(0, len(texts), self.batch_size)]
+        texts = self._to_texts(documents, key)
+        batches = [texts[index : index + self.batch_size] for index in range(0, len(texts), self.batch_size)]
         embeddings = []
-        # Embed the documents in batches
         for batch in batches:
-            # Extend the embeddings list with the embeddings from the batch
-            emb = self.model(batch)
-            if len(emb.shape) == 1:
-                embeddings.append(emb)
-            elif len(emb.shape) == 2:
-                for i in range(emb.shape[0]):
-                    embeddings.append(emb[i])
-            else:
-                UserMessage("Embeddings must be a 1D or 2D array.", raise_with=ValueError)
+            embeddings.extend(self._embed_batch(batch))
         return embeddings
 
     def dict(self, vectors=False):

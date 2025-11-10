@@ -829,7 +829,7 @@ def _handle_directory_navigation(cmd: str):
     return None
 
 
-def _handle_ll_alias(cmd: str, res, auto_query_on_error: bool):
+def _handle_ll_alias(cmd: str, res):
     if not cmd.startswith('ll'):
         return None
     if os.name == 'nt':
