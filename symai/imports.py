@@ -147,7 +147,21 @@ class Import(Expression):
         return module_classes
 
     @staticmethod
+    def _normalize_expressions(expressions: list[str] | tuple[str] | str) -> tuple[list[str], bool]:
+        if isinstance(expressions, str):
+            return [expressions], True
+        if isinstance(expressions, (list, tuple)):
+            expression_list = list(expressions)
+            return expression_list, len(expression_list) == 1
+        msg = "Invalid type for 'expressions'. Must be str, list or tuple."
+        UserMessage(msg)
+        raise Exception(msg)
+
+    @staticmethod
     def load_expression(module, expressions: list[str] | tuple[str] | str) -> list[Expression] | Expression:
+        expression_list, return_single = Import._normalize_expressions(expressions)
+        expected_count = len(expression_list)
+        expression_targets = set(expression_list)
         module_classes = []
         # Detect if module is a local path
         module_path_obj = Path(module)
@@ -155,50 +169,41 @@ class Import(Expression):
 
         package_path = module_path_obj if is_local_path else BASE_PACKAGE_PATH / module
 
+        if is_local_path:
+            parent_dir = package_path.parent
+            if str(parent_dir) not in sys.path:
+                sys.path.append(str(parent_dir))
+            module_name = package_path.name
+        else:
+            module_parts = module.split('/')
+
         with (package_path / 'package.json').open() as f:
             pkg = json.load(f)
             for expr in pkg['expressions']:
-                if is_local_path:
-                    # For local paths, need to handle imports differently
-                    parent_dir = package_path.parent
-                    if str(parent_dir) not in sys.path:
-                        sys.path.append(str(parent_dir))
+                relative_module_path = (
+                    f"{module_name}.{expr['module'].replace('/', '.')}"
+                    if is_local_path
+                    else '.'.join([*module_parts, expr['module'].replace('/', '.')])
+                )
 
-                    # Use basename as module name
-                    module_name = package_path.name
-                    relative_module_path = f"{module_name}.{expr['module'].replace('/', '.')}"
-                else:
-                    # For GitHub packages
-                    module_parts = module.split('/')
-                    relative_module_path = '.'.join([*module_parts, expr['module'].replace('/', '.')])
+                if expr['type'] not in expression_targets:
+                    continue
 
-                if isinstance(expressions, str):
-                    if expr['type'] == expressions:
-                        try:
-                            module_obj = importlib.import_module(relative_module_path)
-                            return getattr(module_obj, expr['type'])
-                        except (ImportError, ModuleNotFoundError) as e:
-                            logger.error(f"Error importing module {relative_module_path}: {e}")
-                            raise
-                elif isinstance(expressions, (list, tuple)):
-                    if expr['type'] in expressions:
-                        try:
-                            module_obj = importlib.import_module(relative_module_path)
-                            module_class = getattr(module_obj, expr['type'])
-                            if len(expressions) == 1:
-                                return module_class
-                            module_classes.append(module_class)
-                        except (ImportError, ModuleNotFoundError) as e:
-                            logger.error(f"Error importing module {relative_module_path}: {e}")
-                            raise
-                else:
-                    msg = "Invalid type for 'expressions'. Must be str, list or tuple."
-                    UserMessage(msg)
-                    raise Exception(msg)
+                try:
+                    module_obj = importlib.import_module(relative_module_path)
+                    module_class = getattr(module_obj, expr['type'])
+                except (ImportError, ModuleNotFoundError) as e:
+                    logger.error(f"Error importing module {relative_module_path}: {e}")
+                    raise
+
+                if return_single:
+                    return module_class
+                module_classes.append(module_class)
 
         assert len(module_classes) > 0, f"Expression '{expressions}' not found in module '{module}'"
         module_classes_names = [str(class_.__name__) for class_ in module_classes]
-        assert len(module_classes) == len(expressions), f"Not all expressions found in module '{module}'. Could not load {[expr for expr in expressions if expr not in module_classes_names]}"
+        missing_expressions = [expr for expr in expression_list if expr not in module_classes_names]
+        assert len(module_classes) == expected_count, f"Not all expressions found in module '{module}'. Could not load {missing_expressions}"
         return module_classes
 
     def __new__(cls, module, auto_clone: bool = True, verbose: bool = False, local_path: str | None = None,
