@@ -270,45 +270,33 @@ class Symbol(metaclass=SymbolMeta):
     def _unwrap_symbols_args(self, *args, nested: bool = False) -> Any:
         if len(args) == 0:
             return None
-        # check if args is a single value
         if len(args) == 1:
-            # get the first args value
-            value = args[0]
-
-            # if the value is a primitive, store it as is
-            if isinstance(value, (str, int, float, bool)):
-                pass
-
-            # if the value is a symbol, unwrap it
-            elif isinstance(value, Symbol):
-                # if not nested, copy the symbol's value, metadata, parent, and children
-                if not nested:
-                    self._metadata       = value.metadata
-                    self._static_context = value.static_context
-                    self._kwargs         = value._kwargs
-                # unwrap the symbol's value
-                value                    = value.value
-
-            # if the value is a list, tuple, dict, or set, unwrap all nested symbols
-            elif isinstance(value, (list, dict, set, tuple)):
-
-                if isinstance(value, list):
-                    value = [self._unwrap_symbols_args(v, nested=True) for v in value]
-
-                elif isinstance(value, dict):
-                    value = {self._unwrap_symbols_args(k, nested=True): self._unwrap_symbols_args(v, nested=True) for k, v in value.items()}
-
-                elif isinstance(value, set):
-                    value = {self._unwrap_symbols_args(v, nested=True) for v in value}
-
-                elif isinstance(value, tuple):
-                    value = tuple([self._unwrap_symbols_args(v, nested=True) for v in value])
-
-            return value
-
+            return self._unwrap_single_symbol_arg(args[0], nested=nested)
         if len(args) > 1:
             return [self._unwrap_symbols_args(a, nested=True) if isinstance(a, Symbol) else a for a in args]
         return None
+
+    def _unwrap_single_symbol_arg(self, value: Any, *, nested: bool) -> Any:
+        if isinstance(value, (str, int, float, bool)):
+            return value
+        if isinstance(value, Symbol):
+            if not nested:
+                self._metadata       = value.metadata
+                self._static_context = value.static_context
+                self._kwargs         = value._kwargs
+            return value.value
+        if isinstance(value, list):
+            return [self._unwrap_symbols_args(v, nested=True) for v in value]
+        if isinstance(value, dict):
+            return {
+                self._unwrap_symbols_args(k, nested=True): self._unwrap_symbols_args(v, nested=True)
+                for k, v in value.items()
+            }
+        if isinstance(value, set):
+            return {self._unwrap_symbols_args(v, nested=True) for v in value}
+        if isinstance(value, tuple):
+            return tuple(self._unwrap_symbols_args(v, nested=True) for v in value)
+        return value
 
     def _construct_dependency_graph(self, *value):
         '''
