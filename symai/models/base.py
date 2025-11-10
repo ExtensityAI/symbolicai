@@ -459,137 +459,180 @@ class LLMDataModel(BaseModel):
         Also includes the root model's fields (from root_schema) so their descriptions/examples
         are visible, not just $defs.
         """
-        lines = []
-        visited_defs = set()
+        lines: list[str] = []
+        visited_defs: set[str] = set()
 
-        def _format_definition_properties(props: dict) -> list[str]:
-            """Render property lines using only Field(description=...), with const/excerpts.
-
-            Always lists properties; if description is missing, emit a generic guidance message.
-            """
-            out: list[str] = []
-            def _fmt_example_value(val):
-                if isinstance(val, str):
-                    return val
-                try:
-                    return json.dumps(val, ensure_ascii=False)
-                except Exception:
-                    return str(val)
-            for prop_name, prop_schema in props.items():
-                if prop_name == "section_header":
-                    continue
-                desc = prop_schema.get("description")
-                const_note = ""
-                if "const_value" in prop_schema:
-                    const_note = f' (const value: "{prop_schema["const_value"]}")'
-                if not desc:
-                    out.append(
-                        f'  - "{prop_name}": '
-                        'No definition provided. Focus on the [[Schema]] and the prompt to infer '
-                        'the expected structure and constraints.'
-                    )
-                else:
-                    out.append(f'  - "{prop_name}": {desc}{const_note}')
-
-                examples = prop_schema.get("examples")
-                if examples is None and "example" in prop_schema:
-                    examples = prop_schema.get("example")
-
-                if isinstance(examples, (list, tuple)):
-                    if len(examples) > 0:
-                        out.append("    - Examples:")
-                        for ex in examples:
-                            out.append(f"      - {_fmt_example_value(ex)}")
-                elif examples is not None:
-                    out.append(f"    - Example: {_fmt_example_value(examples)}")
-            return out
-
-        # Include root model's fields in Definitions (for descriptions/examples)
-        if root_schema and isinstance(root_schema, dict):
-            root_title = root_schema.get("title", "Root")
-            root_props = cls._extract_schema_properties(root_schema)
-            if root_props:
-                lines.append(f"- {root_title}:")
-                lines.extend(_format_definition_properties(root_props))
+        lines.extend(cls._format_root_definition_lines(root_schema))
 
         for name, definition in definitions.items():
             if name in visited_defs:
                 continue
             visited_defs.add(name)
-            lines.append(f"- {name}:")
-
-            if "enum" in definition:
-                enum_values = ", ".join(map(repr, definition["enum"]))
-                lines.append(f"  Enum values: {enum_values}")
-                continue
-
-            props = definition.get("properties", {})
-            lines.extend(_format_definition_properties(props))
+            lines.extend(cls._format_single_definition(name, definition))
 
         return "\n".join(lines)
 
     @classmethod
+    def _format_root_definition_lines(cls, root_schema: dict | None) -> list[str]:
+        """Format definitions derived from the root schema."""
+        if not (root_schema and isinstance(root_schema, dict)):
+            return []
+        root_props = cls._extract_schema_properties(root_schema)
+        if not root_props:
+            return []
+        root_title = root_schema.get("title", "Root")
+        lines = [f"- {root_title}:"]
+        lines.extend(cls._format_definition_properties(root_props))
+        return lines
+
+    @classmethod
+    def _format_single_definition(cls, name: str, definition: dict) -> list[str]:
+        """Format a single definition block, including enum handling."""
+        lines = [f"- {name}:"]
+        if "enum" in definition:
+            enum_values = ", ".join(map(repr, definition["enum"]))
+            lines.append(f"  Enum values: {enum_values}")
+            return lines
+        props = definition.get("properties", {})
+        lines.extend(cls._format_definition_properties(props))
+        return lines
+
+    @classmethod
+    def _format_definition_properties(cls, props: dict) -> list[str]:
+        """Render property lines using descriptions and examples."""
+        out: list[str] = []
+        for prop_name, prop_schema in props.items():
+            if prop_name == "section_header":
+                continue
+            out.append(cls._format_property_description(prop_name, prop_schema))
+            out.extend(cls._format_property_examples(prop_schema))
+        return out
+
+    @staticmethod
+    def _format_property_description(prop_name: str, prop_schema: dict) -> str:
+        """Format the description line for a property, including const hints."""
+        desc = prop_schema.get("description")
+        const_note = ""
+        if "const_value" in prop_schema:
+            const_note = f' (const value: "{prop_schema["const_value"]}")'
+        if not desc:
+            return (
+                f'  - "{prop_name}": '
+                "No definition provided. Focus on the [[Schema]] and the prompt to infer "
+                "the expected structure and constraints."
+            )
+        return f'  - "{prop_name}": {desc}{const_note}'
+
+    @classmethod
+    def _format_property_examples(cls, prop_schema: dict) -> list[str]:
+        """Format example lines for a property schema."""
+        examples = prop_schema.get("examples")
+        if examples is None and "example" in prop_schema:
+            examples = prop_schema.get("example")
+        if isinstance(examples, (list, tuple)):
+            if not examples:
+                return []
+            lines = ["    - Examples:"]
+            for example in examples:
+                lines.append(f"      - {cls._format_example_value(example)}")
+            return lines
+        if examples is not None:
+            return [f"    - Example: {cls._format_example_value(examples)}"]
+        return []
+
+    @staticmethod
+    def _format_example_value(val: Any) -> str:
+        """Safely format example values for display, preserving human readability."""
+        if isinstance(val, str):
+            return val
+        try:
+            return json.dumps(val, ensure_ascii=False)
+        except Exception:
+            return str(val)
+
+    @classmethod
     def _generate_type_description(cls, type_desc: str | dict) -> str:
         """Generate a human-readable description for a type."""
-        if type_desc is None:
+        normalized = cls._normalize_type_descriptor(type_desc)
+        if normalized is None:
             return "unknown"
 
+        composite_description = cls._describe_composite_type(normalized)
+        return composite_description if composite_description is not None else normalized
+
+    @classmethod
+    def _normalize_type_descriptor(cls, type_desc: Any) -> str | None:
+        """Normalize a type descriptor into a descriptive string."""
+        if type_desc is None:
+            return None
         if isinstance(type_desc, dict):
             type_desc = cls._resolve_field_type(type_desc, {})
-
         if isinstance(type_desc, type):
             type_desc = type_desc.__name__
-
         if not isinstance(type_desc, str):
             type_desc = str(type_desc)
-
-        def extract_after(text: str, prefix: str) -> str:
-            """Extract text after prefix if it starts with it."""
-            return text.replace(prefix, "", 1) if text.startswith(prefix) else None
-
-        # Define type mappings
-        type_prefixes = {
-            "array of": ("list", "A list"),
-            "set of": ("set", "A set"),
-            "tuple of": ("tuple", "A tuple with specific types:"),
-            "object of": ("dict", "A dictionary"),
-        }
-
-        for prefix, (type_name, description) in type_prefixes.items():
-            if item_type := extract_after(type_desc, prefix + " "):
-                if prefix == "tuple of":
-                    return f"{description} {item_type}"
-
-                # Handle nested types
-                if item_type.startswith("nested object"):
-                    element_desc = item_type
-                elif inner := extract_after(item_type, "array of "):
-                    element_desc = f"a list of {inner} values"
-                elif inner := extract_after(item_type, "set of "):
-                    element_desc = f"a set of unique {inner} values"
-                elif inner := extract_after(item_type, "tuple of "):
-                    element_desc = f"a tuple with types: {inner}"
-                elif inner := extract_after(item_type, "object of "):
-                    element_desc = f"a dictionary with {inner} values"
-                else:
-                    # Simple types
-                    if type_name == "list":
-                        return f"A list containing {item_type} values"
-                    if type_name == "set":
-                        return f"A set containing unique {item_type} values"
-                    if type_name == "dict":
-                        return f"A dictionary with {item_type} values"
-                    element_desc = item_type
-
-                # Format the final description
-                if type_name == "list":
-                    return f"A list where each element is {element_desc}"
-                if type_name == "set":
-                    return f"A set where each element is {element_desc}"
-                if type_name == "dict":
-                    return f"A dictionary where each value is {element_desc}"
-
         return type_desc
+
+    @classmethod
+    def _describe_composite_type(cls, type_desc: str) -> str | None:
+        """Describe composite collection-like types with friendly language."""
+        handlers = {
+            "array of ": cls._describe_list_type,
+            "set of ": cls._describe_set_type,
+            "tuple of ": cls._describe_tuple_type,
+            "object of ": cls._describe_dict_type,
+        }
+        for prefix, handler in handlers.items():
+            if type_desc.startswith(prefix):
+                item_type = type_desc[len(prefix):]
+                return handler(item_type)
+        return None
+
+    @classmethod
+    def _describe_list_type(cls, item_type: str) -> str:
+        """Describe a list-style type."""
+        element_desc = cls._nested_element_description(item_type)
+        if element_desc is None:
+            return f"A list containing {item_type} values"
+        return f"A list where each element is {element_desc}"
+
+    @classmethod
+    def _describe_set_type(cls, item_type: str) -> str:
+        """Describe a set-style type."""
+        element_desc = cls._nested_element_description(item_type)
+        if element_desc is None:
+            return f"A set containing unique {item_type} values"
+        return f"A set where each element is {element_desc}"
+
+    @staticmethod
+    def _describe_tuple_type(item_type: str) -> str:
+        """Describe a tuple-style type."""
+        return f"A tuple with specific types: {item_type}"
+
+    @classmethod
+    def _describe_dict_type(cls, item_type: str) -> str:
+        """Describe a dictionary-style type."""
+        element_desc = cls._nested_element_description(item_type)
+        if element_desc is None:
+            return f"A dictionary with {item_type} values"
+        return f"A dictionary where each value is {element_desc}"
+
+    @staticmethod
+    def _nested_element_description(item_type: str) -> str | None:
+        """Convert nested composite descriptors into human-friendly text."""
+        if item_type.startswith("nested object"):
+            return item_type
+        nested_mappings = {
+            "array of ": "a list of {} values",
+            "set of ": "a set of unique {} values",
+            "tuple of ": "a tuple with types: {}",
+            "object of ": "a dictionary with {} values",
+        }
+        for prefix, template in nested_mappings.items():
+            if item_type.startswith(prefix):
+                inner = item_type[len(prefix):]
+                return template.format(inner)
+        return None
 
     @classmethod
     def _compose_schema_output(cls, main_schema: str, definitions_schema: str) -> str:
@@ -884,54 +927,101 @@ class LLMDataModel(BaseModel):
         """Unified generator for example values; prefer_non_null to avoid None variants."""
         origin = get_origin(field_type) or field_type
 
-        # Enums
+        handled, value = cls._handle_enum_type(origin)
+        if handled:
+            return value
+
+        handled, value = cls._handle_literal_type(origin, field_type)
+        if handled:
+            return value
+
+        handled, value = cls._handle_model_type(origin, field_type, visited_models, prefer_non_null)
+        if handled:
+            return value
+
+        handled, value = cls._handle_union_type(field_type, visited_models, prefer_non_null)
+        if handled:
+            return value
+
+        handled, value = cls._handle_collection_type(field_type, visited_models, prefer_non_null)
+        if handled:
+            return value
+
+        return LLMDataModel._generate_primitive_value(field_type)
+
+    @staticmethod
+    def _handle_enum_type(origin: Any) -> tuple[bool, Any]:
+        """Handle Enum types when generating example values."""
         if isinstance(origin, type) and issubclass(origin, Enum):
             first_member = next(iter(origin), None)
-            return first_member.value if first_member is not None else "enum_value"
+            value = first_member.value if first_member is not None else "enum_value"
+            return True, value
+        return False, None
 
-        # Literals
+    @staticmethod
+    def _handle_literal_type(origin: Any, field_type: Any) -> tuple[bool, Any]:
+        """Handle Literal[...] annotations."""
         if origin is Literal:
-            return get_args(field_type)[0]
+            literal_args = get_args(field_type)
+            return True, literal_args[0] if literal_args else None
+        return False, None
 
-        # BaseModel
-        if isinstance(origin, type) and issubclass(origin, BaseModel):
-            model_name = field_type.__name__
-            if model_name in visited_models:
-                return {}
-            visited_models.add(model_name)
-            if prefer_non_null:
-                return cls._generate_non_null_example_for_model(field_type, visited_models.copy())
-            return LLMDataModel._generate_example_for_model(field_type, visited_models.copy())
+    @classmethod
+    def _handle_model_type(cls, origin: Any, field_type: Any, visited_models: set, prefer_non_null: bool) -> tuple[bool, Any]:
+        """Handle Pydantic BaseModel subclasses."""
+        if not (isinstance(origin, type) and issubclass(origin, BaseModel)):
+            return False, None
+        model_name = field_type.__name__
+        if model_name in visited_models:
+            return True, {}
+        visited_models.add(model_name)
+        generator = cls._generate_non_null_example_for_model if prefer_non_null else LLMDataModel._generate_example_for_model
+        return True, generator(field_type, visited_models.copy())
 
-        # Unions
-        if LLMDataModel._is_union_type(field_type):
-            subtypes = LLMDataModel._get_union_types(field_type, exclude_none=True)
-            if not subtypes:
-                return None
-            chosen = subtypes[0]
-            return cls._generate_value_for_type_generic(chosen, visited_models, prefer_non_null)
+    @classmethod
+    def _handle_union_type(cls, field_type: Any, visited_models: set, prefer_non_null: bool) -> tuple[bool, Any]:
+        """Handle Optional/Union annotations."""
+        if not LLMDataModel._is_union_type(field_type):
+            return False, None
+        subtypes = LLMDataModel._get_union_types(field_type, exclude_none=True)
+        if not subtypes:
+            return True, None
+        chosen = subtypes[0]
+        value = cls._generate_value_for_type_generic(chosen, visited_models, prefer_non_null)
+        return True, value
 
-        # Collections
-        if LLMDataModel._is_collection_type(field_type):
-            origin = get_origin(field_type) or field_type
-            if origin is list:
-                item_type = get_args(field_type)[0] if get_args(field_type) else Any
-                return [cls._generate_value_for_type_generic(item_type, visited_models, prefer_non_null)]
-            if origin is dict:
-                key_type, value_type = get_args(field_type) if get_args(field_type) else (Any, Any)
-                example_key = cls._example_key_for_type(key_type, visited_models)
-                return {example_key: cls._generate_value_for_type_generic(value_type, visited_models, prefer_non_null)}
-            if origin in (set, frozenset):
-                item_type = get_args(field_type)[0] if get_args(field_type) else Any
-                return [cls._generate_value_for_type_generic(item_type, visited_models, prefer_non_null)]
-            if origin is tuple:
-                types = get_args(field_type)
-                if types:
-                    return tuple(cls._generate_value_for_type_generic(t, visited_models, prefer_non_null) for t in types)
-                return ("item1", "item2")
+    @classmethod
+    def _handle_collection_type(cls, field_type: Any, visited_models: set, prefer_non_null: bool) -> tuple[bool, Any]:
+        """Handle list/dict/set/tuple-like annotations."""
+        if not LLMDataModel._is_collection_type(field_type):
+            return False, None
 
-        # Primitives
-        return LLMDataModel._generate_primitive_value(field_type)
+        origin = get_origin(field_type) or field_type
+        args = get_args(field_type)
+
+        if origin is list:
+            item_type = args[0] if args else Any
+            value = [cls._generate_value_for_type_generic(item_type, visited_models, prefer_non_null)]
+            return True, value
+        if origin is dict:
+            key_type, value_type = args if args else (Any, Any)
+            example_key = cls._example_key_for_type(key_type, visited_models)
+            example_value = cls._generate_value_for_type_generic(value_type, visited_models, prefer_non_null)
+            return True, {example_key: example_value}
+        if origin in (set, frozenset):
+            item_type = args[0] if args else Any
+            value = [cls._generate_value_for_type_generic(item_type, visited_models, prefer_non_null)]
+            return True, value
+        if origin is tuple:
+            if args:
+                tuple_values = tuple(
+                    cls._generate_value_for_type_generic(t, visited_models, prefer_non_null)
+                    for t in args
+                )
+                return True, tuple_values
+            return True, ("item1", "item2")
+
+        return True, []
 
     @classmethod
     def _format_json_example(cls, obj: Any, _indent: int = 0) -> str:
