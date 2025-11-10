@@ -111,87 +111,113 @@ class GPTImageEngine(Engine):
 
         n = kwargs.get("n", 1)
 
-        if "size" in kwargs and isinstance(kwargs["size"], int):
-            s = kwargs["size"]
-            kwargs["size"] = f"{s}x{s}"
+        self._normalize_size(kwargs)
 
         except_remedy = kwargs.get("except_remedy", None)
 
         callback = None
         try:
-            if operation == "create":
-                create_kwargs = {
-                    "model": model,
-                    "prompt": prompt,
-                    "n": n,
-                    "size": kwargs.get("size"),
-                }
-
-                if model == "dall-e-3":
-                    create_kwargs["response_format"] = kwargs.get("response_format", "url")
-                    create_kwargs["quality"] = kwargs.get("quality", "standard")
-                    create_kwargs["style"] = kwargs.get("style", "vivid")
-
-                if model.startswith("gpt-image-"):
-                    create_kwargs["quality"] = kwargs.get("quality", "medium")
-                    create_kwargs["moderation"] = kwargs.get("moderation", "auto")
-                    create_kwargs["background"] = kwargs.get("background", "auto")
-                    create_kwargs["output_format"] = kwargs.get("output_compression", "png")
-                    if create_kwargs["output_format"] == "jpeg" or create_kwargs["output_format"] == "webp":
-                        create_kwargs["output_compression"] = kwargs.get("output_compression", "100")
-
-                callback = openai.images.generate
-                res = openai.images.generate(**create_kwargs)
-
-            elif operation == "variation":
-                assert "image_path" in kwargs, "image_path required for variation"
-                callback = openai.images.create_variation
-                with Path(kwargs["image_path"]).open("rb") as img:
-                    res = openai.images.create_variation(
-                        model=model,
-                        image=img,
-                        n=n,
-                        size=kwargs.get("size"),
-                        response_format=kwargs.get("response_format", "url"),
-                    )
-
-            elif operation == "edit":
-                assert "image_path" in kwargs, "image_path required for edit"
-                # allow either a single path or a list of paths
-                img_paths = kwargs["image_path"]
-                if not isinstance(img_paths, (list, tuple)):
-                    img_paths = [img_paths]
-                with contextlib.ExitStack() as stack:
-                    image_files = [stack.enter_context(Path(p).open("rb")) for p in img_paths]
-                    mask_file = None
-                    if "mask_path" in kwargs and kwargs["mask_path"] is not None:
-                        mask_file = stack.enter_context(Path(kwargs["mask_path"]).open("rb"))
-                    # construct API args
-                    edit_kwargs = {
-                        "model": model,
-                        "image": image_files if len(image_files) > 1 else image_files[0],
-                        "prompt": prompt,
-                        "n": n,
-                        "size": kwargs.get("size"),
-                    }
-
-                    if model.startswith("gpt-image-"):
-                        edit_kwargs["quality"] = kwargs.get("quality", "auto")
-
-                    if mask_file:
-                        edit_kwargs["mask"] = mask_file
-                    callback = openai.images.edit
-
-                    res = openai.images.edit(**edit_kwargs)
-            else:
-                CustomUserWarning(f"Unknown image operation: {operation}", raise_with=ValueError)
-
+            callback = self._resolve_callback(operation)
+            callback, res = self._dispatch_operation(
+                operation=operation,
+                prompt=prompt,
+                model=model,
+                n=n,
+                kwargs=kwargs,
+            )
         except Exception as e:
             if except_remedy is None:
                 raise
             res = except_remedy(self, e, callback, argument)
 
-        # wrap it up
         metadata = {}
         result = GPTImageResult(res)
         return [result], metadata
+
+    def _normalize_size(self, kwargs):
+        if "size" in kwargs and isinstance(kwargs["size"], int):
+            s = kwargs["size"]
+            kwargs["size"] = f"{s}x{s}"
+
+    def _resolve_callback(self, operation):
+        if operation == "create":
+            return openai.images.generate
+        if operation == "variation":
+            return openai.images.create_variation
+        if operation == "edit":
+            return openai.images.edit
+        CustomUserWarning(f"Unknown image operation: {operation}", raise_with=ValueError)
+        return openai.images.generate
+
+    def _dispatch_operation(self, operation, prompt, model, n, kwargs):
+        if operation == "create":
+            return self._execute_create(prompt, model, n, kwargs)
+        if operation == "variation":
+            return self._execute_variation(model, n, kwargs)
+        if operation == "edit":
+            return self._execute_edit(prompt, model, n, kwargs)
+        return CustomUserWarning(f"Unknown image operation: {operation}", raise_with=ValueError)
+
+    def _execute_create(self, prompt, model, n, kwargs):
+        create_kwargs = {
+            "model": model,
+            "prompt": prompt,
+            "n": n,
+            "size": kwargs.get("size"),
+        }
+
+        if model == "dall-e-3":
+            create_kwargs["response_format"] = kwargs.get("response_format", "url")
+            create_kwargs["quality"] = kwargs.get("quality", "standard")
+            create_kwargs["style"] = kwargs.get("style", "vivid")
+
+        if model.startswith("gpt-image-"):
+            create_kwargs["quality"] = kwargs.get("quality", "medium")
+            create_kwargs["moderation"] = kwargs.get("moderation", "auto")
+            create_kwargs["background"] = kwargs.get("background", "auto")
+            create_kwargs["output_format"] = kwargs.get("output_compression", "png")
+            if create_kwargs["output_format"] == "jpeg" or create_kwargs["output_format"] == "webp":
+                create_kwargs["output_compression"] = kwargs.get("output_compression", "100")
+
+        callback = openai.images.generate
+        return callback, callback(**create_kwargs)
+
+    def _execute_variation(self, model, n, kwargs):
+        assert "image_path" in kwargs, "image_path required for variation"
+        callback = openai.images.create_variation
+        with Path(kwargs["image_path"]).open("rb") as img:
+            result = callback(
+                model=model,
+                image=img,
+                n=n,
+                size=kwargs.get("size"),
+                response_format=kwargs.get("response_format", "url"),
+            )
+        return callback, result
+
+    def _execute_edit(self, prompt, model, n, kwargs):
+        assert "image_path" in kwargs, "image_path required for edit"
+        img_paths = kwargs["image_path"]
+        if not isinstance(img_paths, (list, tuple)):
+            img_paths = [img_paths]
+        with contextlib.ExitStack() as stack:
+            image_files = [stack.enter_context(Path(p).open("rb")) for p in img_paths]
+            mask_file = None
+            if "mask_path" in kwargs and kwargs["mask_path"] is not None:
+                mask_file = stack.enter_context(Path(kwargs["mask_path"]).open("rb"))
+            edit_kwargs = {
+                "model": model,
+                "image": image_files if len(image_files) > 1 else image_files[0],
+                "prompt": prompt,
+                "n": n,
+                "size": kwargs.get("size"),
+            }
+
+            if model.startswith("gpt-image-"):
+                edit_kwargs["quality"] = kwargs.get("quality", "auto")
+
+            if mask_file:
+                edit_kwargs["mask"] = mask_file
+            callback = openai.images.edit
+            result = callback(**edit_kwargs)
+        return callback, result
