@@ -177,6 +177,7 @@ class VectorDBIndexEngine(Engine):
     def prepare(self, argument):
         assert not argument.prop.processed_input, 'VectorDB indexing engine does not support processed_input.'
         argument.prop.prepared_input = argument.prop.prompt
+        argument.prop.limit = 1
 
     def load(self, index_name, storage_file, index_dims, top_k, metric):
         self.index[index_name] = VectorDB(
