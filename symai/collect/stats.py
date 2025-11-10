@@ -263,35 +263,42 @@ class Aggregator(Symbol):
             CustomUserWarning('Aggregator object is frozen!', raise_with=Exception)
             return
         try:
-            # Append a new entry to the aggregator
-            valid_types = (tuple, list, np.float32, np.float64, np.ndarray, torch.Tensor, int, float, bool, str, Symbol)
-            assert isinstance(entries, valid_types), f'Entries must be a tuple, list, numpy array, torch tensor, integer, float, boolean, string, or Symbol! Got: {type(entries)}'
-            if isinstance(entries, torch.Tensor):
-                entries = entries.detach().cpu().numpy().astype(np.float32)
-            elif isinstance(entries, (tuple, list)):
-                entries = np.asarray(entries, dtype=np.float32)
-            elif isinstance(entries, bool):
-                entries = int(entries)
-            elif isinstance(entries, str):
-                entries = Symbol(entries).embedding.astype(np.float32)
-            elif isinstance(entries, Symbol):
-                # use this to avoid recursion on map setter
-                self.add(entries._value)
+            processed_entries = self._prepare_entries(entries)
+            if processed_entries is None:
                 return
-            elif isinstance(entries, Aggregator):
-                self.add(entries.get())
-                return
-
-            if isinstance(entries, (np.ndarray, np.float32)):
-                entries = entries.squeeze()
-
-            self.entries.append(entries)
+            processed_entries = self._squeeze_entries(processed_entries)
+            self.entries.append(processed_entries)
         except Exception as e:
             msg = f'Could not add entries to Aggregator object! Please verify type or original error: {e}'
             if self._raise_error:
                 CustomUserWarning(msg)
                 raise Exception(msg) from e
             CustomUserWarning(msg)
+
+    def _prepare_entries(self, entries):
+        valid_types = (tuple, list, np.float32, np.float64, np.ndarray, torch.Tensor, int, float, bool, str, Symbol)
+        assert isinstance(entries, valid_types), f'Entries must be a tuple, list, numpy array, torch tensor, integer, float, boolean, string, or Symbol! Got: {type(entries)}'
+        if isinstance(entries, torch.Tensor):
+            return entries.detach().cpu().numpy().astype(np.float32)
+        if isinstance(entries, (tuple, list)):
+            return np.asarray(entries, dtype=np.float32)
+        if isinstance(entries, bool):
+            return int(entries)
+        if isinstance(entries, str):
+            return Symbol(entries).embedding.astype(np.float32)
+        if isinstance(entries, Symbol):
+            # Use this to avoid recursion on map setter
+            self.add(entries._value)
+            return None
+        if isinstance(entries, Aggregator):
+            self.add(entries.get())
+            return None
+        return entries
+
+    def _squeeze_entries(self, entries):
+        if isinstance(entries, (np.ndarray, np.float32)):
+            return entries.squeeze()
+        return entries
 
     def keys(self):
         # Get all key names of items that have the SPECIAL_CONSTANT prefix
