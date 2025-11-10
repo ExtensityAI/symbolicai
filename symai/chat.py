@@ -175,75 +175,99 @@ class SymbiaChat(ChatBot):
             ask_input = False
             usr = self._to_symbol(usr)
 
-        # added step-by-step interaction with the user if input is provided
         while loop:
-            # if no input is provided, ask for input
-            if ask_input:
-                usr = self.input(self.message)
-            else:
-                loop = False # break the loop after the first iteration
-
+            usr, loop = self._resolve_user_input(usr, loop, ask_input)
             self._last_user_input = usr
-            if self.verbose:
-                logger.debug(f'User:\n{usr}\n')
+            self._log_verbose('User', usr)
 
-            ctxt = str(self.detect_capability(usr)) if len(str(usr)) > 0 else '[DK]'
+            ctxt = self._context_from_user(usr)
+            self._log_verbose('In-context', ctxt)
 
-            if self.verbose:
-                logger.debug(f'In-context:\n{ctxt}\n')
-
-            if '[EXIT]' in ctxt:
-                self.message = self.narrate(f'{self.name} writes friendly goodbye message.', context=None, end=True)
+            if self._handle_exit_context(ctxt):
                 break
-            if '[HELP]' in ctxt:
-                reflection = self._extract_reflection(ctxt)
-                self.message = self.narrate(f'{self.name} ', context=reflection)
-            elif '[RECALL]' in ctxt:
-                reflection = self._extract_reflection(ctxt)
-                category = self._extract_category(ctxt)
-                self.message = self.narrate(f'{self.name} uses replies based on what has been recovered from the memory.', context=ctxt, category=category)
-            elif '[DK]' in ctxt:
-                reflection = self._extract_reflection(ctxt)
-                self.message = self.narrate(f'{self.name} is not sure about the message and references and asks the user for more context.', context=reflection)
 
-            else:
-                try:
-                    if '[SYMBOLIC]' in ctxt:
-                        q = usr.extract("mathematical formula that WolframAlpha can solve")
-                        rsp = self.interfaces['symbolic'](q)
-                        self.message = self.narrate(f'{self.name} replies to the user and provides the solution of the math problem.', context=rsp)
-                    elif '[SEARCH]' in ctxt:
-                        q = usr.extract('user query request')
-                        rsp = self.interfaces['search'](q)
-                        self.message = self.narrate(f'{self.name} replies to the user based on the online search results.', context=rsp)
-                    elif '[SCRAPER]' in ctxt:
-                        q = usr.extract('URL from text')
-                        q = q.convert('proper URL, example: https://www.google.com')
-                        rsp = self.interfaces['scraper'](q)
-                        self.message = self.narrate(f'{self.name} replies to the user and narrates its findings.', context=rsp)
-                    elif '[SPEECH-TO-TEXT]' in ctxt:
-                        q = usr.extract('extract file path')
-                        rsp = self.interfaces['stt'](q)
-                        self.message = self.narrate(f'{self.name} replies to the user and transcribes the content of the audio file.', context=rsp)
-                    elif '[TEXT-TO-IMAGE]' in ctxt:
-                        q = usr.extract('text for image creation')
-                        rsp = self.interfaces['drawing'](q)
-                        self.message = self.narrate('Symbia replies to the user and provides the image URL.', context=rsp)
-                    elif '[FILE]' in ctxt:
-                        file_path = usr.extract('extract file path')
-                        q = usr.extract('user question')
-                        rsp = self.interfaces['file'](file_path)
-                        self.message = self.narrate(f'{self.name} replies to the user and outlines and relies to the user query.', context=rsp)
-                    else:
-                        q = usr.extract('user query request')
-                        reflection = self._extract_reflection(ctxt)
-                        self.message = self.narrate(f'{self.name} tries to interpret the response, and if unclear asks the user to restate the statement or add more context.', context=reflection)
+            if self._handle_reflection_context(ctxt):
+                continue
 
-                except Exception as e:
-                    reflection = self._extract_reflection(ctxt)
-                    self.message = self.narrate(f'{self.name} apologizes and explains the user what went wrong.', context=str(e))
+            self._handle_interface_context(usr, ctxt)
 
         return self.message
+
+    def _resolve_user_input(self, usr: Symbol | None, loop: bool, ask_input: bool) -> tuple[Symbol, bool]:
+        if ask_input:
+            usr = self.input(self.message)
+        else:
+            loop = False
+        return usr, loop
+
+    def _log_verbose(self, title: str, content) -> None:
+        if self.verbose:
+            logger.debug(f'{title}:\n{content}\n')
+
+    def _context_from_user(self, usr: Symbol) -> str:
+        text = str(usr)
+        if len(text) == 0:
+            return '[DK]'
+        return str(self.detect_capability(usr))
+
+    def _handle_exit_context(self, ctxt: str) -> bool:
+        if '[EXIT]' in ctxt:
+            self.message = self.narrate(f'{self.name} writes friendly goodbye message.', context=None, end=True)
+            return True
+        return False
+
+    def _handle_reflection_context(self, ctxt: str) -> bool:
+        if '[HELP]' in ctxt:
+            reflection = self._extract_reflection(ctxt)
+            self.message = self.narrate(f'{self.name} ', context=reflection)
+            return True
+        if '[RECALL]' in ctxt:
+            reflection = self._extract_reflection(ctxt)
+            category = self._extract_category(ctxt)
+            self.message = self.narrate(f'{self.name} uses replies based on what has been recovered from the memory.', context=ctxt, category=category)
+            return True
+        if '[DK]' in ctxt:
+            reflection = self._extract_reflection(ctxt)
+            self.message = self.narrate(f'{self.name} is not sure about the message and references and asks the user for more context.', context=reflection)
+            return True
+        return False
+
+    def _handle_interface_context(self, usr: Symbol, ctxt: str) -> None:
+        try:
+            if '[SYMBOLIC]' in ctxt:
+                q = usr.extract("mathematical formula that WolframAlpha can solve")
+                rsp = self.interfaces['symbolic'](q)
+                self.message = self.narrate(f'{self.name} replies to the user and provides the solution of the math problem.', context=rsp)
+            elif '[SEARCH]' in ctxt:
+                q = usr.extract('user query request')
+                rsp = self.interfaces['search'](q)
+                self.message = self.narrate(f'{self.name} replies to the user based on the online search results.', context=rsp)
+            elif '[SCRAPER]' in ctxt:
+                q = usr.extract('URL from text')
+                q = q.convert('proper URL, example: https://www.google.com')
+                rsp = self.interfaces['scraper'](q)
+                self.message = self.narrate(f'{self.name} replies to the user and narrates its findings.', context=rsp)
+            elif '[SPEECH-TO-TEXT]' in ctxt:
+                q = usr.extract('extract file path')
+                rsp = self.interfaces['stt'](q)
+                self.message = self.narrate(f'{self.name} replies to the user and transcribes the content of the audio file.', context=rsp)
+            elif '[TEXT-TO-IMAGE]' in ctxt:
+                q = usr.extract('text for image creation')
+                rsp = self.interfaces['drawing'](q)
+                self.message = self.narrate('Symbia replies to the user and provides the image URL.', context=rsp)
+            elif '[FILE]' in ctxt:
+                file_path = usr.extract('extract file path')
+                q = usr.extract('user question')
+                rsp = self.interfaces['file'](file_path)
+                self.message = self.narrate(f'{self.name} replies to the user and outlines and relies to the user query.', context=rsp)
+            else:
+                q = usr.extract('user query request')
+                reflection = self._extract_reflection(ctxt)
+                self.message = self.narrate(f'{self.name} tries to interpret the response, and if unclear asks the user to restate the statement or add more context.', context=reflection)
+
+        except Exception as e:
+            reflection = self._extract_reflection(ctxt)
+            self.message = self.narrate(f'{self.name} apologizes and explains the user what went wrong.', context=str(e))
 
     def _extract_reflection(self, msg: str) -> str:
         res = re.findall(r'\(([^)]+)\)', msg)

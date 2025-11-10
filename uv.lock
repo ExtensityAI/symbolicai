@@ -1286,15 +1286,6 @@ wheels = [
 ]
 
 [[package]]
-name = "isort"
-version = "6.0.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/b8/21/1e2a441f74a653a144224d7d21afe8f4169e6c7c20bb13aec3a2dc3815e0/isort-6.0.1.tar.gz", hash = "sha256:1cb5df28dfbc742e490c5e41bad6da41b805b0a8be7bc93cd0fb2a8a890ac450", size = 821955, upload-time = "2025-02-26T21:13:16.955Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c1/11/114d0a5f4dabbdcedc1125dee0888514c3c3b16d3e9facad87ed96fad97c/isort-6.0.1-py3-none-any.whl", hash = "sha256:2dc5d7f65c9678d94c88dfc29161a320eec67328bc97aad576874cb4be1e9615", size = 94186, upload-time = "2025-02-26T21:13:14.911Z" },
-]
-
-[[package]]
 name = "jaraco-context"
 version = "6.0.1"
 source = { registry = "https://pypi.org/simple" }
@@ -4393,9 +4384,6 @@ blip2 = [
     { name = "opencv-python-headless" },
     { name = "salesforce-lavis" },
 ]
-dev = [
-    { name = "ruff" },
-]
 hf = [
     { name = "accelerate" },
     { name = "datasets" },
@@ -4433,8 +4421,8 @@ wolframalpha = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "isort" },
     { name = "pytest" },
+    { name = "ruff" },
 ]
 
 [package.metadata]
@@ -4485,7 +4473,6 @@ requires-dist = [
     { name = "redis", marker = "extra == 'services'", specifier = ">=5.0.2" },
     { name = "requests-toolbelt", specifier = ">=1.0.0" },
     { name = "rich", specifier = ">=13.9.4" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.14.4" },
     { name = "salesforce-lavis", marker = "extra == 'blip2'", specifier = ">=1.0.0" },
     { name = "scikit-learn", specifier = ">=1.5.0" },
     { name = "sentence-transformers", specifier = ">=2.5.1" },
@@ -4513,12 +4500,12 @@ requires-dist = [
     { name = "wolframalpha", marker = "extra == 'wolframalpha'", specifier = ">=5.0.0" },
     { name = "z3-solver", marker = "extra == 'solver'", specifier = ">=4.12.6.0" },
 ]
-provides-extras = ["bitsandbytes", "blip2", "hf", "webscraping", "llama-cpp", "wolframalpha", "whisper", "serpapi", "services", "solver", "all", "dev"]
+provides-extras = ["bitsandbytes", "blip2", "hf", "webscraping", "llama-cpp", "wolframalpha", "whisper", "serpapi", "services", "solver", "all"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "isort", specifier = ">=6.0.1" },
     { name = "pytest", specifier = ">=8.3.1" },
+    { name = "ruff", specifier = ">=0.14.4" },
 ]
 
 [[package]]

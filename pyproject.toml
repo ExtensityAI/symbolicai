@@ -100,7 +100,6 @@ exclude = ["tests", "examples", "notebooks", "outputs", "assets", "app.py"]
 
 [dependency-groups]
 dev = [
-    "isort>=6.0.1",
     "ruff>=0.14.4",
     "pytest>=8.3.1",
 ]
