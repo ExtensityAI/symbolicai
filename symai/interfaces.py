@@ -33,36 +33,65 @@ class Interface(Expression):
         return getattr(module_, class_name)
 
 
-def cfg_to_interface():
-    """Maps configuration to interface."""
-    mapping = {}
+def _add_symbolic_interface(mapping):
     symbolic_api_key = SYMAI_CONFIG.get("SYMBOLIC_ENGINE_API_KEY")
     if symbolic_api_key is not None:
         mapping["symbolic"] = Interface("wolframalpha")
 
+
+def _resolve_drawing_interface_name(drawing_engine_model):
+    if drawing_engine_model.startswith("flux"):
+        return "flux"
+    if drawing_engine_model.startswith("dall-e-"):
+        return "dall_e"
+    if drawing_engine_model.startswith("gpt-image-"):
+        return "gpt_image"
+    return None
+
+
+def _add_drawing_interface(mapping):
     drawing_engine_api_key = SYMAI_CONFIG.get("DRAWING_ENGINE_API_KEY")
-    if drawing_engine_api_key is not None:
-        drawing_engine_model = SYMAI_CONFIG.get("DRAWING_ENGINE_MODEL")
-        if drawing_engine_model.startswith("flux"):
-            mapping["drawing"] = Interface("flux")
-        elif drawing_engine_model.startswith("dall-e-"):
-            mapping["drawing"] = Interface("dall_e")
-        elif drawing_engine_model.startswith("gpt-image-"):
-            mapping["drawing"] = Interface("gpt_image")
+    if drawing_engine_api_key is None:
+        return
+    drawing_engine_model = SYMAI_CONFIG.get("DRAWING_ENGINE_MODEL")
+    interface_name = _resolve_drawing_interface_name(drawing_engine_model)
+    if interface_name is not None:
+        mapping["drawing"] = Interface(interface_name)
 
+
+def _resolve_search_interface_name(search_engine_model):
+    if search_engine_model.startswith("google"):
+        return "serpapi"
+    if search_engine_model.startswith("sonar"):
+        return "perplexity"
+    if search_engine_model in OPENAI_REASONING_MODELS + OPENAI_CHAT_MODELS:
+        return "openai_search"
+    return None
+
+
+def _add_search_interface(mapping):
     search_engine_api_key = SYMAI_CONFIG.get("SEARCH_ENGINE_API_KEY")
-    if search_engine_api_key is not None:
-        search_engine_model = SYMAI_CONFIG.get("SEARCH_ENGINE_MODEL")
-        if search_engine_model.startswith("google"):
-            mapping["search"] = Interface("serpapi")
-        elif search_engine_model.startswith("sonar"):
-            mapping["search"] = Interface("perplexity")
-        elif search_engine_model in OPENAI_REASONING_MODELS + OPENAI_CHAT_MODELS:
-            mapping["search"] = Interface("openai_search")
+    if search_engine_api_key is None:
+        return
+    search_engine_model = SYMAI_CONFIG.get("SEARCH_ENGINE_MODEL")
+    interface_name = _resolve_search_interface_name(search_engine_model)
+    if interface_name is not None:
+        mapping["search"] = Interface(interface_name)
 
+
+def _add_tts_interface(mapping):
     tts_engine_api_key = SYMAI_CONFIG.get("TEXT_TO_SPEECH_ENGINE_API_KEY")
-    if tts_engine_api_key is not None: # TODO: add tests for this engine
+    if tts_engine_api_key is not None:  # TODO: add tests for this engine
         mapping["tts"] = Interface("tts")
+
+
+def cfg_to_interface():
+    """Maps configuration to interface."""
+    mapping = {}
+    _add_symbolic_interface(mapping)
+    _add_drawing_interface(mapping)
+    _add_search_interface(mapping)
+    _add_tts_interface(mapping)
 
     mapping["indexing"] = Interface("naive_vectordb")
     mapping["scraper"] = Interface("naive_webscraping")
