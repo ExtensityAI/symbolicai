@@ -36,72 +36,81 @@ def parse_custom_class_instances(s):
 
     return s
 
+
+def _strip_quotes(text):
+    if not isinstance(text, str):
+        return text
+    if text.startswith("'") and text.endswith("'"):
+        return text.strip("'")
+    if text.startswith('"') and text.endswith('"'):
+        return text.strip('"')
+    return text
+
+
+def _extract_content(str_class):
+    return str_class.split('ChatCompletionMessage(content=')[-1].split(", role=")[0][1:-1]
+
+
+def _parse_value(value):
+    try:
+        value = parse_custom_class_instances(value)
+        if not isinstance(value, str):
+            return value
+        if value.startswith('['):
+            inner_values = value[1:-1]
+            values = inner_values.split(',')
+            return [_parse_value(v.strip()) for v in values]
+        if value.startswith('{'):
+            inner_values = value[1:-1]
+            values = inner_values.split(',')
+            return {k.strip(): _parse_value(v.strip()) for k, v in [v.split(':', 1) for v in values]}
+        result = ast.literal_eval(value)
+        if isinstance(result, dict):
+            return {k: _parse_value(v) for k, v in result.items()}
+        if isinstance(result, (list, tuple, set)):
+            return [_parse_value(v) for v in result]
+        return result
+    except (ValueError, SyntaxError):
+        return value
+
+
+def _process_list_value(raw_value):
+    parsed_value = _parse_value(raw_value)
+    dir(parsed_value)
+    if hasattr(parsed_value, '__dict__'):
+        for key in parsed_value.__dict__:
+            value = getattr(parsed_value, key)
+            if isinstance(value, str):
+                parsed_value[key.strip("'")] = value.strip("'")
+    return parsed_value
+
+
+def _process_dict_value(raw_value):
+    parsed_value = _parse_value(raw_value)
+    new_value = {}
+    for key, value in parsed_value.items():
+        if isinstance(value, str):
+            value = value.strip("'")
+        new_value[key.strip("'")] = value
+    return new_value
+
+
+def _collect_attributes(str_class):
+    attr_pattern = r"(\w+)=(\[.*?\]|\{.*?\}|'.*?'|None|\w+)"
+    attributes = re.findall(attr_pattern, str_class)
+    updated_attributes = [('content', _extract_content(str_class))]
+    for key, raw_value in attributes:
+        attr_key = _strip_quotes(key)
+        attr_value = _strip_quotes(raw_value)
+        if attr_value.startswith('[') and attr_value.endswith(']'):
+            attr_value = _process_list_value(attr_value)
+        elif attr_value.startswith('{') and attr_value.endswith('}'):
+            attr_value = _process_dict_value(attr_value)
+        updated_attributes.append((attr_key, attr_value))
+    return updated_attributes
+
+
 # TODO: fix to properly parse nested lists and dicts
 def create_object_from_string(str_class):
-    def updated_attributes_process(str_class):
-        # Regular expression to extract key-value pairs
-        attr_pattern = r"(\w+)=(\[.*?\]|\{.*?\}|'.*?'|None|\w+)"
-        attributes = re.findall(attr_pattern, str_class)
-
-        # Create an instance of the dynamic class with initial attributes
-        updated_attributes = []
-        # remove string up until 'content='
-        content = str_class.split('ChatCompletionMessage(content=')[-1].split(", role=")[0][1:-1]
-        updated_attributes.append(('content', content))
-        for key, value in attributes:
-            attr_key = key
-            attr_value = value
-            if attr_key.startswith("'") and attr_key.endswith("'"):
-                attr_key = attr_key.strip("'")
-            if attr_key.startswith('"') and attr_key.endswith('"'):
-                attr_key = attr_key.strip('"')
-            if attr_value.startswith("'") and attr_value.endswith("'"):
-                attr_value = attr_value.strip("'")
-            if attr_value.startswith('"') and attr_value.endswith('"'):
-                attr_value = attr_value.strip('"')
-
-            if attr_value.startswith('[') and attr_value.endswith(']'):
-                parsed_value = parse_value(attr_value)
-                attr_value = parsed_value
-                dir(attr_value)
-                if hasattr(attr_value, '__dict__'):
-                    for k in attr_value.__dict__:
-                        v = getattr(attr_value, k)
-                        if isinstance(v, str):
-                            attr_value[k.strip("'")] = v.strip("'")
-            elif attr_value.startswith('{') and attr_value.endswith('}'):
-                parsed_value = parse_value(attr_value)
-                new_value = {}
-                for k in parsed_value:
-                    v = parsed_value[k]
-                    if isinstance(v, str):
-                        v = v.strip("'")
-                    new_value[k.strip("'")] = v
-                attr_value = new_value
-            updated_attributes.append((attr_key, attr_value))
-        return updated_attributes
-
-    def parse_value(value):
-        try:
-            value = parse_custom_class_instances(value)
-            if not isinstance(value, str):
-                return value
-            if value.startswith('['):
-                value = value[1:-1]
-                values = value.split(',')
-                return [parse_value(v.strip()) for v in values]
-            if value.startswith('{'):
-                value = value[1:-1]
-                values = value.split(',')
-                return {k.strip(): parse_value(v.strip()) for k, v in [v.split(':', 1) for v in values]}
-            res = ast.literal_eval(value)
-            if isinstance(res, dict):
-                return {k: parse_value(v) for k, v in res.items()}
-            if isinstance(res, (list, tuple, set)):
-                return [parse_value(v) for v in res]
-            return res
-        except (ValueError, SyntaxError):
-            return value
-
-    updated_attributes = updated_attributes_process(str_class)
-    return DynamicClass(**{key: parse_value(value) for key, value in updated_attributes})
+    updated_attributes = _collect_attributes(str_class)
+    return DynamicClass(**{key: _parse_value(value) for key, value in updated_attributes})
