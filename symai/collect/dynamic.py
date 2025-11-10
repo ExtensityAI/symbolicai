@@ -89,9 +89,8 @@ def _process_dict_value(raw_value):
     parsed_value = _parse_value(raw_value)
     new_value = {}
     for key, value in parsed_value.items():
-        if isinstance(value, str):
-            value = value.strip("'")
-        new_value[key.strip("'")] = value
+        stripped_value = value.strip("'") if isinstance(value, str) else value
+        new_value[key.strip("'")] = stripped_value
     return new_value
 
 
