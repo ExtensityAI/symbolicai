@@ -117,93 +117,95 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
             UserMessage(f"Failed to process document: {e}")
             return None
 
-    def _handle_image_content(self, content: str) -> list:
+    def _handle_image_content(self, content: str) -> list[types.Part]:
         """Handle image content by processing and preparing google.generativeai.types.Part objects."""
-        image_parts = []
-        pattern = r'<<vision:(.*?):>>'
-        matches = re.findall(pattern, content) # re must be imported
-
-        for match in matches:
-            img_src = match.strip()
-
+        image_parts: list[types.Part] = []
+        for img_src in self._extract_image_sources(content):
             try:
-                if img_src.startswith('data:image'):
-                    header, encoded = img_src.split(',', 1)
-                    mime_type = header.split(';')[0].split(':')[1]
-                    image_bytes = base64.b64decode(encoded)
-                    image_parts.append(genai.types.Part(inline_data=genai.types.Blob(mime_type=mime_type, data=image_bytes)))
-
-                elif img_src.startswith('http://') or img_src.startswith('https://'):
-                    response = requests.get(img_src, timeout=10) # 10 seconds timeout
-                    response.raise_for_status()
-
-                    image_bytes = response.content
-                    mime_type = response.headers.get('Content-Type', 'application/octet-stream')
-
-                    if not mime_type.startswith('image/'):
-                        UserMessage(f"URL content type '{mime_type}' does not appear to be an image for: {img_src}. Attempting to use anyway.")
-
-                    image_parts.append(genai.types.Part(inline_data=genai.types.Blob(mime_type=mime_type, data=image_bytes)))
-
-                elif img_src.startswith('frames:'):
-                    temp_path = img_src.replace('frames:', '')
-                    parts = temp_path.split(':', 1)
-                    if len(parts) != 2:
-                        UserMessage(f"Invalid 'frames:' format: {img_src}")
-                        continue
-                    max_used_frames_str, actual_path = parts
-                    try:
-                        max_used_frames = int(max_used_frames_str)
-                    except ValueError:
-                        UserMessage(f"Invalid max_frames number in 'frames:' format: {img_src}")
-                        continue
-
-                    frame_buffers, ext = encode_media_frames(actual_path)
-
-                    mime_type = f'image/{ext.lower()}' if ext else 'application/octet-stream'
-                    if ext and ext.lower() == 'jpg':
-                        mime_type = 'image/jpeg'
-
-                    if not frame_buffers:
-                        UserMessage(f"encode_media_frames returned no frames for: {actual_path}")
-                        continue
-
-                    step = max(1, len(frame_buffers) // 50)
-                    indices = list(range(0, len(frame_buffers), step))[:max_used_frames]
-
-                    for i_idx in indices:
-                        if i_idx < len(frame_buffers):
-                           image_bytes = frame_buffers[i_idx]
-                           image_parts.append(genai.types.Part(inline_data=genai.types.Blob(mime_type=mime_type, data=image_bytes)))
-
-                else:
-                    # Handle local file paths
-                    local_file_path = Path(img_src)
-                    if not local_file_path.is_file():
-                        UserMessage(f"Local image file not found: {img_src}")
-                        continue
-
-                    image_bytes = local_file_path.read_bytes()
-                    mime_type, _ = mimetypes.guess_type(local_file_path)
-                    if mime_type is None: # Fallback MIME type determination
-                        file_ext = local_file_path.suffix.lower().lstrip('.')
-                        if file_ext == 'jpg':
-                            mime_type = 'image/jpeg'
-                        elif file_ext == 'png':
-                            mime_type = 'image/png'
-                        elif file_ext == 'gif':
-                            mime_type = 'image/gif'
-                        elif file_ext == 'webp':
-                            mime_type = 'image/webp'
-                        else:
-                            mime_type = 'application/octet-stream'
-
-                    image_parts.append(genai.types.Part(inline_data=genai.types.Blob(mime_type=mime_type, data=image_bytes)))
-
+                image_parts.extend(self._create_parts_from_image_source(img_src))
             except Exception as e:
                 UserMessage(f"Failed to process image source '{img_src}'. Error: {e!s}", raise_with=ValueError)
-
         return image_parts
+
+    def _extract_image_sources(self, content: str) -> list[str]:
+        pattern = r'<<vision:(.*?):>>'
+        return [match.strip() for match in re.findall(pattern, content)]
+
+    def _create_parts_from_image_source(self, img_src: str) -> list[types.Part]:
+        if img_src.startswith('data:image'):
+            return self._create_parts_from_data_uri(img_src)
+        if img_src.startswith(('http://', 'https://')):
+            return self._create_parts_from_url(img_src)
+        if img_src.startswith('frames:'):
+            return self._create_parts_from_frames(img_src)
+        return self._create_parts_from_local_path(img_src)
+
+    def _create_parts_from_data_uri(self, img_src: str) -> list[types.Part]:
+        header, encoded = img_src.split(',', 1)
+        mime_type = header.split(';')[0].split(':')[1]
+        image_bytes = base64.b64decode(encoded)
+        part = genai.types.Part(inline_data=genai.types.Blob(mime_type=mime_type, data=image_bytes))
+        return [part]
+
+    def _create_parts_from_url(self, img_src: str) -> list[types.Part]:
+        response = requests.get(img_src, timeout=10)
+        response.raise_for_status()
+        image_bytes = response.content
+        mime_type = response.headers.get('Content-Type', 'application/octet-stream')
+        if not mime_type.startswith('image/'):
+            UserMessage(f"URL content type '{mime_type}' does not appear to be an image for: {img_src}. Attempting to use anyway.")
+        part = genai.types.Part(inline_data=genai.types.Blob(mime_type=mime_type, data=image_bytes))
+        return [part]
+
+    def _create_parts_from_frames(self, img_src: str) -> list[types.Part]:
+        temp_path = img_src.replace('frames:', '')
+        parts = temp_path.split(':', 1)
+        if len(parts) != 2:
+            UserMessage(f"Invalid 'frames:' format: {img_src}")
+            return []
+        max_used_frames_str, actual_path = parts
+        try:
+            max_used_frames = int(max_used_frames_str)
+        except ValueError:
+            UserMessage(f"Invalid max_frames number in 'frames:' format: {img_src}")
+            return []
+        frame_buffers, ext = encode_media_frames(actual_path)
+        mime_type = f'image/{ext.lower()}' if ext else 'application/octet-stream'
+        if ext and ext.lower() == 'jpg':
+            mime_type = 'image/jpeg'
+        if not frame_buffers:
+            UserMessage(f"encode_media_frames returned no frames for: {actual_path}")
+            return []
+        step = max(1, len(frame_buffers) // 50)
+        indices = list(range(0, len(frame_buffers), step))[:max_used_frames]
+        parts_list: list[types.Part] = []
+        for frame_idx in indices:
+            if frame_idx < len(frame_buffers):
+                image_bytes = frame_buffers[frame_idx]
+                parts_list.append(genai.types.Part(inline_data=genai.types.Blob(mime_type=mime_type, data=image_bytes)))
+        return parts_list
+
+    def _create_parts_from_local_path(self, img_src: str) -> list[types.Part]:
+        local_file_path = Path(img_src)
+        if not local_file_path.is_file():
+            UserMessage(f"Local image file not found: {img_src}")
+            return []
+        image_bytes = local_file_path.read_bytes()
+        mime_type, _ = mimetypes.guess_type(local_file_path)
+        if mime_type is None:
+            file_ext = local_file_path.suffix.lower().lstrip('.')
+            if file_ext == 'jpg':
+                mime_type = 'image/jpeg'
+            elif file_ext == 'png':
+                mime_type = 'image/png'
+            elif file_ext == 'gif':
+                mime_type = 'image/gif'
+            elif file_ext == 'webp':
+                mime_type = 'image/webp'
+            else:
+                mime_type = 'application/octet-stream'
+        part = genai.types.Part(inline_data=genai.types.Blob(mime_type=mime_type, data=image_bytes))
+        return [part]
 
     def _handle_video_content(self, content: str):
         """Handle video content by uploading to Gemini"""
@@ -310,51 +312,13 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
         payload = self._prepare_request_payload(argument)
         except_remedy = kwargs.get('except_remedy')
 
-        contents = []
-        for msg in prompt:
-            role = msg['role']
-            parts_list = msg['content']
-            contents.append(types.Content(role=role, parts=parts_list))
+        contents = self._build_contents_from_prompt(prompt)
 
         try:
-            generation_config = types.GenerateContentConfig(
-                max_output_tokens=payload.get('max_output_tokens'),
-                temperature=payload.get('temperature', 1.0),
-                top_p=payload.get('top_p', 0.95),
-                top_k=payload.get('top_k', 40),
-                stop_sequences=payload.get('stop_sequences'),
-                response_mime_type=payload.get('response_mime_type', 'text/plain'),
-            )
-
-            if payload.get('system_instruction'):
-                generation_config.system_instruction = payload['system_instruction']
-
-            if payload.get('thinking_config'):
-                generation_config.thinking_config = payload['thinking_config']
-
-            if payload.get('tools'):
-                generation_config.tools = payload['tools']
-                generation_config.automatic_function_calling=payload['automatic_function_calling']
-
-            res = self.client.models.generate_content(
-                model=kwargs.get('model', self.model),
-                contents=contents,
-                config=generation_config
-            )
-
+            generation_config = self._build_generation_config(payload)
+            res = self._generate_model_response(kwargs, contents, generation_config)
         except Exception as e:
-            if self.api_key is None or self.api_key == '':
-                msg = 'Google API key is not set. Please set it in the config file or pass it as an argument to the command method.'
-                UserMessage(msg)
-                if self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] is None or self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] == '':
-                    UserMessage(msg, raise_with=ValueError)
-                self.api_key = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
-                genai.configure(api_key=self.api_key)
-
-            if except_remedy is not None:
-                res = except_remedy(self, e, self.client.generate_content, argument)
-            else:
-                UserMessage(f'Error during generation. Caused by: {e}', raise_with=ValueError)
+            res = self._handle_generation_error(e, except_remedy, argument)
 
         metadata = {'raw_output': res}
         if payload.get('tools'):
@@ -370,10 +334,58 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
 
         processed_text = output['text']
         if argument.prop.response_format:
-            # Safely remove JSON markdown formatting if present
             processed_text = processed_text.replace('```json', '').replace('```', '')
 
         return [processed_text], metadata
+
+    def _build_contents_from_prompt(self, prompt) -> list[types.Content]:
+        contents: list[types.Content] = []
+        for msg in prompt:
+            role = msg['role']
+            parts_list = msg['content']
+            contents.append(types.Content(role=role, parts=parts_list))
+        return contents
+
+    def _build_generation_config(self, payload: dict) -> types.GenerateContentConfig:
+        generation_config = types.GenerateContentConfig(
+            max_output_tokens=payload.get('max_output_tokens'),
+            temperature=payload.get('temperature', 1.0),
+            top_p=payload.get('top_p', 0.95),
+            top_k=payload.get('top_k', 40),
+            stop_sequences=payload.get('stop_sequences'),
+            response_mime_type=payload.get('response_mime_type', 'text/plain'),
+        )
+        self._apply_optional_config_fields(generation_config, payload)
+        return generation_config
+
+    def _apply_optional_config_fields(self, generation_config: types.GenerateContentConfig, payload: dict) -> None:
+        if payload.get('system_instruction'):
+            generation_config.system_instruction = payload['system_instruction']
+        if payload.get('thinking_config'):
+            generation_config.thinking_config = payload['thinking_config']
+        if payload.get('tools'):
+            generation_config.tools = payload['tools']
+            generation_config.automatic_function_calling = payload['automatic_function_calling']
+
+    def _generate_model_response(self, kwargs: dict, contents: list[types.Content], generation_config: types.GenerateContentConfig):
+        return self.client.models.generate_content(
+            model=kwargs.get('model', self.model),
+            contents=contents,
+            config=generation_config
+        )
+
+    def _handle_generation_error(self, exception: Exception, except_remedy, argument):
+        if self.api_key is None or self.api_key == '':
+            msg = 'Google API key is not set. Please set it in the config file or pass it as an argument to the command method.'
+            UserMessage(msg)
+            if self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] is None or self.config['NEUROSYMBOLIC_ENGINE_API_KEY'] == '':
+                UserMessage(msg, raise_with=ValueError)
+            self.api_key = self.config['NEUROSYMBOLIC_ENGINE_API_KEY']
+            genai.configure(api_key=self.api_key)
+        if except_remedy is not None:
+            return except_remedy(self, exception, self.client.generate_content, argument)
+        UserMessage(f'Error during generation. Caused by: {exception}', raise_with=ValueError)
+        return None
 
     def _process_function_calls(self, res, metadata):
         hit = False
@@ -398,26 +410,30 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
             UserMessage('Need to provide a prompt instruction to the engine if `raw_input` is enabled!', raise_with=ValueError)
 
         raw_prompt_data = argument.prop.processed_input
-        messages_for_api = []
-        system_instruction = None
+        normalized_prompts = self._normalize_raw_prompt_data(raw_prompt_data)
+        system_instruction, non_system_messages = self._separate_system_instruction(normalized_prompts)
+        messages_for_api = self._build_raw_input_messages(non_system_messages)
+        return system_instruction, messages_for_api
 
+    def _normalize_raw_prompt_data(self, raw_prompt_data):
         if isinstance(raw_prompt_data, str):
-            normalized_prompts = [{'role': 'user', 'content': raw_prompt_data}]
-        elif isinstance(raw_prompt_data, dict):
-            normalized_prompts = [raw_prompt_data]
-        elif isinstance(raw_prompt_data, list):
+            return [{'role': 'user', 'content': raw_prompt_data}]
+        if isinstance(raw_prompt_data, dict):
+            return [raw_prompt_data]
+        if isinstance(raw_prompt_data, list):
             for item in raw_prompt_data:
                 if not isinstance(item, dict):
                     UserMessage(f"Invalid item in raw_input list: {item}. Expected dict.", raise_with=ValueError)
-            normalized_prompts = raw_prompt_data
-        else:
-            UserMessage(f"Unsupported type for raw_input: {type(raw_prompt_data)}. Expected str, dict, or list of dicts.", raise_with=ValueError)
+            return raw_prompt_data
+        UserMessage(f"Unsupported type for raw_input: {type(raw_prompt_data)}. Expected str, dict, or list of dicts.", raise_with=ValueError)
+        return []
 
-        temp_non_system_messages = []
+    def _separate_system_instruction(self, normalized_prompts):
+        system_instruction = None
+        non_system_messages = []
         for msg in normalized_prompts:
             role = msg.get('role')
             content = msg.get('content')
-
             if role is None or content is None:
                 UserMessage(f"Message in raw_input is missing 'role' or 'content': {msg}", raise_with=ValueError)
             if not isinstance(content, str):
@@ -427,28 +443,26 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
                     UserMessage('Only one system instruction is allowed in raw_input mode!', raise_with=ValueError)
                 system_instruction = content
             else:
-                temp_non_system_messages.append({'role': role, 'content': content})
+                non_system_messages.append({'role': role, 'content': content})
+        return system_instruction, non_system_messages
 
-        for msg in temp_non_system_messages:
+    def _build_raw_input_messages(self, messages):
+        messages_for_api = []
+        for msg in messages:
             content_str = str(msg.get('content', ''))
-
             current_message_api_parts: list[types.Part] = []
-
             image_api_parts = self._handle_image_content(content_str)
             if image_api_parts:
                 current_message_api_parts.extend(image_api_parts)
-
             text_only_content = self._remove_media_patterns(content_str)
             if text_only_content:
                 current_message_api_parts.append(types.Part(text=text_only_content))
-
             if current_message_api_parts:
                 messages_for_api.append({
                     'role': msg['role'],
                     'content': current_message_api_parts
                 })
-
-        return system_instruction, messages_for_api
+        return messages_for_api
 
     def prepare(self, argument):
         #@NOTE: OpenAI compatibility at high level
@@ -456,57 +470,54 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
             argument.prop.prepared_input = self._prepare_raw_input(argument)
             return
 
-        _non_verbose_output = """<META_INSTRUCTION/>\nYou do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc. Never add meta instructions information to your output!\n\n"""
+        processed_input_str = str(argument.prop.processed_input)
+        media_content = self._process_multimodal_content(processed_input_str)
+        system_content = self._compose_system_content(argument)
+        user_content = self._compose_user_content(argument)
+        system_content, user_content = self._apply_self_prompt_if_needed(argument, system_content, user_content)
 
-        user_content = ""
+        user_prompt = self._build_user_prompt(media_content, user_content)
+        argument.prop.prepared_input = (system_content, [user_prompt])
+
+    def _compose_system_content(self, argument) -> str:
         system_content = ""
-
+        _non_verbose_output = """<META_INSTRUCTION/>\nYou do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc. Never add meta instructions information to your output!\n\n"""
         if argument.prop.suppress_verbose_output:
             system_content += _non_verbose_output
         system_content = f'{system_content}\n' if system_content and len(system_content) > 0 else ''
-
         if argument.prop.response_format:
-            _rsp_fmt = argument.prop.response_format
-            assert _rsp_fmt.get('type') is not None, 'Response format type is required!'
-            if _rsp_fmt["type"] == "json_object":
+            response_format = argument.prop.response_format
+            assert response_format.get('type') is not None, 'Response format type is required!'
+            if response_format["type"] == "json_object":
                 system_content += '<RESPONSE_FORMAT/>\nYou are a helpful assistant designed to output JSON.\n\n'
-
         ref = argument.prop.instance
         static_ctxt, dyn_ctxt = ref.global_context
         if len(static_ctxt) > 0:
             system_content += f"<STATIC_CONTEXT/>\n{static_ctxt}\n\n"
-
         if len(dyn_ctxt) > 0:
             system_content += f"<DYNAMIC_CONTEXT/>\n{dyn_ctxt}\n\n"
-
         payload = argument.prop.payload
         if argument.prop.payload:
             system_content += f"<ADDITIONAL_CONTEXT/>\n{payload!s}\n\n"
-
         examples: list[str] = argument.prop.examples
         if examples and len(examples) > 0:
             system_content += f"<EXAMPLES/>\n{examples!s}\n\n"
-
-        # Handle multimodal content
-        processed_input_str = str(argument.prop.processed_input)
-        media_content = self._process_multimodal_content(processed_input_str)
-
         if argument.prop.prompt is not None and len(argument.prop.prompt) > 0:
             val = str(argument.prop.prompt)
             val = self._remove_media_patterns(val)
             system_content += f"<INSTRUCTION/>\n{val}\n\n"
-
-        suffix = str(argument.prop.processed_input)
-        suffix = self._remove_media_patterns(suffix)
-        user_content += f"{suffix}"
-
         if argument.prop.template_suffix:
             system_content += f' You will only generate content for the placeholder `{argument.prop.template_suffix!s}` following the instructions and the provided context information.\n\n'
+        return system_content
 
-        # Handle self-prompting
+    def _compose_user_content(self, argument) -> str:
+        suffix = str(argument.prop.processed_input)
+        suffix = self._remove_media_patterns(suffix)
+        return f"{suffix}"
+
+    def _apply_self_prompt_if_needed(self, argument, system_content: str, user_content: str):
         if argument.prop.instance._kwargs.get('self_prompt', False) or argument.prop.self_prompt:
             self_prompter = SelfPrompt()
-
             res = self_prompter(
                 {'user': user_content, 'system': system_content},
                 max_tokens=argument.kwargs.get('max_tokens', self.max_response_tokens),
@@ -514,21 +525,17 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
             )
             if res is None:
                 UserMessage("Self-prompting failed!", raise_with=ValueError)
-
             user_content = res['user']
             system_content = res['system']
+        return system_content, user_content
 
-        all_user_content = []
-        all_user_content.extend(media_content) #
+    def _build_user_prompt(self, media_content, user_content: str) -> dict:
+        all_user_content = list(media_content)
         if user_content.strip():
             all_user_content.append(genai.types.Part(text=user_content.strip()))
-
         if not all_user_content:
             all_user_content = [genai.types.Part(text="N/A")]
-
-        user_prompt = {'role': 'user', 'content': all_user_content}
-
-        argument.prop.prepared_input = (system_content, [user_prompt])
+        return {'role': 'user', 'content': all_user_content}
 
     def _prepare_request_payload(self, argument):
         kwargs = argument.kwargs
