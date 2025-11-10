@@ -18,6 +18,15 @@ logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
+_NON_VERBOSE_OUTPUT = (
+    "<META_INSTRUCTION/>\n"
+    "You do not output anything else, like verbose preambles or post explanation, such as "
+    "\"Sure, let me...\", \"Hope that was helpful...\", \"Yes, I can help you with that...\", etc. "
+    "Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use "
+    "indentation, etc. Never add meta instructions information to your output!\n\n"
+)
+
+
 class GroqEngine(Engine):
     def __init__(self, api_key: str | None = None, model: str | None = None):
         super().__init__()
@@ -139,18 +148,32 @@ class GroqEngine(Engine):
         if argument.prop.raw_input:
             argument.prop.prepared_input = self._prepare_raw_input(argument)
             return
+        self._validate_response_format(argument)
 
-        _non_verbose_output = """<META_INSTRUCTION/>\nYou do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc. Never add meta instructions information to your output!\n\n"""
-        user:   str = ""
-        system: str = ""
+        system = self._build_system_message(argument)
+        user_content = self._build_user_content(argument)
+        user_prompt = {"role": "user", "content": user_content}
+        system, user_prompt = self._apply_self_prompt_if_needed(argument, system, user_prompt)
 
-        if argument.prop.suppress_verbose_output:
-            system += _non_verbose_output
-        system = f'{system}\n' if system and len(system) > 0 else ''
+        argument.prop.prepared_input = [
+            { "role": "system", "content": system },
+            user_prompt,
+        ]
 
+    def _validate_response_format(self, argument) -> None:
         if argument.prop.response_format:
-            _rsp_fmt = argument.prop.response_format
-            assert _rsp_fmt.get('type') is not None, 'Expected format `{ "type": "json_object" }`! We are using the OpenAI compatible API for Groq. See more here: https://console.groq.com/docs/tool-use'
+            response_format = argument.prop.response_format
+            assert response_format.get('type') is not None, (
+                'Expected format `{ "type": "json_object" }`! We are using the OpenAI compatible API for Groq. '
+                "See more here: https://console.groq.com/docs/tool-use"
+            )
+
+    def _build_system_message(self, argument) -> str:
+        system: str = ""
+        if argument.prop.suppress_verbose_output:
+            system += _NON_VERBOSE_OUTPUT
+        if system:
+            system = f"{system}\n"
 
         ref = argument.prop.instance
         static_ctxt, dyn_ctxt = ref.global_context
@@ -160,9 +183,8 @@ class GroqEngine(Engine):
         if len(dyn_ctxt) > 0:
             system += f"<DYNAMIC CONTEXT/>\n{dyn_ctxt}\n\n"
 
-        payload = argument.prop.payload
         if argument.prop.payload:
-            system += f"<ADDITIONAL CONTEXT/>\n{payload!s}\n\n"
+            system += f"<ADDITIONAL CONTEXT/>\n{argument.prop.payload!s}\n\n"
 
         examples = argument.prop.examples
         if examples and len(examples) > 0:
@@ -172,29 +194,25 @@ class GroqEngine(Engine):
             val = str(argument.prop.prompt)
             system += f"<INSTRUCTION/>\n{val}\n\n"
 
-        suffix: str = str(argument.prop.processed_input)
-        user += f"{suffix}"
-
         if argument.prop.template_suffix:
-            system += f' You will only generate content for the placeholder `{argument.prop.template_suffix!s}` following the instructions and the provided context information.\n\n'
+            system += (
+                " You will only generate content for the placeholder "
+                f"`{argument.prop.template_suffix!s}` following the instructions and the provided context information.\n\n"
+            )
 
-        user_prompt = { "role": "user", "content": user }
+        return system
 
-        # First check if the `Symbol` instance has the flag set, otherwise check if it was passed as an argument to a method
+    def _build_user_content(self, argument) -> str:
+        return str(argument.prop.processed_input)
+
+    def _apply_self_prompt_if_needed(self, argument, system, user_prompt):
         if argument.prop.instance._kwargs.get('self_prompt', False) or argument.prop.self_prompt:
             self_prompter = SelfPrompt()
-
-            res = self_prompter({'user': user, 'system': system})
+            res = self_prompter({'user': user_prompt['content'], 'system': system})
             if res is None:
                 UserMessage("Self-prompting failed!", raise_with=ValueError)
-
-            user_prompt = { "role": "user", "content": res['user'] }
-            system = res['system']
-
-        argument.prop.prepared_input = [
-            { "role": "system", "content": system },
-            user_prompt,
-        ]
+            return res['system'], {"role": "user", "content": res['user']}
+        return system, user_prompt
 
     def _process_function_calls(self, res, metadata):
         hit = False
