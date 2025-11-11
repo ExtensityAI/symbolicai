@@ -261,10 +261,10 @@ def display_config():
     summary.add_column("Active Path")
 
     active_paths = {
-        "Primary Config Dir": config_manager.config_dir,
-        "symai.config.json": config_manager.get_config_path('symai.config.json'),
-        "symsh.config.json": config_manager.get_config_path('symsh.config.json'),
-        "symserver.config.json": config_manager.get_config_path('symserver.config.json')
+        "Primary Config Dir": config_manager.get_active_config_dir(),
+        "symai.config.json": config_manager.get_active_path('symai.config.json'),
+        "symsh.config.json": config_manager.get_active_path('symsh.config.json'),
+        "symserver.config.json": config_manager.get_active_path('symserver.config.json')
     }
 
     for config_type, path in active_paths.items():
