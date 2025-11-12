@@ -48,7 +48,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         self.index_name = index_name
         self.seo_opt = SEOQueryOptimizer()
         self.reader = FileReader(with_metadata=with_metadata)
-        self.scraper = Interface('naive_webscraping')
+        self.scraper = Interface('naive_scrape')
         self.user_tag = 'USER::'
         self.bot_tag = 'ASSISTANT::'
 

@@ -94,7 +94,7 @@ def cfg_to_interface():
     _add_tts_interface(mapping)
 
     mapping["indexing"] = Interface("naive_vectordb")
-    mapping["scraper"] = Interface("naive_webscraping")
+    mapping["scraper"] = Interface("naive_scrape")
     mapping["stt"] = Interface("whisper")
     mapping["file"] = Interface("file")
 
