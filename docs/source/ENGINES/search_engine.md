@@ -1,5 +1,36 @@
 # Search Engine
 
+## Parallel (Parallel.ai)
+Parallel.ai provides unified search and scrape capabilities through the `parallel-web` SDK. When you invoke `.search(...)` on the Parallel interface, responses are normalized into a `SearchResult` that flattens excerpt text and appends inline citation markers. All URLs are deduplicated and cleaned of tracking parameters, and you can access structured citations via `result.get_citations()`.
+
+```python
+from symai.extended import Interface
+
+engine = Interface("parallel")
+result = engine.search(
+    "Latest advances in quantum error correction",
+    max_results=5,
+    allowed_domains=["arxiv.org", ".gov"],
+    objective="Find peer-reviewed summaries.",
+)
+
+print(str(result))
+print(result.get_citations())
+```
+
+The engine accepts either a single string or a list of query strings. Domain filters are normalized to apex domains and capped at 10 entries, mirroring the underlying Parallel API requirements. You can also change the search `mode` (default `"one-shot"`) or adjust `max_chars_per_result` to constrain excerpt length.
+
+Enable the engine by installing `parallel-web` and configuring the Parallel credentials in your settings:
+
+```bash
+{
+    …
+    "SEARCH_ENGINE_API_KEY": "…",
+    "SEARCH_ENGINE_MODEL": "parallel"
+    …
+}
+```
+
 ## SerpApi (Google)
 To obtain fact-based content, we can perform search queries via `SerpApi` with a `Google` backend. The following example demonstrates how to search for a query and return the results:
 
@@ -14,7 +45,7 @@ Here's a quick example for how to set it up:
 ```bash
 {
     …
-    "SEARCH_ENGINE_API_KEY": …,
+    "SEARCH_ENGINE_API_KEY": "…",
     "SEARCH_ENGINE_ENGINE": "google",
     …
 }
@@ -34,7 +65,7 @@ Please note that the system_message is optional and can be used to provide conte
 ```bash
 {
     …
-    "SEARCH_ENGINE_API_KEY": "pplx-…",
+    "SEARCH_ENGINE_API_KEY": "…",
     "SEARCH_ENGINE_MODEL": "sonar",
     …
 }
@@ -96,7 +127,7 @@ Here's how to configure the OpenAI search engine:
 ```bash
 {
     …
-    "SEARCH_ENGINE_API_KEY": "sk-…",
+    "SEARCH_ENGINE_API_KEY": "…",
     "SEARCH_ENGINE_MODEL": "gpt-4.1-mini",
     …
 }
