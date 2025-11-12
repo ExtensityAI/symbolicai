@@ -3,7 +3,7 @@ import logging
 
 import pytest
 
-from symai.backend.engines.webscraping.engine_requests import RequestsResult
+from symai.backend.engines.scrape.engine_requests import RequestsResult
 from symai.extended import Interface
 
 logging.getLogger("trafilatura").setLevel(logging.WARNING)
@@ -15,10 +15,10 @@ try:
 except ImportError:
     raise ImportError("trafilatura and/or bs4 not installed. Please install them.")
 
-scraper = Interface('naive_webscraping')
+scraper = Interface('naive_scrape')
 
 @pytest.mark.parametrize("output_format", ["txt", "markdown", "csv", "json", "html", "xml"])
-def test_naive_webscraping(output_format):
+def test_naive_scrape(output_format):
     url = "https://trafilatura.readthedocs.io/en/latest/crawls.html"
     rsp = scraper(url, output_format=output_format)
 
@@ -52,7 +52,7 @@ def test_pdf_extraction():
         "https://www.linkedin.com/posts/george-hotz-b3866476_more-technology-is-not-going-to-bring-you-activity-7367261116713861122-YcLy",
     ],
 )
-def test_naive_webscraping_render_js(url):
+def test_naive_scrape_render_js(url):
     pytest.importorskip(
         "playwright.sync_api",
         reason="Playwright runtime is required to execute render_js flows.",

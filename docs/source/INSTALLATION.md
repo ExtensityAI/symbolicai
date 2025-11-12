@@ -27,7 +27,7 @@ pip install "symbolicai[llamacpp]",
 pip install "symbolicai[bitsandbytes]",
 pip install "symbolicai[wolframalpha]",
 pip install "symbolicai[whisper]",
-pip install "symbolicai[webscraping]",
+pip install "symbolicai[scrape]",
 pip install "symbolicai[serpapi]",
 pip install "symbolicai[services]",
 pip install "symbolicai[solver]"
@@ -47,7 +47,7 @@ uv sync --frozen
 To install optional extras via uv:
 ```bash
 uv sync --extra all # all optional extras
-uv sync --extra webscraping # only webscraping
+uv sync --extra scrape # only scrape
 ```
 
 > ❗️**NOTE**❗️Please note that some of these optional dependencies may require additional installation steps. Additionally, some are only experimentally supported now and may not work as expected. If a feature is extremely important to you, please consider contributing to the project or reaching out to us.
