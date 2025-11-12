@@ -16,7 +16,7 @@
 * [Search Engine](ENGINES/search_engine.md)
 * [Speech-to-Text Engine](ENGINES/speech_to_text_engine.md)
 * [Symbolic Engine](ENGINES/symbolic_engine.md)
-* [Webscraping Engine](ENGINES/webscraping_engine.md)
+* [Scrape Engine](ENGINES/scrape_engine.md)
 
 ## Features
 * [Contracts](FEATURES/contracts.md)

@@ -1676,7 +1676,7 @@ def scrape(url: str,
             decorator_kwargs['url'] = url
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
             return EngineRepository.query(
-                                engine='webscraping',
+                                engine='scrape',
                                 instance=instance,
                                 func=func,
                                 constraints=constraints,

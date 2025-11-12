@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.10"
 resolution-markers = [
     "python_full_version >= '3.12' and platform_machine == 'arm64' and sys_platform == 'darwin'",
@@ -2440,6 +2440,23 @@ wheels = [
 ]
 
 [[package]]
+name = "parallel-web"
+version = "0.3.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "distro" },
+    { name = "httpx" },
+    { name = "pydantic" },
+    { name = "sniffio" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6a/c2/60f145255c20209e7b69f260556083d5020c465acef28224efaf0b63bdec/parallel_web-0.3.3.tar.gz", hash = "sha256:31a33ae094182887d731390468d816a52dc76a7f462f8e00b91477098cb00e50", size = 121590, upload-time = "2025-11-06T20:21:36.843Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/92/1b/226af12f9701c7c7d40c6764e9fdd6f0305f45dfa2fa9fdbe12bbcbcf805/parallel_web-0.3.3-py3-none-any.whl", hash = "sha256:730187f8754c81bbdb7f3d06c5c44b6df25d665366c051f34409ab04aad69570", size = 122157, upload-time = "2025-11-06T20:21:35.468Z" },
+]
+
+[[package]]
 name = "parso"
 version = "0.8.4"
 source = { registry = "https://pypi.org/simple" }
@@ -4367,6 +4384,7 @@ all = [
     { name = "llvmlite" },
     { name = "numba" },
     { name = "openai-whisper" },
+    { name = "parallel-web" },
     { name = "pdfminer-six" },
     { name = "peft" },
     { name = "playwright" },
@@ -4396,6 +4414,16 @@ hf = [
 llama-cpp = [
     { name = "llama-cpp-python", extra = ["server"] },
 ]
+scrape = [
+    { name = "beautifulsoup4" },
+    { name = "parallel-web" },
+    { name = "pdfminer-six" },
+    { name = "playwright" },
+    { name = "trafilatura" },
+]
+search = [
+    { name = "parallel-web" },
+]
 serpapi = [
     { name = "google-search-results" },
 ]
@@ -4406,12 +4434,6 @@ services = [
 ]
 solver = [
     { name = "z3-solver" },
-]
-webscraping = [
-    { name = "beautifulsoup4" },
-    { name = "pdfminer-six" },
-    { name = "playwright" },
-    { name = "trafilatura" },
 ]
 whisper = [
     { name = "llvmlite" },
@@ -4435,7 +4457,7 @@ requires-dist = [
     { name = "anthropic", specifier = ">=0.43.1" },
     { name = "attrs", specifier = ">=23.2.0" },
     { name = "beartype", specifier = ">=0.18.2" },
-    { name = "beautifulsoup4", marker = "extra == 'webscraping'", specifier = ">=4.12.3" },
+    { name = "beautifulsoup4", marker = "extra == 'scrape'", specifier = ">=4.12.3" },
     { name = "bitsandbytes", marker = "extra == 'bitsandbytes'", specifier = ">=0.43.1" },
     { name = "colorama", specifier = ">=0.4.6" },
     { name = "datasets", marker = "extra == 'hf'", specifier = ">=3.0.1" },
@@ -4459,11 +4481,13 @@ requires-dist = [
     { name = "opencv-python", specifier = ">=4.8.1.78" },
     { name = "opencv-python-headless", marker = "extra == 'blip2'", specifier = ">=4.5.5.64" },
     { name = "pandas", specifier = ">=2.2.2" },
+    { name = "parallel-web", marker = "extra == 'scrape'", specifier = ">=0.3.3" },
+    { name = "parallel-web", marker = "extra == 'search'", specifier = ">=0.3.3" },
     { name = "pathos", specifier = ">=0.3.2" },
-    { name = "pdfminer-six", marker = "extra == 'webscraping'" },
+    { name = "pdfminer-six", marker = "extra == 'scrape'" },
     { name = "peft", marker = "extra == 'hf'", specifier = ">=0.13.1" },
     { name = "playwright", specifier = ">=1.55.0" },
-    { name = "playwright", marker = "extra == 'webscraping'", specifier = ">=1.45.0" },
+    { name = "playwright", marker = "extra == 'scrape'", specifier = ">=1.45.0" },
     { name = "prompt-toolkit", specifier = ">=3.0.43" },
     { name = "pycryptodome", specifier = ">=3.20.0" },
     { name = "pydantic", specifier = ">=2.8.2" },
@@ -4484,10 +4508,10 @@ requires-dist = [
     { name = "sentencepiece", specifier = ">=0.2.0" },
     { name = "setuptools", specifier = ">=70.0.0" },
     { name = "symbolicai", extras = ["hf"], marker = "extra == 'all'" },
+    { name = "symbolicai", extras = ["scrape"], marker = "extra == 'all'" },
     { name = "symbolicai", extras = ["serpapi"], marker = "extra == 'all'" },
     { name = "symbolicai", extras = ["services"], marker = "extra == 'all'" },
     { name = "symbolicai", extras = ["solver"], marker = "extra == 'all'" },
-    { name = "symbolicai", extras = ["webscraping"], marker = "extra == 'all'" },
     { name = "symbolicai", extras = ["whisper"], marker = "extra == 'all'" },
     { name = "symbolicai", extras = ["wolframalpha"], marker = "extra == 'all'" },
     { name = "sympy", specifier = ">=1.12" },
@@ -4498,14 +4522,14 @@ requires-dist = [
     { name = "torchaudio", specifier = ">=2.2.2" },
     { name = "torchvision", specifier = ">=0.17.2" },
     { name = "tqdm", specifier = ">=4.66.3" },
-    { name = "trafilatura", marker = "extra == 'webscraping'", specifier = ">=2.0.0" },
+    { name = "trafilatura", marker = "extra == 'scrape'", specifier = ">=2.0.0" },
     { name = "transformers", marker = "extra == 'hf'", specifier = ">=4.45.2" },
     { name = "trl", marker = "extra == 'hf'", specifier = ">=0.11.3" },
     { name = "uvicorn", marker = "extra == 'services'", specifier = ">=0.27.1" },
     { name = "wolframalpha", marker = "extra == 'wolframalpha'", specifier = ">=5.0.0" },
     { name = "z3-solver", marker = "extra == 'solver'", specifier = ">=4.12.6.0" },
 ]
-provides-extras = ["bitsandbytes", "blip2", "hf", "webscraping", "llama-cpp", "wolframalpha", "whisper", "serpapi", "services", "solver", "all"]
+provides-extras = ["bitsandbytes", "blip2", "hf", "scrape", "llama-cpp", "wolframalpha", "whisper", "search", "serpapi", "services", "solver", "all"]
 
 [package.metadata.requires-dev]
 dev = [

@@ -244,7 +244,7 @@ class RequestsEngine(Engine):
             from playwright.sync_api import sync_playwright # noqa
             logging.getLogger("playwright").setLevel(logging.WARNING)
         except ImportError as exc:
-            msg = "Playwright is not installed. Install symbolicai[webscraping] with Playwright extras to enable render_js."
+            msg = "Playwright is not installed. Install symbolicai[scrape] with Playwright extras to enable render_js."
             UserMessage(msg)
             raise RuntimeError(msg) from exc
 
@@ -301,7 +301,7 @@ class RequestsEngine(Engine):
         return rendered_response
 
     def id(self) -> str:
-        return 'webscraping'
+        return 'scrape'
 
     def forward(self, argument):
         """
