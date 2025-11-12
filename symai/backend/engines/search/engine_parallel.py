@@ -257,10 +257,10 @@ class ExtractResult(Result):
 class ParallelEngine(Engine):
     MAX_INCLUDE_DOMAINS = 10
 
-    def __init__(self):
+    def __init__(self, api_key: str | None = None):
         super().__init__()
         self.config = deepcopy(SYMAI_CONFIG)
-        self.api_key = self.config.get("SEARCH_ENGINE_API_KEY")
+        self.api_key = api_key or self.config.get("SEARCH_ENGINE_API_KEY")
         self.model = self.config.get("SEARCH_ENGINE_MODEL")
         self.name = self.__class__.__name__
 
@@ -313,6 +313,24 @@ class ParallelEngine(Engine):
                 break
         return out
 
+    def _coerce_search_queries(self, value: Any) -> list[str]:
+        if value is None:
+            return []
+        if isinstance(value, str):
+            text = value.strip()
+            return [text] if text else []
+        if isinstance(value, list):
+            cleaned: list[str] = []
+            for item in value:
+                if item is None:
+                    continue
+                text = str(item).strip()
+                if text:
+                    cleaned.append(text)
+            return cleaned
+        text = str(value).strip()
+        return [text] if text else []
+
     def _is_valid_domain(self, s: str) -> bool:
         """Validate apex domains or bare extension filters.
 
@@ -336,21 +354,24 @@ class ParallelEngine(Engine):
             return False
         return all(label_re.fullmatch(p or "") for p in parts)
 
-    def _search(self, query: str, kwargs: dict[str, Any]):
+    def _search(self, queries: list[str], kwargs: dict[str, Any]):
+        if not queries:
+            UserMessage("ParallelEngine._search requires at least one query.", raise_with=ValueError)
+
         mode = kwargs.get("mode") or "one-shot"
         max_results = kwargs.get("max_results", 10)
-        max_chars_per_result = kwargs.get("max_chars_per_result", 10000)
+        max_chars_per_result = kwargs.get("max_chars_per_result", 15000)
+        excerpts = {"max_chars_per_result": max_chars_per_result}
         include = self._normalize_include_domains(kwargs.get("allowed_domains"))
         source_policy = {"include_domains": include} if include else None
-        search_queries = kwargs.get("search_queries")
-        objective = kwargs.get("objective") or query
+        objective = kwargs.get("objective")
 
         try:
             result = self.client.beta.search(
                 objective=objective,
-                search_queries=search_queries,
+                search_queries=queries,
                 max_results=max_results,
-                max_chars_per_result=max_chars_per_result,
+                excerpts=excerpts,
                 mode=mode,
                 source_policy=source_policy,
             )
@@ -380,11 +401,13 @@ class ParallelEngine(Engine):
         if url:
             return self._extract(str(url), kwargs)
 
-        query = getattr(argument.prop, "prepared_input", None) or getattr(argument.prop, "query", None)
-        query = str(query or "").strip()
-        if not query:
-            UserMessage("ParallelEngine.forward requires a non-empty query or url.", raise_with=ValueError)
-        return self._search(query, kwargs)
+        raw_query = getattr(argument.prop, "prepared_input", None)
+        if raw_query is None:
+            raw_query = getattr(argument.prop, "query", None)
+        search_queries = self._coerce_search_queries(raw_query)
+        if not search_queries:
+            UserMessage("ParallelEngine.forward requires at least one non-empty query or url.", raise_with=ValueError)
+        return self._search(search_queries, kwargs)
 
     def prepare(self, argument):
         # For scraping: store URL directly. For search: pass through query string.
@@ -393,4 +416,7 @@ class ParallelEngine(Engine):
             argument.prop.prepared_input = str(url)
             return
         query = getattr(argument.prop, "query", None)
-        argument.prop.prepared_input = str(query or "")
+        if isinstance(query, list):
+            argument.prop.prepared_input = self._coerce_search_queries(query)
+            return
+        argument.prop.prepared_input = str(query or "").strip()
