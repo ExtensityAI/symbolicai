@@ -43,33 +43,42 @@ _DEFAULT_PARAGRAPH_FORMATTER = ParagraphFormatter()
 
 
 class GraphViz(Expression):
-    def __init__(self,
-                 notebook = True,
-                 cdn_resources = "remote",
-                 bgcolor = "#222222",
-                 font_color = "white",
-                 height = "750px",
-                 width = "100%",
-                 select_menu = True,
-                 filter_menu = True,
-                 **kwargs):
+    def __init__(
+        self,
+        notebook=True,
+        cdn_resources="remote",
+        bgcolor="#222222",
+        font_color="white",
+        height="750px",
+        width="100%",
+        select_menu=True,
+        filter_menu=True,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
-        self.net  = Network(notebook=notebook,
-                            cdn_resources=cdn_resources,
-                            bgcolor=bgcolor,
-                            font_color=font_color,
-                            height=height,
-                            width=width,
-                            select_menu=select_menu,
-                            filter_menu=filter_menu)
+        self.net = Network(
+            notebook=notebook,
+            cdn_resources=cdn_resources,
+            bgcolor=bgcolor,
+            font_color=font_color,
+            height=height,
+            width=width,
+            select_menu=select_menu,
+            filter_menu=filter_menu,
+        )
 
     def forward(self, sym: Symbol, file_path: str, **_kwargs):
         nodes = [str(n) if n.value else n.__repr__(simplified=True) for n in sym.nodes]
-        edges = [(str(e[0]) if e[0].value else e[0].__repr__(simplified=True),
-                  str(e[1]) if e[1].value else e[1].__repr__(simplified=True)) for e in sym.edges]
+        edges = [
+            (
+                str(e[0]) if e[0].value else e[0].__repr__(simplified=True),
+                str(e[1]) if e[1].value else e[1].__repr__(simplified=True),
+            )
+            for e in sym.edges
+        ]
         self.net.add_nodes(nodes)
         self.net.add_edges(edges)
-        file_path = file_path if file_path.endswith('.html') else file_path + '.html'
+        file_path = file_path if file_path.endswith(".html") else file_path + ".html"
         return self.net.show(file_path)
 
 
@@ -109,12 +118,14 @@ class Try(Expression):
 class Lambda(Expression):
     def __init__(self, callable: Callable, **kwargs):
         super().__init__(**kwargs)
+
         def _callable(*args, **kwargs):
             kw = {
-                'args': args,
-                'kwargs': kwargs,
+                "args": args,
+                "kwargs": kwargs,
             }
             return callable(kw)
+
         self.callable: Callable = _callable
 
     def forward(self, *args, **kwargs) -> Symbol:
@@ -140,8 +151,8 @@ class Output(Expression):
         self.verbose: bool = verbose
 
     def forward(self, *args, **kwargs) -> Expression:
-        kwargs['verbose'] = self.verbose
-        kwargs['handler'] = self.handler
+        kwargs["verbose"] = self.verbose
+        kwargs["handler"] = self.handler
         return self.output(*args, expr=self.expr, **kwargs)
 
 
@@ -166,32 +177,34 @@ class Sequence(TrackerTraceable):
 class Parallel(Expression):
     def __init__(self, *expr: list[Expression | Callable], sequential: bool = False, **kwargs):
         super().__init__(**kwargs)
-        self.sequential: bool       = sequential
+        self.sequential: bool = sequential
         self.expr: list[Expression] = expr
-        self.results: list[Symbol]  = []
+        self.results: list[Symbol] = []
 
     def forward(self, *args, **kwargs) -> Symbol:
         # run in sequence
         if self.sequential:
             return [e(*args, **kwargs) for e in self.expr]
+
         # run in parallel
         @core_ext.parallel(self.expr)
         def _func(e, *args, **kwargs):
             return e(*args, **kwargs)
+
         self.results = _func(*args, **kwargs)
         # final result of the parallel execution
         return self._to_symbol(self.results)
 
 
-#@TODO: BinPacker(format="...") -> ensure that data packages form a "bin" that's consistent (e.g. never break a sentence in the middle)
+# @TODO: BinPacker(format="...") -> ensure that data packages form a "bin" that's consistent (e.g. never break a sentence in the middle)
 class Stream(Expression):
     def __init__(self, expr: Expression | None = None, retrieval: str | None = None, **kwargs):
         super().__init__(**kwargs)
-        self.char_token_ratio:    float = 0.6
+        self.char_token_ratio: float = 0.6
         self.expr: Expression | None = expr
-        self.retrieval:   str | None = retrieval
-        self._trace:               bool = False
-        self._previous_frame            = None
+        self.retrieval: str | None = retrieval
+        self._trace: bool = False
+        self._previous_frame = None
 
     def forward(self, sym: Symbol, **kwargs) -> Iterator:
         sym = self._to_symbol(sym)
@@ -213,17 +226,15 @@ class Stream(Expression):
                     raise_with=ValueError,
                 )
 
-        res = sym.stream(expr=self.expr,
-                         char_token_ratio=self.char_token_ratio,
-                         **kwargs)
+        res = sym.stream(expr=self.expr, char_token_ratio=self.char_token_ratio, **kwargs)
         if self.retrieval is not None:
             res = list(res)
-            if self.retrieval == 'all':
+            if self.retrieval == "all":
                 return res
-            if self.retrieval == 'longest':
+            if self.retrieval == "longest":
                 res = sorted(res, key=lambda x: len(x), reverse=True)
                 return res[0]
-            if self.retrieval == 'contains':
+            if self.retrieval == "contains":
                 return [r for r in res if self.expr in r]
             UserMessage(f"Invalid retrieval method: {self.retrieval}", raise_with=ValueError)
 
@@ -241,7 +252,7 @@ class Stream(Expression):
 class Trace(Expression):
     def __init__(self, expr: Expression | None = None, engines=None, **kwargs):
         if engines is None:
-            engines = ['all']
+            engines = ["all"]
         super().__init__(**kwargs)
         self.expr: Expression = expr
         self.engines: list[str] = engines
@@ -278,7 +289,7 @@ class Analyze(Expression):
 class Log(Expression):
     def __init__(self, expr: Expression | None = None, engines=None, **kwargs):
         if engines is None:
-            engines = ['all']
+            engines = ["all"]
         super().__init__(**kwargs)
         self.expr: Expression = expr
         self.engines: list[str] = engines
@@ -303,7 +314,12 @@ class Log(Expression):
 
 
 class Template(Expression):
-    def __init__(self, template: str = "<html><body>{{placeholder}}</body></html>", placeholder: str = '{{placeholder}}', **kwargs):
+    def __init__(
+        self,
+        template: str = "<html><body>{{placeholder}}</body></html>",
+        placeholder: str = "{{placeholder}}",
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.placeholder = placeholder
         self.template_ = template
@@ -333,21 +349,25 @@ class RuntimeExpression(Expression):
         code = self._to_symbol(code)
         # declare the runtime expression from the code
         expr = self.runner(code)
+
         def _func(sym):
             # execute nested expression
-            return expr['locals']['_output_'](sym)
+            return expr["locals"]["_output_"](sym)
+
         return _func
 
 
 class Metric(Expression):
     def __init__(self, normalize: bool = False, eps: float = 1e-8, **kwargs):
         super().__init__(**kwargs)
-        self.normalize  = normalize
-        self.eps        = eps
+        self.normalize = normalize
+        self.eps = eps
 
     def forward(self, sym: Symbol, **_kwargs) -> Symbol:
         sym = self._to_symbol(sym)
-        assert sym.value_type is np.ndarray or sym.value_type is list, 'Metric can only be applied to numpy arrays or lists.'
+        assert sym.value_type is np.ndarray or sym.value_type is list, (
+            "Metric can only be applied to numpy arrays or lists."
+        )
         if sym.value_type is list:
             sym._value = np.array(sym.value)
         # compute normalization between 0 and 1
@@ -357,7 +377,7 @@ class Metric(Expression):
             elif len(sym.value.shape) == 2:
                 pass
             else:
-                UserMessage(f'Invalid shape: {sym.value.shape}', raise_with=ValueError)
+                UserMessage(f"Invalid shape: {sym.value.shape}", raise_with=ValueError)
             # normalize between 0 and 1 and sum to 1
             sym._value = np.exp(sym.value) / (np.exp(sym.value).sum() + self.eps)
         return sym
@@ -413,16 +433,16 @@ _output_ = _func()
 
     def forward(self, sym: Symbol, enclosure: bool = False, **kwargs) -> Symbol:
         if enclosure or self.enclosure:
-            lines = str(sym).split('\n')
-            lines = ['    ' + line for line in lines]
-            sym = '\n'.join(lines)
-            sym = self.template.replace('{sym}', str(sym))
+            lines = str(sym).split("\n")
+            lines = ["    " + line for line in lines]
+            sym = "\n".join(lines)
+            sym = self.template.replace("{sym}", str(sym))
         sym = self._to_symbol(sym)
         return sym.execute(**kwargs)
 
 
 class Convert(Expression):
-    def __init__(self, format: str = 'Python', **kwargs):
+    def __init__(self, format: str = "Python", **kwargs):
         super().__init__(**kwargs)
         self.format = format
 
@@ -456,13 +476,13 @@ class Map(Expression):
 
 
 class Translate(Expression):
-    def __init__(self, language: str = 'English', **kwargs):
+    def __init__(self, language: str = "English", **kwargs):
         super().__init__(**kwargs)
         self.language = language
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
         sym = self._to_symbol(sym)
-        if sym.isinstanceof(f'{self.language} text'):
+        if sym.isinstanceof(f"{self.language} text"):
             return sym
         return sym.translate(language=self.language, **kwargs)
 
@@ -494,7 +514,7 @@ class FileWriter(Expression):
 
     def forward(self, sym: Symbol, **_kwargs) -> Symbol:
         sym = self._to_symbol(sym)
-        with self.path.open('w') as f:
+        with self.path.open("w") as f:
             f.write(str(sym))
 
 
@@ -502,18 +522,18 @@ class FileReader(Expression):
     @staticmethod
     def exists(path: str) -> bool:
         # remove slicing if any
-        _tmp     = path
-        _splits  = _tmp.split('[')
-        if '[' in _tmp:
+        _tmp = path
+        _splits = _tmp.split("[")
+        if "[" in _tmp:
             _tmp = _splits[0]
-        assert len(_splits) == 1 or len(_splits) == 2, 'Invalid file link format.'
-        _tmp     = Path(_tmp)
+        assert len(_splits) == 1 or len(_splits) == 2, "Invalid file link format."
+        _tmp = Path(_tmp)
         # check if file exists and is a file
         return _tmp.is_file()
 
     @staticmethod
     def get_files(folder_path: str, max_depth: int = 1) -> list[str]:
-        accepted_formats = ['.pdf', '.md', '.txt']
+        accepted_formats = [".pdf", ".md", ".txt"]
 
         folder = Path(folder_path)
         files = []
@@ -528,7 +548,9 @@ class FileReader(Expression):
     @staticmethod
     def extract_files(cmds: str) -> list[str] | None:
         # Use the updated regular expression to match quoted and non-quoted paths
-        pattern = r'''(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)'|`((?:\\.|[^`\\])*)`|((?:\\ |[^ ])+))'''
+        pattern = (
+            r"""(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)'|`((?:\\.|[^`\\])*)`|((?:\\ |[^ ])+))"""
+        )
         # Use the regular expression to split and handle quoted and non-quoted paths
         matches = re.findall(pattern, cmds)
         # Process the matches to handle quoted paths and normal paths
@@ -538,22 +560,22 @@ class FileReader(Expression):
             quoted_double, quoted_single, quoted_backtick, non_quoted = match
             if quoted_double:
                 # Remove backslashes used for escaping inside double quotes
-                path = re.sub(r'\\(.)', r'\1', quoted_double)
+                path = re.sub(r"\\(.)", r"\1", quoted_double)
                 file = FileReader.expand_user_path(path)
                 files.append(file)
             elif quoted_single:
                 # Remove backslashes used for escaping inside single quotes
-                path = re.sub(r'\\(.)', r'\1', quoted_single)
+                path = re.sub(r"\\(.)", r"\1", quoted_single)
                 file = FileReader.expand_user_path(path)
                 files.append(file)
             elif quoted_backtick:
                 # Remove backslashes used for escaping inside backticks
-                path = re.sub(r'\\(.)', r'\1', quoted_backtick)
+                path = re.sub(r"\\(.)", r"\1", quoted_backtick)
                 file = FileReader.expand_user_path(path)
                 files.append(file)
             elif non_quoted:
                 # Replace escaped spaces with actual spaces
-                path = non_quoted.replace('\\ ', ' ')
+                path = non_quoted.replace("\\ ", " ")
                 file = FileReader.expand_user_path(path)
                 files.append(file)
         # Filter out any files that do not exist
@@ -571,25 +593,28 @@ class FileReader(Expression):
             if FileReader.exists(file):
                 not_skipped.append(file)
             else:
-                UserMessage(f'Skipping file: {file}')
+                UserMessage(f"Skipping file: {file}")
         return not_skipped
 
     def forward(self, files: str | list[str], **kwargs) -> Expression:
         if isinstance(files, str):
             # Convert to list for uniform processing; more easily downstream
             files = [files]
-        if kwargs.get('run_integrity_check'):
+        if kwargs.get("run_integrity_check"):
             files = self.integrity_check(files)
         return self.sym_return_type([self.open(f, **kwargs).value for f in files])
+
 
 class FileQuery(Expression):
     def __init__(self, path: str, filter: str, **kwargs):
         super().__init__(**kwargs)
         self.path = path
         file_open = FileReader()
-        self.query_stream = Stream(Sequence(
-            IncludeFilter(filter),
-        ))
+        self.query_stream = Stream(
+            Sequence(
+                IncludeFilter(filter),
+            )
+        )
         self.file = file_open(path)
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
@@ -599,42 +624,45 @@ class FileQuery(Expression):
 
 
 class Function(TrackerTraceable):
-    def __init__(self, prompt: str       = '',
-                 examples: str | None = [],
-                 pre_processors: list[PreProcessor] | None   = None,
-                 post_processors: list[PostProcessor] | None = None,
-                 default: object | None       = None,
-                 constraints: list[Callable] | None     = None,
-                 return_type: type | None     = str,
-                 sym_return_type: type | None = Symbol,
-                 origin_type: type | None     = Expression,
-                 *args, **kwargs):
+    def __init__(
+        self,
+        prompt: str = "",
+        examples: str | None = [],
+        pre_processors: list[PreProcessor] | None = None,
+        post_processors: list[PostProcessor] | None = None,
+        default: object | None = None,
+        constraints: list[Callable] | None = None,
+        return_type: type | None = str,
+        sym_return_type: type | None = Symbol,
+        origin_type: type | None = Expression,
+        *args,
+        **kwargs,
+    ):
         if constraints is None:
             constraints = []
         super().__init__(**kwargs)
-        chars       = ascii_lowercase + ascii_uppercase
-        self.name   = 'func_' + ''.join(sample(chars, 15))
-        self.args   = args
+        chars = ascii_lowercase + ascii_uppercase
+        self.name = "func_" + "".join(sample(chars, 15))
+        self.args = args
         self.kwargs = kwargs
-        self._promptTemplate     = prompt
-        self._promptFormatArgs   = []
+        self._promptTemplate = prompt
+        self._promptFormatArgs = []
         self._promptFormatKwargs = {}
-        self.examples        = Prompt(examples)
-        self.pre_processors  = pre_processors
+        self.examples = Prompt(examples)
+        self.pre_processors = pre_processors
         self.post_processors = post_processors
-        self.constraints     = constraints
-        self.default         = default
-        self.return_type     = return_type
+        self.constraints = constraints
+        self.default = default
+        self.return_type = return_type
         self.sym_return_type = sym_return_type
-        self.origin_type     = origin_type
+        self.origin_type = origin_type
 
     @property
     def prompt(self):
         # return a copy of the prompt template
         if len(self._promptFormatArgs) == 0 and len(self._promptFormatKwargs) == 0:
             return self._promptTemplate
-        return f"{self._promptTemplate}".format(*self._promptFormatArgs,
-                                                **self._promptFormatKwargs)
+        return f"{self._promptTemplate}".format(*self._promptFormatArgs, **self._promptFormatKwargs)
 
     def format(self, *args, **kwargs):
         self._promptFormatArgs = args
@@ -642,9 +670,10 @@ class Function(TrackerTraceable):
 
     def forward(self, *args, **kwargs) -> Expression:
         # special case for few shot function prompt definition override
-        if 'fn' in kwargs:
-            self.prompt = kwargs['fn']
-            del kwargs['fn']
+        if "fn" in kwargs:
+            self.prompt = kwargs["fn"]
+            del kwargs["fn"]
+
         @core.few_shot(
             *self.args,
             prompt=self.prompt,
@@ -653,19 +682,24 @@ class Function(TrackerTraceable):
             post_processors=self.post_processors,
             constraints=self.constraints,
             default=self.default,
-            **self.kwargs
+            **self.kwargs,
         )
         def _func(_, *args, **kwargs) -> self.return_type:
             pass
-        _type = type(self.name, (self.origin_type, ), {
-            # constructor
-            "forward": _func,
-            "sym_return_type": self.sym_return_type,
-            "static_context": self.static_context,
-            "dynamic_context": self.dynamic_context,
-            "__class__": self.__class__,
-            "__module__": self.__module__,
-        })
+
+        _type = type(
+            self.name,
+            (self.origin_type,),
+            {
+                # constructor
+                "forward": _func,
+                "sym_return_type": self.sym_return_type,
+                "static_context": self.static_context,
+                "dynamic_context": self.dynamic_context,
+                "__class__": self.__class__,
+                "__module__": self.__module__,
+            },
+        )
         obj = _type()
 
         return self._to_symbol(obj(*args, **kwargs))
@@ -676,7 +710,7 @@ class PrepareData(Function):
         def __call__(self, argument):
             assert argument.prop.context is not None
             instruct = argument.prop.prompt
-            context  = argument.prop.context
+            context = argument.prop.context
             return f"""{{
     'context': '{context}',
     'instruction': '{instruct}',
@@ -685,10 +719,10 @@ class PrepareData(Function):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.pre_processors  = [self.PrepareDataPreProcessor()]
-        self.constraints     = [DictFormatConstraint({ 'result': '<the data>' })]
+        self.pre_processors = [self.PrepareDataPreProcessor()]
+        self.constraints = [DictFormatConstraint({"result": "<the data>"})]
         self.post_processors = [JsonTruncateMarkdownPostProcessor()]
-        self.return_type     = dict # constraint to cast the result to a dict
+        self.return_type = dict  # constraint to cast the result to a dict
 
     @property
     def static_context(self):
@@ -723,7 +757,7 @@ Your goal is to prepare the data for the next task instruction. The data should 
 
 class ExpressionBuilder(Function):
     def __init__(self, **kwargs):
-        super().__init__('Generate the code following the instructions:', **kwargs)
+        super().__init__("Generate the code following the instructions:", **kwargs)
         self.processors = ProcessorPipeline([StripPostProcessor(), CodeExtractPostProcessor()])
 
     def forward(self, instruct, *_args, **_kwargs):
@@ -774,10 +808,12 @@ Always produce the entire code to be executed in the same Python process. All ta
 class JsonParser(Expression):
     def __init__(self, query: str, json_: dict, **kwargs):
         super().__init__(**kwargs)
-        func = Function(prompt=JsonPromptTemplate(query, json_),
-                        constraints=[DictFormatConstraint(json_)],
-                        pre_processors=[JsonPreProcessor()],
-                        post_processors=[JsonTruncatePostProcessor()])
+        func = Function(
+            prompt=JsonPromptTemplate(query, json_),
+            constraints=[DictFormatConstraint(json_)],
+            pre_processors=[JsonPreProcessor()],
+            post_processors=[JsonTruncatePostProcessor()],
+        )
         self.fn = Try(func, retries=1)
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
@@ -787,21 +823,27 @@ class JsonParser(Expression):
 
 
 class SimilarityClassification(Expression):
-    def __init__(self, classes: list[str], metric: str = 'cosine', in_memory: bool = False, **kwargs):
+    def __init__(
+        self, classes: list[str], metric: str = "cosine", in_memory: bool = False, **kwargs
+    ):
         super().__init__(**kwargs)
-        self.classes   = classes
-        self.metric    = metric
+        self.classes = classes
+        self.metric = metric
         self.in_memory = in_memory
 
         if self.in_memory:
-            UserMessage(f'Caching mode is enabled! It is your responsability to empty the .cache folder if you did changes to the classes. The cache is located at {HOME_PATH}/cache')
+            UserMessage(
+                f"Caching mode is enabled! It is your responsability to empty the .cache folder if you did changes to the classes. The cache is located at {HOME_PATH}/cache"
+            )
 
     def forward(self, x: Symbol) -> Symbol:
-        x            = self._to_symbol(x)
-        usr_embed    = x.embed()
-        embeddings   = self._dynamic_cache()
+        x = self._to_symbol(x)
+        usr_embed = x.embed()
+        embeddings = self._dynamic_cache()
         similarities = [usr_embed.similarity(emb, metric=self.metric) for emb in embeddings]
-        similarities = sorted(zip(self.classes, similarities, strict=False), key=lambda x: x[1], reverse=True)
+        similarities = sorted(
+            zip(self.classes, similarities, strict=False), key=lambda x: x[1], reverse=True
+        )
 
         return Symbol(similarities[0][0])
 
@@ -820,11 +862,7 @@ class InContextClassification(Expression):
         self.blueprint = blueprint
 
     def forward(self, x: Symbol, **kwargs) -> Symbol:
-        @core.few_shot(
-            prompt=x,
-            examples=self.blueprint,
-            **kwargs
-        )
+        @core.few_shot(prompt=x, examples=self.blueprint, **kwargs)
         def _func(_):
             pass
 
@@ -832,38 +870,38 @@ class InContextClassification(Expression):
 
 
 class Indexer(Expression):
-    DEFAULT = 'dataindex'
+    DEFAULT = "dataindex"
 
     @staticmethod
     def replace_special_chars(index: str):
         # replace special characters that are not for path
-        return str(index).replace('-', '').replace('_', '').replace(' ', '').lower()
+        return str(index).replace("-", "").replace("_", "").replace(" ", "").lower()
 
     def __init__(
-            self,
-            index_name: str = DEFAULT,
-            top_k: int = 8,
-            batch_size: int = 20,
-            formatter: Callable = _DEFAULT_PARAGRAPH_FORMATTER,
-            auto_add=False,
-            raw_result: bool = False,
-            new_dim: int = 1536,
-            **kwargs
-        ):
+        self,
+        index_name: str = DEFAULT,
+        top_k: int = 8,
+        batch_size: int = 20,
+        formatter: Callable = _DEFAULT_PARAGRAPH_FORMATTER,
+        auto_add=False,
+        raw_result: bool = False,
+        new_dim: int = 1536,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         index_name = Indexer.replace_special_chars(index_name)
         self.index_name = index_name
-        self.elements   = []
+        self.elements = []
         self.batch_size = batch_size
-        self.top_k      = top_k
-        self.retrieval  = None
-        self.formatter  = formatter
+        self.top_k = top_k
+        self.retrieval = None
+        self.formatter = formatter
         self.raw_result = raw_result
-        self.new_dim    = new_dim
+        self.new_dim = new_dim
         self.sym_return_type = Expression
 
         # append index name to indices.txt in home directory .symai folder (default)
-        self.path = HOME_PATH / 'indices.txt'
+        self.path = HOME_PATH / "indices.txt"
         if not self.path.exists():
             self.path.parent.mkdir(parents=True, exist_ok=True)
             self.path.touch()
@@ -874,51 +912,62 @@ class Indexer(Expression):
         # check if index already exists in indices.txt and append if not
         change = False
         with self.path.open() as f:
-            indices = f.read().split('\n')
+            indices = f.read().split("\n")
             # filter out empty strings
             indices = [i for i in indices if i]
         if self.index_name not in indices:
-                indices.append(self.index_name)
-                change = True
+            indices.append(self.index_name)
+            change = True
         if change:
-            with self.path.open('w') as f:
-                f.write('\n'.join(indices))
+            with self.path.open("w") as f:
+                f.write("\n".join(indices))
 
     def exists(self) -> bool:
         # check if index exists in home directory .symai folder (default) indices.txt
-        path = HOME_PATH / 'indices.txt'
+        path = HOME_PATH / "indices.txt"
         if not path.exists():
             return False
         with path.open() as f:
-            indices = f.read().split('\n')
+            indices = f.read().split("\n")
             if self.index_name in indices:
                 return True
         return False
 
     def forward(
-            self,
-            data: Symbol | None = None,
-            _raw_result: bool = False,
-        ) -> Symbol:
+        self,
+        data: Symbol | None = None,
+        _raw_result: bool = False,
+    ) -> Symbol:
         that = self
         if data is not None:
             data = self._to_symbol(data)
             self.elements = self.formatter(data).value
             # run over the elments in batches
             for i in tqdm(range(0, len(self.elements), self.batch_size)):
-                val = Symbol(self.elements[i:i+self.batch_size]).zip(new_dim=self.new_dim)
+                val = Symbol(self.elements[i : i + self.batch_size]).zip(new_dim=self.new_dim)
                 that.add(val, index_name=that.index_name, index_dims=that.new_dim)
             # we save the index
             that.config(None, save=True, index_name=that.index_name, index_dims=that.new_dim)
 
-        def _func(query, *_args, **kwargs) -> Union[Symbol, 'VectorDBResult']:
-            raw_result = kwargs.get('raw_result') or that.raw_result
+        def _func(query, *_args, **kwargs) -> Union[Symbol, "VectorDBResult"]:
+            raw_result = kwargs.get("raw_result") or that.raw_result
             query_emb = Symbol(query).embed(new_dim=that.new_dim).value
-            res = that.get(query_emb, index_name=that.index_name, index_top_k=that.top_k, ori_query=query, index_dims=that.new_dim, **kwargs)
+            res = that.get(
+                query_emb,
+                index_name=that.index_name,
+                index_top_k=that.top_k,
+                ori_query=query,
+                index_dims=that.new_dim,
+                **kwargs,
+            )
             that.retrieval = res
             if raw_result:
                 return res
-            return Symbol(res).query(prompt='From the retrieved data, select the most relevant information.', context=query)
+            return Symbol(res).query(
+                prompt="From the retrieved data, select the most relevant information.",
+                context=query,
+            )
+
         return _func
 
 
@@ -930,7 +979,7 @@ class PrimitiveDisabler(Expression):
 
     def __enter__(self):
         # Import Symbol lazily so components does not clash with symbol during load.
-        from .symbol import Symbol # noqa
+        from .symbol import Symbol  # noqa
 
         frame = inspect.currentframe()
         f_locals = frame.f_back.f_locals
@@ -957,7 +1006,7 @@ class PrimitiveDisabler(Expression):
         for sym in self._symbols.values():
             for primitive in sym._primitives:
                 for method, _ in inspect.getmembers(primitive, predicate=inspect.isfunction):
-                    if method in self._primitives or method.startswith('_'):
+                    if method in self._primitives or method.startswith("_"):
                         continue
                     self._primitives.add(method)
 
@@ -1002,9 +1051,7 @@ class FunctionWithUsage(Function):
         self.total_tokens += usage.total_tokens
 
     def get_usage(self):
-        return self._format_usage(
-            self.prompt_tokens, self.completion_tokens, self.total_tokens
-        )
+        return self._format_usage(self.prompt_tokens, self.completion_tokens, self.total_tokens)
 
     def forward(self, *args, **kwargs):
         if "return_metadata" not in kwargs:
@@ -1015,9 +1062,7 @@ class FunctionWithUsage(Function):
         raw_output = metadata.get("raw_output")
         if hasattr(raw_output, "usage"):
             usage = raw_output.usage
-            prompt_tokens = (
-                usage.prompt_tokens if hasattr(usage, "prompt_tokens") else 0
-            )
+            prompt_tokens = usage.prompt_tokens if hasattr(usage, "prompt_tokens") else 0
             completion_tokens = (
                 usage.completion_tokens if hasattr(usage, "completion_tokens") else 0
             )
@@ -1033,7 +1078,9 @@ class FunctionWithUsage(Function):
             self.total_tokens += total_tokens
         else:
             if self.missing_usage_exception and "preview" not in kwargs:
-                UserMessage("Missing usage in metadata of neursymbolic engine", raise_with=Exception)
+                UserMessage(
+                    "Missing usage in metadata of neursymbolic engine", raise_with=Exception
+                )
             prompt_tokens = 0
             completion_tokens = 0
             total_tokens = 0
@@ -1042,12 +1089,12 @@ class FunctionWithUsage(Function):
 
 
 class SelfPrompt(Expression):
-    _default_retry_tries     = 20
-    _default_retry_delay     = 0.5
+    _default_retry_tries = 20
+    _default_retry_delay = 0.5
     _default_retry_max_delay = -1
-    _default_retry_backoff   = 1
-    _default_retry_jitter    = 0
-    _default_retry_graceful  = True
+    _default_retry_backoff = 1
+    _default_retry_jitter = 0
+    _default_retry_graceful = True
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1061,14 +1108,21 @@ class SelfPrompt(Expression):
         :return: A dictionary containing the new prompts in the same format:
                  {'user': '...', 'system': '...'}
         """
-        tries     = kwargs.get('tries', self._default_retry_tries)
-        delay     = kwargs.get('delay', self._default_retry_delay)
-        max_delay = kwargs.get('max_delay', self._default_retry_max_delay)
-        backoff   = kwargs.get('backoff', self._default_retry_backoff)
-        jitter    = kwargs.get('jitter', self._default_retry_jitter)
-        graceful  = kwargs.get('graceful', self._default_retry_graceful)
+        tries = kwargs.get("tries", self._default_retry_tries)
+        delay = kwargs.get("delay", self._default_retry_delay)
+        max_delay = kwargs.get("max_delay", self._default_retry_max_delay)
+        backoff = kwargs.get("backoff", self._default_retry_backoff)
+        jitter = kwargs.get("jitter", self._default_retry_jitter)
+        graceful = kwargs.get("graceful", self._default_retry_graceful)
 
-        @core_ext.retry(tries=tries, delay=delay, max_delay=max_delay, backoff=backoff, jitter=jitter, graceful=graceful)
+        @core_ext.retry(
+            tries=tries,
+            delay=delay,
+            max_delay=max_delay,
+            backoff=backoff,
+            jitter=jitter,
+            graceful=graceful,
+        )
         @core.zero_shot(
             prompt=(
                 "Based on the following prompt, generate a new system (or developer) prompt and a new user prompt. "
@@ -1077,18 +1131,19 @@ class SelfPrompt(Expression):
                 "The new user prompt should contain the user's requirements. "
                 "Check if the input contains a 'system' or 'developer' key and use the same key in your output. "
                 "Only output the new prompts in JSON format as shown:\n\n"
-                "{\"system\": \"<new system prompt>\", \"user\": \"<new user prompt>\"}\n\n"
+                '{"system": "<new system prompt>", "user": "<new user prompt>"}\n\n'
                 "OR\n\n"
-                "{\"developer\": \"<new developer prompt>\", \"user\": \"<new user prompt>\"}\n\n"
+                '{"developer": "<new developer prompt>", "user": "<new user prompt>"}\n\n'
                 "Maintain the same key structure as in the input prompt. Do not include any additional text."
             ),
             response_format={"type": "json_object"},
             post_processors=[
                 lambda res, _: json.loads(res),
             ],
-            **kwargs
+            **kwargs,
         )
-        def _func(self, sym: Symbol): pass
+        def _func(self, sym: Symbol):
+            pass
 
         return _func(self, self._to_symbol(existing_prompt))
 
@@ -1104,15 +1159,19 @@ class MetadataTracker(Expression):
     def __str__(self, value=None):
         value = value or self.metadata
         if isinstance(value, dict):
-            return '{\n\t' + ', \n\t'.join(f'"{k}": {self.__str__(v)}' for k,v in value.items()) + '\n}'
+            return (
+                "{\n\t"
+                + ", \n\t".join(f'"{k}": {self.__str__(v)}' for k, v in value.items())
+                + "\n}"
+            )
         if isinstance(value, list):
-            return '[' + ', '.join(self.__str__(item) for item in value) + ']'
+            return "[" + ", ".join(self.__str__(item) for item in value) + "]"
         if isinstance(value, str):
             return f'"{value}"'
         return f"\n\t    {value}"
 
     def __new__(cls, *_args, **_kwargs):
-        cls._lock = getattr(cls, '_lock', Lock())
+        cls._lock = getattr(cls, "_lock", Lock())
         with cls._lock:
             instance = super().__new__(cls)
             instance._metadata = {}
@@ -1135,14 +1194,14 @@ class MetadataTracker(Expression):
             return None
 
         if (
-            event == 'return'
-            and frame.f_code.co_name == 'forward'
-            and 'self' in frame.f_locals
-            and isinstance(frame.f_locals['self'], Engine)
+            event == "return"
+            and frame.f_code.co_name == "forward"
+            and "self" in frame.f_locals
+            and isinstance(frame.f_locals["self"], Engine)
         ):
             _, metadata = arg  # arg contains return value on 'return' event
-            engine_name = frame.f_locals['self'].__class__.__name__
-            model_name = frame.f_locals['self'].model
+            engine_name = frame.f_locals["self"].__class__.__name__
+            model_name = frame.f_locals["self"].model
             self._metadata[(self._metadata_id, engine_name, model_name)] = metadata
             self._metadata_id += 1
 
@@ -1162,13 +1221,23 @@ class MetadataTracker(Expression):
             try:
                 if engine_name == "GroqEngine":
                     usage = metadata["raw_output"].usage
-                    token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += usage.completion_tokens
-                    token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += usage.prompt_tokens
-                    token_details[(engine_name, model_name)]["usage"]["total_tokens"] += usage.total_tokens
+                    token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += (
+                        usage.completion_tokens
+                    )
+                    token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += (
+                        usage.prompt_tokens
+                    )
+                    token_details[(engine_name, model_name)]["usage"]["total_tokens"] += (
+                        usage.total_tokens
+                    )
                     token_details[(engine_name, model_name)]["usage"]["total_calls"] += 1
                     #!: Backward compatibility for components like `RuntimeInfo`
-                    token_details[(engine_name, model_name)]["prompt_breakdown"]["cached_tokens"] += 0 # Assignment not allowed with defualtdict
-                    token_details[(engine_name, model_name)]["completion_breakdown"]["reasoning_tokens"] += 0
+                    token_details[(engine_name, model_name)]["prompt_breakdown"][
+                        "cached_tokens"
+                    ] += 0  # Assignment not allowed with defualtdict
+                    token_details[(engine_name, model_name)]["completion_breakdown"][
+                        "reasoning_tokens"
+                    ] += 0
                 elif engine_name == "ParallelEngine":
                     token_details[(engine_name, None)]["usage"]["total_calls"] += 1
                     # There are no model-specific tokens for this engine
@@ -1176,33 +1245,67 @@ class MetadataTracker(Expression):
                     token_details[(engine_name, None)]["usage"]["prompt_tokens"] += 0
                     token_details[(engine_name, None)]["usage"]["total_tokens"] += 0
                     #!: Backward compatibility for components like `RuntimeInfo`
-                    token_details[(engine_name, None)]["prompt_breakdown"]["cached_tokens"] += 0 # Assignment not allowed with defualtdict
-                    token_details[(engine_name, None)]["completion_breakdown"]["reasoning_tokens"] += 0
+                    token_details[(engine_name, None)]["prompt_breakdown"]["cached_tokens"] += (
+                        0  # Assignment not allowed with defualtdict
+                    )
+                    token_details[(engine_name, None)]["completion_breakdown"][
+                        "reasoning_tokens"
+                    ] += 0
                 elif engine_name in ("GPTXChatEngine", "GPTXReasoningEngine"):
                     usage = metadata["raw_output"].usage
-                    token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += usage.completion_tokens
-                    token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += usage.prompt_tokens
-                    token_details[(engine_name, model_name)]["usage"]["total_tokens"] += usage.total_tokens
+                    token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += (
+                        usage.completion_tokens
+                    )
+                    token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += (
+                        usage.prompt_tokens
+                    )
+                    token_details[(engine_name, model_name)]["usage"]["total_tokens"] += (
+                        usage.total_tokens
+                    )
                     token_details[(engine_name, model_name)]["usage"]["total_calls"] += 1
-                    token_details[(engine_name, model_name)]["completion_breakdown"]["accepted_prediction_tokens"] += usage.completion_tokens_details.accepted_prediction_tokens
-                    token_details[(engine_name, model_name)]["completion_breakdown"]["rejected_prediction_tokens"] += usage.completion_tokens_details.rejected_prediction_tokens
-                    token_details[(engine_name, model_name)]["completion_breakdown"]["audio_tokens"] += usage.completion_tokens_details.audio_tokens
-                    token_details[(engine_name, model_name)]["completion_breakdown"]["reasoning_tokens"] += usage.completion_tokens_details.reasoning_tokens
-                    token_details[(engine_name, model_name)]["prompt_breakdown"]["audio_tokens"] += usage.prompt_tokens_details.audio_tokens
-                    token_details[(engine_name, model_name)]["prompt_breakdown"]["cached_tokens"] += usage.prompt_tokens_details.cached_tokens
+                    token_details[(engine_name, model_name)]["completion_breakdown"][
+                        "accepted_prediction_tokens"
+                    ] += usage.completion_tokens_details.accepted_prediction_tokens
+                    token_details[(engine_name, model_name)]["completion_breakdown"][
+                        "rejected_prediction_tokens"
+                    ] += usage.completion_tokens_details.rejected_prediction_tokens
+                    token_details[(engine_name, model_name)]["completion_breakdown"][
+                        "audio_tokens"
+                    ] += usage.completion_tokens_details.audio_tokens
+                    token_details[(engine_name, model_name)]["completion_breakdown"][
+                        "reasoning_tokens"
+                    ] += usage.completion_tokens_details.reasoning_tokens
+                    token_details[(engine_name, model_name)]["prompt_breakdown"][
+                        "audio_tokens"
+                    ] += usage.prompt_tokens_details.audio_tokens
+                    token_details[(engine_name, model_name)]["prompt_breakdown"][
+                        "cached_tokens"
+                    ] += usage.prompt_tokens_details.cached_tokens
                 elif engine_name == "GPTXSearchEngine":
                     usage = metadata["raw_output"].usage
-                    token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += usage.input_tokens
-                    token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += usage.output_tokens
-                    token_details[(engine_name, model_name)]["usage"]["total_tokens"] += usage.total_tokens
+                    token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += (
+                        usage.input_tokens
+                    )
+                    token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += (
+                        usage.output_tokens
+                    )
+                    token_details[(engine_name, model_name)]["usage"]["total_tokens"] += (
+                        usage.total_tokens
+                    )
                     token_details[(engine_name, model_name)]["usage"]["total_calls"] += 1
-                    token_details[(engine_name, model_name)]["prompt_breakdown"]["cached_tokens"] += usage.input_tokens_details.cached_tokens
-                    token_details[(engine_name, model_name)]["completion_breakdown"]["reasoning_tokens"] += usage.output_tokens_details.reasoning_tokens
+                    token_details[(engine_name, model_name)]["prompt_breakdown"][
+                        "cached_tokens"
+                    ] += usage.input_tokens_details.cached_tokens
+                    token_details[(engine_name, model_name)]["completion_breakdown"][
+                        "reasoning_tokens"
+                    ] += usage.output_tokens_details.reasoning_tokens
                 else:
                     logger.warning(f"Tracking {engine_name} is not supported.")
                     continue
             except Exception as e:
-                UserMessage(f"Failed to parse metadata for {engine_name}: {e}", raise_with=AttributeError)
+                UserMessage(
+                    f"Failed to parse metadata for {engine_name}: {e}", raise_with=AttributeError
+                )
 
         # Convert to normal dict
         return {**token_details}
@@ -1212,22 +1315,24 @@ class MetadataTracker(Expression):
         return engine_name in supported_engines
 
     def _accumulate_time_field(self, accumulated: dict, metadata: dict) -> None:
-        if 'time' in metadata and 'time' in accumulated:
-            accumulated['time'] += metadata['time']
+        if "time" in metadata and "time" in accumulated:
+            accumulated["time"] += metadata["time"]
 
     def _accumulate_usage_fields(self, accumulated: dict, metadata: dict) -> None:
-        if 'raw_output' not in metadata or 'raw_output' not in accumulated:
+        if "raw_output" not in metadata or "raw_output" not in accumulated:
             return
 
-        metadata_raw_output = metadata['raw_output']
-        accumulated_raw_output = accumulated['raw_output']
-        if not hasattr(metadata_raw_output, 'usage') or not hasattr(accumulated_raw_output, 'usage'):
+        metadata_raw_output = metadata["raw_output"]
+        accumulated_raw_output = accumulated["raw_output"]
+        if not hasattr(metadata_raw_output, "usage") or not hasattr(
+            accumulated_raw_output, "usage"
+        ):
             return
 
         current_usage = metadata_raw_output.usage
         accumulated_usage = accumulated_raw_output.usage
 
-        for attr in ['completion_tokens', 'prompt_tokens', 'total_tokens']:
+        for attr in ["completion_tokens", "prompt_tokens", "total_tokens"]:
             if hasattr(current_usage, attr) and hasattr(accumulated_usage, attr):
                 setattr(
                     accumulated_usage,
@@ -1235,20 +1340,24 @@ class MetadataTracker(Expression):
                     getattr(accumulated_usage, attr) + getattr(current_usage, attr),
                 )
 
-        for detail_attr in ['completion_tokens_details', 'prompt_tokens_details']:
-            if not hasattr(current_usage, detail_attr) or not hasattr(accumulated_usage, detail_attr):
+        for detail_attr in ["completion_tokens_details", "prompt_tokens_details"]:
+            if not hasattr(current_usage, detail_attr) or not hasattr(
+                accumulated_usage, detail_attr
+            ):
                 continue
 
             current_details = getattr(current_usage, detail_attr)
             accumulated_details = getattr(accumulated_usage, detail_attr)
 
             for attr in dir(current_details):
-                if attr.startswith('_') or not hasattr(accumulated_details, attr):
+                if attr.startswith("_") or not hasattr(accumulated_details, attr):
                     continue
 
                 current_val = getattr(current_details, attr)
                 accumulated_val = getattr(accumulated_details, attr)
-                if isinstance(current_val, (int, float)) and isinstance(accumulated_val, (int, float)):
+                if isinstance(current_val, (int, float)) and isinstance(
+                    accumulated_val, (int, float)
+                ):
                     setattr(accumulated_details, attr, accumulated_val + current_val)
 
     def _accumulate_metadata(self):
@@ -1264,7 +1373,9 @@ class MetadataTracker(Expression):
         # Skipz first entry
         for (_, engine_name), metadata in list(self._metadata.items())[1:]:
             if not self._can_accumulate_engine(engine_name):
-                logger.warning(f"Metadata accumulation for {engine_name} is not supported. Try `.usage` instead for now.")
+                logger.warning(
+                    f"Metadata accumulation for {engine_name} is not supported. Try `.usage` instead for now."
+                )
                 continue
 
             self._accumulate_time_field(accumulated, metadata)
@@ -1287,6 +1398,7 @@ class MetadataTracker(Expression):
 
 class DynamicEngine(Expression):
     """Context manager for dynamically switching neurosymbolic engine models."""
+
     def __init__(self, model: str, api_key: str, _debug: bool = False, **_kwargs):
         super().__init__()
         self.model = model
@@ -1297,7 +1409,7 @@ class DynamicEngine(Expression):
         self._ctx_token = None
 
     def __new__(cls, *_args, **_kwargs):
-        cls._lock = getattr(cls, '_lock', Lock())
+        cls._lock = getattr(cls, "_lock", Lock())
         with cls._lock:
             instance = super().__new__(cls)
             instance._metadata = {}
@@ -1331,11 +1443,14 @@ class DynamicEngine(Expression):
     def _create_engine_instance(self):
         """Create an engine instance based on the model name."""
         # Deferred to avoid components <-> neurosymbolic engine circular imports.
-        from .backend.engines.neurosymbolic import ENGINE_MAPPING # noqa
+        from .backend.engines.neurosymbolic import ENGINE_MAPPING  # noqa
+
         try:
             engine_class = ENGINE_MAPPING.get(self.model)
             if engine_class is None:
                 UserMessage(f"Unsupported model '{self.model}'", raise_with=ValueError)
             return engine_class(api_key=self.api_key, model=self.model)
         except Exception as e:
-            UserMessage(f"Failed to create engine for model '{self.model}': {e!s}", raise_with=ValueError)
+            UserMessage(
+                f"Failed to create engine for model '{self.model}': {e!s}", raise_with=ValueError
+            )

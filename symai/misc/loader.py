@@ -8,7 +8,8 @@ from prompt_toolkit import print_formatted_text
 
 from .console import ConsoleStyle
 
-print = print_formatted_text # noqa
+print = print_formatted_text  # noqa
+
 
 class Loader:
     def __init__(self, desc="Loading...", end="\n", timeout=0.1):
@@ -31,7 +32,7 @@ class Loader:
         for c in cycle(self.steps):
             if self.done.is_set():
                 break
-            with ConsoleStyle('debug'):
+            with ConsoleStyle("debug"):
                 sys.stdout.write(f"\r{self.desc} {c}  ")
                 sys.stdout.flush()
                 sys.stdout.write(f"\r{self.end}")
@@ -46,7 +47,7 @@ class Loader:
         self.done.set()
         self._thread.join()
         cols = get_terminal_size((80, 20)).columns
-        with ConsoleStyle('debug'):
+        with ConsoleStyle("debug"):
             sys.stdout.write("\r" + " " * cols)
             sys.stdout.flush()
             sys.stdout.write(f"\r{self.end}")

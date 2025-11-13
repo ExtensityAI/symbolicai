@@ -28,7 +28,7 @@ def parse_custom_class_instances(s):
         class_name = match.group(1)
         class_args = match.group(2)
         try:
-            parsed_args = ast.literal_eval(f'{{{class_args}}}')
+            parsed_args = ast.literal_eval(f"{{{class_args}}}")
         except (ValueError, SyntaxError):
             parsed_args = create_object_from_string(class_args)
         class_instance = create_dynamic_class(class_name, **parsed_args)
@@ -48,7 +48,7 @@ def _strip_quotes(text):
 
 
 def _extract_content(str_class):
-    return str_class.split('ChatCompletionMessage(content=')[-1].split(", role=")[0][1:-1]
+    return str_class.split("ChatCompletionMessage(content=")[-1].split(", role=")[0][1:-1]
 
 
 def _parse_value(value):
@@ -56,14 +56,16 @@ def _parse_value(value):
         value = parse_custom_class_instances(value)
         if not isinstance(value, str):
             return value
-        if value.startswith('['):
+        if value.startswith("["):
             inner_values = value[1:-1]
-            values = inner_values.split(',')
+            values = inner_values.split(",")
             return [_parse_value(v.strip()) for v in values]
-        if value.startswith('{'):
+        if value.startswith("{"):
             inner_values = value[1:-1]
-            values = inner_values.split(',')
-            return {k.strip(): _parse_value(v.strip()) for k, v in [v.split(':', 1) for v in values]}
+            values = inner_values.split(",")
+            return {
+                k.strip(): _parse_value(v.strip()) for k, v in [v.split(":", 1) for v in values]
+            }
         result = ast.literal_eval(value)
         if isinstance(result, dict):
             return {k: _parse_value(v) for k, v in result.items()}
@@ -77,7 +79,7 @@ def _parse_value(value):
 def _process_list_value(raw_value):
     parsed_value = _parse_value(raw_value)
     dir(parsed_value)
-    if hasattr(parsed_value, '__dict__'):
+    if hasattr(parsed_value, "__dict__"):
         for key in parsed_value.__dict__:
             value = getattr(parsed_value, key)
             if isinstance(value, str):
@@ -97,13 +99,13 @@ def _process_dict_value(raw_value):
 def _collect_attributes(str_class):
     attr_pattern = r"(\w+)=(\[.*?\]|\{.*?\}|'.*?'|None|\w+)"
     attributes = re.findall(attr_pattern, str_class)
-    updated_attributes = [('content', _extract_content(str_class))]
+    updated_attributes = [("content", _extract_content(str_class))]
     for key, raw_value in attributes:
         attr_key = _strip_quotes(key)
         attr_value = _strip_quotes(raw_value)
-        if attr_value.startswith('[') and attr_value.endswith(']'):
+        if attr_value.startswith("[") and attr_value.endswith("]"):
             attr_value = _process_list_value(attr_value)
-        elif attr_value.startswith('{') and attr_value.endswith('}'):
+        elif attr_value.startswith("{") and attr_value.endswith("}"):
             attr_value = _process_dict_value(attr_value)
         updated_attributes.append((attr_key, attr_value))
     return updated_attributes

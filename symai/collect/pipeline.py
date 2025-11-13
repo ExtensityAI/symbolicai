@@ -46,19 +46,21 @@ def rec_serialize(obj):
 
 class CollectionRepository:
     def __init__(self) -> None:
-        self.support_community: bool            = SYMAI_CONFIG["SUPPORT_COMMUNITY"]
-        self.uri: str                           = SYMAI_CONFIG["COLLECTION_URI"]
-        self.db_name: str                       = SYMAI_CONFIG["COLLECTION_DB"]
-        self.collection_name: str               = SYMAI_CONFIG["COLLECTION_STORAGE"]
-        self.client: MongoClient | None      = None
-        self.db: Database | None             = None
-        self.collection: Collection | None   = None
+        self.support_community: bool = SYMAI_CONFIG["SUPPORT_COMMUNITY"]
+        self.uri: str = SYMAI_CONFIG["COLLECTION_URI"]
+        self.db_name: str = SYMAI_CONFIG["COLLECTION_DB"]
+        self.collection_name: str = SYMAI_CONFIG["COLLECTION_STORAGE"]
+        self.client: MongoClient | None = None
+        self.db: Database | None = None
+        self.collection: Collection | None = None
 
     def __enter__(self) -> CollectionRepository:
         self.connect()
         return self
 
-    def __exit__(self, exc_type: type | None, exc_val: Exception | None, exc_tb: Any | None) -> None:
+    def __exit__(
+        self, exc_type: type | None, exc_val: Exception | None, exc_tb: Any | None
+    ) -> None:
         self.close()
 
     def ping(self) -> bool:
@@ -66,7 +68,7 @@ class CollectionRepository:
             return False
         # Send a ping to confirm a successful connection
         try:
-            self.client.admin.command('ping')
+            self.client.admin.command("ping")
             return True
         except Exception as e:
             UserMessage(f"Connection failed: {e}")
@@ -78,13 +80,13 @@ class CollectionRepository:
         if not self.support_community:
             return None
         record = {
-            'forward': forward,
-            'engine': engine,
-            'metadata': metadata,
-            'created_at': datetime.now(),
-            'updated_at': datetime.now()
+            "forward": forward,
+            "engine": engine,
+            "metadata": metadata,
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
         }
-        try: # assure that adding a record does never cause a system error
+        try:  # assure that adding a record does never cause a system error
             return self.collection.insert_one(record).inserted_id if self.collection else None
         except Exception:
             return None
@@ -92,29 +94,35 @@ class CollectionRepository:
     def get(self, record_id: str) -> dict[str, Any] | None:
         if not self.support_community:
             return None
-        return self.collection.find_one({'_id': ObjectId(record_id)}) if self.collection else None
+        return self.collection.find_one({"_id": ObjectId(record_id)}) if self.collection else None
 
-    def update(self,
-               record_id: str,
-               forward: Any | None             = None,
-               engine: str | None              = None,
-               metadata: dict[str, Any] | None = None) -> Any:
+    def update(
+        self,
+        record_id: str,
+        forward: Any | None = None,
+        engine: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> Any:
         if not self.support_community:
             return None
-        updates: dict[str, Any] = {'updated_at': datetime.now()}
+        updates: dict[str, Any] = {"updated_at": datetime.now()}
         if forward is not None:
-            updates['forward']  = forward
+            updates["forward"] = forward
         if engine is not None:
-            updates['engine']   = engine
+            updates["engine"] = engine
         if metadata is not None:
-            updates['metadata'] = metadata
+            updates["metadata"] = metadata
 
-        return self.collection.update_one({'_id': ObjectId(record_id)}, {'$set': updates}) if self.collection else None
+        return (
+            self.collection.update_one({"_id": ObjectId(record_id)}, {"$set": updates})
+            if self.collection
+            else None
+        )
 
     def delete(self, record_id: str) -> Any:
         if not self.support_community:
             return None
-        return self.collection.delete_one({'_id': ObjectId(record_id)}) if self.collection else None
+        return self.collection.delete_one({"_id": ObjectId(record_id)}) if self.collection else None
 
     def list(self, filters: dict[str, Any] | None = None, limit: int = 0) -> list[dict[str, Any]]:
         if not self.support_community:
@@ -134,12 +142,12 @@ class CollectionRepository:
         try:
             if self.client is None and self.support_community:
                 self.client = MongoClient(self.uri)
-                self.db     = self.client[self.db_name]
+                self.db = self.client[self.db_name]
                 self.collection = self.db[self.collection_name]
         except Exception as e:
             # disable retries
-            self.client     = False
-            self.db         = None
+            self.client = False
+            self.db = None
             self.collection = None
             UserMessage(f"[WARN] MongoClient: Connection failed: {e}")
 

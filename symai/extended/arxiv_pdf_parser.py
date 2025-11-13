@@ -12,7 +12,9 @@ from .file_merger import FileMerger
 
 
 class ArxivPdfParser(Expression):
-    def __init__(self, url_pattern: str = r'https://arxiv.org/(?:pdf|abs)/(\d+.\d+)(?:\.pdf)?', **kwargs):
+    def __init__(
+        self, url_pattern: str = r"https://arxiv.org/(?:pdf|abs)/(\d+.\d+)(?:\.pdf)?", **kwargs
+    ):
         super().__init__(**kwargs)
         self.url_pattern = url_pattern
         self.merger = FileMerger()
@@ -22,7 +24,11 @@ class ArxivPdfParser(Expression):
         urls = re.findall(self.url_pattern, str(data))
 
         # Convert all urls to pdf urls
-        pdf_urls = ["https://arxiv.org/pdf/" + (f"{url.split('/')[-1]}.pdf" if 'pdf' not in url else {url.split('/')[-1]}) for url in urls]
+        pdf_urls = [
+            "https://arxiv.org/pdf/"
+            + (f"{url.split('/')[-1]}.pdf" if "pdf" not in url else {url.split("/")[-1]})
+            for url in urls
+        ]
 
         # Create temporary folder in the home directory
         output_path = HOME_PATH / "temp" / "downloads"
@@ -31,7 +37,9 @@ class ArxivPdfParser(Expression):
         pdf_files = []
         with ThreadPoolExecutor() as executor:
             # Download all pdfs in parallel
-            future_to_url = {executor.submit(self.download_pdf, url, output_path): url for url in pdf_urls}
+            future_to_url = {
+                executor.submit(self.download_pdf, url, output_path): url for url in pdf_urls
+            }
             for future in as_completed(future_to_url):
                 url = future_to_url[future]
                 try:
@@ -56,7 +64,7 @@ class ArxivPdfParser(Expression):
     def download_pdf(self, url, output_path):
         # Download pdfs
         response = requests.get(url)
-        file_path = Path(output_path) / f'{url.split("/")[-1]}'
-        with file_path.open('wb') as f:
+        file_path = Path(output_path) / f"{url.split('/')[-1]}"
+        with file_path.open("wb") as f:
             f.write(response.content)
         return str(file_path)

@@ -21,7 +21,7 @@ If more than one entity pair is extracted from the same sentence, then the CSV f
 
 class GraphPreProcessor(PreProcessor):
     def __call__(self, argument):
-        return f'$> {argument.args[0]!s} =>'
+        return f"$> {argument.args[0]!s} =>"
 
 
 class Graph(Expression):
@@ -29,26 +29,37 @@ class Graph(Expression):
     def static_context(self) -> str:
         return GRAPH_DESCRIPTION
 
-    def __init__(self, formatter: Callable = _DEFAULT_SENTENCE_FORMATTER, n_workers: int = 1, verbose: bool = False, **kwargs):
+    def __init__(
+        self,
+        formatter: Callable = _DEFAULT_SENTENCE_FORMATTER,
+        n_workers: int = 1,
+        verbose: bool = False,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
-        self.formatter       = formatter
-        self.n_workers       = n_workers
+        self.formatter = formatter
+        self.n_workers = n_workers
         self.sym_return_type = Graph
-        self.verbose         = verbose
+        self.verbose = verbose
 
     def process_symbol(self, s, *_args, **kwargs):
-        res = ''
+        res = ""
 
-        @core.few_shot(prompt="Extract relationships between entities:\n",
-                  examples=Prompt([
-                        '$> John has a dog. =>John, dog, 1 EOF',
-                        '$> Karl has two sons. =>Karl, sons, 2 EOF',
-                        '$> Similarly, the term general linguistics is used to distinguish core linguistics from other types of study =>general linguistics, core linguistics, 1 EOF',
-                        '$> X has Y and Z has Y =>X, Y, 1\nZ, Y, 1 EOF',
-                  ]),
-                  pre_processors=[GraphPreProcessor()],
-                  post_processors=[StripPostProcessor()],
-                  stop=['EOF'], **kwargs)
+        @core.few_shot(
+            prompt="Extract relationships between entities:\n",
+            examples=Prompt(
+                [
+                    "$> John has a dog. =>John, dog, 1 EOF",
+                    "$> Karl has two sons. =>Karl, sons, 2 EOF",
+                    "$> Similarly, the term general linguistics is used to distinguish core linguistics from other types of study =>general linguistics, core linguistics, 1 EOF",
+                    "$> X has Y and Z has Y =>X, Y, 1\nZ, Y, 1 EOF",
+                ]
+            ),
+            pre_processors=[GraphPreProcessor()],
+            post_processors=[StripPostProcessor()],
+            stop=["EOF"],
+            **kwargs,
+        )
         def _func(_, text) -> str:
             pass
 
@@ -57,17 +68,19 @@ class Graph(Expression):
                 UserMessage(str(s))
             r = _func(self, s)
             rec = str(r)
-            lines = rec.split('\n')
+            lines = rec.split("\n")
             for line in lines:
                 stripped_line = line.strip()
                 if len(stripped_line) > 0:
-                    csv = stripped_line.split(',')
+                    csv = stripped_line.split(",")
                     try:
-                        if len(csv) == 3 and \
-                            csv[0].strip() != '' and \
-                                csv[1].strip() != '' and \
-                                    int(csv[2].strip()) > 0:
-                            res += stripped_line + '\n'
+                        if (
+                            len(csv) == 3
+                            and csv[0].strip() != ""
+                            and csv[1].strip() != ""
+                            and int(csv[2].strip()) > 0
+                        ):
+                            res += stripped_line + "\n"
                     except Exception as e:
                         if self.verbose:
                             UserMessage(str(e))
@@ -75,7 +88,7 @@ class Graph(Expression):
         return res
 
     def forward(self, sym: Symbol, **_kwargs) -> Symbol:
-        res = 'source,target,value\n'
+        res = "source,target,value\n"
         sym_list = self.formatter(sym).value
         if self.n_workers == 1:
             for s in sym_list:
@@ -86,5 +99,6 @@ class Graph(Expression):
         for r in results:
             res += r
         return res
+
 
 _DEFAULT_SENTENCE_FORMATTER = SentenceFormatter()

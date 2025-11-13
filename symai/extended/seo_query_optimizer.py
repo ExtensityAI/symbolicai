@@ -16,7 +16,7 @@ The number of resulting queries should be between 1 and 8 statements separated b
 
 class SEOQueryOptimizerPreProcessor(PreProcessor):
     def __call__(self, argument):
-        return f'$> {argument.args[0]!s} =>'
+        return f"$> {argument.args[0]!s} =>"
 
 
 class SEOQueryOptimizer(Expression):
@@ -29,18 +29,21 @@ class SEOQueryOptimizer(Expression):
         self.sym_return_type = SEOQueryOptimizer
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
-        @core.few_shot(prompt="Extract relationships between entities:\n",
-                  examples=Prompt([
-                        '$> John has a dog. =>John dog EOF',
-                        '$> How can i find on wikipedia an article about programming? Preferably about python programming. =>Wikipedia python programming tutorial EOF',
-                        '$> Similarly, the term general linguistics is used to distinguish core linguistics from other types of study =>general linguistics term, core linguistics from other types of study EOF',
-                  ]),
-                  pre_processors=[SEOQueryOptimizerPreProcessor()],
-                  post_processors=[StripPostProcessor()],
-                  stop=['EOF'], **kwargs)
+        @core.few_shot(
+            prompt="Extract relationships between entities:\n",
+            examples=Prompt(
+                [
+                    "$> John has a dog. =>John dog EOF",
+                    "$> How can i find on wikipedia an article about programming? Preferably about python programming. =>Wikipedia python programming tutorial EOF",
+                    "$> Similarly, the term general linguistics is used to distinguish core linguistics from other types of study =>general linguistics term, core linguistics from other types of study EOF",
+                ]
+            ),
+            pre_processors=[SEOQueryOptimizerPreProcessor()],
+            post_processors=[StripPostProcessor()],
+            stop=["EOF"],
+            **kwargs,
+        )
         def _func(_, text) -> str:
             pass
 
         return _func(self, sym)
-
-

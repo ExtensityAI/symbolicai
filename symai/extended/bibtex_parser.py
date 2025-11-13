@@ -68,7 +68,7 @@ Multimodal Few-Shot Learning with Frozen Language Models Maria Tsimpoukelli
 
 class BibTexPreProcessor(PreProcessor):
     def __call__(self, argument):
-        return f'>>>\n{argument.args[0]!s}\n\n<<<\n'
+        return f">>>\n{argument.args[0]!s}\n\n<<<\n"
 
 
 class BibTexParser(Expression):
@@ -81,9 +81,13 @@ class BibTexParser(Expression):
         self.sym_return_type = BibTexParser
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
-        @core.zero_shot(prompt="Create bibtex entries:\n",
-                   pre_processors=[BibTexPreProcessor()],
-                   post_processors=[CodeExtractPostProcessor()], **kwargs)
+        @core.zero_shot(
+            prompt="Create bibtex entries:\n",
+            pre_processors=[BibTexPreProcessor()],
+            post_processors=[CodeExtractPostProcessor()],
+            **kwargs,
+        )
         def _func(_, text) -> str:
             pass
+
         return _func(self, sym)

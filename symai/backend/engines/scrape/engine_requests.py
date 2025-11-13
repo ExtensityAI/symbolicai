@@ -67,8 +67,8 @@ class RequestsEngine(Engine):
 
     DEFAULT_HEADERS: ClassVar[dict[str, str]] = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                      "AppleWebKit/537.36 (KHTML, like Gecko) "
-                      "Chrome/120.0.0.0 Safari/537.36",
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/120.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
         "DNT": "1",
@@ -174,7 +174,9 @@ class RequestsEngine(Engine):
             context.add_cookies(cookie_payload)
 
     @staticmethod
-    def _navigate_playwright_page(page, url: str, wait_selector: str | None, wait_until: str, timeout_ms: int, timeout_error):
+    def _navigate_playwright_page(
+        page, url: str, wait_selector: str | None, wait_until: str, timeout_ms: int, timeout_error
+    ):
         try:
             response = page.goto(url, wait_until=wait_until, timeout=timeout_ms)
             if wait_selector:
@@ -232,7 +234,13 @@ class RequestsEngine(Engine):
             return resp
         return self.session.get(target, timeout=timeout, allow_redirects=True)
 
-    def _fetch_with_playwright(self, url: str, wait_selector: str | None = None, wait_until: str = "networkidle", timeout: float | None = None):
+    def _fetch_with_playwright(
+        self,
+        url: str,
+        wait_selector: str | None = None,
+        wait_until: str = "networkidle",
+        timeout: float | None = None,
+    ):
         """
         Render the target URL in a headless browser to execute JavaScript and
         return a synthetic ``requests.Response`` object to keep downstream
@@ -240,8 +248,9 @@ class RequestsEngine(Engine):
         """
         try:
             # Playwright is optional; import only when JS rendering is requested.
-            from playwright.sync_api import TimeoutError as PlaywrightTimeoutError # noqa
-            from playwright.sync_api import sync_playwright # noqa
+            from playwright.sync_api import TimeoutError as PlaywrightTimeoutError  # noqa
+            from playwright.sync_api import sync_playwright  # noqa
+
             logging.getLogger("playwright").setLevel(logging.WARNING)
         except ImportError as exc:
             msg = "Playwright is not installed. Install symbolicai[scrape] with Playwright extras to enable render_js."
@@ -301,7 +310,7 @@ class RequestsEngine(Engine):
         return rendered_response
 
     def id(self) -> str:
-        return 'scrape'
+        return "scrape"
 
     def forward(self, argument):
         """
@@ -317,8 +326,11 @@ class RequestsEngine(Engine):
         self._maybe_set_bypass_cookies(url)
 
         parsed = urlparse(url)
-        qs = [(k, v) for k, v in parse_qsl(parsed.query, keep_blank_values=True)
-              if k.lower() not in {"utm_source", "utm_medium", "utm_campaign"}]
+        qs = [
+            (k, v)
+            for k, v in parse_qsl(parsed.query, keep_blank_values=True)
+            if k.lower() not in {"utm_source", "utm_medium", "utm_campaign"}
+        ]
         clean_url = urlunparse(parsed._replace(query=urlencode(qs)))
 
         render_js = kwargs.get("render_js")
@@ -335,7 +347,9 @@ class RequestsEngine(Engine):
                 timeout=render_timeout,
             )
         else:
-            resp = self.session.get(clean_url, timeout=self.timeout, allow_redirects=True, verify=self.verify_ssl)
+            resp = self.session.get(
+                clean_url, timeout=self.timeout, allow_redirects=True, verify=self.verify_ssl
+            )
         resp.raise_for_status()
 
         # Follow a legacy meta refresh once (do AFTER normal HTTP redirects)

@@ -14,4 +14,5 @@ class naive_scrape(Expression):
             # The fallback path may inject debugging kwargs like `error`/`stack_trace`;
             # accept and ignore them so EngineRepository can surface structured failures.
             return None
+
         return _func(self)

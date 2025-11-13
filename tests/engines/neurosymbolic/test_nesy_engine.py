@@ -109,6 +109,7 @@ def test_tokenizer():
 @pytest.mark.mandatory
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('huggingface'), reason='feature not yet implemented')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('o1'), reason='feature not supported by the model')
+@pytest.mark.skipif(NEUROSYMBOLIC == "gpt-5.1-chat-latest" or NEUROSYMBOLIC == "gpt-5-chat-latest", reason='feature not supported by the model with v1/chat/completions')
 def test_tool_usage():
     if NEUROSYMBOLIC.startswith('o3') or NEUROSYMBOLIC.startswith('o4') or NEUROSYMBOLIC.startswith('gpt'):
         tools = [{

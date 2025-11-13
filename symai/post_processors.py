@@ -29,7 +29,9 @@ class StripPostProcessor(PostProcessor):
 
 class ClusterPostProcessor(PostProcessor):
     def __call__(self, response, argument) -> Any:
-        assert hasattr(self, 'clustering_kwargs'), "'clustering_kwargs' must be set in the class before calling __call__; use 'set' method."
+        assert hasattr(self, "clustering_kwargs"), (
+            "'clustering_kwargs' must be set in the class before calling __call__; use 'set' method."
+        )
         clustering = HDBSCAN(**self.clustering_kwargs).fit(response)
         ids = np.unique(clustering.labels_)
         map_ = {}
@@ -47,32 +49,32 @@ class ClusterPostProcessor(PostProcessor):
 
 class TemplatePostProcessor(PostProcessor):
     def __call__(self, response, argument) -> Any:
-        template    = argument.prop.template
+        template = argument.prop.template
         placeholder = argument.prop.placeholder
-        template    = argument.prop.template
+        template = argument.prop.template
         parts = str(template).split(placeholder)
-        return f'{parts[0]}{response}{parts[1]}'
+        return f"{parts[0]}{response}{parts[1]}"
 
 
 class SplitNewLinePostProcessor(PostProcessor):
     def __call__(self, response, _argument) -> Any:
-        tmp = response.split('\n')
+        tmp = response.split("\n")
         return [t.strip() for t in tmp if len(t.strip()) > 0]
 
 
 class JsonTruncatePostProcessor(PostProcessor):
     def __call__(self, response, _argument) -> Any:
-        count_b = response.count('[JSON_BEGIN]')
-        count_e = response.count('[JSON_END]')
+        count_b = response.count("[JSON_BEGIN]")
+        count_e = response.count("[JSON_END]")
         if count_b > 1 or count_e > 1:
             msg = "More than one [JSON_BEGIN] or [JSON_END] found. Please only generate one JSON response."
             UserMessage(msg)
             raise ValueError(msg)
         # cut off everything until the first '{'
-        start_idx = response.find('{')
+        start_idx = response.find("{")
         response = response[start_idx:]
         # find the first occurence of '}' looking backwards
-        end_idx = response.rfind('}') + 1
+        end_idx = response.rfind("}") + 1
         response = response[:end_idx]
         # search after the first character of '{' if it is a '"' and if not, replace it
         try:
@@ -85,17 +87,17 @@ class JsonTruncatePostProcessor(PostProcessor):
 
 class JsonTruncateMarkdownPostProcessor(PostProcessor):
     def __call__(self, response, _argument) -> Any:
-        count_b = response.count('```json')
-        count_e = response.count('```')
+        count_b = response.count("```json")
+        count_e = response.count("```")
         if count_b > 1 or count_e > 2:
             msg = "More than one ```json Markdown found. Please only generate one JSON response."
             UserMessage(msg)
             raise ValueError(msg)
         # cut off everything until the first '{'
-        start_idx = response.find('{')
+        start_idx = response.find("{")
         response = response[start_idx:]
         # find the first occurence of '}' looking backwards
-        end_idx = response.rfind('}') + 1
+        end_idx = response.rfind("}") + 1
         response = response[:end_idx]
         # search after the first character of '{' if it is a '"' and if not, replace it
         try:
@@ -108,13 +110,13 @@ class JsonTruncateMarkdownPostProcessor(PostProcessor):
 
 class CodeExtractPostProcessor(PostProcessor):
     def __call__(self, response, _argument, tag=None, **_kwargs) -> Any:
-        if '```' not in str(response):
+        if "```" not in str(response):
             return response
         try:
             if tag is None:
-                pattern = r'```(?:\w*\n)?(.*?)(?:```|$)'
+                pattern = r"```(?:\w*\n)?(.*?)(?:```|$)"
             else:
-                pattern = r'```(?:\w*\n)?' + re.escape(str(tag)) + r'\n(.*?)(?:```|$)'
+                pattern = r"```(?:\w*\n)?" + re.escape(str(tag)) + r"\n(.*?)(?:```|$)"
             matches = re.findall(pattern, str(response), re.DOTALL)
             return "\n".join(matches).strip()
         except Exception:
@@ -129,10 +131,10 @@ class WolframAlphaPostProcessor(PostProcessor):
             response._value = res
             return response
         except StopIteration:
-            vals = ''
+            vals = ""
             for pod in response.value.pods:
                 for sub in pod.subpods:
-                    vals += f'{sub.plaintext}\n'
+                    vals += f"{sub.plaintext}\n"
             if len(vals) > 0:
                 response._value = vals
                 return response
@@ -142,16 +144,16 @@ class WolframAlphaPostProcessor(PostProcessor):
 class SplitPipePostProcessor(PostProcessor):
     def __call__(self, response, _argument) -> Any:
         tmp = response if isinstance(response, list) else [response]
-        tmp = [r.split('|') for r in tmp if len(r.strip()) > 0]
+        tmp = [r.split("|") for r in tmp if len(r.strip()) > 0]
         tmp = [item for group in tmp for item in group]
         return [t.strip() for t in tmp if len(t.strip()) > 0]
 
 
 class NotifySubscriberPostProcessor(PostProcessor):
     def __call__(self, response, argument) -> Any:
-        for k, v in argument.kwargs['subscriber'].items():
+        for k, v in argument.kwargs["subscriber"].items():
             if k in response:
-                Event = namedtuple('Event', ['args', 'kwargs', 'response'])
+                Event = namedtuple("Event", ["args", "kwargs", "response"])
                 v(Event(argument.args, argument.kwargs, response))
         return response
 
@@ -198,12 +200,13 @@ class TakeLastPostProcessor(PostProcessor):
 
 class ExpandFunctionPostProcessor(PostProcessor):
     def __call__(self, response, _argument) -> Any:
-        return 'def ' + response
+        return "def " + response
 
 
 class CaseInsensitivePostProcessor(PostProcessor):
     def __call__(self, response, _argument) -> Any:
         return str(response).lower()
+
 
 class ConfirmToBoolPostProcessor(PostProcessor):
     def __call__(self, response, _argument) -> Any:
@@ -211,6 +214,7 @@ class ConfirmToBoolPostProcessor(PostProcessor):
             return False
         rsp = response.strip()
         # Lazy Symbol import prevents post_processors -> symbol -> core -> functional -> post_processors cycle.
-        from .symbol import Symbol # noqa
+        from .symbol import Symbol  # noqa
+
         sym = Symbol(rsp)
-        return bool(sym.isinstanceof('confirming answer'))
+        return bool(sym.isinstanceof("confirming answer"))

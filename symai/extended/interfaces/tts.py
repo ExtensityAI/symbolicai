@@ -7,8 +7,9 @@ class tts(Expression):
         super().__init__(*args, **kwargs)
         self.name = self.__class__.__name__
 
-    def __call__(self, prompt: Symbol, path: str, voice: str = 'nova', **kwargs) -> Result:
+    def __call__(self, prompt: Symbol, path: str, voice: str = "nova", **kwargs) -> Result:
         @core.text_to_speech(prompt=str(prompt), path=path, voice=voice, **kwargs)
         def _func(_) -> Result:
             pass
+
         return _func(self)

@@ -21,16 +21,16 @@ class ParagraphFormatter(Expression):
 
     def split_files(self, input_text=""):
         input_ = input_text.strip()
-        if input_.startswith('# ----[FILE_START]') and '# ----[FILE_END]' in input_:
+        if input_.startswith("# ----[FILE_START]") and "# ----[FILE_END]" in input_:
             self._has_file_start = True
             # split text file-wise and create a map of file names and their contents
             files = {}
-            split_text = input_.split('# ----[FILE_START]')
+            split_text = input_.split("# ----[FILE_START]")
             for _i, file in enumerate(split_text):
                 if not file.strip():
                     continue
-                _, content_file = file.split('[FILE_CONTENT]:')
-                content, file_name = content_file.split('# ----[FILE_END]')
+                _, content_file = file.split("[FILE_CONTENT]:")
+                content, file_name = content_file.split("# ----[FILE_END]")
                 files[file_name.strip()] = content.strip()
         else:
             files = {"": input_}
@@ -40,8 +40,10 @@ class ParagraphFormatter(Expression):
         if file_name and self._has_file_start:
             header = f"# ----[FILE_START]<PART{part}/{total_parts}>{file_name}[FILE_CONTENT]:\n"
             footer = f"\n# ----[FILE_END]{file_name}\n"
-            if '[FILE_CONTENT]:' in paragraph: # TODO: remove this if statement after fixing the bug
-                paragraph = paragraph.split('[FILE_CONTENT]:')[-1].strip()
+            if (
+                "[FILE_CONTENT]:" in paragraph
+            ):  # TODO: remove this if statement after fixing the bug
+                paragraph = paragraph.split("[FILE_CONTENT]:")[-1].strip()
             paragraph = header + paragraph + footer
         return paragraph
 
@@ -67,7 +69,12 @@ class ParagraphFormatter(Expression):
             input_ = file_content.strip()
             split_text = self.NEWLINES_RE.split(input_)
 
-            par = [self._add_header_footer(p, file_name, part=i+1, total_parts=len(split_text)) + "\n" for i, p in enumerate(split_text) if p.strip()]
+            par = [
+                self._add_header_footer(p, file_name, part=i + 1, total_parts=len(split_text))
+                + "\n"
+                for i, p in enumerate(split_text)
+                if p.strip()
+            ]
             # p + "\n" ensures that all lines in the paragraph end with a newline
             # p.strip() == True if paragraph has other characters than whitespace
 
@@ -85,14 +92,20 @@ class ParagraphFormatter(Expression):
                 # n splits
                 total_parts = (len(words) // max_length + 1) * self._get_total_parts(text)
                 for p, i in enumerate(range(0, len(words), max_length)):
-                    paragraph = ' '.join(words[i:i + max_length])
-                    paragraphs.append(self._add_header_footer(paragraph, file_name, part=p+1, total_parts=total_parts) + "\n")
+                    paragraph = " ".join(words[i : i + max_length])
+                    paragraphs.append(
+                        self._add_header_footer(
+                            paragraph, file_name, part=p + 1, total_parts=total_parts
+                        )
+                        + "\n"
+                    )
             else:
                 paragraphs.append(text)
         return paragraphs
 
-    @core_ext.bind(engine='embedding', property='max_tokens')
-    def _max_tokens(self): pass
+    @core_ext.bind(engine="embedding", property="max_tokens")
+    def _max_tokens(self):
+        pass
 
     def split_max_tokens_exceeded(self, input_text: List[str], token_ratio=0.5):
         paragraphs = []
@@ -107,8 +120,13 @@ class ParagraphFormatter(Expression):
                 text_len_ = len(str(text)) // splits_
                 total_parts = (text_len_ + 1) * self._get_total_parts(text)
                 for i in range(splits_):
-                    paragraph = text[i * text_len_:(i + 1) * text_len_]
-                    paragraphs.append(self._add_header_footer(paragraph, file_name, part=i+1, total_parts=total_parts) + "\n")
+                    paragraph = text[i * text_len_ : (i + 1) * text_len_]
+                    paragraphs.append(
+                        self._add_header_footer(
+                            paragraph, file_name, part=i + 1, total_parts=total_parts
+                        )
+                        + "\n"
+                    )
             else:
                 paragraphs.append(text)
         return paragraphs
@@ -126,7 +144,9 @@ class ParagraphFormatter(Expression):
 class SentenceFormatter(Expression):
     def __init__(self, value=None, **kwargs):
         super().__init__(value, **kwargs)
-        self.SENTENCES_RE = re.compile(r"[.!?]\n*|[\n]{1,}")  # Sentence ending characters followed by newlines
+        self.SENTENCES_RE = re.compile(
+            r"[.!?]\n*|[\n]{1,}"
+        )  # Sentence ending characters followed by newlines
 
     def split_sentences(self, input_text=""):
         input_ = input_text.strip()
@@ -161,13 +181,7 @@ class RegexFormatter(Expression):
 
 
 class TextContainerFormatter(Expression):
-    def __init__(
-            self,
-            value: Any = None,
-            key: str ="text",
-            text_split: int = 4,
-            **kwargs
-        ):
+    def __init__(self, value: Any = None, key: str = "text", text_split: int = 4, **kwargs):
         super().__init__(value, **kwargs)
         self.key = key
         self.text_split = text_split
@@ -179,7 +193,7 @@ class TextContainerFormatter(Expression):
         chunks = [text for container in tqdm(containers) for text in self._chunk(container)]
         return self._to_symbol(chunks)
 
-    def _chunk(self, container: 'TextContainer') -> List[str]:
+    def _chunk(self, container: "TextContainer") -> List[str]:
         text = container.text
         step = len(text) // self.text_split
         splits = []
@@ -189,16 +203,10 @@ class TextContainerFormatter(Expression):
                 # Unify the last chunk with the previous one if necessary
                 splits.append(self._as_str(text[i:], container))
                 break
-            splits.append(self._as_str(text[i:i+step], container))
+            splits.append(self._as_str(text[i : i + step], container))
             i += step
             c += 1
         return splits
 
-    def _as_str(self, text: str, container: 'TextContainer') -> str:
-        return (
-            '---\n'
-            f"id: {container.id}\n"
-            f"page: {container.page}\n"
-            '---\n'
-            f"{text}"
-        )
+    def _as_str(self, text: str, container: "TextContainer") -> str:
+        return f"---\nid: {container.id}\npage: {container.page}\n---\n{text}"

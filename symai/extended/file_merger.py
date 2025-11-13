@@ -12,12 +12,48 @@ class FileMerger(Expression):
     Class to merge contents of multiple files into one, specified by their file endings and root path.
     Files specified in the exclude list will not be included.
     """
-    def __init__(self, file_endings: list[str] | None = None,
-                       file_excludes: list[str] | None = None, **kwargs):
+
+    def __init__(
+        self,
+        file_endings: list[str] | None = None,
+        file_excludes: list[str] | None = None,
+        **kwargs,
+    ):
         if file_excludes is None:
-            file_excludes = ['__init__.py', '__pycache__', 'LICENSE', 'requirements.txt', 'environment.yaml', '.git']
+            file_excludes = [
+                "__init__.py",
+                "__pycache__",
+                "LICENSE",
+                "requirements.txt",
+                "environment.yaml",
+                ".git",
+            ]
         if file_endings is None:
-            file_endings = ['.py', '.md', '.txt', '.sh', '.pdf', '.json', '.yaml', '.java', '.cpp', '.hpp', '.c', '.h', '.js', '.css', '.html', '.xml', '.csv', '.tsv', '.yml', '.rst', '.ipynb', '.tex', '.bib']
+            file_endings = [
+                ".py",
+                ".md",
+                ".txt",
+                ".sh",
+                ".pdf",
+                ".json",
+                ".yaml",
+                ".java",
+                ".cpp",
+                ".hpp",
+                ".c",
+                ".h",
+                ".js",
+                ".css",
+                ".html",
+                ".xml",
+                ".csv",
+                ".tsv",
+                ".yml",
+                ".rst",
+                ".ipynb",
+                ".tex",
+                ".bib",
+            ]
         super().__init__(**kwargs)
         self.file_endings = file_endings
         self.file_excludes = file_excludes
@@ -56,9 +92,11 @@ class FileMerger(Expression):
                     file_path_escaped = file_path_str.replace(" ", "\\ ")
 
                     # Append start and end markers for each file
-                    file_content = f"# ----[FILE_START]<PART1/1>{file_path_escaped}[FILE_CONTENT]:\n" + \
-                                   file_content + \
-                                   f"\n# ----[FILE_END]{file_path_escaped}\n"
+                    file_content = (
+                        f"# ----[FILE_START]<PART1/1>{file_path_escaped}[FILE_CONTENT]:\n"
+                        + file_content
+                        + f"\n# ----[FILE_END]{file_path_escaped}\n"
+                    )
 
                     # Merge the file contents
                     merged_file += file_content

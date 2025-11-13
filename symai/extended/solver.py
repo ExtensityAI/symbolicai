@@ -57,14 +57,15 @@ $> Max is 2 years older than his brother. In 5 years, Max will be 3 times as old
 --------------
 """
 
+
 class ProblemClassifierPreProcessor(PreProcessor):
     def __call__(self, argument):
-        return f'$> {argument.prop.instance!s}\n//'
+        return f"$> {argument.prop.instance!s}\n//"
 
 
 class OptionsPreProcessor(PreProcessor):
     def __call__(self, argument):
-        return f'$> :{argument.prop.instance!s}: == :{argument.args[0]!s}: =>'
+        return f"$> :{argument.prop.instance!s}: == :{argument.args[0]!s}: =>"
 
 
 class ProblemClassifier(Expression):
@@ -75,32 +76,41 @@ class ProblemClassifier(Expression):
         return PROBLEM_CATEGORY_CONTEXT
 
     def __eq__(self, other, **kwargs) -> bool:
-        @core.few_shot(prompt="Verify equality of the following categories. Ignore typos, upper / lower case or singular / plural differences:\n",
-                     examples=Prompt([
-                         '$> :Arithmetic formula: == :Arithmetics formula: =>True EOF',
-                         '$> :arithmetic formula: == :Arithmetic formula: =>True EOF',
-                         '$> :arithmetic formula: == :arithmeticformula: =>True EOF',
-                         '$> :arithmetic formula: == :Implication and logical expressions: =>False EOF',
-                         '$> :Linear algebra: == :Implication and logical expressions: =>False EOF',
-                         '$> :Linear algebra: == :Unknown category: =>False EOF',
-                         '$> :Linear algebra: == :Linear algebra: =>True EOF',
-                         '$> :Probability and statistics: == :Probabilities and statistics: =>True EOF',
-                         '$> :PROBABILITY AND STATISTICS: == :Probability and statistics: =>True EOF',
-                         '$> :PROBABILITY AND STATISTICS: == :UNKNOWN CATEGORY: =>False EOF',
-                     ]),
-                     pre_processors=[OptionsPreProcessor()],
-                     post_processors=[StripPostProcessor()],
-                     stop=['EOF'], **kwargs)
+        @core.few_shot(
+            prompt="Verify equality of the following categories. Ignore typos, upper / lower case or singular / plural differences:\n",
+            examples=Prompt(
+                [
+                    "$> :Arithmetic formula: == :Arithmetics formula: =>True EOF",
+                    "$> :arithmetic formula: == :Arithmetic formula: =>True EOF",
+                    "$> :arithmetic formula: == :arithmeticformula: =>True EOF",
+                    "$> :arithmetic formula: == :Implication and logical expressions: =>False EOF",
+                    "$> :Linear algebra: == :Implication and logical expressions: =>False EOF",
+                    "$> :Linear algebra: == :Unknown category: =>False EOF",
+                    "$> :Linear algebra: == :Linear algebra: =>True EOF",
+                    "$> :Probability and statistics: == :Probabilities and statistics: =>True EOF",
+                    "$> :PROBABILITY AND STATISTICS: == :Probability and statistics: =>True EOF",
+                    "$> :PROBABILITY AND STATISTICS: == :UNKNOWN CATEGORY: =>False EOF",
+                ]
+            ),
+            pre_processors=[OptionsPreProcessor()],
+            post_processors=[StripPostProcessor()],
+            stop=["EOF"],
+            **kwargs,
+        )
         def _func(_, other) -> bool:
             pass
+
         return _func(self, other)
 
     def forward(self, **kwargs) -> str:
-        @core.few_shot(prompt="Classify the user query to the mathematical classes:\n",
-                     examples=[],
-                     pre_processors=[ProblemClassifierPreProcessor()],
-                     post_processors=[StripPostProcessor()],
-                     stop=['EOF'], **kwargs)
+        @core.few_shot(
+            prompt="Classify the user query to the mathematical classes:\n",
+            examples=[],
+            pre_processors=[ProblemClassifierPreProcessor()],
+            post_processors=[StripPostProcessor()],
+            stop=["EOF"],
+            **kwargs,
+        )
         def _func(_) -> str:
             pass
 
@@ -109,34 +119,40 @@ class ProblemClassifier(Expression):
 
 class FormulaCheckerPreProcessor(PreProcessor):
     def __call__(self, argument):
-        return f'$> {argument.prop.instance!s} =>'
+        return f"$> {argument.prop.instance!s} =>"
 
 
 class FormulaChecker(Expression):
     def forward(self, **kwargs) -> bool:
-        @core.few_shot(prompt="Is the following statement in an explicit formula form without natural language text?:\n",
-                     examples=Prompt([
-                         '$> 2 + 2 * 2 =>True EOF',
-                         '$> x + 2 = 3 =>True EOF',
-                         '$> Set of all natural numbers =>False EOF',
-                         '$> Probability of drawing a red ball =>False EOF',
-                         '$> (a + b) * (a - b) =>True EOF',
-                         '$> Add the square root of nine to the square root of x =>False EOF',
-                         '$> Five plus two equals seven =>False EOF',
-                         '$> 5 + 2 = 7 =>True EOF',
-                         '$> x is seven =>False EOF',
-                         '$> x = 7 =>True EOF',
-                         '$> Anna has two apples. She gives one to her brother. How many apples does Anna have now? =>False EOF',
-                         '$> 0.447662 =>True EOF',
-                         '$> Subtract the x from y squared =>False EOF',
-                         '$> The sum of the first n natural numbers =>False EOF',
-                         '$> Sum[x=5, {i=0, n=10}] =>True EOF',
-                     ]),
-                     pre_processors=[FormulaCheckerPreProcessor()],
-                     post_processors=[StripPostProcessor()],
-                     stop=['EOF'], **kwargs)
+        @core.few_shot(
+            prompt="Is the following statement in an explicit formula form without natural language text?:\n",
+            examples=Prompt(
+                [
+                    "$> 2 + 2 * 2 =>True EOF",
+                    "$> x + 2 = 3 =>True EOF",
+                    "$> Set of all natural numbers =>False EOF",
+                    "$> Probability of drawing a red ball =>False EOF",
+                    "$> (a + b) * (a - b) =>True EOF",
+                    "$> Add the square root of nine to the square root of x =>False EOF",
+                    "$> Five plus two equals seven =>False EOF",
+                    "$> 5 + 2 = 7 =>True EOF",
+                    "$> x is seven =>False EOF",
+                    "$> x = 7 =>True EOF",
+                    "$> Anna has two apples. She gives one to her brother. How many apples does Anna have now? =>False EOF",
+                    "$> 0.447662 =>True EOF",
+                    "$> Subtract the x from y squared =>False EOF",
+                    "$> The sum of the first n natural numbers =>False EOF",
+                    "$> Sum[x=5, {i=0, n=10}] =>True EOF",
+                ]
+            ),
+            pre_processors=[FormulaCheckerPreProcessor()],
+            post_processors=[StripPostProcessor()],
+            stop=["EOF"],
+            **kwargs,
+        )
         def _func(_) -> bool:
             pass
+
         return _func(self)
 
 
@@ -149,27 +165,33 @@ class FormulaChecker(Expression):
 
 class FormulaWriterPreProcessor(PreProcessor):
     def __call__(self, argument):
-        return f'$> {argument.prop.instance!s} =>'
+        return f"$> {argument.prop.instance!s} =>"
 
 
 class FormulaWriter(Expression):
     def forward(self, **kwargs) -> str:
-        @core.few_shot(prompt="Rewrite the following natural language statement in a mathematical formula or higher-order logic statement to be solved by Mathematica:\n",
-                     examples=Prompt([
-                         '$> Add 5 plus 3 =>5 + 3 EOF',
-                         '$> Seventy plus twenty =>70 + 20 EOF',
-                         '$> Divide 5 by three =>5 / 3 EOF',
-                         '$> The square root of pi plus x. =>Sqrt[Pi + x] EOF',
-                         '$> Eight point five six seven one four two seven =>8.5671427 EOF',
-                         '$> Give a solution for a quadratic equation x^2 + 2x + 1 =>Solve[x^2 + 2x + 1 ==0, x] EOF',
-                         '$> Sum x n times from i equals 0 to n equals 10. x is equals to 5. =>Sum[x=5, {i=0, n=10}] EOF',
-                         '$> Multiply the first statement in brackets a plus b times the second term in brackets c minus d =>(a + b) * (c - d) EOF'
-                     ]),
-                     pre_processors=[FormulaWriterPreProcessor()],
-                     post_processors=[StripPostProcessor()],
-                     stop=['EOF'], **kwargs)
+        @core.few_shot(
+            prompt="Rewrite the following natural language statement in a mathematical formula or higher-order logic statement to be solved by Mathematica:\n",
+            examples=Prompt(
+                [
+                    "$> Add 5 plus 3 =>5 + 3 EOF",
+                    "$> Seventy plus twenty =>70 + 20 EOF",
+                    "$> Divide 5 by three =>5 / 3 EOF",
+                    "$> The square root of pi plus x. =>Sqrt[Pi + x] EOF",
+                    "$> Eight point five six seven one four two seven =>8.5671427 EOF",
+                    "$> Give a solution for a quadratic equation x^2 + 2x + 1 =>Solve[x^2 + 2x + 1 ==0, x] EOF",
+                    "$> Sum x n times from i equals 0 to n equals 10. x is equals to 5. =>Sum[x=5, {i=0, n=10}] EOF",
+                    "$> Multiply the first statement in brackets a plus b times the second term in brackets c minus d =>(a + b) * (c - d) EOF",
+                ]
+            ),
+            pre_processors=[FormulaWriterPreProcessor()],
+            post_processors=[StripPostProcessor()],
+            stop=["EOF"],
+            **kwargs,
+        )
         def _func(_) -> str:
             pass
+
         return _func(self)
 
 
@@ -199,17 +221,19 @@ _value_obj_ = problem_statement
 
 class SATSolver(Expression):
     def forward(self, code):
-        assert z3 is not None, "The z3 library is not installed. Please install it using `pip install 'symbolicai[solver]'` and try again."
+        assert z3 is not None, (
+            "The z3 library is not installed. Please install it using `pip install 'symbolicai[solver]'` and try again."
+        )
         # Create the execution template
-        runner    = Execute(enclosure=True)
+        runner = Execute(enclosure=True)
         # Execute the code
         statement = runner(code)
         # Create a new solver instance
-        S         = z3.Solver()
+        S = z3.Solver()
         # Create a new query
-        query     = statement['locals']['_output_'](S)
+        query = statement["locals"]["_output_"](S)
         # Check if the query can be solved
-        r         = S.check()
+        r = S.check()
         # Print the solution
         if r == z3.sat:
             # Get the model
@@ -232,8 +256,8 @@ class Solver(Expression):
         super().__init__(**kwargs)
         self.sym_return_type = Solver
         self.solver = SATSolver()
-        self.conv   = Conversation(init=LOGIC_TEMPLATE)
-        self.pp     = CodeExtractPostProcessor()
+        self.conv = Conversation(init=LOGIC_TEMPLATE)
+        self.pp = CodeExtractPostProcessor()
 
     def rewrite_formula(self, sym, **kwargs):
         formula = sym
@@ -247,16 +271,20 @@ class Solver(Expression):
         classifier = ProblemClassifier(sym)
         problem = classifier(**kwargs)
 
-        if problem == 'Arithmetics formula' or problem == 'Equations':
+        if problem == "Arithmetics formula" or problem == "Equations":
             formula = self.rewrite_formula(sym, **kwargs)
             UserMessage(str(formula))
-        elif problem == 'Implication and logical expressions':
-            res     = self.conv(sym, **kwargs)
-            code    = self.pp(str(res), None, tag="python")
-            formula = self.solver(code, lambda: 'German')
+        elif problem == "Implication and logical expressions":
+            res = self.conv(sym, **kwargs)
+            code = self.pp(str(res), None, tag="python")
+            formula = self.solver(code, lambda: "German")
             UserMessage(str(formula))
-        elif problem == 'Probability and statistics' or problem == 'Linear algebra' or problem == 'Linguistic problem with relations':
-            UserMessage('This feature is not yet implemented.', raise_with=NotImplementedError)
+        elif (
+            problem == "Probability and statistics"
+            or problem == "Linear algebra"
+            or problem == "Linguistic problem with relations"
+        ):
+            UserMessage("This feature is not yet implemented.", raise_with=NotImplementedError)
         else:
             return "Sorry, something went wrong. Please check if your backend is available and try again or report an issue to the devs. :("
         return None
@@ -271,8 +299,8 @@ def process_query(args) -> None:
 
 def run() -> None:
     # All the logic of argparse goes in this function
-    parser = argparse.ArgumentParser(description='Welcome to the Symbolic<AI/> Shell support tool!')
-    parser.add_argument('query', type=str, help='The prompt for the shell query.')
+    parser = argparse.ArgumentParser(description="Welcome to the Symbolic<AI/> Shell support tool!")
+    parser.add_argument("query", type=str, help="The prompt for the shell query.")
 
     args = parser.parse_args()
     process_query(args)

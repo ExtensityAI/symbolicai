@@ -18,6 +18,7 @@ class LeanResult(Result):
     Attributes:
         _value (Dict[str, str]): A dictionary containing the output of the Lean execution.
     """
+
     def __init__(self, value: dict[str, str]) -> None:
         """
         Initializes a new LeanResult instance.
@@ -27,6 +28,7 @@ class LeanResult(Result):
         """
         super().__init__(value)
         self._value = value
+
 
 class LeanEngine(Engine):
     """
@@ -43,10 +45,10 @@ class LeanEngine(Engine):
 
     def __init__(
         self,
-        ssh_host: str = 'localhost',
+        ssh_host: str = "localhost",
         ssh_port: int = 2222,
-        ssh_user: str = 'root',
-        ssh_key_path: str = '~/.ssh/id_rsa'
+        ssh_user: str = "root",
+        ssh_key_path: str = "~/.ssh/id_rsa",
     ) -> None:
         """
         Initializes the LeanEngine with SSH and Docker configurations.
@@ -74,7 +76,7 @@ class LeanEngine(Engine):
         Returns:
             str: The identifier of the LeanEngine, 'lean4'.
         """
-        return 'lean4'
+        return "lean4"
 
     def _ensure_container(self) -> docker.models.containers.Container:
         """
@@ -86,10 +88,14 @@ class LeanEngine(Engine):
         container_name: str = "lean-container"
 
         try:
-            existing_container: docker.models.containers.Container = self.docker_client.containers.get(container_name)
+            existing_container: docker.models.containers.Container = (
+                self.docker_client.containers.get(container_name)
+            )
             existing_container.remove(force=True)
         except docker.errors.NotFound:
-            UserMessage(f"No existing container named '{container_name}' found. Proceeding to create a new one.")
+            UserMessage(
+                f"No existing container named '{container_name}' found. Proceeding to create a new one."
+            )
 
         dockerfile: str = """
         FROM buildpack-deps:buster
@@ -117,14 +123,15 @@ class LeanEngine(Engine):
             dockerfile_path = Path(temp_dockerfile.name)
 
         image: docker.models.images.Image
-        image, _ = self.docker_client.images.build(path=str(dockerfile_path.parent), dockerfile=str(dockerfile_path), tag="lean4-container-image")
+        image, _ = self.docker_client.images.build(
+            path=str(dockerfile_path.parent),
+            dockerfile=str(dockerfile_path),
+            tag="lean4-container-image",
+        )
         dockerfile_path.unlink()
 
         container: docker.models.containers.Container = self.docker_client.containers.run(
-            image.id,
-            detach=True,
-            name=container_name,
-            ports={'22/tcp': self.ssh_port}
+            image.id, detach=True, name=container_name, ports={"22/tcp": self.ssh_port}
         )
         return container
 
@@ -134,13 +141,39 @@ class LeanEngine(Engine):
         and configuring the container to accept SSH connections using the generated key.
         """
         if not self.ssh_key_path.exists():
-            subprocess.run(['ssh-keygen', '-t', 'rsa', '-b', '2048', '-f', str(self.ssh_key_path), '-N', ''], check=True)
+            subprocess.run(
+                ["ssh-keygen", "-t", "rsa", "-b", "2048", "-f", str(self.ssh_key_path), "-N", ""],
+                check=True,
+            )
 
-        subprocess.run(['docker', 'exec', self.container.id, 'mkdir', '-p', '/root/.ssh'], check=True)
-        public_key_path = self.ssh_key_path.parent / f'{self.ssh_key_path.name}.pub'
-        subprocess.run(['docker', 'cp', str(public_key_path), f'{self.container.id}:/root/.ssh/authorized_keys'], check=True)
-        subprocess.run(['docker', 'exec', self.container.id, 'chmod', '600', '/root/.ssh/authorized_keys'], check=True)
-        subprocess.run(['docker', 'exec', self.container.id, 'chown', 'root:root', '/root/.ssh/authorized_keys'], check=True)
+        subprocess.run(
+            ["docker", "exec", self.container.id, "mkdir", "-p", "/root/.ssh"], check=True
+        )
+        public_key_path = self.ssh_key_path.parent / f"{self.ssh_key_path.name}.pub"
+        subprocess.run(
+            [
+                "docker",
+                "cp",
+                str(public_key_path),
+                f"{self.container.id}:/root/.ssh/authorized_keys",
+            ],
+            check=True,
+        )
+        subprocess.run(
+            ["docker", "exec", self.container.id, "chmod", "600", "/root/.ssh/authorized_keys"],
+            check=True,
+        )
+        subprocess.run(
+            [
+                "docker",
+                "exec",
+                self.container.id,
+                "chown",
+                "root:root",
+                "/root/.ssh/authorized_keys",
+            ],
+            check=True,
+        )
 
     def forward(self, argument: Any) -> tuple[list[LeanResult], dict]:
         """
@@ -167,12 +200,12 @@ class LeanEngine(Engine):
             metadata.update(exec_metadata)
 
             if output:
-                rsp = LeanResult({'output': output})
+                rsp = LeanResult({"output": output})
             else:
-                metadata['status'] = 'no_output'
+                metadata["status"] = "no_output"
         except Exception as e:
             err = str(e)
-            metadata.update({'status': 'error', 'message': err})
+            metadata.update({"status": "error", "message": err})
             UserMessage(f"Error during Lean execution: {err}")
         finally:
             if tmpfile_path and tmpfile_path.exists():
@@ -196,12 +229,19 @@ class LeanEngine(Engine):
         try:
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            ssh.connect(self.ssh_host, port=self.ssh_port, username=self.ssh_user, key_filename=str(self.ssh_key_path))
+            ssh.connect(
+                self.ssh_host,
+                port=self.ssh_port,
+                username=self.ssh_user,
+                key_filename=str(self.ssh_key_path),
+            )
 
             elan_path: str = "/usr/local/elan/bin/elan"
             lean_path: str = "/usr/local/elan/bin/lean"
 
-            _stdin, stdout, stderr = ssh.exec_command(f"{elan_path} default stable && {lean_path} --version")
+            _stdin, stdout, stderr = ssh.exec_command(
+                f"{elan_path} default stable && {lean_path} --version"
+            )
             output: str = stdout.read().decode()
             error: str = stderr.read().decode()
             UserMessage(f"SSH Command Output: {output}")
@@ -220,10 +260,10 @@ class LeanEngine(Engine):
             ssh.close()
 
             if "error" in output.lower() or "error" in error.lower():
-                return output, {'status': 'failure'}
+                return output, {"status": "failure"}
             if not output and not error:
-                return "Lean program halted successfully with no output.", {'status': 'success'}
-            return output, {'status': 'success'}
+                return "Lean program halted successfully with no output.", {"status": "success"}
+            return output, {"status": "success"}
 
         except Exception as e:
             UserMessage(f"SSH command execution failed: {e!s}", raise_with=RuntimeError)

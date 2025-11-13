@@ -9,14 +9,11 @@ from ..symbol import Expression, Symbol
 def create_template():
     package_path = pathlib.Path(__file__).parent.absolute()
 
-
-    with (package_path / 'symbol.py').open() as f:
+    with (package_path / "symbol.py").open() as f:
         SYMBOL_API = f.read()
 
-
-    with (package_path / 'components.py').open() as f:
+    with (package_path / "components.py").open() as f:
         COMPONENTS_API = f.read()
-
 
     return f"""[Description]
     You are a programming language re-writing system from Taypan (high-level general-purpose programming language based on neuro-symbolic virtual machine) to Python interpreter, analogous to the relation between Scala and Java is the relation of Taypan to Python.
@@ -113,7 +110,7 @@ def create_template():
 
 class TaypanPreProcessor(PreProcessor):
     def __call__(self, argument):
-        return f'```taypan\n{argument.args[0]!s}\n =>'
+        return f"```taypan\n{argument.args[0]!s}\n =>"
 
 
 class TaypanInterpreter(Expression):
@@ -127,9 +124,13 @@ class TaypanInterpreter(Expression):
         self.description = create_template()
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
-        @zero_shot(prompt="Translate the Taypan code to Python code:\n",
-                   pre_processors=[TaypanPreProcessor()],
-                   post_processors=[CodeExtractPostProcessor()], **kwargs)
+        @zero_shot(
+            prompt="Translate the Taypan code to Python code:\n",
+            pre_processors=[TaypanPreProcessor()],
+            post_processors=[CodeExtractPostProcessor()],
+            **kwargs,
+        )
         def _func(_, text) -> str:
             pass
+
         return _func(self, sym)

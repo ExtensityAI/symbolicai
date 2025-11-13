@@ -21,8 +21,8 @@ from .metrics import (
     ranking_algorithm_sort,
 )
 
-logging.getLogger('sentence_transformers').setLevel(logging.WARNING)
-logging.getLogger('datasets').setLevel(logging.WARNING)
+logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
+logging.getLogger("datasets").setLevel(logging.WARNING)
 
 
 class VectorDB(Expression):
@@ -35,6 +35,7 @@ class VectorDB(Expression):
     _default_top_k: ClassVar[int] = 5
     _default_storage_path: ClassVar[Path] = HOME_PATH / "localdb"
     _default_index_name: ClassVar[str] = "dataindex"
+
     def __init__(
         self,
         documents=_default_documents,
@@ -46,7 +47,7 @@ class VectorDB(Expression):
         index_dims=_default_index_dims,
         top_k=_default_top_k,
         index_name=_default_index_name,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.config = deepcopy(SYMAI_CONFIG)
@@ -77,7 +78,10 @@ class VectorDB(Expression):
         elif "adams" in similarity_metric:
             self.similarity_metric = adams_similarity
         else:
-            UserMessage("Similarity metric not supported. Please use either 'dot', 'cosine', 'euclidean', 'adams', or 'derrida'.", raise_with=ValueError)
+            UserMessage(
+                "Similarity metric not supported. Please use either 'dot', 'cosine', 'euclidean', 'adams', or 'derrida'.",
+                raise_with=ValueError,
+            )
 
         if load_on_init:
             if isinstance(load_on_init, (str, Path)):
@@ -87,8 +91,11 @@ class VectorDB(Expression):
                 self.load()
 
     def _init_embedding_model(self):
-        if self.config['EMBEDDING_ENGINE_API_KEY'] is None or  self.config['EMBEDDING_ENGINE_API_KEY'] == '':
-            self.model = Interface('ExtensityAI/embeddings') # default to local model
+        if (
+            self.config["EMBEDDING_ENGINE_API_KEY"] is None
+            or self.config["EMBEDDING_ENGINE_API_KEY"] == ""
+        ):
+            self.model = Interface("ExtensityAI/embeddings")  # default to local model
         else:
             self.model = lambda x: Symbol(x).embedding
 
@@ -158,7 +165,10 @@ class VectorDB(Expression):
         if len(documents) == 0:
             return []
         texts = self._to_texts(documents, key)
-        batches = [texts[index : index + self.batch_size] for index in range(0, len(texts), self.batch_size)]
+        batches = [
+            texts[index : index + self.batch_size]
+            for index in range(0, len(texts), self.batch_size)
+        ]
         embeddings = []
         for batch in batches:
             embeddings.extend(self._embed_batch(batch))
@@ -186,8 +196,7 @@ class VectorDB(Expression):
                 )
             ]
         return [
-            {"document": document, "index": index}
-            for index, document in enumerate(self.documents)
+            {"document": document, "index": index} for index, document in enumerate(self.documents)
         ]
 
     def add(self, documents, vectors=None):
@@ -222,7 +231,7 @@ class VectorDB(Expression):
             A vector to add to the database.
 
         """
-        vector = (vector if vector is not None else self.embedding_function([document])[0])
+        vector = vector if vector is not None else self.embedding_function([document])[0]
         if self.vectors is None:
             self.vectors = np.empty((0, len(vector)), dtype=np.float32)
         elif len(vector) != self.vectors.shape[1]:
@@ -269,7 +278,7 @@ class VectorDB(Expression):
         Clears the database.
 
         """
-        self.vectors   = None
+        self.vectors = None
         self.documents = []
 
     def save(self, storage_file: str | None = None):
@@ -296,7 +305,7 @@ class VectorDB(Expression):
             with storage_file.open("wb") as f:
                 pickle.dump(data, f)
 
-    def load(self, storage_file : str | None = None):
+    def load(self, storage_file: str | None = None):
         """
         Loads the database from a file.
 
@@ -326,7 +335,7 @@ class VectorDB(Expression):
         self.vectors = data["vectors"].astype(np.float32) if data["vectors"] is not None else None
         self.documents = data["documents"]
 
-    def purge(self, index_name : str):
+    def purge(self, index_name: str):
         """
         Purges the database file from your machine, but does not delete the database from memory.
         Use the `clear` method to clear the database from memory.
@@ -371,7 +380,9 @@ class VectorDB(Expression):
             A list of results.
 
         """
-        assert self.vectors is not None, "Error: Cannot query the database without prior insertion / initialization."
+        assert self.vectors is not None, (
+            "Error: Cannot query the database without prior insertion / initialization."
+        )
         top_k = top_k or self.index_top_k
         query_vector = self.embedding_function([query])[0] if vector is None else vector
         if isinstance(query_vector, list):
@@ -380,5 +391,7 @@ class VectorDB(Expression):
             self.vectors, query_vector, top_k=top_k, metric=self.similarity_metric
         )
         if return_similarities:
-            return list(zip([self.documents[index] for index in ranked_results], similarities, strict=False))
+            return list(
+                zip([self.documents[index] for index in ranked_results], similarities, strict=False)
+            )
         return [self.documents[index] for index in ranked_results]

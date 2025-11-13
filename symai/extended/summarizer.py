@@ -1,4 +1,3 @@
-
 from ..components import Clean, Outline, Sequence, Stream, Translate
 from ..symbol import Expression, Symbol
 
@@ -9,12 +8,14 @@ class Summarizer(Expression):
             filters = []
         super().__init__(**kwargs)
         filters = filters if isinstance(filters, (list, tuple)) else [filters]
-        self.data_stream = Stream(Sequence(
-            Clean(),
-            Translate(),
-            Outline(),
-            *filters,
-        ))
+        self.data_stream = Stream(
+            Sequence(
+                Clean(),
+                Translate(),
+                Outline(),
+                *filters,
+            )
+        )
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
         vals = list(self.data_stream(sym, **kwargs))

@@ -61,43 +61,52 @@ Write an executable command that starts a process according to the user query, p
 
 
 class OSCommand(Expression):
-    def __init__(self, programs:        list[str],
-                       metadata:   dict[str, str] | None = None,
-                       verbose:              bool = False,
-                       os_platform:           str = 'auto',
-                       **kwargs):
+    def __init__(
+        self,
+        programs: list[str],
+        metadata: dict[str, str] | None = None,
+        verbose: bool = False,
+        os_platform: str = "auto",
+        **kwargs,
+    ):
         if metadata is None:
             metadata = {}
         super().__init__(**kwargs)
-        self.verbose:            bool = verbose
-        self.os_platform:         str = os_platform
-        self.programs:      list[str] = programs
-        self.meta: dict[str, str]     = metadata
+        self.verbose: bool = verbose
+        self.os_platform: str = os_platform
+        self.programs: list[str] = programs
+        self.meta: dict[str, str] = metadata
 
-        if self.os_platform == 'auto':
+        if self.os_platform == "auto":
             self.os_platform = platform.platform()
         if len(programs) == 0:
-            UserMessage('No programs specified!', raise_with=Exception)
+            UserMessage("No programs specified!", raise_with=Exception)
 
     def execute_os_command(self, *args, **_kwargs):
         command = args[0]
-        UserMessage(f'Executing {self.os_platform} command: {command}')
-        if 'linux' in self.os_platform.lower():
+        UserMessage(f"Executing {self.os_platform} command: {command}")
+        if "linux" in self.os_platform.lower():
             return [subprocess.run(["bash", "-c", str(command)], check=False)]
-        if 'windows' in self.os_platform.lower():
+        if "windows" in self.os_platform.lower():
             return [subprocess.run(["powershell", "-Command", str(command)], check=False)]
-        if 'mac' in self.os_platform.lower():
+        if "mac" in self.os_platform.lower():
             return [subprocess.run(["bash", "-c", str(command)], check=False)]
-        UserMessage('Unsupported platform!', raise_with=Exception)
+        UserMessage("Unsupported platform!", raise_with=Exception)
         return []
 
     def forward(self, sym: Symbol, **kwargs) -> Expression:
         sym = self._to_symbol(sym)
-        kwargs['verbose'] = self.verbose
+        kwargs["verbose"] = self.verbose
 
-        prompt = Context.format(programs=self.programs,
-                                platform=self.os_platform,
-                                query=sym,
-                                metadata=self.meta)
+        prompt = Context.format(
+            programs=self.programs, platform=self.os_platform, query=sym, metadata=self.meta
+        )
         command = sym.query(prompt, post_processors=[CodeExtractPostProcessor()], **kwargs)
-        return self.sym_return_type(self.output(expr=self.execute_os_command, raw_input=True, processed_input=command.value, **kwargs))
+        return self.sym_return_type(
+            self.output(
+                expr=self.execute_os_command,
+                raw_input=True,
+                processed_input=command.value,
+                **kwargs,
+            )
+        )

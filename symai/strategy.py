@@ -29,6 +29,7 @@ class ValidationFunction(Function):
       • Pause/backoff logic
       • Error simplification
     """
+
     # Have some default retry params that don't add overhead
     _default_retry_params: ClassVar[dict[str, int | float | bool]] = {
         "tries": 8,
@@ -93,9 +94,7 @@ class ValidationFunction(Function):
             seed = 42
 
         rnd = np.random.RandomState(seed=seed)
-        return rnd.randint(
-            0, np.iinfo(np.int16).max, size=num_seeds, dtype=np.int16
-        ).tolist()
+        return rnd.randint(0, np.iinfo(np.int16).max, size=num_seeds, dtype=np.int16).tolist()
 
     def simplify_validation_errors(self, error: ValidationError) -> str:
         """
@@ -123,11 +122,13 @@ class ValidationFunction(Function):
         return "\n".join(simplified_errors)
 
     def _pause(self, attempt):
-        base = self.retry_params['delay'] * (self.retry_params['backoff'] ** attempt)
-        jit = (np.random.uniform(*self.retry_params['jitter'])
-            if isinstance(self.retry_params['jitter'], tuple)
-            else self.retry_params['jitter'])
-        _delay = min(base + jit, self.retry_params['max_delay'])
+        base = self.retry_params["delay"] * (self.retry_params["backoff"] ** attempt)
+        jit = (
+            np.random.uniform(*self.retry_params["jitter"])
+            if isinstance(self.retry_params["jitter"], tuple)
+            else self.retry_params["jitter"]
+        )
+        _delay = min(base + jit, self.retry_params["max_delay"])
         time.sleep(_delay)
 
     def remedy_prompt(self, *_args, **_kwargs):
@@ -139,7 +140,7 @@ class ValidationFunction(Function):
         UserMessage(msg)
         raise NotImplementedError(msg)
 
-    def display_panel(self, content, title, border_style="cyan", style="#f0eee6", padding=(1,2)):
+    def display_panel(self, content, title, border_style="cyan", style="#f0eee6", padding=(1, 2)):
         """
         Display content in a rich panel with consistent formatting.
 
@@ -151,11 +152,13 @@ class ValidationFunction(Function):
             padding: Padding for the panel (default: (1,2))
         """
         body = escape(content)
-        panel = Panel.fit(body, title=title, padding=padding, border_style=border_style, style=style)
+        panel = Panel.fit(
+            body, title=title, padding=padding, border_style=border_style, style=style
+        )
         self.console.print(panel)
 
     def forward(self, *args, **kwargs):
-        return super().forward(*args, **kwargs) # Just propagate to Function
+        return super().forward(*args, **kwargs)  # Just propagate to Function
 
 
 class TypeValidationFunction(ValidationFunction):
@@ -165,6 +168,7 @@ class TypeValidationFunction(ValidationFunction):
     if a user provides a callable designed to semantically validate the
     structure of the type-validated data.
     """
+
     def __init__(
         self,
         retry_params: dict[str, int | float | bool] = ValidationFunction._default_retry_params,
@@ -179,8 +183,12 @@ class TypeValidationFunction(ValidationFunction):
         self.accumulate_errors = accumulate_errors
         self.verbose = verbose
 
-    def register_expected_data_model(self, data_model: LLMDataModel, attach_to: str, override: bool = False):
-        assert attach_to in ["input", "output"], f"Invalid attach_to value: {attach_to}; must be either 'input' or 'output'"
+    def register_expected_data_model(
+        self, data_model: LLMDataModel, attach_to: str, override: bool = False
+    ):
+        assert attach_to in ["input", "output"], (
+            f"Invalid attach_to value: {attach_to}; must be either 'input' or 'output'"
+        )
         if attach_to == "input":
             if self.input_data_model is not None and not override:
                 msg = "There is already a data model attached to the input. If you want to override it, set `override=True`."
@@ -206,12 +214,12 @@ Your prompt was:
 
 The input data model is:
 <input_data_model>
-{self.input_data_model.simplify_json_schema() if self.input_data_model is not None else 'N/A'}
+{self.input_data_model.simplify_json_schema() if self.input_data_model is not None else "N/A"}
 </input_data_model>
 
 The given input was:
 <input>
-{str(self.input_data_model) if self.input_data_model is not None else 'N/A'}
+{str(self.input_data_model) if self.input_data_model is not None else "N/A"}
 </input>
 
 The output data model is:
@@ -253,12 +261,12 @@ You are given the following prompt:
 
 The input data model is:
 <input_data_model>
-{self.input_data_model.simplify_json_schema() if self.input_data_model is not None else 'N/A'}
+{self.input_data_model.simplify_json_schema() if self.input_data_model is not None else "N/A"}
 </input_data_model>
 
 The given input is:
 <input>
-{str(self.input_data_model) if self.input_data_model is not None else 'N/A'}
+{str(self.input_data_model) if self.input_data_model is not None else "N/A"}
 </input>
 
 The output data model is:
@@ -288,7 +296,10 @@ Important guidelines:
             return
         for label, body in [
             ("Prompt", prompt),
-            ("Input data model", self.input_data_model.simplify_json_schema() if self.input_data_model else 'N/A'),
+            (
+                "Input data model",
+                self.input_data_model.simplify_json_schema() if self.input_data_model else "N/A",
+            ),
             ("Output data model", self.output_data_model.simplify_json_schema()),
         ]:
             self.display_panel(body, title=label)
@@ -302,7 +313,11 @@ Important guidelines:
             return None
         try:
             assert all(
-                f(result if not getattr(self.output_data_model, '_is_dynamic_model', False) else result.value)
+                f(
+                    result
+                    if not getattr(self.output_data_model, "_is_dynamic_model", False)
+                    else result.value
+                )
                 for f in f_semantic_conditions
             )
         except Exception as err:
@@ -364,7 +379,9 @@ Important guidelines:
         total_attempts = self.retry_params["tries"] + 1
         for attempt in range(total_attempts):
             if attempt != self.retry_params["tries"]:
-                logger.info(f"Attempt {attempt + 1}/{self.retry_params['tries']}: Attempting validation…")
+                logger.info(
+                    f"Attempt {attempt + 1}/{self.retry_params['tries']}: Attempting validation…"
+                )
             try:
                 result = self.output_data_model.model_validate_json(
                     json_str,
@@ -393,7 +410,7 @@ Important guidelines:
 
     def _handle_validation_failure(self, prompt: str, json_str: str, errors: list[str]):
         logger.error("All validation attempts failed!")
-        if self.retry_params['graceful']:
+        if self.retry_params["graceful"]:
             return
         raise TypeValidationError(
             prompt=prompt,
@@ -401,9 +418,11 @@ Important guidelines:
             violations=errors,
         )
 
-    def forward(self, prompt: str, f_semantic_conditions: list[Callable] | None = None, *args, **kwargs):
+    def forward(
+        self, prompt: str, f_semantic_conditions: list[Callable] | None = None, *args, **kwargs
+    ):
         self._ensure_output_model()
-        validation_context = kwargs.pop('validation_context', {})
+        validation_context = kwargs.pop("validation_context", {})
         kwargs["response_format"] = {"type": "json_object"}
         logger.info("Initializing validation…")
         self._display_verbose_panels(prompt)
@@ -451,15 +470,17 @@ class contract:
         verbose: bool = False,
         remedy_retry_params: dict[str, int | float | bool] = _default_remedy_retry_params,
     ):
-        '''
+        """
         A contract class decorator inspired by DbC principles. It ensures that the function's input and output
         adhere to specified data models both syntactically and semantically. This implementation includes retry
         logic to handle transient errors and gracefully handle failures.
-        '''
+        """
         self.pre_remedy = pre_remedy
         self.post_remedy = post_remedy
         self.remedy_retry_params = remedy_retry_params
-        self.f_type_validation_remedy = TypeValidationFunction(accumulate_errors=accumulate_errors, verbose=verbose, retry_params=remedy_retry_params)
+        self.f_type_validation_remedy = TypeValidationFunction(
+            accumulate_errors=accumulate_errors, verbose=verbose, retry_params=remedy_retry_params
+        )
 
         if not verbose:
             logger.disable(__name__)
@@ -540,7 +561,9 @@ class contract:
 
     def _try_remedy_with_exception(self, prompt, f_semantic_conditions, **remedy_kwargs):
         try:
-            data_model = self.f_type_validation_remedy(prompt, f_semantic_conditions=f_semantic_conditions, **remedy_kwargs)
+            data_model = self.f_type_validation_remedy(
+                prompt, f_semantic_conditions=f_semantic_conditions, **remedy_kwargs
+            )
         except Exception as e:
             logger.error("Type validation failed with exception!")
             raise e
@@ -550,7 +573,7 @@ class contract:
         logger.info("Starting input validation...")
         if self.pre_remedy:
             logger.info("Validating pre-conditions with remedy...")
-            if not hasattr(wrapped_self, 'pre'):
+            if not hasattr(wrapped_self, "pre"):
                 logger.error("Pre-condition function not defined!")
                 msg = "Pre-condition function not defined. Please define a `pre` method if you want to enforce pre-conditions through a remedy."
                 UserMessage(msg)
@@ -563,16 +586,20 @@ class contract:
                 return input_value
             except Exception:
                 logger.exception("Pre-condition validation failed!")
-                self.f_type_validation_remedy.register_expected_data_model(input_value, attach_to="output", override=True)
+                self.f_type_validation_remedy.register_expected_data_model(
+                    input_value, attach_to="output", override=True
+                )
                 input_value = self._try_remedy_with_exception(
                     prompt=wrapped_self.prompt,
                     f_semantic_conditions=[wrapped_self.pre],
                     **remedy_kwargs,
                 )
             finally:
-                wrapped_self._contract_timing[it]["input_validation"] = time.perf_counter() - op_start
+                wrapped_self._contract_timing[it]["input_validation"] = (
+                    time.perf_counter() - op_start
+                )
             return input_value
-        if hasattr(wrapped_self, 'pre'):
+        if hasattr(wrapped_self, "pre"):
             logger.info("Validating pre-conditions without remedy...")
             op_start = time.perf_counter()
             try:
@@ -581,7 +608,9 @@ class contract:
                 logger.exception("Pre-condition validation failed")
                 raise e
             finally:
-                wrapped_self._contract_timing[it]["input_validation"] = time.perf_counter() - op_start
+                wrapped_self._contract_timing[it]["input_validation"] = (
+                    time.perf_counter() - op_start
+                )
             logger.success("Pre-condition validation successful!")
             return input_value
         logger.info("Skip; no pre-condition validation was required!")
@@ -589,14 +618,20 @@ class contract:
 
     def _validate_output(self, wrapped_self, input_value, output, it, **remedy_kwargs):
         logger.info("Starting output validation...")
-        self.f_type_validation_remedy.register_expected_data_model(input_value, attach_to="input", override=True)
-        self.f_type_validation_remedy.register_expected_data_model(output, attach_to="output", override=True)
+        self.f_type_validation_remedy.register_expected_data_model(
+            input_value, attach_to="input", override=True
+        )
+        self.f_type_validation_remedy.register_expected_data_model(
+            output, attach_to="output", override=True
+        )
 
         op_start = time.perf_counter()
         try:
             logger.info("Getting a valid output type...")
-            output = self._try_remedy_with_exception(prompt=wrapped_self.prompt, f_semantic_conditions=None, **remedy_kwargs)
-            if output is None: # output is None when graceful mode is enabled
+            output = self._try_remedy_with_exception(
+                prompt=wrapped_self.prompt, f_semantic_conditions=None, **remedy_kwargs
+            )
+            if output is None:  # output is None when graceful mode is enabled
                 return output
         except Exception as e:
             logger.exception("Type creation failed!")
@@ -620,9 +655,15 @@ class contract:
                 return output
             except Exception:
                 logger.exception("Post-condition validation failed!")
-                output = self._try_remedy_with_exception(prompt=wrapped_self.prompt, f_semantic_conditions=[wrapped_self.post], **remedy_kwargs)
+                output = self._try_remedy_with_exception(
+                    prompt=wrapped_self.prompt,
+                    f_semantic_conditions=[wrapped_self.post],
+                    **remedy_kwargs,
+                )
             finally:
-                wrapped_self._contract_timing[it]["output_validation"] += (time.perf_counter() - op_start)
+                wrapped_self._contract_timing[it]["output_validation"] += (
+                    time.perf_counter() - op_start
+                )
             logger.success("Post-condition validation successful!")
             return output
         if hasattr(wrapped_self, "post"):
@@ -634,7 +675,9 @@ class contract:
                 logger.exception("Post-condition validation failed!")
                 raise e
             finally:
-                wrapped_self._contract_timing[it]["output_validation"] = time.perf_counter() - op_start
+                wrapped_self._contract_timing[it]["output_validation"] = (
+                    time.perf_counter() - op_start
+                )
             logger.success("Post-condition validation successful!")
             return output
         logger.info("Skip; no post-condition validation was required!")
@@ -670,14 +713,14 @@ class contract:
         return True
 
     def _act(self, wrapped_self, input_value, it, **act_kwargs):
-        act_method = getattr(wrapped_self, 'act', None)
+        act_method = getattr(wrapped_self, "act", None)
         if not callable(act_method):
             # Propagate the input if no act method is defined
             return input_value
 
         assert self._validate_act_method(act_method)
 
-        is_dynamic_model = getattr(input_value, '_is_dynamic_model', False)
+        is_dynamic_model = getattr(input_value, "_is_dynamic_model", False)
         input_value = input_value if not is_dynamic_model else input_value.value
 
         logger.info(f"Executing 'act' method on {wrapped_self.__class__.__name__}…")
@@ -798,11 +841,15 @@ class contract:
     ):
         output = None
         try:
-            maybe_new_input = self._validate_input(wrapped_self, current_input_value, it, **validation_kwargs)
+            maybe_new_input = self._validate_input(
+                wrapped_self, current_input_value, it, **validation_kwargs
+            )
             if maybe_new_input is not None:
                 current_input_value = maybe_new_input
 
-            current_input_value = self._act(wrapped_self, current_input_value, it, **validation_kwargs)
+            current_input_value = self._act(
+                wrapped_self, current_input_value, it, **validation_kwargs
+            )
 
             output = self._validate_output(
                 wrapped_self,
@@ -846,7 +893,7 @@ class contract:
             else:
                 forward_kwargs[input_param_name] = forward_input_value
         else:
-            forward_kwargs['input'] = forward_input_value
+            forward_kwargs["input"] = forward_input_value
 
         if input_param_name and input_param_name != "input" and "input" in forward_kwargs:
             forward_kwargs.pop("input")
@@ -856,14 +903,16 @@ class contract:
             output = original_forward(wrapped_self, *args_list, **forward_kwargs)
         finally:
             wrapped_self._contract_timing[it]["forward_execution"] = time.perf_counter() - op_start
-        wrapped_self._contract_timing[it]["contract_execution"] = time.perf_counter() - contract_start
+        wrapped_self._contract_timing[it]["contract_execution"] = (
+            time.perf_counter() - contract_start
+        )
         return output
 
     def _finalize_contract_output(self, output, output_type, wrapped_self):
         if not isinstance(output, output_type):
             logger.error(f"Output type mismatch: {type(output)}")
             if self.remedy_retry_params["graceful"]:
-                if getattr(output_type, '_is_dynamic_model', False) and hasattr(output, 'value'):
+                if getattr(output_type, "_is_dynamic_model", False) and hasattr(output, "value"):
                     return output.value
                 return output
             msg = (
@@ -877,7 +926,7 @@ class contract:
         else:
             logger.success("Contract validation successful!")
 
-        if getattr(output_type, '_is_dynamic_model', False):
+        if getattr(output_type, "_is_dynamic_model", False):
             return output.value
         return output
 
@@ -886,7 +935,9 @@ class contract:
         sig = inspect.signature(original_forward)
         input_param_name = self._find_input_param_name(sig)
         args_list, kwargs_without_input, original_kwargs = self._prepare_forward_args(args, kwargs)
-        input_value, input_source = self._extract_input_value(args_list, kwargs_without_input, original_kwargs, input_param_name)
+        input_value, input_source = self._extract_input_value(
+            args_list, kwargs_without_input, original_kwargs, input_param_name
+        )
         current_input_value = self._coerce_input_value(original_forward, input_value)
         input_value = current_input_value
         validation_kwargs = self._collect_validation_kwargs(wrapped_self, kwargs_without_input)
@@ -900,7 +951,9 @@ class contract:
             validation_kwargs,
         )
 
-        forward_input_value = current_input_value if wrapped_self.contract_successful else input_value
+        forward_input_value = (
+            current_input_value if wrapped_self.contract_successful else input_value
+        )
         output = self._execute_forward_call(
             wrapped_self,
             original_forward,
@@ -936,7 +989,7 @@ class contract:
                 "act_execution",
                 "output_validation",
                 "forward_execution",
-                "contract_execution"
+                "contract_execution",
             ]
 
             stats = {}
@@ -958,40 +1011,41 @@ class contract:
                 max_time = max(non_zero_times) if non_zero_times else 0
 
                 stats[op] = {
-                    'count': actual_count,
-                    'total': total_time,
-                    'mean': mean_time,
-                    'std': std_time,
-                    'min': min_time,
-                    'max': max_time
+                    "count": actual_count,
+                    "total": total_time,
+                    "mean": mean_time,
+                    "std": std_time,
+                    "min": min_time,
+                    "max": max_time,
                 }
 
-            total_execution_time = stats['contract_execution']['total']
+            total_execution_time = stats["contract_execution"]["total"]
             for op in ordered_operations[:-1]:
                 if total_execution_time > 0:
-                    stats[op]['percentage'] = (stats[op]['total'] / total_execution_time) * 100
+                    stats[op]["percentage"] = (stats[op]["total"] / total_execution_time) * 100
                 else:
-                    stats[op]['percentage'] = 0
+                    stats[op]["percentage"] = 0
 
-            sum_tracked_times = sum(stats[op]['total'] for op in ordered_operations[:-1])
+            sum_tracked_times = sum(stats[op]["total"] for op in ordered_operations[:-1])
             overhead_time = total_execution_time - sum_tracked_times
-            overhead_percentage = (overhead_time / total_execution_time) * 100 if total_execution_time > 0 else 0
+            overhead_percentage = (
+                (overhead_time / total_execution_time) * 100 if total_execution_time > 0 else 0
+            )
 
-            stats['overhead'] = {
-                'count': num_calls,
-                'total': overhead_time,
-                'mean': overhead_time / num_calls if num_calls > 0 else 0,
-                'std': 0,
-                'min': 0,
-                'max': 0,
-                'percentage': overhead_percentage
+            stats["overhead"] = {
+                "count": num_calls,
+                "total": overhead_time,
+                "mean": overhead_time / num_calls if num_calls > 0 else 0,
+                "std": 0,
+                "min": 0,
+                "max": 0,
+                "percentage": overhead_percentage,
             }
 
-            stats['contract_execution']['percentage'] = 100.0
+            stats["contract_execution"]["percentage"] = 100.0
 
             table = Table(
-                title=f"Contract Execution Summary ({num_calls} Forward Calls)",
-                show_header=True
+                title=f"Contract Execution Summary ({num_calls} Forward Calls)", show_header=True
             )
             table.add_column("Operation", style="cyan")
             table.add_column("Count", justify="right", style="blue")
@@ -1006,29 +1060,29 @@ class contract:
                 s = stats[op]
                 table.add_row(
                     op.replace("_", " ").title(),
-                    str(s['count']),
+                    str(s["count"]),
                     f"{s['total']:.3f}",
                     f"{s['mean']:.3f}",
                     f"{s['std']:.3f}",
                     f"{s['min']:.3f}",
                     f"{s['max']:.3f}",
-                    f"{s['percentage']:.1f}%"
+                    f"{s['percentage']:.1f}%",
                 )
 
-            s = stats['overhead']
+            s = stats["overhead"]
             table.add_row(
                 "Overhead",
-                str(s['count']),
+                str(s["count"]),
                 f"{s['total']:.3f}",
                 f"{s['mean']:.3f}",
                 f"{s['std']:.3f}",
                 f"{s['min']:.3f}",
                 f"{s['max']:.3f}",
                 f"{s['percentage']:.1f}%",
-                style="bold blue"
+                style="bold blue",
             )
 
-            s = stats['contract_execution']
+            s = stats["contract_execution"]
             table.add_row(
                 "Total Execution",
                 "N/A",
@@ -1038,7 +1092,7 @@ class contract:
                 f"{s['min']:.3f}",
                 f"{s['max']:.3f}",
                 "100.0%",
-                style="bold magenta"
+                style="bold magenta",
             )
 
             console.print("\n")
@@ -1110,5 +1164,5 @@ class Strategy(Expression):
 
     def __new__(cls, module: str, *_args, **_kwargs):
         cls._module = module
-        cls.module_path = 'symai.extended.strategies'
+        cls.module_path = "symai.extended.strategies"
         return Strategy.load_module_class(cls.module)

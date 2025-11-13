@@ -8,8 +8,9 @@ class whisper(Expression):
         super().__init__(*args, **kwargs)
         self.name = self.__class__.__name__
 
-    def __call__(self, audio_path: str, operation: str = 'decode', **kwargs) -> WhisperResult:
+    def __call__(self, audio_path: str, operation: str = "decode", **kwargs) -> WhisperResult:
         @core.speech_to_text(audio=audio_path, prompt=operation, **kwargs)
         def _func(_) -> WhisperResult:
             pass
+
         return _func(self)

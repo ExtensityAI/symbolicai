@@ -1,6 +1,6 @@
 from . import similarity as _similarity
 
-__all__ = getattr(_similarity, "__all__", None) # noqa
+__all__ = getattr(_similarity, "__all__", None)  # noqa
 if __all__ is None:
     __all__ = [name for name in dir(_similarity) if not name.startswith("_")]
 
