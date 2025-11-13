@@ -13,9 +13,11 @@ class ApiLayerResult(Result):
         self.raw = text
         try:
             dict_ = self._to_symbol(text).ast()
-            self._value = dict_.get('all_text', f'OCR Engine Error: {text} - status code {status_code}')
+            self._value = dict_.get(
+                "all_text", f"OCR Engine Error: {text} - status code {status_code}"
+            )
         except Exception:
-            self._value = f'OCR Engine Error: {text} - status code {status_code}'
+            self._value = f"OCR Engine Error: {text} - status code {status_code}"
 
 
 class OCREngine(Engine):
@@ -23,22 +25,18 @@ class OCREngine(Engine):
         super().__init__()
         # Opening JSON file
         self.config = SYMAI_CONFIG
-        self.headers = {
-            "apikey": self.config['OCR_ENGINE_API_KEY'] if api_key is None else api_key
-        }
+        self.headers = {"apikey": self.config["OCR_ENGINE_API_KEY"] if api_key is None else api_key}
         self.name = self.__class__.__name__
 
     def id(self) -> str:
-        if self.config['OCR_ENGINE_API_KEY']:
-            return 'ocr'
-        return super().id() # default to unregistered
+        if self.config["OCR_ENGINE_API_KEY"]:
+            return "ocr"
+        return super().id()  # default to unregistered
 
     def command(self, *args, **kwargs):
         super().command(*args, **kwargs)
-        if 'OCR_ENGINE_API_KEY' in kwargs:
-            self.headers = {
-                "apikey": kwargs['OCR_ENGINE_API_KEY']
-            }
+        if "OCR_ENGINE_API_KEY" in kwargs:
+            self.headers = {"apikey": kwargs["OCR_ENGINE_API_KEY"]}
 
     def forward(self, argument):
         image_url = argument.prop.image
@@ -47,21 +45,21 @@ class OCREngine(Engine):
             file_path = Path(image_url[7:]).resolve()
             with file_path.open("rb") as file:
                 payload = file.read()
-            url      = "https://api.apilayer.com/image_to_text/upload"
+            url = "https://api.apilayer.com/image_to_text/upload"
             response = requests.request("POST", url, headers=self.headers, data=payload)
         else:
-            payload   = {}
-            url      = f"https://api.apilayer.com/image_to_text/url?url={image_url}"
-            response = requests.request("GET", url, headers=self.headers, data = payload)
+            payload = {}
+            url = f"https://api.apilayer.com/image_to_text/url?url={image_url}"
+            response = requests.request("GET", url, headers=self.headers, data=payload)
 
         status_code = response.status_code
-        rsp         = response.text
-        rsp       = ApiLayerResult(response.text, status_code)
-        metadata  = {}
+        rsp = response.text
+        rsp = ApiLayerResult(response.text, status_code)
+        metadata = {}
 
         return [rsp], metadata
 
     def prepare(self, argument):
         assert not argument.prop.processed_input, "OCREngine does not support processed_input."
-        image  = str(argument.prop.image)
+        image = str(argument.prop.image)
         argument.prop.prepared_input = image

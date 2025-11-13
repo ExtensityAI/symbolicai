@@ -8,13 +8,13 @@ from ...base import Engine
 def full_stack():
     exc = sys.exc_info()[0]
     stack = traceback.extract_stack()[-10:-1]  # last one would be full_stack()
-    if exc is not None:                        # i.e. an exception is present
-        del stack[-1]                          # remove call of full_stack, the printed exception
-                                               # will contain the caught exception caller instead
-    trc = 'Traceback (most recent call last):\n'
-    stackstr = trc + ''.join(traceback.format_list(stack))
+    if exc is not None:  # i.e. an exception is present
+        del stack[-1]  # remove call of full_stack, the printed exception
+        # will contain the caught exception caller instead
+    trc = "Traceback (most recent call last):\n"
+    stackstr = trc + "".join(traceback.format_list(stack))
     if exc is not None:
-         stackstr += '  ' + traceback.format_exc().lstrip(trc)
+        stackstr += "  " + traceback.format_exc().lstrip(trc)
     return stackstr
 
 
@@ -64,14 +64,14 @@ class PythonEngine(Engine):
         self.name = self.__class__.__name__
 
     def id(self) -> str:
-        return 'execute'
+        return "execute"
 
     def forward(self, argument):
         code = argument.prop.prepared_input
         kwargs = argument.kwargs
-        globals_ = kwargs.get('globals', {})
-        locals_ = kwargs.get('locals', {})
-        input_handler = kwargs.get('input_handler')
+        globals_ = kwargs.get("globals", {})
+        locals_ = kwargs.get("locals", {})
+        input_handler = kwargs.get("input_handler")
         if input_handler:
             input_handler((code,))
 
@@ -79,18 +79,18 @@ class PythonEngine(Engine):
         err = None
         try:
             exec(str(code), globals_, locals_)
-            rsp = {'globals': globals_, 'locals': locals_}
-            if 'res' in locals_:
-                rsp['locals_res'] = locals_['res']
-            if 'res' in globals_:
-                rsp['globals_res'] = globals_['res']
+            rsp = {"globals": globals_, "locals": locals_}
+            if "res" in locals_:
+                rsp["locals_res"] = locals_["res"]
+            if "res" in globals_:
+                rsp["globals_res"] = globals_["res"]
             rsp = Result(rsp)
         except Exception as e:
             err = e
             raise e
 
         metadata = {}
-        metadata['error']  = None if not err else full_stack()
+        metadata["error"] = None if not err else full_stack()
 
         return [rsp], metadata
 

@@ -13,7 +13,7 @@ from ...utils import UserMessage
 
 class PackageHandler:
     def __init__(self):
-        self.package_dir = Path(config_manager.config_dir) / 'packages'
+        self.package_dir = Path(config_manager.config_dir) / "packages"
 
         if not self.package_dir.exists():
             self.package_dir.mkdir(parents=True)
@@ -21,10 +21,10 @@ class PackageHandler:
         os.chdir(self.package_dir)
 
         parser = argparse.ArgumentParser(
-            description='''SymbolicAI package manager.
+            description="""SymbolicAI package manager.
             Manage extensions from the command line.
-            You can (i) install, (r) remove, (l) list installed, (u) update a module or (U) update all modules.''',
-            usage='''sympkg <command> [<args>]
+            You can (i) install, (r) remove, (l) list installed, (u) update a module or (U) update all modules.""",
+            usage="""sympkg <command> [<args>]
 
             The most commonly used sympkg commands are:
             i   Install a new package (--local-path PATH, --submodules)
@@ -32,31 +32,33 @@ class PackageHandler:
             l   List all installed packages
             u   Update an installed package (--submodules)
             U   Update all installed packages (--submodules)
-            '''
+            """,
         )
 
-        parser.add_argument('command', help='Subcommand to run')
+        parser.add_argument("command", help="Subcommand to run")
         args = parser.parse_args(sys.argv[1:2])
-        command_aliases = {'l': 'list_packages'}
+        command_aliases = {"l": "list_packages"}
         command = command_aliases.get(args.command, args.command)
         if len(command) > 1 and not hasattr(self, command):
             args.package = args.command
             self.i(args)
         elif len(command) == 1 and not hasattr(self, command):
-            logger.error('Unrecognized command')
+            logger.error("Unrecognized command")
             parser.print_help()
             exit(1)
         else:
             getattr(self, command)()
 
-    def i(self, args = None):
+    def i(self, args=None):
         parser = argparse.ArgumentParser(
-            description='Install a new package',
-            usage='sympkg i [package] [--local-path PATH] [--submodules]'
+            description="Install a new package",
+            usage="sympkg i [package] [--local-path PATH] [--submodules]",
         )
-        parser.add_argument('package', help='Name of package to install')
-        parser.add_argument('--local-path', '-l', help='Local path to package directory')
-        parser.add_argument('--submodules', '-s', action='store_true', help='Initialize submodules for GitHub repos')
+        parser.add_argument("package", help="Name of package to install")
+        parser.add_argument("--local-path", "-l", help="Local path to package directory")
+        parser.add_argument(
+            "--submodules", "-s", action="store_true", help="Initialize submodules for GitHub repos"
+        )
 
         if args is None:
             args = parser.parse_args(sys.argv[2:])
@@ -65,10 +67,9 @@ class PackageHandler:
 
     def r(self):
         parser = argparse.ArgumentParser(
-            description='Remove an installed package',
-            usage='sympkg r [package]'
+            description="Remove an installed package", usage="sympkg r [package]"
         )
-        parser.add_argument('package', help='Name of package to remove')
+        parser.add_argument("package", help="Name of package to remove")
         args = parser.parse_args(sys.argv[2:])
         Import.remove(args.package)
 
@@ -77,34 +78,36 @@ class PackageHandler:
 
     def u(self):
         parser = argparse.ArgumentParser(
-            description='Update an installed package',
-            usage='sympkg u [package] [--submodules]'
+            description="Update an installed package", usage="sympkg u [package] [--submodules]"
         )
-        parser.add_argument('package', help='Name of package to update')
-        parser.add_argument('--submodules', '-s', action='store_true', help='Update submodules as well')
+        parser.add_argument("package", help="Name of package to update")
+        parser.add_argument(
+            "--submodules", "-s", action="store_true", help="Update submodules as well"
+        )
         args = parser.parse_args(sys.argv[2:])
         Import.update(args.package, args.submodules)
 
     def U(self):
         parser = argparse.ArgumentParser(
-            description='Update all installed packages',
-            usage='sympkg U [--submodules]'
+            description="Update all installed packages", usage="sympkg U [--submodules]"
         )
-        parser.add_argument('--submodules', '-s', action='store_true', help='Update submodules as well')
+        parser.add_argument(
+            "--submodules", "-s", action="store_true", help="Update submodules as well"
+        )
         args = parser.parse_args(sys.argv[2:])
 
         packages = Import.list_installed()
         for package in packages:
             try:
-                logger.info(f'[UPDATE]: Updating {package}...')
+                logger.info(f"[UPDATE]: Updating {package}...")
                 Import.update(package, args.submodules)
             except Exception as e:
-                logger.error(f'[SKIP]: Error updating {package}: {e}')
+                logger.error(f"[SKIP]: Error updating {package}: {e}")
 
 
 def run() -> None:
     PackageHandler()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run()

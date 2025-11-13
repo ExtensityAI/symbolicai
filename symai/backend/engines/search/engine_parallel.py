@@ -18,6 +18,7 @@ logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 try:
     from parallel import Parallel
+
     logging.getLogger("parallel").setLevel(logging.ERROR)
 except ImportError as exc:
     msg = (
@@ -271,7 +272,10 @@ class ParallelEngine(Engine):
 
     def id(self) -> str:
         # Register as a search engine when configured with the 'parallel' model token
-        if self.config.get("SEARCH_ENGINE_API_KEY") and str(self.config.get("SEARCH_ENGINE_MODEL", "")).lower() == "parallel":
+        if (
+            self.config.get("SEARCH_ENGINE_API_KEY")
+            and str(self.config.get("SEARCH_ENGINE_MODEL", "")).lower() == "parallel"
+        ):
             return "search"
         return super().id()
 
@@ -343,20 +347,22 @@ class ParallelEngine(Engine):
         """
         if not s:
             return False
-        if s.startswith('.'):
+        if s.startswith("."):
             # Allow bare domain extensions like .gov or .co.uk
             remainder = s[1:]
-            return bool((remainder and '.' in remainder) or remainder.isalpha())
+            return bool((remainder and "." in remainder) or remainder.isalpha())
         # Require at least one dot and valid label characters
         label_re = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$")
-        parts = s.split('.')
+        parts = s.split(".")
         if len(parts) < 2:
             return False
         return all(label_re.fullmatch(p or "") for p in parts)
 
     def _search(self, queries: list[str], kwargs: dict[str, Any]):
         if not queries:
-            UserMessage("ParallelEngine._search requires at least one query.", raise_with=ValueError)
+            UserMessage(
+                "ParallelEngine._search requires at least one query.", raise_with=ValueError
+            )
 
         mode = kwargs.get("mode") or "one-shot"
         max_results = kwargs.get("max_results", 10)
@@ -406,7 +412,10 @@ class ParallelEngine(Engine):
             raw_query = getattr(argument.prop, "query", None)
         search_queries = self._coerce_search_queries(raw_query)
         if not search_queries:
-            UserMessage("ParallelEngine.forward requires at least one non-empty query or url.", raise_with=ValueError)
+            UserMessage(
+                "ParallelEngine.forward requires at least one non-empty query or url.",
+                raise_with=ValueError,
+            )
         return self._search(search_queries, kwargs)
 
     def prepare(self, argument):

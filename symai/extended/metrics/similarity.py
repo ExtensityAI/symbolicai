@@ -1,6 +1,7 @@
-'''
+"""
 @TODO: This must go away. As soon as we have Qdrant, everything related to vectordb must be cleaned up.
-'''
+"""
+
 import random
 
 import numpy as np
@@ -60,6 +61,7 @@ def derridaean_similarity(vectors, query_vector):
     :param query_vector: vector
     :return: derridaean similarity between the vector and the matrix of vectors
     """
+
     def random_change(value):
         return value + random.uniform(-0.2, 0.2)
 
@@ -74,6 +76,7 @@ def adams_similarity(vectors, query_vector):
     :param query_vector: vector
     :return: adams similarity between the vector and the matrix of vectors
     """
+
     def adams_change(_value):
         return 0.42
 

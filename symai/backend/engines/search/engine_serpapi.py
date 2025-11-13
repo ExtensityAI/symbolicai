@@ -16,21 +16,21 @@ except ImportError:
 class SearchResult(Result):
     def __init__(self, value, **kwargs) -> None:
         super().__init__(value, **kwargs)
-        if 'answer_box' in value and 'answer' in value['answer_box']:
-            self._value = value['answer_box']['answer']
-        elif 'answer_box' in value and 'snippet' in value['answer_box']:
-            self._value = value['answer_box']['snippet']
-        elif 'answer_box' in value and 'snippet_highlighted_words' in value['answer_box']:
-            self._value = value['answer_box']["snippet_highlighted_words"][0]
-        elif 'organic_results' in value and 'snippet' in value["organic_results"][0]:
-            self._value = value["organic_results"][0]['snippet']
+        if "answer_box" in value and "answer" in value["answer_box"]:
+            self._value = value["answer_box"]["answer"]
+        elif "answer_box" in value and "snippet" in value["answer_box"]:
+            self._value = value["answer_box"]["snippet"]
+        elif "answer_box" in value and "snippet_highlighted_words" in value["answer_box"]:
+            self._value = value["answer_box"]["snippet_highlighted_words"][0]
+        elif "organic_results" in value and "snippet" in value["organic_results"][0]:
+            self._value = value["organic_results"][0]["snippet"]
         else:
             self._value = value
 
-        if 'organic_results' in value:
-            self.results = value['organic_results']
+        if "organic_results" in value:
+            self.results = value["organic_results"]
             if len(self.results) > 0:
-                self.links = [r['link'] for r in self.results]
+                self.links = [r["link"] for r in self.results]
             else:
                 self.links = []
         else:
@@ -48,30 +48,35 @@ class SerpApiEngine(Engine):
     def __init__(self):
         super().__init__()
         self.config = SYMAI_CONFIG
-        self.api_key = self.config['SEARCH_ENGINE_API_KEY']
-        self.engine = self.config['SEARCH_ENGINE_MODEL']
+        self.api_key = self.config["SEARCH_ENGINE_API_KEY"]
+        self.engine = self.config["SEARCH_ENGINE_MODEL"]
         self.name = self.__class__.__name__
 
     def id(self) -> str:
-        if self.config.get('SEARCH_ENGINE_API_KEY') and self.config.get('SEARCH_ENGINE_MODEL') == "google": # only support Google for now
+        if (
+            self.config.get("SEARCH_ENGINE_API_KEY")
+            and self.config.get("SEARCH_ENGINE_MODEL") == "google"
+        ):  # only support Google for now
             if GoogleSearch is None:
-                UserMessage('SerpApi is not installed. Please install it with `pip install symbolicai[serpapi]`')
-            return 'search'
-        return super().id() # default to unregistered
+                UserMessage(
+                    "SerpApi is not installed. Please install it with `pip install symbolicai[serpapi]`"
+                )
+            return "search"
+        return super().id()  # default to unregistered
 
     def command(self, *args, **kwargs):
         super().command(*args, **kwargs)
-        if 'SEARCH_ENGINE_API_KEY' in kwargs:
-            self.api_key = kwargs['SEARCH_ENGINE_API_KEY']
-        if 'SEARCH_ENGINE_MODEL' in kwargs:
-            self.engine  = kwargs['SEARCH_ENGINE_MODEL']
+        if "SEARCH_ENGINE_API_KEY" in kwargs:
+            self.api_key = kwargs["SEARCH_ENGINE_API_KEY"]
+        if "SEARCH_ENGINE_MODEL" in kwargs:
+            self.engine = kwargs["SEARCH_ENGINE_MODEL"]
 
     def forward(self, argument):
-        queries  = argument.prop.prepared_input
-        kwargs   = argument.kwargs
+        queries = argument.prop.prepared_input
+        kwargs = argument.kwargs
         queries_ = queries if isinstance(queries, list) else [queries]
-        rsp      = []
-        engine   = kwargs.get('engine', self.engine)
+        rsp = []
+        engine = kwargs.get("engine", self.engine)
 
         for q in queries_:
             query = {
@@ -80,11 +85,11 @@ class SerpApiEngine(Engine):
                 "q": q,
                 "google_domain": "google.com",
                 "gl": "us",
-                "hl": "en"
+                "hl": "en",
             }
 
             # send to Google
-            with io.capture_output(): # disables prints from GoogleSearch
+            with io.capture_output():  # disables prints from GoogleSearch
                 search = GoogleSearch(query)
                 res = search.get_dict()
 
@@ -98,7 +103,7 @@ class SerpApiEngine(Engine):
         return output, metadata
 
     def prepare(self, argument):
-        res  = ''
+        res = ""
         res += str(argument.prop.query)
         res += str(argument.prop.processed_input)
         argument.prop.prepared_input = res

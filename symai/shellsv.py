@@ -13,7 +13,7 @@ from collections.abc import Iterable
 from pathlib import Path
 from types import SimpleNamespace
 
-#@TODO: refactor to use rich instead of prompt_toolkit
+# @TODO: refactor to use rich instead of prompt_toolkit
 from prompt_toolkit import HTML, PromptSession, print_formatted_text
 from prompt_toolkit.completion import Completer, Completion, WordCompleter
 from prompt_toolkit.history import History
@@ -47,26 +47,26 @@ logging.getLogger("subprocess").setLevel(logging.ERROR)
 
 # load json config from home directory root
 home_path = HOME_PATH
-config_path = home_path / 'symsh.config.json'
+config_path = home_path / "symsh.config.json"
 # migrate config from old path
-if 'colors' not in SYMSH_CONFIG:
+if "colors" not in SYMSH_CONFIG:
     __new_config__ = {"colors": SYMSH_CONFIG}
     # add command in config
     SYMSH_CONFIG = __new_config__
     # save config
-    with config_path.open('w') as f:
+    with config_path.open("w") as f:
         json.dump(__new_config__, f, indent=4)
 
 # make sure map-nt-cmd is in config
-if 'map-nt-cmd' not in SYMSH_CONFIG:
+if "map-nt-cmd" not in SYMSH_CONFIG:
     # add command in config
-    SYMSH_CONFIG['map-nt-cmd'] = True
+    SYMSH_CONFIG["map-nt-cmd"] = True
     # save config
-    with config_path.open('w') as f:
+    with config_path.open("w") as f:
         json.dump(SYMSH_CONFIG, f, indent=4)
 
-print = print_formatted_text # noqa
-map_nt_cmd_enabled = SYMSH_CONFIG['map-nt-cmd']
+print = print_formatted_text  # noqa
+map_nt_cmd_enabled = SYMSH_CONFIG["map-nt-cmd"]
 
 _shell_state = SimpleNamespace(
     function_type=Function,
@@ -91,6 +91,7 @@ If additional instructions are provided the follow the user query to produce the
 A well related and helpful answer with suggested improvements is preferred over "I don't know" or "I don't understand" answers or stating the obvious.
 """
 
+
 def supports_ansi_escape():
     try:
         os.get_terminal_size(0)
@@ -98,22 +99,23 @@ def supports_ansi_escape():
     except OSError:
         return False
 
+
 class PathCompleter(Completer):
     def get_completions(self, document, _complete_event):
         complete_word = document.get_word_before_cursor(WORD=True)
         sep = os.path.sep
-        if complete_word.startswith(f'~{sep}'):
+        if complete_word.startswith(f"~{sep}"):
             complete_word = FileReader.expand_user_path(complete_word)
 
         # list all files and directories in current directory
         complete_path = Path(complete_word)
         if complete_word.endswith(sep):
             parent = complete_path
-            pattern = '*'
+            pattern = "*"
         else:
             baseline = Path()
             parent = complete_path.parent if complete_path.parent != baseline else baseline
-            pattern = f"{complete_path.name}*" if complete_path.name else '*'
+            pattern = f"{complete_path.name}*" if complete_path.name else "*"
         files = [str(path) for path in parent.glob(pattern)]
         if len(files) == 0:
             return None
@@ -124,16 +126,18 @@ class PathCompleter(Completer):
         for file in files:
             path_obj = Path(file)
             # split the command into words by space (ignore escaped spaces)
-            command_words = document.text.split(' ')
+            command_words = document.text.split(" ")
             if len(command_words) > 1:
                 # Calculate start position of the completion
-                start_position = len(document.text) - len(' '.join(command_words[:-1])) - 1
+                start_position = len(document.text) - len(" ".join(command_words[:-1])) - 1
                 start_position = max(0, start_position)
             else:
                 start_position = len(document.text)
             # if there is a space in the file name, then escape it
-            display_name = file.replace(' ', '\\ ') if ' ' in file else file
-            if (document.text.startswith('cd') or document.text.startswith('mkdir')) and path_obj.is_file():
+            display_name = file.replace(" ", "\\ ") if " " in file else file
+            if (
+                document.text.startswith("cd") or document.text.startswith("mkdir")
+            ) and path_obj.is_file():
                 continue
             if path_obj.is_dir():
                 dirs_.append(display_name)
@@ -143,24 +147,32 @@ class PathCompleter(Completer):
         for d in dirs_:
             # if starts with home directory, then replace it with ~
             directory_completion = FileReader.expand_user_path(d)
-            yield Completion(directory_completion, start_position=-start_position,
-                                 style='class:path-completion',
-                                 selected_style='class:path-completion-selected')
+            yield Completion(
+                directory_completion,
+                start_position=-start_position,
+                style="class:path-completion",
+                selected_style="class:path-completion-selected",
+            )
 
         for f in files_:
             # if starts with home directory, then replace it with ~
             file_completion = FileReader.expand_user_path(f)
-            yield Completion(file_completion, start_position=-start_position,
-                                 style='class:file-completion',
-                                 selected_style='class:file-completion-selected')
+            yield Completion(
+                file_completion,
+                start_position=-start_position,
+                style="class:file-completion",
+                selected_style="class:file-completion-selected",
+            )
+
 
 class HistoryCompleter(WordCompleter):
     def get_completions(self, document, complete_event):
         completions = super().get_completions(document, complete_event)
         for completion in completions:
-            completion.style = 'class:history-completion'
-            completion.selected_style = 'class:history-completion-selected'
+            completion.style = "class:history-completion"
+            completion.selected_style = "class:history-completion-selected"
             yield completion
+
 
 class MergedCompleter(Completer):
     def __init__(self, path_completer, history_completer):
@@ -170,45 +182,51 @@ class MergedCompleter(Completer):
     def get_completions(self, document, complete_event):
         text = document.text
 
-        if text.startswith('cd ') or\
-            text.startswith('ls ') or\
-            text.startswith('touch ') or\
-            text.startswith('cat ') or\
-            text.startswith('mkdir ') or\
-            text.startswith('open ') or\
-            text.startswith('rm ') or\
-            text.startswith('git ') or\
-            text.startswith('vi ') or\
-            text.startswith('nano ') or\
-            text.startswith('*') or\
-            text.startswith(r'.\\') or\
-            text.startswith(r'~\\') or\
-            text.startswith(r'\\') or\
-            text.startswith('.\\') or\
-            text.startswith('~\\') or\
-            text.startswith('\\') or\
-            text.startswith('./') or\
-            text.startswith('~/') or\
-            text.startswith('/'):
+        if (
+            text.startswith("cd ")
+            or text.startswith("ls ")
+            or text.startswith("touch ")
+            or text.startswith("cat ")
+            or text.startswith("mkdir ")
+            or text.startswith("open ")
+            or text.startswith("rm ")
+            or text.startswith("git ")
+            or text.startswith("vi ")
+            or text.startswith("nano ")
+            or text.startswith("*")
+            or text.startswith(r".\\")
+            or text.startswith(r"~\\")
+            or text.startswith(r"\\")
+            or text.startswith(".\\")
+            or text.startswith("~\\")
+            or text.startswith("\\")
+            or text.startswith("./")
+            or text.startswith("~/")
+            or text.startswith("/")
+        ):
             yield from self.path_completer.get_completions(document, complete_event)
             yield from self.history_completer.get_completions(document, complete_event)
         else:
             yield from self.history_completer.get_completions(document, complete_event)
             yield from self.path_completer.get_completions(document, complete_event)
 
+
 # Create custom keybindings
 bindings = KeyBindings()
 # Get a copy of the current environment
 default_env = os.environ.copy()
 
+
 def get_exec_prefix():
     exec_prefix = _shell_state.exec_prefix
-    return sys.exec_prefix if exec_prefix == 'default' else exec_prefix
+    return sys.exec_prefix if exec_prefix == "default" else exec_prefix
+
 
 def get_conda_env():
     # what conda env am I in (e.g., where is my Python process from)?
     ENVBIN = get_exec_prefix()
     return Path(ENVBIN).name
+
 
 # bind to 'Ctrl' + 'Space'
 @bindings.add(Keys.ControlSpace)
@@ -222,13 +240,14 @@ def _(event):
     kb = KeyBindings()
 
     cancel = [False]
-    @kb.add('f')
-    def _(_event):
-        UserMessage('You pressed `f`.', style="alert")
 
-    @kb.add('x')
+    @kb.add("f")
     def _(_event):
-        " Send Abort (control-c) signal. "
+        UserMessage("You pressed `f`.", style="alert")
+
+    @kb.add("x")
+    def _(_event):
+        "Send Abort (control-c) signal."
         cancel[0] = True
         os.kill(os.getpid(), signal.SIGINT)
 
@@ -238,17 +257,18 @@ def _(event):
         # TODO: hack to simulate progress bar of indeterminate length of an synchronous function
         for i in pb(range(100)):
             if i > 50 and i < 70:
-                time.sleep(.01)
+                time.sleep(0.01)
 
             if i == 60:
-                res = func(current_user_input) # hack to see progress bar
+                res = func(current_user_input)  # hack to see progress bar
 
             # Stop when the cancel flag has been set.
             if cancel[0]:
                 break
 
-    with ConsoleStyle('code') as console:
+    with ConsoleStyle("code") as console:
         console.print(res)
+
 
 @bindings.add(Keys.PageUp)
 def _(event):
@@ -256,16 +276,18 @@ def _(event):
     for _ in range(5):
         event.current_buffer.auto_up()
 
+
 @bindings.add(Keys.PageDown)
 def _(event):
     # Moving down for 5 lines
     for _ in range(5):
         event.current_buffer.auto_down()
 
+
 class FileHistory(History):
-    '''
+    """
     :class:`.History` class that stores all strings in a file.
-    '''
+    """
 
     def __init__(self, filename: str) -> None:
         self.filename = Path(filename)
@@ -297,25 +319,32 @@ class FileHistory(History):
             for line in string.split("\n"):
                 write(f"{line}\n")
 
+
 # Defining commands history
-def load_history(home_path=HOME_PATH, history_file='.bash_history'):
+def load_history(home_path=HOME_PATH, history_file=".bash_history"):
     history_file_path = home_path / history_file
     history = FileHistory(history_file_path)
     return history, list(history.load_history_strings())
 
+
 # Function to check if current directory is a git directory
 def get_git_branch():
     try:
-        git_process = subprocess.Popen(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        git_process = subprocess.Popen(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
         stdout, _stderr = git_process.communicate()
         if git_process.returncode == 0:
-            return stdout.strip().decode('utf-8')
+            return stdout.strip().decode("utf-8")
     except FileNotFoundError:
         pass
     return None
 
+
 def disambiguate(cmds: str) -> tuple[str, int]:
-    '''
+    """
     Ok, so, possible options for now:
         1. query | cmd
         2. query | file [file ...]
@@ -323,14 +352,14 @@ def disambiguate(cmds: str) -> tuple[str, int]:
         3. query | cmd | file
         4. query | cmd cmd ...
         5. query | file | cmd
-    '''
-    has_at_least_one_cmd = any(shutil.which(cmd) is not None for cmd in cmds.split(' '))
-    maybe_cmd   = cmds.split(' ')[0].strip() # get first command
+    """
+    has_at_least_one_cmd = any(shutil.which(cmd) is not None for cmd in cmds.split(" "))
+    maybe_cmd = cmds.split(" ")[0].strip()  # get first command
     maybe_files = FileReader.extract_files(cmds)
     # if cmd follows file(s) or file(s) follows cmd throw error as not supported
     if maybe_files is not None and has_at_least_one_cmd:
         msg = (
-            'Cannot disambiguate commands that have both files and commands or multiple commands. Please provide '
+            "Cannot disambiguate commands that have both files and commands or multiple commands. Please provide "
             'correct order of commands. Supported are: query | file [file ...] (e.g. "what do these files have in '
             'common?" | file1 [file2 ...]) and query | cmd (e.g. "what flags can I use with rg?" | rg --help)'
         )
@@ -339,50 +368,51 @@ def disambiguate(cmds: str) -> tuple[str, int]:
     if shutil.which(maybe_cmd) is not None:
         cmd_out = subprocess.run(cmds, check=False, capture_output=True, text=True, shell=True)
         if not cmd_out.stdout:
-            msg = f'Command not found or failed. Error: {cmd_out.stderr}'
+            msg = f"Command not found or failed. Error: {cmd_out.stderr}"
             UserMessage(msg, raise_with=ValueError)
         return cmd_out.stdout, 1
     if maybe_files is not None:
         return maybe_files, 2
     return None
 
+
 # query language model
 def _starts_with_prefix(query: str, prefix: str) -> bool:
     return (
         query.startswith(f'{prefix}"')
         or query.startswith(f"{prefix}'")
-        or query.startswith(f'{prefix}`')
+        or query.startswith(f"{prefix}`")
     )
 
 
 def _is_new_conversation_query(query: str) -> bool:
-    return _starts_with_prefix(query, '!')
+    return _starts_with_prefix(query, "!")
 
 
 def _is_followup_conversation_query(query: str) -> bool:
-    return _starts_with_prefix(query, '.')
+    return _starts_with_prefix(query, ".")
 
 
 def _is_stateful_query(query: str) -> bool:
-    return any(_starts_with_prefix(query, prefix) for prefix in ['.', '!'])
+    return any(_starts_with_prefix(query, prefix) for prefix in [".", "!"])
 
 
 def _extract_query_kwargs(query: str, previous_kwargs, existing_kwargs):
-    if '--kwargs' not in query and '-kw' not in query:
+    if "--kwargs" not in query and "-kw" not in query:
         return query, existing_kwargs, previous_kwargs
 
-    splitter = '--kwargs' if '--kwargs' in query else '-kw'
+    splitter = "--kwargs" if "--kwargs" in query else "-kw"
     splits = query.split(splitter)
     suffix = splits[-1]
-    if previous_kwargs is None and '=' not in suffix and ',' not in suffix:
-        msg = 'Kwargs format must be last in query.'
+    if previous_kwargs is None and "=" not in suffix and "," not in suffix:
+        msg = "Kwargs format must be last in query."
         UserMessage(msg, raise_with=ValueError)
-    if previous_kwargs is not None and '=' not in suffix and ',' not in suffix:
+    if previous_kwargs is not None and "=" not in suffix and "," not in suffix:
         cmd_kwargs = previous_kwargs
     else:
         query = splits[0].strip()
         kwargs_str = suffix.strip()
-        cmd_kwargs = dict([kw.split('=') for kw in kwargs_str.split(',')])
+        cmd_kwargs = dict([kw.split("=") for kw in kwargs_str.split(",")])
         cmd_kwargs = {k.strip(): Symbol(v.strip()).ast() for k, v in cmd_kwargs.items()}
 
     previous_kwargs = cmd_kwargs
@@ -398,7 +428,7 @@ def _process_new_conversation(query, conversation_cls, symai_path, plugin, previ
     if plugin is None:
         return conversation, previous_kwargs, None, False
     with Loader(desc="Inference ...", end=""):
-        cmd = query[1:].strip('\'"')
+        cmd = query[1:].strip("'\"")
         cmd = f"symrun {plugin} '{cmd}' --disable-pbar"
         cmd_out = run_shell_command(cmd, auto_query_on_error=True)
         conversation.store(cmd_out)
@@ -408,18 +438,20 @@ def _process_new_conversation(query, conversation_cls, symai_path, plugin, previ
         return conversation, previous_kwargs, cmd_out, True
 
 
-def _process_followup_conversation(query, conversation, conversation_cls, symai_path, plugin, previous_kwargs, state):
+def _process_followup_conversation(
+    query, conversation, conversation_cls, symai_path, plugin, previous_kwargs, state
+):
     try:
         conversation = conversation.load_conversation_state(symai_path)
         state.stateful_conversation = conversation
     except Exception:
-        with ConsoleStyle('error') as console:
-            console.print('No conversation state found. Please start a new conversation.')
+        with ConsoleStyle("error") as console:
+            console.print("No conversation state found. Please start a new conversation.")
         return conversation, previous_kwargs, None, True
     if plugin is None:
         return conversation, previous_kwargs, None, False
     with Loader(desc="Inference ...", end=""):
-        trimmed_query = query[1:].strip('\'"')
+        trimmed_query = query[1:].strip("'\"")
         answer = conversation(trimmed_query).value
         cmd = f"symrun {plugin} '{answer}' --disable-pbar"
         cmd_out = run_shell_command(cmd, auto_query_on_error=True)
@@ -431,10 +463,10 @@ def _process_followup_conversation(query, conversation, conversation_cls, symai_
 
 
 def _handle_piped_query(query, conversation, state):
-    cmds = query.split('|')
+    cmds = query.split("|")
     if len(cmds) > 2:
         msg = (
-            'Cannot disambiguate commands that have more than 1 pipes. Please provide correct order of commands. '
+            "Cannot disambiguate commands that have more than 1 pipes. Please provide correct order of commands. "
             'Supported are: query | file [file ...] (e.g. "what do these files have in common?" | file1 [file2 ...]) '
             'and query | cmd (e.g. "what flags can I use with rg?" | rg --help)'
         )
@@ -460,7 +492,7 @@ def _handle_piped_query(query, conversation, state):
 
 
 def _select_function_for_query(query, conversation, state):
-    if '|' in query:
+    if "|" in query:
         return _handle_piped_query(query, conversation, state)
     if _is_stateful_query(query):
         return conversation, query
@@ -479,8 +511,8 @@ def query_language_model(query: str, res=None, *args, **kwargs):
     previous_kwargs = state.previous_kwargs
     conversation_cls = state.conversation_type
     home_path = HOME_PATH
-    symai_path = home_path / '.conversation_state'
-    plugin = SYMSH_CONFIG.get('plugin_prefix')
+    symai_path = home_path / ".conversation_state"
+    plugin = SYMSH_CONFIG.get("plugin_prefix")
 
     query, kwargs, previous_kwargs = _extract_query_kwargs(query, previous_kwargs, kwargs)
 
@@ -512,7 +544,8 @@ def query_language_model(query: str, res=None, *args, **kwargs):
     state.previous_kwargs = previous_kwargs
     return msg
 
-def retrieval_augmented_indexing(query: str, index_name = None, *_args, **_kwargs):
+
+def retrieval_augmented_indexing(query: str, index_name=None, *_args, **_kwargs):
     state = _shell_state
     sep = os.path.sep
     path = query
@@ -520,35 +553,35 @@ def retrieval_augmented_indexing(query: str, index_name = None, *_args, **_kwarg
 
     # check if path contains overwrite flag
     overwrite = False
-    if path.startswith('!'):
+    if path.startswith("!"):
         overwrite = True
         path = path[1:]
 
     # check if request use of specific index
-    use_index_name  = False
-    if path.startswith('index:'):
+    use_index_name = False
+    if path.startswith("index:"):
         use_index_name = True
         # continue conversation with specific index
-        index_name  = path.split('index:')[-1].strip()
+        index_name = path.split("index:")[-1].strip()
     else:
         parse_arxiv = False
 
         # check if path contains arxiv flag
-        if path.startswith('arxiv:'):
+        if path.startswith("arxiv:"):
             parse_arxiv = True
 
         # check if path contains git flag
-        if path.startswith('git@'):
+        if path.startswith("git@"):
             overwrite = True
-            repo_path = home_path / 'temp'
+            repo_path = home_path / "temp"
             with Loader(desc="Cloning repo ...", end=""):
                 cloner = RepositoryCloner(repo_path=str(repo_path))
                 url = path[4:]
-                if 'http' not in url:
-                    url = 'https://' + url
-                url = url.replace('.com:', '.com/')
+                if "http" not in url:
+                    url = "https://" + url
+                url = url.replace(".com:", ".com/")
                 # if ends with '.git' then remove it
-                if url.endswith('.git'):
+                if url.endswith(".git"):
                     url = url[:-4]
                 path = cloner(url)
 
@@ -560,79 +593,90 @@ def retrieval_augmented_indexing(query: str, index_name = None, *_args, **_kwarg
             arxiv = ArxivPdfParser()
             pdf_file = arxiv(file)
             if pdf_file is not None:
-                file = file |'\n'| pdf_file
+                file = file | "\n" | pdf_file
 
         index_name = path.split(sep)[-1] if index_name is None else index_name
         index_name = Indexer.replace_special_chars(index_name)
-        UserMessage(f'Indexing {index_name} ...', style="extensity")
+        UserMessage(f"Indexing {index_name} ...", style="extensity")
 
         # creates index if not exists
         DocumentRetriever(index_name=index_name, file=file, overwrite=overwrite)
 
-    symai_path = home_path / '.conversation_state'
+    symai_path = home_path / ".conversation_state"
     symai_path.parent.mkdir(parents=True, exist_ok=True)
-    stateful_conversation = state.retrieval_conversation_type(auto_print=False, index_name=index_name)
+    stateful_conversation = state.retrieval_conversation_type(
+        auto_print=False, index_name=index_name
+    )
     state.stateful_conversation = stateful_conversation
     Conversation.save_conversation_state(stateful_conversation, symai_path)
     if use_index_name:
-        message = 'New session '
+        message = "New session "
     else:
-        message = f'Repository {url} cloned and ' if query.startswith('git@') or query.startswith('git:') else f'Directory {path} '
-    return f'{message}successfully indexed: {index_name}'
+        message = (
+            f"Repository {url} cloned and "
+            if query.startswith("git@") or query.startswith("git:")
+            else f"Directory {path} "
+        )
+    return f"{message}successfully indexed: {index_name}"
+
 
 def search_engine(query: str, res=None, *_args, **_kwargs):
-    search = Interface('serpapi')
+    search = Interface("serpapi")
     with Loader(desc="Searching ...", end=""):
-        search_query = Symbol(query).extract('search engine optimized query')
+        search_query = Symbol(query).extract("search engine optimized query")
         res = search(search_query)
     with Loader(desc="Inference ...", end=""):
         func = _shell_state.function_type(query)
         msg = func(res, payload=res)
         # write a temp dump file with the query and results
         home_path = HOME_PATH
-        symai_path = home_path / '.search_dump'
+        symai_path = home_path / ".search_dump"
         symai_path.parent.mkdir(parents=True, exist_ok=True)
-        with symai_path.open('w') as f:
-            f.write(f'[SEARCH_QUERY]:\n{search_query}\n[RESULTS]\n{res}\n[MESSAGE]\n{msg}')
+        with symai_path.open("w") as f:
+            f.write(f"[SEARCH_QUERY]:\n{search_query}\n[RESULTS]\n{res}\n[MESSAGE]\n{msg}")
     return msg
 
+
 def set_default_module(cmd: str):
-    if cmd.startswith('set-plugin'):
-        module = cmd.split('set-plugin')[-1].strip()
-        SYMSH_CONFIG['plugin_prefix'] = module
-        with config_path.open('w') as f:
+    if cmd.startswith("set-plugin"):
+        module = cmd.split("set-plugin")[-1].strip()
+        SYMSH_CONFIG["plugin_prefix"] = module
+        with config_path.open("w") as f:
             json.dump(SYMSH_CONFIG, f, indent=4)
         msg = f"Default plugin set to '{module}'"
-    elif cmd == 'unset-plugin':
-        SYMSH_CONFIG['plugin_prefix'] = None
-        with config_path.open('w') as f:
+    elif cmd == "unset-plugin":
+        SYMSH_CONFIG["plugin_prefix"] = None
+        with config_path.open("w") as f:
             json.dump(SYMSH_CONFIG, f, indent=4)
         msg = "Default plugin unset"
-    elif cmd == 'get-plugin':
+    elif cmd == "get-plugin":
         msg = f"Default plugin is '{SYMSH_CONFIG['plugin_prefix']}'"
 
-    with ConsoleStyle('success') as console:
+    with ConsoleStyle("success") as console:
         console.print(msg)
 
+
 def handle_error(cmd, res, message, auto_query_on_error):
-    msg = Symbol(cmd) | f'\n{res!s}'
-    if 'command not found' in str(res) or 'not recognized as an internal or external command' in str(res):
-        return res.stderr.decode('utf-8')
+    msg = Symbol(cmd) | f"\n{res!s}"
+    if "command not found" in str(
+        res
+    ) or "not recognized as an internal or external command" in str(res):
+        return res.stderr.decode("utf-8")
     stderr = res.stderr
     if stderr and auto_query_on_error:
-        rsp = stderr.decode('utf-8')
+        rsp = stderr.decode("utf-8")
         UserMessage(rsp, style="alert")
         msg = msg | f"\n{rsp}"
-        if 'usage:' in rsp:
+        if "usage:" in rsp:
             try:
-                cmd = cmd.split('usage: ')[-1].split(' ')[0]
+                cmd = cmd.split("usage: ")[-1].split(" ")[0]
                 # get man page result for command
-                res = subprocess.run(f'man -P cat {cmd}',
-                                        check=False, shell=True,
-                                        stdout=subprocess.PIPE)
+                res = subprocess.run(
+                    f"man -P cat {cmd}", check=False, shell=True, stdout=subprocess.PIPE
+                )
                 stdout = res.stdout
                 if stdout:
-                    rsp = stdout.decode('utf-8')[:500]
+                    rsp = stdout.decode("utf-8")[:500]
                     msg = msg | f"\n{rsp}"
             except Exception:
                 pass
@@ -640,29 +684,34 @@ def handle_error(cmd, res, message, auto_query_on_error):
         return query_language_model(msg)
     stdout = res.stdout
     if stdout:
-        message = stderr.decode('utf-8')
+        message = stderr.decode("utf-8")
     return message
 
+
 # run shell command
-def run_shell_command(cmd: str, prev=None, auto_query_on_error: bool=False, stdout=None, stderr=None):
+def run_shell_command(
+    cmd: str, prev=None, auto_query_on_error: bool = False, stdout=None, stderr=None
+):
     if prev is not None:
-        cmd = prev + ' && ' + cmd
+        cmd = prev + " && " + cmd
     message = None
     conda_env = get_exec_prefix()
     # copy default_env
     new_env = default_env.copy()
-    if _shell_state.exec_prefix != 'default':
+    if _shell_state.exec_prefix != "default":
         # remove current env from PATH
         new_env["PATH"] = new_env["PATH"].replace(sys.exec_prefix, conda_env)
     # Execute the command
     try:
         stdout = subprocess.PIPE if auto_query_on_error else stdout
         stderr = subprocess.PIPE if auto_query_on_error else stderr
-        res = subprocess.run(cmd, check=False, shell=True, stdout=stdout, stderr=stderr, env=new_env)
+        res = subprocess.run(
+            cmd, check=False, shell=True, stdout=stdout, stderr=stderr, env=new_env
+        )
         if res and stdout and res.stdout:
-            message = res.stdout.decode('utf-8')
+            message = res.stdout.decode("utf-8")
         elif res and stderr and res.stderr:
-            message = res.stderr.decode('utf-8')
+            message = res.stderr.decode("utf-8")
     except FileNotFoundError as e:
         return e
     except PermissionError as e:
@@ -674,46 +723,59 @@ def run_shell_command(cmd: str, prev=None, auto_query_on_error: bool=False, stdo
     # If command not found, then try to query language model
     return handle_error(cmd, res, message, auto_query_on_error)
 
+
 def is_llm_request(cmd: str):
-    return cmd.startswith('"') or cmd.startswith('."') or cmd.startswith('!"') or cmd.startswith('?"') or\
-           cmd.startswith("'") or cmd.startswith(".'") or cmd.startswith("!'") or cmd.startswith("?'") or\
-           cmd.startswith('`') or cmd.startswith('.`') or cmd.startswith('!`') or cmd.startswith('?`') or\
-           cmd.startswith('!(')
+    return (
+        cmd.startswith('"')
+        or cmd.startswith('."')
+        or cmd.startswith('!"')
+        or cmd.startswith('?"')
+        or cmd.startswith("'")
+        or cmd.startswith(".'")
+        or cmd.startswith("!'")
+        or cmd.startswith("?'")
+        or cmd.startswith("`")
+        or cmd.startswith(".`")
+        or cmd.startswith("!`")
+        or cmd.startswith("?`")
+        or cmd.startswith("!(")
+    )
+
 
 def map_nt_cmd(cmd: str, map_nt_cmd_enabled: bool = True):
-    if os.name.lower() == 'nt' and map_nt_cmd_enabled and not is_llm_request(cmd):
+    if os.name.lower() == "nt" and map_nt_cmd_enabled and not is_llm_request(cmd):
         # Mapping command replacements with regex for commands with variants
         cmd_mappings = {
-            r'\bls\b(-[a-zA-Z]*)?'         : r'dir \1',            # Maps 'ls' with or without arguments
-            r'\bmv\b\s+(.*)'               : r'move \1',           # Maps 'mv' with any arguments
-            r'\bcp\b\s+(.*)'               : r'copy \1',           # Maps 'cp' with any arguments
-            r'\btouch\b\s+(.*)'            : r'type nul > \1',     # Maps 'touch filename' to 'type nul > filename'
-            r'\brm\b\s+(-rf)?'             : r'del \1',            # Maps 'rm' and 'rm -rf'
-            r'\bdiff\b\s+(.*)'             : r'fc \1',             # Maps 'diff' with any arguments
-            r'\bgrep\b\s+(.*)'             : r'find \1',           # Maps 'grep' with any arguments
-            r'\bpwd\b'                     : 'chdir',              # pwd has no arguments
-            r'\bdate\b'                    : 'time',               # date has no arguments
-            r'\bmkdir\b\s+(.*)'            : r'md \1',             # Maps 'mkdir' with any arguments
-            r'\bwhich\b\s+(.*)'            : r'where \1',          # Maps 'which' with any arguments
-            r'\b(vim|nano)\b\s+(.*)'       : r'notepad \2',        # Maps 'vim' or 'nano' with any arguments
-            r'\b(mke2fs|mformat)\b\s+(.*)' : r'format \2',         # Maps 'mke2fs' or 'mformat' with any arguments
-            r'\b(rm\s+-rf|rmdir)\b'        : 'rmdir /s /q',        # Matches 'rm -rf' or 'rmdir'
-            r'\bkill\b\s+(.*)'             : r'taskkill \1',       # Maps 'kill' with any arguments
-            r'\bps\b\s*(.*)?'              : r'tasklist \1',       # Maps 'ps' with any or no arguments
-            r'\bexport\b\s+(.*)'           : r'set \1',            # Maps 'export' with any arguments
-            r'\b(chown|chmod)\b\s+(.*)'    : r'attrib +r \2',      # Maps 'chown' or 'chmod' with any arguments
-            r'\btraceroute\b\s+(.*)'       : r'tracert \1',        # Maps 'traceroute' with any arguments
-            r'\bcron\b\s+(.*)'             : r'at \1',             # Maps 'cron' with any arguments
-            r'\bcat\b\s+(.*)'              : r'type \1',           # Maps 'cat' with any arguments
-            r'\bdu\s+-s\b'                 : 'chkdsk',             # du -s has no arguments, chkdsk is closest in functionality
-            r'\bls\s+-R\b'                 : 'tree',               # ls -R has no arguments
+            r"\bls\b(-[a-zA-Z]*)?": r"dir \1",  # Maps 'ls' with or without arguments
+            r"\bmv\b\s+(.*)": r"move \1",  # Maps 'mv' with any arguments
+            r"\bcp\b\s+(.*)": r"copy \1",  # Maps 'cp' with any arguments
+            r"\btouch\b\s+(.*)": r"type nul > \1",  # Maps 'touch filename' to 'type nul > filename'
+            r"\brm\b\s+(-rf)?": r"del \1",  # Maps 'rm' and 'rm -rf'
+            r"\bdiff\b\s+(.*)": r"fc \1",  # Maps 'diff' with any arguments
+            r"\bgrep\b\s+(.*)": r"find \1",  # Maps 'grep' with any arguments
+            r"\bpwd\b": "chdir",  # pwd has no arguments
+            r"\bdate\b": "time",  # date has no arguments
+            r"\bmkdir\b\s+(.*)": r"md \1",  # Maps 'mkdir' with any arguments
+            r"\bwhich\b\s+(.*)": r"where \1",  # Maps 'which' with any arguments
+            r"\b(vim|nano)\b\s+(.*)": r"notepad \2",  # Maps 'vim' or 'nano' with any arguments
+            r"\b(mke2fs|mformat)\b\s+(.*)": r"format \2",  # Maps 'mke2fs' or 'mformat' with any arguments
+            r"\b(rm\s+-rf|rmdir)\b": "rmdir /s /q",  # Matches 'rm -rf' or 'rmdir'
+            r"\bkill\b\s+(.*)": r"taskkill \1",  # Maps 'kill' with any arguments
+            r"\bps\b\s*(.*)?": r"tasklist \1",  # Maps 'ps' with any or no arguments
+            r"\bexport\b\s+(.*)": r"set \1",  # Maps 'export' with any arguments
+            r"\b(chown|chmod)\b\s+(.*)": r"attrib +r \2",  # Maps 'chown' or 'chmod' with any arguments
+            r"\btraceroute\b\s+(.*)": r"tracert \1",  # Maps 'traceroute' with any arguments
+            r"\bcron\b\s+(.*)": r"at \1",  # Maps 'cron' with any arguments
+            r"\bcat\b\s+(.*)": r"type \1",  # Maps 'cat' with any arguments
+            r"\bdu\s+-s\b": "chkdsk",  # du -s has no arguments, chkdsk is closest in functionality
+            r"\bls\s+-R\b": "tree",  # ls -R has no arguments
         }
 
         # Remove 1:1 mappings
         direct_mappings = {
-            'clear': 'cls',
-            'man'  : 'help',
-            'mem'  : 'free',
+            "clear": "cls",
+            "man": "help",
+            "mem": "free",
         }
 
         cmd_mappings.update(direct_mappings)
@@ -724,93 +786,95 @@ def map_nt_cmd(cmd: str, map_nt_cmd_enabled: bool = True):
             original_cmd = cmd
             cmd = re.sub(linux_cmd, windows_cmd, cmd)
             if cmd != original_cmd:
-                UserMessage(f'symsh >> command "{original_cmd}" mapped to "{cmd}"\n', style="extensity")
+                UserMessage(
+                    f'symsh >> command "{original_cmd}" mapped to "{cmd}"\n', style="extensity"
+                )
 
     return cmd
 
 
 def _handle_plugin_commands(cmd: str):
-    if cmd.startswith('set-plugin') or cmd == 'unset-plugin' or cmd == 'get-plugin':
+    if cmd.startswith("set-plugin") or cmd == "unset-plugin" or cmd == "get-plugin":
         return set_default_module(cmd)
     return None
 
 
 def _handle_chained_llm_commands(cmd: str, res, auto_query_on_error: bool):
-    if '" && ' not in cmd and "' && " not in cmd and '` && ' not in cmd:
+    if '" && ' not in cmd and "' && " not in cmd and "` && " not in cmd:
         return None
     if not is_llm_request(cmd):
         return run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
-    cmds = cmd.split(' && ')
+    cmds = cmd.split(" && ")
     if not is_llm_request(cmds[0]):
-        return ValueError('The first command must be a LLM request.')
+        return ValueError("The first command must be a LLM request.")
     first_res = query_language_model(cmds[0], res=res)
-    rest = ' && '.join(cmds[1:])
-    if len(cmds) > 1 and '$1' in cmds[1]:
-        first_res_str = str(first_res).replace('\n', r'\\n')
-        rest = rest.replace('$1', f'"{first_res_str}"')
+    rest = " && ".join(cmds[1:])
+    if len(cmds) > 1 and "$1" in cmds[1]:
+        first_res_str = str(first_res).replace("\n", r"\\n")
+        rest = rest.replace("$1", f'"{first_res_str}"')
         first_res = None
     return run_shell_command(rest, prev=first_res, auto_query_on_error=auto_query_on_error)
 
 
 def _handle_llm_or_search(cmd: str, res):
-    if cmd.startswith('?"') or cmd.startswith("?'") or cmd.startswith('?`'):
+    if cmd.startswith('?"') or cmd.startswith("?'") or cmd.startswith("?`"):
         query = cmd[1:]
         return search_engine(query, res=res)
-    if is_llm_request(cmd) or '...' in cmd:
+    if is_llm_request(cmd) or "..." in cmd:
         return query_language_model(cmd, res=res)
     return None
 
 
 def _handle_retrieval_commands(cmd: str):
-    if cmd.startswith('*'):
+    if cmd.startswith("*"):
         return retrieval_augmented_indexing(cmd[1:])
     return None
 
 
 def _handle_man_command(cmd: str):
-    if cmd.startswith('man symsh'):
+    if cmd.startswith("man symsh"):
         pkg_path = Path(__file__).resolve().parent
-        symsh_path = pkg_path / 'symsh.md'
+        symsh_path = pkg_path / "symsh.md"
         with symsh_path.open(encoding="utf8") as file_ptr:
             return file_ptr.read()
     return None
 
 
 def _handle_conda_commands(cmd: str, state, res, auto_query_on_error: bool):
-    if cmd.startswith('conda activate'):
+    if cmd.startswith("conda activate"):
         env = Path(sys.exec_prefix)
         env_base = env.parent
-        req_env = cmd.split(' ')[2]
+        req_env = cmd.split(" ")[2]
         env_path = env_base / req_env
         if not env_path.exists():
-            return f'Environment {req_env} does not exist!'
+            return f"Environment {req_env} does not exist!"
         state.previous_prefix = state.exec_prefix
         state.exec_prefix = str(env_path)
         return state.exec_prefix
-    if cmd.startswith('conda deactivate'):
+    if cmd.startswith("conda deactivate"):
         prev_prefix = state.previous_prefix
         if prev_prefix is not None:
             state.exec_prefix = prev_prefix
-        if prev_prefix == 'default':
+        if prev_prefix == "default":
             state.previous_prefix = None
         return get_exec_prefix()
-    if cmd.startswith('conda'):
+    if cmd.startswith("conda"):
         env = Path(get_exec_prefix())
         try:
             env_base = env.parents[1]
         except IndexError:
             env_base = env.parent
-        cmd_rewritten = cmd.replace('conda', str(env_base / "condabin" / "conda"))
+        cmd_rewritten = cmd.replace("conda", str(env_base / "condabin" / "conda"))
         return run_shell_command(cmd_rewritten, prev=res, auto_query_on_error=auto_query_on_error)
     return None
 
 
 def _handle_directory_navigation(cmd: str):
     sep = os.path.sep
-    if cmd.startswith('cd'):
+    if cmd.startswith("cd"):
         try:
             cmd_expanded = FileReader.expand_user_path(cmd)
-            path = ' '.join(cmd_expanded.split(' ')[1:])
+            path = " ".join(cmd_expanded.split(" ")[1:])
             if path.endswith(sep):
                 path = path[:-1]
             return os.chdir(path)
@@ -830,16 +894,16 @@ def _handle_directory_navigation(cmd: str):
 
 
 def _handle_ll_alias(cmd: str, res):
-    if not cmd.startswith('ll'):
+    if not cmd.startswith("ll"):
         return None
-    if os.name == 'nt':
-        rewritten = cmd.replace('ll', 'dir')
+    if os.name == "nt":
+        rewritten = cmd.replace("ll", "dir")
         return run_shell_command(rewritten, prev=res)
-    rewritten = cmd.replace('ll', 'ls -la')
+    rewritten = cmd.replace("ll", "ls -la")
     return run_shell_command(rewritten, prev=res)
 
 
-def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
+def process_command(cmd: str, res=None, auto_query_on_error: bool = False):
     state = _shell_state
 
     # map commands to windows if needed
@@ -878,14 +942,15 @@ def process_command(cmd: str, res=None, auto_query_on_error: bool=False):
 
     return run_shell_command(cmd, prev=res, auto_query_on_error=auto_query_on_error)
 
+
 def save_conversation():
     home_path = HOME_PATH
-    symai_path = home_path / '.conversation_state'
+    symai_path = home_path / ".conversation_state"
     Conversation.save_conversation_state(_shell_state.stateful_conversation, symai_path)
 
 
 def _is_exit_command(cmd: str) -> bool:
-    return cmd in ['quit', 'exit', 'q']
+    return cmd in ["quit", "exit", "q"]
 
 
 def _format_working_directory():
@@ -898,8 +963,8 @@ def _format_working_directory():
     prev_paths = sep.join(paths[:-1])
     last_path = paths[-1]
     if len(paths) > 1:
-        return f'{prev_paths}{sep}<b>{last_path}</b>'
-    return f'<b>{last_path}</b>'
+        return f"{prev_paths}{sep}<b>{last_path}</b>"
+    return f"<b>{last_path}</b>"
 
 
 def _build_prompt(git_branch, conda_env, cur_working_dir_str):
@@ -919,15 +984,20 @@ def _handle_exit(state):
     if state.stateful_conversation is not None:
         save_conversation()
     if not state.use_styles:
-        UserMessage('Goodbye!', style="extensity")
+        UserMessage("Goodbye!", style="extensity")
     else:
-        func = _shell_state.function_type('Give short goodbye')
-        UserMessage(func('bye'), style="extensity")
+        func = _shell_state.function_type("Give short goodbye")
+        UserMessage(func("bye"), style="extensity")
     os._exit(0)
 
 
 # Function to listen for user input and execute commands
-def listen(session: PromptSession, word_comp: WordCompleter, auto_query_on_error: bool=False, verbose: bool=False):
+def listen(
+    session: PromptSession,
+    word_comp: WordCompleter,
+    auto_query_on_error: bool = False,
+    verbose: bool = False,
+):
     state = _shell_state
     with patch_stdout():
         while True:
@@ -937,39 +1007,43 @@ def listen(session: PromptSession, word_comp: WordCompleter, auto_query_on_error
                 cur_working_dir_str = _format_working_directory()
                 prompt = _build_prompt(git_branch, conda_env, cur_working_dir_str)
                 cmd = session.prompt(prompt)
-                if cmd.strip() == '':
+                if cmd.strip() == "":
                     continue
 
                 if _is_exit_command(cmd):
                     _handle_exit(state)
                 msg = process_command(cmd, auto_query_on_error=auto_query_on_error)
                 if msg is not None:
-                    with ConsoleStyle('code') as console:
+                    with ConsoleStyle("code") as console:
                         console.print(msg)
 
                 # Append the command to the word completer list
                 word_comp.words.append(cmd)
 
             except KeyboardInterrupt:
-                UserMessage('', style="alert")
+                UserMessage("", style="alert")
             except Exception as e:
                 UserMessage(str(e), style="alert")
                 if verbose:
                     traceback.print_exc()
 
+
 def create_session(history, merged_completer):
-    colors = SYMSH_CONFIG['colors']
+    colors = SYMSH_CONFIG["colors"]
 
     # Load style
     style = Style.from_dict(colors)
 
     # Session for the auto-completion
-    return PromptSession(history=history,
-                         completer=merged_completer,
-                         complete_style=CompleteStyle.MULTI_COLUMN,
-                         reserve_space_for_menu=5,
-                         style=style,
-                         key_bindings=bindings)
+    return PromptSession(
+        history=history,
+        completer=merged_completer,
+        complete_style=CompleteStyle.MULTI_COLUMN,
+        reserve_space_for_menu=5,
+        style=style,
+        key_bindings=bindings,
+    )
+
 
 def create_completer():
     # Load history
@@ -983,10 +1057,11 @@ def create_completer():
     merged_completer = MergedCompleter(custom_completer, word_comp)
     return history, word_comp, merged_completer
 
+
 def run(auto_query_on_error=False, conversation_style=None, verbose=False):
     state = _shell_state
-    if conversation_style is not None and conversation_style != '':
-        UserMessage(f'Loading style: {conversation_style}', style="extensity")
+    if conversation_style is not None and conversation_style != "":
+        UserMessage(f"Loading style: {conversation_style}", style="extensity")
         styles_ = Import.load_module_class(conversation_style)
         (
             state.function_type,
@@ -995,24 +1070,33 @@ def run(auto_query_on_error=False, conversation_style=None, verbose=False):
         ) = styles_
         state.use_styles = True
 
-    if SYMSH_CONFIG['show-splash-screen']:
+    if SYMSH_CONFIG["show-splash-screen"]:
         show_intro_menu()
         # set show splash screen to false
-        SYMSH_CONFIG['show-splash-screen'] = False
+        SYMSH_CONFIG["show-splash-screen"] = False
         # save config
-        _config_path = HOME_PATH / 'symsh.config.json'
-        with _config_path.open('w') as f:
+        _config_path = HOME_PATH / "symsh.config.json"
+        with _config_path.open("w") as f:
             json.dump(SYMSH_CONFIG, f, indent=4)
-    if 'plugin_prefix' not in SYMSH_CONFIG:
-        SYMSH_CONFIG['plugin_prefix'] = None
+    if "plugin_prefix" not in SYMSH_CONFIG:
+        SYMSH_CONFIG["plugin_prefix"] = None
 
     history, word_comp, merged_completer = create_completer()
     session = create_session(history, merged_completer)
     listen(session, word_comp, auto_query_on_error=auto_query_on_error, verbose=verbose)
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='SymSH: Symbolic Shell')
-    parser.add_argument('--auto-query-on-error', action='store_true', help='Automatically query the language model on error.')
-    parser.add_argument('--verbose', action='store_true', help='Print verbose errors.')
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="SymSH: Symbolic Shell")
+    parser.add_argument(
+        "--auto-query-on-error",
+        action="store_true",
+        help="Automatically query the language model on error.",
+    )
+    parser.add_argument("--verbose", action="store_true", help="Print verbose errors.")
     args = parser.parse_args()
-    run(auto_query_on_error=args.auto_query_on_error, conversation_style=args.conversation_style, verbose=args.verbose)
+    run(
+        auto_query_on_error=args.auto_query_on_error,
+        conversation_style=args.conversation_style,
+        verbose=args.verbose,
+    )

@@ -12,4 +12,5 @@ class wolframalpha(Expression):
         @core.expression(**kwargs)
         def _func(_, expr: str) -> WolframResult:
             pass
+
         return _func(self, expr)

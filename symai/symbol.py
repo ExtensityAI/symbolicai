@@ -11,12 +11,12 @@ from box import Box
 from . import core
 from .ops import SYMBOL_PRIMITIVES
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class SymbolEncoder(JSONEncoder):
     def default(self, o):
-        '''
+        """
         Encode a Symbol instance into its dictionary representation.
 
         Args:
@@ -24,7 +24,7 @@ class SymbolEncoder(JSONEncoder):
 
         Returns:
             dict: The dictionary representation of the Symbol instance.
-        '''
+        """
         if isinstance(o, Symbol):
             return o.__getstate__()
         return JSONEncoder.default(self, o)
@@ -40,7 +40,7 @@ class Metadata:
         return self.__dict__.keys()
 
     def __getattr__(self, name):
-        '''
+        """
         Get a metadata attribute by name.
 
         Args:
@@ -48,30 +48,30 @@ class Metadata:
 
         Returns:
             Any: The value of the metadata attribute.
-        '''
+        """
         return self.__dict__.get(name)
 
     def __setattr__(self, name, value):
-        '''
+        """
         Set a metadata attribute by name.
 
         Args:
             name (str): The name of the metadata attribute to set.
             value (Any): The value of the metadata attribute.
-        '''
+        """
         self.__dict__[name] = value
 
     def __delattr__(self, name):
-        '''
+        """
         Delete a metadata attribute by name.
 
         Args:
             name (str): The name of the metadata attribute to delete.
-        '''
+        """
         del self.__dict__[name]
 
     def __getitem__(self, name):
-        '''
+        """
         Get a metadata attribute by name.
 
         Args:
@@ -79,75 +79,82 @@ class Metadata:
 
         Returns:
             Any: The value of the metadata attribute.
-        '''
+        """
         return self.__getattr__(name)
 
     def __setitem__(self, name, value):
-        '''
+        """
         Set a metadata attribute by name.
 
         Args:
             name (str): The name of the metadata attribute to set.
             value (Any): The value of the metadata attribute.
-        '''
+        """
         self.__setattr__(name, value)
 
     def __delitem__(self, name):
-        '''
+        """
         Delete a metadata attribute by name.
 
         Args:
             name (str): The name of the metadata attribute to delete.
-        '''
+        """
         self.__delattr__(name)
 
     def __str__(self) -> str:
-        '''
+        """
         Get the string representation of the Symbol's value.
 
         Returns:
             str: The string representation of the Symbol's value.
-        '''
-        _val = ''
+        """
+        _val = ""
         if self.value is not None:
             _val += str(self.value)
-        return _val + f"Properties({ {k: str(v) for k, v in self.__dict__.items() if not k.startswith('_')}!s})"
+        return (
+            _val
+            + f"Properties({ {k: str(v) for k, v in self.__dict__.items() if not k.startswith('_')}!s})"
+        )
 
     def __repr__(self) -> str:
-        '''
+        """
         Get the representation of the Symbol object as a string.
 
         Returns:
             str: The representation of the Symbol object.
-        '''
+        """
         # class with full path
-        class_ = self.__class__.__module__ + '.' + self.__class__.__name__
-        hex_   = hex(id(self))
-        from_symbol =  f' from {self.symbol_type.__module__}.{self.symbol_type.__name__}' if self.symbol_type else ''
-        return f'<class {class_} at {hex_}{from_symbol}>'
+        class_ = self.__class__.__module__ + "." + self.__class__.__name__
+        hex_ = hex(id(self))
+        from_symbol = (
+            f" from {self.symbol_type.__module__}.{self.symbol_type.__name__}"
+            if self.symbol_type
+            else ""
+        )
+        return f"<class {class_} at {hex_}{from_symbol}>"
 
 
 class Linker(Metadata):
     def keys(self) -> list[str]:
-        '''
+        """
         Get all keys of the linker.
 
         Returns:
             List[str]: All keys of the linker.
-        '''
+        """
         return list(self.results.keys())
 
     def values(self) -> list[Any]:
-        '''
+        """
         Get all values of the linker.
 
         Returns:
             List[Any]: All values of the linker.
-        '''
+        """
         return list(self.results.values())
 
     def find(self, name: str, single: bool = True, strict: bool = False) -> Any:
-        '''
+        """
         Find a result in the linker.
 
         Args:
@@ -157,9 +164,10 @@ class Linker(Metadata):
 
         Returns:
             Any: The result.
-        '''
+        """
         # search all results and return the first one that matches the name
         res = []
+
         def match_(key, search_name):
             if strict:
                 return str(search_name) == str(key)
@@ -169,7 +177,7 @@ class Linker(Metadata):
             if match_(k, name):
                 res.append(self.results[k])
         if single:
-            assert len(res) == 1, f'Found {len(res)} results for name {name}. Expected 1.'
+            assert len(res) == 1, f"Found {len(res)} results for name {name}. Expected 1."
         if len(res) == 0:
             return None
         if len(res) == 1:
@@ -180,13 +188,16 @@ class Linker(Metadata):
 class PropertyReservedError(AttributeError):
     def __init__(self, property_name):
         self.property_name = property_name
-        super().__init__(f"Cannot set reserved property '{property_name}'. This property is defined in the 'Symbol' base class and cannot be assigned.")
+        super().__init__(
+            f"Cannot set reserved property '{property_name}'. This property is defined in the 'Symbol' base class and cannot be assigned."
+        )
 
 
 class SymbolMeta(type):
     """
     Metaclass to unify metaclasses of mixed-in primitives.
     """
+
     def __call__(cls, *args, **kwargs):
         obj = type.__call__(cls, *args, **kwargs)
         obj.__post_init__(*args, **kwargs)
@@ -204,8 +215,8 @@ class SymbolMeta(type):
         # create a new cls type that inherits from Symbol and the mixin primitive types
         cls = type.__new__(mcls, name, bases, attrs)
         # inherit the base class module for dynamic type creation
-        if '__module__' in attrs:
-            cls.__module__ = attrs['__module__']
+        if "__module__" in attrs:
+            cls.__module__ = attrs["__module__"]
         elif len(bases) > 0:
             cls.__module__ = bases[0].__module__
         return cls
@@ -218,10 +229,26 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
     _metadata_primitives: ClassVar[dict[str, Callable]] = {}
     _metadata._primitives = _metadata_primitives
     _dynamic_context: ClassVar[dict[str, list[str]]] = {}
-    _RESERVED_PROPERTIES: ClassVar[set[str]] = {'graph', 'linker', 'parent', 'children', 'metadata', 'value', 'root', 'nodes', 'edges', 'global_context', 'static_context', 'dynamic_context', 'shape'}
+    _RESERVED_PROPERTIES: ClassVar[set[str]] = {
+        "graph",
+        "linker",
+        "parent",
+        "children",
+        "metadata",
+        "value",
+        "root",
+        "nodes",
+        "edges",
+        "global_context",
+        "static_context",
+        "dynamic_context",
+        "shape",
+    }
 
-    def __init__(self, *value, static_context: str | None = '', dynamic_context: str | None = None, **kwargs) -> None:
-        '''
+    def __init__(
+        self, *value, static_context: str | None = "", dynamic_context: str | None = None, **kwargs
+    ) -> None:
+        """
         Initialize a Symbol instance with a specified value. Unwraps nested symbols.
 
         Args:
@@ -231,37 +258,35 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
         Attributes:
             value (Any): The value of the symbol.
             metadata (Optional[Dict[str, Any]]): The metadata associated with the symbol.
-        '''
+        """
         super().__init__()
-        self._value     = None
+        self._value = None
         # store kwargs for new symbol instance type passing
-        self._kwargs    = {
-            'static_context': static_context,
-            **kwargs
-        }
-        self._metadata  = Metadata() # use global metadata by default
+        self._kwargs = {"static_context": static_context, **kwargs}
+        self._metadata = Metadata()  # use global metadata by default
         self._metadata.symbol_type = type(self)
-        self._parent    = None
-        self._children  = []
-        self._static_context  = static_context
+        self._parent = None
+        self._children = []
+        self._static_context = static_context
         self._dynamic_context = dynamic_context or Symbol._dynamic_context
         # if value is a single value, unwrap it
-        _value          = self._unwrap_symbols_args(*value)
-        self._value     = _value
+        _value = self._unwrap_symbols_args(*value)
+        self._value = _value
         # construct dependency graph for symbol
         self._construct_dependency_graph(*value)
 
-    def __post_init__(self, *args, **kwargs): # this is called at the end of __init__
-        '''
+    def __post_init__(self, *args, **kwargs):  # this is called at the end of __init__
+        """
         Post-initialization method that is called at the end of the __init__ method.
-        '''
+        """
+
         def _func(k, v):
             # check if property is of type Symbol and not private and a class variable (not a function)
-            if isinstance(v, Symbol) and not k.startswith('_') and v is not self:
+            if isinstance(v, Symbol) and not k.startswith("_") and v is not self:
                 v._parent = self
                 self._children.append(v)
             # else if iterable, check if it contains symbols
-            elif isinstance(v, (list, tuple)) and not k.startswith('_'):
+            elif isinstance(v, (list, tuple)) and not k.startswith("_"):
                 for i in v:
                     _func(k, i)
 
@@ -275,7 +300,10 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
         if len(args) == 1:
             return self._unwrap_single_symbol_arg(args[0], nested=nested)
         if len(args) > 1:
-            return [self._unwrap_symbols_args(a, nested=True) if isinstance(a, Symbol) else a for a in args]
+            return [
+                self._unwrap_symbols_args(a, nested=True) if isinstance(a, Symbol) else a
+                for a in args
+            ]
         return None
 
     def _unwrap_single_symbol_arg(self, value: Any, *, nested: bool) -> Any:
@@ -283,9 +311,9 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
             return value
         if isinstance(value, Symbol):
             if not nested:
-                self._metadata       = value.metadata
+                self._metadata = value.metadata
                 self._static_context = value.static_context
-                self._kwargs         = value._kwargs
+                self._kwargs = value._kwargs
             return value.value
         if isinstance(value, list):
             return [self._unwrap_symbols_args(v, nested=True) for v in value]
@@ -301,12 +329,12 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
         return value
 
     def _construct_dependency_graph(self, *value):
-        '''
+        """
         Construct a dependency graph for the symbol.
 
         Args:
             value (Any): The value of the symbol.
-        '''
+        """
         # for each value
         for v in value:
             if isinstance(v, Symbol) and v is not self:
@@ -315,13 +343,16 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
                 # add new instance to children of previous instance
                 self._children.append(v)
 
-    def __new__(cls, *_args,
-                mixin: bool | None = None,
-                primitives: list[type] | None = None,
-                callables: list[tuple[str, Callable]] | None = None,
-                semantic: bool = False,
-                **kwargs) -> "Symbol":
-        '''
+    def __new__(
+        cls,
+        *_args,
+        mixin: bool | None = None,
+        primitives: list[type] | None = None,
+        callables: list[tuple[str, Callable]] | None = None,
+        semantic: bool = False,
+        **kwargs,
+    ) -> "Symbol":
+        """
         Create a new Symbol instance.
 
         Args:
@@ -334,10 +365,10 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
 
         Returns:
             Symbol: The new Symbol instance.
-        '''
-        use_mixin           = mixin if mixin is not None else cls._mixin
+        """
+        use_mixin = mixin if mixin is not None else cls._mixin
         standard_primitives = primitives is None
-        primitives          = primitives if not standard_primitives else cls._primitives
+        primitives = primitives if not standard_primitives else cls._primitives
         if not isinstance(primitives, list):
             primitives = [primitives]
         # Initialize instance as a combination of Symbol and the mixin primitive types
@@ -348,11 +379,11 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
         obj = super().__new__(target_cls)
         # store to inherit when creating new instances
         obj._kwargs = {
-            'mixin': use_mixin,
-            'primitives': primitives,
-            'callables': callables,
-            'semantic': semantic,
-            **kwargs
+            "mixin": use_mixin,
+            "primitives": primitives,
+            "callables": callables,
+            "semantic": semantic,
+            **kwargs,
         }
         # configure standard primitives
         if use_mixin and standard_primitives and semantic:
@@ -373,7 +404,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
         return obj
 
     def __setattr__(self, name: str, value: Any) -> None:
-        '''
+        """
         Set the attribute of the Symbol's value with the specified name.
 
         Args:
@@ -382,13 +413,13 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
 
         Raises:
             PropertyReservedError: If the property is reserved and cannot be set.
-        '''
+        """
         if name in self._RESERVED_PROPERTIES:
             raise PropertyReservedError(name)
         super().__setattr__(name, value)
 
     def __getattr__(self, name: str) -> Any:
-        '''
+        """
         Get the attribute of the Symbol's value with the specified name or the attribute of the Symbol value with the specified name.
 
         Args:
@@ -396,7 +427,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
 
         Returns:
             Any: The attribute of the Symbol's value with the specified name.
-        '''
+        """
         try:
             # try to get attribute from current instance
             if name in self.__dict__:
@@ -408,21 +439,21 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
             raise AttributeError(msg)
         except AttributeError as ex:
             # if has attribute and is public function
-            if hasattr(self.value, name) and not name.startswith('_'):
+            if hasattr(self.value, name) and not name.startswith("_"):
                 return getattr(self.value, name)
             raise ex
 
     def __array__(self, dtype=None):
-        '''
+        """
         Get the numpy array representation of the Symbol's value.
 
         Returns:
             np.ndarray: The numpy array representation of the Symbol's value.
-        '''
+        """
         return self.embedding.astype(dtype, copy=False)
 
     def __buffer__(self, flags=0):
-        '''
+        """
         Get the buffer of the Symbol's value.
 
         Args:
@@ -430,12 +461,12 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
 
         Returns:
             memoryview: The buffer of the Symbol's value.
-        '''
+        """
         return memoryview(self.embedding)
 
     @staticmethod
     def symbols(*values) -> list["Symbol"]:
-        '''
+        """
         Create a list of Symbol instances from a list of values.
 
         Args:
@@ -443,11 +474,11 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
 
         Returns:
             List[Symbol]: The list of Symbol instances.
-        '''
+        """
         return [Symbol(value) for value in values]
 
     def __reduce__(self):
-        '''
+        """
         This method is called by pickle to serialize the object.
         It returns a tuple that contains:
         - A callable object that when called produces a new object (e.g., the class of the object)
@@ -456,7 +487,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
 
         Returns:
             tuple: A tuple containing the callable object, the arguments for the callable object, and the state of the object.
-        '''
+        """
         # Get the state of the object
         state = self.__getstate__()
 
@@ -479,7 +510,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
     # This will be called by pickle with the info from __reduce__ to recreate the dynamic class
     @staticmethod
     def _reconstruct_class(base_cls, use_mixin, primitives_info):
-        '''
+        """
         Reconstruct the class from the serialized state.
 
         Args:
@@ -489,53 +520,53 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
 
         Returns:
             Type: The reconstructed class.
-        '''
+        """
         if use_mixin:
             # Convert primitive info tuples back to types
-            primitives     = [primitive for primitive, name in primitives_info]
+            primitives = [primitive for primitive, name in primitives_info]
             # Create new cls with UnifiedMeta metaclass
             cls = SymbolMeta(base_cls.__name__, (base_cls, *tuple(primitives)), {})
             return cls()
         return base_cls()
 
     def __getstate__(self) -> dict[str, Any]:
-        '''
+        """
         Get the state of the symbol for serialization.
 
         Returns:
             dict: The state of the symbol.
-        '''
+        """
         state = vars(self).copy()
-        state.pop('_metadata', None)
-        state.pop('_parent', None)
-        state.pop('_children', None)
+        state.pop("_metadata", None)
+        state.pop("_parent", None)
+        state.pop("_children", None)
         return state
 
     def __setstate__(self, state) -> None:
-        '''
+        """
         Set the state of the symbol for deserialization.
 
         Args:
             state (dict): The state to set the symbol to.
-        '''
+        """
         vars(self).update(state)
-        self._metadata   = Metadata()
+        self._metadata = Metadata()
         self._metadata.symbol_type = type(self)
-        self._kwargs     = self._kwargs
-        self._parent     = None
-        self._children   = []
+        self._kwargs = self._kwargs
+        self._parent = None
+        self._children = []
 
     def json(self) -> dict[str, Any]:
-        '''
+        """
         Get the json-serializable dictionary representation of the Symbol instance.
 
         Returns:
             dict: The json-serializable dictionary representation of the Symbol instance.
-        '''
+        """
         return self.__getstate__()
 
     def serialize(self):
-        '''
+        """
         Encode an Symbol instance into its dictionary representation.
 
         Args:
@@ -543,11 +574,11 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
 
         Returns:
             dict: The dictionary representation of the Symbol instance.
-        '''
+        """
         return json.dumps(self, cls=SymbolEncoder)
 
     def _to_symbol(self, value: Any, **kwargs) -> "Symbol":
-        '''
+        """
         Convert a value to a Symbol instance.
 
         Args:
@@ -555,8 +586,8 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
 
         Returns:
             Symbol: The Symbol instance.
-        '''
-        type_  = Symbol
+        """
+        type_ = Symbol
         if isinstance(value, type_):
             return value
         # inherit kwargs for new symbol instance
@@ -564,7 +595,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
         return type_(value, **kwargs)
 
     def _to_type(self, value: Any, **kwargs) -> "Symbol":
-        '''
+        """
         Convert a value to its own type instance.
 
         Args:
@@ -572,8 +603,8 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
 
         Returns:
             Type: The type instance.
-        '''
-        type_  = type(self)
+        """
+        type_ = type(self)
         if isinstance(value, type_):
             return value
         # inherit kwargs for new symbol instance
@@ -582,101 +613,101 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
 
     @property
     def _symbol_type(self) -> "Symbol":
-        '''
+        """
         Get the type of the Symbol instance.
 
         Returns:
             Symbol: The type of the Symbol instance.
-        '''
+        """
         return Symbol
 
     def __hash__(self) -> int:
-        '''
+        """
         Get the hash value of the symbol.
 
         Returns:
             int: The hash value of the symbol.
-        '''
+        """
         return str(self.value).__hash__()
 
     @property
     def metadata(self) -> dict[str, Any]:
-        '''
+        """
         Get the metadata associated with the symbol.
 
         Returns:
             Dict[str, Any]: The metadata associated with the symbol.
-        '''
+        """
         return self._metadata
 
     @property
     def value(self) -> Any:
-        '''
+        """
         Get the value of the symbol.
 
         Returns:
             Any: The value of the symbol.
-        '''
+        """
         return self._value
 
     @property
     def global_context(self) -> str:
-        '''
+        """
         Get the global context of the symbol, which consists of the static and dynamic context.
 
         Returns:
             str: The global context of the symbol.
-        '''
+        """
         return (self.static_context, self.dynamic_context)
 
     @property
     def static_context(self) -> str:
-        '''
+        """
         Get the static context of the symbol which is defined by the user when creating a symbol subclass.
 
         Returns:
             str: The static context of the symbol.
-        '''
-        return f'{self._static_context}' if self._static_context else ''
+        """
+        return f"{self._static_context}" if self._static_context else ""
 
     @static_context.setter
     def static_context(self, value: str):
-        '''
+        """
         Set the static context of the symbol which is defined by the user when creating a symbol subclass.
-        '''
+        """
         self._static_context = value
 
     @property
     def dynamic_context(self) -> str:
-        '''
+        """
         Get the dynamic context which is defined by the user at runtime.
         It helps to alter the behavior of the symbol at runtime.
 
         Returns:
             str: The dynamic context associated with this symbol type.
-        '''
+        """
         # if dynamic context is manually set to a string, return it
         if isinstance(self._dynamic_context, str):
             return self._dynamic_context
         type_ = str(type(self))
         if type_ not in Symbol._dynamic_context:
             Symbol._dynamic_context[type_] = []
-            return ''
+            return ""
         dyn_ctxt = Symbol._dynamic_context[type_]
         if len(dyn_ctxt) == 0:
-            return ''
+            return ""
         sym_val = [str(v.value) if isinstance(v, Symbol) else str(v) for v in dyn_ctxt]
-        val = '\n'.join(sym_val)
-        return f'\n{val}' if val else ''
+        val = "\n".join(sym_val)
+        return f"\n{val}" if val else ""
 
     @property
     def root(self) -> "Symbol":
-        '''
+        """
         Get the root of the symbol.
 
         Returns:
             Symbol: The root of the symbol.
-        '''
+        """
         root = self
         while root.parent is not None:
             root = root.parent
@@ -684,12 +715,13 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
 
     @property
     def nodes(self) -> list["Symbol"]:
-        '''
+        """
         Get all nodes descending recursively from the symbol.
 
         Returns:
             List[Symbol]: All nodes of the symbol.
-        '''
+        """
+
         def _func(node, nodes):
             nodes.append(node)
             for child in node.children:
@@ -701,12 +733,13 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
 
     @property
     def edges(self) -> list[tuple]:
-        '''
+        """
         Get all edges descending recursively from the symbol.
 
         Returns:
             List[tuple]: All edges of the symbol.
-        '''
+        """
+
         def _func(node, edges):
             for child in node.children:
                 edges.append((node, child))
@@ -718,46 +751,46 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
 
     @property
     def graph(self) -> (list["Symbol"], list[tuple]):
-        '''
+        """
         Get the graph representation of the symbol.
 
         Returns:
             List[Symbol], List[tuple]: The nodes and edges of the symbol.
-        '''
+        """
         return self.nodes, self.edges
 
     @property
     def linker(self) -> list["Symbol"]:
-        '''
+        """
         Returns the link object metadata by descending recursively from the root of the symbol to the root_link object.
 
         Returns:
             List[Symbol]: All results of the symbol.
-        '''
+        """
         return self.root.metadata.root_link
 
     @property
     def parent(self) -> "Symbol":
-        '''
+        """
         Get the parent of the symbol.
 
         Returns:
             Symbol: The parent of the symbol.
-        '''
+        """
         return self._parent
 
     @property
     def children(self) -> list["Symbol"]:
-        '''
+        """
         Get the children of the symbol.
 
         Returns:
             List[Symbol]: The children of the symbol.
-        '''
+        """
         return self._children
 
     def _root_link(self, sym: Any, **_kwargs) -> Any:
-        '''
+        """
         Call the forward method and assign the result to the graph value attribute.
 
         Args:
@@ -766,7 +799,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
 
         Returns:
             Any: The result of the forward method.
-        '''
+        """
         # transport results to the root node for global access
         if self is not self.root and not self.metadata.detach:
             ref = self.root.metadata
@@ -776,7 +809,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
                 ref.root_link.results = {}
             prev = None
             if len(ref.root_link.results) > 0:
-                prev = list(ref.root_link.results.values())[-1] # get previous result
+                prev = list(ref.root_link.results.values())[-1]  # get previous result
             # create new symbol to avoid circular references
             res_ = Symbol(sym)
             if prev is not None and prev is not res_.root:
@@ -785,14 +818,14 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
             ref.root_link.results[self.__repr__()] = res_
 
     def adapt(self, context: str, types: list[type] | None = None) -> None:
-        '''
+        """
         Update the dynamic context with a given runtime context.
 
         Args:
             context (str): The context to be added to the dynamic context.
             type (Type): The type used to update the dynamic context
 
-        '''
+        """
         if types is None:
             types = []
         if not isinstance(types, list):
@@ -808,9 +841,9 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
             Symbol._dynamic_context[type_key].append(str(context))
 
     def clear(self, types: list[type] | None = None) -> None:
-        '''
+        """
         Clear the dynamic context associated with this symbol type.
-        '''
+        """
         if types is None:
             types = []
         if not isinstance(types, list):
@@ -827,33 +860,33 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
             Symbol._dynamic_context[type_key].clear()
 
     def __len__(self) -> int:
-        '''
+        """
         Get the length of the value of the Symbol.
 
         Returns:
             int: The length of the value of the Symbol.
-        '''
+        """
         return len(self.value)
 
     @property
     def shape(self) -> tuple:
-        '''
+        """
         Get the shape of the value of the Symbol.
 
         Returns:
             tuple: The shape of the value of the Symbol.
-        '''
+        """
         return self.value.shape
 
     def __str__(self) -> str:
-        '''
+        """
         Get the string representation of the Symbol's value.
 
         Returns:
             str: The string representation of the Symbol's value.
-        '''
+        """
         if self.value is None:
-            return ''
+            return ""
         if isinstance(self.value, (list, np.ndarray, tuple)):
             return str([str(v) for v in self.value])
         if isinstance(self.value, dict):
@@ -863,54 +896,56 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
         return str(self.value)
 
     def __repr__(self, simplified: bool = False) -> str:
-        '''
+        """
         Get the representation of the Symbol object as a string.
 
         Returns:
             str: The representation of the Symbol object.
-        '''
+        """
         # class with full path
-        class_ = self.__class__.__module__ + '.' + self.__class__.__name__
-        hex_   = hex(id(self))
-        val    = str(self.value)
+        class_ = self.__class__.__module__ + "." + self.__class__.__name__
+        hex_ = hex(id(self))
+        val = str(self.value)
         # only show first n characters of value and then add '...' and the last x characters
         if len(val) > 50:
-            val = val[:25] + ' ... ' + val[-20:]
-        return f'<class {class_} at {hex_}>(value={val})' if not simplified else f'{class_} at {hex_}'
+            val = val[:25] + " ... " + val[-20:]
+        return (
+            f"<class {class_} at {hex_}>(value={val})" if not simplified else f"{class_} at {hex_}"
+        )
 
     def _repr_html_(self) -> str:
-        '''
+        """
         Get the HTML representation of the Symbol's value.
 
         Returns:
             str: The HTML representation of the Symbol's value.
-        '''
+        """
         return html.escape(self.__repr__())
 
     def __iter__(self) -> Iterator:
-        '''
+        """
         Get an iterator for the Symbol's value.
         If the Symbol's value is a list, tuple, or numpy.ndarray, iterate over the elements. Otherwise, create a new list with a single item and iterate over the list.
 
         Returns:
             Iterator: An iterator for the Symbol's value.
-        '''
+        """
         if isinstance(self.value, (list, tuple, np.ndarray)):
             return iter(self.value)
 
-        return self.list('item').value.__iter__()
+        return self.list("item").value.__iter__()
 
     def __reversed__(self) -> Iterator:
-        '''
+        """
         Get a reversed iterator for the Symbol's value.
 
         Returns:
             Iterator: A reversed iterator for the Symbol's value.
-        '''
+        """
         return reversed(list(self.__iter__()))
 
     def __next__(self) -> Any:
-        '''
+        """
         Get the next item in the iterable value of the Symbol.
         If it is not a list, tuple, or numpy array, the method falls back to using the @core.next() decorator, which retrieves and returns the next item using core functions.
 
@@ -919,11 +954,11 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
 
         Raises:
             StopIteration: If the iterable value reaches its end.
-        '''
+        """
         return next(self.__iter__())
 
     def primitive(self, name: str, callable: callable) -> None:
-        '''
+        """
         Set a primitive function to the Symbol instance.
 
         Args:
@@ -933,21 +968,25 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
 
         Args:
             callable (callable): The primitive function to set.
-        '''
+        """
+
         def _func(*args, **kwargs):
             return callable(self, *args, **kwargs)
+
         setattr(self, name, _func)
 
     @staticmethod
     def _global_primitive(name: str, callable: callable) -> None:
-        '''
+        """
         Set a primitive function to the Symbol class.
 
         Args:
             callable (callable): The primitive function to set.
-        '''
+        """
+
         def _func(obj):
             return lambda *args, **kwargs: callable(obj, *args, **kwargs)
+
         Symbol._metadata._primitives[name] = _func
 
 
@@ -956,7 +995,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
 # Need to contact Python developers to fix this bug.
 class Call:
     def __new__(cls, name, callable: Callable) -> Any:
-        '''
+        """
         Prepare a callable for use in a Symbol instance.
 
         Args:
@@ -964,15 +1003,17 @@ class Call:
 
         Returns:
             Callable: The prepared callable.
-        '''
+        """
+
         def _func(obj):
             return lambda *args, **kwargs: callable(obj, *args, **kwargs)
+
         return (name, _func)
 
 
 class GlobalSymbolPrimitive:
     def __new__(cls, name, callable: Callable) -> Any:
-        '''
+        """
         Prepare a callable for use in a Symbol instance.
 
         Args:
@@ -980,7 +1021,7 @@ class GlobalSymbolPrimitive:
 
         Returns:
             Callable: The prepared callable.
-        '''
+        """
         Symbol._global_primitive(name, callable)
 
 
@@ -992,9 +1033,8 @@ class ExpressionEncoder(JSONEncoder):
 
 
 class Expression(Symbol):
-
-    def __init__(self, value = None, *args, **kwargs):
-        '''
+    def __init__(self, value=None, *args, **kwargs):
+        """
         Create an Expression object that will be evaluated lazily using the forward method.
 
         Args:
@@ -1002,12 +1042,12 @@ class Expression(Symbol):
                                    is computed using the forward method when called. Defaults to None.
             *args: Variable length argument list.
             **kwargs: Arbitrary keyword arguments.
-        '''
+        """
         super().__init__(value, *args, **kwargs)
         self._sym_return_type = type(self)
 
     def __call__(self, *args, **kwargs) -> Any:
-        '''
+        """
         Evaluate the expression using the forward method and assign the result to the value attribute.
 
         Args:
@@ -1016,7 +1056,7 @@ class Expression(Symbol):
 
         Returns:
             Any: The result of the forward method.
-        '''
+        """
         # evaluate the expression
         res = self.forward(*args, **kwargs)
         # store the result in the root node and link it to the previous result
@@ -1025,7 +1065,7 @@ class Expression(Symbol):
 
     def __getstate__(self):
         state = super().__getstate__().copy()
-        state.pop('_sym_return_type', None)
+        state.pop("_sym_return_type", None)
         return state
 
     def __setstate__(self, state):
@@ -1033,16 +1073,16 @@ class Expression(Symbol):
         self._sym_return_type = type(self)
 
     def __json__(self):
-        '''
+        """
         Get the json-serializable dictionary representation of the Expression instance.
 
         Returns:
             dict: The json-serializable dictionary representation of the Expression instance.
-        '''
+        """
         return self.__getstate__()
 
     def serialize(self):
-        '''
+        """
         Encode an Expression instance into its dictionary representation.
 
         Args:
@@ -1050,31 +1090,33 @@ class Expression(Symbol):
 
         Returns:
             dict: The dictionary representation of the Expression instance.
-        '''
+        """
         return json.dumps(self, cls=ExpressionEncoder)
 
     @property
     def sym_return_type(self) -> type:
-        '''
+        """
         Returns the casting type of this expression.
 
         Returns:
             Type: The casting type of this expression. Defaults to the current Expression-type.
-        '''
+        """
         return self._sym_return_type
 
     @sym_return_type.setter
     def sym_return_type(self, type: type) -> None:
-        '''
+        """
         Sets the casting type of this expression.
 
         Args:
             type (Type): The casting type of this expression.
-        '''
+        """
         self._sym_return_type = type
 
-    def forward(self, *args, **kwargs) -> Symbol: #TODO make reserved kwargs with underscore: __<cmd>__
-        '''
+    def forward(
+        self, *args, **kwargs
+    ) -> Symbol:  # TODO make reserved kwargs with underscore: __<cmd>__
+        """
         Needs to be implemented by subclasses to specify the behavior of the expression during evaluation.
 
         Args:
@@ -1083,12 +1125,12 @@ class Expression(Symbol):
 
         Returns:
             Symbol: The evaluated result of the implemented forward method.
-        '''
+        """
         raise NotImplementedError
 
     @staticmethod
-    def command(engines: list[str] | None = None, **kwargs) -> 'Symbol':
-        '''
+    def command(engines: list[str] | None = None, **kwargs) -> "Symbol":
+        """
         Execute command(s) on engines.
 
         Args:
@@ -1097,18 +1139,19 @@ class Expression(Symbol):
 
         Returns:
             Symbol: An Expression object representing the command execution result.
-        '''
+        """
         if engines is None:
-            engines = ['all']
+            engines = ["all"]
 
         @core.command(engines=engines, **kwargs)
         def _func(_):
             pass
+
         return Expression(_func(Expression()))
 
     @staticmethod
-    def register(engines: dict[str, Any], **kwargs) -> 'Symbol':
-        '''
+    def register(engines: dict[str, Any], **kwargs) -> "Symbol":
+        """
         Configure multiple engines.
 
         Args:
@@ -1117,24 +1160,26 @@ class Expression(Symbol):
 
         Returns:
             Symbol: An Expression object representing the register result.
-        '''
+        """
+
         @core.register(engines=engines, **kwargs)
         def _func(_):
             pass
+
         return Expression(_func(Expression()))
 
     def copy(self) -> Any:
-        '''
+        """
         Returns a deep copy of the own object.
 
         Returns:
             Any: A deep copy of the own object.
-        '''
+        """
         return copy.deepcopy(self)
 
     @staticmethod
-    def prompt(message: str, **kwargs) -> 'Symbol':
-        '''
+    def prompt(message: str, **kwargs) -> "Symbol":
+        """
         General raw input prompt method.
 
         Args:
@@ -1143,16 +1188,18 @@ class Expression(Symbol):
 
         Returns:
             Symbol: An Expression object representing the prompt result.
-        '''
+        """
+
         @core.prompt(message=message, **kwargs)
         def _func(_):
             pass
+
         return Expression(_func(None))
 
 
 class Result(Expression):
-    def __init__(self, value = None, *_args, **kwargs):
-        '''
+    def __init__(self, value=None, *_args, **kwargs):
+        """
         Create a Result object that stores the results operations, including the raw result, value and metadata, if any.
 
         Args:
@@ -1160,8 +1207,10 @@ class Result(Expression):
                                    is computed using the forward method when called. Defaults to None.
             *args: Variable length argument list.
             **kwargs: Arbitrary keyword arguments.
-        '''
-        super().__init__(value, **kwargs) # value is the same as raw when initialized, however, it can be changed later
+        """
+        super().__init__(
+            value, **kwargs
+        )  # value is the same as raw when initialized, however, it can be changed later
         self._sym_return_type = type(self)
         try:
             # try to make the values easily accessible
@@ -1172,20 +1221,20 @@ class Result(Expression):
 
     @property
     def value(self) -> Any:
-        '''
+        """
         Get the value of the symbol.
 
         Returns:
             Any: The value of the symbol.
-        '''
+        """
         return self._value
 
     @value.setter
     def value(self, value: Any) -> None:
-        '''
+        """
         Set the value of the Result object.
 
         Args:
             value (Any): The value to set the Result object to.
-        '''
+        """
         self._value = value

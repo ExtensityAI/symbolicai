@@ -1,4 +1,3 @@
-
 from ... import core
 from ...symbol import Expression
 
@@ -12,4 +11,5 @@ class llava(Expression):
         @core.caption(image=image, prompt=query, **kwargs)
         def _func(_) -> str:
             pass
+
         return self.sym_return_type(_func(self))
