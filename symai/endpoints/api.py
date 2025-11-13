@@ -1,7 +1,7 @@
 import importlib
 import inspect
 import pickle
-from typing import Any
+from typing import Any, Generic, TypeVar
 
 import redis
 from fastapi import APIRouter, FastAPI, HTTPException, Security, status
@@ -34,7 +34,10 @@ def is_redis_running(host: str, port: int) -> bool:
         return False
 
 
-class GenericRepository[T]:
+T = TypeVar('T')
+
+
+class GenericRepository(Generic[T]):
     def __init__(self, redis_client: redis.Redis, id_key: str, use_redis: bool = True):
         self.storage: dict[str, T] = {}  # In-memory dictionary to mock Redis
         self.use_redis     = use_redis

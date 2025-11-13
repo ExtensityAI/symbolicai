@@ -3,13 +3,15 @@ import html
 import json
 from collections.abc import Callable, Iterator
 from json import JSONEncoder
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Generic, TypeVar
 
 import numpy as np
 from box import Box
 
 from . import core
 from .ops import SYMBOL_PRIMITIVES
+
+T = TypeVar('T')
 
 
 class SymbolEncoder(JSONEncoder):
@@ -209,7 +211,7 @@ class SymbolMeta(type):
         return cls
 
 
-class Symbol(metaclass=SymbolMeta):
+class Symbol(Generic[T], metaclass=SymbolMeta):
     _mixin: ClassVar[bool] = True
     _primitives: ClassVar[dict[str, type]] = SYMBOL_PRIMITIVES
     _metadata: ClassVar[Metadata] = Metadata()
