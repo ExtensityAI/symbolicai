@@ -1,4 +1,3 @@
-
 from ....utils import UserMessage
 from ...base import Engine
 
@@ -9,14 +8,14 @@ class UserInputEngine(Engine):
         self.name = self.__class__.__name__
 
     def id(self) -> str:
-        return 'userinput'
+        return "userinput"
 
     def forward(self, argument):
         msg = argument.prop.prepared_input
         kwargs = argument.kwargs
 
-        mock = kwargs.get('mock', False)
-        if mock: # mock user input
+        mock = kwargs.get("mock", False)
+        if mock:  # mock user input
             UserMessage(msg)
             rsp = mock
         else:

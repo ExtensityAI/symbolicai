@@ -14,8 +14,8 @@ class SymAIConfig:
     def __init__(self):
         """Initialize configuration paths based on current Python environment."""
         self._env_path = Path(sys.prefix)
-        self._env_config_dir = self._env_path / '.symai'
-        self._home_config_dir = Path.home() / '.symai'
+        self._env_config_dir = self._env_path / ".symai"
+        self._home_config_dir = Path.home() / ".symai"
         self._debug_dir = Path.cwd()  # Current working directory for debug mode
         self._active_paths: dict[str, Path] = {}
 
@@ -31,7 +31,8 @@ class SymAIConfig:
         target_path = Path(key)
         target_name = target_path.name or key
         stale_keys: list[Path] = [
-            existing_key for existing_key in self._active_paths
+            existing_key
+            for existing_key in self._active_paths
             if isinstance(existing_key, Path)
             and (existing_key.name == target_name or str(existing_key) == key)
         ]
@@ -42,8 +43,8 @@ class SymAIConfig:
     def config_dir(self) -> Path:
         """Returns the active configuration directory based on priority system."""
         # Debug mode takes precedence
-        if (self._debug_dir / 'symai.config.json').exists():
-            return self._debug_dir / '.symai'
+        if (self._debug_dir / "symai.config.json").exists():
+            return self._debug_dir / ".symai"
         # Then environment config
         if self._env_config_dir.exists():
             return self._env_config_dir
@@ -60,11 +61,11 @@ class SymAIConfig:
         # Only use the basename for managed directories
         normalized_filename = Path(normalized_filename).name
         debug_config = self._debug_dir / normalized_filename
-        env_config   = self._env_config_dir / normalized_filename
-        home_config  = self._home_config_dir / normalized_filename
+        env_config = self._env_config_dir / normalized_filename
+        home_config = self._home_config_dir / normalized_filename
 
         # Check debug first (only valid for symai.config.json)
-        if normalized_filename == 'symai.config.json' and debug_config.exists():
+        if normalized_filename == "symai.config.json" and debug_config.exists():
             return debug_config
 
         # If forced to fallback, return home config if it exists, otherwise environment
@@ -88,7 +89,7 @@ class SymAIConfig:
             self._remove_legacy_path_keys(key)
             self._active_paths.pop(key, None)
             return {}
-        with config_path.open(encoding='utf-8') as f:
+        with config_path.open(encoding="utf-8") as f:
             config = json.load(f)
         self._remove_legacy_path_keys(key)
         self._active_paths[key] = config_path
@@ -99,7 +100,7 @@ class SymAIConfig:
         config_path = self.get_config_path(filename, fallback_to_home=fallback_to_home)
         key = self._canonical_key(filename)
         config_path.parent.mkdir(parents=True, exist_ok=True)
-        with config_path.open('w', encoding='utf-8') as f:
+        with config_path.open("w", encoding="utf-8") as f:
             json.dump(data, f, indent=4)
         self._remove_legacy_path_keys(key)
         self._active_paths[key] = config_path
@@ -117,9 +118,7 @@ class SymAIConfig:
         if cached is not None:
             return cached
         for legacy_key, cached_path in list(self._active_paths.items()):
-            if isinstance(legacy_key, Path) and (
-                legacy_key.name == key or str(legacy_key) == key
-            ):
+            if isinstance(legacy_key, Path) and (legacy_key.name == key or str(legacy_key) == key):
                 self._active_paths.pop(legacy_key, None)
                 self._active_paths[key] = cached_path
                 return cached_path
@@ -127,7 +126,7 @@ class SymAIConfig:
 
     def get_active_config_dir(self) -> Path:
         """Returns the directory backing the active symai configuration."""
-        symai_key = self._canonical_key('symai.config.json')
+        symai_key = self._canonical_key("symai.config.json")
         cached = self._active_paths.get(symai_key)
         if cached is not None:
             return cached.parent
@@ -139,6 +138,7 @@ class SymAIConfig:
                 self._active_paths[symai_key] = cached_path
                 return cached_path.parent
         return self.config_dir
+
 
 SYMAI_CONFIG = {}
 SYMSH_CONFIG = {}

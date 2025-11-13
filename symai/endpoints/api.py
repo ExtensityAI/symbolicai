@@ -17,10 +17,11 @@ from ..symbol import Expression, Symbol
 from ..utils import UserMessage
 
 # Configure Redis server connection parameters and executable path
-HOST  = 'localhost'
-PORT  = 6379
+HOST = "localhost"
+PORT = 6379
 DEBUG = True
-API_KEY = settings.SYMAI_CONFIG.get('FASTAPI_API_KEY', None)
+API_KEY = settings.SYMAI_CONFIG.get("FASTAPI_API_KEY", None)
+
 
 def is_redis_running(host: str, port: int) -> bool:
     """Check if a Redis server is running at the given host and port."""
@@ -30,29 +31,31 @@ def is_redis_running(host: str, port: int) -> bool:
         UserMessage(f"Redis server is running at {host}:{port}")
         return True
     except RedisConnectionError:
-        UserMessage(f"Redis server is not running at {host}:{port} or is not reachable - falling back to in-memory storage")
+        UserMessage(
+            f"Redis server is not running at {host}:{port} or is not reachable - falling back to in-memory storage"
+        )
         return False
 
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class GenericRepository(Generic[T]):
     def __init__(self, redis_client: redis.Redis, id_key: str, use_redis: bool = True):
         self.storage: dict[str, T] = {}  # In-memory dictionary to mock Redis
-        self.use_redis     = use_redis
-        self.id_key        = id_key  # Key used for storing the incremental ID counter
-        self.redis_client  = redis_client
+        self.use_redis = use_redis
+        self.id_key = id_key  # Key used for storing the incremental ID counter
+        self.redis_client = redis_client
         if self.use_redis:
-            self.set       = self._store_redis
-            self.get       = self._retrieve_redis
-            self.delete    = self._delete_redis
-            self.uid       = self._generate_id_redis
+            self.set = self._store_redis
+            self.get = self._retrieve_redis
+            self.delete = self._delete_redis
+            self.uid = self._generate_id_redis
         else:
-            self.set       = self._store_memory
-            self.get       = self._retrieve_memory
-            self.delete    = self._delete_memory
-            self.uid       = self._generate_id_memory
+            self.set = self._store_memory
+            self.get = self._retrieve_memory
+            self.delete = self._delete_memory
+            self.uid = self._generate_id_memory
 
     def _deserialize_object(self, serialized_item: bytes) -> T:
         """Deserialize the byte object back into a Python object of type T."""
@@ -75,7 +78,7 @@ class GenericRepository(Generic[T]):
 
     def _generate_id_memory(self) -> str:
         id_ = len(self.storage) + 1
-        return f'{self.id_key}:{id_}'
+        return f"{self.id_key}:{id_}"
 
     def _store_redis(self, item_id: str, item: T) -> None:
         item = self._serialize_object(item_id, item)
@@ -92,38 +95,44 @@ class GenericRepository(Generic[T]):
 
     def _generate_id_redis(self) -> str:
         id_ = self.redis_client.incr(self.id_key)
-        return f'{self.id_key}:{id_}'
+        return f"{self.id_key}:{id_}"
 
 
 # Initialize the Redis client
 redis_client = redis.Redis(
-    host=HOST,   # Or use the host where your Redis server is running
-    port=PORT,   # The default Redis port number
-    db=0         # The default database index
+    host=HOST,  # Or use the host where your Redis server is running
+    port=PORT,  # The default Redis port number
+    db=0,  # The default database index
 )
 
 # Initialize the FastAPI app and API router
-app                           = FastAPI(title="SymbolicAI API", version="1.0")
-api_key_header                = APIKeyHeader(name="X-API-Key")
-router                        = APIRouter()
-use_redis                     = is_redis_running(HOST, PORT)
+app = FastAPI(title="SymbolicAI API", version="1.0")
+api_key_header = APIKeyHeader(name="X-API-Key")
+router = APIRouter()
+use_redis = is_redis_running(HOST, PORT)
 
 # Instantiate the generic repositories with the counter keys
-symbol_repository             = GenericRepository[Symbol](redis_client, "sym_id", use_redis=use_redis)
-expression_repository         = GenericRepository[Expression](redis_client, "expr_id", use_redis=use_redis)
+symbol_repository = GenericRepository[Symbol](redis_client, "sym_id", use_redis=use_redis)
+expression_repository = GenericRepository[Expression](redis_client, "expr_id", use_redis=use_redis)
 # Register all types which subclass Expression and offer a get() method with default=None
 component_class_types = {
-    name: cls for name, cls in inspect.getmembers(importlib.import_module('symai.components'), inspect.isclass) if issubclass(cls, Expression)
+    name: cls
+    for name, cls in inspect.getmembers(
+        importlib.import_module("symai.components"), inspect.isclass
+    )
+    if issubclass(cls, Expression)
 }
-component_instance_repository = GenericRepository[Symbol | Expression](redis_client, "comp_id", use_redis=use_redis)
+component_instance_repository = GenericRepository[Symbol | Expression](
+    redis_client, "comp_id", use_redis=use_redis
+)
 
 
 def _load_extended_types():
     """Load extended classes lazily to avoid premature engine initialization."""
-    extended_module = importlib.import_module('symai.extended')
-    personas_module = importlib.import_module('symai.extended.personas')
-    sales_module = importlib.import_module('symai.extended.personas.sales')
-    student_module = importlib.import_module('symai.extended.personas.student')
+    extended_module = importlib.import_module("symai.extended")
+    personas_module = importlib.import_module("symai.extended.personas")
+    sales_module = importlib.import_module("symai.extended.personas.sales")
+    student_module = importlib.import_module("symai.extended.personas.student")
     return [
         extended_module.Conversation,
         personas_module.Persona,
@@ -132,14 +141,21 @@ def _load_extended_types():
         sales_module.ErikJames,
     ]
 
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 ### Symbols Endpoints ###
 
 
 class CreateSymbolRequest(BaseModel):
-    value: Any | None          = None
-    static_context: str | None = ''
+    value: Any | None = None
+    static_context: str | None = ""
 
 
 class UpdateSymbolRequest(BaseModel):
@@ -151,6 +167,7 @@ class SymbolMethodRequest(BaseModel):
     args: list[Any] = []
     kwargs: dict[str, Any] = {}
 
+
 def get_api_key(api_key_header: str = Security(api_key_header) if API_KEY else None) -> str:
     if API_KEY is None:
         return True
@@ -160,6 +177,7 @@ def get_api_key(api_key_header: str = Security(api_key_header) if API_KEY else N
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid or missing API Key",
     )
+
 
 @app.post("/symbol/")
 def create_symbol(symbol_request: CreateSymbolRequest, _api_key: str = Security(get_api_key)):
@@ -178,7 +196,9 @@ def get_symbol(symbol_id: str, _api_key: str = Security(get_api_key)):
 
 
 @app.patch("/symbol/{symbol_id}/")
-def update_symbol(symbol_id: str, update_request: UpdateSymbolRequest, _api_key: str = Security(get_api_key)):
+def update_symbol(
+    symbol_id: str, update_request: UpdateSymbolRequest, _api_key: str = Security(get_api_key)
+):
     symbol = symbol_repository.get(symbol_id)
     if symbol is None:
         raise HTTPException(status_code=404, detail="Symbol not found")
@@ -198,13 +218,20 @@ def delete_symbol(symbol_id: str, _api_key: str = Security(get_api_key)):
 
 @app.post("/symbol/{symbol_id}/{method_name}/")
 @core_ext.error_logging(debug=DEBUG)
-def operate_on_symbol(symbol_id: str, method_name: str, method_request: SymbolMethodRequest, _api_key: str = Security(get_api_key)):
+def operate_on_symbol(
+    symbol_id: str,
+    method_name: str,
+    method_request: SymbolMethodRequest,
+    _api_key: str = Security(get_api_key),
+):
     symbol = symbol_repository.get(symbol_id)
     if symbol is None:
         raise HTTPException(status_code=404, detail="Symbol not found")
     method = getattr(symbol, method_name, None)
     if method is None or not callable(method):
-        raise HTTPException(status_code=404, detail=f"Method {method_name} not found or is not callable")
+        raise HTTPException(
+            status_code=404, detail=f"Method {method_name} not found or is not callable"
+        )
     result = method(*method_request.args, **method_request.kwargs)
     return {"result": result.json() if isinstance(result, Symbol) else result}
 
@@ -221,7 +248,9 @@ class UpdateExpressionRequest(BaseModel):
 
 
 @app.post("/expression/")
-def create_expression(expression_request: CreateExpressionRequest, _api_key: str = Security(get_api_key)):
+def create_expression(
+    expression_request: CreateExpressionRequest, _api_key: str = Security(get_api_key)
+):
     expression = Expression(expression_request.value)
     expression_id = expression_repository.uid()
     expression_repository.set(expression_id, expression)
@@ -238,7 +267,9 @@ def get_expression(expression_id: str, _api_key: str = Security(get_api_key)):
 
 @app.post("/expression/{expression_id}/call/")
 @core_ext.error_logging(debug=DEBUG)
-def call_expression(expression_id: str, method_request: SymbolMethodRequest, _api_key: str = Security(get_api_key)):
+def call_expression(
+    expression_id: str, method_request: SymbolMethodRequest, _api_key: str = Security(get_api_key)
+):
     # Retrieve the expression instance by ID
     expression = expression_repository.get(expression_id)
     if expression is None:
@@ -249,19 +280,30 @@ def call_expression(expression_id: str, method_request: SymbolMethodRequest, _ap
 
 @app.post("/expression/{expression_id}/{method_name}/")
 @core_ext.error_logging(debug=DEBUG)
-def operate_on_expression(expression_id: str, method_name: str, method_request: SymbolMethodRequest, _api_key: str = Security(get_api_key)):
+def operate_on_expression(
+    expression_id: str,
+    method_name: str,
+    method_request: SymbolMethodRequest,
+    _api_key: str = Security(get_api_key),
+):
     expression = expression_repository.get(expression_id)
     if expression is None:
         raise HTTPException(status_code=404, detail="Expression not found")
     method = getattr(expression, method_name, None)
     if method is None or not callable(method):
-        raise HTTPException(status_code=404, detail=f"Method {method_name} not found or is not callable")
+        raise HTTPException(
+            status_code=404, detail=f"Method {method_name} not found or is not callable"
+        )
     result = method(*method_request.args, **method_request.kwargs)
     return {"result": result.json() if isinstance(result, Symbol) else result}
 
 
 @app.patch("/expression/{expression_id}/")
-def update_expression(expression_id: str, update_request: UpdateExpressionRequest, _api_key: str = Security(get_api_key)):
+def update_expression(
+    expression_id: str,
+    update_request: UpdateExpressionRequest,
+    _api_key: str = Security(get_api_key),
+):
     expression = expression_repository.get(expression_id)
     if expression is None:
         raise HTTPException(status_code=404, detail="Expression not found")
@@ -291,17 +333,17 @@ class AddComponentRequest(BaseModel):
 # Endpoint to instantiate a generic component class and get the ID
 class CreateComponentGenericRequest(BaseModel):
     class_name: str
-    init_args: list[Any]        = []
+    init_args: list[Any] = []
     init_kwargs: dict[str, Any] = {}
 
 
 # Modify the existing GenericRequest
 class GenericRequest(BaseModel):
     class_name: str
-    init_args: list[Any]            = {}
-    init_kwargs: dict[str, Any]     = {}
-    forward_args: list[ Any]        = {}
-    forward_kwargs: dict[str, Any]  = {}
+    init_args: list[Any] = {}
+    init_kwargs: dict[str, Any] = {}
+    forward_args: list[Any] = {}
+    forward_kwargs: dict[str, Any] = {}
 
 
 class UpdateComponentRequest(BaseModel):
@@ -318,7 +360,9 @@ def create_component(request: CreateComponentGenericRequest, _api_key: str = Sec
     instance = cls(*request.init_args, **request.init_kwargs)
     # Store the instance with a generated ID and return the ID
     instance_id = component_instance_repository.uid()
-    component_instance_repository.set(instance_id, instance)  # Assuming component_instance_repository exists
+    component_instance_repository.set(
+        instance_id, instance
+    )  # Assuming component_instance_repository exists
     return {"id": instance_id}
 
 
@@ -336,7 +380,7 @@ def get_component(instance_id: str, _api_key: str = Security(get_api_key)):
 @core_ext.error_logging(debug=DEBUG)
 def generic_forward(request: GenericRequest, _api_key: str = Security(get_api_key)):
     # Dynamically import the class from components module based on request.class_name
-    components_module = importlib.import_module('.components', package='symai')
+    components_module = importlib.import_module(".components", package="symai")
     cls = getattr(components_module, request.class_name)
     # Check if cls is subclass of Expression and instantiate
     if not issubclass(cls, components_module.Expression):
@@ -354,7 +398,9 @@ def generic_forward(request: GenericRequest, _api_key: str = Security(get_api_ke
 
 
 @app.patch("/components/{instance_id}/")
-def update_component(instance_id: str, update_request: UpdateComponentRequest, _api_key: str = Security(get_api_key)):
+def update_component(
+    instance_id: str, update_request: UpdateComponentRequest, _api_key: str = Security(get_api_key)
+):
     instance = component_instance_repository.get(instance_id)
     if instance is None:
         raise HTTPException(status_code=404, detail="Component instance not found")
@@ -377,14 +423,16 @@ def delete_component(instance_id: str, _api_key: str = Security(get_api_key)):
 # extended types loaded lazily to avoid early engine configuration
 extended_types = _load_extended_types()
 # Register only the extended types from the extended_types Union
-extended_class_types         = {c.__name__: c for c in extended_types}
-extended_instance_repository = GenericRepository[extended_types](redis_client, "ext_id", use_redis=use_redis)
+extended_class_types = {c.__name__: c for c in extended_types}
+extended_instance_repository = GenericRepository[extended_types](
+    redis_client, "ext_id", use_redis=use_redis
+)
 
 
 # Model definitions for extended classes
 class CreateExtendedRequest(BaseModel):
     class_name: str
-    init_args: list[Any]        = []
+    init_args: list[Any] = []
     init_kwargs: dict[str, Any] = {}
 
 
@@ -450,7 +498,9 @@ def get_extended(instance_id: str, _api_key: str = Security(get_api_key)):
 
 
 @app.patch("/extended/{instance_id}/")
-def update_extended(instance_id: str, update_request: UpdateExtendedRequest, _api_key: str = Security(get_api_key)):
+def update_extended(
+    instance_id: str, update_request: UpdateExtendedRequest, _api_key: str = Security(get_api_key)
+):
     # Retrieve the instance by its ID
     extended_instance = extended_instance_repository.get(instance_id)
     if extended_instance is None:
@@ -467,7 +517,9 @@ def delete_extended(instance_id: str, _api_key: str = Security(get_api_key)):
     # Attempt to delete the instance by its ID
     success = extended_instance_repository.delete(instance_id)
     if not success:
-        raise HTTPException(status_code=404, detail="Extended instance not found or already deleted")
+        raise HTTPException(
+            status_code=404, detail="Extended instance not found or already deleted"
+        )
     return {"message": "Extended instance deleted successfully"}
 
 

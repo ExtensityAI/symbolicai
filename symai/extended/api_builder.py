@@ -64,7 +64,7 @@ res = run(value) # [MANAGED] must contain this line, do not change
 
 class APIBuilderPreProcessor(PreProcessor):
     def __call__(self, argument):
-        return f'$> {argument.args[0]!s} =>'
+        return f"$> {argument.args[0]!s} =>"
 
 
 class APIBuilder(Expression):
@@ -77,9 +77,12 @@ class APIBuilder(Expression):
         self.sym_return_type = APIBuilder
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
-        @core.zero_shot(prompt="Build the API call code:\n",
-                   pre_processors=[APIBuilderPreProcessor()],
-                   post_processors=[CodeExtractPostProcessor()], **kwargs)
+        @core.zero_shot(
+            prompt="Build the API call code:\n",
+            pre_processors=[APIBuilderPreProcessor()],
+            post_processors=[CodeExtractPostProcessor()],
+            **kwargs,
+        )
         def _func(_, text) -> str:
             pass
 
@@ -96,18 +99,20 @@ class StackTraceRetryExecutor(Expression):
     def forward(self, code: Symbol, request: Symbol, **kwargs) -> Symbol:
         code = str(code)
         # Set value that gets passed on to the 'run' function in the generated code
-        value = request.value # do not remove this line
+        value = request.value  # do not remove this line
         # Create the 'run' function
         self._runnable = self.executor(code, locals=locals().copy(), globals=globals().copy())
-        result = self._runnable['locals']['run'](value)
+        result = self._runnable["locals"]["run"](value)
         retry = 0
         # Retry if there is a 'Traceback' in the result
-        while 'Traceback' in result and retry <= self.max_retries:
-            self._runnable = self.executor(code, payload=result, locals=locals().copy(), globals=globals().copy(), **kwargs)
-            result = self._runnable['locals']['run'](value)
+        while "Traceback" in result and retry <= self.max_retries:
+            self._runnable = self.executor(
+                code, payload=result, locals=locals().copy(), globals=globals().copy(), **kwargs
+            )
+            result = self._runnable["locals"]["run"](value)
             retry += 1
-        if 'locals_res' in self._runnable:
-            result = self._runnable['locals_res']
+        if "locals_res" in self._runnable:
+            result = self._runnable["locals_res"]
         return result
 
 
@@ -129,14 +134,14 @@ class APIExecutor(Expression):
     def forward(self, request: Symbol, **_kwargs) -> Symbol:
         self._request = self._to_symbol(request)
         if self._verbose:
-            UserMessage(f'[REQUEST] {self._request}')
+            UserMessage(f"[REQUEST] {self._request}")
         # Generate the code to implement the API call
-        self._code    = self.builder(self._request)
+        self._code = self.builder(self._request)
         if self._verbose:
-            UserMessage(f'[GENERATED_CODE] {self._code}')
+            UserMessage(f"[GENERATED_CODE] {self._code}")
         # Execute the code to define the 'run' function
-        self._result  = self.executor(self._code, request=self._request)
+        self._result = self.executor(self._code, request=self._request)
         if self._verbose:
-            UserMessage(f'[RESULT]: {self._result}')
-        self._value   = self._result
+            UserMessage(f"[RESULT]: {self._result}")
+        self._value = self._result
         return self

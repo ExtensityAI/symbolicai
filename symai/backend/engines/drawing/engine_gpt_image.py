@@ -26,6 +26,7 @@ class GPTImageResult(Result):
     Exposes .value as the raw response and ._value as the
     first URL or decoded b64 image string.
     """
+
     def __init__(self, value, **kwargs):
         super().__init__(value, **kwargs)
         imgs = []
@@ -53,6 +54,7 @@ class GPTImageEngine(Engine):
     supporting gpt-image-1, dall-e-2, dall-e-3,
     with all the extra parameters (background, moderation, etc).
     """
+
     def __init__(
         self,
         api_key: str | None = None,
@@ -61,16 +63,8 @@ class GPTImageEngine(Engine):
         super().__init__()
         self.config = SYMAI_CONFIG
         # pick up a separate config slot if you like, or fall back
-        openai.api_key = (
-            self.config.get("DRAWING_ENGINE_API_KEY")
-            if api_key is None
-            else api_key
-        )
-        self.model = (
-            self.config.get("DRAWING_ENGINE_MODEL")
-            if model is None
-            else model
-        )
+        openai.api_key = self.config.get("DRAWING_ENGINE_API_KEY") if api_key is None else api_key
+        self.model = self.config.get("DRAWING_ENGINE_MODEL") if model is None else model
         self.name = self.__class__.__name__
         # quiet OpenAI's internal logger
         log = logging.getLogger("openai")

@@ -4,7 +4,7 @@ from ...utils import UserMessage
 
 
 class naive_vectordb(Expression):
-    def __init__(self, index_name = VectorDBIndexEngine._default_index_name, *args, **kwargs):
+    def __init__(self, index_name=VectorDBIndexEngine._default_index_name, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.index_name = index_name
         self.name = self.__class__.__name__
@@ -15,7 +15,7 @@ class naive_vectordb(Expression):
         operation: str = "search",
         index_name: str | None = None,
         storage_file: str | None = None,
-        **kwargs
+        **kwargs,
     ) -> VectorDBResult:
         index = self.index_name if index_name is None else index_name
         if operation == "search":

@@ -61,13 +61,15 @@ class HtmlStyleTemplate(Expression):
         super().__init__(**kwargs)
         self.html_template_seq = Template()
         self.html_template_seq.template_ = HEADER_STYLE_DESCRIPTION
-        self.html_stream = Stream(
-            self.html_template_seq
+        self.html_stream = Stream(self.html_template_seq)
+        self.style_template = Style(
+            description=HTML_STREAM_STYLE_DESCRIPTION,
+            libraries=[
+                "https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css",
+                "https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js",
+                "https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js",
+            ],
         )
-        self.style_template = Style(description=HTML_STREAM_STYLE_DESCRIPTION,
-                                       libraries=['https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css',
-                                                  'https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js',
-                                                  'https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js'])
 
     def forward(self, sym: Symbol, **kwargs) -> Symbol:
         """The `render` method takes a `Symbol` as an argument and returns a `Symbol` containing the rendered news.
@@ -79,8 +81,12 @@ class HtmlStyleTemplate(Expression):
         if not isinstance(sym, Symbol):
             sym = Symbol(sym)
         html_data = list(self.html_stream(sym, **kwargs))
-        style_data = [str(self.style_template(html,
-                                              template=HTML_TEMPLATE_STYLE,
-                                              placeholder='{{placeholder}}',
-                                              **kwargs)) for html in html_data]
-        return Symbol('\n'.join(style_data))
+        style_data = [
+            str(
+                self.style_template(
+                    html, template=HTML_TEMPLATE_STYLE, placeholder="{{placeholder}}", **kwargs
+                )
+            )
+            for html in html_data
+        ]
+        return Symbol("\n".join(style_data))

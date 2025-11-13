@@ -2,7 +2,7 @@ from ... import core
 from ...symbol import Expression
 
 
-class input(Expression): # noqa
+class input(Expression):  # noqa
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = self.__class__.__name__
@@ -11,4 +11,5 @@ class input(Expression): # noqa
         @core.userinput(**kwargs)
         def _func(_, message) -> str:
             pass
+
         return self.sym_return_type(_func(self, message))

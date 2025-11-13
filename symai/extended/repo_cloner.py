@@ -17,9 +17,10 @@ class RepositoryCloner(Expression):
       repo_path (Optional[str]): The path where to clone the repository.
                                  By default it will be at '~/.symai/repos/'.
     """
+
     def __init__(self, repo_path: str | None = None, **kwargs):
         super().__init__(**kwargs)
-        self.repo_dir = HOME_PATH / 'repos/' if repo_path is None else Path(repo_path)
+        self.repo_dir = HOME_PATH / "repos/" if repo_path is None else Path(repo_path)
         if not self.repo_dir.exists():
             self.repo_dir.mkdir(parents=True, exist_ok=True)
 
@@ -34,26 +35,26 @@ class RepositoryCloner(Expression):
         Returns:
           str: The root path of the cloned repository.
         """
-        repo_name = url.split('/')[-1].replace('.git', '')
+        repo_name = url.split("/")[-1].replace(".git", "")
         if (self.repo_dir / repo_name).is_dir():
-            UserMessage(f'Repository {repo_name} already exists. Checking for updates...')
+            UserMessage(f"Repository {repo_name} already exists. Checking for updates...")
             try:
                 repo = Repo(self.repo_dir / repo_name)
                 current = repo.head.commit
                 repo.remotes.origin.pull()
                 if current != repo.head.commit:
-                    UserMessage(f'Repository {repo_name} updated.')
+                    UserMessage(f"Repository {repo_name} updated.")
                 else:
-                    UserMessage(f'Repository {repo_name} is up-to-date.')
+                    UserMessage(f"Repository {repo_name} is up-to-date.")
             except Exception as e:
-                UserMessage(f'An error occurred: {e}')
+                UserMessage(f"An error occurred: {e}")
                 raise e
         else:
-            UserMessage(f'Cloning repository {repo_name}...')
+            UserMessage(f"Cloning repository {repo_name}...")
             try:
                 Repo.clone_from(url, self.repo_dir / repo_name)
-                UserMessage(f'Repository {repo_name} cloned successfully.')
+                UserMessage(f"Repository {repo_name} cloned successfully.")
             except Exception as e:
-                UserMessage(f'Failed to clone the repository. An error occurred: {e}')
+                UserMessage(f"Failed to clone the repository. An error occurred: {e}")
                 raise e
         return str(self.repo_dir / repo_name)
