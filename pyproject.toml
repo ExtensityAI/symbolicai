@@ -81,7 +81,7 @@ search       = ["parallel-web>=0.3.3"]
 serpapi      = ["google_search_results>=2.4.2"]
 services     = ["fastapi>=0.110.0", "redis>=5.0.2", "uvicorn>=0.27.1"]
 solver       = ["z3-solver>=4.12.6.0"]
-qdrant       = ["chonkie[all]>=0.4.1", "tokenizers"]
+qdrant       = ["qdrant-client", "chonkie[all]>=0.4.1", "tokenizers"]
 all          = [
     "symbolicai[hf]",
     "symbolicai[wolframalpha]",

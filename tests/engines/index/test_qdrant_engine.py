@@ -20,8 +20,48 @@ TEST_PDFS = [
 
 ]
 
+
+def _check_qdrant_available():
+    """
+    Check if Qdrant is actually available by:
+    1. Verifying qdrant_client can be imported
+    2. Verifying ChonkieChunker can be imported (if needed for tests)
+    3. Attempting to connect to the Qdrant endpoint
+    """
+    # Check if qdrant_client can be imported
+    try:
+        from qdrant_client import QdrantClient
+    except ImportError:
+        return False
+
+    # Check if ChonkieChunker can be imported (needed for some tests)
+    try:
+        from symai.components import ChonkieChunker
+    except ImportError:
+        # ChonkieChunker is optional, but some tests may need it
+        # We'll still allow tests to run if qdrant_client is available
+        pass
+
+    # Try to connect to Qdrant endpoint
+    url = SYMSERVER_CONFIG.get('url') or SYMAI_CONFIG.get('INDEXING_ENGINE_URL') or 'http://localhost:6333'
+    api_key = SYMAI_CONFIG.get('INDEXING_ENGINE_API_KEY')
+
+    try:
+        client_kwargs = {"url": url}
+        if api_key:
+            client_kwargs["api_key"] = api_key
+        client = QdrantClient(**client_kwargs)
+        # Try to get collections list as a connectivity test
+        # This will raise an exception if the server is not accessible
+        client.get_collections()
+        return True
+    except Exception:
+        # Any exception (connection error, timeout, etc.) means Qdrant is not available
+        return False
+
+
 # Check if Qdrant is available
-QDrant_AVAILABLE = SYMSERVER_CONFIG.get('online') or SYMAI_CONFIG.get('INDEXING_ENGINE_URL') or True  # Default to True for local testing
+QDrant_AVAILABLE = _check_qdrant_available()
 
 # Check if PDF files exist
 AVAILABLE_PDFS = [pdf for pdf in TEST_PDFS if os.path.exists(pdf)]
