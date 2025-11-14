@@ -12,6 +12,7 @@ from threading import Lock
 from typing import TYPE_CHECKING, Union
 
 import numpy as np
+from beartype import beartype
 from box import Box
 from loguru import logger
 from pyvis.network import Network
@@ -1454,3 +1455,138 @@ class DynamicEngine(Expression):
             UserMessage(
                 f"Failed to create engine for model '{self.model}': {e!s}", raise_with=ValueError
             )
+
+
+# Chonkie chunker imports
+try:
+    from chonkie import (
+        CodeChunker,
+        LateChunker,
+        NeuralChunker,
+        RecursiveChunker,
+        SemanticChunker,
+        SentenceChunker,
+        SlumberChunker,
+        TableChunker,
+        TokenChunker,
+    )
+    from chonkie.embeddings.base import BaseEmbeddings
+    from tokenizers import Tokenizer
+
+    CHONKIE_AVAILABLE = True
+except ImportError:
+    CodeChunker = None
+    LateChunker = None
+    NeuralChunker = None
+    RecursiveChunker = None
+    SemanticChunker = None
+    SentenceChunker = None
+    SlumberChunker = None
+    TableChunker = None
+    TokenChunker = None
+    BaseEmbeddings = None
+    Tokenizer = None
+    CHONKIE_AVAILABLE = False
+
+
+CHUNKER_MAPPING = {
+    "TokenChunker": TokenChunker,
+    "SentenceChunker": SentenceChunker,
+    "RecursiveChunker": RecursiveChunker,
+    "SemanticChunker": SemanticChunker,
+    "CodeChunker": CodeChunker,
+    "LateChunker": LateChunker,
+    "NeuralChunker": NeuralChunker,
+    "SlumberChunker": SlumberChunker,
+    "TableChunker": TableChunker,
+}
+
+
+@beartype
+class ChonkieChunker(Expression):
+    def __init__(
+        self,
+        tokenizer_name: str | None = "gpt2",
+        embedding_model_name: str | BaseEmbeddings | None = "minishlab/potion-base-8M",
+        **symai_kwargs,
+    ):
+        super().__init__(**symai_kwargs)
+        self.tokenizer_name = tokenizer_name
+        self.embedding_model_name = embedding_model_name
+
+    def forward(
+        self, data: Symbol, chunker_name: str | None = "RecursiveChunker", **chunker_kwargs
+    ) -> Symbol:
+        chunker = self._resolve_chunker(chunker_name, **chunker_kwargs)
+        chunks = [ChonkieChunker.clean_text(chunk.text) for chunk in chunker(data.value)]
+        return self._to_symbol(chunks)
+
+    def _resolve_chunker(
+        self, chunker_name: str, **chunker_kwargs
+    ) -> (
+        TokenChunker
+        | SentenceChunker
+        | RecursiveChunker
+        | SemanticChunker
+        | CodeChunker
+        | LateChunker
+        | NeuralChunker
+        | SlumberChunker
+        | TableChunker
+    ):
+        if chunker_name not in CHUNKER_MAPPING:
+            msg = (
+                f"Chunker {chunker_name} not found. Available chunkers: {list(CHUNKER_MAPPING.keys())}. "
+                f"See docs (https://docs.chonkie.ai/getting-started/introduction) for more info."
+            )
+            raise ValueError(msg)
+
+        chunker_class = CHUNKER_MAPPING[chunker_name]
+
+        # Tokenizer-based chunkers (use tokenizer_name)
+        if chunker_name in ["TokenChunker", "SentenceChunker", "RecursiveChunker"]:
+            if Tokenizer is None:
+                UserMessage(
+                    "Tokenizers library is not installed. Please install it with `pip install tokenizers`.",
+                    raise_with=ImportError,
+                )
+            tokenizer = Tokenizer.from_pretrained(self.tokenizer_name)
+            return chunker_class(tokenizer, **chunker_kwargs)
+
+        # Embedding-based chunkers (use embedding_model_name)
+        if chunker_name in ["SemanticChunker", "LateChunker"]:
+            return chunker_class(embedding_model=self.embedding_model_name, **chunker_kwargs)
+
+        # CodeChunker and TableChunker use tokenizer (can use string or Tokenizer object)
+        if chunker_name in ["CodeChunker", "TableChunker"]:
+            # These can accept tokenizer as string (default 'character') or Tokenizer object
+            # If tokenizer not provided in kwargs, use tokenizer_name
+            if "tokenizer" not in chunker_kwargs:
+                chunker_kwargs["tokenizer"] = self.tokenizer_name
+            return chunker_class(**chunker_kwargs)
+
+        # SlumberChunker uses tokenizer (can use string or Tokenizer object)
+        if chunker_name == "SlumberChunker":
+            # SlumberChunker can accept tokenizer as string or Tokenizer object
+            # If tokenizer not provided in kwargs, use tokenizer_name
+            if "tokenizer" not in chunker_kwargs:
+                chunker_kwargs["tokenizer"] = self.tokenizer_name
+            return chunker_class(**chunker_kwargs)
+
+        # NeuralChunker uses model parameter (defaults provided by chonkie)
+        if chunker_name == "NeuralChunker":
+            return chunker_class(**chunker_kwargs)
+
+        msg = (
+            f"Chunker {chunker_name} not properly configured. "
+            f"Available chunkers: {list(CHUNKER_MAPPING.keys())}."
+        )
+        raise ValueError(msg)
+
+    @staticmethod
+    def clean_text(text: str) -> str:
+        """Cleans text by removing problematic characters."""
+        text = text.replace("\x00", "")  # Remove null bytes (\x00)
+        return text.encode("utf-8", errors="ignore").decode(
+            "utf-8"
+        )  # Replace invalid UTF-8 sequences
