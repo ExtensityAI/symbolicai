@@ -102,6 +102,11 @@ def qdrant_server():  # noqa
         # Qdrant binary accepts --storage-path argument
         command.extend(["--storage-path", abs_storage_path])
 
+        # Add host, port, and grpc-port arguments
+        command.extend(["--host", main_args.host])
+        command.extend(["--port", str(main_args.port)])
+        command.extend(["--grpc-port", str(main_args.grpc_port)])
+
         if main_args.config_path:
             command.extend(["--config-path", main_args.config_path])
 

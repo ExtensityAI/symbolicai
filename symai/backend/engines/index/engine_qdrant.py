@@ -1,8 +1,8 @@
-import hashlib
 import itertools
 import logging
 import tempfile
 import urllib.request
+import uuid
 import warnings
 from pathlib import Path
 from typing import Any
@@ -980,8 +980,13 @@ class QdrantIndexEngine(Engine):
                 point_id = current_id
                 current_id += 1
             else:
-                # Use hash-based ID for deterministic IDs
-                point_id = int(hashlib.md5(chunk_text.encode()).hexdigest()[:8], 16) % (2**63)
+                # Use uuid5 for deterministic, collision-resistant IDs based on content
+                # uuid5 uses SHA-1 internally, providing 160 bits of entropy
+                # Convert to int64 by taking modulo 2**63 to fit in signed 64-bit range
+                namespace_uuid = uuid.NAMESPACE_DNS  # Use DNS namespace for consistency
+                uuid_obj = uuid.uuid5(namespace_uuid, chunk_text)
+                # Convert UUID (128 bits) to int64, ensuring it fits in signed 64-bit range
+                point_id = uuid_obj.int % (2**63)
 
             points.append(
                 {
