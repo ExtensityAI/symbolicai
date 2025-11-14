@@ -156,7 +156,44 @@ def _start_symai():
 
 def run_server():
     _symserver_config_ = {}
-    if settings.SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL").startswith(
+
+    # Check for explicit Qdrant server request via command line
+    qdrant_requested = any("qdrant" in arg.lower() for arg in sys.argv[1:])
+
+    if (
+        qdrant_requested
+        or settings.SYMAI_CONFIG.get("INDEXING_ENGINE") == "qdrant"
+        or any(
+            "qdrant" in str(v).lower()
+            for v in [
+                settings.SYMAI_CONFIG.get("INDEXING_ENGINE_API_KEY", ""),
+                settings.SYMAI_CONFIG.get("INDEXING_ENGINE_URL", ""),
+            ]
+        )
+    ):
+        from .server.qdrant_server import qdrant_server  # noqa
+
+        command, args = qdrant_server()
+        _symserver_config_.update(zip(args[::2], args[1::2], strict=False))
+        _symserver_config_["online"] = True
+        _symserver_config_["url"] = (
+            f"http://{_symserver_config_.get('--host', 'localhost')}:{_symserver_config_.get('--port', 6333)}"
+        )
+
+        config_manager.save_config("symserver.config.json", _symserver_config_)
+        config_manager.save_config(
+            "symserver.config.json", _symserver_config_, fallback_to_home=True
+        )
+
+        try:
+            subprocess.run(command, check=True)
+        except KeyboardInterrupt:
+            UserMessage("Server stopped!")
+        except Exception as e:
+            UserMessage(f"Error running server: {e}")
+        finally:
+            config_manager.save_config("symserver.config.json", {"online": False})
+    elif settings.SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL").startswith(
         "llama"
     ) or settings.SYMAI_CONFIG.get("EMBEDDING_ENGINE_MODEL").startswith("llama"):
         # Keep optional llama_cpp dependencies lazy.
@@ -202,7 +239,7 @@ def run_server():
     else:
         msg = (
             "You're trying to run a local server without a valid neuro-symbolic engine model. "
-            "Please set a valid model in your configuration file. Current available options are 'llamacpp' and 'huggingface'."
+            "Please set a valid model in your configuration file. Current available options are 'llamacpp', 'huggingface' and 'qdrant'."
         )
         UserMessage(msg, raise_with=ValueError)
 
