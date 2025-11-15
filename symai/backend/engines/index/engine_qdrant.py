@@ -355,9 +355,8 @@ class QdrantIndexEngine(Engine):
         collection_dims = argument.prop.index_dims if argument.prop.index_dims else self.index_dims
         rsp = None
 
-        # Initialize client and collection using shared method
+        # Initialize client
         self._init_client()
-        self._create_collection_sync(collection_name, collection_dims, self.index_metric)
 
         if collection_name != self.index_name:
             assert collection_name, "Please set a valid collection name for Qdrant indexing engine."
@@ -367,10 +366,14 @@ class QdrantIndexEngine(Engine):
             self._configure_collection(**kwargs)
 
         if operation == "search":
+            # Ensure collection exists - fail fast if it doesn't
+            self._ensure_collection_exists(collection_name)
             index_top_k = kwargs.get("index_top_k", self.index_top_k)
             # Use existing _query method
             rsp = self._query(collection_name, embedding, index_top_k)
         elif operation == "add":
+            # Create collection if it doesn't exist (only for write operations)
+            self._create_collection_sync(collection_name, collection_dims, self.index_metric)
             # Use shared point preparation method
             ids = kwargs.get("ids", None)
             payloads = kwargs.get("payloads", None)
@@ -381,6 +384,8 @@ class QdrantIndexEngine(Engine):
                 self._upsert(collection_name, points_chunk)
             rsp = None
         elif operation == "config":
+            # Ensure collection exists - fail fast if it doesn't
+            self._ensure_collection_exists(collection_name)
             self._configure_collection(**kwargs)
             rsp = None
         else:
