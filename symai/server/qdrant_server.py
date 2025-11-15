@@ -141,6 +141,16 @@ def qdrant_server():  # noqa
         # Volume mount for storage
         command.extend(["-v", f"{abs_storage_path}:/qdrant/storage:z"])
 
+        # Volume mount for config (if provided)
+        # Note: Qdrant Docker image accepts environment variables and config files
+        # For custom config, mount it as a volume before the image name
+        if main_args.config_path:
+            config_path = Path(main_args.config_path)
+            abs_config_path = config_path.resolve()
+            config_dir = str(abs_config_path.parent)
+            command.extend(["-v", f"{config_dir}:/qdrant/config:z"])
+            # Qdrant looks for config.yaml in /qdrant/config by default
+
         # Set storage path environment variable to use the mounted volume
         command.extend(["-e", "QDRANT__STORAGE__STORAGE_PATH=/qdrant/storage"])
 
@@ -148,14 +158,6 @@ def qdrant_server():  # noqa
         command.append(main_args.docker_image)
 
         # Qdrant server arguments (if any additional ones are passed)
-        # Note: Qdrant Docker image accepts environment variables and config files
-        # For custom config, you might want to mount it as a volume
-        if main_args.config_path:
-            config_path = Path(main_args.config_path)
-            abs_config_path = config_path.resolve()
-            config_dir = str(abs_config_path.parent)
-            command.extend(["-v", f"{config_dir}:/qdrant/config:z"])
-            # Qdrant looks for config.yaml in /qdrant/config by default
 
         # Add any additional Qdrant arguments
         if qdrant_args:
