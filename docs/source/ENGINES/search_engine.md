@@ -20,6 +20,24 @@ print(result.get_citations())
 
 The engine accepts either a single string or a list of query strings. Domain filters are normalized to apex domains and capped at 10 entries, mirroring the underlying Parallel API requirements. You can also change the search `mode` (default `"one-shot"`) or adjust `max_chars_per_result` to constrain excerpt length.
 
+### Task processors via the search route
+
+If you pass a `processor` kwarg to `engine.search(...)`, SymbolicAI automatically switches to Parallel's task route while keeping the familiar `SearchResult` interface. The query (or prepared input) becomes the task input, and any citations or reasoning returned by the processor are converted back into inline search excerpts. This allows LLM-style task processors to power the same downstream consumers that expect search responses.
+
+```python
+task_result = engine.search(
+    "Timisoara housing price index 2010-2025",
+    processor="base",
+    task_api_timeout=600,   # optional, forwarded to task_run.result
+    task_output_schema={"type": "json"},  # optional schema/task spec hint
+)
+
+print(task_result.value)          # flattened text with citations
+print(task_result.raw["task_output"])  # raw processor output payload
+```
+
+Any `allowed_domains` filters are forwarded via `source_policy` to the task run. You can also provide `task_timeout` (client-side polling window) or `task_api_timeout` (server-side execution window) for long-running tasks. When no processor is supplied, the engine uses the standard Parallel search route described above.
+
 Enable the engine by installing `parallel-web` and configuring the Parallel credentials in your settings:
 
 ```bash

@@ -36,8 +36,8 @@ def _iface():
 
 def test_parallel_search_citations_and_formatting():
     search = _iface()
-    query = "President of Romania 2025 inauguration timeline and partner (with citations)"
-    res = search.search(query)
+    query = "President of Romania 2025 inauguration timeline and partner"
+    res = search.search(query, mode="agentic")
 
     assert hasattr(res, "get_citations"), "Result must expose get_citations()"
     assert isinstance(res._value, str) and len(res._value) > 0
@@ -82,5 +82,21 @@ def test_parallel_search_domain_filtering():
     citation_netlocs = {urlparse(c.url).netloc for c in res.get_citations()}
     # Parallel API includes apex; cite hosts may include www.
     assert any(
-        n in citation_netlocs for n in {"www.tomshardware.com", "tomshardware.com", "www.arstechnica.com", "arstechnica.com"}
+        n in citation_netlocs
+        for n in ("www.tomshardware.com", "tomshardware.com", "www.arstechnica.com", "arstechnica.com")
     ), "No citations from allowed domains found"
+
+@pytest.mark.parametrize("processor", ["lite"])
+def test_parallel_task_route_via_processor(processor):
+    search = _iface()
+
+    query = "Romania housing price index 2010-2025"
+    res = search.search(query, processor=processor, task_api_timeout=600)
+
+    assert hasattr(res, "get_citations"), "Task route must still return SearchResult interface"
+    assert isinstance(res.raw, dict) and "results" in res.raw
+    assert res.raw.get("task_output") is not None
+
+    citations = res.get_citations()
+    assert isinstance(citations, list)
+    assert res.value
