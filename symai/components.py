@@ -548,11 +548,34 @@ class FileReader(Expression):
 
     @staticmethod
     def extract_files(cmds: str) -> list[str] | None:
-        # Use the updated regular expression to match quoted and non-quoted paths
+        """
+        Extract file paths from a command string, handling various quoting styles.
+
+        This method is used by the Qdrant RAG implementation when processing document paths.
+        It uses regex to parse file paths that may be quoted in different ways.
+
+        Regex patterns used:
+        1. Main pattern: Matches file paths in four formats:
+           - Double-quoted: "path/to/file" (handles escaped characters)
+           - Single-quoted: 'path/to/file' (handles escaped characters)
+           - Backtick-quoted: `path/to/file` (handles escaped characters)
+           - Non-quoted: path/to/file (handles escaped spaces)
+
+        2. Escape removal pattern: r"\\(.)" -> r"\1"
+           - Removes backslash escape sequences from quoted paths
+           - Example: "path\\/to\\/file" -> "path/to/file"
+           - Used for double quotes, single quotes, and backticks
+        """
+        # Regex pattern to match file paths in various quoting styles
+        # Pattern breakdown:
+        # - (?:"((?:\\.|[^"\\])*)") : Matches double-quoted paths, capturing content while handling escapes
+        # - '((?:\\.|[^'\\])*)' : Matches single-quoted paths, capturing content while handling escapes
+        # - `((?:\\.|[^`\\])*)` : Matches backtick-quoted paths, capturing content while handling escapes
+        # - ((?:\\ |[^ ])+) : Matches non-quoted paths, allowing escaped spaces
         pattern = (
             r"""(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)'|`((?:\\.|[^`\\])*)`|((?:\\ |[^ ])+))"""
         )
-        # Use the regular expression to split and handle quoted and non-quoted paths
+        # Use regex to find all file path matches in the command string
         matches = re.findall(pattern, cmds)
         # Process the matches to handle quoted paths and normal paths
         files = []
@@ -560,22 +583,26 @@ class FileReader(Expression):
             # Each match will have 4 groups due to the pattern; only one will be non-empty
             quoted_double, quoted_single, quoted_backtick, non_quoted = match
             if quoted_double:
-                # Remove backslashes used for escaping inside double quotes
+                # Regex substitution: Remove backslashes used for escaping inside double quotes
+                # Pattern r"\\(.)" matches a backslash followed by any character and replaces with just the character
+                # Example: "path\\/to\\/file" -> "path/to/file"
                 path = re.sub(r"\\(.)", r"\1", quoted_double)
                 file = FileReader.expand_user_path(path)
                 files.append(file)
             elif quoted_single:
-                # Remove backslashes used for escaping inside single quotes
+                # Regex substitution: Remove backslashes used for escaping inside single quotes
+                # Same pattern as above, applied to single-quoted paths
                 path = re.sub(r"\\(.)", r"\1", quoted_single)
                 file = FileReader.expand_user_path(path)
                 files.append(file)
             elif quoted_backtick:
-                # Remove backslashes used for escaping inside backticks
+                # Regex substitution: Remove backslashes used for escaping inside backticks
+                # Same pattern as above, applied to backtick-quoted paths
                 path = re.sub(r"\\(.)", r"\1", quoted_backtick)
                 file = FileReader.expand_user_path(path)
                 files.append(file)
             elif non_quoted:
-                # Replace escaped spaces with actual spaces
+                # Replace escaped spaces with actual spaces (no regex needed here, simple string replace)
                 path = non_quoted.replace("\\ ", " ")
                 file = FileReader.expand_user_path(path)
                 files.append(file)
