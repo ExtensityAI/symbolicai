@@ -11,6 +11,9 @@ from string import ascii_lowercase, ascii_uppercase
 from threading import Lock
 from typing import TYPE_CHECKING, Union
 
+if TYPE_CHECKING:
+    from typing import Any
+
 import numpy as np
 from beartype import beartype
 from box import Box
@@ -1484,49 +1487,79 @@ class DynamicEngine(Expression):
             )
 
 
-# Chonkie chunker imports
-try:
-    from chonkie import (
-        CodeChunker,
-        LateChunker,
-        NeuralChunker,
-        RecursiveChunker,
-        SemanticChunker,
-        SentenceChunker,
-        SlumberChunker,
-        TableChunker,
-        TokenChunker,
-    )
-    from chonkie.embeddings.base import BaseEmbeddings
-    from tokenizers import Tokenizer
-
-    CHONKIE_AVAILABLE = True
-except ImportError:
-    CodeChunker = None
-    LateChunker = None
-    NeuralChunker = None
-    RecursiveChunker = None
-    SemanticChunker = None
-    SentenceChunker = None
-    SlumberChunker = None
-    TableChunker = None
-    TokenChunker = None
-    BaseEmbeddings = None
-    Tokenizer = None
-    CHONKIE_AVAILABLE = False
+# Chonkie chunker imports - lazy loaded
+_CHONKIE_MODULES = None
+_CHUNKER_MAPPING = None
+_CHONKIE_AVAILABLE = None
 
 
-CHUNKER_MAPPING = {
-    "TokenChunker": TokenChunker,
-    "SentenceChunker": SentenceChunker,
-    "RecursiveChunker": RecursiveChunker,
-    "SemanticChunker": SemanticChunker,
-    "CodeChunker": CodeChunker,
-    "LateChunker": LateChunker,
-    "NeuralChunker": NeuralChunker,
-    "SlumberChunker": SlumberChunker,
-    "TableChunker": TableChunker,
-}
+def _lazy_import_chonkie():
+    """Lazily import chonkie modules when needed."""
+    global _CHONKIE_MODULES, _CHUNKER_MAPPING, _CHONKIE_AVAILABLE
+
+    if _CHONKIE_MODULES is not None:
+        return _CHONKIE_MODULES
+
+    try:
+        from chonkie import (  # noqa
+            CodeChunker,
+            LateChunker,
+            NeuralChunker,
+            RecursiveChunker,
+            SemanticChunker,
+            SentenceChunker,
+            SlumberChunker,
+            TableChunker,
+            TokenChunker,
+        )
+        from chonkie.embeddings.base import BaseEmbeddings  # noqa
+        from tokenizers import Tokenizer  # noqa
+
+        _CHONKIE_MODULES = {
+            "CodeChunker": CodeChunker,
+            "LateChunker": LateChunker,
+            "NeuralChunker": NeuralChunker,
+            "RecursiveChunker": RecursiveChunker,
+            "SemanticChunker": SemanticChunker,
+            "SentenceChunker": SentenceChunker,
+            "SlumberChunker": SlumberChunker,
+            "TableChunker": TableChunker,
+            "TokenChunker": TokenChunker,
+            "BaseEmbeddings": BaseEmbeddings,
+            "Tokenizer": Tokenizer,
+        }
+        _CHUNKER_MAPPING = {
+            "TokenChunker": TokenChunker,
+            "SentenceChunker": SentenceChunker,
+            "RecursiveChunker": RecursiveChunker,
+            "SemanticChunker": SemanticChunker,
+            "CodeChunker": CodeChunker,
+            "LateChunker": LateChunker,
+            "NeuralChunker": NeuralChunker,
+            "SlumberChunker": SlumberChunker,
+            "TableChunker": TableChunker,
+        }
+        _CHONKIE_AVAILABLE = True
+    except ImportError:
+        _CHONKIE_MODULES = {}
+        _CHUNKER_MAPPING = {}
+        _CHONKIE_AVAILABLE = False
+
+    return _CHONKIE_MODULES
+
+
+def _get_chunker_mapping():
+    """Get the chunker mapping, lazily importing chonkie if needed."""
+    if _CHUNKER_MAPPING is None:
+        _lazy_import_chonkie()
+    return _CHUNKER_MAPPING or {}
+
+
+def _is_chonkie_available():
+    """Check if chonkie is available, lazily importing if needed."""
+    if _CHONKIE_AVAILABLE is None:
+        _lazy_import_chonkie()
+    return _CHONKIE_AVAILABLE or False
 
 
 @beartype
@@ -1534,7 +1567,7 @@ class ChonkieChunker(Expression):
     def __init__(
         self,
         tokenizer_name: str | None = "gpt2",
-        embedding_model_name: str | BaseEmbeddings | None = "minishlab/potion-base-8M",
+        embedding_model_name: str | None = "minishlab/potion-base-8M",
         **symai_kwargs,
     ):
         super().__init__(**symai_kwargs)
@@ -1544,31 +1577,29 @@ class ChonkieChunker(Expression):
     def forward(
         self, data: Symbol, chunker_name: str | None = "RecursiveChunker", **chunker_kwargs
     ) -> Symbol:
+        if not _is_chonkie_available():
+            UserMessage(
+                "chonkie library is not installed. Please install it with `pip install chonkie tokenizers`.",
+                raise_with=ImportError,
+            )
         chunker = self._resolve_chunker(chunker_name, **chunker_kwargs)
         chunks = [ChonkieChunker.clean_text(chunk.text) for chunk in chunker(data.value)]
         return self._to_symbol(chunks)
 
-    def _resolve_chunker(
-        self, chunker_name: str, **chunker_kwargs
-    ) -> (
-        TokenChunker
-        | SentenceChunker
-        | RecursiveChunker
-        | SemanticChunker
-        | CodeChunker
-        | LateChunker
-        | NeuralChunker
-        | SlumberChunker
-        | TableChunker
-    ):
-        if chunker_name not in CHUNKER_MAPPING:
+    def _resolve_chunker(self, chunker_name: str, **chunker_kwargs):
+        """Resolve and instantiate a chunker by name."""
+        chunker_mapping = _get_chunker_mapping()
+
+        if chunker_name not in chunker_mapping:
             msg = (
-                f"Chunker {chunker_name} not found. Available chunkers: {list(CHUNKER_MAPPING.keys())}. "
+                f"Chunker {chunker_name} not found. Available chunkers: {list(chunker_mapping.keys())}. "
                 f"See docs (https://docs.chonkie.ai/getting-started/introduction) for more info."
             )
             raise ValueError(msg)
 
-        chunker_class = CHUNKER_MAPPING[chunker_name]
+        chunker_class = chunker_mapping[chunker_name]
+        chonkie_modules = _lazy_import_chonkie()
+        Tokenizer = chonkie_modules.get("Tokenizer")
 
         # Tokenizer-based chunkers (use tokenizer_name)
         if chunker_name in ["TokenChunker", "SentenceChunker", "RecursiveChunker"]:
@@ -1606,7 +1637,7 @@ class ChonkieChunker(Expression):
 
         msg = (
             f"Chunker {chunker_name} not properly configured. "
-            f"Available chunkers: {list(CHUNKER_MAPPING.keys())}."
+            f"Available chunkers: {list(chunker_mapping.keys())}."
         )
         raise ValueError(msg)
 
