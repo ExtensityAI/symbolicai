@@ -729,6 +729,62 @@ class TestQdrantSearchChunkedDocuments:
             pytest.skip(f"Metadata filtering not available or failed: {e}")
 
     @pytest.mark.asyncio
+    async def test_forward_search_with_dict_filter(self, engine, test_collection_name):
+        """Test high-level forward() search with simple dict-based metadata filter."""
+        from symai.core import Argument
+        from symai.symbol import Symbol
+
+        await engine.create_collection(test_collection_name, vector_size=1536)
+
+        # Add documents with different metadata via chunk_and_upsert
+        documents = [
+            ("Machine learning is fascinating.", {"category": "AI", "author": "Alice"}),
+            ("Cooking is an art form.", {"category": "Food", "author": "Bob"}),
+            ("Deep learning models are powerful.", {"category": "AI", "author": "Charlie"}),
+        ]
+
+        for text, metadata in documents:
+            await engine.chunk_and_upsert(
+                collection_name=test_collection_name,
+                text=text,
+                metadata=metadata,
+            )
+
+        # Build query embedding
+        query_text = "learning and intelligence"
+        query_symbol = Symbol(query_text)
+        # Reuse helper to normalize embedding size
+        query_vector = normalize_embedding(query_symbol.embedding)
+
+        # Build Argument for Engine.forward, mimicking index decorator usage
+        decorator_kwargs = {
+            "prompt": query_vector,
+            "operation": "search",
+            "index_name": test_collection_name,
+            "ori_query": query_text,
+            "index_dims": 1536,
+            "index_top_k": 10,
+            # Pass simple dict filter; engine will convert to Qdrant Filter
+            "query_filter": {"category": "AI"},
+        }
+        argument = Argument(args=(), signature_kwargs={}, decorator_kwargs=decorator_kwargs)
+
+        results, _ = engine.forward(argument)
+
+        # forward returns [QdrantResult], unwrap and inspect raw scored points
+        assert isinstance(results, list) and len(results) == 1
+        qdrant_result = results[0]
+        raw_points = qdrant_result.raw or []
+
+        # We expect at least some results and that all have category == "AI"
+        assert len(raw_points) > 0
+        for point in raw_points:
+            payload = getattr(point, "payload", None) or {}
+            category = payload.get("category")
+            if category is not None:
+                assert category == "AI", "Dict-based filter in forward() should restrict to AI category."
+
+    @pytest.mark.asyncio
     async def test_search_with_score_threshold(self, engine, test_collection_name):
         """Test searching with score threshold."""
         from symai.symbol import Symbol

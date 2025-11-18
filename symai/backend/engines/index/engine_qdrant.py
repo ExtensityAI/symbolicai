@@ -322,6 +322,50 @@ class QdrantIndexEngine(Engine):
             # Reinitialize client to refresh collection list
             self._init_client()
 
+    def _build_query_filter(self, raw_filter: Any) -> Filter | None:
+        """Normalize various filter representations into a Qdrant Filter.
+
+        Supports:
+        - None: returns None
+        - Existing Filter instance: returned as-is
+        - Dict[str, Any]: converted to equality-based Filter over payload keys
+
+        The dict form is intentionally simple and maps directly to `payload.<key>`
+        equality conditions, which covers the majority of RAG use cases while
+        remaining easy to serialize and pass through higher-level APIs.
+        """
+        if raw_filter is None or Filter is None:
+            return None
+
+        # Already a Filter instance → use directly
+        if isinstance(raw_filter, Filter):
+            return raw_filter
+
+        # Simple dict → build equality-based must filter
+        if isinstance(raw_filter, dict):
+            if models is None:
+                UserMessage(
+                    "Qdrant filter models are not available. "
+                    "Please install `qdrant-client` to use filtering.",
+                    raise_with=ImportError,
+                )
+
+            conditions = []
+            for key, value in raw_filter.items():
+                # We keep semantics simple and robust: every entry is treated as an
+                # equality condition on the payload key (logical AND across keys).
+                conditions.append(
+                    models.FieldCondition(
+                        key=key,
+                        match=models.MatchValue(value=value),
+                    )
+                )
+
+            return Filter(must=conditions) if conditions else None
+
+        # Fallback: pass through other representations (e.g. already-built Filter-like)
+        return raw_filter
+
     def _prepare_points_for_upsert(
         self,
         embeddings: list | np.ndarray | Any,
@@ -349,6 +393,14 @@ class QdrantIndexEngine(Engine):
     def forward(self, argument):
         kwargs = argument.kwargs
         embedding = argument.prop.prepared_input
+        if embedding is None:
+            embedding = getattr(argument.prop, "prompt", None)
+        if embedding is None:
+            msg = (
+                "Qdrant forward() requires an embedding vector. "
+                "Provide it via prepared_input or prompt before calling forward()."
+            )
+            raise ValueError(msg)
         query = argument.prop.ori_query
         operation = argument.prop.operation
         collection_name = argument.prop.index_name if argument.prop.index_name else self.index_name
@@ -369,8 +421,20 @@ class QdrantIndexEngine(Engine):
             # Ensure collection exists - fail fast if it doesn't
             self._ensure_collection_exists(collection_name)
             index_top_k = kwargs.get("index_top_k", self.index_top_k)
-            # Use existing _query method
-            rsp = self._query(collection_name, embedding, index_top_k)
+            # Optional search parameters
+            score_threshold = kwargs.get("score_threshold")
+            # Accept both `query_filter` and `filter` for convenience
+            raw_filter = kwargs.get("query_filter", kwargs.get("filter"))
+            query_filter = self._build_query_filter(raw_filter)
+
+            # Use shared search helper that already handles retries and normalization
+            rsp = self._search_sync(
+                collection_name=collection_name,
+                query_vector=embedding,
+                limit=index_top_k,
+                score_threshold=score_threshold,
+                query_filter=query_filter,
+            )
         elif operation == "add":
             # Create collection if it doesn't exist (only for write operations)
             self._create_collection_sync(collection_name, collection_dims, self.index_metric)
