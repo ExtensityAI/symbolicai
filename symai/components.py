@@ -1330,6 +1330,25 @@ class MetadataTracker(Expression):
                     token_details[(engine_name, model_name)]["completion_breakdown"][
                         "reasoning_tokens"
                     ] += usage.output_tokens_details.reasoning_tokens
+                elif engine_name == "CerebrasEngine":
+                    usage = metadata["raw_output"].usage
+                    token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += (
+                        usage.completion_tokens
+                    )
+                    token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += (
+                        usage.prompt_tokens
+                    )
+                    token_details[(engine_name, model_name)]["usage"]["total_tokens"] += (
+                        usage.total_tokens
+                    )
+                    token_details[(engine_name, model_name)]["usage"]["total_calls"] += 1
+                    #!: Backward compatibility for components like `RuntimeInfo`
+                    token_details[(engine_name, model_name)]["prompt_breakdown"][
+                        "cached_tokens"
+                    ] += 0  # Assignment not allowed with defualtdict
+                    token_details[(engine_name, model_name)]["completion_breakdown"][
+                        "reasoning_tokens"
+                    ] += 0
                 else:
                     logger.warning(f"Tracking {engine_name} is not supported.")
                     continue
@@ -1475,9 +1494,12 @@ class DynamicEngine(Expression):
         """Create an engine instance based on the model name."""
         # Deferred to avoid components <-> neurosymbolic engine circular imports.
         from .backend.engines.neurosymbolic import ENGINE_MAPPING  # noqa
+        from .backend.engines.neurosymbolic.engine_cerebras import CerebrasEngine  # noqa
 
         try:
             engine_class = ENGINE_MAPPING.get(self.model)
+            if engine_class is None and self.model.startswith("cerebras:"):
+                engine_class = CerebrasEngine
             if engine_class is None:
                 UserMessage(f"Unsupported model '{self.model}'", raise_with=ValueError)
             return engine_class(api_key=self.api_key, model=self.model)
