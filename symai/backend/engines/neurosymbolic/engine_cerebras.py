@@ -3,7 +3,7 @@ import logging
 import re
 from copy import deepcopy
 
-import openai
+from cerebras.cloud.sdk import Cerebras
 
 from ....components import SelfPrompt
 from ....core_ext import retry
@@ -11,7 +11,7 @@ from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
 
-logging.getLogger("openai").setLevel(logging.ERROR)
+logging.getLogger("cerebras").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)
 logging.getLogger("urllib").setLevel(logging.ERROR)
 logging.getLogger("httpx").setLevel(logging.ERROR)
@@ -27,7 +27,7 @@ _NON_VERBOSE_OUTPUT = (
 )
 
 
-class GroqEngine(Engine):
+class CerebrasEngine(Engine):
     def __init__(self, api_key: str | None = None, model: str | None = None):
         super().__init__()
         self.config = deepcopy(SYMAI_CONFIG)
@@ -36,35 +36,40 @@ class GroqEngine(Engine):
             self.config["NEUROSYMBOLIC_ENGINE_API_KEY"] = api_key
             self.config["NEUROSYMBOLIC_ENGINE_MODEL"] = model
         if self.id() != "neurosymbolic":
-            return  # do not initialize if not neurosymbolic; avoids conflict with llama.cpp check in EngineRepository.register_from_package
-        openai.api_key = self.config["NEUROSYMBOLIC_ENGINE_API_KEY"]
-        self.model = self.config[
-            "NEUROSYMBOLIC_ENGINE_MODEL"
-        ]  # Keep the original config name to avoid confusion in downstream tasks
+            # Do not initialize if not neurosymbolic; avoids conflict with llama.cpp check in
+            # EngineRepository.register_from_package.
+            return
+
+        self.api_key = self.config["NEUROSYMBOLIC_ENGINE_API_KEY"]
+        self.model = self.config["NEUROSYMBOLIC_ENGINE_MODEL"]
         self.seed = None
         self.name = self.__class__.__name__
 
         try:
-            self.client = openai.OpenAI(
-                api_key=openai.api_key, base_url="https://api.groq.com/openai/v1"
-            )
-        except Exception as e:
+            self.client = Cerebras(api_key=self.api_key)
+        except Exception as exc:
             UserMessage(
-                f"Failed to initialize OpenAI client. Please check your OpenAI library version. Caused by: {e}",
+                f"Failed to initialize Cerebras client. Please check your Cerebras SDK installation. Caused by: {exc}",
                 raise_with=ValueError,
             )
 
     def id(self) -> str:
-        if self.config.get("NEUROSYMBOLIC_ENGINE_MODEL") and self.config.get(
-            "NEUROSYMBOLIC_ENGINE_MODEL"
-        ).startswith("groq"):
+        model_name = self.config.get("NEUROSYMBOLIC_ENGINE_MODEL")
+        if model_name and model_name.startswith("cerebras"):
             return "neurosymbolic"
-        return super().id()  # default to unregistered
+        return super().id()
 
     def command(self, *args, **kwargs):
         super().command(*args, **kwargs)
         if "NEUROSYMBOLIC_ENGINE_API_KEY" in kwargs:
-            openai.api_key = kwargs["NEUROSYMBOLIC_ENGINE_API_KEY"]
+            self.api_key = kwargs["NEUROSYMBOLIC_ENGINE_API_KEY"]
+            try:
+                self.client = Cerebras(api_key=self.api_key)
+            except Exception as exc:
+                UserMessage(
+                    f"Failed to reinitialize Cerebras client. Caused by: {exc}",
+                    raise_with=ValueError,
+                )
         if "NEUROSYMBOLIC_ENGINE_MODEL" in kwargs:
             self.model = kwargs["NEUROSYMBOLIC_ENGINE_MODEL"]
         if "seed" in kwargs:
@@ -82,30 +87,30 @@ class GroqEngine(Engine):
 
     def _handle_prefix(self, model_name: str) -> str:
         """Handle prefix for model name."""
-        return model_name.replace("groq:", "")
+        return model_name.replace("cerebras:", "")
 
-    def _extract_thinking_content(self, output: list[str]) -> tuple[str | None, list[str]]:
-        """Extract thinking content from model output if present and return cleaned output."""
-        if not output or len(output) == 0:
-            return None, output
+    def _extract_thinking_content(self, outputs: list[str]) -> tuple[str | None, list[str]]:
+        """Extract thinking content from textual output using <think>...</think> tags if present."""
+        if not outputs:
+            return None, outputs
 
-        content = output[0]
+        content = outputs[0]
         if not content:
-            return None, output
+            return None, outputs
 
+        # This regular expression matches a <think>...</think> block and captures any content between the tags,
+        # including newlines, so that we can separate internal reasoning text from the user-facing answer.
         think_pattern = r"<think>(.*?)</think>"
         match = re.search(think_pattern, content, re.DOTALL)
 
         thinking_content = None
         if match:
-            thinking_content = match.group(1).strip()
-            if not thinking_content:
-                thinking_content = None
+            thinking_content = match.group(1).strip() or None
 
         cleaned_content = re.sub(think_pattern, "", content, flags=re.DOTALL).strip()
-        cleaned_output = [cleaned_content, *output[1:]]
+        cleaned_outputs = [cleaned_content, *outputs[1:]]
 
-        return thinking_content, cleaned_output
+        return thinking_content, cleaned_outputs
 
     # cumulative wait time is < 30s
     @retry(tries=8, delay=0.5, backoff=1.5, max_delay=5, jitter=(0, 0.5))
@@ -117,40 +122,68 @@ class GroqEngine(Engine):
 
         try:
             res = self.client.chat.completions.create(**payload)
+        except Exception as exc:  # pragma: no cover - defensive path
+            res = self._handle_forward_exception(exc, argument, kwargs, except_remedy)
 
-        except Exception as e:
-            if openai.api_key is None or openai.api_key == "":
-                msg = "Groq API key is not set. Please set it in the config file or pass it as an argument to the command method."
-                UserMessage(msg)
-                if (
-                    self.config["NEUROSYMBOLIC_ENGINE_API_KEY"] is None
-                    or self.config["NEUROSYMBOLIC_ENGINE_API_KEY"] == ""
-                ):
-                    UserMessage(msg, raise_with=ValueError)
-                openai.api_key = self.config["NEUROSYMBOLIC_ENGINE_API_KEY"]
+        return self._build_outputs_and_metadata(res, payload)
 
-            callback = self.client.chat.completions.create
-            kwargs["model"] = (
-                self._handle_prefix(kwargs["model"])
-                if "model" in kwargs
-                else self._handle_prefix(self.model)
+    def _handle_forward_exception(self, exc, argument, kwargs, except_remedy):
+        if self.api_key is None or self.api_key == "":
+            msg = (
+                "Cerebras API key is not set. Please set it in the config file or "
+                "pass it as an argument to the command method."
             )
+            UserMessage(msg)
+            config_key = self.config.get("NEUROSYMBOLIC_ENGINE_API_KEY")
+            if config_key is None or config_key == "":
+                UserMessage(msg, raise_with=ValueError)
+            self.api_key = config_key
+            try:
+                self.client = Cerebras(api_key=self.api_key)
+            except Exception as inner_exc:
+                UserMessage(
+                    f"Failed to initialize Cerebras client after missing API key. Caused by: {inner_exc}",
+                    raise_with=ValueError,
+                )
 
-            if except_remedy is not None:
-                res = except_remedy(self, e, callback, argument)
-            else:
-                UserMessage(f"Error during generation. Caused by: {e}", raise_with=ValueError)
+        callback = self.client.chat.completions.create
+        kwargs["model"] = (
+            self._handle_prefix(kwargs["model"])
+            if "model" in kwargs
+            else self._handle_prefix(self.model)
+        )
 
-        metadata = {"raw_output": res}
+        if except_remedy is not None:
+            return except_remedy(self, exc, callback, argument)
+
+        UserMessage(f"Error during generation. Caused by: {exc}", raise_with=ValueError)
+        return None
+
+    def _build_outputs_and_metadata(self, res, payload):
+        metadata: dict = {"raw_output": res}
         if payload.get("tools"):
             metadata = self._process_function_calls(res, metadata)
 
-        output = [r.message.content for r in res.choices]
-        thinking, output = self._extract_thinking_content(output)
-        if thinking:
-            metadata["thinking"] = thinking
+        outputs: list[str] = []
+        thinking_content: str | None = None
 
-        return output, metadata
+        for choice in res.choices:
+            message = choice.message
+            outputs.append(getattr(message, "content", "") or "")
+            if thinking_content is None:
+                reasoning = getattr(message, "reasoning", None)
+                if reasoning:
+                    thinking_content = reasoning
+
+        if thinking_content is None:
+            thinking_content, outputs = self._extract_thinking_content(outputs)
+        else:
+            _, outputs = self._extract_thinking_content(outputs)
+
+        if thinking_content:
+            metadata["thinking"] = thinking_content
+
+        return outputs, metadata
 
     def _prepare_raw_input(self, argument):
         if not argument.prop.processed_input:
@@ -159,7 +192,6 @@ class GroqEngine(Engine):
                 raise_with=ValueError,
             )
         value = argument.prop.processed_input
-        # convert to dict if not already
         if not isinstance(value, list):
             if not isinstance(value, dict):
                 value = {"role": "user", "content": str(value)}
@@ -172,13 +204,15 @@ class GroqEngine(Engine):
             return
         self._validate_response_format(argument)
 
-        system = self._build_system_message(argument)
+        system_message = self._build_system_message(argument)
         user_content = self._build_user_content(argument)
         user_prompt = {"role": "user", "content": user_content}
-        system, user_prompt = self._apply_self_prompt_if_needed(argument, system, user_prompt)
+        system_message, user_prompt = self._apply_self_prompt_if_needed(
+            argument, system_message, user_prompt
+        )
 
         argument.prop.prepared_input = [
-            {"role": "system", "content": system},
+            {"role": "system", "content": system_message},
             user_prompt,
         ]
 
@@ -186,55 +220,55 @@ class GroqEngine(Engine):
         if argument.prop.response_format:
             response_format = argument.prop.response_format
             assert response_format.get("type") is not None, (
-                'Expected format `{ "type": "json_object" }`! We are using the OpenAI compatible API for Groq. '
-                "See more here: https://console.groq.com/docs/tool-use"
+                'Expected format `{ "type": "json_object" }` for JSON mode. '
+                "See Cerebras structured outputs documentation for details."
             )
 
     def _build_system_message(self, argument) -> str:
-        system: str = ""
+        system_message: str = ""
         if argument.prop.suppress_verbose_output:
-            system += _NON_VERBOSE_OUTPUT
-        if system:
-            system = f"{system}\n"
+            system_message += _NON_VERBOSE_OUTPUT
+        if system_message:
+            system_message = f"{system_message}\n"
 
         ref = argument.prop.instance
-        static_ctxt, dyn_ctxt = ref.global_context
-        if len(static_ctxt) > 0:
-            system += f"<STATIC CONTEXT/>\n{static_ctxt}\n\n"
+        static_context, dynamic_context = ref.global_context
+        if len(static_context) > 0:
+            system_message += f"<STATIC CONTEXT/>\n{static_context}\n\n"
 
-        if len(dyn_ctxt) > 0:
-            system += f"<DYNAMIC CONTEXT/>\n{dyn_ctxt}\n\n"
+        if len(dynamic_context) > 0:
+            system_message += f"<DYNAMIC CONTEXT/>\n{dynamic_context}\n\n"
 
         if argument.prop.payload:
-            system += f"<ADDITIONAL CONTEXT/>\n{argument.prop.payload!s}\n\n"
+            system_message += f"<ADDITIONAL CONTEXT/>\n{argument.prop.payload!s}\n\n"
 
         examples = argument.prop.examples
         if examples and len(examples) > 0:
-            system += f"<EXAMPLES/>\n{examples!s}\n\n"
+            system_message += f"<EXAMPLES/>\n{examples!s}\n\n"
 
         if argument.prop.prompt is not None and len(argument.prop.prompt) > 0:
-            val = str(argument.prop.prompt)
-            system += f"<INSTRUCTION/>\n{val}\n\n"
+            prompt_value = str(argument.prop.prompt)
+            system_message += f"<INSTRUCTION/>\n{prompt_value}\n\n"
 
         if argument.prop.template_suffix:
-            system += (
+            system_message += (
                 " You will only generate content for the placeholder "
                 f"`{argument.prop.template_suffix!s}` following the instructions and the provided context information.\n\n"
             )
 
-        return system
+        return system_message
 
     def _build_user_content(self, argument) -> str:
         return str(argument.prop.processed_input)
 
-    def _apply_self_prompt_if_needed(self, argument, system, user_prompt):
+    def _apply_self_prompt_if_needed(self, argument, system_message, user_prompt):
         if argument.prop.instance._kwargs.get("self_prompt", False) or argument.prop.self_prompt:
             self_prompter = SelfPrompt()
-            res = self_prompter({"user": user_prompt["content"], "system": system})
-            if res is None:
+            result = self_prompter({"user": user_prompt["content"], "system": system_message})
+            if result is None:
                 UserMessage("Self-prompting failed!", raise_with=ValueError)
-            return res["system"], {"role": "user", "content": res["user"]}
-        return system, user_prompt
+            return result["system"], {"role": "user", "content": result["user"]}
+        return system_message, user_prompt
 
     def _process_function_calls(self, res, metadata):
         hit = False
@@ -268,62 +302,27 @@ class GroqEngine(Engine):
         """Prepares the request payload from the argument."""
         kwargs = argument.kwargs
 
-        for param in [
-            "logprobs",
-            "logit_bias",
-            "top_logprobs",
-            "search_settings",
-            "stream",
-            "stream_options",
-        ]:
-            if param in kwargs:
-                UserMessage(
-                    f"The parameter {param} is not supported by the Groq API. It will be ignored."
-                )
-                del kwargs[param]
-
         n = kwargs.get("n", 1)
         if n > 1:
             UserMessage(
-                "If N is supplied, it must be equal to 1. We default to 1 to not crash your program."
+                "If N is supplied, it must be equal to 1. We default to 1 to avoid unexpected batch behavior."
             )
             n = 1
 
-        # Handle Groq JSON-mode quirk: JSON Object Mode internally uses a constrainer tool.
         response_format = kwargs.get("response_format")
-        tool_choice = kwargs.get("tool_choice", "auto" if kwargs.get("tools") else "none")
-        tools = kwargs.get("tools")
-        if (
-            response_format
-            and isinstance(response_format, dict)
-            and response_format.get("type") == "json_object"
-        ):
-            if tool_choice in (None, "none"):
-                tool_choice = "auto"
-            if tools:
-                tools = None
 
-        payload = {
+        return {
             "messages": messages,
             "model": self._handle_prefix(kwargs.get("model", self.model)),
-            "seed": kwargs.get("seed", self.seed),
             "max_completion_tokens": kwargs.get("max_completion_tokens"),
             "stop": kwargs.get("stop"),
-            "temperature": kwargs.get("temperature", 1),  # Default temperature for gpt-oss-120b
-            "frequency_penalty": kwargs.get("frequency_penalty", 0),
-            "presence_penalty": kwargs.get("presence_penalty", 0),
-            "reasoning_effort": kwargs.get("reasoning_effort"),
-            "service_tier": kwargs.get("service_tier", "on_demand"),
+            "temperature": kwargs.get("temperature", 1),
             "top_p": kwargs.get("top_p", 1),
             "n": n,
-            "tools": tools,
-            "tool_choice": tool_choice,
+            "tools": kwargs.get("tools"),
+            "parallel_tool_calls": kwargs.get("parallel_tool_calls"),
             "response_format": response_format,
+            "reasoning_effort": kwargs.get("reasoning_effort"),
+            "disable_reasoning": kwargs.get("disable_reasoning"),
+            "stream": kwargs.get("stream", False),
         }
-
-        if not self._handle_prefix(self.model).startswith("qwen") or not self._handle_prefix(
-            self.model
-        ).startswith("openai"):
-            del payload["reasoning_effort"]
-
-        return payload
