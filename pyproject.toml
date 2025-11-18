@@ -67,6 +67,7 @@ dependencies = [
     "rich>=13.9.4",
     "playwright>=1.55.0",
     "llvmlite>=0.45.1",
+    "cerebras-cloud-sdk>=1.59.0",
 ]
 
 [project.optional-dependencies]

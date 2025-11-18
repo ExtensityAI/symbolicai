@@ -23,7 +23,8 @@ def test_json_format():
         (NEUROSYMBOLIC.startswith('gpt') or
          NEUROSYMBOLIC.startswith('claude') or
          NEUROSYMBOLIC.startswith('gemini') or
-         NEUROSYMBOLIC.startswith('groq')) \
+         NEUROSYMBOLIC.startswith('groq') or
+         NEUROSYMBOLIC.startswith('cerebras')) \
          else 'developer'
     if all(id not in NEUROSYMBOLIC for id in ['3-7', '4-0', '4-1', '4-5']):
         res = Expression.prompt(
