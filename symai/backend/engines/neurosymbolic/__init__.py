@@ -1,6 +1,8 @@
 from ...mixin import (
     ANTHROPIC_CHAT_MODELS,
     ANTHROPIC_REASONING_MODELS,
+    CEREBRAS_CHAT_MODELS,
+    CEREBRAS_REASONING_MODELS,
     DEEPSEEK_CHAT_MODELS,
     DEEPSEEK_REASONING_MODELS,
     GOOGLE_CHAT_MODELS,
@@ -12,6 +14,7 @@ from ...mixin import (
 )
 from .engine_anthropic_claudeX_chat import ClaudeXChatEngine
 from .engine_anthropic_claudeX_reasoning import ClaudeXReasoningEngine
+from .engine_cerebras import CerebrasEngine
 from .engine_deepseekX_reasoning import DeepSeekXReasoningEngine
 from .engine_google_geminiX_reasoning import GeminiXReasoningEngine
 from .engine_groq import GroqEngine
@@ -22,6 +25,8 @@ from .engine_openai_gptX_reasoning import GPTXReasoningEngine
 ENGINE_MAPPING = {
     **dict.fromkeys(ANTHROPIC_CHAT_MODELS, ClaudeXChatEngine),
     **dict.fromkeys(ANTHROPIC_REASONING_MODELS, ClaudeXReasoningEngine),
+    **dict.fromkeys(CEREBRAS_CHAT_MODELS, CerebrasEngine),
+    **dict.fromkeys(CEREBRAS_REASONING_MODELS, CerebrasEngine),
     **dict.fromkeys(DEEPSEEK_REASONING_MODELS, DeepSeekXReasoningEngine),
     **dict.fromkeys(GOOGLE_REASONING_MODELS, GeminiXReasoningEngine),
     **dict.fromkeys(OPENAI_CHAT_MODELS, GPTXChatEngine),
@@ -33,6 +38,8 @@ ENGINE_MAPPING = {
 __all__ = [
     "ANTHROPIC_CHAT_MODELS",
     "ANTHROPIC_REASONING_MODELS",
+    "CEREBRAS_CHAT_MODELS",
+    "CEREBRAS_REASONING_MODELS",
     "DEEPSEEK_CHAT_MODELS",
     "DEEPSEEK_REASONING_MODELS",
     "ENGINE_MAPPING",
