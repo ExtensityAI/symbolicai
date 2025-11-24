@@ -58,24 +58,12 @@ os.environ["INDEXING_ENGINE_API_KEY"] = "your-api-key"
 
 ### Basic Usage
 
-The Qdrant engine automatically registers when a Qdrant server is available. Use it through the `Interface` abstraction:
+The Qdrant engine is used directly via the `QdrantIndexEngine` class:
 
 ```python
-from symai.interfaces import Interface
-
-# Qdrant engine is used automatically when server is running
-db = Interface('naive_vectordb', index_name="my_collection")
-db("Hello world", operation="add")
-result = db("Hello", operation="search", top_k=5)
-print(result.value)  # list of relevant matches
-```
-
-### Advanced Usage: Direct Engine Access
-
-For more control, use the Qdrant engine directly:
-
-```python
+import asyncio
 from symai.backend.engines.index.engine_qdrant import QdrantIndexEngine
+from symai import Symbol
 
 # Initialize engine
 engine = QdrantIndexEngine(
@@ -86,6 +74,33 @@ engine = QdrantIndexEngine(
     index_top_k=5,  # default top-k for searches
     index_metric="Cosine"  # Cosine, Dot, or Euclidean
 )
+
+async def basic_usage():
+    # Create a collection
+    await engine.create_collection("my_collection", vector_size=1536)
+
+    # Add documents using chunk_and_upsert
+    num_chunks = await engine.chunk_and_upsert(
+        collection_name="my_collection",
+        text="Hello world, this is a test document.",
+        metadata={"source": "example"}
+    )
+
+    # Search for similar documents
+    query = Symbol("Hello")
+    query_embedding = query.embedding
+    results = await engine.search(
+        collection_name="my_collection",
+        query_vector=query_embedding,
+        limit=5
+    )
+
+    # Print results
+    for result in results:
+        print(f"Score: {result.score}")
+        print(f"Text: {result.payload.get('text', '')}")
+
+asyncio.run(basic_usage())
 ```
 
 ### Collection Management
