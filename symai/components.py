@@ -1282,6 +1282,7 @@ class MetadataTracker(Expression):
                     token_details[(engine_name, None)]["completion_breakdown"][
                         "reasoning_tokens"
                     ] += 0
+                    self._track_parallel_usage_items(token_details, engine_name, metadata)
                 elif engine_name in ("GPTXChatEngine", "GPTXReasoningEngine"):
                     usage = metadata["raw_output"].usage
                     token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += (
@@ -1363,6 +1364,21 @@ class MetadataTracker(Expression):
     def _can_accumulate_engine(self, engine_name: str) -> bool:
         supported_engines = ("GPTXChatEngine", "GPTXReasoningEngine", "GPTXSearchEngine")
         return engine_name in supported_engines
+
+    def _track_parallel_usage_items(self, token_details, engine_name, metadata):
+        usage_items = getattr(metadata.get("raw_output", None), "usage", None)
+        if not usage_items:
+            return
+        if isinstance(usage_items, dict):
+            usage_items = usage_items.values()
+        extras = token_details[(engine_name, None)].setdefault("extras", {})
+        for item in usage_items:
+            name = getattr(item, "name", None)
+            count = getattr(item, "count", None)
+            if name in ("sku_search", "sku_extract_excerpts") and isinstance(
+                count, (int, float)
+            ):
+                extras[name] = extras.get(name, 0) + count
 
     def _accumulate_time_field(self, accumulated: dict, metadata: dict) -> None:
         if "time" in metadata and "time" in accumulated:
