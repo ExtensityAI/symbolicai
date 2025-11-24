@@ -305,7 +305,8 @@ aggregated_usage = RuntimeInfo(
     cached_tokens=0,
     total_calls=0,
     total_tokens=0,
-    cost_estimate=0
+    cost_estimate=0,
+    extras={}
 )
 for (engine_name, model_id), engine_data in usage_per_engine.items():
     pricing_key = (engine_name, model_id)
@@ -319,6 +320,21 @@ print(aggregated_usage)
 ```
 
 This approach provides a robust way to monitor and control costs associated with LLM API usage, especially when making multiple calls. Remember to update the `pricing` dictionary with the current rates for the models you are using. The `estimate_cost` function can also be customized to reflect complex pricing schemes (e.g., different rates for different models, image tokens, etc.).
+
+#### The `extras` Field
+
+`RuntimeInfo` includes an `extras` dictionary for engine-specific usage metrics that don't fit the standard token fields. For example, when using `ParallelEngine`, the tracker captures additional usage items like `sku_search` (number of search operations) and `sku_extract_excerpts` (number of excerpt extractions):
+
+```python
+# After tracking parallel search operations:
+usage_per_engine = RuntimeInfo.from_tracker(tracker, 0)
+for (engine_name, model_id), engine_data in usage_per_engine.items():
+    if engine_name == "ParallelEngine":
+        print(f"Search calls: {engine_data.extras.get('sku_search', 0)}")
+        print(f"Excerpt extractions: {engine_data.extras.get('sku_extract_excerpts', 0)}")
+```
+
+When aggregating `RuntimeInfo` objects with `+`, numeric values in `extras` are summed, while non-numeric values are overwritten.
 
 ---
 

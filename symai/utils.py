@@ -4,9 +4,9 @@ import base64
 import inspect
 import os
 import warnings
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import cv2
 import httpx
@@ -217,6 +217,7 @@ class RuntimeInfo:
     total_calls: int
     total_tokens: int
     cost_estimate: float
+    extras: dict[str, Any] = field(default_factory=dict)
 
     def __add__(self, other):
         add_elapsed_time = other.total_elapsed_time if hasattr(other, "total_elapsed_time") else 0
@@ -229,6 +230,17 @@ class RuntimeInfo:
         add_cached_tokens = other.cached_tokens if hasattr(other, "cached_tokens") else 0
         add_reasoning_tokens = other.reasoning_tokens if hasattr(other, "reasoning_tokens") else 0
         add_total_calls = other.total_calls if hasattr(other, "total_calls") else 0
+        extras = other.extras if hasattr(other, "extras") else {}
+        merged_extras = {**(self.extras or {})}
+        for key, value in (extras or {}).items():
+            if (
+                key in merged_extras
+                and isinstance(merged_extras[key], (int, float))
+                and isinstance(value, (int, float))
+            ):
+                merged_extras[key] += value
+            else:
+                merged_extras[key] = value
 
         return RuntimeInfo(
             total_elapsed_time=self.total_elapsed_time + add_elapsed_time,
@@ -239,6 +251,7 @@ class RuntimeInfo:
             total_calls=self.total_calls + add_total_calls,
             total_tokens=self.total_tokens + add_total_tokens,
             cost_estimate=self.cost_estimate + add_cost_estimate,
+            extras=merged_extras,
         )
 
     @staticmethod
@@ -248,7 +261,7 @@ class RuntimeInfo:
                 return RuntimeInfo.from_usage_stats(tracker.usage, total_elapsed_time)
             except Exception as e:
                 UserMessage(f"Failed to parse metadata: {e}", raise_with=ValueError)
-        return RuntimeInfo(0, 0, 0, 0, 0, 0, 0, 0)
+        return RuntimeInfo(0, 0, 0, 0, 0, 0, 0, 0, {})
 
     @staticmethod
     def from_usage_stats(usage_stats: dict | None, total_elapsed_time: float = 0):
@@ -266,9 +279,10 @@ class RuntimeInfo:
                     total_calls=data_box.usage.total_calls,
                     total_tokens=data_box.usage.total_tokens,
                     cost_estimate=0,  # Placeholder for cost estimate
+                    extras=data.get("extras", {}),
                 )
             return usage_per_engine
-        return RuntimeInfo(0, 0, 0, 0, 0, 0, 0, 0)
+        return RuntimeInfo(0, 0, 0, 0, 0, 0, 0, 0, {})
 
     @staticmethod
     def estimate_cost(info: RuntimeInfo, f_pricing: callable, **kwargs) -> RuntimeInfo:
@@ -281,4 +295,5 @@ class RuntimeInfo:
             total_calls=info.total_calls,
             total_tokens=info.total_tokens,
             cost_estimate=f_pricing(info, **kwargs),
+            extras=info.extras,
         )
