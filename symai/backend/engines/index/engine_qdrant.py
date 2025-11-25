@@ -386,7 +386,7 @@ class QdrantIndexEngine(Engine):
             embeddings = [embeddings]
 
         for i, vec in enumerate(embeddings):
-            point_id = ids[i] if ids and i < len(ids) else i
+            point_id = self._normalize_point_id(ids[i]) if ids and i < len(ids) else i
             payload = payloads[i] if payloads and i < len(payloads) else {}
             points.append(
                 PointStruct(id=point_id, vector=self._normalize_vector(vec), payload=payload)
@@ -636,15 +636,66 @@ class QdrantIndexEngine(Engine):
                     for name, vec in vector_config.items()
                 }
             }
-        return {
+        # Qdrant 1.16.1+ compatibility: vectors_count and indexed_vectors_count may not exist
+        # Use points_count as the primary count, and try to get vectors_count if available
+        result = {
             "name": collection_name,
-            "vectors_count": collection_info.vectors_count,
-            "indexed_vectors_count": collection_info.indexed_vectors_count,
             "points_count": collection_info.points_count,
             "config": {"params": {"vectors": vectors_info}},
         }
 
+        # Try to get vectors_count if available (for older Qdrant versions)
+        if hasattr(collection_info, "vectors_count"):
+            result["vectors_count"] = collection_info.vectors_count
+        else:
+            # In Qdrant 1.16.1+, vectors_count is not available, use points_count as approximation
+            result["vectors_count"] = collection_info.points_count
+
+        # Try to get indexed_vectors_count if available
+        if hasattr(collection_info, "indexed_vectors_count"):
+            result["indexed_vectors_count"] = collection_info.indexed_vectors_count
+        else:
+            # In Qdrant 1.16.1+, indexed_vectors_count may not be available
+            result["indexed_vectors_count"] = collection_info.points_count
+
+        return result
+
     # ==================== Point Operations ====================
+
+    def _normalize_point_id(self, point_id: Any) -> int | uuid.UUID:
+        """Normalize point ID to integer or UUID for Qdrant 1.16.1+ compatibility.
+
+        Qdrant 1.16.1+ requires point IDs to be either unsigned integers or UUIDs.
+        This function converts string IDs (like 'vec-1') to integers or UUIDs.
+        """
+        # If already int or UUID, return as-is
+        if isinstance(point_id, (int, uuid.UUID)):
+            return point_id
+
+        # If string, try to convert
+        if isinstance(point_id, str):
+            # Try to parse as integer first
+            try:
+                # Handle string IDs like "vec-1" by extracting the number
+                if point_id.startswith("vec-"):
+                    num_str = point_id.split("-", 1)[-1]
+                    return int(num_str)
+                # Try direct integer conversion
+                return int(point_id)
+            except (ValueError, AttributeError):
+                # If not a valid integer, try UUID
+                try:
+                    return uuid.UUID(point_id)
+                except (ValueError, AttributeError):
+                    # Fallback: generate UUID from string hash
+                    return uuid.uuid5(uuid.NAMESPACE_DNS, point_id)
+
+        # For other types, try to convert to int
+        try:
+            return int(point_id)
+        except (ValueError, TypeError):
+            # Last resort: generate UUID from string representation
+            return uuid.uuid5(uuid.NAMESPACE_DNS, str(point_id))
 
     def _upsert_points_sync(
         self,
@@ -662,17 +713,17 @@ class QdrantIndexEngine(Engine):
         if isinstance(points[0], dict):
             points = [
                 PointStruct(
-                    id=point["id"],
+                    id=self._normalize_point_id(point["id"]),
                     vector=self._normalize_vector(point["vector"]),
                     payload=point.get("payload", {}),
                 )
                 for point in points
             ]
         else:
-            # Normalize vectors in existing PointStruct objects
+            # Normalize vectors and IDs in existing PointStruct objects
             points = [
                 PointStruct(
-                    id=point.id,
+                    id=self._normalize_point_id(point.id),
                     vector=self._normalize_vector(point.vector),
                     payload=point.payload,
                 )
