@@ -70,6 +70,12 @@ def qdrant_server():  # noqa
         default=False,
         help="Run Docker container in detached mode (default: False)",
     )
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        default=False,
+        help="Disable caching in Qdrant server (default: False)",
+    )
 
     main_args, qdrant_args = parser.parse_known_args()
 
@@ -122,6 +128,12 @@ def qdrant_server():  # noqa
         if main_args.config_path:
             command.extend(["--config-path", main_args.config_path])
 
+        # Add no-cache environment variable if flag is set
+        if main_args.no_cache:
+            # Set environment variable to disable caching
+            # Qdrant uses environment variables with QDRANT__ prefix
+            os.environ["QDRANT__SERVICE__ENABLE_STATIC_CONTENT_CACHE"] = "false"
+
         # Add any additional Qdrant-specific arguments
         command.extend(qdrant_args)
 
@@ -170,6 +182,11 @@ def qdrant_server():  # noqa
             command.extend(["-v", f"{config_dir}:/qdrant/config:z"])
             # Qdrant looks for config.yaml in /qdrant/config by default
 
+        # Add no-cache environment variable if flag is set
+        if main_args.no_cache:
+            # Set environment variable to disable caching in Docker container
+            command.extend(["-e", "QDRANT__SERVICE__ENABLE_STATIC_CONTENT_CACHE=false"])
+
         # Docker image
         command.append(main_args.docker_image)
 
@@ -204,6 +221,8 @@ def qdrant_server():  # noqa
             config_args.append("--use-env-storage")
         if main_args.config_path:
             config_args.extend(["--config-path", main_args.config_path])
+        if main_args.no_cache:
+            config_args.append("--no-cache")
     else:
         config_args = [
             "--env",
@@ -224,5 +243,7 @@ def qdrant_server():  # noqa
             config_args.append("--use-env-storage")
         if main_args.config_path:
             config_args.extend(["--config-path", main_args.config_path])
+        if main_args.no_cache:
+            config_args.append("--no-cache")
 
     return command, config_args
