@@ -1,4 +1,5 @@
 import argparse
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -40,6 +41,13 @@ def qdrant_server():  # noqa
         type=str,
         default="./qdrant_storage",
         help="Path to Qdrant storage directory (default: ./qdrant_storage)",
+    )
+    parser.add_argument(
+        "--use-env-storage",
+        action="store_true",
+        default=False,
+        help="Use QDRANT__STORAGE__STORAGE_PATH environment variable instead of passing --storage-path. "
+        "If set, storage path argument/volume mount will be skipped, allowing Qdrant to use its own defaults or env vars.",
     )
     parser.add_argument(
         "--config-path", type=str, default=None, help="Path to Qdrant configuration file"
@@ -92,15 +100,19 @@ def qdrant_server():  # noqa
         # Build command for binary execution
         command = [main_args.binary_path]
 
-        # Ensure storage directory exists
-        storage_path = Path(main_args.storage_path)
-        storage_path.mkdir(parents=True, exist_ok=True)
-        abs_storage_path = str(storage_path.resolve())
-
-        # Add standard Qdrant arguments
-        # Set storage path via environment variable or command argument
-        # Qdrant binary accepts --storage-path argument
-        command.extend(["--storage-path", abs_storage_path])
+        # Add storage path argument unless --use-env-storage is set
+        if not main_args.use_env_storage:
+            # Ensure storage directory exists
+            storage_path = Path(main_args.storage_path)
+            storage_path.mkdir(parents=True, exist_ok=True)
+            abs_storage_path = str(storage_path.resolve())
+            # Qdrant binary accepts --storage-path argument
+            command.extend(["--storage-path", abs_storage_path])
+        elif os.getenv("QDRANT__STORAGE__STORAGE_PATH"):
+            # If using env storage and env var is set, pass it through
+            # Note: Qdrant binary may read this from env, but we can also pass it explicitly
+            abs_storage_path = os.getenv("QDRANT__STORAGE__STORAGE_PATH")
+            command.extend(["--storage-path", abs_storage_path])
 
         # Add host, port, and grpc-port arguments
         command.extend(["--host", main_args.host])
@@ -114,11 +126,6 @@ def qdrant_server():  # noqa
         command.extend(qdrant_args)
 
     else:  # docker
-        # Ensure storage directory exists
-        storage_path = Path(main_args.storage_path)
-        storage_path.mkdir(parents=True, exist_ok=True)
-        abs_storage_path = str(storage_path.resolve())
-
         # Build Docker command
         command = ["docker", "run"]
 
@@ -138,8 +145,20 @@ def qdrant_server():  # noqa
         command.extend(["-p", f"{main_args.port}:6333"])
         command.extend(["-p", f"{main_args.grpc_port}:6334"])
 
-        # Volume mount for storage
-        command.extend(["-v", f"{abs_storage_path}:/qdrant/storage:z"])
+        # Volume mount for storage (skip if --use-env-storage is set)
+        if not main_args.use_env_storage:
+            # Ensure storage directory exists
+            storage_path = Path(main_args.storage_path)
+            storage_path.mkdir(parents=True, exist_ok=True)
+            abs_storage_path = str(storage_path.resolve())
+            # Volume mount for storage
+            command.extend(["-v", f"{abs_storage_path}:/qdrant/storage:z"])
+            # Set storage path environment variable to use the mounted volume
+            command.extend(["-e", "QDRANT__STORAGE__STORAGE_PATH=/qdrant/storage"])
+        elif os.getenv("QDRANT__STORAGE__STORAGE_PATH"):
+            # If using env storage and env var is set, pass it through to container
+            env_storage_path = os.getenv("QDRANT__STORAGE__STORAGE_PATH")
+            command.extend(["-e", f"QDRANT__STORAGE__STORAGE_PATH={env_storage_path}"])
 
         # Volume mount for config (if provided)
         # Note: Qdrant Docker image accepts environment variables and config files
@@ -150,9 +169,6 @@ def qdrant_server():  # noqa
             config_dir = str(abs_config_path.parent)
             command.extend(["-v", f"{config_dir}:/qdrant/config:z"])
             # Qdrant looks for config.yaml in /qdrant/config by default
-
-        # Set storage path environment variable to use the mounted volume
-        command.extend(["-e", "QDRANT__STORAGE__STORAGE_PATH=/qdrant/storage"])
 
         # Docker image
         command.append(main_args.docker_image)
@@ -176,13 +192,16 @@ def qdrant_server():  # noqa
             str(main_args.port),
             "--grpc-port",
             str(main_args.grpc_port),
-            "--storage-path",
-            main_args.storage_path,
             "--docker-image",
             main_args.docker_image,
             "--docker-container-name",
             main_args.docker_container_name,
         ]
+        # Only include storage-path in config if not using env storage
+        if not main_args.use_env_storage:
+            config_args.extend(["--storage-path", main_args.storage_path])
+        else:
+            config_args.append("--use-env-storage")
         if main_args.config_path:
             config_args.extend(["--config-path", main_args.config_path])
     else:
@@ -197,9 +216,12 @@ def qdrant_server():  # noqa
             str(main_args.port),
             "--grpc-port",
             str(main_args.grpc_port),
-            "--storage-path",
-            main_args.storage_path,
         ]
+        # Only include storage-path in config if not using env storage
+        if not main_args.use_env_storage:
+            config_args.extend(["--storage-path", main_args.storage_path])
+        else:
+            config_args.append("--use-env-storage")
         if main_args.config_path:
             config_args.extend(["--config-path", main_args.config_path])
 
