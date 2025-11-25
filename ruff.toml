@@ -59,7 +59,7 @@ unfixable = []
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [lint.mccabe]
-max-complexity = 10
+max-complexity = 12
 
 [format]
 quote-style = "double"

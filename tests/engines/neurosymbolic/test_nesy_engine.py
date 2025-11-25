@@ -5,8 +5,10 @@ from anthropic import Stream
 from anthropic.types.message import Message
 from google.genai import types  # Import for Gemini types
 from openai.types.chat.chat_completion import ChatCompletion
+from openai.types.responses import Response
 
 from symai import Expression, Symbol
+from symai.backend.mixin.openai import SUPPORTED_REASONING_MODELS
 from symai.backend.settings import SYMAI_CONFIG
 from symai.components import Function
 from symai.core_ext import bind
@@ -15,6 +17,7 @@ NEUROSYMBOLIC = SYMAI_CONFIG.get('NEUROSYMBOLIC_ENGINE_MODEL')
 CLAUDE_THINKING = {"budget_tokens": 1024}
 GEMINI_THINKING = {"thinking_budget": 1024}
 CLAUDE_MAX_TOKENS = 4092
+IS_RESPONSES_API = NEUROSYMBOLIC.startswith('responses:')
 
 @bind(engine='neurosymbolic', property='compute_required_tokens')(lambda: 0)
 def _compute_required_tokens(): pass
@@ -84,8 +87,20 @@ def test_tokenizer():
             {"role": "assistant", "content": "Let's talk later when we're less busy about how to do better."},
             {"role": "user", "content": "This late pivot means we don't have time to boil the ocean for the client deliverable."}
         ]
+    elif IS_RESPONSES_API:
+        base_model = NEUROSYMBOLIC.replace('responses:', '')
+        admin_role = 'developer' if base_model in SUPPORTED_REASONING_MODELS else 'system'
+        messages = [
+            {"role": admin_role, "content": "You are a helpful, pattern-following assistant that translates corporate jargon into plain English."},
+            {"role": "user", "content": "New synergies will help drive top-line growth."},
+            {"role": "assistant", "content": "Things working well together will increase revenue."},
+            {"role": "user", "content": "Let's circle back when we have more bandwidth to touch base on opportunities for increased leverage."},
+            {"role": "assistant", "content": "Let's talk later when we're less busy about how to do better."},
+            {"role": "user", "content": "This late pivot means we don't have time to boil the ocean for the client deliverable."}
+        ]
     else:
-        admin_role = 'system' if NEUROSYMBOLIC.startswith('gpt') else 'developer'
+        is_reasoning = NEUROSYMBOLIC in SUPPORTED_REASONING_MODELS
+        admin_role = 'developer' if is_reasoning else ('system' if NEUROSYMBOLIC.startswith('gpt') else 'developer')
         messages = [
             {"role": admin_role, "content": "You are a helpful, pattern-following assistant that translates corporate jargon into plain English."},
             {"role": admin_role, "name": "example_user", "content": "New synergies will help drive top-line growth."},
@@ -101,6 +116,8 @@ def test_tokenizer():
         api_tokens = response.usage_metadata.prompt_token_count
     elif NEUROSYMBOLIC.startswith('claude'):
         api_tokens = response[0].message.usage.input_tokens
+    elif IS_RESPONSES_API:
+        api_tokens = response.usage.input_tokens
     else:
         api_tokens = response.usage.prompt_tokens
 
@@ -113,7 +130,29 @@ def test_tokenizer():
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('o1'), reason='feature not supported by the model')
 @pytest.mark.skipif(NEUROSYMBOLIC == "gpt-5.1-chat-latest" or NEUROSYMBOLIC == "gpt-5-chat-latest", reason='feature not supported by the model with v1/chat/completions')
 def test_tool_usage():
-    if NEUROSYMBOLIC.startswith('o3') or NEUROSYMBOLIC.startswith('o4') or NEUROSYMBOLIC.startswith('gpt'):
+    if IS_RESPONSES_API:
+        tools = [{
+            "type": "function",
+            "name": "get_weather",
+            "description": "Get current temperature for a given location.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "City and country e.g. Bogotá, Colombia"
+                    }
+                },
+                "required": ["location"],
+            }
+        }]
+        fn = Function("Analyze the input request and select the most appropriate function to call from the provided options.", tools=tools)
+        res, metadata = fn("what's the temperature in Bogotá, Colombia", raw_output=True, return_metadata=True)
+        assert 'function_call' in metadata
+        assert metadata['function_call']['name'] == 'get_weather'
+        assert 'location' in metadata['function_call']['arguments']
+        assert 'bogotá, colombia' in metadata['function_call']['arguments']['location'].lower()
+    elif NEUROSYMBOLIC.startswith('o3') or NEUROSYMBOLIC.startswith('o4') or NEUROSYMBOLIC.startswith('gpt'):
         tools = [{
             "type": "function",
             "function": {
@@ -217,6 +256,9 @@ def test_raw_output():
             expected_types = {'RawMessageStartEvent', 'RawContentBlockStartEvent',
                             'RawContentBlockDeltaEvent', 'RawContentBlockStopEvent'}
             assert len(event_types & expected_types) > 0, f"Expected streaming events but got: {event_types}"
+    elif IS_RESPONSES_API:
+        S = Expression.prompt('What is the capital of France?', raw_output=True)
+        assert isinstance(S.value, Response)
     elif NEUROSYMBOLIC.startswith('gpt') or NEUROSYMBOLIC.startswith('o1') or NEUROSYMBOLIC.startswith('o3'):
         S = Expression.prompt('What is the capital of France?', raw_output=True)
         assert isinstance(S.value, ChatCompletion)

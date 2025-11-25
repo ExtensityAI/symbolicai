@@ -38,6 +38,9 @@ SUPPORTED_EMBEDDING_MODELS = [
     "text-embedding-3-small",
     "text-embedding-3-large",
 ]
+SUPPORTED_RESPONSES_MODELS = [
+    f"responses:{m}" for m in SUPPORTED_CHAT_MODELS + SUPPORTED_REASONING_MODELS
+] + ["responses:gpt-5-pro", "responses:o3-pro"]
 
 
 class OpenAIMixin:
@@ -89,6 +92,7 @@ class OpenAIMixin:
             self.model == "o1"
             or self.model == "o3"
             or self.model == "o3-mini"
+            or self.model == "o3-pro"
             or self.model == "o4-mini"
             or self.model == "gpt-5-chat-latest"
             or self.model == "gpt-5.1-chat-latest"
@@ -99,6 +103,7 @@ class OpenAIMixin:
             or self.model == "gpt-5.1"
             or self.model == "gpt-5-mini"
             or self.model == "gpt-5-nano"
+            or self.model == "gpt-5-pro"
         ):
             return 400_000
         if self.model == "gpt-4.1" or self.model == "gpt-4.1-mini" or self.model == "gpt-4.1-nano":
@@ -138,6 +143,7 @@ class OpenAIMixin:
             self.model == "o1"
             or self.model == "o3"
             or self.model == "o3-mini"
+            or self.model == "o3-pro"
             or self.model == "o4-mini"
         ):
             return 100_000
@@ -148,6 +154,8 @@ class OpenAIMixin:
             or self.model == "gpt-5-nano"
         ):
             return 128_000
+        if self.model == "gpt-5-pro":
+            return 272_000
         msg = f"Unsupported model: {self.model}"
         UserMessage(msg)
         raise ValueError(msg)
