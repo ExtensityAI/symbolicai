@@ -22,7 +22,9 @@ try:
     from qdrant_client.http.models import (
         Distance,
         Filter,
+        NamedVector,
         PointStruct,
+        Query,
         ScoredPoint,
         VectorParams,
     )
@@ -33,6 +35,8 @@ except ImportError:
     VectorParams = None
     PointStruct = None
     Filter = None
+    Query = None
+    NamedVector = None
     ScoredPoint = None
 
 try:
@@ -510,14 +514,19 @@ class QdrantIndexEngine(Engine):
         )
         def _func():
             query_vector_normalized = self._normalize_vector(query_vector)
-            return self.client.search(
+            # For single vector collections, pass vector directly to query parameter
+            # For named vector collections, use Query(near_vector=NamedVector(name="vector_name", vector=...))
+            # query_points API uses query_filter (not filter) for filtering
+            response = self.client.query_points(
                 collection_name=collection_name,
-                query_vector=query_vector_normalized,
+                query=query_vector_normalized,
                 limit=top_k,
                 with_payload=True,
                 with_vectors=self.index_values,
                 **kwargs,
             )
+            # query_points returns QueryResponse with .points attribute, extract it
+            return response.points
 
         return _func()
 
