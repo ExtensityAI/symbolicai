@@ -11,6 +11,7 @@ from ...mixin import (
     GROQ_REASONING_MODELS,
     OPENAI_CHAT_MODELS,
     OPENAI_REASONING_MODELS,
+    OPENAI_RESPONSES_MODELS,
 )
 from .engine_anthropic_claudeX_chat import ClaudeXChatEngine
 from .engine_anthropic_claudeX_reasoning import ClaudeXReasoningEngine
@@ -20,6 +21,7 @@ from .engine_google_geminiX_reasoning import GeminiXReasoningEngine
 from .engine_groq import GroqEngine
 from .engine_openai_gptX_chat import GPTXChatEngine
 from .engine_openai_gptX_reasoning import GPTXReasoningEngine
+from .engine_openai_responses import OpenAIResponsesEngine
 
 # create the mapping
 ENGINE_MAPPING = {
@@ -31,6 +33,7 @@ ENGINE_MAPPING = {
     **dict.fromkeys(GOOGLE_REASONING_MODELS, GeminiXReasoningEngine),
     **dict.fromkeys(OPENAI_CHAT_MODELS, GPTXChatEngine),
     **dict.fromkeys(OPENAI_REASONING_MODELS, GPTXReasoningEngine),
+    **dict.fromkeys(OPENAI_RESPONSES_MODELS, OpenAIResponsesEngine),
     **dict.fromkeys(GROQ_CHAT_MODELS, GroqEngine),
     **dict.fromkeys(GROQ_REASONING_MODELS, GroqEngine),
 }
@@ -49,6 +52,7 @@ __all__ = [
     "GROQ_REASONING_MODELS",
     "OPENAI_CHAT_MODELS",
     "OPENAI_REASONING_MODELS",
+    "OPENAI_RESPONSES_MODELS",
     "ClaudeXChatEngine",
     "ClaudeXReasoningEngine",
     "DeepSeekXReasoningEngine",
@@ -56,4 +60,5 @@ __all__ = [
     "GPTXReasoningEngine",
     "GeminiXReasoningEngine",
     "GroqEngine",
+    "OpenAIResponsesEngine",
 ]

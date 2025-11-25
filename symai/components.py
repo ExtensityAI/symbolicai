@@ -1313,7 +1313,7 @@ class MetadataTracker(Expression):
                     token_details[(engine_name, model_name)]["prompt_breakdown"][
                         "cached_tokens"
                     ] += usage.prompt_tokens_details.cached_tokens
-                elif engine_name == "GPTXSearchEngine":
+                elif engine_name in ("GPTXSearchEngine", "OpenAIResponsesEngine"):
                     usage = metadata["raw_output"].usage
                     token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += (
                         usage.input_tokens
@@ -1375,9 +1375,7 @@ class MetadataTracker(Expression):
         for item in usage_items:
             name = getattr(item, "name", None)
             count = getattr(item, "count", None)
-            if name in ("sku_search", "sku_extract_excerpts") and isinstance(
-                count, (int, float)
-            ):
+            if name in ("sku_search", "sku_extract_excerpts") and isinstance(count, (int, float)):
                 extras[name] = extras.get(name, 0) + count
 
     def _accumulate_time_field(self, accumulated: dict, metadata: dict) -> None:

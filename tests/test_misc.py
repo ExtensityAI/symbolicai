@@ -14,6 +14,7 @@ from symai.utils import format_bytes
 NEUROSYMBOLIC = SYMAI_CONFIG.get('NEUROSYMBOLIC_ENGINE_MODEL')
 CLAUDE_THINKING = {"budget_tokens": 1024}
 CLAUDE_MAX_TOKENS = 4092 # Limit this, otherwise: "ValueError: Streaming is strongly recommended for operations that may take longer than 10 minutes."
+IS_RESPONSES_API = NEUROSYMBOLIC.startswith('responses:')
 
 @pytest.mark.mandatory
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('llama'), reason='llamacpp JSON format not yet supported')
@@ -24,7 +25,8 @@ def test_json_format():
          NEUROSYMBOLIC.startswith('claude') or
          NEUROSYMBOLIC.startswith('gemini') or
          NEUROSYMBOLIC.startswith('groq') or
-         NEUROSYMBOLIC.startswith('cerebras')) \
+         NEUROSYMBOLIC.startswith('cerebras') or
+         IS_RESPONSES_API) \
          else 'developer'
     if all(id not in NEUROSYMBOLIC for id in ['3-7', '4-0', '4-1', '4-5']):
         res = Expression.prompt(

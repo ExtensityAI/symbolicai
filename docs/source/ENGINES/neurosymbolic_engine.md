@@ -8,6 +8,7 @@ Depending on which backend you configure (OpenAI/GPT, Claude, Gemini, Deepseek, 
 * Local engines (llamacpp, HuggingFace) do *not* yet support token counting, JSON format enforcement, or vision inputs in the same way.
 * Groq engine requires a special format for the `NEUROSYMBOLIC_ENGINE_MODEL` key: `groq:model_id`. E.g., `groq:qwen/qwen3-32b`.
 * Cerebras engine requires a special format for the `NEUROSYMBOLIC_ENGINE_MODEL` key: `cerebras:model_id`. E.g., `cerebras:gpt-oss-120b`.
+* OpenAI Responses API engine requires the `responses:` prefix: `responses:model_id`. E.g., `responses:gpt-4.1`, `responses:o3-mini`. This uses OpenAI's newer `/v1/responses` endpoint instead of `/v1/chat/completions`.
 * Token‐truncation and streaming are handled automatically but may vary in behavior by engine.
 
 > ❗️**NOTE**❗️the most accurate documentation is the _code_, so be sure to check out the tests. Look for the `mandatory` mark since those are the features that were tested and are guaranteed to work.
@@ -97,9 +98,9 @@ assert blocks[0].name == "get_stock_price"
 
 ---
 
-## Thinking Trace (Claude, Gemini, Deepseek, Groq's reasoning models)
+## Thinking Trace (Claude, Gemini, Deepseek, Groq, OpenAI Responses)
 
-Some engines (Anthropic's Claude, Google's Gemini, Deepseek) can return an internal **thinking trace** that shows how they arrived at an answer. To get it, you must:
+Some engines (Anthropic's Claude, Google's Gemini, Deepseek, OpenAI Responses API with reasoning models) can return an internal **thinking trace** that shows how they arrived at an answer. To get it, you must:
 
 1. Pass `return_metadata=True`.
 2. Pass a `thinking=` configuration if required.
@@ -189,6 +190,24 @@ print(metadata["thinking"])
 ```
 
 For Cerebras backends, `symai` collects the reasoning trace from either the dedicated `reasoning` field on the message (when present) or from `<think>…</think>` blocks embedded in the content. In both cases the trace is exposed as `metadata["thinking"]` and removed from the final user-facing text.
+
+### OpenAI Responses API (reasoning models)
+
+```python
+from symai import Symbol
+
+# responses:o3-mini or responses:gpt-5
+res, metadata = Symbol("Topic: Disneyland") \
+    .query(
+      "Write a dystopic take on the topic.",
+      return_metadata=True,
+      reasoning={"effort": "medium"}  # optional: low, medium, or high
+    )
+print(res)
+print(metadata["thinking"])
+```
+
+For OpenAI Responses API with reasoning models (e.g., `o3-mini`, `o3`, `o4-mini`, `gpt-5`, `gpt-5.1`), the thinking trace is extracted from the reasoning summary in the response output.
 
 ---
 
