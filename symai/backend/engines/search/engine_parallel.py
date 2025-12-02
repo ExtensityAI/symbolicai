@@ -298,6 +298,7 @@ class ExtractResult(Result):
 
 class ParallelEngine(Engine):
     MAX_INCLUDE_DOMAINS = 10
+    MAX_EXCLUDE_DOMAINS = 10
 
     def __init__(self, api_key: str | None = None):
         super().__init__()
@@ -350,11 +351,27 @@ class ParallelEngine(Engine):
             if not netloc or netloc in seen:
                 continue
             if not self._is_valid_domain(netloc):
-                # Skip strings that are not apex domains or bare TLD patterns
                 continue
             seen.add(netloc)
             out.append(netloc)
             if len(out) >= self.MAX_INCLUDE_DOMAINS:
+                break
+        return out
+
+    def _normalize_exclude_domains(self, domains: list[str] | None) -> list[str]:
+        if not isinstance(domains, list):
+            return []
+        seen: set[str] = set()
+        out: list[str] = []
+        for d in domains:
+            netloc = self._extract_netloc(d)
+            if not netloc or netloc in seen:
+                continue
+            if not self._is_valid_domain(netloc):
+                continue
+            seen.add(netloc)
+            out.append(netloc)
+            if len(out) >= self.MAX_EXCLUDE_DOMAINS:
                 break
         return out
 
@@ -411,7 +428,14 @@ class ParallelEngine(Engine):
         max_chars_per_result = kwargs.get("max_chars_per_result", 15000)
         excerpts = {"max_chars_per_result": max_chars_per_result}
         include = self._normalize_include_domains(kwargs.get("allowed_domains"))
-        source_policy = {"include_domains": include} if include else None
+        exclude = self._normalize_exclude_domains(kwargs.get("excluded_domains"))
+        source_policy: dict[str, Any] | None = None
+        if include or exclude:
+            source_policy = {}
+            if include:
+                source_policy["include_domains"] = include
+            if exclude:
+                source_policy["exclude_domains"] = exclude
         objective = kwargs.get("objective")
 
         try:
@@ -432,7 +456,14 @@ class ParallelEngine(Engine):
         task_input = self._compose_task_input(queries)
 
         include = self._normalize_include_domains(kwargs.get("allowed_domains"))
-        source_policy = {"include_domains": include} if include else None
+        exclude = self._normalize_exclude_domains(kwargs.get("excluded_domains"))
+        source_policy: dict[str, Any] | None = None
+        if include or exclude:
+            source_policy = {}
+            if include:
+                source_policy["include_domains"] = include
+            if exclude:
+                source_policy["exclude_domains"] = exclude
         metadata = self._coerce_metadata(kwargs.get("metadata"))
 
         output_schema = (
