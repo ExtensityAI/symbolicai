@@ -45,10 +45,11 @@ select = [
   "RUF","T10","T20"
 ]
 ignore = [
-  "B028",  # no explicit stacklevel; enable if you rely on warnings for users
-  "PLW0603",  # global statement discouraged; often noisy in legacy code
-  "G004", #  logging-f-string
-  "A002", #  argument-shadowing-builtin
+  "B028", # no explicit stacklevel; enable if you rely on warnings for users
+  "PLW0603", # global statement discouraged; often noisy in legacy code
+  "G004", # logging-f-string
+  "A002", # argument-shadowing-builtin
+  "C901", # better to handle this manually case by case
 ]
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
@@ -57,9 +58,6 @@ unfixable = []
 
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
-
-[lint.mccabe]
-max-complexity = 12
 
 [format]
 quote-style = "double"
