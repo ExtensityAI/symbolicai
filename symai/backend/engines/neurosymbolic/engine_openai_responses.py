@@ -115,8 +115,10 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
 
     def _is_reasoning_model(self) -> bool:
         return self.model in SUPPORTED_REASONING_MODELS or self.model in {
+            "gpt-5.2-chat-latest",
             "gpt-5.1-chat-latest",
             "gpt-5-pro",
+            "gpt-5.2-pro",
             "o3-pro",
         }
 
@@ -319,7 +321,7 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
             payload["top_p"] = kwargs["top_p"]
 
         if self._is_reasoning_model():
-            if self.model == "gpt-5-pro":
+            if self.model in {"gpt-5-pro", "gpt-5.2-pro"}:
                 reasoning = {"effort": "high"}
             else:
                 reasoning = kwargs.get("reasoning", {"effort": "medium"})
