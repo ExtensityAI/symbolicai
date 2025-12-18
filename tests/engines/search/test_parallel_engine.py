@@ -86,7 +86,7 @@ def test_parallel_search_domain_filtering():
         for n in ("www.tomshardware.com", "tomshardware.com", "www.arstechnica.com", "arstechnica.com")
     ), "No citations from allowed domains found"
 
-@pytest.mark.parametrize("processor", ["lite"])
+@pytest.mark.parametrize("processor", ["lite-fast"])
 def test_parallel_task_route_via_processor(processor):
     search = _iface()
 
