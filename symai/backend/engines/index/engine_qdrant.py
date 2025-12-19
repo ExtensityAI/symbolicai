@@ -6,6 +6,7 @@ import uuid
 import warnings
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import numpy as np
 
@@ -14,6 +15,7 @@ from ....symbol import Result, Symbol
 from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG, SYMSERVER_CONFIG
+from ..search.engine_parallel import SearchResult as ParallelSearchResult
 
 warnings.filterwarnings("ignore", module="qdrant_client")
 try:
@@ -421,15 +423,18 @@ class QdrantIndexEngine(Engine):
             kwargs["index_get"] = True
             self._configure_collection(**kwargs)
 
+        treat_as_search_engine = False
         if operation == "search":
             # Ensure collection exists - fail fast if it doesn't
             self._ensure_collection_exists(collection_name)
-            index_top_k = kwargs.get("index_top_k", self.index_top_k)
+            search_kwargs = dict(kwargs)
+            index_top_k = search_kwargs.pop("index_top_k", self.index_top_k)
             # Optional search parameters
-            score_threshold = kwargs.get("score_threshold")
+            score_threshold = search_kwargs.pop("score_threshold", None)
             # Accept both `query_filter` and `filter` for convenience
-            raw_filter = kwargs.get("query_filter", kwargs.get("filter"))
+            raw_filter = search_kwargs.pop("query_filter", search_kwargs.pop("filter", None))
             query_filter = self._build_query_filter(raw_filter)
+            treat_as_search_engine = bool(search_kwargs.pop("treat_as_search_engine", False))
 
             # Use shared search helper that already handles retries and normalization
             rsp = self._search_sync(
@@ -438,6 +443,7 @@ class QdrantIndexEngine(Engine):
                 limit=index_top_k,
                 score_threshold=score_threshold,
                 query_filter=query_filter,
+                **search_kwargs,
             )
         elif operation == "add":
             # Create collection if it doesn't exist (only for write operations)
@@ -462,7 +468,10 @@ class QdrantIndexEngine(Engine):
 
         metadata = {}
 
-        rsp = QdrantResult(rsp, query, embedding)
+        if operation == "search" and treat_as_search_engine:
+            rsp = self._format_search_results(rsp, collection_name)
+        else:
+            rsp = QdrantResult(rsp, query, embedding)
         return [rsp], metadata
 
     def prepare(self, argument):
@@ -513,7 +522,33 @@ class QdrantIndexEngine(Engine):
             jitter=self.jitter,
         )
         def _func():
+            qdrant_kwargs = dict(kwargs)
             query_vector_normalized = self._normalize_vector(query_vector)
+            with_payload = qdrant_kwargs.pop("with_payload", True)
+            with_vectors = qdrant_kwargs.pop("with_vectors", self.index_values)
+            # qdrant-client `query_points` is strict about extra kwargs and will assert if any
+            # unknown arguments are provided. Because our engine `forward()` passes decorator
+            # kwargs through the stack, we must drop engine-internal fields here.
+            #
+            # Keep only kwargs that `qdrant_client.QdrantClient.query_points` accepts (besides
+            # those we pass explicitly).
+            if "filter" in qdrant_kwargs and "query_filter" not in qdrant_kwargs:
+                # Convenience alias supported by our public API
+                qdrant_kwargs["query_filter"] = qdrant_kwargs.pop("filter")
+
+            allowed_qdrant_kwargs = {
+                "using",
+                "prefetch",
+                "query_filter",
+                "search_params",
+                "offset",
+                "score_threshold",
+                "lookup_from",
+                "consistency",
+                "shard_key_selector",
+                "timeout",
+            }
+            qdrant_kwargs = {k: v for k, v in qdrant_kwargs.items() if k in allowed_qdrant_kwargs}
             # For single vector collections, pass vector directly to query parameter
             # For named vector collections, use Query(near_vector=NamedVector(name="vector_name", vector=...))
             # query_points API uses query_filter (not filter) for filtering
@@ -521,9 +556,9 @@ class QdrantIndexEngine(Engine):
                 collection_name=collection_name,
                 query=query_vector_normalized,
                 limit=top_k,
-                with_payload=True,
-                with_vectors=self.index_values,
-                **kwargs,
+                with_payload=with_payload,
+                with_vectors=with_vectors,
+                **qdrant_kwargs,
             )
             # query_points returns QueryResponse with .points attribute, extract it
             return response.points
@@ -859,6 +894,77 @@ class QdrantIndexEngine(Engine):
 
         # Use _query which handles retry logic and vector normalization
         return self._query(collection_name, query_vector, limit, **search_kwargs)
+
+    def _resolve_payload_url(self, payload: dict[str, Any], collection_name: str, point_id: Any) -> str:
+        source = (
+            payload.get("source")
+            or payload.get("url")
+            or payload.get("file_path")
+            or payload.get("path")
+        )
+        if isinstance(source, str) and source:
+            if source.startswith(("http://", "https://", "file://")):
+                return source
+
+            source_path = Path(source).expanduser()
+            try:
+                resolved = source_path.resolve()
+                if resolved.exists() or source_path.is_absolute():
+                    return resolved.as_uri()
+            except Exception:
+                return str(source_path)
+            return str(source_path)
+
+        return f"qdrant://{collection_name}/{point_id}"
+
+    def _resolve_payload_title(self, payload: dict[str, Any], url: str, page: Any) -> str:
+        raw_title = payload.get("title")
+        if isinstance(raw_title, str) and raw_title.strip():
+            base = raw_title.strip()
+        else:
+            parsed = urlparse(url)
+            path_part = parsed.path or url
+            base = Path(path_part).stem or url
+
+        try:
+            page_int = int(page) if page is not None else None
+        except (TypeError, ValueError):
+            page_int = None
+
+        if Path(urlparse(url).path).suffix.lower() == ".pdf" and page_int is not None:
+            base = f"{base}#p{page_int}"
+
+        return base
+
+    def _format_search_results(
+        self, points: list[ScoredPoint] | None, collection_name: str
+    ):
+        results: list[dict[str, Any]] = []
+
+        for point in points or []:
+            payload = getattr(point, "payload", {}) or {}
+            text = payload.get("text") or payload.get("content")
+            if isinstance(text, list):
+                text = " ".join([t for t in text if isinstance(t, str)])
+            if not isinstance(text, str):
+                continue
+            excerpt = text.strip()
+            if not excerpt:
+                continue
+
+            page = payload.get("page") or payload.get("page_number") or payload.get("pageIndex")
+            url = self._resolve_payload_url(payload, collection_name, getattr(point, "id", ""))
+            title = self._resolve_payload_title(payload, url, page)
+
+            results.append(
+                {
+                    "url": url,
+                    "title": title,
+                    "excerpts": [excerpt],
+                }
+            )
+
+        return ParallelSearchResult({"results": results})
 
     async def search(
         self,
