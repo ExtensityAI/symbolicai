@@ -31,19 +31,22 @@ The Qdrant engine provides a production-ready vector database for scalable RAG a
 
 ### Setup
 
-#### Option 1: Local Qdrant Server
+#### Option 1: Local Qdrant Server (via symserver)
 
-Start a local Qdrant server using the built-in wrapper:
+Start Qdrant using the `symserver` CLI (Docker by default).
 
 ```bash
-# Using Docker (default)
-python -m symai.server.qdrant_server
+# Pull the image once (recommended)
+docker pull qdrant/qdrant:latest
 
-# Using Qdrant binary
-python -m symai.server.qdrant_server --mode binary --binary-path /path/to/qdrant
+# Docker (default): set INDEXING_ENGINE so symserver selects Qdrant
+INDEXING_ENGINE=qdrant symserver --host 0.0.0.0 --port 6333 --storage-path ./qdrant_storage
 
-# Custom configuration
-python -m symai.server.qdrant_server --host 0.0.0.0 --port 6333 --storage-path ./qdrant_storage
+# Use native binary
+INDEXING_ENGINE=qdrant symserver --env binary --binary-path /path/to/qdrant --port 6333 --storage-path ./qdrant_storage
+
+# Detach Docker if desired
+INDEXING_ENGINE=qdrant symserver --docker-detach
 ```
 
 #### Option 2: Cloud Qdrant
@@ -101,6 +104,41 @@ async def basic_usage():
         print(f"Text: {result.payload.get('text', '')}")
 
 asyncio.run(basic_usage())
+```
+
+### Local Search with citations
+
+If you need citation-formatted results compatible with `parallel.search`, use the `local_search` interface. It embeds the query locally, queries Qdrant, and returns a `SearchResult` (with `value` and `citations`) instead of a raw `ScoredPoint` objects:
+
+Local search accepts the same args as passed to Qdrant directly: `collection_name`/`index_name`, `limit`/`top_k`/`index_top_k`, `score_threshold`, `query_filter` (dict or Qdrant `Filter`), and any extra Qdrant search kwargs. Citation fields are derived from Qdrant payloads: the excerpt uses `payload["text"]` (or `content`), the URL prefers `payload["source"]`/`url`/`file_path` (falls back to `qdrant://{collection}/{id}`), and the title is the stem of that path (PDF pages append `#p{page}` when provided).
+
+Example:
+
+```python
+from symai.interfaces import Interface
+from qdrant_client.http import models
+
+search = Interface("local_search", index_name="my_collection")
+
+qdrant_filter = models.Filter(
+    must=[
+        models.FieldCondition(key="category", match=models.MatchValue(value="AI"))
+    ]
+)
+
+result = search.search(
+    "neural networks and transformers",
+    collection_name="my_collection",   # alias: index_name
+    limit=5,                           # aliases: top_k, index_top_k
+    score_threshold=0.35,
+    query_filter=qdrant_filter,        # or a simple dict like {"category": "AI"}
+    with_payload=True,                 # passed through to Qdrant query_points
+    with_vectors=False,                # optional; defaults follow engine config
+    # any other Qdrant query_points kwargs can be added here
+)
+
+print(result.value)          # formatted text with [1], [2] markers
+print(result.get_citations())  # list of Citation objects
 ```
 
 ### Collection Management
