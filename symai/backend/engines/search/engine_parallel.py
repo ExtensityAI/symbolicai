@@ -74,7 +74,8 @@ class SearchResult(Result):
         self._citations: list[Citation] = []
         try:
             results = self._coerce_results(value)
-            text, citations = self._build_text_and_citations(results)
+            task_meta = self._extract_task_metadata(value)
+            text, citations = self._build_text_and_citations(results, task_meta=task_meta)
             self._value = text
             self._citations = citations
         except Exception as e:
@@ -87,12 +88,25 @@ class SearchResult(Result):
         results = raw.get("results", []) if isinstance(raw, dict) else getattr(raw, "results", None)
         if not results:
             return []
-        coerced: list[dict[str, Any]] = []
+        coerced = []
         for item in results:
             if item is None:
                 continue
             coerced.append(_item_to_mapping(item))
         return coerced
+
+    def _extract_task_metadata(self, raw: Any) -> dict[str, Any] | None:
+        if not isinstance(raw, dict):
+            return None
+        task_output = raw.get("task_output")
+        if task_output is None:
+            return None
+        output_value = task_output.get("output") if isinstance(task_output, dict) else None
+        return {
+            "reasoning": raw.get("task_reasoning"),
+            "answer": output_value,
+            "confidence": raw.get("task_confidence"),
+        }
 
     def _normalize_url(self, url: str) -> str:
         parts = urlsplit(url)
@@ -139,11 +153,40 @@ class SearchResult(Result):
         cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
         return cleaned.strip()
 
-    def _build_text_and_citations(self, results: list[dict[str, Any]]):
-        pieces: list[str] = []
-        citations: list[Citation] = []
+    def _build_text_and_citations(
+        self, results: list[dict[str, Any]], *, task_meta: dict[str, Any] | None = None
+    ):
+        pieces = []
+        citations = []
         cursor = 0
-        seen_urls: set[str] = set()
+
+        if task_meta:
+            reasoning = task_meta.get("reasoning")
+            answer = task_meta.get("answer")
+            confidence = task_meta.get("confidence")
+
+            if reasoning:
+                block = f"<reasoning>\n{reasoning}\n</reasoning>"
+                pieces.append(block)
+                cursor += len(block)
+
+            if answer:
+                if pieces:
+                    pieces.append("\n\n")
+                    cursor += 2
+                block = f"<answer>\n{answer}\n</answer>"
+                pieces.append(block)
+                cursor += len(block)
+
+            if confidence:
+                if pieces:
+                    pieces.append("\n\n")
+                    cursor += 2
+                block = f"<answer_confidence>\n{confidence}\n</answer_confidence>"
+                pieces.append(block)
+                cursor += len(block)
+
+        seen_urls = set()
         cid = 1
         separator = "\n\n---\n\n"
 
@@ -158,13 +201,8 @@ class SearchResult(Result):
 
             title = str(item.get("title") or "") or urlsplit(normalized_url).netloc
             excerpts = item.get("excerpts") or []
-            excerpt_parts: list[str] = []
-            for ex in excerpts:
-                if not isinstance(ex, str):
-                    continue
-                sanitized = self._sanitize_excerpt(ex)
-                if sanitized:
-                    excerpt_parts.append(sanitized)
+            excerpt_parts = [self._sanitize_excerpt(ex) for ex in excerpts]
+            excerpt_parts = [p for p in excerpt_parts if p]
             if not excerpt_parts:
                 continue
 
@@ -255,16 +293,14 @@ class ExtractResult(Result):
         super().__init__(value, **kwargs)
         try:
             results = self._coerce_results(value)
-            content_parts: list[str] = []
+            content_parts = []
             for r in results:
-                excerpts = r.get("excerpts") or []
                 full = r.get("full_content")
-                if isinstance(full, str):
+                if full is not None:
                     content_parts.append(full)
-                elif full is not None:
-                    content_parts.append(str(full))
-                elif excerpts:
-                    content_parts.extend([s for s in excerpts if isinstance(s, str)])
+                else:
+                    excerpts = r.get("excerpts") or []
+                    content_parts.extend(excerpts)
             self._value = "\n\n".join(content_parts)
         except Exception as e:
             self._value = None
@@ -276,7 +312,7 @@ class ExtractResult(Result):
         results = raw.get("results", []) if isinstance(raw, dict) else getattr(raw, "results", None)
         if not results:
             return []
-        coerced: list[dict[str, Any]] = []
+        coerced = []
         for item in results:
             if item is None:
                 continue
@@ -298,6 +334,7 @@ class ExtractResult(Result):
 
 class ParallelEngine(Engine):
     MAX_INCLUDE_DOMAINS = 10
+    MAX_EXCLUDE_DOMAINS = 10
 
     def __init__(self, api_key: str | None = None):
         super().__init__()
@@ -343,18 +380,34 @@ class ParallelEngine(Engine):
     def _normalize_include_domains(self, domains: list[str] | None) -> list[str]:
         if not isinstance(domains, list):
             return []
-        seen: set[str] = set()
-        out: list[str] = []
+        seen = set()
+        out = []
         for d in domains:
             netloc = self._extract_netloc(d)
             if not netloc or netloc in seen:
                 continue
             if not self._is_valid_domain(netloc):
-                # Skip strings that are not apex domains or bare TLD patterns
                 continue
             seen.add(netloc)
             out.append(netloc)
             if len(out) >= self.MAX_INCLUDE_DOMAINS:
+                break
+        return out
+
+    def _normalize_exclude_domains(self, domains: list[str] | None) -> list[str]:
+        if not isinstance(domains, list):
+            return []
+        seen = set()
+        out = []
+        for d in domains:
+            netloc = self._extract_netloc(d)
+            if not netloc or netloc in seen:
+                continue
+            if not self._is_valid_domain(netloc):
+                continue
+            seen.add(netloc)
+            out.append(netloc)
+            if len(out) >= self.MAX_EXCLUDE_DOMAINS:
                 break
         return out
 
@@ -365,7 +418,7 @@ class ParallelEngine(Engine):
             text = value.strip()
             return [text] if text else []
         if isinstance(value, list):
-            cleaned: list[str] = []
+            cleaned = []
             for item in value:
                 if item is None:
                     continue
@@ -411,7 +464,14 @@ class ParallelEngine(Engine):
         max_chars_per_result = kwargs.get("max_chars_per_result", 15000)
         excerpts = {"max_chars_per_result": max_chars_per_result}
         include = self._normalize_include_domains(kwargs.get("allowed_domains"))
-        source_policy = {"include_domains": include} if include else None
+        exclude = self._normalize_exclude_domains(kwargs.get("excluded_domains"))
+        source_policy = None
+        if include or exclude:
+            source_policy = {}
+            if include:
+                source_policy["include_domains"] = include
+            if exclude:
+                source_policy["exclude_domains"] = exclude
         objective = kwargs.get("objective")
 
         try:
@@ -432,7 +492,14 @@ class ParallelEngine(Engine):
         task_input = self._compose_task_input(queries)
 
         include = self._normalize_include_domains(kwargs.get("allowed_domains"))
-        source_policy = {"include_domains": include} if include else None
+        exclude = self._normalize_exclude_domains(kwargs.get("excluded_domains"))
+        source_policy = None
+        if include or exclude:
+            source_policy = {}
+            if include:
+                source_policy["include_domains"] = include
+            if exclude:
+                source_policy["exclude_domains"] = exclude
         metadata = self._coerce_metadata(kwargs.get("metadata"))
 
         output_schema = (
@@ -511,7 +578,7 @@ class ParallelEngine(Engine):
         source_policy: dict[str, Any] | None,
         task_spec: Any,
     ):
-        task_kwargs: dict[str, Any] = {
+        task_kwargs = {
             "input": task_input,
             "processor": processor,
         }
@@ -528,7 +595,7 @@ class ParallelEngine(Engine):
             UserMessage(f"Failed to create Parallel task: {e}", raise_with=ValueError)
 
     def _fetch_task_result(self, run_id: str, *, timeout: Any, api_timeout: int | None):
-        result_kwargs: dict[str, Any] = {}
+        result_kwargs = {}
         if api_timeout is not None:
             result_kwargs["api_timeout"] = api_timeout
         if timeout is not None:
@@ -539,36 +606,40 @@ class ParallelEngine(Engine):
             UserMessage(f"Failed to fetch Parallel task result: {e}", raise_with=ValueError)
 
     def _task_result_to_search_payload(self, task_result: Any) -> dict[str, Any]:
-        payload: dict[str, Any] = {"results": []}
-        output = getattr(task_result, "output", None)
+        payload = {"results": []}
+        output = task_result.output
         if output is None:
             return payload
 
-        basis_items = getattr(output, "basis", None) or []
+        basis_items = output.basis or []
         for idx, basis in enumerate(basis_items):
             payload["results"].extend(self._basis_to_results(basis, basis_index=idx))
 
         if not payload["results"]:
             payload["results"].append(self._task_fallback_result(output, basis_items))
 
-        payload["task_output"] = getattr(output, "content", None)
-        payload["task_output_type"] = getattr(output, "type", None)
+        payload["task_output"] = output.content
+        payload["task_output_type"] = output.type
+
+        if basis_items:
+            first_basis = basis_items[0]
+            payload["task_reasoning"] = first_basis.reasoning
+            payload["task_confidence"] = first_basis.confidence
+
         return payload
 
     def _basis_to_results(self, basis: Any, *, basis_index: int) -> list[dict[str, Any]]:
-        raw_reasoning = getattr(basis, "reasoning", "") or ""
-        reasoning = raw_reasoning if isinstance(raw_reasoning, str) else str(raw_reasoning)
-        raw_field = getattr(basis, "field", "") or ""
-        field_title = raw_field if isinstance(raw_field, str) else str(raw_field)
+        reasoning = basis.reasoning or ""
+        field_title = basis.field or ""
         if not field_title.strip():
             field_title = "Parallel Task Output"
-        citations = getattr(basis, "citations", None) or []
+        citations = basis.citations or []
         if not citations:
             if not reasoning:
                 return []
             citations = [None]
 
-        results: list[dict[str, Any]] = []
+        results = []
         # Convert field titles to lowercase slugs by swapping non-alphanumerics for hyphens.
         slug = re.sub(r"[^a-z0-9]+", "-", field_title.lower()).strip("-") or "field"
         basis_url = f"parallel://task-output/{basis_index:04d}-{slug}"
@@ -578,10 +649,9 @@ class ParallelEngine(Engine):
                 title = field_title
                 excerpts = [reasoning]
             else:
-                url = str(getattr(citation, "url", "") or "")
-                title = str(getattr(citation, "title", "") or field_title)
-                raw_excerpts = getattr(citation, "excerpts", None) or []
-                excerpts = [snippet for snippet in raw_excerpts if isinstance(snippet, str)]
+                url = str(citation.url or "")
+                title = str(citation.title or field_title)
+                excerpts = citation.excerpts or []
                 if not excerpts and reasoning:
                     excerpts = [reasoning]
             results.append(
@@ -594,7 +664,7 @@ class ParallelEngine(Engine):
         return results
 
     def _task_fallback_result(self, output: Any, basis_items: list[Any]) -> dict[str, Any]:
-        content = getattr(output, "content", None)
+        content = output.content
         if isinstance(content, str):
             snippet = content
         elif isinstance(content, (dict, list)):
@@ -602,9 +672,9 @@ class ParallelEngine(Engine):
         else:
             snippet = str(content or "")
         if not snippet:
-            extra_reasoning: list[str] = []
+            extra_reasoning = []
             for basis in basis_items:
-                raw_value = getattr(basis, "reasoning", "") or ""
+                raw_value = basis.reasoning or ""
                 if isinstance(raw_value, str):
                     extra_reasoning.append(raw_value)
                 else:
@@ -634,13 +704,13 @@ class ParallelEngine(Engine):
     def forward(self, argument):
         kwargs = argument.kwargs
         # Route based on presence of URL vs Query
-        url = getattr(argument.prop, "url", None) or kwargs.get("url")
+        url = argument.prop.url or kwargs.get("url")
         if url:
             return self._extract(str(url), kwargs)
 
-        raw_query = getattr(argument.prop, "prepared_input", None)
+        raw_query = argument.prop.prepared_input
         if raw_query is None:
-            raw_query = getattr(argument.prop, "query", None)
+            raw_query = argument.prop.query
         search_queries = self._coerce_search_queries(raw_query)
         if not search_queries:
             UserMessage(
@@ -654,11 +724,11 @@ class ParallelEngine(Engine):
 
     def prepare(self, argument):
         # For scraping: store URL directly. For search: pass through query string.
-        url = argument.kwargs.get("url") or getattr(argument.prop, "url", None)
+        url = argument.kwargs.get("url") or argument.prop.url
         if url:
             argument.prop.prepared_input = str(url)
             return
-        query = getattr(argument.prop, "query", None)
+        query = argument.prop.query
         if isinstance(query, list):
             argument.prop.prepared_input = self._coerce_search_queries(query)
             return
