@@ -4,6 +4,7 @@ import tempfile
 import urllib.request
 import uuid
 import warnings
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -15,7 +16,6 @@ from ....symbol import Result, Symbol
 from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG, SYMSERVER_CONFIG
-from ..search.engine_parallel import SearchResult as ParallelSearchResult
 
 warnings.filterwarnings("ignore", module="qdrant_client")
 try:
@@ -148,6 +148,108 @@ Matches:
         for filename, content in self._unpack_matches():
             doc_str += f'<li><a href="{filename}"><b>{filename}</a></b><br>{content}</li>\n'
         return f"<ul>{doc_str}</ul>"
+
+
+@dataclass
+class Citation:
+    id: int
+    title: str
+    url: str
+    start: int
+    end: int
+
+    def __hash__(self):
+        return hash((self.url,))
+
+
+class SearchResult(Result):
+    def __init__(self, value: dict[str, Any] | Any, **kwargs) -> None:
+        super().__init__(value, **kwargs)
+        if isinstance(value, dict) and value.get("error"):
+            UserMessage(value["error"], raise_with=ValueError)
+        results = self._coerce_results(value)
+        text, citations = self._build_text_and_citations(results)
+        self._value = text
+        self._citations = citations
+
+    def _coerce_results(self, raw: Any) -> list[dict[str, Any]]:
+        if raw is None:
+            return []
+        results = raw.get("results", []) if isinstance(raw, dict) else getattr(raw, "results", None)
+        if not results:
+            return []
+        return [item for item in results if isinstance(item, dict)]
+
+    def _source_identifier(self, item: dict[str, Any], url: str) -> str:
+        for key in ("source_id", "sourceId", "sourceID", "id"):
+            raw = item.get(key)
+            if raw is None:
+                continue
+            text = str(raw).strip()
+            if text:
+                return text
+        path = Path(urlparse(url).path)
+        return path.name or path.as_posix() or url
+
+    def _build_text_and_citations(self, results: list[dict[str, Any]]):
+        pieces = []
+        citations = []
+        cursor = 0
+        cid = 1
+        separator = "\n\n---\n\n"
+
+        for item in results:
+            url = str(item.get("url") or "")
+            if not url:
+                continue
+
+            title = str(item.get("title") or "")
+            if not title:
+                path = Path(urlparse(url).path)
+                title = path.name or url
+
+            excerpts = item.get("excerpts") or []
+            excerpt_parts = [ex.strip() for ex in excerpts if isinstance(ex, str) and ex.strip()]
+            if not excerpt_parts:
+                continue
+
+            combined_excerpt = "\n\n".join(excerpt_parts)
+            source_id = self._source_identifier(item, url)
+            block_body = combined_excerpt if not source_id else f"{source_id}\n\n{combined_excerpt}"
+
+            if pieces:
+                pieces.append(separator)
+                cursor += len(separator)
+
+            opening_tag = "<source>\n"
+            pieces.append(opening_tag)
+            cursor += len(opening_tag)
+
+            pieces.append(block_body)
+            cursor += len(block_body)
+
+            closing_tag = "\n</source>"
+            pieces.append(closing_tag)
+            cursor += len(closing_tag)
+
+            marker = f"[{cid}]"
+            start = cursor
+            pieces.append(marker)
+            cursor += len(marker)
+
+            citations.append(Citation(id=cid, title=title or url, url=url, start=start, end=cursor))
+            cid += 1
+
+        return "".join(pieces), citations
+
+    def __str__(self) -> str:
+        return str(self._value or "")
+
+    def _repr_html_(self) -> str:
+        return f"<pre>{self._value or ''}</pre>"
+
+    def get_citations(self) -> list[Citation]:
+        return self._citations
 
 
 class QdrantIndexEngine(Engine):
@@ -895,7 +997,9 @@ class QdrantIndexEngine(Engine):
         # Use _query which handles retry logic and vector normalization
         return self._query(collection_name, query_vector, limit, **search_kwargs)
 
-    def _resolve_payload_url(self, payload: dict[str, Any], collection_name: str, point_id: Any) -> str:
+    def _resolve_payload_url(
+        self, payload: dict[str, Any], collection_name: str, point_id: Any
+    ) -> str:
         source = (
             payload.get("source")
             or payload.get("url")
@@ -936,9 +1040,7 @@ class QdrantIndexEngine(Engine):
 
         return base
 
-    def _format_search_results(
-        self, points: list[ScoredPoint] | None, collection_name: str
-    ):
+    def _format_search_results(self, points: list[ScoredPoint] | None, collection_name: str):
         results: list[dict[str, Any]] = []
 
         for point in points or []:
@@ -961,10 +1063,15 @@ class QdrantIndexEngine(Engine):
                     "url": url,
                     "title": title,
                     "excerpts": [excerpt],
+                    "source_id": payload.get("source_id")
+                    or payload.get("sourceId")
+                    or payload.get("chunk_id")
+                    or payload.get("chunkId")
+                    or getattr(point, "id", None),
                 }
             )
 
-        return ParallelSearchResult({"results": results})
+        return SearchResult({"results": results})
 
     async def search(
         self,
@@ -1029,7 +1136,7 @@ class QdrantIndexEngine(Engine):
             if tmp_path.exists():
                 tmp_path.unlink()
 
-    async def chunk_and_upsert(  # noqa: C901
+    async def chunk_and_upsert(
         self,
         collection_name: str,
         text: str | Symbol | None = None,
@@ -1107,8 +1214,7 @@ class QdrantIndexEngine(Engine):
             # Add source to metadata if not already present
             if metadata is None:
                 metadata = {}
-            if "source" not in metadata:
-                metadata["source"] = doc_path.name
+            metadata["source"] = str(doc_path.resolve())
 
         # Handle document_url: download and read file using FileReader
         elif document_url is not None:

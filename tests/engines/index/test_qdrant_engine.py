@@ -16,10 +16,7 @@ from symai.backend.engines.index.engine_qdrant import QdrantIndexEngine, QdrantR
 from symai.backend.settings import SYMAI_CONFIG, SYMSERVER_CONFIG
 from symai.interfaces import Interface
 
-# Test PDF files
-TEST_PDFS = [
-    "/Users/ryang/Work/ExtensityAI/RAG/testfiles/Align-RUDDER.pdf",
-]
+AVAILABLE_PDFS = [(Path(__file__).parents[2] / "data" / "symmetry_breaking.pdf").as_posix()]
 
 
 def _check_qdrant_available():
@@ -63,9 +60,6 @@ def _check_qdrant_available():
 
 # Check if Qdrant is available
 QDrant_AVAILABLE = _check_qdrant_available()
-
-# Check if PDF files exist
-AVAILABLE_PDFS = [pdf for pdf in TEST_PDFS if os.path.exists(pdf)]
 
 
 @pytest.fixture
@@ -339,7 +333,6 @@ class TestQdrantManagerMethods:
 
 
 @pytest.mark.skipif(not QDrant_AVAILABLE, reason="Qdrant server not available")
-@pytest.mark.skipif(len(AVAILABLE_PDFS) == 0, reason="No test PDF files available")
 class TestQdrantChunking:
     """Test document chunking and upsert functionality."""
 
@@ -802,6 +795,7 @@ class TestQdrantSearchChunkedDocuments:
             collection_name=test_collection_name,
             document_path=pdf_path,
             chunker_name="RecursiveChunker",
+            chunker_kwargs={"chunk_size": 512},
             metadata={"source": Path(pdf_path).name},
         )
 
@@ -1008,6 +1002,8 @@ class TestQdrantLocalSearch:
             with_vectors=False,
             query_filter={"source": "local_note.txt"},
         )
+        print(f"local_search result: {result}")
+        print(f"local_search citations: {result.get_citations()}")
 
         assert result.value is not None
         citations = result.get_citations()
@@ -1031,12 +1027,14 @@ class TestQdrantLocalSearch:
 
         search = Interface("local_search", index_name=test_collection_name)
         result = search.search(
-            "research methodology",
-            limit=3,
+            "phase-space regions",
+            limit=8,
             score_threshold=0.0,
             with_payload=True,
             with_vectors=False,
         )
+        print(f"local_search pdf result: {result}")
+        print(f"local_search pdf citations: {result.get_citations()}")
 
         assert result.value is not None
         citations = result.get_citations()
@@ -1119,4 +1117,3 @@ class TestQdrantIntegration:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
-
