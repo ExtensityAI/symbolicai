@@ -108,9 +108,11 @@ asyncio.run(basic_usage())
 
 ### Local Search with citations
 
-If you need citation-formatted results compatible with `parallel.search`, use the `local_search` interface. It embeds the query locally, queries Qdrant, and returns a `SearchResult` (with `value` and `citations`) instead of a raw `ScoredPoint` objects:
+If you need citation-formatted results compatible with `parallel.search`, use the `local_search` interface. It embeds the query locally, queries Qdrant, and returns a `SearchResult` (with `value` and `citations`) instead of raw `ScoredPoint` objects:
 
-Local search accepts the same args as passed to Qdrant directly: `collection_name`/`index_name`, `limit`/`top_k`/`index_top_k`, `score_threshold`, `query_filter` (dict or Qdrant `Filter`), and any extra Qdrant search kwargs. Citation fields are derived from Qdrant payloads: the excerpt uses `payload["text"]` (or `content`), the URL prefers `payload["source"]`/`url`/`file_path` (falls back to `qdrant://{collection}/{id}`), and the title is the stem of that path (PDF pages append `#p{page}` when provided).
+Local search accepts the same args as passed to Qdrant directly: `collection_name`/`index_name`, `limit`/`top_k`/`index_top_k`, `score_threshold`, `query_filter` (dict or Qdrant `Filter`), and any extra Qdrant search kwargs. Citation fields are derived from Qdrant payloads: the excerpt uses `payload["text"]` (or `content`), the URL is resolved from `payload["source"]`/`url`/`file_path`/`path` and is always returned as an absolute `file://` URI (relative inputs resolve against the current working directory), and the title is the stem of that path (PDF pages append `#p{page}` when provided). Each matching chunk yields its own citation; multiple citations can point to the same file.
+
+If you want a stable source header for each chunk, store a `source_id` or `chunk_id` in the payload (otherwise the Qdrant point id is used).
 
 Example:
 
@@ -194,6 +196,8 @@ async def add_documents():
         document_path="/path/to/document.pdf",
         metadata={"source": "document.pdf"}
     )
+    # Note: document_path indexing stores the absolute file path in payload["source"]
+    # so local_search citations resolve to file:// URIs.
 
     # Chunk and index from a URL
     num_chunks = await engine.chunk_and_upsert(
