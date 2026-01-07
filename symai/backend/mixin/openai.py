@@ -22,6 +22,7 @@ SUPPORTED_CHAT_MODELS = [
     "gpt-4.1-nano",
     "gpt-5-chat-latest",
     "gpt-5.1-chat-latest",
+    "gpt-5.2-chat-latest",
 ]
 SUPPORTED_REASONING_MODELS = [
     "o3-mini",
@@ -30,6 +31,7 @@ SUPPORTED_REASONING_MODELS = [
     "o3",
     "gpt-5",
     "gpt-5.1",
+    "gpt-5.2",
     "gpt-5-mini",
     "gpt-5-nano",
 ]
@@ -40,7 +42,7 @@ SUPPORTED_EMBEDDING_MODELS = [
 ]
 SUPPORTED_RESPONSES_MODELS = [
     f"responses:{m}" for m in SUPPORTED_CHAT_MODELS + SUPPORTED_REASONING_MODELS
-] + ["responses:gpt-5-pro", "responses:o3-pro"]
+] + ["responses:gpt-5-pro", "responses:o3-pro", "responses:gpt-5.2-pro"]
 
 
 class OpenAIMixin:
@@ -86,6 +88,7 @@ class OpenAIMixin:
             or self.model == "gpt-4o-2024-11-20"
             or self.model == "gpt-4o-mini"
             or self.model == "chatgpt-4o-latest"
+            or self.model == "gpt-5.2-chat-latest"
         ):
             return 128_000
         if (
@@ -101,9 +104,11 @@ class OpenAIMixin:
         if (
             self.model == "gpt-5"
             or self.model == "gpt-5.1"
+            or self.model == "gpt-5.2"
             or self.model == "gpt-5-mini"
             or self.model == "gpt-5-nano"
             or self.model == "gpt-5-pro"
+            or self.model == "gpt-5.2-pro"
         ):
             return 400_000
         if self.model == "gpt-4.1" or self.model == "gpt-4.1-mini" or self.model == "gpt-4.1-nano":
@@ -135,6 +140,7 @@ class OpenAIMixin:
             or self.model == "chatgpt-4o-latest"
             or self.model == "gpt-5-chat-latest"
             or self.model == "gpt-5.1-chat-latest"
+            or self.model == "gpt-5.2-chat-latest"
         ):
             return 16_384
         if self.model == "gpt-4.1" or self.model == "gpt-4.1-mini" or self.model == "gpt-4.1-nano":
@@ -150,8 +156,10 @@ class OpenAIMixin:
         if (
             self.model == "gpt-5"
             or self.model == "gpt-5.1"
+            or self.model == "gpt-5.2"
             or self.model == "gpt-5-mini"
             or self.model == "gpt-5-nano"
+            or self.model == "gpt-5.2-pro"
         ):
             return 128_000
         if self.model == "gpt-5-pro":
