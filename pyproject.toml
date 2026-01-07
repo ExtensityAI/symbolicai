@@ -94,6 +94,9 @@ all          = [
     "symbolicai[solver]",
     "symbolicai[qdrant]"
 ]
+dev = [
+    "pytest-asyncio>=1.3.0",
+]
 
 [tool.setuptools.dynamic]
 version = {attr = "symai.SYMAI_VERSION"}
