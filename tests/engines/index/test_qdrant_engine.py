@@ -14,11 +14,9 @@ from pathlib import Path
 
 from symai.backend.engines.index.engine_qdrant import QdrantIndexEngine, QdrantResult
 from symai.backend.settings import SYMAI_CONFIG, SYMSERVER_CONFIG
+from symai.interfaces import Interface
 
-# Test PDF files
-TEST_PDFS = [
-
-]
+AVAILABLE_PDFS = [(Path(__file__).parents[2] / "data" / "symmetry_breaking.pdf").as_posix()]
 
 
 def _check_qdrant_available():
@@ -62,9 +60,6 @@ def _check_qdrant_available():
 
 # Check if Qdrant is available
 QDrant_AVAILABLE = _check_qdrant_available()
-
-# Check if PDF files exist
-AVAILABLE_PDFS = [pdf for pdf in TEST_PDFS if os.path.exists(pdf)]
 
 
 @pytest.fixture
@@ -338,7 +333,6 @@ class TestQdrantManagerMethods:
 
 
 @pytest.mark.skipif(not QDrant_AVAILABLE, reason="Qdrant server not available")
-@pytest.mark.skipif(len(AVAILABLE_PDFS) == 0, reason="No test PDF files available")
 class TestQdrantChunking:
     """Test document chunking and upsert functionality."""
 
@@ -785,6 +779,50 @@ class TestQdrantSearchChunkedDocuments:
                 assert category == "AI", "Dict-based filter in forward() should restrict to AI category."
 
     @pytest.mark.asyncio
+    async def test_forward_search_returns_search_result(self, engine, test_collection_name):
+        """Ensure search mode can emit SearchResult-style output for citations."""
+        from symai.core import Argument
+        from symai.symbol import Symbol
+        from pathlib import Path
+
+        if not AVAILABLE_PDFS:
+            pytest.skip("No test PDF files available")
+
+        pdf_path = AVAILABLE_PDFS[0]
+        await engine.create_collection(test_collection_name, vector_size=1536)
+
+        await engine.chunk_and_upsert(
+            collection_name=test_collection_name,
+            document_path=pdf_path,
+            chunker_name="RecursiveChunker",
+            chunker_kwargs={"chunk_size": 512},
+            metadata={"source": Path(pdf_path).name},
+        )
+
+        query_symbol = Symbol("citation friendly")
+        query_vector = normalize_embedding(query_symbol.embedding)
+
+        decorator_kwargs = {
+            "prompt": query_vector,
+            "operation": "search",
+            "index_name": test_collection_name,
+            "ori_query": query_symbol.value,
+            "index_dims": 1536,
+            "index_top_k": 5,
+            "treat_as_search_engine": True,
+        }
+        argument = Argument(args=(), signature_kwargs={}, decorator_kwargs=decorator_kwargs)
+
+        results, _ = engine.forward(argument)
+
+        assert isinstance(results, list) and len(results) == 1
+        search_result = results[0]
+        assert hasattr(search_result, "get_citations")
+        assert search_result.value is not None
+        citations = search_result.get_citations()
+        assert isinstance(citations, list)
+
+    @pytest.mark.asyncio
     async def test_search_with_score_threshold(self, engine, test_collection_name):
         """Test searching with score threshold."""
         from symai.symbol import Symbol
@@ -940,6 +978,71 @@ class TestQdrantSearchChunkedDocuments:
 
 
 @pytest.mark.skipif(not QDrant_AVAILABLE, reason="Qdrant server not available")
+class TestQdrantLocalSearch:
+    """Local search (SearchResult) behavior."""
+
+    @pytest.mark.asyncio
+    async def test_local_search_text_citations(self, engine, test_collection_name):
+        """Local search over chunked text with citation formatting."""
+        await engine.create_collection(test_collection_name, vector_size=1536)
+
+        text = "Local search citation-friendly content."
+        await engine.chunk_and_upsert(
+            collection_name=test_collection_name,
+            text=text,
+            metadata={"source": "local_note.txt"},
+        )
+
+        search = Interface("local_search", index_name=test_collection_name)
+        result = search.search(
+            "citation-friendly content",
+            limit=3,
+            score_threshold=0.0,
+            with_payload=True,
+            with_vectors=False,
+            query_filter={"source": "local_note.txt"},
+        )
+        print(f"local_search result: {result}")
+        print(f"local_search citations: {result.get_citations()}")
+
+        assert result.value is not None
+        citations = result.get_citations()
+        assert isinstance(citations, list)
+        assert len(citations) >= 1
+        assert citations[0].url != ""
+
+    @pytest.mark.asyncio
+    @pytest.mark.skipif(len(AVAILABLE_PDFS) == 0, reason="No test PDF files available")
+    async def test_local_search_pdf_citations(self, engine, test_collection_name):
+        """Local search over chunked PDF with citation formatting."""
+        pdf_path = AVAILABLE_PDFS[0]
+        await engine.create_collection(test_collection_name, vector_size=1536)
+
+        await engine.chunk_and_upsert(
+            collection_name=test_collection_name,
+            document_path=pdf_path,
+            chunker_name="RecursiveChunker",
+            metadata={"source": Path(pdf_path).name},
+        )
+
+        search = Interface("local_search", index_name=test_collection_name)
+        result = search.search(
+            "phase-space regions",
+            limit=8,
+            score_threshold=0.0,
+            with_payload=True,
+            with_vectors=False,
+        )
+        print(f"local_search pdf result: {result}")
+        print(f"local_search pdf citations: {result.get_citations()}")
+
+        assert result.value is not None
+        citations = result.get_citations()
+        assert isinstance(citations, list)
+        assert len(citations) >= 1
+
+
+@pytest.mark.skipif(not QDrant_AVAILABLE, reason="Qdrant server not available")
 class TestQdrantIntegration:
     """Integration tests combining multiple operations."""
 
@@ -1014,4 +1117,3 @@ class TestQdrantIntegration:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
-
