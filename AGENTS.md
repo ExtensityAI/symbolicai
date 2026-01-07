@@ -66,7 +66,7 @@ CLI entrypoints (after install): `symchat`, `symsh`, `symconfig`, `symserver`.
 - Treat type hints as contracts; do not add runtime type checks except at trust boundaries (CLI/env, JSON/network, disk).
 - Prefer minimal diffs; edit existing code over adding new files unless necessary.
 - Do not add/modify `tests/` or run tests unless explicitly requested; if requested, run the narrowest relevant `pytest` command.
-- When you change Python files: run `ruff check <changed_files> --output-format concise --config ruff.toml` and fix issues.
+- When you change Python files outside `tests/`: run `ruff check <changed_files> --output-format concise --config ruff.toml` and fix issues.
 - Keep search local-first (`rg`); follow imports instead of repo-wide “random scanning”.
 - If adding a regex, include a short comment explaining what it matches.
 - Update `TODO.md` when tasks are completed, added, or re-scoped.
