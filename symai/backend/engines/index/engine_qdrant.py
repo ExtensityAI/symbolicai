@@ -1011,13 +1011,20 @@ class QdrantIndexEngine(Engine):
                 return source
 
             source_path = Path(source).expanduser()
+            resolved = None
             try:
                 resolved = source_path.resolve()
-                if resolved.exists() or source_path.is_absolute():
-                    return resolved.as_uri()
             except Exception:
-                return str(source_path)
-            return str(source_path)
+                resolved = None
+
+            # Only return file:// when we can build a usable absolute path
+            if resolved and resolved.exists():
+                return resolved.as_uri()
+            if source_path.is_absolute() and source_path.exists():
+                return source_path.as_uri()
+
+            # Fall back to synthetic qdrant:// URL to avoid broken relative links
+            return f"qdrant://{collection_name}/{point_id}"
 
         return f"qdrant://{collection_name}/{point_id}"
 
