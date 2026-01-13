@@ -1508,12 +1508,18 @@ class DynamicEngine(Expression):
         """Create an engine instance based on the model name."""
         # Deferred to avoid components <-> neurosymbolic engine circular imports.
         from .backend.engines.neurosymbolic import ENGINE_MAPPING  # noqa
-        from .backend.engines.neurosymbolic.engine_cerebras import CerebrasEngine  # noqa
+        from .backend.engines.search import SEARCH_ENGINE_MAPPING  # noqa
 
         try:
+            # Check neurosymbolic engines first
             engine_class = ENGINE_MAPPING.get(self.model)
-            if engine_class is None and self.model.startswith("cerebras:"):
-                engine_class = CerebrasEngine
+
+            # Check search engines
+            if engine_class is None:
+                engine_class = SEARCH_ENGINE_MAPPING.get(self.model)
+                if engine_class is not None:
+                    return engine_class(api_key=self.api_key)
+
             if engine_class is None:
                 UserMessage(f"Unsupported model '{self.model}'", raise_with=ValueError)
             return engine_class(api_key=self.api_key, model=self.model)

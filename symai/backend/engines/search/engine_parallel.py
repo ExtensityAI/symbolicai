@@ -66,7 +66,7 @@ class Citation:
         return hash((self.url,))
 
 
-class SearchResult(Result):
+class ParallelSearchResult(Result):
     def __init__(self, value: dict[str, Any] | Any, **kwargs) -> None:
         super().__init__(value, **kwargs)
         if isinstance(value, dict) and value.get("error"):
@@ -286,7 +286,7 @@ class SearchResult(Result):
         return self._citations
 
 
-class ExtractResult(Result):
+class ParallelExtractResult(Result):
     """Result wrapper for Parallel Extract API responses."""
 
     def __init__(self, value: dict[str, Any] | Any, **kwargs) -> None:
@@ -485,7 +485,7 @@ class ParallelEngine(Engine):
             )
         except Exception as e:
             UserMessage(f"Failed to call Parallel Search API: {e}", raise_with=ValueError)
-        return [SearchResult(result)], {"raw_output": result}
+        return [ParallelSearchResult(result)], {"raw_output": result}
 
     def _task(self, queries: list[str], kwargs: dict[str, Any]):
         processor_name = self._coerce_processor(kwargs.get("processor"))
@@ -521,7 +521,7 @@ class ParallelEngine(Engine):
         result = self._fetch_task_result(run.run_id, timeout=timeout, api_timeout=api_timeout)
 
         payload = self._task_result_to_search_payload(result)
-        return [SearchResult(payload)], {
+        return [ParallelSearchResult(payload)], {
             "raw_output": result,
             "task_output": payload.get("task_output"),
             "task_output_type": payload.get("task_output_type"),
@@ -699,7 +699,7 @@ class ParallelEngine(Engine):
             )
         except Exception as e:
             UserMessage(f"Failed to call Parallel Extract API: {e}", raise_with=ValueError)
-        return [ExtractResult(result)], {"raw_output": result, "final_url": url}
+        return [ParallelExtractResult(result)], {"raw_output": result, "final_url": url}
 
     def forward(self, argument):
         kwargs = argument.kwargs
