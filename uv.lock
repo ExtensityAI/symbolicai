@@ -1271,6 +1271,24 @@ wheels = [
 ]
 
 [[package]]
+name = "firecrawl-py"
+version = "4.12.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "httpx" },
+    { name = "nest-asyncio" },
+    { name = "pydantic" },
+    { name = "python-dotenv" },
+    { name = "requests" },
+    { name = "websockets" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6b/bb/4864c17040eea3f68979cb077b6c7d8a66032140d9fcbcbfe934d0cf8f3e/firecrawl_py-4.12.0.tar.gz", hash = "sha256:a914d0ce759cd2b77dba6f63f2b647a3d527dc380e98243bc5620e031881bc3f", size = 160692, upload-time = "2025-12-19T05:39:22.297Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/89/a8/32317c2d007b42ed7814cf7440fcac98ecb6cdb9a44feab4f85ae458f86e/firecrawl_py-4.12.0-py3-none-any.whl", hash = "sha256:0807fa7e881570749a52bd9971e1e1f2373e5aafd21b6f30d194b1b8a32aa58f", size = 201511, upload-time = "2025-12-19T05:39:20.605Z" },
+]
+
+[[package]]
 name = "flatbuffers"
 version = "25.9.23"
 source = { registry = "https://pypi.org/simple" }
@@ -6019,6 +6037,7 @@ all = [
     { name = "chonkie", extra = ["all"] },
     { name = "datasets" },
     { name = "fastapi" },
+    { name = "firecrawl-py" },
     { name = "google-search-results" },
     { name = "llvmlite" },
     { name = "numba" },
@@ -6071,6 +6090,7 @@ scrape = [
     { name = "trafilatura" },
 ]
 search = [
+    { name = "firecrawl-py" },
     { name = "parallel-web" },
 ]
 serpapi = [
@@ -6114,6 +6134,7 @@ requires-dist = [
     { name = "datasets", marker = "extra == 'hf'", specifier = ">=3.0.1" },
     { name = "decord", marker = "extra == 'blip2'", specifier = ">=0.6.0" },
     { name = "fastapi", marker = "extra == 'services'", specifier = ">=0.110.0" },
+    { name = "firecrawl-py", marker = "extra == 'search'", specifier = ">=4.12.0" },
     { name = "gitpython", specifier = ">=3.1.42" },
     { name = "google-genai", specifier = ">=1.16.1" },
     { name = "google-search-results", marker = "extra == 'serpapi'", specifier = ">=2.4.2" },

@@ -78,7 +78,7 @@ scrape       = ["beautifulsoup4>=4.12.3", "trafilatura>=2.0.0", "pdfminer.six", 
 llama_cpp    = ["llama-cpp-python[server]>=0.3.7"] # handle separately since this dependency may not compile and require special maintenance
 wolframalpha = ["wolframalpha>=5.0.0"]
 whisper      = ["openai-whisper>=20240930", "numba>=0.62.1", "llvmlite>=0.45.1"]
-search       = ["parallel-web>=0.3.3"]
+search       = ["firecrawl-py>=4.12.0", "parallel-web>=0.3.3"]
 serpapi      = ["google_search_results>=2.4.2"]
 services     = ["fastapi>=0.110.0", "redis>=5.0.2", "uvicorn>=0.27.1"]
 solver       = ["z3-solver>=4.12.6.0"]

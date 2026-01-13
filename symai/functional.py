@@ -498,10 +498,9 @@ class EngineRepository:
     def get(engine_name: str, *_args, **_kwargs):
         self = EngineRepository()
         # First check if we're in the context manager that dynamically changes models
-        if engine_name == "neurosymbolic":
-            engine = self.get_dynamic_engine_instance()
-            if engine is not None:
-                return engine
+        dynamic_engine = self.get_dynamic_engine_instance()
+        if dynamic_engine is not None and engine_name in ("neurosymbolic", "search"):
+            return dynamic_engine
 
         # Otherwise, fallback to normal lookup:
         if engine_name not in self._engines:

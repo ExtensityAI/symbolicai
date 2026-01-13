@@ -1,4 +1,3 @@
-import os
 import re
 from urllib.parse import urlparse
 
@@ -7,16 +6,7 @@ import pytest
 from symai.backend.settings import SYMAI_CONFIG
 from symai.extended import Interface
 
-
-def _api_key():
-    return (
-        os.environ.get("PARALLEL_API_KEY")  # common env var for SDK
-        or SYMAI_CONFIG.get("SEARCH_ENGINE_API_KEY")
-        or os.environ.get("SEARCH_ENGINE_API_KEY")
-    )
-
-
-API_KEY = bool(_api_key())
+API_KEY = SYMAI_CONFIG.get("SEARCH_ENGINE_API_KEY")
 MODEL_PARALLEL = str(SYMAI_CONFIG.get("SEARCH_ENGINE_MODEL", "")).lower() == "parallel"
 
 

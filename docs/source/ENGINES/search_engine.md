@@ -152,3 +152,75 @@ Here's how to configure the OpenAI search engine:
 ```
 
 This engine calls the OpenAI Responses API under the hood. When you target a reasoning-capable model, pass a `reasoning` dictionary matching the Responses payload schema (for example `{"effort": "low", "summary": "auto"}`). If omitted, the engine falls back to the default effort/summary settings shown above.
+
+## Firecrawl
+Firecrawl.dev provides web scraping and search capabilities with built-in handling of dynamic JavaScript content and anti-bot mechanisms. The engine converts web pages into clean markdown and can perform web searches across multiple sources with advanced filtering and content extraction.
+
+### Comprehensive Search Example
+
+```python
+from symai.extended import Interface
+
+engine = Interface("firecrawl")
+
+# Example 1: Location-aware search with language, scraping, and citations
+result = engine.search(
+    "who is nicusor dan",
+    limit=5,
+    location="Romania",
+    lang="ro",
+    sources=["web"],
+    formats=["markdown"],
+    only_main_content=True,
+    proxy="stealth"
+)
+
+# Access structured citations (similar to parallel.ai)
+citations = result.get_citations()
+for citation in citations:
+    print(f"[{citation.id}] {citation.title}: {citation.url}")
+
+# Example 2: Domain-filtered search with character limits
+domains = ["arxiv.org", "nature.com"]
+filters = " OR ".join(f"site:{domain}" for domain in domains)
+query = f"({filters}) what is thermodynamic computing"
+
+result = engine.search(
+    query,
+    limit=10,
+    max_chars_per_result=500,
+    categories=["research"],
+    formats=["markdown"],
+    proxy="basic"
+)
+print(result)
+```
+
+### Configuration
+
+Enable the engine by configuring Firecrawl credentials:
+
+```bash
+{
+    "SEARCH_ENGINE_API_KEY": "fc-your-api-key",
+    "SEARCH_ENGINE_MODEL": "firecrawl"
+}
+```
+
+### Supported Parameters
+
+The engine supports many parameters (passed as kwargs). Common ones include:
+- **limit**: Max number of results
+- **location**: Country code string for search (e.g., "Romania", "Germany")
+- **lang**: Language code string for search (e.g., "ro", "es") - hint, not enforcement
+- **sources**: List of sources (["web"], ["news"], ["images"])
+- **categories**: Content types (["research"], ["github"], ["pdf"])
+- **tbs**: Time-based filter (e.g., "qdr:d" for past day)
+- **formats**: Output formats for scraped content (["markdown"], ["html"])
+- **only_main_content**: Extract main content only when scraping (boolean)
+- **max_chars_per_result**: Truncate results locally (integer)
+- **proxy**: Proxy mode for scraping ("basic", "stealth", "auto")
+- **scrape_location**: Location object for scraping with optional country and languages
+  - Example: `{"country": "US"}` or `{"country": "RO", "languages": ["ro"]}`
+
+Check the Firecrawl v2 API documentation for the complete list of available parameters.
