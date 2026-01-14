@@ -244,6 +244,10 @@ class FirecrawlEngine(Engine):
             scrape_opts["only_main_content"] = kwargs["only_main_content"]
         if "scrape_location" in kwargs:
             scrape_opts["location"] = kwargs["scrape_location"]
+        if "include_tags" in kwargs:
+            scrape_opts["include_tags"] = kwargs["include_tags"]
+        if "exclude_tags" in kwargs:
+            scrape_opts["exclude_tags"] = kwargs["exclude_tags"]
 
         if scrape_opts:
             search_kwargs["scrape_options"] = ScrapeOptions(**scrape_opts)
