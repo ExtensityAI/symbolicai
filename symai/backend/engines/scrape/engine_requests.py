@@ -9,6 +9,7 @@ service disruption.
 
 import io
 import logging
+import random
 import re
 from typing import Any, ClassVar
 from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
@@ -17,7 +18,9 @@ import requests
 import trafilatura
 from bs4 import BeautifulSoup
 from pdfminer.high_level import extract_text
+from requests.adapters import HTTPAdapter
 from requests.structures import CaseInsensitiveDict
+from urllib3.util.retry import Retry
 
 from ....symbol import Result
 from ....utils import UserMessage
@@ -80,24 +83,49 @@ class RequestsEngine(Engine):
         "none": "None",
     }
 
-    def __init__(self, timeout=15, verify_ssl=True, user_agent=None):
+    USER_AGENT_POOL: ClassVar[list[str]] = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:121.0) Gecko/20100101 Firefox/121.0",
+        "Mozilla/5.0 (X11; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0",
+    ]
+
+    def __init__(self, timeout=15, verify_ssl=True, user_agent=None, retries=3, backoff_factor=0.5, retry_status_codes=(500, 502, 503, 504)):
         """
         Args:
             timeout: Seconds to wait for network operations before aborting.
             verify_ssl: Toggle for TLS certificate verification.
-            user_agent: Optional override for the default desktop Chrome UA.
+            user_agent: Optional override for user agent rotation.
+            retries: Number of retries for failed requests (default: 3).
+            backoff_factor: Multiplier for exponential backoff (default: 0.5).
+            retry_status_codes: HTTP status codes to retry on (default: 500, 502, 503, 504).
         """
         super().__init__()
         self.timeout = timeout
         self.verify_ssl = verify_ssl
         self.name = self.__class__.__name__
-
-        headers = dict(self.DEFAULT_HEADERS)
-        if user_agent:
-            headers["User-Agent"] = user_agent
+        self._user_agent_override = user_agent
 
         self.session = requests.Session()
-        self.session.headers.update(headers)
+        self.session.headers.update({k: v for k, v in self.DEFAULT_HEADERS.items() if k != "User-Agent"})
+
+        retry_strategy = Retry(
+            total=retries,
+            backoff_factor=backoff_factor,
+            status_forcelist=retry_status_codes,
+            allowed_methods=["GET", "HEAD"],
+        )
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        self.session.mount("http://", adapter)
+        self.session.mount("https://", adapter)
+
+    def _get_user_agent(self) -> str:
+        """Return user agent: override if set, otherwise random from pool."""
+        return self._user_agent_override or random.choice(self.USER_AGENT_POOL)
 
     def _maybe_set_bypass_cookies(self, url: str):
         netloc = urlparse(url).hostname
@@ -232,7 +260,7 @@ class RequestsEngine(Engine):
         # Avoid loops
         if target == resp.url:
             return resp
-        return self.session.get(target, timeout=timeout, allow_redirects=True)
+        return self.session.get(target, timeout=timeout, allow_redirects=True, headers={"User-Agent": self._get_user_agent()})
 
     def _fetch_with_playwright(
         self,
@@ -259,7 +287,7 @@ class RequestsEngine(Engine):
 
         timeout_seconds = timeout if timeout is not None else self.timeout
         timeout_ms = max(int(timeout_seconds * 1000), 0)
-        user_agent = self.session.headers.get("User-Agent")
+        user_agent = self._get_user_agent()
 
         parsed = urlparse(url)
         hostname = parsed.hostname or ""
@@ -348,7 +376,8 @@ class RequestsEngine(Engine):
             )
         else:
             resp = self.session.get(
-                clean_url, timeout=self.timeout, allow_redirects=True, verify=self.verify_ssl
+                clean_url, timeout=self.timeout, allow_redirects=True, verify=self.verify_ssl,
+                headers={"User-Agent": self._get_user_agent()}
             )
         resp.raise_for_status()
 
