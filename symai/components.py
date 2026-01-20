@@ -1229,6 +1229,7 @@ class MetadataTracker(Expression):
             and frame.f_code.co_name == "forward"
             and "self" in frame.f_locals
             and isinstance(frame.f_locals["self"], Engine)
+            and arg is not None  # Ensure arg is not None to avoid unpacking error on exceptions
         ):
             _, metadata = arg  # arg contains return value on 'return' event
             engine_name = frame.f_locals["self"].__class__.__name__
@@ -1350,6 +1351,116 @@ class MetadataTracker(Expression):
                     token_details[(engine_name, model_name)]["completion_breakdown"][
                         "reasoning_tokens"
                     ] += 0
+                elif engine_name in ("ClaudeXChatEngine", "ClaudeXReasoningEngine"):
+                    raw_output = metadata["raw_output"]
+                    usage = self._extract_claude_usage(raw_output)
+                    if usage is None:
+                        # Skip if we can't extract usage (shouldn't happen normally)
+                        logger.warning(f"Could not extract usage from {engine_name} response.")
+                        token_details[(engine_name, model_name)]["usage"]["total_calls"] += 1
+                        token_details[(engine_name, model_name)]["prompt_breakdown"][
+                            "cached_tokens"
+                        ] += 0
+                        token_details[(engine_name, model_name)]["completion_breakdown"][
+                            "reasoning_tokens"
+                        ] += 0
+                        continue
+                    input_tokens = getattr(usage, "input_tokens", 0) or 0
+                    output_tokens = getattr(usage, "output_tokens", 0) or 0
+                    token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += (
+                        input_tokens
+                    )
+                    token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += (
+                        output_tokens
+                    )
+                    # Calculate total tokens
+                    total = input_tokens + output_tokens
+                    token_details[(engine_name, model_name)]["usage"]["total_tokens"] += total
+                    token_details[(engine_name, model_name)]["usage"]["total_calls"] += 1
+                    # Track cache tokens if available
+                    cache_creation = getattr(usage, "cache_creation_input_tokens", 0) or 0
+                    cache_read = getattr(usage, "cache_read_input_tokens", 0) or 0
+                    token_details[(engine_name, model_name)]["prompt_breakdown"][
+                        "cache_creation_tokens"
+                    ] += cache_creation
+                    token_details[(engine_name, model_name)]["prompt_breakdown"][
+                        "cache_read_tokens"
+                    ] += cache_read
+                    # For backward compatibility, also track as cached_tokens
+                    token_details[(engine_name, model_name)]["prompt_breakdown"][
+                        "cached_tokens"
+                    ] += cache_read
+                    # Track reasoning/thinking tokens for ClaudeXReasoningEngine
+                    if engine_name == "ClaudeXReasoningEngine":
+                        thinking_output = metadata.get("thinking", "")
+                        # Store thinking content if available
+                        if thinking_output:
+                            if "thinking_content" not in token_details[(engine_name, model_name)]:
+                                token_details[(engine_name, model_name)]["thinking_content"] = []
+                            token_details[(engine_name, model_name)]["thinking_content"].append(
+                                thinking_output
+                            )
+                    # Note: Anthropic doesn't break down reasoning tokens separately in usage,
+                    # but extended thinking is included in output_tokens
+                    token_details[(engine_name, model_name)]["completion_breakdown"][
+                        "reasoning_tokens"
+                    ] += 0
+                elif engine_name == "GeminiXReasoningEngine":
+                    usage = metadata["raw_output"].usage_metadata
+                    token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += (
+                        usage.prompt_token_count
+                    )
+                    token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += (
+                        usage.candidates_token_count
+                    )
+                    token_details[(engine_name, model_name)]["usage"]["total_tokens"] += (
+                        usage.total_token_count
+                    )
+                    token_details[(engine_name, model_name)]["usage"]["total_calls"] += 1
+                    # Track cache tokens if available
+                    cache_read = getattr(usage, "cached_content_token_count", 0) or 0
+                    token_details[(engine_name, model_name)]["prompt_breakdown"][
+                        "cached_tokens"
+                    ] += cache_read
+                    # Track thinking content if available
+                    thinking_output = metadata.get("thinking", "")
+                    if thinking_output:
+                        if "thinking_content" not in token_details[(engine_name, model_name)]:
+                            token_details[(engine_name, model_name)]["thinking_content"] = []
+                        token_details[(engine_name, model_name)]["thinking_content"].append(
+                            thinking_output
+                        )
+                    # Note: Gemini reasoning tokens are part of candidates_token_count
+                    token_details[(engine_name, model_name)]["completion_breakdown"][
+                        "reasoning_tokens"
+                    ] += 0
+                elif engine_name == "DeepSeekXReasoningEngine":
+                    usage = metadata["raw_output"].usage
+                    token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += (
+                        usage.completion_tokens
+                    )
+                    token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += (
+                        usage.prompt_tokens
+                    )
+                    token_details[(engine_name, model_name)]["usage"]["total_tokens"] += (
+                        usage.total_tokens
+                    )
+                    token_details[(engine_name, model_name)]["usage"]["total_calls"] += 1
+                    # Track thinking content if available
+                    thinking_output = metadata.get("thinking", "")
+                    if thinking_output:
+                        if "thinking_content" not in token_details[(engine_name, model_name)]:
+                            token_details[(engine_name, model_name)]["thinking_content"] = []
+                        token_details[(engine_name, model_name)]["thinking_content"].append(
+                            thinking_output
+                        )
+                    # Note: DeepSeek reasoning tokens might be in completion_tokens_details
+                    reasoning_tokens = 0
+                    if hasattr(usage, "completion_tokens_details") and usage.completion_tokens_details:
+                        reasoning_tokens = getattr(usage.completion_tokens_details, "reasoning_tokens", 0) or 0
+                    token_details[(engine_name, model_name)]["completion_breakdown"][
+                        "reasoning_tokens"
+                    ] += reasoning_tokens
                 else:
                     logger.warning(f"Tracking {engine_name} is not supported.")
                     continue
@@ -1361,8 +1472,60 @@ class MetadataTracker(Expression):
         # Convert to normal dict
         return {**token_details}
 
+    def _extract_claude_usage(self, raw_output):
+        """Extract usage information from Claude response (handles both streaming and non-streaming).
+
+        For non-streaming responses, raw_output is a Message object with a .usage attribute.
+        For streaming responses, raw_output is a list of stream events. Usage info is in:
+        - RawMessageStartEvent.message.usage (input_tokens)
+        - RawMessageDeltaEvent.usage (output_tokens)
+        """
+        # Non-streaming: raw_output is a Message with .usage
+        if hasattr(raw_output, "usage"):
+            return raw_output.usage
+
+        # Streaming: raw_output is a list of events
+        if isinstance(raw_output, list):
+            # Accumulate usage from stream events
+            input_tokens = 0
+            output_tokens = 0
+            cache_creation = 0
+            cache_read = 0
+
+            for event in raw_output:
+                # RawMessageStartEvent contains initial usage with input_tokens
+                if hasattr(event, "message") and hasattr(event.message, "usage"):
+                    msg_usage = event.message.usage
+                    input_tokens += getattr(msg_usage, "input_tokens", 0) or 0
+                    cache_creation += getattr(msg_usage, "cache_creation_input_tokens", 0) or 0
+                    cache_read += getattr(msg_usage, "cache_read_input_tokens", 0) or 0
+                # RawMessageDeltaEvent contains usage with output_tokens
+                elif hasattr(event, "usage") and event.usage is not None:
+                    evt_usage = event.usage
+                    output_tokens += getattr(evt_usage, "output_tokens", 0) or 0
+
+            # Create a simple object-like dict to hold usage (using Box for attribute access)
+            return Box({
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "cache_creation_input_tokens": cache_creation,
+                "cache_read_input_tokens": cache_read,
+            })
+
+        return None
+
     def _can_accumulate_engine(self, engine_name: str) -> bool:
-        supported_engines = ("GPTXChatEngine", "GPTXReasoningEngine", "GPTXSearchEngine")
+        supported_engines = (
+            "GPTXChatEngine",
+            "GPTXReasoningEngine",
+            "GPTXSearchEngine",
+            "ClaudeXChatEngine",
+            "ClaudeXReasoningEngine",
+            "GeminiXReasoningEngine",
+            "DeepSeekXReasoningEngine",
+            "GroqEngine",
+            "CerebrasEngine",
+        )
         return engine_name in supported_engines
 
     def _track_parallel_usage_items(self, token_details, engine_name, metadata):
@@ -1388,21 +1551,48 @@ class MetadataTracker(Expression):
 
         metadata_raw_output = metadata["raw_output"]
         accumulated_raw_output = accumulated["raw_output"]
-        if not hasattr(metadata_raw_output, "usage") or not hasattr(
-            accumulated_raw_output, "usage"
-        ):
+
+        # Handle both OpenAI/Anthropic-style (usage) and Gemini-style (usage_metadata)
+        current_usage = getattr(metadata_raw_output, "usage", None) or getattr(
+            metadata_raw_output, "usage_metadata", None
+        )
+        accumulated_usage = getattr(accumulated_raw_output, "usage", None) or getattr(
+            accumulated_raw_output, "usage_metadata", None
+        )
+
+        if not current_usage or not accumulated_usage:
             return
 
-        current_usage = metadata_raw_output.usage
-        accumulated_usage = accumulated_raw_output.usage
-
-        for attr in ["completion_tokens", "prompt_tokens", "total_tokens"]:
+        # Handle both OpenAI-style (completion_tokens, prompt_tokens),
+        # Anthropic-style (output_tokens, input_tokens),
+        # and Gemini-style (candidates_token_count, prompt_token_count) fields
+        token_attrs = [
+            "completion_tokens",
+            "prompt_tokens",
+            "total_tokens",
+            "input_tokens",
+            "output_tokens",
+            "candidates_token_count",
+            "prompt_token_count",
+            "total_token_count",
+        ]
+        for attr in token_attrs:
             if hasattr(current_usage, attr) and hasattr(accumulated_usage, attr):
-                setattr(
-                    accumulated_usage,
-                    attr,
-                    getattr(accumulated_usage, attr) + getattr(current_usage, attr),
-                )
+                current_val = getattr(current_usage, attr) or 0
+                accumulated_val = getattr(accumulated_usage, attr) or 0
+                setattr(accumulated_usage, attr, accumulated_val + current_val)
+
+        # Handle Anthropic cache tokens and Gemini cached tokens
+        cache_attrs = [
+            "cache_creation_input_tokens",
+            "cache_read_input_tokens",
+            "cached_content_token_count",
+        ]
+        for attr in cache_attrs:
+            if hasattr(current_usage, attr) and hasattr(accumulated_usage, attr):
+                current_val = getattr(current_usage, attr) or 0
+                accumulated_val = getattr(accumulated_usage, attr) or 0
+                setattr(accumulated_usage, attr, accumulated_val + current_val)
 
         for detail_attr in ["completion_tokens_details", "prompt_tokens_details"]:
             if not hasattr(current_usage, detail_attr) or not hasattr(

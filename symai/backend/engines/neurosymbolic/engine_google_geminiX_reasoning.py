@@ -580,12 +580,25 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
     def _prepare_request_payload(self, argument):
         kwargs = argument.kwargs
 
+        stop_sequences = kwargs.get("stop")
+        if stop_sequences:
+            if isinstance(stop_sequences, str):
+                stop_sequences = [stop_sequences]
+            elif not isinstance(stop_sequences, list):
+                stop_sequences = None
+        else:
+            stop_sequences = None
+        if isinstance(stop_sequences, list):
+            stop_sequences = [seq for seq in stop_sequences if seq]
+            if not stop_sequences:
+                stop_sequences = None
+
         payload = {
             "max_output_tokens": kwargs.get("max_tokens", self.max_response_tokens),
             "temperature": kwargs.get("temperature", 1.0),
             "top_p": kwargs.get("top_p", 0.95),
             "top_k": kwargs.get("top_k", 40),
-            "stop_sequences": kwargs.get("stop", None),
+            "stop_sequences": stop_sequences,
             "stream": kwargs.get("stream", False),
         }
 
