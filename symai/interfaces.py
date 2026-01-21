@@ -42,6 +42,8 @@ def _add_symbolic_interface(mapping):
 def _resolve_drawing_interface_name(drawing_engine_model):
     if drawing_engine_model.startswith("flux"):
         return "flux"
+    if drawing_engine_model.startswith(("gemini-2.5-flash-image", "gemini-3-pro-image-preview")):
+        return "nanobanana"
     if drawing_engine_model.startswith("dall-e-"):
         return "dall_e"
     if drawing_engine_model.startswith("gpt-image-"):
