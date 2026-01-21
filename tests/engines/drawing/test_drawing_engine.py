@@ -10,6 +10,7 @@ DRAWING_ENGINE = SYMAI_CONFIG.get("DRAWING_ENGINE_MODEL")
 
 OAI_MODELS = ["dall-e-2", "dall-e-3", "gpt-image-1"]
 BFL_MODELS = ["flux-dev", "flux-pro", "flux-pro-1.1", "flux-pro-1.1-ultra"]
+GEMINI_IMAGE_MODELS = ["gemini-2.5-flash-image", "gemini-3-pro-image-preview"]
 
 
 @pytest.mark.skipif(not DRAWING_ENGINE.startswith("dall-e-") and not DRAWING_ENGINE.startswith("gpt-image-"), reason="Not an OpenAI model")
@@ -75,6 +76,21 @@ def test_flux_image_create(model):
         guidance=7.5,
         seed=42,
         safety_tolerance=2
+    )
+    assert os.path.exists(paths[0]) and os.path.getsize(paths[0]) > 0
+
+
+@pytest.mark.skipif(
+    not DRAWING_ENGINE.startswith(("gemini-2.5-flash-image", "gemini-3-pro-image-preview")),
+    reason="Not a Gemini image model",
+)
+@pytest.mark.parametrize("model", GEMINI_IMAGE_MODELS)
+def test_gemini_image_create(model):
+    nanobanana = Interface("nanobanana")
+    paths = nanobanana(
+        "a fluffy cat with a cowboy hat",
+        operation="create",
+        model=model,
     )
     assert os.path.exists(paths[0]) and os.path.getsize(paths[0]) > 0
 
