@@ -1,9 +1,10 @@
 # Drawing Engine
 
-We now expose two distinct high-level drawing interfaces:
+We now expose three distinct high-level drawing interfaces:
 
 1. **`gpt_image`** – a unified wrapper around OpenAI’s Images API (DALL·E 2/3 and `gpt-image-*`).
 2. **`flux`** – Black Forest Labs’ Flux text-to-image models via api.us1.bfl.ai.
+3. **`nanobanana`** – Google Gemini image generation models via `google-genai`.
 
 Both return a list of local PNG file paths.
 
@@ -153,3 +154,44 @@ Under the hood Flux uses:
 - GET  `https://api.us1.bfl.ai/v1/get_result?id={request_id}`
 
 and writes out local PNG file(s).
+
+---
+
+## 3. Google “nanobanana” (Gemini Image) Interface
+
+Use `Interface("nanobanana")` to generate images with Gemini image models (via the `google-genai` SDK).
+This interface currently supports **create-only** generation.
+
+Supported models (as of this release):
+- `gemini-2.5-flash-image`
+- `gemini-3-pro-image-preview`
+
+```python
+from symai.interfaces import Interface
+
+nanobanana = Interface("nanobanana")
+
+paths = nanobanana(
+    "a fluffy cat with a cowboy hat",
+    operation="create",                 # currently only 'create' is implemented
+    model="gemini-2.5-flash-image",
+)
+
+print(paths[0])  # → /tmp/tmpabcd.png
+```
+
+### Supported Parameters
+
+- `prompt` (str)
+- `operation` (`"create"`)
+- `model` (str, default from `SYMAI_CONFIG["DRAWING_ENGINE_MODEL"]`)
+- `response_modalities` (list[str], default `["IMAGE"]`)
+- `config` (optional): a `google.genai.types.GenerateContentConfig` instance
+- `except_remedy` (callable)
+
+### Configuration
+
+Set these keys in `symai.config.json` (or via your preferred config location):
+
+- `DRAWING_ENGINE_API_KEY`: your Gemini API key
+- `DRAWING_ENGINE_MODEL`: one of the supported Gemini image model names, e.g. `gemini-2.5-flash-image`
