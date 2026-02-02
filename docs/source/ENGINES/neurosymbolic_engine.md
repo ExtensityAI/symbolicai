@@ -8,6 +8,7 @@ Depending on which backend you configure (OpenAI/GPT, Claude, Gemini, Deepseek, 
 * Local engines (llamacpp, HuggingFace) do *not* yet support token counting, JSON format enforcement, or vision inputs in the same way.
 * Groq engine requires a special format for the `NEUROSYMBOLIC_ENGINE_MODEL` key: `groq:model_id`. E.g., `groq:qwen/qwen3-32b`.
 * Cerebras engine requires a special format for the `NEUROSYMBOLIC_ENGINE_MODEL` key: `cerebras:model_id`. E.g., `cerebras:gpt-oss-120b`.
+* OpenRouter engine requires a special format for the `NEUROSYMBOLIC_ENGINE_MODEL` key: `openrouter:model_id`. E.g., `openrouter:moonshotai/kimi-k2.5`.
 * OpenAI Responses API engine requires the `responses:` prefix: `responses:model_id`. E.g., `responses:gpt-4.1`, `responses:o3-mini`. This uses OpenAI's newer `/v1/responses` endpoint instead of `/v1/chat/completions`.
 * Token‐truncation and streaming are handled automatically but may vary in behavior by engine.
 
@@ -208,6 +209,23 @@ print(metadata["thinking"])
 ```
 
 For OpenAI Responses API with reasoning models (e.g., `o3-mini`, `o3`, `o4-mini`, `gpt-5`, `gpt-5.1`), the thinking trace is extracted from the reasoning summary in the response output.
+
+### OpenRouter
+
+```python
+from symai import Symbol
+
+# openrouter:moonshotai/kimi-k2.5
+res, metadata = Symbol("Topic: Disneyland") \
+    .query(
+      "Write a dystopic take on the topic.",
+      return_metadata=True
+    )
+print(res)
+print(metadata.get("thinking", "No thinking trace available"))
+```
+
+OpenRouter backends provide access to multiple model providers through a unified API gateway. The engine automatically handles model routing and supports provider-specific features when available. Token counting is not implemented for OpenRouter models, similar to Groq and Cerebras engines.
 
 ---
 

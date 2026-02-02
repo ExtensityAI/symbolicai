@@ -26,7 +26,7 @@ _NON_VERBOSE_OUTPUT = (
 )
 
 
-class KimiK25Engine(Engine):
+class OpenRouterEngine(Engine):
     def __init__(self, api_key: str | None = None, model: str | None = None):
         super().__init__()
         self.config = deepcopy(SYMAI_CONFIG)
@@ -82,9 +82,11 @@ class KimiK25Engine(Engine):
         )
 
     def _handle_prefix(self, model_name: str) -> str:
+        """Handle prefix for model name."""
         return model_name.replace("openrouter:", "")
 
     def _extract_thinking_content(self, output: list[str]) -> tuple[str | None, list[str]]:
+        """Extract thinking content from textual output using <think>...</think> tags if present."""
         if not output or not output[0]:
             return None, output
 
