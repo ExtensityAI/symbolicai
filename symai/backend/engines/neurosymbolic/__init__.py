@@ -21,7 +21,7 @@ from .engine_cerebras import CerebrasEngine
 from .engine_deepseekX_reasoning import DeepSeekXReasoningEngine
 from .engine_google_geminiX_reasoning import GeminiXReasoningEngine
 from .engine_groq import GroqEngine
-from .engine_kimik25 import KimiK25Engine
+from .engine_openrouter import OpenRouterEngine
 from .engine_openai_gptX_chat import GPTXChatEngine
 from .engine_openai_gptX_reasoning import GPTXReasoningEngine
 from .engine_openai_responses import OpenAIResponsesEngine
@@ -39,8 +39,8 @@ ENGINE_MAPPING = {
     **dict.fromkeys(OPENAI_RESPONSES_MODELS, OpenAIResponsesEngine),
     **dict.fromkeys(GROQ_CHAT_MODELS, GroqEngine),
     **dict.fromkeys(GROQ_REASONING_MODELS, GroqEngine),
-    **dict.fromkeys(OPENROUTER_CHAT_MODELS, KimiK25Engine),
-    **dict.fromkeys(OPENROUTER_REASONING_MODELS, KimiK25Engine),
+    **dict.fromkeys(OPENROUTER_CHAT_MODELS, OpenRouterEngine),
+    **dict.fromkeys(OPENROUTER_REASONING_MODELS, OpenRouterEngine),
 }
 
 __all__ = [
@@ -67,6 +67,6 @@ __all__ = [
     "GPTXReasoningEngine",
     "GeminiXReasoningEngine",
     "GroqEngine",
-    "KimiK25Engine",
+    "OpenRouterEngine",
     "OpenAIResponsesEngine",
 ]
