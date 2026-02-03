@@ -270,6 +270,7 @@ class OpenRouterEngine(Engine):
                     hit = True
         return metadata
 
+    # TODO: requires updates for reasoning
     def _prepare_request_payload(self, messages, argument):
         kwargs = argument.kwargs
         max_tokens = kwargs.get("max_tokens")
