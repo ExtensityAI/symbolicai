@@ -20,25 +20,28 @@ class EmbeddingEngine(Engine, OpenAIMixin):
         logger = logging.getLogger("openai")
         logger.setLevel(logging.WARNING)
         self.config = SYMAI_CONFIG
+        self._api_key = api_key or self.config.get("EMBEDDING_ENGINE_API_KEY")
+        self._model = model or self.config.get("EMBEDDING_ENGINE_MODEL")
         if self.id() != "embedding":
             return  # do not initialize if not embedding; avoids conflict with llama.cpp check in EngineRepository.register_from_package
-        openai.api_key = self.config["EMBEDDING_ENGINE_API_KEY"] if api_key is None else api_key
-        self.model = self.config["EMBEDDING_ENGINE_MODEL"] if model is None else model
+        # Use openai client instance (required for openai 1.0+)
+        self._client = openai.OpenAI(api_key=self._api_key)
+        self.model = self._model
         self.max_tokens = self.api_max_context_tokens()
         self.embedding_dim = self.api_embedding_dims()
         self.name = self.__class__.__name__
 
     def id(self) -> str:
-        if self.config.get("EMBEDDING_ENGINE_API_KEY") and self.config[
-            "EMBEDDING_ENGINE_MODEL"
-        ].startswith("text-embedding"):
+        # Check stored params (from constructor or config)
+        if self._api_key and self._model and self._model.startswith("text-embedding"):
             return "embedding"
         return super().id()  # default to unregistered
 
     def command(self, *args, **kwargs):
         super().command(*args, **kwargs)
         if "EMBEDDING_ENGINE_API_KEY" in kwargs:
-            openai.api_key = kwargs["EMBEDDING_ENGINE_API_KEY"]
+            self._api_key = kwargs["EMBEDDING_ENGINE_API_KEY"]
+            self._client = openai.OpenAI(api_key=self._api_key)
         if "EMBEDDING_ENGINE_MODEL" in kwargs:
             self.model = kwargs["EMBEDDING_ENGINE_MODEL"]
 
@@ -52,11 +55,11 @@ class EmbeddingEngine(Engine, OpenAIMixin):
         new_dim = kwargs.get("new_dim")
 
         try:
-            res = openai.embeddings.create(model=self.model, input=inp)
+            res = self._client.embeddings.create(model=self.model, input=inp)
         except Exception as e:
             if except_remedy is None:
                 raise e
-            callback = openai.embeddings.create
+            callback = self._client.embeddings.create
             res = except_remedy(e, inp, callback, self, *args, **kwargs)
 
         if new_dim:
