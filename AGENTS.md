@@ -53,7 +53,7 @@ CLI entrypoints (after install): `symchat`, `symsh`, `symconfig`, `symserver`.
 
 ## Configuration & Secrets
 - Config precedence: `./symai.config.json`, `{venv}/.symai/symai.config.json`, then `~/.symai/symai.config.json`.
-- Common keys: `NEUROSYMBOLIC_ENGINE_MODEL`, `NEUROSYMBOLIC_ENGINE_API_KEY`, `SYMAI_WARNINGS=0`, `SUPPORT_COMMUNITY`.
+- Common keys: `NEUROSYMBOLIC_ENGINE_MODEL`, `NEUROSYMBOLIC_ENGINE_API_KEY`, `SYMAI_WARNINGS=0`.
 - Inspect active config with `symconfig`.
 - Never commit API keys, tokens, or generated artifacts (`dist/`, caches, logs).
 

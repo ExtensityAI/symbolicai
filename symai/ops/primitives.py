@@ -745,12 +745,6 @@ class OperatorPrimitives(Primitive):
         Returns:
             Symbol: A new symbol with the result of the OR operation.
         """
-        # Exclude the evaluation for the Aggregator class; keep import local to avoid ops.primitives <-> collect.stats cycle.
-        from ..collect.stats import Aggregator  # noqa
-
-        if isinstance(other, Aggregator):
-            return NotImplemented
-
         result = self.__try_type_specific_func(
             other, lambda self, other: self.value | other.value, op="|"
         )
@@ -777,12 +771,6 @@ class OperatorPrimitives(Primitive):
         Returns:
             Symbol: A new Symbol object with the concatenated value.
         """
-        # Exclude the evaluation for the Aggregator class; keep import local to avoid ops.primitives <-> collect.stats cycle.
-        from ..collect.stats import Aggregator  # noqa
-
-        if isinstance(other, Aggregator):
-            return NotImplemented
-
         result = self.__try_type_specific_func(
             other, lambda self, other: self.value | other.value, op="|"
         )
@@ -811,12 +799,6 @@ class OperatorPrimitives(Primitive):
         Returns:
             Symbol: A new Symbol object with the concatenated value.
         """
-        # Exclude the evaluation for the Aggregator class; keep import local to avoid ops.primitives <-> collect.stats cycle.
-        from ..collect.stats import Aggregator  # noqa
-
-        if isinstance(other, Aggregator):
-            return NotImplemented
-
         result = self.__try_type_specific_func(
             other, lambda self, other: self.value | other.value, op="|="
         )

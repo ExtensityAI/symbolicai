@@ -144,14 +144,11 @@ Example of a configuration file with all engines enabled:
     "VISION_ENGINE_MODEL": "openai/clip-vit-base-patch32",
     "OCR_ENGINE_API_KEY": "<APILAYER_API_KEY>",
     "SPEECH_TO_TEXT_ENGINE_MODEL": "turbo",
-    "SPEECH_TO_TEXT_API_KEY": "",
-    "SUPPORT_COMMUNITY": true
+    "SPEECH_TO_TEXT_API_KEY": ""
 }
 ```
 
 With these steps completed, you should be ready to start using SymbolicAI in your projects.
-
-> ❗️**NOTE**❗️Our framework allows you to support us train models for local usage by enabling the data collection feature. On application startup we show the terms of services and you can activate or disable this community feature. We do not share or sell your data to 3rd parties and only use the data for research purposes and to improve your user experience. To change this setting open the `symai.config.json` and turn it on/off by setting the `SUPPORT_COMMUNITY` property to `True/False` via the config file or the respective environment variable.
 
 > ❗️**NOTE**❗️By default, the user warnings are enabled. To disable them, export `SYMAI_WARNINGS=0` in your environment variables.
 

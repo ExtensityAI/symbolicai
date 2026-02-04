@@ -11,8 +11,6 @@ from rich.table import Table
 from rich.tree import Tree
 
 from .backend import settings
-from .menu.screen import show_intro_menu
-from .misc.console import ConsoleStyle
 from .utils import UserMessage
 
 # do not remove - hides the libraries' debug messages
@@ -87,20 +85,6 @@ def _start_symai():
     # Load and manage configurations
     symai_config = config_manager.load_config("symai.config.json")
 
-    # MIGRATE THE ENVIRONMENT VARIABLES
-    # *==========================================================================================================*
-    if "COLLECTION_URI" not in symai_config:
-        updates = {
-            "COLLECTION_URI": "mongodb+srv://User:vt3epocXitd6WlQ6@extensityai.c1ajxxy.mongodb.net/?retryWrites=true&w=majority",
-            "COLLECTION_DB": "ExtensityAI",
-            "COLLECTION_STORAGE": "SymbolicAI",
-            "SUPPORT_COMMUNITY": False,
-        }
-        config_manager.migrate_config("symai.config.json", updates)
-        with ConsoleStyle("info") as console:
-            msg = "Currently you are sharing your user experience with us by uploading the data to our research server, and thereby helping us improve future models and the overall SymbolicAI experience. We thank you very much for supporting the research community! If you wish to disable the data collection option go to your .symai config situated in your home directory or set the environment variable `SUPPORT_COMMUNITY` to `False`."
-            console.print(msg)
-
     # POST-MIGRATION CHECKS
     # *==============================================================================================================*
     if "TEXT_TO_SPEECH_ENGINE_API_KEY" not in symai_config:
@@ -114,11 +98,6 @@ def _start_symai():
     symsh_config = config_manager.load_config("symsh.config.json")
     symserver_config = config_manager.load_config("symserver.config.json")
 
-    # MIGRATE THE SHELL SPLASH SCREEN CONFIGURATION
-    # *==============================================================================================================*
-    if "show-splash-screen" not in symsh_config:
-        config_manager.migrate_config("symsh.config.json", {"show-splash-screen": True})
-
     # CHECK IF THE USER HAS A NEUROSYMBOLIC API KEY
     # *==============================================================================================================*
     if not (
@@ -130,7 +109,6 @@ def _start_symai():
     ):
         # Try to fallback to the global (home) config if environment is not home
         if config_manager.config_dir != config_manager._home_config_dir:
-            show_intro_menu()
             UserMessage(
                 f"You didn't configure your environment ({config_manager.config_dir})! Falling back to the global ({config_manager._home_config_dir}) configuration if it exists."
             )
@@ -345,57 +323,29 @@ def display_config():
 
 
 def setup_wizard(_symai_config_path_):
-    show_intro_menu()
-
-    _nesy_engine_api_key = ""
-    _nesy_engine_model = ""
-    _symbolic_engine_api_key = ""
-    _symbolic_engine_model = ""
-    _embedding_engine_api_key = ""
-    _embedding_model = ""
-    _drawing_engine_api_key = ""
-    _drawing_engine_model = ""
-    _vision_engine_model = ""
-    _search_engine_api_key = ""
-    _search_engine_model = ""
-    _ocr_engine_api_key = ""
-    _speech_to_text_engine_model = ""
-    _speech_to_text_api_key = ""
-    _text_to_speech_engine_api_key = ""
-    _text_to_speech_engine_model = ""
-    _text_to_speech_engine_voice = ""
-    _indexing_engine_api_key = ""
-    _indexing_engine_environment = ""
-    _caption_engine_environment = ""
-    _support_comminity = False
-
     config_manager.save_config(
         _symai_config_path_,
         {
-            "NEUROSYMBOLIC_ENGINE_API_KEY": _nesy_engine_api_key,
-            "NEUROSYMBOLIC_ENGINE_MODEL": _nesy_engine_model,
-            "SYMBOLIC_ENGINE_API_KEY": _symbolic_engine_api_key,
-            "SYMBOLIC_ENGINE": _symbolic_engine_model,
-            "EMBEDDING_ENGINE_API_KEY": _embedding_engine_api_key,
-            "EMBEDDING_ENGINE_MODEL": _embedding_model,
-            "DRAWING_ENGINE_API_KEY": _drawing_engine_api_key,
-            "DRAWING_ENGINE_MODEL": _drawing_engine_model,
-            "VISION_ENGINE_MODEL": _vision_engine_model,
-            "SEARCH_ENGINE_API_KEY": _search_engine_api_key,
-            "SEARCH_ENGINE_MODEL": _search_engine_model,
-            "OCR_ENGINE_API_KEY": _ocr_engine_api_key,
-            "SPEECH_TO_TEXT_ENGINE_MODEL": _speech_to_text_engine_model,
-            "SPEECH_TO_TEXT_API_KEY": _speech_to_text_api_key,
-            "TEXT_TO_SPEECH_ENGINE_API_KEY": _text_to_speech_engine_api_key,
-            "TEXT_TO_SPEECH_ENGINE_MODEL": _text_to_speech_engine_model,
-            "TEXT_TO_SPEECH_ENGINE_VOICE": _text_to_speech_engine_voice,
-            "INDEXING_ENGINE_API_KEY": _indexing_engine_api_key,
-            "INDEXING_ENGINE_ENVIRONMENT": _indexing_engine_environment,
-            "CAPTION_ENGINE_MODEL": _caption_engine_environment,
-            "COLLECTION_URI": "mongodb+srv://User:vt3epocXitd6WlQ6@extensityai.c1ajxxy.mongodb.net/?retryWrites=true&w=majority",
-            "COLLECTION_DB": "ExtensityAI",
-            "COLLECTION_STORAGE": "SymbolicAI",
-            "SUPPORT_COMMUNITY": _support_comminity,
+            "NEUROSYMBOLIC_ENGINE_API_KEY": "",
+            "NEUROSYMBOLIC_ENGINE_MODEL": "",
+            "SYMBOLIC_ENGINE_API_KEY": "",
+            "SYMBOLIC_ENGINE": "",
+            "EMBEDDING_ENGINE_API_KEY": "",
+            "EMBEDDING_ENGINE_MODEL": "",
+            "DRAWING_ENGINE_API_KEY": "",
+            "DRAWING_ENGINE_MODEL": "",
+            "VISION_ENGINE_MODEL": "",
+            "SEARCH_ENGINE_API_KEY": "",
+            "SEARCH_ENGINE_MODEL": "",
+            "OCR_ENGINE_API_KEY": "",
+            "SPEECH_TO_TEXT_ENGINE_MODEL": "",
+            "SPEECH_TO_TEXT_API_KEY": "",
+            "TEXT_TO_SPEECH_ENGINE_API_KEY": "",
+            "TEXT_TO_SPEECH_ENGINE_MODEL": "",
+            "TEXT_TO_SPEECH_ENGINE_VOICE": "",
+            "INDEXING_ENGINE_API_KEY": "",
+            "INDEXING_ENGINE_ENVIRONMENT": "",
+            "CAPTION_ENGINE_MODEL": "",
         },
     )
 
