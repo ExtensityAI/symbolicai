@@ -3,20 +3,10 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any
 
-from ..collect import CollectionRepository, rec_serialize
 from ..utils import UserMessage
 from .settings import HOME_PATH
 
 ENGINE_UNREGISTERED = "<UNREGISTERED/>"
-
-COLLECTION_LOGGING_ENGINES = {
-    "GPTXChatEngine",
-    "GPTXCompletionEngine",
-    "SerpApiEngine",
-    "WolframAlphaEngine",
-    "SeleniumEngine",
-    "OCREngine",
-}
 
 
 class Engine(ABC):
@@ -26,8 +16,6 @@ class Engine(ABC):
         self.logging = False
         self.log_level = logging.DEBUG
         self.time_clock = False
-        self.collection = CollectionRepository()
-        self.collection.connect()
         # create formatter
         __root_dir__ = HOME_PATH
         __root_dir__.mkdir(parents=True, exist_ok=True)
@@ -66,9 +54,6 @@ class Engine(ABC):
         if self.logging:
             self.logger.log(self.log_level, log)
 
-        if str(self) in COLLECTION_LOGGING_ENGINES:
-            self._record_collection_entry(argument, metadata, req_time)
-
         self._trigger_output_handlers(argument, res, metadata)
         return res, metadata
 
@@ -91,17 +76,6 @@ class Engine(ABC):
         argument_handler = argument.prop.output_handler
         if argument_handler:
             argument_handler((result, metadata))
-
-    def _record_collection_entry(self, argument: Any, metadata: dict, req_time: float) -> None:
-        self.collection.add(
-            forward={"args": rec_serialize(argument.args), "kwds": rec_serialize(argument.kwargs)},
-            engine=str(self),
-            metadata={
-                "time": req_time,
-                "data": rec_serialize(metadata),
-                "argument": rec_serialize(argument),
-            },
-        )
 
     def id(self) -> str:
         return ENGINE_UNREGISTERED

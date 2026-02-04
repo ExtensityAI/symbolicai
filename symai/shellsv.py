@@ -1070,14 +1070,9 @@ def run(auto_query_on_error=False, conversation_style=None, verbose=False):
         ) = styles_
         state.use_styles = True
 
-    if SYMSH_CONFIG["show-splash-screen"]:
+    if SYMSH_CONFIG.get("show-splash-screen", True):
         show_intro_menu()
-        # set show splash screen to false
-        SYMSH_CONFIG["show-splash-screen"] = False
-        # save config
-        _config_path = HOME_PATH / "symsh.config.json"
-        with _config_path.open("w") as f:
-            json.dump(SYMSH_CONFIG, f, indent=4)
+
     if "plugin_prefix" not in SYMSH_CONFIG:
         SYMSH_CONFIG["plugin_prefix"] = None
 
