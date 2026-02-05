@@ -64,6 +64,7 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
                 and "4-0" not in self.config.get("NEUROSYMBOLIC_ENGINE_MODEL")
                 and "4-1" not in self.config.get("NEUROSYMBOLIC_ENGINE_MODEL")
                 and "4-5" not in self.config.get("NEUROSYMBOLIC_ENGINE_MODEL")
+                and "4-6" not in self.config.get("NEUROSYMBOLIC_ENGINE_MODEL")
             )
         ):
             return "neurosymbolic"

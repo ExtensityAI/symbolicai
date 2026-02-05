@@ -126,6 +126,28 @@ print(res)
 print(metadata["thinking"])
 ```
 
+### Claude 1M Context (Reasoning Models, Runtime Opt-In)
+
+For Anthropic reasoning models, you can opt into 1M context per request using `long_context_1m=True`.
+This is runtime-only and is not configured via `symai.config.json`.
+
+```python
+from symai import Symbol
+
+# Supported aliases in this mode:
+# - claude-opus-4-6
+# - claude-sonnet-4-5
+res = Symbol("Analyze this very long corpus...").query(
+    "Extract a structured timeline of key events.",
+    model="claude-opus-4-6",
+    long_context_1m=True,
+)
+print(res)
+```
+
+If `long_context_1m=True` is used with an unsupported model alias, SymbolicAI warns via `UserMessage`
+and falls back to the standard 200K context behavior.
+
 ### Gemini (Google)
 
 ```python

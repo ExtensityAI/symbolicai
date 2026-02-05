@@ -66,6 +66,7 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
                 or "4-0" in self.config.get("NEUROSYMBOLIC_ENGINE_MODEL")
                 or "4-1" in self.config.get("NEUROSYMBOLIC_ENGINE_MODEL")
                 or "4-5" in self.config.get("NEUROSYMBOLIC_ENGINE_MODEL")
+                or "4-6" in self.config.get("NEUROSYMBOLIC_ENGINE_MODEL")
             )
         ):
             return "neurosymbolic"
@@ -348,9 +349,48 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
 
         return {"role": "user", "content": user_text}
 
+    def _build_output_config(self, response_format):
+        if response_format is None:
+            return NOT_GIVEN
+
+        if response_format["type"] == "json_schema":
+            schema = response_format.get("schema")
+            if schema is None and response_format.get("json_schema") is not None:
+                schema = response_format["json_schema"].get("schema", response_format["json_schema"])
+            if schema is None:
+                return NOT_GIVEN
+            return {"format": {"type": "json_schema", "schema": schema}}
+
+        if response_format["type"] == "json_object":
+            schema = response_format.get("schema")
+            if schema is None:
+                return NOT_GIVEN
+            return {"format": {"type": "json_schema", "schema": schema}}
+
+        return NOT_GIVEN
+
     def _prepare_request_payload(self, argument):
         kwargs = argument.kwargs
         model = kwargs.get("model", self.model)
+        long_context_1m = bool(kwargs.get("long_context_1m", False))
+        use_long_context_1m = long_context_1m and self.supports_long_context_1m(model)
+        effective_context_tokens = self.api_max_context_tokens(model=model)
+        if effective_context_tokens is None:
+            effective_context_tokens = 200_000
+        if use_long_context_1m:
+            effective_context_tokens = self.api_max_context_tokens(
+                long_context_1m=True, model=model
+            )
+        if long_context_1m and not use_long_context_1m:
+            UserMessage(
+                "long_context_1m is only supported for claude-opus-4-6 and claude-sonnet-4-5; "
+                f"falling back to {effective_context_tokens} token context."
+            )
+
+        extra_headers = None
+        if use_long_context_1m:
+            extra_headers = {"anthropic-beta": self.long_context_beta_header()}
+
         stop = kwargs.get("stop", NOT_GIVEN)
         temperature = kwargs.get("temperature", 1)
         thinking_arg = kwargs.get("thinking", NOT_GIVEN)
@@ -368,6 +408,8 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         tool_choice = kwargs.get("tool_choice", NOT_GIVEN)
         metadata_anthropic = kwargs.get("metadata", NOT_GIVEN)
         max_tokens = kwargs.get("max_tokens", self.max_response_tokens)
+        response_format = kwargs.get("response_format", argument.prop.response_format)
+        output_config = self._build_output_config(response_format)
 
         if stop != NOT_GIVEN and not isinstance(stop, list):
             stop = [stop]
@@ -377,7 +419,7 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         if stop != NOT_GIVEN:
             stop = [r"{s}" for s in stop]
 
-        return {
+        payload = {
             "model": model,
             "max_tokens": max_tokens,
             "stop_sequences": stop,
@@ -389,7 +431,12 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
             "metadata": metadata_anthropic,
             "tools": tools,
             "tool_choice": tool_choice,
+            "output_config": output_config,
         }
+        if extra_headers is not None:
+            payload["extra_headers"] = extra_headers
+
+        return payload
 
     def _collect_response(self, res):
         if isinstance(res, list):
