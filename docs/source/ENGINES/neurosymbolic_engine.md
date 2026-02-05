@@ -126,6 +126,27 @@ print(res)
 print(metadata["thinking"])
 ```
 
+### Claude Adaptive Thinking (Opus 4.6, Runtime)
+
+Anthropic adaptive thinking is available at runtime for `claude-opus-4-6`:
+
+```python
+from symai import Symbol
+
+res, metadata = Symbol("Topic: Disneyland").query(
+    "Write a dystopic take on the topic.",
+    model="claude-opus-4-6",
+    return_metadata=True,
+    thinking={"type": "adaptive", "effort": "medium"},
+)
+print(res)
+print(metadata["thinking"])
+```
+
+If `thinking={"type":"adaptive"}` is used on a non-Opus model alias, SymbolicAI warns via
+`UserMessage` and falls back to manual thinking (`{"type":"enabled","budget_tokens":...}`).
+This is runtime behavior and not a `symai.config.json` key.
+
 ### Claude 1M Context (Reasoning Models, Runtime Opt-In)
 
 For Anthropic reasoning models, you can opt into 1M context per request using `long_context_1m=True`.

@@ -369,6 +369,35 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
 
         return NOT_GIVEN
 
+    def _build_thinking_config(self, thinking_arg, model):
+        if not thinking_arg or not isinstance(thinking_arg, dict):
+            return NOT_GIVEN, None
+
+        thinking_type = thinking_arg.get("type")
+        if thinking_type == "disabled":
+            return {"type": "disabled"}, None
+
+        if thinking_type == "adaptive":
+            if self.supports_adaptive_thinking(model):
+                return {"type": "adaptive"}, thinking_arg.get("effort")
+            UserMessage(
+                "Adaptive thinking is only supported for claude-opus-4-6; "
+                "falling back to manual thinking."
+            )
+            return {"type": "enabled", "budget_tokens": thinking_arg.get("budget_tokens", 1024)}, None
+
+        if thinking_type == "enabled" or "budget_tokens" in thinking_arg:
+            return {"type": "enabled", "budget_tokens": thinking_arg.get("budget_tokens", 1024)}, None
+
+        return NOT_GIVEN, None
+
+    def _merge_output_config_effort(self, output_config, adaptive_effort):
+        if adaptive_effort is None:
+            return output_config
+        if output_config == NOT_GIVEN:
+            return {"effort": adaptive_effort}
+        return {**output_config, "effort": adaptive_effort}
+
     def _prepare_request_payload(self, argument):
         kwargs = argument.kwargs
         model = kwargs.get("model", self.model)
@@ -394,9 +423,7 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         stop = kwargs.get("stop", NOT_GIVEN)
         temperature = kwargs.get("temperature", 1)
         thinking_arg = kwargs.get("thinking", NOT_GIVEN)
-        thinking = NOT_GIVEN
-        if thinking_arg and isinstance(thinking_arg, dict):
-            thinking = {"type": "enabled", "budget_tokens": thinking_arg.get("budget_tokens", 1024)}
+        thinking, adaptive_effort = self._build_thinking_config(thinking_arg, model)
         top_p = kwargs.get(
             "top_p", NOT_GIVEN if temperature is not None else 1
         )  # @NOTE:'You should either alter temperature or top_p, but not both.'
@@ -410,6 +437,7 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         max_tokens = kwargs.get("max_tokens", self.max_response_tokens)
         response_format = kwargs.get("response_format", argument.prop.response_format)
         output_config = self._build_output_config(response_format)
+        output_config = self._merge_output_config_effort(output_config, adaptive_effort)
 
         if stop != NOT_GIVEN and not isinstance(stop, list):
             stop = [stop]

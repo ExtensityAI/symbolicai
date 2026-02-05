@@ -26,9 +26,13 @@ LONG_CONTEXT_1M_MODELS = {
     "claude-opus-4-6",
     "claude-sonnet-4-5",
 }
+ADAPTIVE_THINKING_MODELS = {"claude-opus-4-6"}
 
 
 class AnthropicMixin:
+    def supports_adaptive_thinking(self, model: str) -> bool:
+        return model in ADAPTIVE_THINKING_MODELS
+
     def supports_long_context_1m(self, model: str) -> bool:
         return model in LONG_CONTEXT_1M_MODELS
 
