@@ -16,6 +16,7 @@ logging.getLogger("requests").setLevel(logging.ERROR)
 logging.getLogger("urllib").setLevel(logging.ERROR)
 logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
+logging.getLogger("hpack").setLevel(logging.ERROR)
 
 
 _NON_VERBOSE_OUTPUT = (

@@ -72,7 +72,7 @@ class MyContractedClass(Expression):
     If `True`, attempts to automatically correct output validation failures (from your `post` method or type mismatches) using LLM-based type and semantic remediation.
 *   `accumulate_errors` (bool, default: `False`):
     Controls whether error messages from multiple failed validation attempts (during remediation) are accumulated and provided to the LLM in subsequent retry attempts. See more details in the "Error Accumulation" section below.
-*   `verbose` (bool, default: `False`):
+    *   `verbose` (bool, default: `False`):
     If `True`, enables detailed logging of the contract's internal operations, including prompts sent to the LLM and validation steps.
     *   `remedy_retry_params` (dict, default: `{ "tries": 5, "delay": 0.5, "max_delay": 15, "jitter": 0.1, "backoff": 2, "graceful": False }`):
         A dictionary configuring the retry behavior for both type and semantic validation/remediation functions.
@@ -85,6 +85,43 @@ class MyContractedClass(Expression):
             - Exceptions from validation/remediation are suppressed and `self.contract_exception` remains `None`.
             - The automatic final output type check (which would raise a `TypeError` for mismatched return types) is skipped, preventing upstream errors.
             This lets your `forward` method receive invalid or missing results without interruption and implement custom fallback logic.
+        *   `dynamic_engine` (optional): A `symai.components.DynamicEngine` instance used for zero-shot fallback and remedy retries. When provided, retry/remedy calls run inside that engine context instead of the currently active default engine.
+
+#### Optional: Run contract remedies on a dynamic engine
+
+You can force retry/remedy attempts to execute on a different model by passing `dynamic_engine` inside
+`remedy_retry_params`.
+
+```python
+import os
+from symai import Expression
+from symai.components import DynamicEngine
+from symai.strategy import contract
+
+repair_engine = DynamicEngine(
+    model="claude-opus-4-6",
+    api_key=os.environ["ANTHROPIC_API_KEY"],
+)
+
+@contract(
+    pre_remedy=True,
+    post_remedy=True,
+    remedy_retry_params={
+        "tries": 3,
+        "delay": 0.4,
+        "max_delay": 4.0,
+        "jitter": 0.15,
+        "backoff": 1.8,
+        "graceful": False,
+        "dynamic_engine": repair_engine,
+    },
+)
+class MyContractedClass(Expression):
+    ...
+```
+
+This keeps your main engine selection unchanged while routing contract correction passes through
+the specified dynamic engine.
 
 ### 2. Input and Output Data Models
 **Note**: You can use native Python types directly in your `pre`, `act`, `post`, and `forward` method signatures (e.g., `str`, `int`, `list[int]`, `dict[str, int]`, `Optional[...]`, `Union[...]`), or mix them with traditional `LLMDataModel` types in hybrid scenarios (e.g., LLMDataModel inputs with list outputs). The system will dynamically generate internal LLMDataModel wrappers (with a single `value` field) for validation and automatically unwrap the `value` field back to your native data on return, making simple use cases more concise than defining full Pydantic models.

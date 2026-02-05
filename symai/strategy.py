@@ -3,9 +3,11 @@ import logging
 import time
 from collections import defaultdict
 from collections.abc import Callable
+from contextlib import nullcontext
 from typing import Any, ClassVar
 
 import numpy as np
+from anthropic import transform_schema
 from beartype import beartype
 from loguru import logger
 from pydantic import BaseModel, ValidationError
@@ -14,7 +16,9 @@ from rich.markup import escape
 from rich.panel import Panel
 from rich.table import Table
 
+from .backend.settings import SYMAI_CONFIG
 from .components import Function
+from .context import CURRENT_ENGINE_VAR
 from .models import LLMDataModel, TypeValidationError, build_dynamic_llm_datamodel
 from .symbol import Expression
 from .utils import UserMessage
@@ -182,6 +186,7 @@ class TypeValidationFunction(ValidationFunction):
         self.output_data_model = None
         self.accumulate_errors = accumulate_errors
         self.verbose = verbose
+        self.dynamic_engine = self.retry_params.get("dynamic_engine")
 
     def register_expected_data_model(
         self, data_model: LLMDataModel, attach_to: str, override: bool = False
@@ -361,7 +366,8 @@ Important guidelines:
         if self.verbose:
             self.display_panel(self.remedy_function.dynamic_context, title="New Context")
 
-        json_str = self.remedy_function(seed=remedy_seeds[attempt_index], **kwargs).value
+        with (self.dynamic_engine if self.dynamic_engine is not None else nullcontext()):
+            json_str = self.remedy_function(seed=remedy_seeds[attempt_index], **kwargs).value
         logger.info("Applied remedy function with updated context!")
         return json_str
 
@@ -418,17 +424,51 @@ Important guidelines:
             violations=errors,
         )
 
+    def _build_response_format(self, kwargs: dict) -> dict:
+        response_format = kwargs.get("response_format")
+        if response_format is None:
+            response_format = {"type": "json_object"}
+        # Resolve the effective model from the most specific runtime source first.
+        # This keeps contracts working when engines are swapped dynamically and no static
+        # model is registered in config.
+        selected_model = kwargs.get("model")
+        if selected_model is None:
+            active_engine = CURRENT_ENGINE_VAR.get()
+            if active_engine is not None:
+                selected_model = getattr(active_engine, "model", None)
+        if selected_model is None:
+            selected_model = SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL", "")
+
+        if "claude-opus" not in selected_model:
+            return response_format
+
+        if response_format.get("type") != "json_object":
+            return response_format
+
+        # At the contract layer, `json_object` stays the generic trigger for structured output.
+        # Opus requires a concrete JSON Schema payload, so we derive it from the output model.
+        return {"type": "json_schema", "schema": transform_schema(self.output_data_model)}
+
     def forward(
         self, prompt: str, f_semantic_conditions: list[Callable] | None = None, *args, **kwargs
     ):
         self._ensure_output_model()
         validation_context = kwargs.pop("validation_context", {})
-        kwargs["response_format"] = {"type": "json_object"}
+        kwargs["response_format"] = self._build_response_format(kwargs)
         logger.info("Initializing validation…")
         self._display_verbose_panels(prompt)
 
         context = self.zero_shot_prompt(prompt=prompt)
-        json_str = super().forward(context, *args, **kwargs).value
+
+        # Zero-shot attempt; fall back to dynamic engine on failure
+        try:
+            json_str = super().forward(context, *args, **kwargs).value
+        except Exception:
+            if self.dynamic_engine is None:
+                raise
+            logger.info("Zero-shot failed; retrying with dynamic engine…")
+            with self.dynamic_engine:
+                json_str = super().forward(context, *args, **kwargs).value
 
         remedy_seeds = self.prepare_seeds(self.retry_params["tries"] + 1, **kwargs)
         logger.info(f"Prepared {len(remedy_seeds)} remedy seeds for validation attempts…")
@@ -468,7 +508,7 @@ class contract:
         post_remedy: bool = False,
         accumulate_errors: bool = False,
         verbose: bool = False,
-        remedy_retry_params: dict[str, int | float | bool] = _default_remedy_retry_params,
+        remedy_retry_params: dict[str, Any] = _default_remedy_retry_params,
     ):
         """
         A contract class decorator inspired by DbC principles. It ensures that the function's input and output
