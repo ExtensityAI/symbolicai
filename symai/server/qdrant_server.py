@@ -7,7 +7,7 @@ from pathlib import Path
 from loguru import logger
 
 
-def qdrant_server():  # noqa
+def qdrant_server():
     """
     A wrapper for Qdrant server that supports both Docker and binary execution modes.
 

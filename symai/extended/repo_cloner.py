@@ -35,7 +35,7 @@ class RepositoryCloner(Expression):
         Returns:
           str: The root path of the cloned repository.
         """
-        repo_name = url.split("/")[-1].replace(".git", "")
+        repo_name = url.rsplit("/", maxsplit=1)[-1].replace(".git", "")
         if (self.repo_dir / repo_name).is_dir():
             UserMessage(f"Repository {repo_name} already exists. Checking for updates...")
             try:

@@ -21,13 +21,8 @@ try:
     from parallel.resources.task_run import build_task_spec_param
 
     logging.getLogger("parallel").setLevel(logging.ERROR)
-except ImportError as exc:
-    msg = (
-        "parallel-web SDK is not installed. Install with 'pip install parallel-web' "
-        "or add it to your environment."
-    )
-    UserMessage(msg)
-    raise RuntimeError(msg) from exc
+except ImportError:
+    Parallel = None
 
 
 TRACKING_KEYS = {
@@ -342,6 +337,13 @@ class ParallelEngine(Engine):
         self.api_key = api_key or self.config.get("SEARCH_ENGINE_API_KEY")
         self.model = self.config.get("SEARCH_ENGINE_MODEL")
         self.name = self.__class__.__name__
+
+        if Parallel is None:
+            UserMessage(
+                "parallel-web SDK is not installed. Install with 'pip install parallel-web' "
+                "or add it to your environment.",
+                raise_with=ValueError,
+            )
 
         try:
             self.client = Parallel(api_key=self.api_key)
