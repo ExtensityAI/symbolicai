@@ -344,7 +344,7 @@ class Import(Expression):
                 logger.success(f"Removed module '{module}'")
 
                 # Check if folder is empty and remove it
-                parent_path = BASE_PACKAGE_PATH / module.split("/")[0]
+                parent_path = BASE_PACKAGE_PATH / module.split("/", maxsplit=1)[0]
                 if parent_path.exists() and not any(parent_path.iterdir()):
                     parent_path.rmdir()
                     logger.info(f"Removed empty parent folder '{parent_path}'")

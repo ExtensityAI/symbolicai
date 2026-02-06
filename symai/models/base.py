@@ -482,7 +482,7 @@ class LLMDataModel(BaseModel):
     @classmethod
     def _resolve_reference_type(cls, ref: str) -> str:
         """Resolve reference type."""
-        ref_name = ref.split("/")[-1]
+        ref_name = ref.rsplit("/", maxsplit=1)[-1]
         return f"nested object ({ref_name})"
 
     @classmethod

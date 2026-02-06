@@ -61,7 +61,7 @@ class WhisperTimestampsFormatter(Expression):
         return float("".join(list(takewhile(lambda x: x != "|", s))))
 
     def _get_sentence(self, s: str) -> str:
-        return s.split("|>")[-1]
+        return s.rsplit("|>", maxsplit=1)[-1]
 
     def _format_to_hours(self, seconds: float) -> str:
         hours = int(seconds // 3600)

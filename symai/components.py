@@ -236,7 +236,7 @@ class Stream(Expression):
             if self.retrieval == "all":
                 return res
             if self.retrieval == "longest":
-                res = sorted(res, key=lambda x: len(x), reverse=True)
+                res = sorted(res, key=len, reverse=True)
                 return res[0]
             if self.retrieval == "contains":
                 return [r for r in res if self.expr in r]

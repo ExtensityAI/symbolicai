@@ -5,8 +5,11 @@ from dataclasses import dataclass
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-from firecrawl import Firecrawl
-from firecrawl.v2.types import ScrapeOptions
+try:
+    from firecrawl import Firecrawl
+    from firecrawl.v2.types import ScrapeOptions
+except ImportError:
+    Firecrawl = None
 
 from ....symbol import Result
 from ....utils import UserMessage
@@ -174,6 +177,13 @@ class FirecrawlEngine(Engine):
         self.api_key = api_key or self.config.get("SEARCH_ENGINE_API_KEY")
         self.model = self.config.get("SEARCH_ENGINE_MODEL")
         self.name = self.__class__.__name__
+
+        if Firecrawl is None:
+            UserMessage(
+                "firecrawl SDK is not installed. Install with 'pip install firecrawl-py' "
+                "or add it to your environment.",
+                raise_with=ValueError,
+            )
 
         if not self.api_key:
             UserMessage(

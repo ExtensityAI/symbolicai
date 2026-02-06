@@ -354,7 +354,7 @@ def disambiguate(cmds: str) -> tuple[str, int]:
         5. query | file | cmd
     """
     has_at_least_one_cmd = any(shutil.which(cmd) is not None for cmd in cmds.split(" "))
-    maybe_cmd = cmds.split(" ")[0].strip()  # get first command
+    maybe_cmd = cmds.split(" ", maxsplit=1)[0].strip()  # get first command
     maybe_files = FileReader.extract_files(cmds)
     # if cmd follows file(s) or file(s) follows cmd throw error as not supported
     if maybe_files is not None and has_at_least_one_cmd:
@@ -639,7 +639,7 @@ def search_engine(query: str, res=None, *_args, **_kwargs):
 
 def set_default_module(cmd: str):
     if cmd.startswith("set-plugin"):
-        module = cmd.split("set-plugin")[-1].strip()
+        module = cmd.rsplit("set-plugin", maxsplit=1)[-1].strip()
         SYMSH_CONFIG["plugin_prefix"] = module
         with config_path.open("w") as f:
             json.dump(SYMSH_CONFIG, f, indent=4)
