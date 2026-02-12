@@ -33,7 +33,6 @@ def _export_module(module_name: str, seen_names: set[str] = _seen_names) -> None
 for _module_name in [
     "arxiv_pdf_parser",
     "conversation",
-    "document",
     "file_merger",
     "graph",
     "html_style_template",

@@ -22,7 +22,6 @@ dependencies:
   - pyyaml
   - transformers
   - openai
-  - pypdf
   - ipython
   - beautifulsoup4
   - selenium
@@ -30,7 +29,6 @@ dependencies:
   - sentencepiece
   - webdriver-manager
   - pandas
-  - tika
   - pip
   - paramiko   # For SSH protocol operations
   - docker-py  # Docker SDK for Python

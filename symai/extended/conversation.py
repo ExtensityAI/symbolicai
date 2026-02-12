@@ -5,15 +5,11 @@ from pathlib import Path
 from typing import Any
 
 from ..components import FileReader
-from ..formatter import TextContainerFormatter
 from ..interfaces import Interface
 from ..memory import SlidingWindowStringConcatMemory
 from ..symbol import Symbol
-from ..utils import UserMessage, deprecated
-from .document import DocumentRetriever
+from ..utils import UserMessage
 from .seo_query_optimizer import SEOQueryOptimizer
-
-_DEFAULT_TEXT_CONTAINER_FORMATTER = TextContainerFormatter(text_split=4)
 
 
 class CodeFormatter:
@@ -34,7 +30,6 @@ class Conversation(SlidingWindowStringConcatMemory):
         auto_print: bool = True,
         truncation_percentage: float = 0.8,
         truncation_type: str = "head",
-        with_metadata: bool = False,
         *args,
         **kwargs,
     ):
@@ -50,7 +45,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         self.url_link = url_link
         self.index_name = index_name
         self.seo_opt = SEOQueryOptimizer()
-        self.reader = FileReader(with_metadata=with_metadata)
+        self.reader = FileReader()
         self.scraper = Interface("naive_scrape")
         self.user_tag = "USER::"
         self.bot_tag = "ASSISTANT::"
@@ -257,116 +252,3 @@ class Conversation(SlidingWindowStringConcatMemory):
         self.store(val)
 
 
-RETRIEVAL_CONTEXT = """[Description]
-This is a conversation between a retrieval augmented indexing program and a user. The system combines document retrieval with conversational AI to provide context-aware responses. It can:
-1. Index and search through directories, files, and git repositories
-2. Process and understand various file formats (text, PDF, code, etc.)
-3. Maintain conversation history for contextual understanding
-4. Perform semantic search using neural embeddings
-
-[System Capabilities]
-- Document indexing using neural embeddings for semantic understanding
-- Cosine similarity-based retrieval for finding relevant information
-- Conversation memory to maintain context across interactions
-- Metadata preservation for source tracking and attribution
-- Support for hierarchical directory traversal
-- Dynamic index updates and modifications
-
-[Program Instructions]
-When processing user queries:
-1. Search through the indexed documents using semantic similarity
-2. Consider conversation history and context when formulating responses
-3. Only provide information that is contained within the indexed documents
-4. Include relevant source attribution when quoting from documents
-5. Stay focused on the retrieval augmented memory and document contents
-6. Inform users if requested information is not found in the indexed content
-
-[Response Format]
-Responses should be:
-- Accurate to the source material
-- Contextually relevant
-- Clear and concise
-- Referenced to source when applicable
-"""
-
-
-@deprecated("Use `Conversation` instead for now. This will be removed/fixed in the future.")
-class RetrievalAugmentedConversation(Conversation):
-    def __init__(
-        self,
-        folder_path: str | None = None,
-        *,
-        index_name: str | None = None,
-        max_depth: int | None = 0,
-        auto_print: bool = True,
-        top_k: int = 5,
-        formatter: Callable = _DEFAULT_TEXT_CONTAINER_FORMATTER,
-        overwrite: bool = False,
-        truncation_percentage: float = 0.8,
-        truncation_type: str = "head",
-        with_metadata: bool = False,
-        raw_result: bool | None = False,
-        new_dim: int | None = None,
-        **kwargs,
-    ):
-        super().__init__(
-            auto_print=auto_print,
-            truncation_percentage=truncation_percentage,
-            truncation_type=truncation_type,
-            with_metadata=with_metadata,
-            **kwargs,
-        )
-
-        self.retriever = DocumentRetriever(
-            source=folder_path,
-            index_name=index_name,
-            top_k=top_k,
-            max_depth=max_depth,
-            formatter=formatter,
-            overwrite=overwrite,
-            with_metadata=with_metadata,
-            raw_result=raw_result,
-            new_dim=new_dim,
-            **kwargs,
-        )
-
-        self.index = self.retriever.index
-        self.indexer = self.retriever.indexer
-        self.folder_path = folder_path
-        self.max_depth = max_depth
-        self.index_name = index_name
-        self.auto_print = auto_print
-        self.top_k = top_k
-        self.formatter = formatter
-        self.overwrite = overwrite
-        self.with_metadata = with_metadata
-        self.raw_result = raw_result
-        self.new_dim = new_dim
-
-    @property
-    def static_context(self) -> str:
-        return RETRIEVAL_CONTEXT
-
-    def forward(self, query: str, *args, **kwargs):
-        query = self._to_symbol(query)
-
-        memory = self.index(query, *args, **kwargs)
-
-        if "raw_result" in kwargs:
-            UserMessage(str(memory), style="text")
-            return memory
-
-        prompt = self.build_tag(self.user_tag, query)
-        self.store(prompt)
-
-        payload = f"[Index Retrieval]:\n{str(memory)[:1500]}\n"
-
-        res = self.recall(query, *args, payload=payload, **kwargs)
-
-        self._value = res.value  # save last response
-        val = self.build_tag(self.bot_tag, res)
-        self.store(val)
-
-        if self.auto_print:
-            UserMessage(str(res), style="text")
-        return res

@@ -16,7 +16,7 @@ if SYMAI_CONFIG.get("SPEECH_TO_TEXT_ENGINE_MODEL") not in ["tiny", "base", "smal
     UserMessage("The model you have selected is not supported by the whisper engine. Please select a supported model: [tiny, base, small, medium, large, turbo]", raise_with=ValueError)
 
 model = SYMAI_CONFIG.get("SPEECH_TO_TEXT_ENGINE_MODEL")
-audiofile = (Path(__file__).parent.parent.parent / "data/audio.mp3").as_posix()
+audiofile = (Path(__file__).parent.parent.parent / "data/sample.mp3").as_posix()
 
 def test_whisper_transcribe():
     stt = Interface("whisper")

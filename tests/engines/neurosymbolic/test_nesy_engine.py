@@ -280,7 +280,7 @@ def test_preview():
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('claude'), reason='Claude tokens computation is not yet implemented')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('gemini'), reason='Claude tokens computation is not yet implemented')
 def test_token_truncator():
-    file_path = (Path(__file__).parent.parent.parent / 'data/pg1727.txt').as_posix()
+    file_path = (Path(__file__).parent.parent.parent / 'data/sample.txt').as_posix()
     content = Symbol(file_path).open()
     admin_role = 'system' if NEUROSYMBOLIC.startswith('gpt') else 'developer'
 

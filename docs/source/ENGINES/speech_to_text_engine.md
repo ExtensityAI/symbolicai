@@ -6,5 +6,5 @@ To transcribe audio files, we can perform speech transcription using `whisper`. 
 from symai.interfaces import Interface
 
 speech = Interface('whisper')
-res = speech('examples/audio.mp3')
+res = speech('examples/sample.mp3')
 ```

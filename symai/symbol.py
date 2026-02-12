@@ -315,6 +315,10 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
                 self._static_context = value.static_context
                 self._kwargs = value._kwargs
             return value.value
+        # Preserve Box/BoxList (dict/list subclasses with dot-access) as-is
+        from box import Box, BoxList  # noqa: PLC0415
+        if isinstance(value, (Box, BoxList)):
+            return value
         if isinstance(value, list):
             return [self._unwrap_symbols_args(v, nested=True) for v in value]
         if isinstance(value, dict):
