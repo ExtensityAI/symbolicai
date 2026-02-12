@@ -41,7 +41,7 @@ internally (you will occasionally see them in debug mode):
 | `[SYMBOLIC]` | Symbolic math solver | “Integrate x² from 0 to 3.” |
 | `[SEARCH]` | Web search (RAG) | “Give me the TL;DR of arXiv:2507.16075.” |
 | `[SCRAPER]` | Website scraper | “Scrape all contributor names from <URL>.” |
-| `[SPEECH-TO-TEXT]` | Audio transcription | “What does this file say? /path/to/audio.mp3” |
+| `[SPEECH-TO-TEXT]` | Audio transcription | “What does this file say? /path/to/sample.mp3” |
 | `[TEXT-TO-IMAGE]` | Image generation | “Draw a friendly space cat.” |
 | `[FILE]` | File reader | “Summarise /tmp/report.pdf.” |
 | `[RECALL]` | Memory (short + long term) | “Remember that my dog’s name is Noodle.” |

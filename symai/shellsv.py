@@ -28,10 +28,8 @@ from .components import FileReader, Function, Indexer
 from .extended import (
     ArxivPdfParser,
     Conversation,
-    DocumentRetriever,
     FileMerger,
     RepositoryCloner,
-    RetrievalAugmentedConversation,
 )
 from .imports import Import
 from .interfaces import Interface
@@ -71,7 +69,6 @@ map_nt_cmd_enabled = SYMSH_CONFIG["map-nt-cmd"]
 _shell_state = SimpleNamespace(
     function_type=Function,
     conversation_type=Conversation,
-    retrieval_conversation_type=RetrievalAugmentedConversation,
     use_styles=False,
     stateful_conversation=None,
     previous_kwargs=None,
@@ -343,6 +340,36 @@ def get_git_branch():
     return None
 
 
+def _extract_files(cmds: str) -> list[str] | None:
+    """Extract file paths from a command string, handling various quoting styles."""
+    # Matches file paths in four quoting styles:
+    # - double-quoted: "path/to/file"
+    # - single-quoted: 'path/to/file'
+    # - backtick-quoted: `path/to/file`
+    # - non-quoted: path/to/file (with escaped spaces)
+    pattern = (
+        r"""(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)'|`((?:\\.|[^`\\])*)`|((?:\\ |[^ ])+))"""
+    )
+    matches = re.findall(pattern, cmds)
+    files = []
+    for match in matches:
+        quoted_double, quoted_single, quoted_backtick, non_quoted = match
+        if quoted_double:
+            # r"\\(.)" removes backslash escapes: "path\/to" → "path/to"
+            path = re.sub(r"\\(.)", r"\1", quoted_double)
+        elif quoted_single:
+            path = re.sub(r"\\(.)", r"\1", quoted_single)
+        elif quoted_backtick:
+            path = re.sub(r"\\(.)", r"\1", quoted_backtick)
+        elif non_quoted:
+            path = non_quoted.replace("\\ ", " ")
+        else:
+            continue
+        files.append(FileReader.expand_user_path(path))
+    files = [f for f in files if FileReader.exists(f)]
+    return files if len(files) > 0 else None
+
+
 def disambiguate(cmds: str) -> tuple[str, int]:
     """
     Ok, so, possible options for now:
@@ -355,7 +382,7 @@ def disambiguate(cmds: str) -> tuple[str, int]:
     """
     has_at_least_one_cmd = any(shutil.which(cmd) is not None for cmd in cmds.split(" "))
     maybe_cmd = cmds.split(" ", maxsplit=1)[0].strip()  # get first command
-    maybe_files = FileReader.extract_files(cmds)
+    maybe_files = _extract_files(cmds)
     # if cmd follows file(s) or file(s) follows cmd throw error as not supported
     if maybe_files is not None and has_at_least_one_cmd:
         msg = (
@@ -600,13 +627,14 @@ def retrieval_augmented_indexing(query: str, index_name=None, *_args, **_kwargs)
         UserMessage(f"Indexing {index_name} ...", style="extensity")
 
         # creates index if not exists
-        DocumentRetriever(index_name=index_name, file=file, overwrite=overwrite)
+        indexer = Indexer(index_name=index_name, auto_add=True)
+        if overwrite:
+            indexer.config(None, purge=True, index_name=index_name)
+        indexer(data=file)
 
     symai_path = home_path / ".conversation_state"
     symai_path.parent.mkdir(parents=True, exist_ok=True)
-    stateful_conversation = state.retrieval_conversation_type(
-        auto_print=False, index_name=index_name
-    )
+    stateful_conversation = Conversation(auto_print=False, index_name=index_name)
     state.stateful_conversation = stateful_conversation
     Conversation.save_conversation_state(stateful_conversation, symai_path)
     if use_index_name:
@@ -1063,11 +1091,7 @@ def run(auto_query_on_error=False, conversation_style=None, verbose=False):
     if conversation_style is not None and conversation_style != "":
         UserMessage(f"Loading style: {conversation_style}", style="extensity")
         styles_ = Import.load_module_class(conversation_style)
-        (
-            state.function_type,
-            state.conversation_type,
-            state.retrieval_conversation_type,
-        ) = styles_
+        state.function_type, state.conversation_type = styles_
         state.use_styles = True
 
     if SYMSH_CONFIG.get("show-splash-screen", True):
@@ -1089,6 +1113,7 @@ if __name__ == "__main__":
         help="Automatically query the language model on error.",
     )
     parser.add_argument("--verbose", action="store_true", help="Print verbose errors.")
+    parser.add_argument("--conversation-style", default=None, help="Module path for conversation style.")
     args = parser.parse_args()
     run(
         auto_query_on_error=args.auto_query_on_error,

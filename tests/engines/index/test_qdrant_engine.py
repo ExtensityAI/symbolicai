@@ -16,7 +16,7 @@ from symai.backend.engines.index.engine_qdrant import QdrantIndexEngine, QdrantR
 from symai.backend.settings import SYMAI_CONFIG, SYMSERVER_CONFIG
 from symai.interfaces import Interface
 
-AVAILABLE_PDFS = [(Path(__file__).parents[2] / "data" / "symmetry_breaking.pdf").as_posix()]
+AVAILABLE_PDFS = [(Path(__file__).parents[2] / "data" / "sample.pdf").as_posix()]
 
 
 def _check_qdrant_available():

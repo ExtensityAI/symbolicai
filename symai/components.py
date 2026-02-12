@@ -1,10 +1,10 @@
 import copy
 import inspect
 import json
-import re
 import sys
 from collections import defaultdict
 from collections.abc import Callable, Iterator
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from random import sample
 from string import ascii_lowercase, ascii_uppercase
@@ -537,7 +537,13 @@ class FileReader(Expression):
 
     @staticmethod
     def get_files(folder_path: str, max_depth: int = 1) -> list[str]:
-        accepted_formats = [".pdf", ".md", ".txt"]
+        accepted_formats = [
+            ".pdf", ".md", ".txt", ".py", ".json", ".yaml", ".yml",
+            ".csv", ".tsv", ".log", ".docx", ".pptx", ".xlsx", ".xls",
+            ".toml", ".html", ".htm", ".xml", ".epub", ".ipynb", ".zip",
+            ".jpg", ".jpeg", ".png",
+            ".mp3", ".wav", ".m4a", ".mp4",
+        ]
 
         folder = Path(folder_path)
         files = []
@@ -548,70 +554,6 @@ class FileReader(Expression):
                 if depth <= max_depth:
                     files.append(file_path.as_posix())
         return files
-
-    @staticmethod
-    def extract_files(cmds: str) -> list[str] | None:
-        """
-        Extract file paths from a command string, handling various quoting styles.
-
-        This method is used by the Qdrant RAG implementation when processing document paths.
-        It uses regex to parse file paths that may be quoted in different ways.
-
-        Regex patterns used:
-        1. Main pattern: Matches file paths in four formats:
-           - Double-quoted: "path/to/file" (handles escaped characters)
-           - Single-quoted: 'path/to/file' (handles escaped characters)
-           - Backtick-quoted: `path/to/file` (handles escaped characters)
-           - Non-quoted: path/to/file (handles escaped spaces)
-
-        2. Escape removal pattern: r"\\(.)" -> r"\1"
-           - Removes backslash escape sequences from quoted paths
-           - Example: "path\\/to\\/file" -> "path/to/file"
-           - Used for double quotes, single quotes, and backticks
-        """
-        # Regex pattern to match file paths in various quoting styles
-        # Pattern breakdown:
-        # - (?:"((?:\\.|[^"\\])*)") : Matches double-quoted paths, capturing content while handling escapes
-        # - '((?:\\.|[^'\\])*)' : Matches single-quoted paths, capturing content while handling escapes
-        # - `((?:\\.|[^`\\])*)` : Matches backtick-quoted paths, capturing content while handling escapes
-        # - ((?:\\ |[^ ])+) : Matches non-quoted paths, allowing escaped spaces
-        pattern = (
-            r"""(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)'|`((?:\\.|[^`\\])*)`|((?:\\ |[^ ])+))"""
-        )
-        # Use regex to find all file path matches in the command string
-        matches = re.findall(pattern, cmds)
-        # Process the matches to handle quoted paths and normal paths
-        files = []
-        for match in matches:
-            # Each match will have 4 groups due to the pattern; only one will be non-empty
-            quoted_double, quoted_single, quoted_backtick, non_quoted = match
-            if quoted_double:
-                # Regex substitution: Remove backslashes used for escaping inside double quotes
-                # Pattern r"\\(.)" matches a backslash followed by any character and replaces with just the character
-                # Example: "path\\/to\\/file" -> "path/to/file"
-                path = re.sub(r"\\(.)", r"\1", quoted_double)
-                file = FileReader.expand_user_path(path)
-                files.append(file)
-            elif quoted_single:
-                # Regex substitution: Remove backslashes used for escaping inside single quotes
-                # Same pattern as above, applied to single-quoted paths
-                path = re.sub(r"\\(.)", r"\1", quoted_single)
-                file = FileReader.expand_user_path(path)
-                files.append(file)
-            elif quoted_backtick:
-                # Regex substitution: Remove backslashes used for escaping inside backticks
-                # Same pattern as above, applied to backtick-quoted paths
-                path = re.sub(r"\\(.)", r"\1", quoted_backtick)
-                file = FileReader.expand_user_path(path)
-                files.append(file)
-            elif non_quoted:
-                # Replace escaped spaces with actual spaces (no regex needed here, simple string replace)
-                path = non_quoted.replace("\\ ", " ")
-                file = FileReader.expand_user_path(path)
-                files.append(file)
-        # Filter out any files that do not exist
-        files = [f for f in files if FileReader.exists(f)]
-        return files if len(files) > 0 else None
 
     @staticmethod
     def expand_user_path(path: str) -> str:
@@ -627,13 +569,27 @@ class FileReader(Expression):
                 UserMessage(f"Skipping file: {file}")
         return not_skipped
 
-    def forward(self, files: str | list[str], **kwargs) -> Expression:
+    @staticmethod
+    def _read_file(path, **kwargs):
+        """Top-level helper for multiprocessing — returns a plain string."""
+        from symai import Symbol  # noqa: PLC0415
+        return Symbol(path).open(**kwargs).value
+
+    def forward(self, files: str | list[str], workers: int = 1, **kwargs) -> Expression:
+        assert workers >= 1, f"workers must be >= 1, got {workers}"
         if isinstance(files, str):
-            # Convert to list for uniform processing; more easily downstream
             files = [files]
         if kwargs.get("run_integrity_check"):
             files = self.integrity_check(files)
-        return self.sym_return_type([self.open(f, **kwargs).value for f in files])
+        if workers == 1:
+            results = [self.open(f, **kwargs).value for f in files]
+        else:
+            results = [None] * len(files)
+            with ProcessPoolExecutor(max_workers=workers) as pool:
+                futures = {pool.submit(self._read_file, f, **kwargs): i for i, f in enumerate(files)}
+                for fut in as_completed(futures):
+                    results[futures[fut]] = fut.result()
+        return self.sym_return_type(results)
 
 
 class FileQuery(Expression):

@@ -36,7 +36,6 @@ dependencies = [
     "openai>=1.60.0",
     "anthropic>=0.43.1",
     "google-genai>=1.16.1",
-    "pypdf>=4.3.0",
     "ipython>=8.24.0",
     "tiktoken>=0.8.0",
     "GitPython>=3.1.42",
@@ -60,6 +59,7 @@ llama_cpp    = ["llama-cpp-python[server]>=0.3.7"] # handle separately since thi
 wolframalpha = ["wolframalpha>=5.0.0"]
 whisper      = ["openai-whisper>=20240930", "numba>=0.62.1", "llvmlite>=0.45.1"]
 search       = ["firecrawl-py>=4.12.0", "parallel-web>=0.3.3"]
+files        = ["markitdown[all]"]
 serpapi      = ["google_search_results>=2.4.2"]
 services     = ["fastapi>=0.110.0", "redis>=5.0.2", "uvicorn>=0.27.1"]
 solver       = ["z3-solver>=4.12.6.0"]
@@ -73,6 +73,7 @@ all          = [
     "symbolicai[serpapi]",
     "symbolicai[services]",
     "symbolicai[solver]",
+    "symbolicai[files]",
     "symbolicai[qdrant]"
 ]
 dev = [

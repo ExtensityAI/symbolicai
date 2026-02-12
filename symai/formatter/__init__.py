@@ -1,4 +1,4 @@
-from .formatter import ParagraphFormatter, RegexFormatter, SentenceFormatter, TextContainerFormatter
+from .formatter import ParagraphFormatter, RegexFormatter, SentenceFormatter
 from .regex import CHUNK_REGEX
 
 __all__ = [
@@ -6,5 +6,4 @@ __all__ = [
     "ParagraphFormatter",
     "RegexFormatter",
     "SentenceFormatter",
-    "TextContainerFormatter",
 ]
