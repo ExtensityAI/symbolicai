@@ -21,7 +21,7 @@ logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
 logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 logging.getLogger("huggingface").setLevel(logging.ERROR)
-logging.getLogger("pydub").setLevel(logging.ERROR)
+
 
 warnings.simplefilter("ignore")
 
