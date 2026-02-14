@@ -1,10 +1,13 @@
 import base64
+import csv
+import io
 import logging
 import tempfile
 import types as _types
 from enum import Enum
 from pathlib import Path
 
+import cv2
 from box import Box, BoxList
 
 from ....utils import UserMessage
@@ -36,16 +39,32 @@ for _noisy in ("pdfminer", "charset_normalizer", "PIL", "pydub"):
     logging.getLogger(_noisy).setLevel(logging.CRITICAL)
 
 _SPECIFIC_CONVERTERS = (
-    PdfConverter, DocxConverter, PptxConverter,
-    XlsxConverter, XlsConverter,
-    ImageConverter, AudioConverter,
-    IpynbConverter, OutlookMsgConverter,
-    EpubConverter, CsvConverter, RssConverter,
-) if _MARKITDOWN_AVAILABLE else ()
+    (
+        PdfConverter,
+        DocxConverter,
+        PptxConverter,
+        XlsxConverter,
+        XlsConverter,
+        ImageConverter,
+        AudioConverter,
+        IpynbConverter,
+        OutlookMsgConverter,
+        EpubConverter,
+        CsvConverter,
+        RssConverter,
+    )
+    if _MARKITDOWN_AVAILABLE
+    else ()
+)
 
 _GENERIC_CONVERTERS = (
-    PlainTextConverter, HtmlConverter,
-) if _MARKITDOWN_AVAILABLE else ()
+    (
+        PlainTextConverter,
+        HtmlConverter,
+    )
+    if _MARKITDOWN_AVAILABLE
+    else ()
+)
 
 
 class _SymaiVisionClient:
@@ -89,9 +108,9 @@ class _SymaiVisionClient:
             try:
                 result = Symbol(f"<<vision:{img_ref}:>>").query(prompt)
                 return _types.SimpleNamespace(
-                    choices=[_types.SimpleNamespace(
-                        message=_types.SimpleNamespace(content=result.value)
-                    )]
+                    choices=[
+                        _types.SimpleNamespace(message=_types.SimpleNamespace(content=result.value))
+                    ]
                 )
             finally:
                 if img_ref != data_uri:
@@ -138,8 +157,22 @@ class SupportedFileType(Enum):
     MP4 = ".mp4"
 
 
-_PLAIN_TEXT_EXTS = {".txt", ".md", ".py", ".json", ".yaml", ".yml", ".csv", ".tsv", ".toml", ".xml", ".log"}
-_RICH_FORMAT_EXTS = {ft.value for ft in SupportedFileType} - _PLAIN_TEXT_EXTS
+_PLAIN_TEXT_EXTS = {
+    ".txt",
+    ".md",
+    ".py",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".csv",
+    ".tsv",
+    ".toml",
+    ".xml",
+    ".log",
+}
+_IMAGE_EXTS = {".jpg", ".jpeg", ".png"}
+_RICH_FORMAT_EXTS = {ft.value for ft in SupportedFileType} - _PLAIN_TEXT_EXTS - _IMAGE_EXTS
+_ALL_SUPPORTED_EXTS = _PLAIN_TEXT_EXTS | _IMAGE_EXTS | _RICH_FORMAT_EXTS
 
 _BOX_PARSERS = {
     ".json": lambda s: Box.from_json(json_string=s),
@@ -147,6 +180,7 @@ _BOX_PARSERS = {
     ".yml": lambda s: Box.from_yaml(yaml_string=s),
     ".toml": lambda s: Box.from_toml(toml_string=s),
     ".csv": lambda s: BoxList.from_csv(csv_string=s),
+    ".tsv": lambda s: BoxList(list(csv.DictReader(io.StringIO(s), delimiter="\t"))),
 }
 
 
@@ -194,16 +228,24 @@ class FileEngine(Engine):
         """Convert file (or URL) to Markdown text via markitdown converters."""
         return self._get_converter().convert(str(source)).text_content
 
+    def _read_image(self, path_obj):
+        """Read image as RGB numpy array via cv2."""
+        img = cv2.imread(str(path_obj))
+        assert img is not None, f"cv2 failed to read image: {path_obj}"
+        return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
     def forward(self, argument):
         path = argument.prop.prepared_input
         if path is None or path.strip() == "":
             return [None], {}
 
         backend = argument.kwargs.get("backend", "standard")
+        as_box = argument.kwargs.get("as_box", False)
 
         # URLs require markitdown (HTML fetch + conversion)
-        if path.startswith("http://") or path.startswith("https://"):
+        if path.startswith(("http://", "https://")):
             if backend != "markitdown":
+                # TODO: maybe here add scraping support through the available interface (if any)?
                 UserMessage(
                     f"URLs require backend='markitdown'. Got backend='{backend}'.",
                     raise_with=ValueError,
@@ -219,11 +261,10 @@ class FileEngine(Engine):
             return [""], {}
 
         ext = path_obj.suffix.lower()
-        all_supported = {ft.value for ft in SupportedFileType}
 
         if backend == "markitdown":
-            if ext not in all_supported:
-                supported = ", ".join(sorted(all_supported))
+            if ext not in _ALL_SUPPORTED_EXTS:
+                supported = ", ".join(sorted(_ALL_SUPPORTED_EXTS))
                 UserMessage(
                     f"Extension '{ext}' is not supported by the markitdown backend. "
                     f"Supported: {supported}",
@@ -231,30 +272,41 @@ class FileEngine(Engine):
                 )
             rsp = self._read_via_markitdown(path_obj)
         else:
-            if ext not in _PLAIN_TEXT_EXTS:
-                if ext in _RICH_FORMAT_EXTS:
-                    UserMessage(
-                        f"Extension '{ext}' is not supported by the standard backend. "
-                        f"Try changing the backend from 'standard' to 'markitdown'.",
-                        raise_with=ValueError,
-                    )
-                supported = ", ".join(sorted(all_supported))
+            if ext in _PLAIN_TEXT_EXTS:
+                rsp = self._read_plain_text(path_obj)
+            elif ext in _IMAGE_EXTS:
+                return [self._read_image(path_obj)], {}
+            elif ext in _RICH_FORMAT_EXTS:
+                UserMessage(
+                    f"Extension '{ext}' is not supported by the standard backend. "
+                    f"Try changing the backend from 'standard' to 'markitdown'.",
+                    raise_with=ValueError,
+                )
+            else:
+                supported = ", ".join(sorted(_ALL_SUPPORTED_EXTS))
                 UserMessage(
                     f"Unsupported file extension '{ext}'. Supported: {supported}",
                     raise_with=ValueError,
                 )
-            rsp = self._read_plain_text(path_obj)
 
         if rsp is None:
             UserMessage(f"Error reading file - empty result: {path}", raise_with=Exception)
 
-        if argument.kwargs.get("as_box", False):
-            parser = _BOX_PARSERS.get(ext)
+        # Structured data parsing: standard backend auto-parses via Box → plain dict/list;
+        # as_box=True keeps the Box/BoxList for dot-access.
+        parser = _BOX_PARSERS.get(ext)
+        if parser is not None and backend != "markitdown":
+            parsed = parser(rsp)
+            rsp = (
+                parsed
+                if as_box
+                else (parsed.to_dict() if isinstance(parsed, Box) else parsed.to_list())
+            )
+        elif as_box:
             if parser is None:
                 supported = ", ".join(sorted(_BOX_PARSERS))
                 UserMessage(
-                    f"as_box is not supported for '{ext}'. "
-                    f"Supported: {supported}",
+                    f"as_box is not supported for '{ext}'. Supported: {supported}",
                     raise_with=ValueError,
                 )
             rsp = parser(rsp)

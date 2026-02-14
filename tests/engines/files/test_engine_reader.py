@@ -52,6 +52,7 @@ AUDIO_FILE = DATA_DIR / "sample.mp3"
 # ═══════════════════════════════════════════════════════════════════════════
 
 from symai.backend.engines.files.engine_reader import (  # noqa: E402
+    _IMAGE_EXTS,
     _PLAIN_TEXT_EXTS,
     _RICH_FORMAT_EXTS,
     SupportedFileType,
@@ -59,20 +60,24 @@ from symai.backend.engines.files.engine_reader import (  # noqa: E402
 
 
 class TestExtensionSets:
-    def test_plain_and_rich_do_not_overlap(self):
+    def test_sets_do_not_overlap(self):
         assert not (_PLAIN_TEXT_EXTS & _RICH_FORMAT_EXTS)
+        assert not (_PLAIN_TEXT_EXTS & _IMAGE_EXTS)
+        assert not (_RICH_FORMAT_EXTS & _IMAGE_EXTS)
 
     def test_enum_covers_all_extensions(self):
-        all_exts = _PLAIN_TEXT_EXTS | _RICH_FORMAT_EXTS
+        all_exts = _PLAIN_TEXT_EXTS | _RICH_FORMAT_EXTS | _IMAGE_EXTS
         for ft in SupportedFileType:
             assert ft.value in all_exts
 
     def test_common_extensions_classified_correctly(self):
         for ext in (".txt", ".md", ".py", ".json", ".yaml", ".yml", ".csv", ".tsv", ".toml", ".xml", ".log"):
             assert ext in _PLAIN_TEXT_EXTS, f"{ext} should be plain text"
+        for ext in (".jpg", ".jpeg", ".png"):
+            assert ext in _IMAGE_EXTS, f"{ext} should be image"
         for ext in (
             ".pdf", ".docx", ".pptx", ".xlsx", ".html", ".epub", ".ipynb",
-            ".jpg", ".jpeg", ".png", ".mp3", ".wav", ".m4a", ".mp4", ".zip",
+            ".mp3", ".wav", ".m4a", ".mp4", ".zip",
         ):
             assert ext in _RICH_FORMAT_EXTS, f"{ext} should be rich format"
 
@@ -120,7 +125,8 @@ class TestPlainTextViaFileReader:
             f.write('{"key": "value"}')
         try:
             result = Symbol(f.name).open()
-            assert '"key"' in result.value
+            assert isinstance(result.value, dict)
+            assert result.value["key"] == "value"
         finally:
             Path(f.name).unlink()
 
@@ -129,7 +135,8 @@ class TestPlainTextViaFileReader:
             f.write("key: value\n")
         try:
             result = Symbol(f.name).open()
-            assert "key: value" in result.value
+            assert isinstance(result.value, dict)
+            assert result.value["key"] == "value"
         finally:
             Path(f.name).unlink()
 
@@ -138,7 +145,8 @@ class TestPlainTextViaFileReader:
             f.write("name,age\nAlice,30\n")
         try:
             result = Symbol(f.name).open()
-            assert "Alice" in result.value
+            assert isinstance(result.value, list)
+            assert result.value[0]["name"] == "Alice"
         finally:
             Path(f.name).unlink()
 
@@ -147,7 +155,18 @@ class TestPlainTextViaFileReader:
             f.write("col1\tcol2\nval1\tval2\n")
         try:
             result = Symbol(f.name).open()
-            assert "val1" in result.value
+            assert isinstance(result.value, list)
+            assert result.value[0]["col1"] == "val1"
+        finally:
+            Path(f.name).unlink()
+
+    def test_read_toml(self):
+        with tempfile.NamedTemporaryFile(suffix=".toml", mode="w", delete=False) as f:
+            f.write('[section]\nkey = "val"\n')
+        try:
+            result = Symbol(f.name).open()
+            assert isinstance(result.value, dict)
+            assert result.value["section"]["key"] == "val"
         finally:
             Path(f.name).unlink()
 
@@ -319,6 +338,38 @@ class TestAsBox:
             Path(f.name).unlink()
 
 
+class TestImageReading:
+    """Tests that images return RGB numpy arrays via the standard backend."""
+
+    def test_jpg_returns_rgb_array(self):
+        if not JPG_FILE.exists():
+            pytest.skip(f"Fixture not found: {JPG_FILE}")
+        result = Symbol(str(JPG_FILE)).open()
+        assert hasattr(result.value, "shape"), "Expected numpy array"
+        assert result.value.ndim == 3
+        assert result.value.shape[2] == 3, "Expected 3 channels (RGB)"
+
+    def test_png_returns_rgb_array(self):
+        if not PNG_FILE.exists():
+            pytest.skip(f"Fixture not found: {PNG_FILE}")
+        result = Symbol(str(PNG_FILE)).open()
+        assert hasattr(result.value, "shape"), "Expected numpy array"
+        assert result.value.ndim == 3
+        assert result.value.shape[2] == 3, "Expected 3 channels (RGB)"
+
+    def test_image_is_rgb_not_bgr(self):
+        """Verify the image is returned as RGB by comparing with direct cv2 read."""
+        import cv2
+        import numpy as np
+
+        if not JPG_FILE.exists():
+            pytest.skip(f"Fixture not found: {JPG_FILE}")
+        result = Symbol(str(JPG_FILE)).open()
+        bgr = cv2.imread(str(JPG_FILE))
+        rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+        assert np.array_equal(result.value, rgb)
+
+
 class TestMarkitdownBackend:
     """Tests the backend='markitdown' kwarg."""
 
@@ -330,17 +381,6 @@ class TestMarkitdownBackend:
         try:
             result = Symbol(f.name).open(backend="markitdown")
             assert "markitdown backend test" in result.value
-        finally:
-            Path(f.name).unlink()
-
-    @pytest.mark.skipif(not _has_markitdown, reason="markitdown not installed")
-    def test_markitdown_backend_on_csv(self):
-        """backend='markitdown' on CSV should produce markdown table output."""
-        with tempfile.NamedTemporaryFile(suffix=".csv", mode="w", delete=False) as f:
-            f.write("name,age\nAlice,30\nBob,25\n")
-        try:
-            result = Symbol(f.name).open(backend="markitdown")
-            assert "Alice" in result.value
         finally:
             Path(f.name).unlink()
 

@@ -32,10 +32,11 @@ text = Symbol().open('./README.md')
 
 The engine has two backends:
 
-- **`standard`** (default) -- reads plain text formats via native Python I/O
+- **`standard`** (default) -- reads plain text and structured data via native
+  Python I/O, and images via cv2
 - **`markitdown`** -- converts any supported format to Markdown via markitdown
 
-Rich formats (PDF, DOCX, images, etc.) require the markitdown backend:
+Rich formats (PDF, DOCX, audio, etc.) require the markitdown backend:
 
 ```python
 # Rich formats require backend='markitdown'
@@ -43,9 +44,6 @@ pdf = Symbol('./paper.pdf').open(backend='markitdown')
 doc = Symbol('./report.docx').open(backend='markitdown')
 
 # Plain text formats also work with markitdown (e.g. CSV -> markdown table)
-raw = Symbol('./data.csv').open()
-# "name,age\nAlice,30\nBob,25"
-
 md = Symbol('./data.csv').open(backend='markitdown')
 # "| name | age |\n| --- | --- |\n| Alice | 30 |\n| Bob | 25 |"
 ```
@@ -53,22 +51,64 @@ md = Symbol('./data.csv').open(backend='markitdown')
 If you try to read a rich format with the standard backend, the error message
 will suggest switching to `backend='markitdown'`.
 
+### Structured Data Parsing
+
+The standard backend automatically parses structured formats into native Python
+objects instead of returning raw strings:
+
+```python
+# JSON → dict
+config = Symbol('./config.json').open()
+print(config.value["database"]["host"])
+
+# YAML → dict
+settings = Symbol('./settings.yaml').open()
+print(settings.value["logging"]["level"])
+
+# TOML → dict
+pyproject = Symbol('./pyproject.toml').open()
+print(pyproject.value["project"]["name"])
+
+# CSV → list[dict]  (first row as headers)
+rows = Symbol('./data.csv').open()
+print(rows.value[0]["name"])  # "Alice"
+
+# TSV → list[dict]
+rows = Symbol('./data.tsv').open()
+print(rows.value[0]["col1"])
+```
+
+### Images
+
+The standard backend reads images as RGB numpy arrays via cv2:
+
+```python
+# Standard backend → RGB numpy array
+img = Symbol('./photo.jpg').open()
+print(img.value.shape)  # (H, W, 3)
+
+# Markitdown backend → LLM-generated caption (requires symbolicai[files])
+caption = Symbol('./photo.jpg').open(backend='markitdown')
+print(caption.value)  # "A warm-toned photograph captures a modern workspace..."
+```
+
 ### Structured Parsing with `as_box`
 
-For structured data formats (JSON, YAML, TOML, CSV), pass `as_box=True` to get
-a [python-box](https://github.com/cdgriffith/Box) object with dot-access:
+By default, structured formats return plain Python objects (`dict`, `list`).
+Pass `as_box=True` to get a [python-box](https://github.com/cdgriffith/Box)
+object with dot-access instead:
 
 ```python
 # JSON / YAML / TOML → Box (dot-access dict)
 config = Symbol('./config.json').open(as_box=True)
 print(config.value.database.host)  # dot-access instead of ["database"]["host"]
 
-# CSV → BoxList (list of Box rows)
+# CSV / TSV → BoxList (list of Box rows)
 rows = Symbol('./data.csv').open(as_box=True)
 print(rows.value[0].name)  # first row's "name" column
 ```
 
-Supported extensions for `as_box`: `.json`, `.yaml`, `.yml`, `.toml`, `.csv`.
+Supported extensions for `as_box`: `.json`, `.yaml`, `.yml`, `.toml`, `.csv`, `.tsv`.
 
 ## Batch Reading with FileReader
 
@@ -117,12 +157,14 @@ result = reader(files, workers=4)
 
 ## Supported Formats
 
-| Category | Extensions |
-|----------|------------|
-| Plain text (built-in) | .txt, .md, .py, .json, .yaml, .yml, .csv, .tsv, .toml, .xml, .log |
-| Rich formats (markitdown) | .pdf, .docx, .pptx, .xlsx, .xls, .html, .htm, .epub, .ipynb, .zip |
-| Images (markitdown) | .jpg, .jpeg, .png |
-| Audio (markitdown) | .mp3, .wav, .m4a, .mp4 |
+| Category | Extensions | Default return type |
+|----------|------------|---------------------|
+| Plain text (built-in) | .txt, .md, .py, .log, .xml | `str` |
+| Structured data (built-in) | .json, .yaml, .yml, .toml | `dict` |
+| Tabular data (built-in) | .csv, .tsv | `list[dict]` |
+| Images (built-in) | .jpg, .jpeg, .png | `numpy.ndarray` (RGB) |
+| Rich formats (markitdown) | .pdf, .docx, .pptx, .xlsx, .xls, .html, .htm, .epub, .ipynb, .zip | `str` (markdown) |
+| Audio (markitdown) | .mp3, .wav, .m4a, .mp4 | `str` (markdown) |
 
 ## LLM-Powered Features
 
