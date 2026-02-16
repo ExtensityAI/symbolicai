@@ -2,11 +2,11 @@
 
 Tests are split into three tiers:
   1. Unit tests on the engine internals (extension sets, SupportedFileType enum).
-     These don't need symai init or markitdown.
+     These don't need symai init.
   2. Integration tests via FileReader / Symbol.open() for plain-text formats.
-     These need `import symai` (config + engine registry) but NOT markitdown.
+     These need `import symai` (config + engine registry).
   3. Integration tests for rich formats and URL-based converters.
-     These need markitdown installed and (for URLs) network access.
+     These need sample fixtures and (for URLs) network access.
 """
 
 import tempfile
@@ -48,7 +48,7 @@ AUDIO_FILE = DATA_DIR / "sample.mp3"
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Tier 1: unit tests (no symai init, no markitdown)
+# Tier 1: unit tests (no symai init needed)
 # ═══════════════════════════════════════════════════════════════════════════
 
 from symai.backend.engines.files.engine_reader import (  # noqa: E402
@@ -202,12 +202,23 @@ class TestPlainTextViaFileReader:
         with pytest.raises(ValueError, match="Path is not provided"):
             Symbol().open()
 
-    def test_unknown_extension_raises(self):
+    def test_unknown_extension_auto_reads_as_text(self):
+        """auto backend reads unknown extensions as plain text."""
+        with tempfile.NamedTemporaryFile(suffix=".xyz", mode="w", delete=False) as f:
+            f.write("mystery format")
+        try:
+            result = Symbol(f.name).open()
+            assert result.value == "mystery format"
+        finally:
+            Path(f.name).unlink()
+
+    def test_unknown_extension_standard_raises(self):
+        """standard backend rejects unknown extensions."""
         with tempfile.NamedTemporaryFile(suffix=".xyz", mode="w", delete=False) as f:
             f.write("mystery format")
         try:
             with pytest.raises(ValueError, match="Unsupported file extension"):
-                Symbol(f.name).open()
+                Symbol(f.name).open(backend="standard")
         finally:
             Path(f.name).unlink()
 
@@ -270,15 +281,6 @@ class TestFileReaderComponent:
             assert len(shallow) == 1
             all_files = FileReader.get_files(tmpdir, max_depth=5)
             assert len(all_files) == 2
-
-
-try:
-    import markitdown  # noqa: F401
-    _has_markitdown = True
-except ImportError:
-    _has_markitdown = False
-
-_skip_no_markitdown = pytest.mark.skipif(not _has_markitdown, reason="markitdown not installed")
 
 
 class TestAsBox:
@@ -373,7 +375,6 @@ class TestImageReading:
 class TestMarkitdownBackend:
     """Tests the backend='markitdown' kwarg."""
 
-    @pytest.mark.skipif(not _has_markitdown, reason="markitdown not installed")
     def test_markitdown_backend_on_plain_text(self):
         """backend='markitdown' on a .txt should still return content."""
         with tempfile.NamedTemporaryFile(suffix=".txt", mode="w", delete=False) as f:
@@ -390,11 +391,10 @@ class TestMarkitdownBackend:
             f.write("fake pdf")
         try:
             with pytest.raises(ValueError, match=r"standard.*markitdown"):
-                Symbol(f.name).open()
+                Symbol(f.name).open(backend="standard")
         finally:
             Path(f.name).unlink()
 
-    @pytest.mark.skipif(not _has_markitdown, reason="markitdown not installed")
     def test_markitdown_backend_rejects_unknown_ext(self):
         """Markitdown backend on an unknown extension should list supported formats."""
         with tempfile.NamedTemporaryFile(suffix=".xyz", mode="w", delete=False) as f:
@@ -407,11 +407,10 @@ class TestMarkitdownBackend:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Tier 3: rich formats via markitdown (skipped if not installed)
+# Tier 3: rich formats via markitdown
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-@_skip_no_markitdown
 class TestRichFormats:
     """Tests for formats that require markitdown converters (backend='markitdown')."""
 
@@ -509,7 +508,6 @@ class TestRichFormats:
         assert result.value is not None
 
 
-@_skip_no_markitdown
 class TestFileReaderBatch:
     """Batch-read all available sample fixtures via FileReader and verify list output."""
 
