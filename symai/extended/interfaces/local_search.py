@@ -34,7 +34,16 @@ class local_search(Expression):
         engine = QdrantIndexEngine(index_name=index_name)
         try:
             score_threshold = options.pop("score_threshold", None)
-            raw_filter = options.pop("query_filter", options.pop("filter", None))
+            # Filter aliases:
+            # - `query_filter` / `filter`: Qdrant-native naming (and supported by forward()/engine.search())
+            # - `metadata` / `where`: ergonomic shorthands for payload-based metadata filtering
+            raw_filter = options.pop("query_filter", None)
+            if raw_filter is None:
+                raw_filter = options.pop("filter", None)
+            if raw_filter is None:
+                raw_filter = options.pop("metadata", None)
+            if raw_filter is None:
+                raw_filter = options.pop("where", None)
             query_filter = engine._build_query_filter(raw_filter)
 
             # Keep `with_payload` default aligned with engine behavior; let caller override.

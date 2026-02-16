@@ -1,3 +1,4 @@
+import bisect
 import itertools
 import logging
 import tempfile
@@ -436,11 +437,19 @@ class QdrantIndexEngine(Engine):
         Supports:
         - None: returns None
         - Existing Filter instance: returned as-is
-        - Dict[str, Any]: converted to equality-based Filter over payload keys
+        - Dict[str, Any]: converted to a simple Filter over payload keys
 
-        The dict form is intentionally simple and maps directly to `payload.<key>`
-        equality conditions, which covers the majority of RAG use cases while
-        remaining easy to serialize and pass through higher-level APIs.
+        The dict form is intentionally simple and designed for "ergonomic" filtering:
+        - scalar values (str/int/float/bool/None) → equality match (`MatchValue`)
+        - list/tuple/set values → any-of match (`MatchAny`), commonly used for tags
+
+        Example:
+            {"category": "AI", "tags": ["rag", "paper"]}
+
+        is treated as:
+            category == "AI" AND (tags contains any of {"rag", "paper"} OR tags == one of them)
+
+        Note: for complex logic (OR groups, ranges, geo), pass a real Qdrant `Filter`.
         """
         if raw_filter is None or Filter is None:
             return None
@@ -460,12 +469,18 @@ class QdrantIndexEngine(Engine):
 
             conditions = []
             for key, value in raw_filter.items():
-                # We keep semantics simple and robust: every entry is treated as an
-                # equality condition on the payload key (logical AND across keys).
+                # We keep semantics simple and robust:
+                # - every entry becomes a must-condition (logical AND across keys)
+                # - scalar values use equality
+                # - list/tuple/set use any-of (useful for tags)
+                if isinstance(value, (list, tuple, set)):
+                    match = models.MatchAny(any=list(value))
+                else:
+                    match = models.MatchValue(value=value)
                 conditions.append(
                     models.FieldCondition(
                         key=key,
-                        match=models.MatchValue(value=value),
+                        match=match,
                     )
                 )
 
@@ -928,6 +943,331 @@ class QdrantIndexEngine(Engine):
             collection_name=collection_name, points_selector=points_selector, **kwargs
         )
 
+    async def delete_by_filter(
+        self,
+        collection_name: str,
+        query_filter: Any,
+        shard_key: Any | None = None,
+        **kwargs,
+    ):
+        """
+        Delete points from a collection using a Qdrant filter (payload-based deletion).
+
+        This is the recommended way to delete *all chunks of a document* when each chunk
+        carries document metadata in its payload (e.g., `payload["source"]`, `payload["tags"]`).
+
+        Args:
+            collection_name: Name of the collection
+            query_filter: Filter to select points to delete. Accepts:
+                - a native Qdrant `Filter`, or
+                - a simple dict (see `_build_query_filter`) such as:
+                  `{"source": "/abs/path/to/file.pdf"}` or `{"tags": ["rag", "paper"]}`
+            shard_key: Optional shard key selector (advanced Qdrant deployments)
+            **kwargs: Additional arguments forwarded to `QdrantClient.delete`
+        """
+        self._ensure_collection_exists(collection_name)
+
+        if models is None or Filter is None:
+            UserMessage(
+                "Qdrant filter models are not available. "
+                "Please install `qdrant-client` to use filter-based deletion.",
+                raise_with=ImportError,
+            )
+
+        built = self._build_query_filter(query_filter)
+        if built is None:
+            msg = "delete_by_filter requires a non-empty `query_filter`"
+            raise ValueError(msg)
+
+        selector = models.FilterSelector(filter=built, shard_key=shard_key)
+        self.client.delete(collection_name=collection_name, points_selector=selector, **kwargs)
+
+    async def delete_documents(
+        self,
+        collection_name: str,
+        documents: str | list[str] | None = None,
+        *,
+        tags: str | list[str] | None = None,
+        metadata: dict[str, Any] | None = None,
+        source_key: str = "source",
+        shard_key: Any | None = None,
+        **kwargs,
+    ):
+        """
+        Delete all chunks belonging to one or more documents.
+
+        This uses payload filtering and therefore depends on you having stored stable document
+        identifiers in each chunk payload. `chunk_and_upsert()` stores:
+        - `payload["source"]` as the absolute document path for `document_path=...`, or
+        - `payload["source"]` as the URL for `document_url=...`.
+
+        Deletion by tags is supported when tags are stored in payload under `payload["tags"]`.
+        For best compatibility, store tags as a list of strings.
+
+        Args:
+            collection_name: Name of the collection
+            documents: A single document identifier or a list. By default this matches
+                `payload[source_key]` (default: `payload["source"]`).
+            tags: A tag or list of tags; deletes chunks whose payload `tags` matches any.
+            metadata: Additional payload key/value constraints (AND'ed with documents/tags).
+            source_key: Payload key to match `documents` against (default: "source").
+            shard_key: Optional shard key selector (advanced Qdrant deployments).
+            **kwargs: Additional arguments forwarded to `QdrantClient.delete`.
+        """
+        filter_dict: dict[str, Any] = {}
+
+        if documents is not None:
+            filter_dict[source_key] = documents
+
+        if tags is not None:
+            # Prefer any-of semantics even for a single tag to work with list-valued payloads.
+            filter_dict["tags"] = [tags] if isinstance(tags, str) else tags
+
+        if metadata:
+            filter_dict.update(metadata)
+
+        if not filter_dict:
+            msg = "delete_documents requires at least one of: documents, tags, metadata"
+            raise ValueError(msg)
+
+        await self.delete_by_filter(
+            collection_name=collection_name,
+            query_filter=filter_dict,
+            shard_key=shard_key,
+            **kwargs,
+        )
+
+    async def count(
+        self,
+        collection_name: str,
+        query_filter: Any = None,
+        *,
+        exact: bool = True,
+        shard_key_selector: Any | None = None,
+        **kwargs,
+    ) -> int:
+        """
+        Count points (chunks) in a collection, optionally constrained by a payload filter.
+
+        Note: this counts *points*, not unique documents. For unique-document counts, use
+        `count_documents_for_tag()` / `list_documents()`.
+
+        Args:
+            collection_name: Name of the collection
+            query_filter: Optional filter (Qdrant `Filter` or dict via `_build_query_filter`)
+            exact: If True, Qdrant performs an exact count (may be slower for huge collections)
+            shard_key_selector: Optional shard key selector (advanced Qdrant deployments)
+            **kwargs: Forwarded to `QdrantClient.count`
+
+        Returns:
+            Number of matching points
+        """
+        self._ensure_collection_exists(collection_name)
+        built = self._build_query_filter(query_filter)
+        res = self.client.count(
+            collection_name=collection_name,
+            count_filter=built,
+            exact=exact,
+            shard_key_selector=shard_key_selector,
+            **kwargs,
+        )
+        return int(getattr(res, "count", res))
+
+    async def exists(
+        self,
+        collection_name: str,
+        query_filter: Any,
+        *,
+        shard_key_selector: Any | None = None,
+        **kwargs,
+    ) -> bool:
+        """
+        Check if any point exists for a given filter.
+
+        Args:
+            collection_name: Name of the collection
+            query_filter: Filter selecting points (required)
+            shard_key_selector: Optional shard key selector
+            **kwargs: Forwarded to `count()`
+
+        Returns:
+            True if at least one matching point exists
+        """
+        if query_filter is None:
+            msg = "exists requires a non-empty `query_filter`"
+            raise ValueError(msg)
+        return (
+            await self.count(
+                collection_name=collection_name,
+                query_filter=query_filter,
+                exact=False,
+                shard_key_selector=shard_key_selector,
+                **kwargs,
+            )
+            > 0
+        )
+
+    async def document_exists(
+        self,
+        collection_name: str,
+        document: str,
+        *,
+        source_key: str = "source",
+        shard_key_selector: Any | None = None,
+        **kwargs,
+    ) -> bool:
+        """
+        Check whether a document exists in the index (i.e., any chunk carries its identifier).
+
+        By default, this matches `payload["source"]`, which `chunk_and_upsert()` sets to:
+        - absolute path for `document_path=...`, or
+        - URL for `document_url=...`.
+        """
+        return await self.exists(
+            collection_name=collection_name,
+            query_filter={source_key: document},
+            shard_key_selector=shard_key_selector,
+            **kwargs,
+        )
+
+    async def tag_exists(
+        self,
+        collection_name: str,
+        tag: str,
+        *,
+        tags_key: str = "tags",
+        shard_key_selector: Any | None = None,
+        **kwargs,
+    ) -> bool:
+        """
+        Check whether any chunk in the index has the given tag in its payload.
+
+        For best results, store tags as a list of strings under `payload[tags_key]` (default: "tags").
+        """
+        return await self.exists(
+            collection_name=collection_name,
+            query_filter={tags_key: [tag]},
+            shard_key_selector=shard_key_selector,
+            **kwargs,
+        )
+
+    async def list_documents(
+        self,
+        collection_name: str,
+        *,
+        query_filter: Any = None,
+        source_key: str = "source",
+        limit_documents: int | None = None,
+        batch_size: int = 256,
+        shard_key_selector: Any | None = None,
+        **kwargs,
+    ) -> list[str]:
+        """
+        List unique documents in a collection by scanning payloads.
+
+        This uses Qdrant's `scroll()` API under the hood and extracts unique values from
+        `payload[source_key]` (default: "source").
+
+        Args:
+            collection_name: Name of the collection
+            query_filter: Optional filter to restrict the scan (e.g., by tags)
+            source_key: Payload key that identifies a document (default: "source")
+            limit_documents: Stop after collecting this many unique documents (optional)
+            batch_size: Scroll page size (points per request)
+            shard_key_selector: Optional shard key selector
+            **kwargs: Forwarded to `QdrantClient.scroll`
+
+        Returns:
+            Sorted list of unique document identifiers
+        """
+        self._ensure_collection_exists(collection_name)
+        built = self._build_query_filter(query_filter)
+
+        documents: set[str] = set()
+        offset: Any | None = None
+
+        while True:
+            records, next_offset = self.client.scroll(
+                collection_name=collection_name,
+                scroll_filter=built,
+                limit=batch_size,
+                offset=offset,
+                with_payload=[source_key],
+                with_vectors=False,
+                shard_key_selector=shard_key_selector,
+                **kwargs,
+            )
+            for r in records:
+                payload = getattr(r, "payload", None) or {}
+                src = payload.get(source_key)
+                if isinstance(src, str) and src:
+                    documents.add(src)
+                    if limit_documents is not None and len(documents) >= limit_documents:
+                        return sorted(documents)
+
+            if not records or next_offset is None:
+                break
+            offset = next_offset
+
+        return sorted(documents)
+
+    async def documents_for_tag(
+        self,
+        collection_name: str,
+        tags: str | list[str],
+        *,
+        source_key: str = "source",
+        tags_key: str = "tags",
+        metadata: dict[str, Any] | None = None,
+        limit_documents: int | None = None,
+        batch_size: int = 256,
+        shard_key_selector: Any | None = None,
+        **kwargs,
+    ) -> list[str]:
+        """
+        List unique documents that have (any of) the given tag(s).
+        """
+        tag_list = [tags] if isinstance(tags, str) else tags
+        filter_dict: dict[str, Any] = {tags_key: tag_list}
+        if metadata:
+            filter_dict.update(metadata)
+        return await self.list_documents(
+            collection_name=collection_name,
+            query_filter=filter_dict,
+            source_key=source_key,
+            limit_documents=limit_documents,
+            batch_size=batch_size,
+            shard_key_selector=shard_key_selector,
+            **kwargs,
+        )
+
+    async def count_documents_for_tag(
+        self,
+        collection_name: str,
+        tags: str | list[str],
+        *,
+        source_key: str = "source",
+        tags_key: str = "tags",
+        metadata: dict[str, Any] | None = None,
+        shard_key_selector: Any | None = None,
+        **kwargs,
+    ) -> int:
+        """
+        Count unique documents that have (any of) the given tag(s).
+
+        Note: this counts unique `payload[source_key]` values, not points.
+        """
+        docs = await self.documents_for_tag(
+            collection_name=collection_name,
+            tags=tags,
+            source_key=source_key,
+            tags_key=tags_key,
+            metadata=metadata,
+            shard_key_selector=shard_key_selector,
+            **kwargs,
+        )
+        return len(docs)
+
     async def retrieve(
         self,
         collection_name: str,
@@ -1006,18 +1346,38 @@ class QdrantIndexEngine(Engine):
             or payload.get("file_path")
             or payload.get("path")
         )
+        def _add_line_fragment(url: str) -> str:
+            if not isinstance(url, str) or not url.startswith("file://") or "#" in url:
+                return url
+            path = urlparse(url).path
+            is_pdf = Path(path).suffix.lower() == ".pdf"
+
+            if is_pdf:
+                sp = payload.get("chunk_start_page") or payload.get("page") or payload.get("page_number")
+                try:
+                    sp_int = int(sp) if sp is not None else None
+                except (TypeError, ValueError):
+                    sp_int = None
+                return f"{url}#page={sp_int}" if sp_int and sp_int > 0 else url
+
+            sl = payload.get("chunk_start_line")
+            el = payload.get("chunk_end_line")
+            if isinstance(sl, int) and isinstance(el, int) and sl > 0 and el > 0:
+                return f"{url}#L{sl}" if sl == el else f"{url}#L{sl}-L{el}"
+            return url
+
         if isinstance(source, str) and source:
             if source.startswith(("http://", "https://", "file://")):
-                return source
+                return _add_line_fragment(source)
 
             source_path = Path(source).expanduser()
             try:
                 resolved = source_path.resolve()
                 if resolved.exists() or source_path.is_absolute():
-                    return resolved.as_uri()
+                    return _add_line_fragment(resolved.as_uri())
             except Exception:
-                return str(source_path)
-            return str(source_path)
+                return _add_line_fragment(str(source_path))
+            return _add_line_fragment(str(source_path))
 
         return f"qdrant://{collection_name}/{point_id}"
 
@@ -1063,6 +1423,10 @@ class QdrantIndexEngine(Engine):
                     "url": url,
                     "title": title,
                     "excerpts": [excerpt],
+                    "chunk_start_line": payload.get("chunk_start_line"),
+                    "chunk_end_line": payload.get("chunk_end_line"),
+                    "chunk_start_page": payload.get("chunk_start_page"),
+                    "chunk_end_page": payload.get("chunk_end_page"),
                     "source_id": payload.get("source_id")
                     or payload.get("sourceId")
                     or payload.get("chunk_id")
@@ -1079,7 +1443,7 @@ class QdrantIndexEngine(Engine):
         query_vector: list[float] | np.ndarray,
         limit: int = 10,
         score_threshold: float | None = None,
-        query_filter: Filter | None = None,
+        query_filter: Any = None,
         **kwargs,
     ) -> list[ScoredPoint]:
         """
@@ -1096,6 +1460,11 @@ class QdrantIndexEngine(Engine):
         Returns:
             List of ScoredPoint objects containing id, score, and payload
         """
+        # Accept both `query_filter` and `filter` for convenience and consistency
+        # with forward()/local_search.
+        if query_filter is None and "filter" in kwargs:
+            query_filter = kwargs.pop("filter")
+        query_filter = self._build_query_filter(query_filter)
         # Use shared synchronous method
         return self._search_sync(
             collection_name, query_vector, limit, score_threshold, query_filter, **kwargs
@@ -1128,7 +1497,9 @@ class QdrantIndexEngine(Engine):
             tmp_file_name = tmp_file.name
 
         try:
-            content = self.reader(tmp_file_name)
+            # Rich formats (e.g., PDFs) require the markitdown backend.
+            backend = "markitdown" if suffix.lower() == ".pdf" else "standard"
+            content = self.reader(tmp_file_name, backend=backend)
             return content.value[0] if isinstance(content.value, list) else str(content.value)
         finally:
             # Clean up temporary file
@@ -1146,6 +1517,7 @@ class QdrantIndexEngine(Engine):
         chunker_kwargs: dict | None = None,
         start_id: int | None = None,
         metadata: dict | None = None,
+        include_line_numbers: bool = True,
         **upsert_kwargs,
     ):
         """
@@ -1209,7 +1581,9 @@ class QdrantIndexEngine(Engine):
             if not doc_path.exists():
                 msg = f"Document file not found: {document_path}"
                 raise FileNotFoundError(msg)
-            content = self.reader(document_path)
+            # Rich formats (e.g., PDFs) require the markitdown backend.
+            backend = "markitdown" if doc_path.suffix.lower() == ".pdf" else "standard"
+            content = self.reader(document_path, backend=backend)
             text = content.value[0] if isinstance(content.value, list) else str(content.value)
             # Add source to metadata if not already present
             if metadata is None:
@@ -1231,6 +1605,50 @@ class QdrantIndexEngine(Engine):
         # Convert text to Symbol if needed
         text_symbol = Symbol(text) if isinstance(text, str) else text
 
+        # Prepare a stable representation of the full text for chunk-location metadata.
+        # We compute line numbers against the matched representation.
+        full_text_raw: str | None = None
+        full_text_clean: str | None = None
+        raw_line_starts: list[int] = []
+        clean_line_starts: list[int] = []
+        if include_line_numbers:
+            raw_value = getattr(text_symbol, "value", text_symbol)
+            full_text_raw = raw_value if isinstance(raw_value, str) else str(raw_value)
+            full_text_clean = (
+                ChonkieChunker.clean_text(full_text_raw) if ChonkieChunker else full_text_raw
+            )
+
+            raw_line_starts = [0]
+            for i, ch in enumerate(full_text_raw):
+                if ch == "\n":
+                    raw_line_starts.append(i + 1)
+
+            clean_line_starts = [0]
+            for i, ch in enumerate(full_text_clean):
+                if ch == "\n":
+                    clean_line_starts.append(i + 1)
+
+            def _char_to_line(line_starts: list[int], char_index: int) -> int:
+                # 1-based line number
+                return bisect.bisect_right(line_starts, char_index)
+
+            raw_page_starts = [0]
+            for i, ch in enumerate(full_text_raw):
+                if ch == "\f":
+                    raw_page_starts.append(i + 1)
+
+            clean_page_starts = [0]
+            for i, ch in enumerate(full_text_clean):
+                if ch == "\f":
+                    clean_page_starts.append(i + 1)
+
+            def _char_to_page(page_starts: list[int], char_index: int) -> int:
+                # 1-based page number (only meaningful if the extracted text contains \f page breaks)
+                return bisect.bisect_right(page_starts, char_index)
+
+            match_cursor_clean = 0
+            match_cursor_raw = 0
+
         # Chunk the text using instance chunker
         chunks_symbol = self.chunker.forward(
             text_symbol, chunker_name=chunker_name, **chunker_kwargs
@@ -1248,7 +1666,7 @@ class QdrantIndexEngine(Engine):
         # Generate embeddings and create points
         points = []
         current_id = start_id if start_id is not None else 0
-        for chunk_item in chunks:
+        for chunk_idx, chunk_item in enumerate(chunks):
             # Clean the chunk text
             if ChonkieChunker:
                 chunk_text = ChonkieChunker.clean_text(str(chunk_item))
@@ -1315,6 +1733,54 @@ class QdrantIndexEngine(Engine):
             payload = {"text": chunk_text}
             if metadata:
                 payload.update(metadata)
+
+            # Optionally include chunk location metadata (line numbers) for provenance.
+            if include_line_numbers and full_text_raw is not None and full_text_clean is not None:
+                # Try matching against cleaned full text first (most consistent with cleaned chunk text),
+                # then fall back to raw full text. When multiple matches exist, we search forward to
+                # preserve chunk ordering.
+                start_char: int | None = None
+                end_char: int | None = None
+                start_line: int | None = None
+                end_line: int | None = None
+                start_page: int | None = None
+                end_page: int | None = None
+
+                pos = full_text_clean.find(chunk_text, match_cursor_clean)
+                if pos != -1:
+                    start_char = pos
+                    end_char = pos + len(chunk_text)
+                    end_for_line = max(start_char, end_char - 1)
+                    start_line = _char_to_line(clean_line_starts, start_char)
+                    end_line = _char_to_line(clean_line_starts, end_for_line)
+                    if len(clean_page_starts) > 1:
+                        start_page = _char_to_page(clean_page_starts, start_char)
+                        end_page = _char_to_page(clean_page_starts, end_for_line)
+                    match_cursor_clean = pos + 1
+                else:
+                    pos = full_text_raw.find(chunk_text, match_cursor_raw)
+                    if pos != -1:
+                        start_char = pos
+                        end_char = pos + len(chunk_text)
+                        end_for_line = max(start_char, end_char - 1)
+                        start_line = _char_to_line(raw_line_starts, start_char)
+                        end_line = _char_to_line(raw_line_starts, end_for_line)
+                        if len(raw_page_starts) > 1:
+                            start_page = _char_to_page(raw_page_starts, start_char)
+                            end_page = _char_to_page(raw_page_starts, end_for_line)
+                        match_cursor_raw = pos + 1
+
+                if start_line is not None and end_line is not None:
+                    payload["chunk_index"] = chunk_idx
+                    payload["chunk_start_line"] = start_line
+                    payload["chunk_end_line"] = end_line
+                    if start_page is not None and end_page is not None:
+                        payload["chunk_start_page"] = start_page
+                        payload["chunk_end_page"] = end_page
+                    # Keep char offsets for debugging; these are relative to the matched representation.
+                    if start_char is not None and end_char is not None:
+                        payload["chunk_start_char"] = start_char
+                        payload["chunk_end_char"] = end_char
 
             # Generate ID
             if start_id is not None:
