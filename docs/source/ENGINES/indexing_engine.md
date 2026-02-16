@@ -110,9 +110,28 @@ asyncio.run(basic_usage())
 
 If you need citation-formatted results compatible with `parallel.search`, use the `local_search` interface. It embeds the query locally, queries Qdrant, and returns a `SearchResult` (with `value` and `citations`) instead of raw `ScoredPoint` objects:
 
-Local search accepts the same args as passed to Qdrant directly: `collection_name`/`index_name`, `limit`/`top_k`/`index_top_k`, `score_threshold`, `query_filter` (dict or Qdrant `Filter`), and any extra Qdrant search kwargs. Citation fields are derived from Qdrant payloads: the excerpt uses `payload["text"]` (or `content`), the URL is resolved from `payload["source"]`/`url`/`file_path`/`path` and is always returned as an absolute `file://` URI (relative inputs resolve against the current working directory), and the title is the stem of that path (PDF pages append `#p{page}` when provided). Each matching chunk yields its own citation; multiple citations can point to the same file.
+Local search accepts the same args as passed to Qdrant directly: `collection_name`/`index_name`, `limit`/`top_k`/`index_top_k`, `score_threshold`, `query_filter` (dict or Qdrant `Filter`), and any extra Qdrant search kwargs. For convenience, `metadata` and `where` are accepted as aliases for `query_filter` when you want to filter by payload metadata.
+
+For convenience, SymbolicAI also supports a **dict-based filter shorthand** for both `local_search` and `QdrantIndexEngine.search`:
+
+- scalar values (e.g. `"category": "AI"`) are treated as equality matches
+- list/tuple/set values (e.g. `"tags": ["rag", "paper"]`) are treated as **any-of** matches, which is useful for tag membership
+
+Citation fields are derived from Qdrant payloads: the excerpt uses `payload["text"]` (or `content`), the URL is resolved from `payload["source"]`/`url`/`file_path`/`path` and is always returned as an absolute `file://` URI (relative inputs resolve against the current working directory), and the title is the stem of that path (PDF titles append `#p{page}` when a page field is present in the payload). Each matching chunk yields its own citation; multiple citations can point to the same file.
 
 If you want a stable source header for each chunk, store a `source_id` or `chunk_id` in the payload (otherwise the Qdrant point id is used).
+
+Chunk provenance: `chunk_and_upsert()` stores optional chunk-location metadata in each chunk payload:
+
+- `payload["chunk_start_line"]` / `payload["chunk_end_line"]` (plus optional char offsets)
+- `payload["chunk_start_page"]` / `payload["chunk_end_page"]` when page breaks can be detected in the extracted text (PDFs only)
+
+For `file://` citations, the engine appends a fragment when provenance exists:
+
+- non-PDFs: `#L10` or `#L10-L42`
+- PDFs: `#page=N` (preferred over line fragments)
+
+Note: PDF page provenance is only available when the PDF extraction output preserves page boundaries (commonly as form-feed `\f`).
 
 Example:
 
@@ -186,7 +205,8 @@ async def add_documents():
     num_chunks = await engine.chunk_and_upsert(
         collection_name="documents",
         text="Your long document text here...",
-        metadata={"source": "manual_input", "author": "John Doe"}
+        metadata={"source": "manual_input", "author": "John Doe"},
+        # include_line_numbers=True,  # default; stores chunk_start_line/chunk_end_line when matchable
     )
     print(f"Indexed {num_chunks} chunks")
 
@@ -194,7 +214,8 @@ async def add_documents():
     num_chunks = await engine.chunk_and_upsert(
         collection_name="documents",
         document_path="/path/to/document.pdf",
-        metadata={"source": "document.pdf"}
+        metadata={"source": "document.pdf"},
+        # include_line_numbers=True,  # default; may also store chunk_start_page/chunk_end_page if detectable
     )
     # Note: document_path indexing stores the absolute file path in payload["source"]
     # so local_search citations resolve to file:// URIs.
@@ -203,7 +224,8 @@ async def add_documents():
     num_chunks = await engine.chunk_and_upsert(
         collection_name="documents",
         document_url="https://example.com/document.pdf",
-        metadata={"source": "url"}
+        metadata={"source": "url"},
+        # include_line_numbers=True,  # default
     )
 
     # Custom chunker configuration
@@ -261,8 +283,63 @@ async def point_operations():
     # Delete points
     await engine.delete(collection_name="documents", points_selector=[1, 2])
 
+    # Delete points by payload filter (Qdrant-native Filter or dict shorthand)
+    await engine.delete_by_filter(
+        collection_name="documents",
+        query_filter={"category": "tech"},
+    )
+
+    # Delete all chunks of a document (payload-based deletion)
+    # `chunk_and_upsert(document_path=...)` stores the absolute path in payload["source"].
+    await engine.delete_documents(
+        collection_name="documents",
+        documents="/absolute/path/to/document.pdf",
+    )
+
+    # Delete chunks for multiple documents (any-of match)
+    await engine.delete_documents(
+        collection_name="documents",
+        documents=[
+            "/absolute/path/to/a.pdf",
+            "/absolute/path/to/b.pdf",
+        ],
+    )
+
+    # Delete by tags (store tags in payload["tags"], preferably as a list of strings)
+    await engine.delete_documents(
+        collection_name="documents",
+        tags=["rag", "paper"],
+    )
+
 asyncio.run(point_operations())
 ```
+
+### Existence / Counting (Documents, Tags)
+
+Qdrant stores *chunks* as points; document-level operations are implemented by storing a stable identifier in each
+chunk payload (by default, `chunk_and_upsert()` uses `payload["source"]`).
+
+```python
+# Does a document exist (i.e., any chunk with payload["source"] == value)?
+exists = await engine.document_exists("documents", "/absolute/path/to/document.pdf")
+
+# Does any chunk have a tag?
+has_rag = await engine.tag_exists("documents", "rag")
+
+# Count chunks (points) matching a filter
+num_rag_chunks = await engine.count("documents", query_filter={"tags": ["rag"]})
+
+# List documents that have any-of the tags
+docs = await engine.documents_for_tag("documents", tags=["rag", "paper"])
+
+# Count unique documents for a tag (unique payload["source"] values)
+num_docs = await engine.count_documents_for_tag("documents", tags="rag")
+```
+
+Notes:
+
+- `engine.count(...)` counts *points* (chunks). It’s fast and uses Qdrant’s native count API.
+- `engine.count_documents_for_tag(...)` counts *unique documents* (unique `payload["source"]` values) and may scan points (via `scroll()`), so it can be slower on very large collections.
 
 ### Configuration Options
 
