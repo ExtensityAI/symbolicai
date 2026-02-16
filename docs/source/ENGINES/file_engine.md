@@ -5,14 +5,6 @@ The file engine reads documents and converts them to text. Plain text files
 formats (PDF, DOCX, PPTX, XLSX, HTML, EPUB, etc.) are converted to Markdown
 via [markitdown](https://github.com/microsoft/markitdown).
 
-## Installation
-
-Plain text files work out of the box. For rich format support:
-
-```bash
-pip install 'symbolicai[files]'
-```
-
 ## Reading a Single File
 
 Use `Symbol.open()` to read any supported file into a `Symbol`:
@@ -30,26 +22,32 @@ text = Symbol().open('./README.md')
 
 ### Backends
 
-The engine has two backends:
+The engine has three backends:
 
-- **`standard`** (default) -- reads plain text and structured data via native
-  Python I/O, and images via cv2
+- **`auto`** (default) -- picks the best backend per file type: standard for
+  plain text, structured data, and images; markitdown for rich formats (PDF,
+  DOCX, etc.); tries both for unknown extensions
+- **`standard`** -- reads plain text and structured data via native Python I/O,
+  and images via cv2. Raises an error for rich formats
 - **`markitdown`** -- converts any supported format to Markdown via markitdown
 
-Rich formats (PDF, DOCX, audio, etc.) require the markitdown backend:
+With the default `auto` backend, everything just works:
 
 ```python
-# Rich formats require backend='markitdown'
-pdf = Symbol('./paper.pdf').open(backend='markitdown')
-doc = Symbol('./report.docx').open(backend='markitdown')
+# Auto picks standard for text
+text = Symbol('./README.md').open()
 
-# Plain text formats also work with markitdown (e.g. CSV -> markdown table)
+# Auto picks markitdown for PDFs
+pdf = Symbol('./paper.pdf').open()
+doc = Symbol('./report.docx').open()
+
+# Force markitdown for plain text (e.g. CSV -> markdown table)
 md = Symbol('./data.csv').open(backend='markitdown')
 # "| name | age |\n| --- | --- |\n| Alice | 30 |\n| Bob | 25 |"
-```
 
-If you try to read a rich format with the standard backend, the error message
-will suggest switching to `backend='markitdown'`.
+# Force standard backend (errors on rich formats)
+text = Symbol('./notes.txt').open(backend='standard')
+```
 
 ### Structured Data Parsing
 
@@ -87,7 +85,7 @@ The standard backend reads images as RGB numpy arrays via cv2:
 img = Symbol('./photo.jpg').open()
 print(img.value.shape)  # (H, W, 3)
 
-# Markitdown backend → LLM-generated caption (requires symbolicai[files])
+# Markitdown backend → LLM-generated caption
 caption = Symbol('./photo.jpg').open(backend='markitdown')
 print(caption.value)  # "A warm-toned photograph captures a modern workspace..."
 ```
@@ -168,7 +166,7 @@ result = reader(files, workers=4)
 
 ## LLM-Powered Features
 
-When markitdown is installed, image files and PowerPoint slides can include
+Image files and PowerPoint slides can include
 LLM-generated descriptions. This routes through SymAI's neurosymbolic engine
 using your configured `NEUROSYMBOLIC_ENGINE_MODEL` and API key -- any vision-
 capable backend works (OpenAI GPT-4o, Anthropic Claude, Google Gemini, etc.).

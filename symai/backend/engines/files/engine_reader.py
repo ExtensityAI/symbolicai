@@ -9,61 +9,47 @@ from pathlib import Path
 
 import cv2
 from box import Box, BoxList
+from markitdown import PRIORITY_GENERIC_FILE_FORMAT, PRIORITY_SPECIFIC_FILE_FORMAT, MarkItDown
+from markitdown.converters._audio_converter import AudioConverter
+from markitdown.converters._csv_converter import CsvConverter
+from markitdown.converters._docx_converter import DocxConverter
+from markitdown.converters._epub_converter import EpubConverter
+from markitdown.converters._html_converter import HtmlConverter
+from markitdown.converters._image_converter import ImageConverter
+from markitdown.converters._ipynb_converter import IpynbConverter
+from markitdown.converters._outlook_msg_converter import OutlookMsgConverter
+from markitdown.converters._pdf_converter import PdfConverter
+from markitdown.converters._plain_text_converter import PlainTextConverter
+from markitdown.converters._pptx_converter import PptxConverter
+from markitdown.converters._rss_converter import RssConverter
+from markitdown.converters._xlsx_converter import XlsConverter, XlsxConverter
+from markitdown.converters._zip_converter import ZipConverter
 
 from ....utils import UserMessage
 from ...base import Engine
-
-try:
-    from markitdown import PRIORITY_GENERIC_FILE_FORMAT, PRIORITY_SPECIFIC_FILE_FORMAT, MarkItDown
-    from markitdown.converters._audio_converter import AudioConverter
-    from markitdown.converters._csv_converter import CsvConverter
-    from markitdown.converters._docx_converter import DocxConverter
-    from markitdown.converters._epub_converter import EpubConverter
-    from markitdown.converters._html_converter import HtmlConverter
-    from markitdown.converters._image_converter import ImageConverter
-    from markitdown.converters._ipynb_converter import IpynbConverter
-    from markitdown.converters._outlook_msg_converter import OutlookMsgConverter
-    from markitdown.converters._pdf_converter import PdfConverter
-    from markitdown.converters._plain_text_converter import PlainTextConverter
-    from markitdown.converters._pptx_converter import PptxConverter
-    from markitdown.converters._rss_converter import RssConverter
-    from markitdown.converters._xlsx_converter import XlsConverter, XlsxConverter
-    from markitdown.converters._zip_converter import ZipConverter
-
-    _MARKITDOWN_AVAILABLE = True
-except ImportError:
-    _MARKITDOWN_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 for _noisy in ("pdfminer", "charset_normalizer", "PIL", "pydub"):
     logging.getLogger(_noisy).setLevel(logging.CRITICAL)
 
 _SPECIFIC_CONVERTERS = (
-    (
-        PdfConverter,
-        DocxConverter,
-        PptxConverter,
-        XlsxConverter,
-        XlsConverter,
-        ImageConverter,
-        AudioConverter,
-        IpynbConverter,
-        OutlookMsgConverter,
-        EpubConverter,
-        CsvConverter,
-        RssConverter,
-    )
-    if _MARKITDOWN_AVAILABLE
-    else ()
+    PdfConverter,
+    DocxConverter,
+    PptxConverter,
+    XlsxConverter,
+    XlsConverter,
+    ImageConverter,
+    AudioConverter,
+    IpynbConverter,
+    OutlookMsgConverter,
+    EpubConverter,
+    CsvConverter,
+    RssConverter,
 )
 
 _GENERIC_CONVERTERS = (
-    (
-        PlainTextConverter,
-        HtmlConverter,
-    )
-    if _MARKITDOWN_AVAILABLE
-    else ()
+    PlainTextConverter,
+    HtmlConverter,
 )
 
 
@@ -196,11 +182,6 @@ class FileEngine(Engine):
         """Lazily build a MarkItDown instance with selective converters + LLM config."""
         if self._converter is not None:
             return self._converter
-        if not _MARKITDOWN_AVAILABLE:
-            UserMessage(
-                "markitdown is not installed. Install with: pip install 'symbolicai[files]'",
-                raise_with=ImportError,
-            )
         md = MarkItDown(enable_builtins=False)
 
         # Wire SymAI vision adapter for LLM-powered converters (image captions, PPTX)
@@ -234,66 +215,91 @@ class FileEngine(Engine):
         assert img is not None, f"cv2 failed to read image: {path_obj}"
         return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
+    # ------------------------------------------------------------------
+    # Backend dispatch methods — each returns a text result or raises.
+    # Images (cv2) are handled before dispatch so these never see image exts
+    # (except _forward_markitdown, which converts images to EXIF + LLM caption).
+    # ------------------------------------------------------------------
+
+    def _forward_standard(self, ext, path_obj):
+        if ext in _PLAIN_TEXT_EXTS:
+            return self._read_plain_text(path_obj)
+        msg = (
+            f"Extension '{ext}' is not supported by the standard backend. "
+            f"Try backend='markitdown' or 'auto'."
+            if ext in _RICH_FORMAT_EXTS
+            else f"Unsupported file extension '{ext}'. "
+            f"Supported: {', '.join(sorted(_ALL_SUPPORTED_EXTS))}"
+        )
+        UserMessage(msg, raise_with=ValueError)
+        return None  # unreachable — UserMessage raises when raise_with is set
+
+    def _forward_markitdown(self, ext, path_obj):
+        if ext not in _ALL_SUPPORTED_EXTS:
+            supported = ", ".join(sorted(_ALL_SUPPORTED_EXTS))
+            UserMessage(
+                f"Extension '{ext}' is not supported by the markitdown backend. "
+                f"Supported: {supported}",
+                raise_with=ValueError,
+            )
+        return self._read_via_markitdown(path_obj)
+
+    def _forward_auto(self, ext, path_obj):
+        if ext in _PLAIN_TEXT_EXTS:
+            return self._read_plain_text(path_obj)
+        if ext in _RICH_FORMAT_EXTS:
+            return self._read_via_markitdown(path_obj)
+        # Unknown ext: try plain-text read, then markitdown
+        try:
+            return self._read_plain_text(path_obj)
+        except Exception:
+            return self._read_via_markitdown(path_obj)
+
+    # ------------------------------------------------------------------
+
     def forward(self, argument):
         path = argument.prop.prepared_input
         if path is None or path.strip() == "":
             return [None], {}
 
-        backend = argument.kwargs.get("backend", "standard")
+        backend = argument.kwargs.get("backend", "auto")
         as_box = argument.kwargs.get("as_box", False)
 
-        # URLs require markitdown (HTML fetch + conversion)
+        # URLs → markitdown (auto and markitdown); standard errors
         if path.startswith(("http://", "https://")):
-            if backend != "markitdown":
-                # TODO: maybe here add scraping support through the available interface (if any)?
+            if backend == "standard":
                 UserMessage(
-                    f"URLs require backend='markitdown'. Got backend='{backend}'.",
+                    f"URLs require backend='markitdown' or 'auto'. Got backend='{backend}'.",
                     raise_with=ValueError,
                 )
             rsp = self._read_via_markitdown(path)
             if rsp is None:
                 UserMessage(f"Error reading URL - empty result: {path}", raise_with=Exception)
             return [rsp], {}
-        path_obj = Path(path)
 
+        path_obj = Path(path)
         assert path_obj.exists(), f"File does not exist: {path}"
         if path_obj.stat().st_size <= 0:
             return [""], {}
 
         ext = path_obj.suffix.lower()
 
+        # Images via cv2 unless explicitly markitdown (which returns EXIF + LLM caption)
+        if ext in _IMAGE_EXTS and backend != "markitdown":
+            return [self._read_image(path_obj)], {}
+
+        # Dispatch to backend
         if backend == "markitdown":
-            if ext not in _ALL_SUPPORTED_EXTS:
-                supported = ", ".join(sorted(_ALL_SUPPORTED_EXTS))
-                UserMessage(
-                    f"Extension '{ext}' is not supported by the markitdown backend. "
-                    f"Supported: {supported}",
-                    raise_with=ValueError,
-                )
-            rsp = self._read_via_markitdown(path_obj)
+            rsp = self._forward_markitdown(ext, path_obj)
+        elif backend == "standard":
+            rsp = self._forward_standard(ext, path_obj)
         else:
-            if ext in _PLAIN_TEXT_EXTS:
-                rsp = self._read_plain_text(path_obj)
-            elif ext in _IMAGE_EXTS:
-                return [self._read_image(path_obj)], {}
-            elif ext in _RICH_FORMAT_EXTS:
-                UserMessage(
-                    f"Extension '{ext}' is not supported by the standard backend. "
-                    f"Try changing the backend from 'standard' to 'markitdown'.",
-                    raise_with=ValueError,
-                )
-            else:
-                supported = ", ".join(sorted(_ALL_SUPPORTED_EXTS))
-                UserMessage(
-                    f"Unsupported file extension '{ext}'. Supported: {supported}",
-                    raise_with=ValueError,
-                )
+            rsp = self._forward_auto(ext, path_obj)
 
         if rsp is None:
             UserMessage(f"Error reading file - empty result: {path}", raise_with=Exception)
 
-        # Structured data parsing: standard backend auto-parses via Box → plain dict/list;
-        # as_box=True keeps the Box/BoxList for dot-access.
+        # Structured data → dict/list; as_box=True keeps Box/BoxList for dot-access
         parser = _BOX_PARSERS.get(ext)
         if parser is not None and backend != "markitdown":
             parsed = parser(rsp)
