@@ -49,7 +49,9 @@ dependencies = [
     "nest-asyncio>=1.6.0",
     "rich>=13.9.4",
     "cerebras-cloud-sdk>=1.59.0",
+    "scikit-learn>=1.7.0",
     "markitdown[all]",
+    "dill>=0.4.0"
 ]
 
 [project.optional-dependencies]
