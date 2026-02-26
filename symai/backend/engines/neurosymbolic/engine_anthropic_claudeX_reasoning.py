@@ -21,7 +21,7 @@ from anthropic.types import (
 from ....components import SelfPrompt
 from ....utils import UserMessage, encode_media_frames
 from ...base import Engine
-from ...mixin.anthropic import AnthropicMixin
+from ...mixin.anthropic import CACHE_CONTROL_1H, AnthropicMixin
 from ...settings import SYMAI_CONFIG
 
 logging.getLogger("anthropic").setLevel(logging.ERROR)
@@ -356,7 +356,9 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         if response_format["type"] == "json_schema":
             schema = response_format.get("schema")
             if schema is None and response_format.get("json_schema") is not None:
-                schema = response_format["json_schema"].get("schema", response_format["json_schema"])
+                schema = response_format["json_schema"].get(
+                    "schema", response_format["json_schema"]
+                )
             if schema is None:
                 return NOT_GIVEN
             return {"format": {"type": "json_schema", "schema": schema}}
@@ -381,13 +383,19 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
             if self.supports_adaptive_thinking(model):
                 return {"type": "adaptive"}, thinking_arg.get("effort")
             UserMessage(
-                "Adaptive thinking is only supported for claude-opus-4-6; "
+                "Adaptive thinking is only supported for claude-opus-4-6 and claude-sonnet-4-6; "
                 "falling back to manual thinking."
             )
-            return {"type": "enabled", "budget_tokens": thinking_arg.get("budget_tokens", 1024)}, None
+            return {
+                "type": "enabled",
+                "budget_tokens": thinking_arg.get("budget_tokens", 1024),
+            }, None
 
         if thinking_type == "enabled" or "budget_tokens" in thinking_arg:
-            return {"type": "enabled", "budget_tokens": thinking_arg.get("budget_tokens", 1024)}, None
+            return {
+                "type": "enabled",
+                "budget_tokens": thinking_arg.get("budget_tokens", 1024),
+            }, None
 
         return NOT_GIVEN, None
 
@@ -412,7 +420,7 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
             )
         if long_context_1m and not use_long_context_1m:
             UserMessage(
-                "long_context_1m is only supported for claude-opus-4-6 and claude-sonnet-4-5; "
+                "long_context_1m is only supported for claude-opus-4-6, claude-sonnet-4-6, and claude-sonnet-4-5; "
                 f"falling back to {effective_context_tokens} token context."
             )
 
@@ -435,6 +443,7 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         tool_choice = kwargs.get("tool_choice", NOT_GIVEN)
         metadata_anthropic = kwargs.get("metadata", NOT_GIVEN)
         max_tokens = kwargs.get("max_tokens", self.max_response_tokens)
+        cache_control = kwargs.get("cache_control", CACHE_CONTROL_1H)
         response_format = kwargs.get("response_format", argument.prop.response_format)
         output_config = self._build_output_config(response_format)
         output_config = self._merge_output_config_effort(output_config, adaptive_effort)
@@ -460,6 +469,7 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
             "tools": tools,
             "tool_choice": tool_choice,
             "output_config": output_config,
+            "extra_body": {"cache_control": cache_control},
         }
         if extra_headers is not None:
             payload["extra_headers"] = extra_headers
