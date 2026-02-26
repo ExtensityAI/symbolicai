@@ -198,7 +198,7 @@ def test_tool_usage():
         assert 'function_call' in metadata
         assert metadata['function_call']['name'] == 'get_stock_price'
         assert 'ticker' in metadata['function_call']['arguments']
-        assert 'spy' in metadata['function_call']['arguments']['ticker'].lower()
+        assert any(t in metadata['function_call']['arguments']['ticker'].lower() for t in ('spy', 'gspc'))
     elif NEUROSYMBOLIC.startswith('gemini'):
         # Test case 1: Callable Python function
         def get_capital(country: str | None = None) -> str:

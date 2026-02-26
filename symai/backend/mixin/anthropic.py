@@ -11,6 +11,7 @@ SUPPORTED_CHAT_MODELS = [
 ]
 SUPPORTED_REASONING_MODELS = [
     "claude-opus-4-6",
+    "claude-sonnet-4-6",
     "claude-opus-4-5",
     "claude-opus-4-1",
     "claude-opus-4-0",
@@ -20,13 +21,16 @@ SUPPORTED_REASONING_MODELS = [
     "claude-sonnet-4-5",
 ]
 
+CACHE_CONTROL_1H = {"type": "ephemeral", "ttl": "1h"}
+
 LONG_CONTEXT_1M_TOKENS = 1_000_000
 LONG_CONTEXT_1M_BETA_HEADER = "context-1m-2025-08-07"
 LONG_CONTEXT_1M_MODELS = {
     "claude-opus-4-6",
+    "claude-sonnet-4-6",
     "claude-sonnet-4-5",
 }
-ADAPTIVE_THINKING_MODELS = {"claude-opus-4-6"}
+ADAPTIVE_THINKING_MODELS = {"claude-opus-4-6", "claude-sonnet-4-6"}
 
 
 class AnthropicMixin:
@@ -45,6 +49,7 @@ class AnthropicMixin:
             return LONG_CONTEXT_1M_TOKENS
         if (
             selected_model == "claude-opus-4-6"
+            or selected_model == "claude-sonnet-4-6"
             or selected_model == "claude-opus-4-5"
             or selected_model == "claude-opus-4-1"
             or selected_model == "claude-opus-4-0"
@@ -68,7 +73,8 @@ class AnthropicMixin:
             return 128_000
 
         if (
-            self.model == "claude-opus-4-5"
+            self.model == "claude-sonnet-4-6"
+            or self.model == "claude-opus-4-5"
             or self.model == "claude-sonnet-4-0"
             or self.model == "claude-3-7-sonnet-latest"
             or self.model == "claude-haiku-4-5"
