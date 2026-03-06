@@ -34,6 +34,7 @@ _IMPORT_NAME = {
     "python-box": "box",
     "pyyaml": "yaml",
     "scikit-learn": "sklearn",
+    "axiom-axle": "axle",
     "z3-solver": "z3",
 }
 

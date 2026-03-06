@@ -1783,7 +1783,7 @@ class ExpressionHandlingPrimitives(Primitive):
     ) -> "Symbol":
         """
         Evaluates simple symbolic expressions.
-        Uses the core.expression decorator to create a _func method that evaluates the given expression.
+        Uses the core.symbolic decorator to create a _func method that evaluates the given expression.
 
         Args:
             prompt (Optional[str]): The prompt to evaluate. Defaults to the symbol value.

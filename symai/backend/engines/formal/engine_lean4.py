@@ -1,14 +1,22 @@
+from __future__ import annotations
+
 import subprocess
 import tempfile
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
-
-import docker
-import paramiko
 
 from ....symbol import Result
 from ....utils import UserMessage
 from ...base import Engine
+from ...settings import SYMAI_CONFIG
+
+try:
+    import docker
+    import paramiko
+except ImportError:
+    docker = None
+    paramiko = None
 
 
 class LeanResult(Result):
@@ -60,23 +68,29 @@ class LeanEngine(Engine):
             ssh_key_path (str): The path to the SSH private key, defaulting to '~/.ssh/id_rsa'.
         """
         super().__init__()
+        self.config = deepcopy(SYMAI_CONFIG)
+        self.name = self.__class__.__name__
+        # Bail out early if not configured as the active formal engine — avoids
+        # spinning up Docker just so register_from_package can read id().
+        if self.config.get("FORMAL_ENGINE") != "local":
+            return
+        if docker is None or paramiko is None:
+            UserMessage(
+                "docker/paramiko not installed. Install with `pip install symbolicai[lean]`",
+                raise_with=ImportError,
+            )
         self.ssh_host: str = ssh_host
         self.ssh_port: int = ssh_port
         self.ssh_user: str = ssh_user
         self.ssh_key_path: Path = Path(ssh_key_path).expanduser()
         self.docker_client: docker.DockerClient = docker.from_env()
         self.container: docker.models.containers.Container = self._ensure_container()
-        self.name = self.__class__.__name__
         self._setup_ssh()
 
     def id(self) -> str:
-        """
-        Returns the identifier for the engine.
-
-        Returns:
-            str: The identifier of the LeanEngine, 'lean4'.
-        """
-        return "lean4"
+        if self.config.get("FORMAL_ENGINE") == "local":
+            return "formal"
+        return super().id()
 
     def _ensure_container(self) -> docker.models.containers.Container:
         """
