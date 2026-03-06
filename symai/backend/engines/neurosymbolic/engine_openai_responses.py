@@ -3,6 +3,7 @@ import logging
 import re
 from copy import deepcopy
 
+import httpx
 import openai
 import tiktoken
 
@@ -62,7 +63,14 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
         self.max_response_tokens = self.api_max_response_tokens()
 
         try:
-            self.client = openai.Client(api_key=openai.api_key)
+            # Pro/reasoning models (e.g. gpt-5.4-pro) can take minutes to respond,
+            # causing transient server disconnects under default settings. A longer
+            # connect timeout and automatic retries keep these requests resilient.
+            self.client = openai.Client(
+                api_key=openai.api_key,
+                timeout=httpx.Timeout(600.0, connect=10.0),
+                max_retries=3,
+            )
         except Exception as e:
             UserMessage(
                 f"Failed to initialize OpenAI client. Caused by: {e}",
@@ -119,6 +127,7 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
             "gpt-5.1-chat-latest",
             "gpt-5-pro",
             "gpt-5.2-pro",
+            "gpt-5.4-pro",
             "o3-pro",
         }
 
@@ -321,7 +330,7 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
             payload["top_p"] = kwargs["top_p"]
 
         if self._is_reasoning_model():
-            if self.model in {"gpt-5-pro", "gpt-5.2-pro"}:
+            if self.model in {"gpt-5-pro", "gpt-5.2-pro", "gpt-5.4-pro"}:
                 reasoning = {"effort": "high"}
             else:
                 reasoning = kwargs.get("reasoning", {"effort": "medium"})
