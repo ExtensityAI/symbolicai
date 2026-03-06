@@ -84,8 +84,9 @@ def test_parallel_task_route_via_processor(processor):
     res = search.search(query, processor=processor, task_api_timeout=600)
 
     assert hasattr(res, "get_citations"), "Task route must still return SearchResult interface"
-    assert isinstance(res.raw, dict) and "results" in res.raw
-    assert res.raw.get("task_output") is not None
+    # raw is a TaskRunResult with .output and .run attributes
+    assert hasattr(res.raw, "output") and hasattr(res.raw, "run")
+    assert res.raw.output is not None
 
     citations = res.get_citations()
     assert isinstance(citations, list)
