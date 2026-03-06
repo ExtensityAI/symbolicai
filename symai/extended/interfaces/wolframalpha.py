@@ -9,7 +9,7 @@ class wolframalpha(Expression):
         self.name = self.__class__.__name__
 
     def __call__(self, expr: str, **kwargs) -> WolframResult:
-        @core.expression(**kwargs)
+        @core.symbolic(**kwargs)
         def _func(_, expr: str) -> WolframResult:
             pass
 

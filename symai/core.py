@@ -1113,7 +1113,7 @@ def extract(
     )
 
 
-def expression(
+def symbolic(
     prompt: str = "Evaluate the symbolic expressions:\n",
     default: str | None = None,
     pre_processors: list[pre.PreProcessor] | None = None,
@@ -1134,6 +1134,39 @@ def expression(
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
             return EngineRepository.query(
                 engine="symbolic",
+                instance=instance,
+                func=func,
+                default=default,
+                pre_processors=pre_processors,
+                post_processors=post_processors,
+                argument=argument,
+            )
+
+        return wrapper
+
+    return decorator
+
+
+def formal(
+    prompt: str = "",
+    default: str | None = None,
+    pre_processors: list[pre.PreProcessor] | None = None,
+    post_processors: list[post.PostProcessor] | None = None,
+    **decorator_kwargs,
+):
+    """Evaluates formal expressions via the formal verification engine."""
+    if pre_processors is None:
+        pre_processors = []
+    if post_processors is None:
+        post_processors = []
+
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(instance, *signature_args, **signature_kwargs):
+            decorator_kwargs["prompt"] = prompt
+            argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
+            return EngineRepository.query(
+                engine="formal",
                 instance=instance,
                 func=func,
                 default=default,

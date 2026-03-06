@@ -81,6 +81,14 @@ def _add_search_interface(mapping):
         mapping["search"] = Interface(interface_name)
 
 
+def _add_formal_interface(mapping):
+    formal_api_key = SYMAI_CONFIG.get("FORMAL_ENGINE_API_KEY")
+    if not formal_api_key:
+        return
+    engine_name = SYMAI_CONFIG.get("FORMAL_ENGINE", "axiom")
+    mapping["formal"] = Interface(engine_name)
+
+
 def _add_tts_interface(mapping):
     tts_engine_api_key = SYMAI_CONFIG.get("TEXT_TO_SPEECH_ENGINE_API_KEY")
     if tts_engine_api_key is not None:  # TODO: add tests for this engine
@@ -91,6 +99,7 @@ def cfg_to_interface():
     """Maps configuration to interface."""
     mapping = {}
     _add_symbolic_interface(mapping)
+    _add_formal_interface(mapping)
     _add_drawing_interface(mapping)
     _add_search_interface(mapping)
     _add_tts_interface(mapping)

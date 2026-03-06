@@ -329,6 +329,8 @@ def setup_wizard(_symai_config_path_):
             "NEUROSYMBOLIC_ENGINE_MODEL": "",
             "SYMBOLIC_ENGINE_API_KEY": "",
             "SYMBOLIC_ENGINE": "",
+            "FORMAL_ENGINE_API_KEY": "",
+            "FORMAL_ENGINE": "",
             "EMBEDDING_ENGINE_API_KEY": "",
             "EMBEDDING_ENGINE_MODEL": "",
             "DRAWING_ENGINE_API_KEY": "",
