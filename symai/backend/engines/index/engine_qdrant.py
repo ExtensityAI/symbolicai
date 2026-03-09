@@ -1663,88 +1663,22 @@ class QdrantIndexEngine(Engine):
         if not isinstance(chunks, list):
             chunks = [chunks]
 
-        # Generate embeddings and create points
-        points = []
+        # Pass 1: build chunk metadata (text, payload, ID) without any embedding calls.
+        # Line-number cursors are order-dependent so they must stay in this sequential pass.
+        chunk_data = []  # list of (chunk_text, payload, point_id)
         current_id = start_id if start_id is not None else 0
         for chunk_idx, chunk_item in enumerate(chunks):
-            # Clean the chunk text
-            if ChonkieChunker:
-                chunk_text = ChonkieChunker.clean_text(str(chunk_item))
-            else:
-                chunk_text = str(chunk_item)
-
+            chunk_text = ChonkieChunker.clean_text(str(chunk_item)) if ChonkieChunker else str(chunk_item)
             if not chunk_text.strip():
                 continue
 
-            # Generate embedding using Symbol's embedding property
-            chunk_symbol = Symbol(chunk_text)
-
-            # Generate embedding - Symbol has embedding property that returns numpy array
-            try:
-                embedding = chunk_symbol.embedding
-            except (AttributeError, Exception) as e:
-                # Fallback: try using Expression's embed method
-                try:
-                    embedding = chunk_symbol.embed()
-                    if hasattr(embedding, "value"):
-                        embedding = embedding.value
-                except Exception as embed_err:
-                    msg = f"Could not generate embedding for chunk. Error: {e}"
-                    raise ValueError(msg) from embed_err
-
-            # Normalize embedding to flat list using existing helper
-            if isinstance(embedding, np.ndarray):
-                # Flatten if 2D (e.g., shape (1, 1536) -> (1536,))
-                if embedding.ndim > 1:
-                    embedding = embedding.flatten()
-                embedding = embedding.tolist()
-            elif isinstance(embedding, list):
-                # Ensure embedding is a flat list (handle nested lists)
-                if embedding and len(embedding) > 0 and isinstance(embedding[0], list):
-                    # Flatten nested list (e.g., [[1, 2, 3]] -> [1, 2, 3])
-                    embedding = (
-                        embedding[0]
-                        if len(embedding) == 1
-                        else [item for sublist in embedding for item in sublist]
-                    )
-            else:
-                # Try to convert to list
-                try:
-                    embedding = list(embedding) if embedding else []
-                except (TypeError, ValueError) as e:
-                    msg = (
-                        f"Could not generate embedding for chunk. "
-                        f"Expected list or array, got type: {type(embedding)}"
-                    )
-                    raise ValueError(msg) from e
-
-            # Truncate or pad embedding to match vector_size
-            original_size = len(embedding)
-            if original_size != vector_size:
-                if original_size > vector_size:
-                    embedding = embedding[:vector_size]
-                else:
-                    embedding = embedding + [0.0] * (vector_size - original_size)
-                warnings.warn(
-                    f"Embedding size ({original_size}) adjusted to match collection vector size ({vector_size})"
-                )
-
-            # Create payload
             payload = {"text": chunk_text}
             if metadata:
                 payload.update(metadata)
 
             # Optionally include chunk location metadata (line numbers) for provenance.
             if include_line_numbers and full_text_raw is not None and full_text_clean is not None:
-                # Try matching against cleaned full text first (most consistent with cleaned chunk text),
-                # then fall back to raw full text. When multiple matches exist, we search forward to
-                # preserve chunk ordering.
-                start_char: int | None = None
-                end_char: int | None = None
-                start_line: int | None = None
-                end_line: int | None = None
-                start_page: int | None = None
-                end_page: int | None = None
+                start_char = end_char = start_line = end_line = start_page = end_page = None
 
                 pos = full_text_clean.find(chunk_text, match_cursor_clean)
                 if pos != -1:
@@ -1777,35 +1711,39 @@ class QdrantIndexEngine(Engine):
                     if start_page is not None and end_page is not None:
                         payload["chunk_start_page"] = start_page
                         payload["chunk_end_page"] = end_page
-                    # Keep char offsets for debugging; these are relative to the matched representation.
                     if start_char is not None and end_char is not None:
                         payload["chunk_start_char"] = start_char
                         payload["chunk_end_char"] = end_char
 
-            # Generate ID
             if start_id is not None:
                 point_id = current_id
                 current_id += 1
             else:
-                # Use uuid5 for deterministic, collision-resistant IDs based on content
-                # uuid5 uses SHA-1 internally, providing 160 bits of entropy
-                # Convert to int64 by taking modulo 2**63 to fit in signed 64-bit range
-                namespace_uuid = uuid.NAMESPACE_DNS  # Use DNS namespace for consistency
-                uuid_obj = uuid.uuid5(namespace_uuid, chunk_text)
-                # Convert UUID (128 bits) to int64, ensuring it fits in signed 64-bit range
-                point_id = uuid_obj.int % (2**63)
+                point_id = uuid.uuid5(uuid.NAMESPACE_DNS, chunk_text).int % (2**63)
 
-            points.append(
-                {
-                    "id": point_id,
-                    "vector": embedding,
-                    "payload": payload,
-                }
-            )
+            chunk_data.append((chunk_text, payload, point_id))
 
-        if not points:
+        if not chunk_data:
             warnings.warn("No valid points to upsert")
             return 0
+
+        # Single batch embed — one API call for all chunks.
+        raw_embeddings = Symbol([t for t, _, _ in chunk_data]).embed().value
+
+        # Pass 2: resize embeddings and assemble points.
+        points = []
+        for (_, payload, point_id), raw_vec in zip(chunk_data, raw_embeddings, strict=True):
+            vec = self._normalize_vector(raw_vec)
+            original_size = len(vec)
+            if original_size != vector_size:
+                if original_size > vector_size:
+                    vec = vec[:vector_size]
+                else:
+                    vec = vec + [0.0] * (vector_size - original_size)
+                warnings.warn(
+                    f"Embedding size ({original_size}) adjusted to match collection vector size ({vector_size})"
+                )
+            points.append({"id": point_id, "vector": vec, "payload": payload})
 
         # Upsert the points using shared synchronous method
         self._upsert_points_sync(collection_name=collection_name, points=points, **upsert_kwargs)

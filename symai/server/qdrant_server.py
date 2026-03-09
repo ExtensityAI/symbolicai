@@ -2,9 +2,131 @@ import argparse
 import os
 import subprocess
 import sys
+from enum import Enum
 from pathlib import Path
 
 from loguru import logger
+
+
+class QdrantConfigFlag(str, Enum):
+    """String/int flags persisted to symserver.config.json.
+
+    Enum name == argparse dest attr; enum value == CLI flag string.
+    Iterated with `is not None` to preserve int 0 (e.g. --max-workers 0).
+    """
+
+    api_key            = "--api-key"
+    read_only_api_key  = "--read-only-api-key"
+    log_level          = "--log-level"
+    max_workers        = "--max-workers"
+    max_search_threads = "--max-search-threads"
+    snapshots_path     = "--snapshots-path"
+
+
+class QdrantTLSFlag(str, Enum):
+    """TLS certificate path flags. name == argparse dest; value == CLI flag."""
+
+    tls_cert    = "--tls-cert"
+    tls_key     = "--tls-key"
+    tls_ca_cert = "--tls-ca-cert"
+
+
+class QdrantDockerFlag(str, Enum):
+    """Docker container management flags. name == argparse dest; value == CLI flag."""
+
+    docker_image     = "--docker-image"
+    docker_container = "--docker-container-name"
+    docker_detach    = "--docker-detach"
+    docker_remove    = "--docker-remove"
+
+
+class QdrantStorageFlag(str, Enum):
+    """Server storage and execution path flags. name == argparse dest; value == CLI flag."""
+
+    storage_path    = "--storage-path"
+    use_env_storage = "--use-env-storage"
+    binary_path     = "--binary-path"
+
+
+class QdrantBoolFlag(str, Enum):
+    """Boolean (store_true) flags. name == argparse dest; value == CLI flag."""
+
+    disable_telemetry = "--disable-telemetry"
+    enable_tls        = "--enable-tls"
+
+
+class QdrantGenericFlag(str, Enum):
+    """Generic QDRANT__* env-var passthrough.
+
+    Note: `--set` uses dest='qdrant_set', not 'set', so the name==dest
+    convention does not hold here. This flag is only used for routing detection.
+    """
+
+    set = "--set"
+
+
+# QdrantServerFlag is the union of all qdrant_server.py-exclusive CLI flags,
+# composed from the sub-enums above with no additional inline entries.
+_FLAG_CATEGORIES = (
+    QdrantConfigFlag,
+    QdrantTLSFlag,
+    QdrantDockerFlag,
+    QdrantStorageFlag,
+    QdrantBoolFlag,
+    QdrantGenericFlag,
+)
+QdrantServerFlag = Enum(
+    "QdrantServerFlag",
+    {m.name: m.value for cat in _FLAG_CATEGORIES for m in cat},
+    type=str,
+)
+del _FLAG_CATEGORIES
+_QDRANT_SERVER_FLAGS = frozenset(QdrantServerFlag)
+
+
+def _build_qdrant_env(args) -> dict:
+    """Collect QDRANT__* env vars from parsed CLI args.
+
+    TLS cert paths are intentionally excluded: binary mode sets host paths
+    explicitly after this call; Docker mode sets container paths after mounting
+    the cert directory as a volume.
+    """
+    env = {}
+    if args.api_key:
+        env["QDRANT__SERVICE__API_KEY"] = args.api_key
+    if args.read_only_api_key:
+        env["QDRANT__SERVICE__READ_ONLY_API_KEY"] = args.read_only_api_key
+    if args.log_level:
+        env["QDRANT__LOG_LEVEL"] = args.log_level
+    if args.max_workers is not None:
+        env["QDRANT__SERVICE__MAX_WORKERS"] = str(args.max_workers)
+    if args.max_search_threads is not None:
+        env["QDRANT__STORAGE__PERFORMANCE__MAX_SEARCH_THREADS"] = str(args.max_search_threads)
+    if args.disable_telemetry:
+        env["QDRANT__TELEMETRY_DISABLED"] = "true"
+    for kv in args.qdrant_set:
+        key, _, value = kv.partition("=")
+        key = key.strip()
+        if not key.startswith("QDRANT__"):
+            key = f"QDRANT__{key}"
+        env[key] = value.strip()
+    return env
+
+
+def _apply_tls_env(env, args, path_transform=lambda p: p):
+    """Populate TLS env vars into env, applying path_transform to cert file paths.
+
+    Binary mode passes the identity transform (host paths used as-is).
+    Docker mode passes a transform that rewrites to the container mount path.
+    """
+    if args.enable_tls:
+        env["QDRANT__SERVICE__ENABLE_TLS"] = "true"
+    if args.tls_cert:
+        env["QDRANT__TLS__CERT"] = path_transform(args.tls_cert)
+    if args.tls_key:
+        env["QDRANT__TLS__KEY"] = path_transform(args.tls_key)
+    if args.tls_ca_cert:
+        env["QDRANT__TLS__CA_CERT"] = path_transform(args.tls_ca_cert)
 
 
 def qdrant_server():
@@ -76,6 +198,79 @@ def qdrant_server():
         default=False,
         help="Disable caching in Qdrant server (default: False)",
     )
+    # --- Security / Auth ---
+    parser.add_argument(
+        "--api-key",
+        type=str,
+        default=None,
+        help="Qdrant API key required on every request (QDRANT__SERVICE__API_KEY)",
+    )
+    parser.add_argument(
+        "--read-only-api-key",
+        type=str,
+        default=None,
+        help="Read-only API key (QDRANT__SERVICE__READ_ONLY_API_KEY)",
+    )
+    # --- Performance ---
+    parser.add_argument(
+        "--max-workers",
+        type=int,
+        default=None,
+        help="Parallel HTTP request workers in Qdrant (QDRANT__SERVICE__MAX_WORKERS; 0=auto)",
+    )
+    parser.add_argument(
+        "--max-search-threads",
+        type=int,
+        default=None,
+        help="Search threads per request (QDRANT__STORAGE__PERFORMANCE__MAX_SEARCH_THREADS; 0=auto)",
+    )
+    # --- Observability ---
+    parser.add_argument(
+        "--log-level",
+        choices=["TRACE", "DEBUG", "INFO", "WARN", "ERROR"],
+        default=None,
+        help="Log verbosity level (QDRANT__LOG_LEVEL)",
+    )
+    parser.add_argument(
+        "--disable-telemetry",
+        action="store_true",
+        default=False,
+        help="Opt out of Qdrant usage telemetry (QDRANT__TELEMETRY_DISABLED)",
+    )
+    # --- Storage ---
+    parser.add_argument(
+        "--snapshots-path",
+        type=str,
+        default=None,
+        help="Directory for Qdrant snapshots (QDRANT__STORAGE__SNAPSHOTS_PATH)",
+    )
+    # --- TLS ---
+    parser.add_argument(
+        "--enable-tls",
+        action="store_true",
+        default=False,
+        help="Enable HTTPS on REST and gRPC (QDRANT__SERVICE__ENABLE_TLS)",
+    )
+    parser.add_argument(
+        "--tls-cert",
+        type=str,
+        default=None,
+        help="Path to TLS certificate file; all cert files must share the same directory",
+    )
+    parser.add_argument("--tls-key", type=str, default=None, help="Path to TLS private key file")
+    parser.add_argument(
+        "--tls-ca-cert", type=str, default=None, help="Path to TLS CA certificate file"
+    )
+    # --- Generic QDRANT__* passthrough ---
+    parser.add_argument(
+        "--set",
+        action="append",
+        default=[],
+        metavar="KEY=VALUE",
+        dest="qdrant_set",
+        help="Set any QDRANT__* env var directly, e.g. --set SERVICE__CORS=false. "
+        "The QDRANT__ prefix is added automatically if omitted.",
+    )
 
     main_args, qdrant_args = parser.parse_known_args()
 
@@ -130,9 +325,18 @@ def qdrant_server():
 
         # Add no-cache environment variable if flag is set
         if main_args.no_cache:
-            # Set environment variable to disable caching
-            # Qdrant uses environment variables with QDRANT__ prefix
             os.environ["QDRANT__SERVICE__ENABLE_STATIC_CONTENT_CACHE"] = "false"
+
+        # Apply QDRANT__* env vars via os.environ (binary reads from environment)
+        qdrant_env = _build_qdrant_env(main_args)
+        if main_args.snapshots_path:
+            snap = Path(main_args.snapshots_path)
+            snap.mkdir(parents=True, exist_ok=True)
+            qdrant_env["QDRANT__STORAGE__SNAPSHOTS_PATH"] = str(snap.resolve())
+        # TLS: enable flag + cert paths together (binary reads host filesystem directly)
+        _apply_tls_env(qdrant_env, main_args)
+        for k, v in qdrant_env.items():
+            os.environ[k] = v
 
         # Add any additional Qdrant-specific arguments
         command.extend(qdrant_args)
@@ -184,13 +388,33 @@ def qdrant_server():
 
         # Add no-cache environment variable if flag is set
         if main_args.no_cache:
-            # Set environment variable to disable caching in Docker container
             command.extend(["-e", "QDRANT__SERVICE__ENABLE_STATIC_CONTENT_CACHE=false"])
+
+        # Snapshots: mount host directory, rewrite env var to container path
+        if main_args.snapshots_path:
+            snap = Path(main_args.snapshots_path)
+            snap.mkdir(parents=True, exist_ok=True)
+            command.extend(["-v", f"{snap.resolve()}:/qdrant/snapshots:z"])
+
+        # TLS: mount the cert directory as read-only, rewrite cert paths to container paths
+        if main_args.enable_tls and any(
+            (main_args.tls_cert, main_args.tls_key, main_args.tls_ca_cert)
+        ):
+            tls_host_file = main_args.tls_cert or main_args.tls_key or main_args.tls_ca_cert
+            tls_dir = Path(tls_host_file).resolve().parent
+            command.extend(["-v", f"{tls_dir}:/qdrant/tls:ro"])
+
+        # Collect QDRANT__* env vars; set path-dependent vars with container paths for Docker
+        qdrant_env = _build_qdrant_env(main_args)
+        if main_args.snapshots_path:
+            qdrant_env["QDRANT__STORAGE__SNAPSHOTS_PATH"] = "/qdrant/snapshots"
+        # TLS: enable flag + container-rewritten cert paths together
+        _apply_tls_env(qdrant_env, main_args, lambda p: f"/qdrant/tls/{Path(p).name}")
+        for k, v in qdrant_env.items():
+            command.extend(["-e", f"{k}={v}"])
 
         # Docker image
         command.append(main_args.docker_image)
-
-        # Qdrant server arguments (if any additional ones are passed)
 
         # Add any additional Qdrant arguments
         if qdrant_args:
@@ -245,5 +469,21 @@ def qdrant_server():
             config_args.extend(["--config-path", main_args.config_path])
         if main_args.no_cache:
             config_args.append("--no-cache")
+
+    # Persist new flags to symserver.config.json (common to both modes)
+    for flag in QdrantConfigFlag:
+        val = getattr(main_args, flag.name, None)
+        if val is not None:
+            config_args.extend([flag.value, str(val)])
+    if main_args.disable_telemetry:
+        config_args.append("--disable-telemetry")
+    if main_args.enable_tls:
+        config_args.append("--enable-tls")
+    for flag in QdrantTLSFlag:
+        val = getattr(main_args, flag.name, None)
+        if val:
+            config_args.extend([flag.value, val])
+    for kv in main_args.qdrant_set:
+        config_args.extend(["--set", kv])
 
     return command, config_args

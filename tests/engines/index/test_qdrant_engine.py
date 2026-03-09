@@ -7,60 +7,52 @@ Tests cover:
 - Document chunking and upsert functionality
 - Error handling and edge cases
 """
+import asyncio
 import os
-import pytest
-import numpy as np
+import time
 from pathlib import Path
 
-from symai.backend.engines.index.engine_qdrant import QdrantIndexEngine, QdrantResult
+import pytest
+
+try:
+    from qdrant_client import QdrantClient
+    from qdrant_client.models import FieldCondition, Filter, MatchValue, PointStruct
+except ImportError:
+    QdrantClient = None
+    PointStruct = None
+    Filter = None
+    FieldCondition = None
+    MatchValue = None
+
+from symai import Symbol
+from symai.backend.engines.index.engine_qdrant import QdrantIndexEngine
 from symai.backend.settings import SYMAI_CONFIG, SYMSERVER_CONFIG
+from symai.core import Argument
 from symai.interfaces import Interface
+
+try:
+    from symai.components import ChonkieChunker
+except ImportError:
+    ChonkieChunker = None
 
 AVAILABLE_PDFS = [(Path(__file__).parents[2] / "data" / "sample.pdf").as_posix()]
 
-
 def _check_qdrant_available():
-    """
-    Check if Qdrant is actually available by:
-    1. Verifying qdrant_client can be imported
-    2. Verifying ChonkieChunker can be imported (if needed for tests)
-    3. Attempting to connect to the Qdrant endpoint
-    """
-    # Check if qdrant_client can be imported
-    try:
-        from qdrant_client import QdrantClient
-    except ImportError:
+    if QdrantClient is None:
         return False
-
-    # Check if ChonkieChunker can be imported (needed for some tests)
-    try:
-        from symai.components import ChonkieChunker
-    except ImportError:
-        # ChonkieChunker is optional, but some tests may need it
-        # We'll still allow tests to run if qdrant_client is available
-        pass
-
-    # Try to connect to Qdrant endpoint
     url = SYMSERVER_CONFIG.get('url') or SYMAI_CONFIG.get('INDEXING_ENGINE_URL') or 'http://localhost:6333'
     api_key = SYMAI_CONFIG.get('INDEXING_ENGINE_API_KEY')
-
     try:
         client_kwargs = {"url": url}
         if api_key:
             client_kwargs["api_key"] = api_key
-        client = QdrantClient(**client_kwargs)
-        # Try to get collections list as a connectivity test
-        # This will raise an exception if the server is not accessible
-        client.get_collections()
+        QdrantClient(**client_kwargs).get_collections()
         return True
     except Exception:
-        # Any exception (connection error, timeout, etc.) means Qdrant is not available
         return False
-
 
 # Check if Qdrant is available
 QDrant_AVAILABLE = _check_qdrant_available()
-
 
 @pytest.fixture
 def engine():
@@ -72,13 +64,10 @@ def engine():
         index_dims=1536,
     )
 
-
 @pytest.fixture
 def test_collection_name():
     """Generate a unique collection name for each test."""
-    import time
     return f"test_collection_{int(time.time() * 1000)}"
-
 
 def normalize_embedding(embedding, target_size=1536):
     """
@@ -112,7 +101,6 @@ def normalize_embedding(embedding, target_size=1536):
 
     return query_vector
 
-
 @pytest.mark.skipif(not QDrant_AVAILABLE, reason="Qdrant server not available")
 class TestQdrantEngineBasic:
     """Test basic engine functionality."""
@@ -126,8 +114,6 @@ class TestQdrantEngineBasic:
     @pytest.mark.asyncio
     async def test_add_and_search_using_manager_methods(self, engine, test_collection_name):
         """Test adding and searching using manager methods directly."""
-        from symai.symbol import Symbol
-        from qdrant_client.models import PointStruct
 
         # Create collection
         await engine.create_collection(test_collection_name, vector_size=1536)
@@ -177,7 +163,6 @@ class TestQdrantEngineBasic:
         assert hasattr(results[0], 'payload'), "Result should have payload."
         assert "Hello world" in str(results[0].payload.get("text", ""))
 
-
 @pytest.mark.skipif(not QDrant_AVAILABLE, reason="Qdrant server not available")
 class TestQdrantManagerMethods:
     """Test manager methods (collection management, point operations)."""
@@ -219,7 +204,6 @@ class TestQdrantManagerMethods:
     @pytest.mark.asyncio
     async def test_upsert_points(self, engine, test_collection_name):
         """Test upserting points."""
-        from qdrant_client.models import PointStruct
 
         await engine.create_collection(test_collection_name, vector_size=1536)
 
@@ -246,7 +230,6 @@ class TestQdrantManagerMethods:
     @pytest.mark.asyncio
     async def test_search_points(self, engine, test_collection_name):
         """Test searching for points."""
-        from qdrant_client.models import PointStruct
 
         await engine.create_collection(test_collection_name, vector_size=1536)
 
@@ -276,7 +259,6 @@ class TestQdrantManagerMethods:
     @pytest.mark.asyncio
     async def test_retrieve_points(self, engine, test_collection_name):
         """Test retrieving points by ID."""
-        from qdrant_client.models import PointStruct
 
         await engine.create_collection(test_collection_name, vector_size=1536)
 
@@ -299,7 +281,6 @@ class TestQdrantManagerMethods:
     @pytest.mark.asyncio
     async def test_delete_points(self, engine, test_collection_name):
         """Test deleting points."""
-        from qdrant_client.models import PointStruct
 
         await engine.create_collection(test_collection_name, vector_size=1536)
 
@@ -330,7 +311,6 @@ class TestQdrantManagerMethods:
 
         # Verify deleted
         assert not await engine.collection_exists(test_collection_name)
-
 
 @pytest.mark.skipif(not QDrant_AVAILABLE, reason="Qdrant server not available")
 class TestQdrantChunking:
@@ -454,7 +434,6 @@ class TestQdrantChunking:
         info = await engine.get_collection_info(test_collection_name)
         assert info["points_count"] == num_chunks
 
-
 @pytest.mark.skipif(not QDrant_AVAILABLE, reason="Qdrant server not available")
 class TestQdrantErrorHandling:
     """Test error handling and edge cases."""
@@ -499,7 +478,6 @@ class TestQdrantErrorHandling:
         with pytest.raises(ValueError, match="does not exist"):
             await engine.delete_collection("nonexistent_collection")
 
-
 @pytest.mark.skipif(not QDrant_AVAILABLE, reason="Qdrant server not available")
 class TestQdrantSearchChunkedDocuments:
     """Test searching chunked and upserted documents."""
@@ -507,7 +485,6 @@ class TestQdrantSearchChunkedDocuments:
     @pytest.mark.asyncio
     async def test_search_chunked_text_semantic(self, engine, test_collection_name):
         """Test semantic search on chunked text documents."""
-        from symai.symbol import Symbol
 
         await engine.create_collection(test_collection_name, vector_size=1536)
 
@@ -549,7 +526,6 @@ class TestQdrantSearchChunkedDocuments:
     @pytest.mark.asyncio
     async def test_search_multiple_documents(self, engine, test_collection_name):
         """Test searching across multiple chunked documents."""
-        from symai.symbol import Symbol
 
         await engine.create_collection(test_collection_name, vector_size=1536)
 
@@ -594,7 +570,6 @@ class TestQdrantSearchChunkedDocuments:
     @pytest.mark.asyncio
     async def test_search_with_limit(self, engine, test_collection_name):
         """Test search with different limit values."""
-        from symai.symbol import Symbol
 
         await engine.create_collection(test_collection_name, vector_size=1536)
 
@@ -628,7 +603,6 @@ class TestQdrantSearchChunkedDocuments:
     @pytest.mark.asyncio
     async def test_search_result_scores(self, engine, test_collection_name):
         """Test that search results are ordered by relevance score."""
-        from symai.symbol import Symbol
 
         await engine.create_collection(test_collection_name, vector_size=1536)
 
@@ -667,8 +641,6 @@ class TestQdrantSearchChunkedDocuments:
     @pytest.mark.asyncio
     async def test_search_with_metadata_filter(self, engine, test_collection_name):
         """Test searching with metadata filters."""
-        from symai.symbol import Symbol
-        from qdrant_client.models import Filter, FieldCondition, MatchValue
 
         await engine.create_collection(test_collection_name, vector_size=1536)
 
@@ -725,8 +697,6 @@ class TestQdrantSearchChunkedDocuments:
     @pytest.mark.asyncio
     async def test_forward_search_with_dict_filter(self, engine, test_collection_name):
         """Test high-level forward() search with simple dict-based metadata filter."""
-        from symai.core import Argument
-        from symai.symbol import Symbol
 
         await engine.create_collection(test_collection_name, vector_size=1536)
 
@@ -781,9 +751,6 @@ class TestQdrantSearchChunkedDocuments:
     @pytest.mark.asyncio
     async def test_forward_search_returns_search_result(self, engine, test_collection_name):
         """Ensure search mode can emit SearchResult-style output for citations."""
-        from symai.core import Argument
-        from symai.symbol import Symbol
-        from pathlib import Path
 
         if not AVAILABLE_PDFS:
             pytest.skip("No test PDF files available")
@@ -825,7 +792,6 @@ class TestQdrantSearchChunkedDocuments:
     @pytest.mark.asyncio
     async def test_search_with_score_threshold(self, engine, test_collection_name):
         """Test searching with score threshold."""
-        from symai.symbol import Symbol
 
         await engine.create_collection(test_collection_name, vector_size=1536)
 
@@ -878,7 +844,6 @@ class TestQdrantSearchChunkedDocuments:
     @pytest.mark.skipif(len(AVAILABLE_PDFS) == 0, reason="No test PDF files available")
     async def test_search_pdf_content(self, engine, test_collection_name):
         """Test searching content from chunked PDF documents."""
-        from symai.symbol import Symbol
 
         if not AVAILABLE_PDFS:
             pytest.skip("No PDF files available for testing")
@@ -916,7 +881,6 @@ class TestQdrantSearchChunkedDocuments:
     @pytest.mark.asyncio
     async def test_search_result_content_verification(self, engine, test_collection_name):
         """Test that search results contain the expected content from chunked documents."""
-        from symai.symbol import Symbol
 
         await engine.create_collection(test_collection_name, vector_size=1536)
 
@@ -960,7 +924,6 @@ class TestQdrantSearchChunkedDocuments:
     @pytest.mark.asyncio
     async def test_search_empty_collection(self, engine, test_collection_name):
         """Test searching an empty collection."""
-        from symai.symbol import Symbol
 
         await engine.create_collection(test_collection_name, vector_size=1536)
 
@@ -975,7 +938,6 @@ class TestQdrantSearchChunkedDocuments:
         # Should return empty list, not raise error
         assert isinstance(results, list), "Should return a list even for empty collection."
         assert len(results) == 0, "Should return empty results for empty collection."
-
 
 @pytest.mark.skipif(not QDrant_AVAILABLE, reason="Qdrant server not available")
 class TestQdrantLocalSearch:
@@ -993,7 +955,7 @@ class TestQdrantLocalSearch:
             metadata={"source": "local_note.txt"},
         )
 
-        search = Interface("local_search", index_name=test_collection_name)
+        search = Interface("local_search", index_name=test_collection_name, url=engine.url)
         result = search.search(
             "citation-friendly content",
             limit=3,
@@ -1025,7 +987,7 @@ class TestQdrantLocalSearch:
             metadata={"source": Path(pdf_path).name},
         )
 
-        search = Interface("local_search", index_name=test_collection_name)
+        search = Interface("local_search", index_name=test_collection_name, url=engine.url)
         result = search.search(
             "phase-space regions",
             limit=8,
@@ -1040,7 +1002,6 @@ class TestQdrantLocalSearch:
         citations = result.get_citations()
         assert isinstance(citations, list)
         assert len(citations) >= 1
-
 
 @pytest.mark.skipif(not QDrant_AVAILABLE, reason="Qdrant server not available")
 class TestQdrantIntegration:
@@ -1114,6 +1075,113 @@ class TestQdrantIntegration:
         for coll_name in collections:
             await engine.delete_collection(coll_name)
 
+@pytest.mark.skipif(not QDrant_AVAILABLE, reason="Qdrant server not available")
+class TestRagEmbedBatching:
+    """Verify that chunk_and_upsert batch-embeds all chunks in a single API call.
+
+    Compares embedding N chunks sequentially (old per-chunk behavior) against the
+    full chunk_and_upsert pipeline, which now issues one batch embed call.
+    Even though chunk_and_upsert also runs the chunker and a Qdrant upsert, the
+    embedding savings dominate and the total time is still lower.
+    """
+
+    # First ~120 000 chars of sample.txt (The Odyssey) — yields 15+ natural chunks
+    # with the default RecursiveChunker chunk size (~7 000 chars/chunk).
+    SAMPLE_PATH = Path(__file__).parents[2] / "data" / "sample.txt"
+
+    @pytest.mark.asyncio
+    async def test_chunk_and_upsert_faster_than_sequential_embed(self, engine, test_collection_name):
+
+        document = self.SAMPLE_PATH.read_text(encoding="utf-8")[:120_000]
+
+        await engine.create_collection(test_collection_name, vector_size=1536)
+
+        # Pre-chunk with the same settings chunk_and_upsert will use, so the
+        # sequential baseline embeds exactly the same strings.
+        chunker = ChonkieChunker()
+        chunks_symbol = chunker.forward(Symbol(document), chunker_name="RecursiveChunker")
+        chunks = chunks_symbol.value if hasattr(chunks_symbol, "value") else chunks_symbol
+        chunk_texts = [
+            ChonkieChunker.clean_text(str(c))
+            for c in chunks
+            if ChonkieChunker.clean_text(str(c)).strip()
+        ]
+        assert len(chunk_texts) >= 15, (
+            f"Expected ≥15 chunks from sample.txt excerpt, got {len(chunk_texts)}"
+        )
+
+        # Sequential baseline: one embed API call per chunk (old behavior).
+        t0 = time.perf_counter()
+        for text in chunk_texts:
+            Symbol(text).embed()
+        sequential_time = time.perf_counter() - t0
+
+        # Batched via chunk_and_upsert: one embed call for all chunks.
+        t0 = time.perf_counter()
+        num_chunks = await engine.chunk_and_upsert(
+            collection_name=test_collection_name,
+            text=document,
+            chunker_name="RecursiveChunker",
+        )
+        batch_time = time.perf_counter() - t0
+
+        print(f"\nChunks: {num_chunks}")
+        print(f"Sequential embed ({len(chunk_texts)} calls): {sequential_time:.3f}s")
+        print(f"chunk_and_upsert (1 embed call):           {batch_time:.3f}s")
+        print(f"Speedup: {sequential_time / batch_time:.1f}x")
+
+        assert sequential_time > batch_time, (
+            f"chunk_and_upsert ({batch_time:.3f}s) should be faster than "
+            f"sequential per-chunk embedding ({sequential_time:.3f}s)"
+        )
+
+    @pytest.mark.asyncio
+    async def test_concurrent_search_faster_than_sequential(self, engine, test_collection_name):
+        """N concurrent searches finish faster than N sequential ones.
+
+        This exercises Qdrant's QDRANT__SERVICE__MAX_WORKERS setting: with
+        max_workers > 1, the server handles parallel HTTP requests simultaneously,
+        so asyncio.gather + asyncio.to_thread delivers a real wall-clock speedup
+        over sequential blocking calls.
+        """
+
+        document = self.SAMPLE_PATH.read_text(encoding="utf-8")[:120_000]
+        await engine.create_collection(test_collection_name, vector_size=1536)
+        await engine.chunk_and_upsert(
+            collection_name=test_collection_name,
+            text=document,
+            chunker_name="RecursiveChunker",
+        )
+
+        query_vec = engine._normalize_vector(
+            Symbol("Odyssey travels adventures sea").embed().value
+        )
+
+        N = 8  # number of parallel searches
+
+        def do_search():
+            return engine._search_sync(
+                collection_name=test_collection_name, query_vector=query_vec, limit=5
+            )
+
+        # Sequential baseline
+        t0 = time.perf_counter()
+        for _ in range(N):
+            do_search()
+        sequential_time = time.perf_counter() - t0
+
+        # Concurrent: asyncio.to_thread lets each blocking Qdrant call run in a
+        # thread so the event loop can schedule all N at once.
+        t0 = time.perf_counter()
+        await asyncio.gather(*[asyncio.to_thread(do_search) for _ in range(N)])
+        concurrent_time = time.perf_counter() - t0
+
+        print(f"\nN={N} searches: sequential={sequential_time:.3f}s  concurrent={concurrent_time:.3f}s  speedup={sequential_time / concurrent_time:.1f}x")
+
+        assert concurrent_time < sequential_time, (
+            f"Concurrent search ({concurrent_time:.3f}s) should be faster than "
+            f"sequential ({sequential_time:.3f}s) with max_workers=4"
+        )
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

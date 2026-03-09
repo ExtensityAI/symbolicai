@@ -49,6 +49,41 @@ INDEXING_ENGINE=qdrant symserver --env binary --binary-path /path/to/qdrant --po
 INDEXING_ENGINE=qdrant symserver --docker-detach
 ```
 
+##### Performance & security flags
+
+`symserver` forwards these directly to Qdrant as `QDRANT__*` environment variables:
+
+| Flag | Qdrant env var | Description |
+|---|---|---|
+| `--max-workers N` | `QDRANT__SERVICE__MAX_WORKERS` | Parallel HTTP request workers (0 = auto) |
+| `--max-search-threads N` | `QDRANT__STORAGE__PERFORMANCE__MAX_SEARCH_THREADS` | Search threads per request (0 = auto) |
+| `--api-key KEY` | `QDRANT__SERVICE__API_KEY` | Require bearer key on every request |
+| `--read-only-api-key KEY` | `QDRANT__SERVICE__READ_ONLY_API_KEY` | Read-only bearer key |
+| `--log-level LEVEL` | `QDRANT__LOG_LEVEL` | `TRACE` / `DEBUG` / `INFO` / `WARN` / `ERROR` |
+| `--disable-telemetry` | `QDRANT__TELEMETRY_DISABLED` | Opt out of usage telemetry |
+| `--snapshots-path PATH` | `QDRANT__STORAGE__SNAPSHOTS_PATH` | Directory for Qdrant snapshots |
+| `--enable-tls` | `QDRANT__SERVICE__ENABLE_TLS` | Enable HTTPS on REST and gRPC |
+| `--tls-cert PATH` | `QDRANT__TLS__CERT` | TLS certificate file (Docker: directory is auto-mounted) |
+| `--tls-key PATH` | `QDRANT__TLS__KEY` | TLS private key file |
+| `--tls-ca-cert PATH` | `QDRANT__TLS__CA_CERT` | TLS CA certificate file |
+| `--set KEY=VALUE` | `QDRANT__KEY=VALUE` | Generic passthrough for any `QDRANT__*` var |
+
+```bash
+# Production-ready: 4 workers, 4 search threads, API key, no telemetry
+INDEXING_ENGINE=qdrant symserver \
+  --docker-detach \
+  --port 6333 \
+  --storage-path ./qdrant_storage \
+  --max-workers 4 \
+  --max-search-threads 4 \
+  --api-key supersecret \
+  --log-level INFO \
+  --disable-telemetry
+
+# Set any arbitrary QDRANT__* knob (QDRANT__ prefix is added automatically if omitted)
+INDEXING_ENGINE=qdrant symserver --set COLLECTION__REPLICATION_FACTOR=2
+```
+
 #### Option 2: Cloud Qdrant
 
 Configure your cloud Qdrant instance:
@@ -139,7 +174,15 @@ Example:
 from symai.interfaces import Interface
 from qdrant_client.http import models
 
-search = Interface("local_search", index_name="my_collection")
+# url and api_key are optional; defaults fall back to SYMSERVER_CONFIG / SYMAI_CONFIG.
+# Pass them explicitly when the Qdrant server is on a non-default host or port,
+# or when --api-key was set in symserver.
+search = Interface(
+    "local_search",
+    index_name="my_collection",
+    url="http://localhost:6333",   # optional, defaults to SYMSERVER_CONFIG url
+    api_key=None,                  # optional, set if Qdrant requires authentication
+)
 
 qdrant_filter = models.Filter(
     must=[
@@ -195,7 +238,9 @@ asyncio.run(manage_collections())
 
 ### Document Chunking and RAG
 
-The Qdrant engine includes built-in document chunking for RAG workflows:
+The Qdrant engine includes built-in document chunking for RAG workflows.
+
+> **Performance:** `chunk_and_upsert` embeds all chunks in a **single batched API call** regardless of how many chunks the document produces. This yields a 10–100× speedup over per-chunk embedding: benchmark results show ~8× end-to-end on a 16-chunk document and ~28–116× on pure embedding throughput (8 texts), depending on network conditions.
 
 ```python
 import asyncio
