@@ -131,11 +131,19 @@ def _start_symai():
     return symai_config, symsh_config, symserver_config
 
 
+from .server.qdrant_server import _QDRANT_SERVER_FLAGS  # noqa: E402
+
+
 def run_server():
     _symserver_config_ = {}
 
-    # Check for explicit Qdrant server request via command line
-    qdrant_requested = any("qdrant" in arg.lower() for arg in sys.argv[1:])
+    # Check for explicit Qdrant server request via command line.
+    # Matches either a literal "qdrant" substring in any arg (e.g. --docker-image qdrant/qdrant)
+    # OR any flag that is exclusive to qdrant_server.py (e.g. --docker-detach, --max-workers).
+    qdrant_requested = any(
+        "qdrant" in arg.lower() or arg in _QDRANT_SERVER_FLAGS
+        for arg in sys.argv[1:]
+    )
 
     if (
         qdrant_requested
@@ -215,8 +223,13 @@ def run_server():
             config_manager.save_config("symserver.config.json", {"online": False})
     else:
         msg = (
-            "You're trying to run a local server without a valid neuro-symbolic engine model. "
-            "Please set a valid model in your configuration file. Current available options are 'llamacpp', 'huggingface' and 'qdrant'."
+            "You're trying to run a local server without a recognised engine configuration. "
+            "Options:\n"
+            "  - Qdrant (indexing/RAG):         set INDEXING_ENGINE=qdrant in symai.config.json, "
+            "or pass any qdrant_server flag (e.g. symserver --docker-detach)\n"
+            "  - llama.cpp (neuro-symbolic):    set NEUROSYMBOLIC_ENGINE_MODEL=llamacpp or "
+            "EMBEDDING_ENGINE_MODEL=llamacpp in symai.config.json\n"
+            "  - HuggingFace (neuro-symbolic):  set NEUROSYMBOLIC_ENGINE_MODEL=huggingface in symai.config.json"
         )
         UserMessage(msg, raise_with=ValueError)
 

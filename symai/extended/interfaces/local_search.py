@@ -8,9 +8,18 @@ if TYPE_CHECKING:
 
 
 class local_search(Expression):
-    def __init__(self, index_name: str = QdrantIndexEngine._default_index_name, *args, **kwargs):
+    def __init__(
+        self,
+        index_name: str = QdrantIndexEngine._default_index_name,
+        url: str | None = None,
+        api_key: str | None = None,
+        *args,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         self.index_name = index_name
+        self.url = url
+        self.api_key = api_key
         self.name = self.__class__.__name__
 
     def search(self, query: Symbol, **kwargs) -> "SearchResult":
@@ -31,7 +40,12 @@ class local_search(Expression):
         # Bypass decorator/EngineRepository pipeline entirely (and thus `forward()`).
         # We query Qdrant directly and then format results into the same SearchResult
         # structure used by `parallel.search` (citations, inline markers, etc.).
-        engine = QdrantIndexEngine(index_name=index_name)
+        engine_kwargs = {"index_name": index_name}
+        if self.url:
+            engine_kwargs["url"] = self.url
+        if self.api_key:
+            engine_kwargs["api_key"] = self.api_key
+        engine = QdrantIndexEngine(**engine_kwargs)
         try:
             score_threshold = options.pop("score_threshold", None)
             # Filter aliases:
