@@ -30,7 +30,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # Create singleton instance
 config_manager = settings.SymAIConfig()
 
-SYMAI_VERSION = "1.9.0"
+SYMAI_VERSION = "1.10.0"
 __version__ = SYMAI_VERSION
 __root_dir__ = config_manager.config_dir
 
@@ -141,8 +141,7 @@ def run_server():
     # Matches either a literal "qdrant" substring in any arg (e.g. --docker-image qdrant/qdrant)
     # OR any flag that is exclusive to qdrant_server.py (e.g. --docker-detach, --max-workers).
     qdrant_requested = any(
-        "qdrant" in arg.lower() or arg in _QDRANT_SERVER_FLAGS
-        for arg in sys.argv[1:]
+        "qdrant" in arg.lower() or arg in _QDRANT_SERVER_FLAGS for arg in sys.argv[1:]
     )
 
     if (
