@@ -39,14 +39,14 @@ Start Qdrant using the `symserver` CLI (Docker by default).
 # Pull the image once (recommended)
 docker pull qdrant/qdrant:latest
 
-# Docker (default): set INDEXING_ENGINE so symserver selects Qdrant
-INDEXING_ENGINE=qdrant symserver --host 0.0.0.0 --port 6333 --storage-path ./qdrant_storage
+# Docker (default)
+symserver qdrant --host 0.0.0.0 --port 6333 --storage-path ./qdrant_storage
 
 # Use native binary
-INDEXING_ENGINE=qdrant symserver --env binary --binary-path /path/to/qdrant --port 6333 --storage-path ./qdrant_storage
+symserver qdrant --env binary --binary-path /path/to/qdrant --port 6333 --storage-path ./qdrant_storage
 
 # Detach Docker if desired
-INDEXING_ENGINE=qdrant symserver --docker-detach
+symserver qdrant --docker-detach
 ```
 
 ##### Performance & security flags
@@ -83,6 +83,76 @@ INDEXING_ENGINE=qdrant symserver \
 # Set any arbitrary QDRANT__* knob (QDRANT__ prefix is added automatically if omitted)
 INDEXING_ENGINE=qdrant symserver --set COLLECTION__REPLICATION_FACTOR=2
 ```
+
+#### Preferred: Local Qdrant + RAG API layer (via symserver)
+
+SymbolicAI can also run a **Qdrant RAG API** (FastAPI served by uvicorn) alongside Qdrant. This is the **preferred setup** when you want:
+
+- remote clients (curl / JS / other services) to use your index over HTTP
+- a stable endpoint surface (`/search`, `/chunk-upsert`, `/collections`, etc.)
+- **performance scaling via multiple uvicorn workers** (set `--rag-workers` / `RAG_API_WORKERS`)
+
+Prerequisites (install the needed extras):
+
+```bash
+pip install "symbolicai[services,qdrant]"
+```
+
+Start Qdrant + the RAG API in one command:
+
+```bash
+# Starts Qdrant (6333/6334) plus RAG API (8080 by default)
+symserver qdrant --rag --rag-workers 4
+```
+
+Common flags (RAG API):
+
+- `--rag-host 0.0.0.0` (default: `RAG_API_HOST` or `0.0.0.0`)
+- `--rag-port 8080` (default: `RAG_API_PORT` or `8080`)
+- `--rag-workers 4` (default: `RAG_API_WORKERS` or `1`)
+- `--rag-token secret` (default: `RAG_API_TOKEN` or empty = no auth)
+- `--rag-reload` (dev only; or set `UVICORN_RELOAD=1`)
+
+Example with explicit ports + token:
+
+```bash
+symserver qdrant \
+  --port 6333 \
+  --grpc-port 6334 \
+  --rag \
+  --rag-host 0.0.0.0 \
+  --rag-port 8080 \
+  --rag-workers 4 \
+  --rag-token "secret"
+```
+
+##### Calling the RAG API (HTTP)
+
+Once running, you can interact with Qdrant over HTTP through the RAG API.
+If `--rag-token` / `RAG_API_TOKEN` is set, send it as a bearer token:
+
+```bash
+export BASE_URL="http://localhost:8080"
+export TOKEN="secret"
+
+# Health
+curl -H "Authorization: Bearer ${TOKEN}" "${BASE_URL}/healthz"
+
+# Chunk + upsert text into a collection
+curl -X POST "${BASE_URL}/chunk-upsert" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"index_name":"documents","text":"Long-form text here","metadata":{"source":"manual"}}'
+
+# Search (auto-embeds query via SymbolicAI)
+curl -X POST "${BASE_URL}/search" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"index_name":"documents","query":"hello","limit":5}'
+```
+
+The RAG API is implemented by `symai.server.qdrant_rag_api` and mirrors the `extensity-rag` endpoint surface:
+`/healthz`, `/search`, `/chunk-upsert`, `/points` (upsert/delete), `/retrieve`, and `/collections` (list/create/inspect/delete).
 
 #### Option 2: Cloud Qdrant
 

@@ -81,7 +81,7 @@ QdrantServerFlag = Enum(
     type=str,
 )
 del _FLAG_CATEGORIES
-_QDRANT_SERVER_FLAGS = frozenset(QdrantServerFlag)
+_QDRANT_SERVER_FLAGS = frozenset(flag.value for flag in QdrantServerFlag)
 
 
 def _build_qdrant_env(args) -> dict:
@@ -129,7 +129,7 @@ def _apply_tls_env(env, args, path_transform=lambda p: p):
         env["QDRANT__TLS__CA_CERT"] = path_transform(args.tls_ca_cert)
 
 
-def qdrant_server():
+def qdrant_server(argv: list[str] | None = None):
     """
     A wrapper for Qdrant server that supports both Docker and binary execution modes.
 
@@ -272,7 +272,18 @@ def qdrant_server():
         "The QDRANT__ prefix is added automatically if omitted.",
     )
 
-    main_args, qdrant_args = parser.parse_known_args()
+    argv = sys.argv[1:] if argv is None else argv
+    # The wrapper expects flags only; forwarding "qdrant" into docker mode turns it
+    # into the Docker COMMAND (docker run IMAGE qdrant) and breaks the entrypoint.
+    if argv and not argv[0].startswith("-") and argv[0].lower() == "qdrant":
+        argv = argv[1:]
+    if argv and not argv[0].startswith("-"):
+        logger.error(
+            "Unexpected positional argument '%s'. qdrant_server expects only flags (e.g. --port 6333).",
+            argv[0],
+        )
+        sys.exit(2)
+    main_args, qdrant_args = parser.parse_known_args(argv)
 
     if main_args.help:
         if main_args.env == "docker":
