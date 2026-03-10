@@ -1,8 +1,11 @@
+import argparse
 import json
 import logging
 import os
 import subprocess
 import sys
+import time
+import urllib.request
 import warnings
 
 from rich.console import Console
@@ -137,12 +140,59 @@ from .server.qdrant_server import _QDRANT_SERVER_FLAGS  # noqa: E402
 def run_server():
     _symserver_config_ = {}
 
+    def _save_symserver_config(config: dict, *, include_home: bool = False) -> None:
+        config_manager.save_config("symserver.config.json", config)
+        if include_home:
+            config_manager.save_config("symserver.config.json", config, fallback_to_home=True)
+
     # Check for explicit Qdrant server request via command line.
     # Matches either a literal "qdrant" substring in any arg (e.g. --docker-image qdrant/qdrant)
-    # OR any flag that is exclusive to qdrant_server.py (e.g. --docker-detach, --max-workers).
+    # or any flag that is exclusive to qdrant_server.py (e.g. --docker-detach, --max-workers).
     qdrant_requested = any(
         "qdrant" in arg.lower() or arg in _QDRANT_SERVER_FLAGS for arg in sys.argv[1:]
     )
+    rag_requested = any(arg == "--rag" or arg.startswith("--rag-api") for arg in sys.argv[1:])
+    uvicorn_reload_default = os.getenv("UVICORN_RELOAD", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+    def _args_to_config(args: list[str]) -> dict[str, object]:
+        """
+        Convert a CLI argv-like list into a dict.
+
+        Supports:
+        - key/value pairs: ["--port", "6333"]
+        - boolean flags: ["--no-cache"]
+        """
+        cfg: dict[str, object] = {}
+        i = 0
+        while i < len(args):
+            tok = args[i]
+            if not tok.startswith("--"):
+                i += 1
+                continue
+            if i + 1 < len(args) and not args[i + 1].startswith("--"):
+                cfg[tok] = args[i + 1]
+                i += 2
+            else:
+                cfg[tok] = True
+                i += 1
+        return cfg
+
+    def _wait_for_qdrant(url: str, *, max_retries: int = 40, delay_s: float = 0.5) -> bool:
+        max_retries = int(os.getenv("QDRANT_WAIT_RETRIES", str(max_retries)))
+        delay_s = float(os.getenv("QDRANT_WAIT_DELAY", str(delay_s)))
+        for _ in range(max_retries):
+            try:
+                with urllib.request.urlopen(f"{url}/collections", timeout=2) as resp:
+                    if 200 <= resp.status < 500:
+                        return True
+            except Exception:
+                time.sleep(delay_s)
+        return False
 
     if (
         qdrant_requested
@@ -157,26 +207,153 @@ def run_server():
     ):
         from .server.qdrant_server import qdrant_server  # noqa
 
-        command, args = qdrant_server()
-        _symserver_config_.update(zip(args[::2], args[1::2], strict=False))
+        # Optional RAG API companion server (FastAPI/uvicorn) configuration.
+        # We parse these args first, then pass the remaining args to the Qdrant wrapper.
+        rag_parser = argparse.ArgumentParser(add_help=False)
+        rag_parser.add_argument("--rag", "--rag-api", dest="rag_api", action="store_true", default=False)
+        rag_parser.add_argument(
+            "--rag-host",
+            "--rag-api-host",
+            dest="rag_api_host",
+            type=str,
+            default=os.getenv("RAG_API_HOST", "0.0.0.0"),
+        )
+        rag_parser.add_argument(
+            "--rag-port",
+            "--rag-api-port",
+            dest="rag_api_port",
+            type=int,
+            default=int(os.getenv("RAG_API_PORT", "8080")),
+        )
+        rag_parser.add_argument(
+            "--rag-workers",
+            "--rag-api-workers",
+            dest="rag_api_workers",
+            type=int,
+            default=int(os.getenv("RAG_API_WORKERS", "1")),
+        )
+        rag_parser.add_argument(
+            "--rag-token",
+            "--rag-api-token",
+            dest="rag_api_token",
+            type=str,
+            default=os.getenv("RAG_API_TOKEN", ""),
+        )
+        rag_parser.add_argument(
+            "--rag-reload",
+            "--rag-api-reload",
+            dest="rag_api_reload",
+            action="store_true",
+            default=uvicorn_reload_default,
+            help="Enable uvicorn reload (dev only).",
+        )
+
+        rag_args, qdrant_argv = rag_parser.parse_known_args(sys.argv[1:])
+        rag_enabled = bool(rag_args.rag_api or rag_requested)
+
+        command, args = qdrant_server(qdrant_argv)
+        qdrant_cfg = _args_to_config(args)
+        _symserver_config_.update(qdrant_cfg)
         _symserver_config_["online"] = True
-        _symserver_config_["url"] = (
-            f"http://{_symserver_config_.get('--host', 'localhost')}:{_symserver_config_.get('--port', 6333)}"
-        )
+        qdrant_port = int(str(qdrant_cfg.get("--port", "6333")))
+        qdrant_url = f"http://127.0.0.1:{qdrant_port}"
+        _symserver_config_["url"] = qdrant_url
 
-        config_manager.save_config("symserver.config.json", _symserver_config_)
-        config_manager.save_config(
-            "symserver.config.json", _symserver_config_, fallback_to_home=True
-        )
+        if rag_enabled:
+            _symserver_config_["rag_api"] = {
+                "enabled": True,
+                "host": rag_args.rag_api_host,
+                "port": rag_args.rag_api_port,
+                "workers": rag_args.rag_api_workers,
+                "reload": bool(rag_args.rag_api_reload),
+                "token_required": bool(rag_args.rag_api_token),
+                "url": f"http://{rag_args.rag_api_host}:{rag_args.rag_api_port}",
+            }
 
+        _save_symserver_config(_symserver_config_, include_home=True)
+
+        qdrant_proc = None
+        api_proc = None
+        qdrant_detached = False
         try:
-            subprocess.run(command, check=True)
+            if not rag_enabled:
+                subprocess.run(command, check=True)
+                return
+
+            qdrant_proc = subprocess.Popen(command)
+            qdrant_detached = "-d" in command
+            if qdrant_detached:
+                qdrant_exit = qdrant_proc.wait(timeout=30)
+                if qdrant_exit != 0:
+                    msg = f"Qdrant docker process exited with code {qdrant_exit}"
+                    raise RuntimeError(msg)
+
+            if not _wait_for_qdrant(qdrant_url):
+                msg = "Qdrant did not become ready in time"
+                raise RuntimeError(msg)
+
+            uvicorn_cmd = [
+                sys.executable,
+                "-m",
+                "uvicorn",
+                "symai.server.qdrant_rag_api:app",
+                "--host",
+                rag_args.rag_api_host,
+                "--port",
+                str(rag_args.rag_api_port),
+                "--workers",
+                str(rag_args.rag_api_workers),
+            ]
+            if rag_args.rag_api_reload:
+                uvicorn_cmd.append("--reload")
+
+            api_env = os.environ.copy()
+            api_env["SYMAI_QDRANT_URL"] = qdrant_url
+            api_env["INDEXING_ENGINE_URL"] = qdrant_url
+            if rag_args.rag_api_token:
+                api_env["RAG_API_TOKEN"] = rag_args.rag_api_token
+
+            api_proc = subprocess.Popen(uvicorn_cmd, env=api_env)
+
+            # Wait until one of the processes exits.
+            while True:
+                api_rc = api_proc.poll()
+                if api_rc is not None:
+                    msg = f"RAG API exited with code {api_rc}"
+                    raise RuntimeError(msg)
+                if not qdrant_detached:
+                    q_rc = qdrant_proc.poll()
+                    if q_rc is not None:
+                        msg = f"Qdrant exited with code {q_rc}"
+                        raise RuntimeError(msg)
+                time.sleep(0.25)
         except KeyboardInterrupt:
             UserMessage("Server stopped!")
         except Exception as e:
             UserMessage(f"Error running server: {e}")
         finally:
-            config_manager.save_config("symserver.config.json", {"online": False})
+            # Best-effort shutdown for companion processes (if used).
+            try:
+                if rag_enabled and api_proc is not None:
+                    api_proc.terminate()
+            except Exception:
+                pass
+            try:
+                if rag_enabled and qdrant_proc is not None and not qdrant_detached:
+                    qdrant_proc.terminate()
+            except Exception:
+                pass
+
+            # If Qdrant was started detached in docker mode, stop the container explicitly.
+            try:
+                docker_name = _symserver_config_.get("--docker-container-name")
+                if rag_enabled and qdrant_detached and docker_name:
+                    subprocess.run(["docker", "stop", str(docker_name)], check=False)
+            except Exception:
+                pass
+
+            _symserver_config_["online"] = False
+            _save_symserver_config(_symserver_config_)
     elif settings.SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL").startswith(
         "llama"
     ) or settings.SYMAI_CONFIG.get("EMBEDDING_ENGINE_MODEL").startswith("llama"):
@@ -187,11 +364,8 @@ def run_server():
         _symserver_config_.update(zip(args[::2], args[1::2], strict=False))
         _symserver_config_["online"] = True
 
-        config_manager.save_config("symserver.config.json", _symserver_config_)
         # @NOTE: Save in both places since you can start the server from anywhere and still not have a nesy engine configured
-        config_manager.save_config(
-            "symserver.config.json", _symserver_config_, fallback_to_home=True
-        )
+        _save_symserver_config(_symserver_config_, include_home=True)
 
         try:
             subprocess.run(command, check=True)
@@ -200,7 +374,8 @@ def run_server():
         except Exception as e:
             UserMessage(f"Error running server: {e}")
         finally:
-            config_manager.save_config("symserver.config.json", {"online": False})
+            _symserver_config_["online"] = False
+            _save_symserver_config(_symserver_config_)
 
     elif settings.SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL").startswith("huggingface"):
         # HuggingFace server stack is optional; import only when requested.
@@ -210,7 +385,7 @@ def run_server():
         _symserver_config_.update(vars(args))
         _symserver_config_["online"] = True
 
-        config_manager.save_config("symserver.config.json", _symserver_config_)
+        _save_symserver_config(_symserver_config_)
 
         try:
             command(host=args.host, port=args.port)
@@ -219,7 +394,8 @@ def run_server():
         except Exception as e:
             UserMessage(f"Error running server: {e}")
         finally:
-            config_manager.save_config("symserver.config.json", {"online": False})
+            _symserver_config_["online"] = False
+            _save_symserver_config(_symserver_config_)
     else:
         msg = (
             "You're trying to run a local server without a recognised engine configuration. "

@@ -1,0 +1,564 @@
+from __future__ import annotations
+
+import logging
+import os
+import uuid
+from collections.abc import Sequence
+from pathlib import Path
+from threading import Lock
+from typing import Any
+
+from fastapi import Depends, FastAPI, Header, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from symai.backend.engines.index.engine_qdrant import QdrantIndexEngine
+from symai.core import Argument
+from symai.symbol import Symbol as SymaiSymbol
+
+logger = logging.getLogger(__name__)
+
+
+def _env_int(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None or raw == "":
+        return default
+    try:
+        return int(raw)
+    except ValueError as exc:
+        msg = f"Environment variable {name} must be an integer"
+        raise RuntimeError(msg) from exc
+
+
+def _env_str(name: str, default: str | None = None) -> str | None:
+    raw = os.getenv(name)
+    if raw is None or raw == "":
+        return default
+    return raw
+
+
+class ApiSettings(BaseModel):
+    # Qdrant connection (prefer SYMAI_QDRANT_URL, fallback to INDEXING_ENGINE_URL)
+    qdrant_url: str | None = Field(
+        default_factory=lambda: _env_str("SYMAI_QDRANT_URL", _env_str("INDEXING_ENGINE_URL"))
+    )
+    qdrant_api_key: str | None = Field(default_factory=lambda: _env_str("INDEXING_ENGINE_API_KEY"))
+
+    # Default collection/index settings
+    index_name: str = Field(default_factory=lambda: os.getenv("SYMAI_INDEX_NAME", "dataindex"))
+    index_dims: int = Field(default_factory=lambda: _env_int("SYMAI_INDEX_DIMS", 1536))
+    index_top_k: int = Field(default_factory=lambda: _env_int("SYMAI_INDEX_TOP_K", 5))
+    index_metric: str = Field(default_factory=lambda: os.getenv("SYMAI_INDEX_METRIC", "Cosine"))
+    tokenizer_name: str = Field(default_factory=lambda: os.getenv("SYMAI_TOKENIZER", "gpt2"))
+    embedding_model_name: str = Field(
+        default_factory=lambda: os.getenv("SYMAI_EMBED_MODEL", "minishlab/potion-base-8M")
+    )
+
+    # API auth
+    rag_api_token: str | None = Field(default_factory=lambda: _env_str("RAG_API_TOKEN"))
+
+SETTINGS = ApiSettings()
+
+class VectorPoint(BaseModel):
+    id: int | str | uuid.UUID
+    vector: list[float] = Field(..., min_items=1)
+    payload: dict[str, Any] | None = None
+
+    @field_validator("id", mode="before")
+    @classmethod
+    def _convert_id(cls, value: Any) -> int | uuid.UUID:
+        """Convert ID to valid Qdrant format: unsigned int or UUID.
+
+        Matches engine's _normalize_point_id logic:
+        - Handles "vec-1" style IDs by extracting the number part
+        - Converts other strings to UUID if not parseable as int
+        """
+        if isinstance(value, uuid.UUID):
+            return value
+        if isinstance(value, int):
+            if value < 0:
+                msg = "Point ID must be a non-negative integer or UUID"
+                raise ValueError(msg)
+            return value
+        if isinstance(value, str):
+            if value.startswith("vec-"):
+                try:
+                    num_str = value.split("-", 1)[-1]
+                    int_id = int(num_str)
+                    if int_id < 0:
+                        msg = "Point ID must be a non-negative integer or UUID"
+                        raise ValueError(msg)
+                    return int_id
+                except (ValueError, AttributeError):
+                    pass
+            try:
+                int_id = int(value)
+                if int_id < 0:
+                    msg = "Point ID must be a non-negative integer or UUID"
+                    raise ValueError(msg)
+                return int_id
+            except ValueError:
+                try:
+                    return uuid.UUID(value)
+                except (ValueError, AttributeError):
+                    return uuid.uuid5(uuid.NAMESPACE_DNS, value)
+        msg = f"Point ID must be a non-negative integer, UUID, or string (got {type(value)})"
+        raise ValueError(msg)
+
+    @field_validator("vector")
+    @classmethod
+    def _flatten_vectors(cls, value: Sequence[float]) -> list[float]:
+        if not isinstance(value, Sequence) or isinstance(value, (str, bytes)):
+            msg = "vector must be a numeric sequence"
+            raise ValueError(msg)
+        try:
+            return [float(v) for v in value]
+        except (TypeError, ValueError) as exc:
+            msg = "vector must contain numeric values"
+            raise ValueError(msg) from exc
+
+
+class PointsUpsertRequest(BaseModel):
+    index_name: str | None = Field(default=None, description="Qdrant collection name.")
+    points: list[VectorPoint] = Field(..., min_items=1)
+
+
+class SearchRequest(BaseModel):
+    index_name: str | None = None
+    query: str | None = Field(default=None, description="Plain-text query embedded via SymbolicAI.")
+    embedding: list[float] | None = Field(default=None, description="Custom embedding vector.")
+    limit: int | None = None
+    score_threshold: float | None = None
+    filter: dict[str, Any] | None = None
+    with_payload: bool = True
+    with_vectors: bool = False
+
+    @model_validator(mode="before")
+    @classmethod
+    def _require_query_or_embedding(cls, values: Any) -> Any:
+        if isinstance(values, dict) and not values.get("query") and not values.get("embedding"):
+            msg = "Either `query` or `embedding` must be provided."
+            raise ValueError(msg)
+        return values
+
+    @field_validator("embedding")
+    @classmethod
+    def _normalize_embedding(cls, value: Sequence[float] | None) -> list[float] | None:
+        if value is None:
+            return None
+        if not isinstance(value, Sequence) or isinstance(value, (str, bytes)):
+            msg = "embedding must be a numeric sequence"
+            raise ValueError(msg)
+        try:
+            return [float(v) for v in value]
+        except (TypeError, ValueError) as exc:
+            msg = "embedding must contain numeric values"
+            raise ValueError(msg) from exc
+
+
+class SearchMatch(BaseModel):
+    id: int | str | None = None
+    score: float
+    payload: dict[str, Any] | None = None
+    vector: list[float] | None = None
+
+
+class SearchResponse(BaseModel):
+    matches: list[SearchMatch]
+
+
+class ChunkUpsertRequest(BaseModel):
+    index_name: str | None = None
+    text: str | None = None
+    document_path: str | None = None
+    document_url: str | None = None
+    metadata: dict[str, Any] | None = None
+    chunker_name: str | None = None
+    chunker_kwargs: dict[str, Any] | None = None
+    start_id: int | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _validate_payload(cls, values: Any) -> Any:
+        if isinstance(values, dict) and not any(
+            values.get(k) for k in ("text", "document_path", "document_url")
+        ):
+            msg = "Provide one of text, document_path, or document_url."
+            raise ValueError(msg)
+        return values
+
+
+class CollectionCreateRequest(BaseModel):
+    name: str
+    vector_size: int | None = None
+    distance: str | None = None
+
+
+class RetrieveRequest(BaseModel):
+    index_name: str | None = None
+    ids: list[int | str | uuid.UUID] = Field(..., min_items=1)
+    with_payload: bool = True
+    with_vectors: bool = False
+
+    @field_validator("ids", mode="before")
+    @classmethod
+    def _convert_ids(cls, value: Any) -> list[int | uuid.UUID]:
+        if not isinstance(value, list):
+            msg = "ids must be a list"
+            raise ValueError(msg)
+        return [VectorPoint._convert_id(v) for v in value]
+
+
+class DeletePointsRequest(BaseModel):
+    index_name: str | None = None
+    ids: list[int | str | uuid.UUID] = Field(..., min_items=1)
+
+    @field_validator("ids", mode="before")
+    @classmethod
+    def _convert_ids(cls, value: Any) -> list[int | uuid.UUID]:
+        if not isinstance(value, list):
+            msg = "ids must be a list"
+            raise ValueError(msg)
+        return [VectorPoint._convert_id(v) for v in value]
+
+
+app = FastAPI(
+    title="SymbolicAI Qdrant RAG API",
+    version="0.1.0",
+    description="FastAPI wrapper exposing Qdrant-backed indexing utilities.",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+ENGINE: QdrantIndexEngine | None = None
+ENGINE_LOCK = Lock()
+
+
+def _ensure_symbolicai_available() -> None:
+    if QdrantIndexEngine is None:  # pragma: no cover - depends on runtime env
+        msg = (
+            "SymbolicAI is not installed. Install the `symbolicai[qdrant]` extra before "
+            "running the API."
+        )
+        raise RuntimeError(msg)
+
+
+def _build_engine() -> QdrantIndexEngine:
+    _ensure_symbolicai_available()
+    assert QdrantIndexEngine is not None
+    return QdrantIndexEngine(
+        url=SETTINGS.qdrant_url,
+        api_key=SETTINGS.qdrant_api_key,
+        index_name=SETTINGS.index_name,
+        index_dims=SETTINGS.index_dims,
+        index_top_k=SETTINGS.index_top_k,
+        index_metric=SETTINGS.index_metric,
+        tokenizer_name=SETTINGS.tokenizer_name,
+        embedding_model_name=SETTINGS.embedding_model_name,
+    )
+
+
+async def get_engine() -> QdrantIndexEngine:
+    global ENGINE
+    if ENGINE is not None:
+        return ENGINE
+    with ENGINE_LOCK:
+        if ENGINE is None:
+            ENGINE = _build_engine()
+    assert ENGINE is not None
+    return ENGINE
+
+
+def _resolve_index_name(name: str | None) -> str:
+    return name or SETTINGS.index_name
+
+
+def _translate_document_path(path: str) -> str:
+    """Translate host file paths to container paths used by extensity-rag."""
+    if not path:
+        return path
+
+    project_name = "Qdrant-symai-server-api"
+    container_root = Path("/opt/qdrant-rag")
+    if path.startswith(str(container_root)):
+        return path
+    if project_name in path:
+        idx = path.find(project_name)
+        if idx != -1:
+            relative_part = path[idx + len(project_name) :].lstrip("/")
+            translated = (container_root / relative_part).resolve()
+            translated_str = str(translated)
+            logger.debug("Translated path: %s -> %s", path, translated_str)
+            return translated_str
+    return path
+
+
+def _serialize_point(point: Any) -> dict[str, Any]:
+    if isinstance(point, dict):
+        resp: dict[str, Any] = {
+            "id": point.get("id"),
+            "payload": point.get("payload"),
+            "vector": point.get("vector"),
+        }
+        score = point.get("score")
+        if score is not None:
+            resp["score"] = float(score)
+        return resp
+
+    payload = getattr(point, "payload", None)
+    vector = getattr(point, "vector", None)
+    score = getattr(point, "score", None)
+    resp = {"id": getattr(point, "id", None), "payload": payload, "vector": vector}
+    if score is not None:
+        resp["score"] = float(score)
+    return resp
+
+
+def _embedding_from_query(query: str) -> list[float]:
+    symbol_cls = SymaiSymbol
+    if symbol_cls is None:  # pragma: no cover
+        detail = "SymbolicAI is not installed; cannot transform queries into embeddings."
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=detail,
+        )
+
+    symbol = symbol_cls(query)
+    embedding = getattr(symbol, "embedding", None)
+    if embedding is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="SymbolicAI returned an empty embedding for the supplied query.",
+        )
+
+    if Argument is not None and isinstance(embedding, Argument):
+        embedding = getattr(embedding, "value", embedding)
+    if hasattr(embedding, "tolist"):
+        embedding = embedding.tolist()
+
+    if not isinstance(embedding, Sequence) or isinstance(embedding, (str, bytes)):
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="SymbolicAI produced an unsupported embedding payload.",
+        )
+
+    if embedding and isinstance(embedding[0], Sequence) and not isinstance(embedding[0], (str, bytes)):
+        if len(embedding) == 1:
+            embedding = embedding[0]
+        else:
+            embedding = [item for sub in embedding for item in sub]
+
+    try:
+        return [float(v) for v in embedding]
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="SymbolicAI embeddings must be numeric.",
+        ) from exc
+
+
+async def require_token(
+    authorization: str | None = Header(default=None, alias="Authorization"),
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> None:
+    expected = SETTINGS.rag_api_token
+    if not expected:
+        return
+
+    provided: str | None = None
+    if authorization:
+        scheme, _, token = authorization.partition(" ")
+        if scheme.lower() == "bearer":
+            provided = token.strip()
+        elif not token:
+            provided = scheme.strip()
+    if not provided and x_api_key:
+        provided = x_api_key.strip()
+
+    if provided != expected:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing authentication token.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+@app.get("/", dependencies=[Depends(require_token)])
+async def root() -> dict[str, Any]:
+    return {"service": "SymbolicAI Qdrant RAG", "docs": "/docs", "default_index": SETTINGS.index_name}
+
+
+@app.get("/healthz", dependencies=[Depends(require_token)])
+async def healthz(engine: QdrantIndexEngine = Depends(get_engine)) -> dict[str, Any]:  # noqa: B008
+    try:
+        collections = await engine.list_collections()
+        ready = True
+    except Exception as exc:  # pragma: no cover
+        logger.exception("Health check failed while listing collections: %s", exc)
+        collections = []
+        ready = False
+    return {
+        "status": "ok" if ready else "degraded",
+        "ready": ready,
+        "collections": collections,
+        "index_name": SETTINGS.index_name,
+        "qdrant_url": SETTINGS.qdrant_url,
+        "token_required": bool(SETTINGS.rag_api_token),
+    }
+
+
+@app.post("/points", dependencies=[Depends(require_token)])
+async def upsert_points(
+    payload: PointsUpsertRequest, engine: QdrantIndexEngine = Depends(get_engine)  # noqa: B008
+) -> dict[str, Any]:
+    collection = _resolve_index_name(payload.index_name)
+    points_data: list[dict[str, Any]] = []
+    for point in payload.points:
+        point_dict = point.model_dump(mode="python")
+        if isinstance(point_dict.get("id"), uuid.UUID):
+            point_dict["id"] = str(point_dict["id"])
+        points_data.append(point_dict)
+    await engine.upsert(collection_name=collection, points=points_data)
+    return {"points_upserted": len(payload.points), "collection": collection}
+
+
+@app.delete("/points", dependencies=[Depends(require_token)])
+async def delete_points(
+    payload: DeletePointsRequest, engine: QdrantIndexEngine = Depends(get_engine)  # noqa: B008
+) -> dict[str, Any]:
+    collection = _resolve_index_name(payload.index_name)
+    ids = [str(v) if isinstance(v, uuid.UUID) else v for v in payload.ids]
+    await engine.delete(collection_name=collection, points_selector=ids)
+    return {"points_deleted": len(ids), "collection": collection}
+
+
+@app.post("/retrieve", dependencies=[Depends(require_token)])
+async def retrieve_points(
+    payload: RetrieveRequest, engine: QdrantIndexEngine = Depends(get_engine)  # noqa: B008
+) -> dict[str, Any]:
+    collection = _resolve_index_name(payload.index_name)
+    results = await engine.retrieve(
+        collection_name=collection,
+        ids=payload.ids,
+        with_payload=payload.with_payload,
+        with_vectors=payload.with_vectors,
+    )
+    return {"collection": collection, "points": [_serialize_point(p) for p in results]}
+
+
+@app.post("/search", response_model=SearchResponse, dependencies=[Depends(require_token)])
+async def search(
+    payload: SearchRequest, engine: QdrantIndexEngine = Depends(get_engine)  # noqa: B008
+) -> SearchResponse:
+    collection = _resolve_index_name(payload.index_name)
+    vector = payload.embedding or _embedding_from_query(payload.query or "")
+
+    expected_dim = SETTINGS.index_dims
+    if isinstance(vector, Sequence) and not isinstance(vector, (str, bytes)):
+        try:
+            vector = [float(v) for v in vector]
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Search embedding must contain numeric values.",
+            ) from exc
+
+        original_size = len(vector)
+        if original_size != expected_dim:
+            if original_size > expected_dim:
+                vector = vector[:expected_dim]
+            else:
+                vector = vector + [0.0] * (expected_dim - original_size)
+
+    query_filter = None
+    if payload.filter:
+        query_filter = payload.filter
+
+    results = await engine.search(
+        collection_name=collection,
+        query_vector=vector,
+        limit=payload.limit or SETTINGS.index_top_k,
+        score_threshold=payload.score_threshold,
+        query_filter=query_filter,
+    )
+
+    matches: list[SearchMatch] = []
+    for match in results:
+        serialized = _serialize_point(match)
+        matches.append(
+            SearchMatch(
+                id=serialized.get("id"),
+                score=float(serialized.get("score", 0.0)),
+                payload=serialized.get("payload"),
+                vector=serialized.get("vector") if payload.with_vectors else None,
+            )
+        )
+    return SearchResponse(matches=matches)
+
+
+@app.post("/chunk-upsert", dependencies=[Depends(require_token)])
+async def chunk_and_upsert(
+    payload: ChunkUpsertRequest, engine: QdrantIndexEngine = Depends(get_engine)  # noqa: B008
+) -> dict[str, Any]:
+    collection = _resolve_index_name(payload.index_name)
+    kwargs: dict[str, Any] = {"collection_name": collection}
+    if payload.text:
+        kwargs["text"] = payload.text
+    if payload.document_path:
+        kwargs["document_path"] = _translate_document_path(payload.document_path)
+    if payload.document_url:
+        kwargs["document_url"] = payload.document_url
+    if payload.metadata:
+        kwargs["metadata"] = payload.metadata
+    if payload.chunker_name:
+        kwargs["chunker_name"] = payload.chunker_name
+    if payload.chunker_kwargs:
+        kwargs["chunker_kwargs"] = payload.chunker_kwargs
+    if payload.start_id is not None:
+        kwargs["start_id"] = payload.start_id
+
+    chunks_indexed = await engine.chunk_and_upsert(**kwargs)
+    return {"chunks_indexed": chunks_indexed, "collection": collection}
+
+
+@app.get("/collections", dependencies=[Depends(require_token)])
+async def list_collections(engine: QdrantIndexEngine = Depends(get_engine)) -> dict[str, Any]:  # noqa: B008
+    collections = await engine.list_collections()
+    return {"collections": collections}
+
+
+@app.post("/collections", dependencies=[Depends(require_token)])
+async def create_collection(
+    payload: CollectionCreateRequest, engine: QdrantIndexEngine = Depends(get_engine)  # noqa: B008
+) -> dict[str, Any]:
+    vector_size = payload.vector_size or SETTINGS.index_dims
+    distance = payload.distance or SETTINGS.index_metric
+    await engine.create_collection(
+        collection_name=payload.name,
+        vector_size=vector_size,
+        distance=distance,
+    )
+    return {"collection": payload.name, "vector_size": vector_size, "distance": distance}
+
+
+@app.get("/collections/{name}", dependencies=[Depends(require_token)])
+async def get_collection(
+    name: str, engine: QdrantIndexEngine = Depends(get_engine)  # noqa: B008
+) -> dict[str, Any]:
+    info = await engine.get_collection_info(collection_name=name)
+    return {"collection": name, "info": info}
+
+
+@app.delete("/collections/{name}", dependencies=[Depends(require_token)])
+async def delete_collection(
+    name: str, engine: QdrantIndexEngine = Depends(get_engine)  # noqa: B008
+) -> dict[str, Any]:
+    await engine.delete_collection(collection_name=name)
+    return {"collection": name, "deleted": True}
+
