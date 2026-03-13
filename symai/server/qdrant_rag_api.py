@@ -222,6 +222,37 @@ class DeletePointsRequest(BaseModel):
         return [VectorPoint._convert_id(v) for v in value]
 
 
+class MetadataFilterRequest(BaseModel):
+    index_name: str | None = None
+    metadata: dict[str, Any]
+    exact: bool = True
+
+    @field_validator("metadata")
+    @classmethod
+    def _validate_metadata(cls, value: dict[str, Any]) -> dict[str, Any]:
+        if not isinstance(value, dict) or not value:
+            msg = "metadata must be a non-empty object"
+            raise ValueError(msg)
+        return value
+
+
+class MetadataListRequest(BaseModel):
+    index_name: str | None = None
+    metadata: dict[str, Any]
+    batch_size: int = Field(default=256, ge=1, le=4096)
+    max_points: int = Field(default=20000, ge=1, le=100000)
+    with_payload: bool = True
+    with_vectors: bool = False
+
+    @field_validator("metadata")
+    @classmethod
+    def _validate_metadata(cls, value: dict[str, Any]) -> dict[str, Any]:
+        if not isinstance(value, dict) or not value:
+            msg = "metadata must be a non-empty object"
+            raise ValueError(msg)
+        return value
+
+
 app = FastAPI(
     title="SymbolicAI Qdrant RAG API",
     version="0.1.0",
@@ -436,6 +467,80 @@ async def delete_points(
     ids = [str(v) if isinstance(v, uuid.UUID) else v for v in payload.ids]
     await engine.delete(collection_name=collection, points_selector=ids)
     return {"points_deleted": len(ids), "collection": collection}
+
+
+@app.post("/points/count-by-metadata", dependencies=[Depends(require_token)])
+async def count_points_by_metadata(
+    payload: MetadataFilterRequest,
+    engine: QdrantIndexEngine = Depends(get_engine),  # noqa: B008
+) -> dict[str, Any]:
+    collection = _resolve_index_name(payload.index_name)
+    count = await engine.count(
+        collection_name=collection,
+        query_filter=payload.metadata,
+        exact=payload.exact,
+    )
+    return {"count": int(count), "collection": collection}
+
+
+@app.post("/points/delete-by-metadata", dependencies=[Depends(require_token)])
+async def delete_points_by_metadata(
+    payload: MetadataFilterRequest,
+    engine: QdrantIndexEngine = Depends(get_engine),  # noqa: B008
+) -> dict[str, Any]:
+    collection = _resolve_index_name(payload.index_name)
+    count = await engine.count(
+        collection_name=collection,
+        query_filter=payload.metadata,
+        exact=payload.exact,
+    )
+    await engine.delete_by_filter(
+        collection_name=collection,
+        query_filter=payload.metadata,
+    )
+    return {"points_deleted": int(count), "collection": collection}
+
+
+@app.post("/points/list-by-metadata", dependencies=[Depends(require_token)])
+async def list_points_by_metadata(
+    payload: MetadataListRequest,
+    engine: QdrantIndexEngine = Depends(get_engine),  # noqa: B008
+) -> dict[str, Any]:
+    collection = _resolve_index_name(payload.index_name)
+    engine._ensure_collection_exists(collection)
+    built_filter = engine._build_query_filter(payload.metadata)
+    if built_filter is None:
+        detail = "metadata filter must not be empty"
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=detail,
+        )
+
+    points: list[dict[str, Any]] = []
+    offset: Any | None = None
+    while len(points) < payload.max_points:
+        records, next_offset = engine.client.scroll(
+            collection_name=collection,
+            scroll_filter=built_filter,
+            limit=payload.batch_size,
+            offset=offset,
+            with_payload=payload.with_payload,
+            with_vectors=payload.with_vectors,
+        )
+        if not records:
+            break
+        for record in records:
+            serialized = _serialize_point(record)
+            if not payload.with_vectors:
+                serialized["vector"] = None
+            points.append(serialized)
+            if len(points) >= payload.max_points:
+                break
+        if len(points) >= payload.max_points or next_offset is None:
+            break
+        offset = next_offset
+
+    return {"points": points, "collection": collection}
 
 
 @app.post("/retrieve", dependencies=[Depends(require_token)])

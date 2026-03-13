@@ -182,12 +182,22 @@ def run_server():
                 i += 1
         return cfg
 
-    def _wait_for_qdrant(url: str, *, max_retries: int = 40, delay_s: float = 0.5) -> bool:
+    def _wait_for_qdrant(
+        url: str,
+        *,
+        api_key: str | None = None,
+        max_retries: int = 40,
+        delay_s: float = 0.5,
+    ) -> bool:
         max_retries = int(os.getenv("QDRANT_WAIT_RETRIES", str(max_retries)))
         delay_s = float(os.getenv("QDRANT_WAIT_DELAY", str(delay_s)))
+        headers = {}
+        if api_key:
+            headers["api-key"] = api_key
         for _ in range(max_retries):
             try:
-                with urllib.request.urlopen(f"{url}/collections", timeout=2) as resp:
+                req = urllib.request.Request(f"{url}/collections", headers=headers)
+                with urllib.request.urlopen(req, timeout=2) as resp:
                     if 200 <= resp.status < 500:
                         return True
             except Exception:
@@ -288,7 +298,8 @@ def run_server():
                     msg = f"Qdrant docker process exited with code {qdrant_exit}"
                     raise RuntimeError(msg)
 
-            if not _wait_for_qdrant(qdrant_url):
+            qdrant_api_key = str(qdrant_cfg.get("--api-key", "")).strip() or None
+            if not _wait_for_qdrant(qdrant_url, api_key=qdrant_api_key):
                 msg = "Qdrant did not become ready in time"
                 raise RuntimeError(msg)
 
@@ -310,6 +321,13 @@ def run_server():
             api_env = os.environ.copy()
             api_env["SYMAI_QDRANT_URL"] = qdrant_url
             api_env["INDEXING_ENGINE_URL"] = qdrant_url
+            # Keep RAG API->Qdrant auth aligned with how qdrant was started.
+            # Priority: explicit INDEXING_ENGINE_API_KEY > qdrant --api-key.
+            indexing_api_key = (
+                str(api_env.get("INDEXING_ENGINE_API_KEY", "")).strip() or qdrant_api_key or ""
+            )
+            if indexing_api_key:
+                api_env["INDEXING_ENGINE_API_KEY"] = indexing_api_key
             if rag_args.rag_api_token:
                 api_env["RAG_API_TOKEN"] = rag_args.rag_api_token
 
