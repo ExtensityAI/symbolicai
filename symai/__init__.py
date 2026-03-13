@@ -33,7 +33,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # Create singleton instance
 config_manager = settings.SymAIConfig()
 
-SYMAI_VERSION = "1.10.0"
+SYMAI_VERSION = "1.11.0"
 __version__ = SYMAI_VERSION
 __root_dir__ = config_manager.config_dir
 
@@ -220,7 +220,9 @@ def run_server():
         # Optional RAG API companion server (FastAPI/uvicorn) configuration.
         # We parse these args first, then pass the remaining args to the Qdrant wrapper.
         rag_parser = argparse.ArgumentParser(add_help=False)
-        rag_parser.add_argument("--rag", "--rag-api", dest="rag_api", action="store_true", default=False)
+        rag_parser.add_argument(
+            "--rag", "--rag-api", dest="rag_api", action="store_true", default=False
+        )
         rag_parser.add_argument(
             "--rag-host",
             "--rag-api-host",
