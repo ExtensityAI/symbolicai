@@ -4,6 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.uv]
 package = true
+constraint-dependencies = ["pyjwt>=2.12.0"]
 
 [project]
 name = "symbolicai"
