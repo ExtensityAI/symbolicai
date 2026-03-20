@@ -35,6 +35,8 @@ SUPPORTED_REASONING_MODELS = [
     "gpt-5-mini",
     "gpt-5-nano",
     "gpt-5.4",
+    "gpt-5.4-mini",
+    "gpt-5.4-nano",
 ]
 SUPPORTED_EMBEDDING_MODELS = [
     "text-embedding-ada-002",
@@ -110,6 +112,8 @@ class OpenAIMixin:
             or self.model == "gpt-5-nano"
             or self.model == "gpt-5-pro"
             or self.model == "gpt-5.2-pro"
+            or self.model == "gpt-5.4-mini"
+            or self.model == "gpt-5.4-nano"
         ):
             return 400_000
         if self.model == "gpt-4.1" or self.model == "gpt-4.1-mini" or self.model == "gpt-4.1-nano":
@@ -165,6 +169,8 @@ class OpenAIMixin:
             or self.model == "gpt-5.2-pro"
             or self.model == "gpt-5.4"
             or self.model == "gpt-5.4-pro"
+            or self.model == "gpt-5.4-mini"
+            or self.model == "gpt-5.4-nano"
         ):
             return 128_000
         if self.model == "gpt-5-pro":
