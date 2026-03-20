@@ -21,7 +21,7 @@ from anthropic.types import (
 from ....components import SelfPrompt
 from ....utils import UserMessage, encode_media_frames
 from ...base import Engine
-from ...mixin.anthropic import CACHE_CONTROL_1H, AnthropicMixin
+from ...mixin.anthropic import AnthropicMixin
 from ...settings import SYMAI_CONFIG
 
 logging.getLogger("anthropic").setLevel(logging.ERROR)
@@ -443,7 +443,7 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         tool_choice = kwargs.get("tool_choice", NOT_GIVEN)
         metadata_anthropic = kwargs.get("metadata", NOT_GIVEN)
         max_tokens = kwargs.get("max_tokens", self.max_response_tokens)
-        cache_control = kwargs.get("cache_control", CACHE_CONTROL_1H)
+        cache_control = self.resolve_cache_control(kwargs.get("cache_control"))
         response_format = kwargs.get("response_format", argument.prop.response_format)
         output_config = self._build_output_config(response_format)
         output_config = self._merge_output_config_effort(output_config, adaptive_effort)
@@ -469,8 +469,9 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
             "tools": tools,
             "tool_choice": tool_choice,
             "output_config": output_config,
-            "extra_body": {"cache_control": cache_control},
         }
+        if cache_control is not None:
+            payload["extra_body"] = {"cache_control": cache_control}
         if extra_headers is not None:
             payload["extra_headers"] = extra_headers
 

@@ -34,6 +34,12 @@ ADAPTIVE_THINKING_MODELS = {"claude-opus-4-6", "claude-sonnet-4-6"}
 
 
 class AnthropicMixin:
+    def resolve_cache_control(self, cache_control=None):
+        selected = CACHE_CONTROL_1H if cache_control is None else cache_control
+        if selected is False:
+            return None
+        return selected
+
     def supports_adaptive_thinking(self, model: str) -> bool:
         return model in ADAPTIVE_THINKING_MODELS
 

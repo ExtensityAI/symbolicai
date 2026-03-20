@@ -19,7 +19,7 @@ from anthropic.types import (
 from ....components import SelfPrompt
 from ....utils import UserMessage, encode_media_frames
 from ...base import Engine
-from ...mixin.anthropic import CACHE_CONTROL_1H, AnthropicMixin
+from ...mixin.anthropic import AnthropicMixin
 from ...settings import SYMAI_CONFIG
 
 logging.getLogger("anthropic").setLevel(logging.ERROR)
@@ -383,7 +383,7 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
         tools = kwargs.get("tools", NOT_GIVEN)
         tool_choice = kwargs.get("tool_choice", NOT_GIVEN)
         metadata_anthropic = kwargs.get("metadata", NOT_GIVEN)
-        cache_control = kwargs.get("cache_control", CACHE_CONTROL_1H)
+        cache_control = self.resolve_cache_control(kwargs.get("cache_control"))
 
         if stop != NOT_GIVEN and not isinstance(stop, list):
             stop = [stop]
@@ -393,7 +393,7 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
         if stop != NOT_GIVEN:
             stop = [r"{s}" for s in stop]
 
-        return {
+        payload = {
             "model": model,
             "max_tokens": max_tokens,
             "stop_sequences": stop,
@@ -404,8 +404,10 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
             "metadata": metadata_anthropic,
             "tools": tools,
             "tool_choice": tool_choice,
-            "extra_body": {"cache_control": cache_control},
         }
+        if cache_control is not None:
+            payload["extra_body"] = {"cache_control": cache_control}
+        return payload
 
     def _collect_response(self, res):
         if isinstance(res, list):
