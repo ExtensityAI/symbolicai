@@ -1240,6 +1240,22 @@ class MetadataTracker(Expression):
                         "reasoning_tokens"
                     ] += 0
                     self._track_parallel_usage_items(token_details, engine_name, metadata)
+                elif engine_name == "EmbeddingEngine":
+                    usage = metadata["raw_output"].usage
+                    token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += (
+                        usage.prompt_tokens
+                    )
+                    token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += 0
+                    token_details[(engine_name, model_name)]["usage"]["total_tokens"] += (
+                        usage.total_tokens
+                    )
+                    token_details[(engine_name, model_name)]["usage"]["total_calls"] += 1
+                    token_details[(engine_name, model_name)]["prompt_breakdown"][
+                        "cached_tokens"
+                    ] += 0
+                    token_details[(engine_name, model_name)]["completion_breakdown"][
+                        "reasoning_tokens"
+                    ] += 0
                 elif engine_name in ("GPTXChatEngine", "GPTXReasoningEngine"):
                     usage = metadata["raw_output"].usage
                     token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += (
@@ -1481,6 +1497,7 @@ class MetadataTracker(Expression):
             "DeepSeekXReasoningEngine",
             "GroqEngine",
             "CerebrasEngine",
+            "EmbeddingEngine",
         )
         return engine_name in supported_engines
 
