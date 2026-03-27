@@ -1,18 +1,111 @@
 # OCR Engine
 
----
+Uses the [Mistral Document AI OCR API](https://docs.mistral.ai/capabilities/document_ai/basic_ocr)
+for high-quality document and image text extraction with markdown output.
 
-## ⚠️  Outdated or Deprecated Documentation ⚠️
-This documentation is outdated and may not reflect the current state of the SymbolicAI library. This page might be revived or deleted entirely as we continue our development. We recommend using more modern tools that infer the documentation from the code itself, such as [DeepWiki](https://deepwiki.com/ExtensityAI/symbolicai). This will ensure you have the most accurate and up-to-date information and give you a better picture of the current state of the library.
+## Configuration
 
----
-To extract text from images, we can perform optical character recognition (OCR) with `APILayer`. The following example demonstrates how to transcribe an image and return the text:
+Set in your `symai.config.json`:
+
+```json
+{
+    "OCR_ENGINE_API_KEY": "<MISTRAL_API_KEY>",
+    "OCR_ENGINE_MODEL": "mistral-ocr-latest"
+}
+```
+
+## Installation
+
+```bash
+pip install symbolicai[ocr]
+```
+
+## Usage
 
 ```python
 from symai.interfaces import Interface
 
 ocr = Interface('ocr')
-res = ocr('https://media-cdn.tripadvisor.com/media/photo-p/0f/da/22/3a/rechnung.jpg')
+
+# PDF document
+res = ocr(document_url="https://arxiv.org/pdf/2201.04234")
+print(res)  # assembled markdown
+
+# Image
+res = ocr(image_url="https://example.com/receipt.jpg")
+
+# Per-page output
+res = ocr(document_url="https://example.com/paper.pdf", per_page=True)
+for page in res.value:
+    print(page)
+
+# Mistral-specific options
+res = ocr(
+    document_url="https://example.com/paper.pdf",
+    table_format="markdown",        # "markdown", "html", or None
+    extract_header=True,
+    extract_footer=True,
+)
 ```
 
-The OCR engine returns a dictionary with a key `all_text` where the full text is stored. For more details, refer to their documentation [here](https://apilayer.com/marketplace/image_to_text-api).
+## Images
+
+Figures and charts detected in the document appear as placeholders in the markdown
+(e.g. `![img-0.jpeg](img-0.jpeg)`). To extract the actual image data, pass
+`include_image_base64=True`:
+
+```python
+res = ocr(document_url="https://arxiv.org/pdf/2201.04234", include_image_base64=True)
+
+# markdown stays clean with placeholders
+print(res)
+
+# images available as a separate mapping: id -> base64 data URI
+for img_id, data_uri in res.images.items():
+    print(f"{img_id}: {len(data_uri)} chars")
+
+# example: save an image to disk
+import base64
+data_uri = res.images["img-0.jpeg"]          # "data:image/jpeg;base64,/9j/4AAQ..."
+header, b64 = data_uri.split(",", 1)
+with open("img-0.jpeg", "wb") as f:
+    f.write(base64.b64decode(b64))
+```
+
+## Supported formats
+
+- **Documents** (`document_url`): PDF, PPTX, DOCX, and more
+- **Images** (`image_url`): PNG, JPEG/JPG, AVIF, and more
+
+## Usage tracking
+
+Mistral OCR uses page-based billing. Use `MetadataTracker` to capture usage:
+
+```python
+from symai.components import MetadataTracker
+from symai.interfaces import Interface
+from symai.utils import RuntimeInfo
+
+ocr = Interface('ocr')
+
+with MetadataTracker() as tracker:
+    res = ocr(document_url="https://arxiv.org/pdf/2201.04234")
+
+# per-engine usage breakdown
+usage_per_engine = RuntimeInfo.from_tracker(tracker, total_elapsed_time=0)
+for (engine_name, model_name), info in usage_per_engine.items():
+    print(f"{engine_name} ({model_name})")
+    print(f"  calls: {info.total_calls}")
+    print(f"  pages_processed: {info.extras.get('pages_processed', 0)}")
+    print(f"  doc_size_bytes:  {info.extras.get('doc_size_bytes', 0)}")
+
+# cost estimation
+def ocr_pricing(info, cost_per_page=0.002):
+    return info.extras.get("pages_processed", 0) * cost_per_page
+
+total = RuntimeInfo(0, 0, 0, 0, 0, 0, 0, 0)
+for _, info in usage_per_engine.items():
+    total += RuntimeInfo.estimate_cost(info, ocr_pricing)
+
+print(f"Estimated cost: ${total.cost_estimate:.4f}")
+```

@@ -547,6 +547,7 @@ def setup_wizard(_symai_config_path_):
             "SEARCH_ENGINE_API_KEY": "",
             "SEARCH_ENGINE_MODEL": "",
             "OCR_ENGINE_API_KEY": "",
+            "OCR_ENGINE_MODEL": "",
             "SPEECH_TO_TEXT_ENGINE_MODEL": "",
             "SPEECH_TO_TEXT_API_KEY": "",
             "TEXT_TO_SPEECH_ENGINE_API_KEY": "",
