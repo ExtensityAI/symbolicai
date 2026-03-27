@@ -89,6 +89,13 @@ def _add_formal_interface(mapping):
     mapping["formal"] = Interface(engine_name)
 
 
+def _add_ocr_interface(mapping):
+    ocr_api_key = SYMAI_CONFIG.get("OCR_ENGINE_API_KEY")
+    if not ocr_api_key:
+        return
+    mapping["ocr"] = Interface("ocr")
+
+
 def _add_tts_interface(mapping):
     tts_engine_api_key = SYMAI_CONFIG.get("TEXT_TO_SPEECH_ENGINE_API_KEY")
     if tts_engine_api_key is not None:  # TODO: add tests for this engine
@@ -102,6 +109,7 @@ def cfg_to_interface():
     _add_formal_interface(mapping)
     _add_drawing_interface(mapping)
     _add_search_interface(mapping)
+    _add_ocr_interface(mapping)
     _add_tts_interface(mapping)
 
     mapping["indexing"] = Interface("naive_vectordb")
