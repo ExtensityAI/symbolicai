@@ -160,15 +160,19 @@ Running `symconfig` will now use this Python environment.
 SymbolicAI uses multiple engines to process text, speech and images. We also include search engine access to retrieve information from the web. To use all of them, you will need to also install the following dependencies and assign the API keys to the respective engines. E.g.:
 
 ```bash
-pip install "symbolicai[hf]",
-pip install "symbolicai[llamacpp]",
-pip install "symbolicai[bitsandbytes]",
-pip install "symbolicai[wolframalpha]",
-pip install "symbolicai[whisper]",
-pip install "symbolicai[scrape]",
-pip install "symbolicai[serpapi]",
-pip install "symbolicai[services]",
+pip install "symbolicai[bitsandbytes]"
+pip install "symbolicai[hf]"
+pip install "symbolicai[lean]"
+pip install "symbolicai[llama_cpp]"
+pip install "symbolicai[ocr]"
+pip install "symbolicai[qdrant]"
+pip install "symbolicai[scrape]"
+pip install "symbolicai[search]"
+pip install "symbolicai[serpapi]"
+pip install "symbolicai[services]"
 pip install "symbolicai[solver]"
+pip install "symbolicai[whisper]"
+pip install "symbolicai[wolframalpha]"
 ```
 
 Or, install all optional dependencies at once:
@@ -265,24 +269,27 @@ You can specify engine properties in a `symai.config.json` file in your project 
 Example of a configuration file with all engines enabled:
 ```json
 {
-    "NEUROSYMBOLIC_ENGINE_API_KEY": "<OPENAI_API_KEY>",
-    "NEUROSYMBOLIC_ENGINE_MODEL": "gpt-4o",
+    "NEUROSYMBOLIC_ENGINE_API_KEY": "<ANTHROPIC_API_KEY>",
+    "NEUROSYMBOLIC_ENGINE_MODEL": "claude-sonnet-4-6",
     "SYMBOLIC_ENGINE_API_KEY": "<WOLFRAMALPHA_API_KEY>",
     "SYMBOLIC_ENGINE": "wolframalpha",
+    "FORMAL_ENGINE_API_KEY": "<AXIOM_API_KEY>",
+    "FORMAL_ENGINE": "axiom",
     "EMBEDDING_ENGINE_API_KEY": "<OPENAI_API_KEY>",
     "EMBEDDING_ENGINE_MODEL": "text-embedding-3-small",
-    "SEARCH_ENGINE_API_KEY": "<PERPLEXITY_API_KEY>",
-    "SEARCH_ENGINE_MODEL": "sonar",
+    "SEARCH_ENGINE_API_KEY": "<PARALLEL_API_KEY>",
+    "SEARCH_ENGINE_MODEL": "parallel",
     "TEXT_TO_SPEECH_ENGINE_API_KEY": "<OPENAI_API_KEY>",
     "TEXT_TO_SPEECH_ENGINE_MODEL": "tts-1",
-    "INDEXING_ENGINE_API_KEY": "<PINECONE_API_KEY>",
-    "INDEXING_ENGINE_ENVIRONMENT": "us-west1-gcp",
-    "DRAWING_ENGINE_API_KEY": "<OPENAI_API_KEY>",
-    "DRAWING_ENGINE_MODEL": "dall-e-3",
+    "INDEXING_ENGINE": "qdrant",
+    "INDEXING_ENGINE_API_KEY": "<QDRANT_API_KEY>",
+    "INDEXING_ENGINE_URL": "http://localhost:6333",
+    "DRAWING_ENGINE_API_KEY": "<BFL_API_KEY>",
+    "DRAWING_ENGINE_MODEL": "flux-pro-1.1",
     "VISION_ENGINE_MODEL": "openai/clip-vit-base-patch32",
-    "OCR_ENGINE_API_KEY": "<APILAYER_API_KEY>",
+    "OCR_ENGINE_API_KEY": "<OCR_API_KEY>",
+    "OCR_ENGINE_MODEL": "mistral-ocr-latest",
     "SPEECH_TO_TEXT_ENGINE_MODEL": "turbo",
-    "SPEECH_TO_TEXT_API_KEY": ""
 }
 ```
 
@@ -310,13 +317,11 @@ Now, there are tools like DeepWiki that provide better documentation than we cou
 ## 📜 Citation
 
 ```bibtex
-@software{Dinu_SymbolicAI_2022,
-  author = {Dinu, Marius-Constantin},
-  editor = {Leoveanu-Condrei, Claudiu},
-  title = {{SymbolicAI: A Neuro-Symbolic Perspective on Large Language Models (LLMs)}},
-  url = {https://github.com/ExtensityAI/symbolicai},
-  month = {11},
-  year = {2022}
+@article{dinu2024symbolicai,
+  title={Symbolicai: A framework for logic-based approaches combining generative models and solvers},
+  author={Dinu, Marius-Constantin and Leoveanu-Condrei, Claudiu and Holzleitner, Markus and Zellinger, Werner and Hochreiter, Sepp},
+  journal={arXiv preprint arXiv:2402.00854},
+  year={2024}
 }
 ```
 
