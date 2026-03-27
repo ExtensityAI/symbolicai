@@ -142,7 +142,8 @@ Example of a configuration file with all engines enabled:
     "DRAWING_ENGINE_API_KEY": "<OPENAI_API_KEY>",
     "DRAWING_ENGINE_MODEL": "dall-e-3",
     "VISION_ENGINE_MODEL": "openai/clip-vit-base-patch32",
-    "OCR_ENGINE_API_KEY": "<APILAYER_API_KEY>",
+    "OCR_ENGINE_API_KEY": "<OCR_API_KEY>",
+    "OCR_ENGINE_MODEL": "mistral-ocr-latest",
     "SPEECH_TO_TEXT_ENGINE_MODEL": "turbo",
     "SPEECH_TO_TEXT_API_KEY": ""
 }

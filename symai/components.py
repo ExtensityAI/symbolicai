@@ -1433,6 +1433,25 @@ class MetadataTracker(Expression):
                     token_details[(engine_name, model_name)]["completion_breakdown"][
                         "reasoning_tokens"
                     ] += reasoning_tokens
+                elif engine_name == "MistralOCREngine":
+                    # Mistral OCR uses page-based billing, not token-based
+                    raw_output = metadata.get("raw_output")
+                    usage_info = getattr(raw_output, "usage_info", None)
+                    pages_processed = getattr(usage_info, "pages_processed", 0) or 0
+                    doc_size_bytes = getattr(usage_info, "doc_size_bytes", 0) or 0
+                    token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += 0
+                    token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += 0
+                    token_details[(engine_name, model_name)]["usage"]["total_tokens"] += 0
+                    token_details[(engine_name, model_name)]["usage"]["total_calls"] += 1
+                    token_details[(engine_name, model_name)]["prompt_breakdown"][
+                        "cached_tokens"
+                    ] += 0
+                    token_details[(engine_name, model_name)]["completion_breakdown"][
+                        "reasoning_tokens"
+                    ] += 0
+                    extras = token_details[(engine_name, model_name)].setdefault("extras", {})
+                    extras["pages_processed"] = extras.get("pages_processed", 0) + pages_processed
+                    extras["doc_size_bytes"] = extras.get("doc_size_bytes", 0) + doc_size_bytes
                 else:
                     logger.warning(f"Tracking {engine_name} is not supported.")
                     continue
@@ -1498,6 +1517,7 @@ class MetadataTracker(Expression):
             "GroqEngine",
             "CerebrasEngine",
             "EmbeddingEngine",
+            "MistralOCREngine",
         )
         return engine_name in supported_engines
 
@@ -1671,6 +1691,7 @@ class DynamicEngine(Expression):
         """Create an engine instance based on the model name."""
         # Deferred to avoid components <-> neurosymbolic engine circular imports.
         from .backend.engines.neurosymbolic import ENGINE_MAPPING  # noqa
+        from .backend.engines.ocr import OCR_ENGINE_MAPPING  # noqa
         from .backend.engines.search import SEARCH_ENGINE_MAPPING  # noqa
 
         try:
@@ -1682,6 +1703,12 @@ class DynamicEngine(Expression):
                 engine_class = SEARCH_ENGINE_MAPPING.get(self.model)
                 if engine_class is not None:
                     return engine_class(api_key=self.api_key)
+
+            # Check OCR engines
+            if engine_class is None:
+                engine_class = OCR_ENGINE_MAPPING.get(self.model)
+                if engine_class is not None:
+                    return engine_class(api_key=self.api_key, model=self.model)
 
             if engine_class is None:
                 UserMessage(f"Unsupported model '{self.model}'", raise_with=ValueError)
