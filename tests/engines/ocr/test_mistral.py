@@ -1,3 +1,6 @@
+import base64
+from pathlib import Path
+
 import pytest
 
 from symai.backend.settings import SYMAI_CONFIG
@@ -15,6 +18,7 @@ pytestmark = [
 ]
 
 ARXIV_PDF_URL = "https://arxiv.org/pdf/2507.11768"
+SAMPLE_PDF = Path(__file__).resolve().parents[2] / "data" / "sample.pdf"
 
 
 def _iface():
@@ -43,6 +47,28 @@ def test_mistral_ocr_per_page():
     assert isinstance(res._value, list)
     assert len(res._value) > 0
     assert all(isinstance(page, str) for page in res._value)
+
+
+@pytest.mark.parametrize(
+    "input_kind",
+    ["local_path", "https_url", "base64_data_uri"],
+    ids=["local", "https", "base64"],
+)
+def test_mistral_ocr_input_types(input_kind):
+    """OCR works with local path, HTTPS URL, and base64 data URI."""
+    ocr = _iface()
+
+    if input_kind == "local_path":
+        res = ocr(document_url=str(SAMPLE_PDF), per_page=True)
+    elif input_kind == "https_url":
+        res = ocr(document_url=ARXIV_PDF_URL, per_page=True)
+    elif input_kind == "base64_data_uri":
+        b64 = base64.b64encode(SAMPLE_PDF.read_bytes()).decode()
+        res = ocr(document_url=f"data:application/pdf;base64,{b64}", per_page=True)
+
+    assert res is not None
+    assert isinstance(res._value, list)
+    assert len(res._value) > 0
 
 
 def test_mistral_ocr_metadata_tracker():
