@@ -205,9 +205,11 @@ class FileEngine(Engine):
         with path_obj.open(encoding="utf-8", errors="ignore") as f:
             return f.read()
 
-    def _read_via_markitdown(self, source):
+    def _read_via_markitdown(self, source, caption_prompt=None):
         """Convert file (or URL) to Markdown text via markitdown converters."""
-        return self._get_converter().convert(str(source)).text_content
+        md = self._get_converter()
+        md._llm_prompt = caption_prompt
+        return md.convert(str(source)).text_content
 
     def _read_image(self, path_obj):
         """Read image as RGB numpy array via cv2."""
@@ -234,7 +236,7 @@ class FileEngine(Engine):
         UserMessage(msg, raise_with=ValueError)
         return None  # unreachable — UserMessage raises when raise_with is set
 
-    def _forward_markitdown(self, ext, path_obj):
+    def _forward_markitdown(self, ext, path_obj, caption_prompt=None):
         if ext not in _ALL_SUPPORTED_EXTS:
             supported = ", ".join(sorted(_ALL_SUPPORTED_EXTS))
             UserMessage(
@@ -242,18 +244,18 @@ class FileEngine(Engine):
                 f"Supported: {supported}",
                 raise_with=ValueError,
             )
-        return self._read_via_markitdown(path_obj)
+        return self._read_via_markitdown(path_obj, caption_prompt=caption_prompt)
 
-    def _forward_auto(self, ext, path_obj):
+    def _forward_auto(self, ext, path_obj, caption_prompt=None):
         if ext in _PLAIN_TEXT_EXTS:
             return self._read_plain_text(path_obj)
         if ext in _RICH_FORMAT_EXTS:
-            return self._read_via_markitdown(path_obj)
+            return self._read_via_markitdown(path_obj, caption_prompt=caption_prompt)
         # Unknown ext: try plain-text read, then markitdown
         try:
             return self._read_plain_text(path_obj)
         except Exception:
-            return self._read_via_markitdown(path_obj)
+            return self._read_via_markitdown(path_obj, caption_prompt=caption_prompt)
 
     # ------------------------------------------------------------------
 
@@ -264,6 +266,7 @@ class FileEngine(Engine):
 
         backend = argument.kwargs.get("backend", "auto")
         as_box = argument.kwargs.get("as_box", False)
+        caption_prompt = argument.kwargs.get("caption_prompt")
 
         # URLs → markitdown (auto and markitdown); standard errors
         if path.startswith(("http://", "https://")):
@@ -272,7 +275,7 @@ class FileEngine(Engine):
                     f"URLs require backend='markitdown' or 'auto'. Got backend='{backend}'.",
                     raise_with=ValueError,
                 )
-            rsp = self._read_via_markitdown(path)
+            rsp = self._read_via_markitdown(path, caption_prompt=caption_prompt)
             if rsp is None:
                 UserMessage(f"Error reading URL - empty result: {path}", raise_with=Exception)
             return [rsp], {}
@@ -290,11 +293,11 @@ class FileEngine(Engine):
 
         # Dispatch to backend
         if backend == "markitdown":
-            rsp = self._forward_markitdown(ext, path_obj)
+            rsp = self._forward_markitdown(ext, path_obj, caption_prompt=caption_prompt)
         elif backend == "standard":
             rsp = self._forward_standard(ext, path_obj)
         else:
-            rsp = self._forward_auto(ext, path_obj)
+            rsp = self._forward_auto(ext, path_obj, caption_prompt=caption_prompt)
 
         if rsp is None:
             UserMessage(f"Error reading file - empty result: {path}", raise_with=Exception)
