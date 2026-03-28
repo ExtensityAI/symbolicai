@@ -518,9 +518,8 @@ class contract:
         self.pre_remedy = pre_remedy
         self.post_remedy = post_remedy
         self.remedy_retry_params = remedy_retry_params
-        self.f_type_validation_remedy = TypeValidationFunction(
-            accumulate_errors=accumulate_errors, verbose=verbose, retry_params=remedy_retry_params
-        )
+        self._accumulate_errors = accumulate_errors
+        self._verbose = verbose
 
         if not verbose:
             logger.disable(__name__)
@@ -599,9 +598,9 @@ class contract:
         dynamic_model._is_dynamic_model = True
         return dynamic_model
 
-    def _try_remedy_with_exception(self, prompt, f_semantic_conditions, **remedy_kwargs):
+    def _try_remedy_with_exception(self, wrapped_self, prompt, f_semantic_conditions, **remedy_kwargs):
         try:
-            data_model = self.f_type_validation_remedy(
+            data_model = wrapped_self._f_type_validation_remedy(
                 prompt, f_semantic_conditions=f_semantic_conditions, **remedy_kwargs
             )
         except Exception as e:
@@ -626,10 +625,11 @@ class contract:
                 return input_value
             except Exception:
                 logger.exception("Pre-condition validation failed!")
-                self.f_type_validation_remedy.register_expected_data_model(
+                wrapped_self._f_type_validation_remedy.register_expected_data_model(
                     input_value, attach_to="output", override=True
                 )
                 input_value = self._try_remedy_with_exception(
+                    wrapped_self,
                     prompt=wrapped_self.prompt,
                     f_semantic_conditions=[wrapped_self.pre],
                     **remedy_kwargs,
@@ -658,10 +658,11 @@ class contract:
 
     def _validate_output(self, wrapped_self, input_value, output, it, **remedy_kwargs):
         logger.info("Starting output validation...")
-        self.f_type_validation_remedy.register_expected_data_model(
+        remedy = wrapped_self._f_type_validation_remedy  # per-instance, thread-safe
+        remedy.register_expected_data_model(
             input_value, attach_to="input", override=True
         )
-        self.f_type_validation_remedy.register_expected_data_model(
+        remedy.register_expected_data_model(
             output, attach_to="output", override=True
         )
 
@@ -669,7 +670,7 @@ class contract:
         try:
             logger.info("Getting a valid output type...")
             output = self._try_remedy_with_exception(
-                prompt=wrapped_self.prompt, f_semantic_conditions=None, **remedy_kwargs
+                wrapped_self, prompt=wrapped_self.prompt, f_semantic_conditions=None, **remedy_kwargs
             )
             if output is None:  # output is None when graceful mode is enabled
                 return output
@@ -696,6 +697,7 @@ class contract:
             except Exception:
                 logger.exception("Post-condition validation failed!")
                 output = self._try_remedy_with_exception(
+                    wrapped_self,
                     prompt=wrapped_self.prompt,
                     f_semantic_conditions=[wrapped_self.post],
                     **remedy_kwargs,
@@ -788,6 +790,8 @@ class contract:
         return act_output
 
     def _build_wrapped_init(self, original_init):
+        contract_self = self  # capture the decorator instance for access to config
+
         def __init__(wrapped_self, *args, **kwargs):
             logger.info("Initializing contract...")
             original_init(wrapped_self, *args, **kwargs)
@@ -802,6 +806,13 @@ class contract:
             wrapped_self.contract_result = None
             wrapped_self.contract_exception = None
             wrapped_self._contract_timing = defaultdict(dict)
+            # Per-instance TypeValidationFunction to avoid thread-safety issues
+            # when multiple instances run in parallel (e.g., per-page extraction).
+            wrapped_self._f_type_validation_remedy = TypeValidationFunction(
+                accumulate_errors=contract_self._accumulate_errors,
+                verbose=contract_self._verbose,
+                retry_params=contract_self.remedy_retry_params,
+            )
             logger.info("Contract initialization complete!")
 
         return __init__
