@@ -533,9 +533,7 @@ class contract:
             UserMessage(msg)
             raise ValueError(msg)
         if not isinstance(input_value, LLMDataModel):
-            logger.error(f"Invalid input type: {type(input_value)}")
             msg = f"Expected input to be of type `LLMDataModel`, got {type(input_value)}"
-            UserMessage(msg)
             raise TypeError(msg)
         return True
 
