@@ -187,6 +187,18 @@ print(caption.value)
 #  captures a modern workspace on a wooden desk..."
 ```
 
+Pass `caption_prompt` to override the default vision prompt with a custom one:
+
+```python
+caption = Symbol('./chart.png').open(
+    backend='markitdown',
+    caption_prompt="Extract all data points and axis labels from this chart."
+)
+```
+
+This works for any file type routed through markitdown (images, PDFs, PPTX,
+URLs, etc.).
+
 This works with `.jpg`, `.jpeg`, and `.png` files. The vision adapter
 (`_SymaiVisionClient`) bridges markitdown's OpenAI-style API with SymAI's
 engine pipeline, so captioning works regardless of which provider is configured
