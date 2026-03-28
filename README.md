@@ -146,7 +146,7 @@ To get started with SymbolicAI, you can install it using pip:
 pip install symbolicai
 ```
 
-Alternatively, clone the repository and set up a Python virtual environment using uv:
+Alternatively, clone the repository and set up a Python virtual environment using [uv](https://docs.astral.sh/uv/) (>= 0.9.17):
 ```bash
 git clone git@github.com:ExtensityAI/symbolicai.git
 cd symbolicai
