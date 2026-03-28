@@ -27,12 +27,20 @@ from symai.interfaces import Interface
 
 ocr = Interface('ocr')
 
-# PDF document
+# PDF document (remote)
 res = ocr(document_url="https://arxiv.org/pdf/2201.04234")
 print(res)  # assembled markdown
 
-# Image
+# Local file (uploaded automatically via Mistral file API)
+res = ocr(document_url="/path/to/local/paper.pdf")
+
+# Image (remote)
 res = ocr(image_url="https://example.com/receipt.jpg")
+
+# Base64 data URI
+import base64
+b64 = base64.b64encode(open("scan.pdf", "rb").read()).decode()
+res = ocr(document_url=f"data:application/pdf;base64,{b64}")
 
 # Per-page output
 res = ocr(document_url="https://example.com/paper.pdf", per_page=True)
@@ -72,7 +80,13 @@ with open("img-0.jpeg", "wb") as f:
     f.write(base64.b64decode(b64))
 ```
 
-## Supported formats
+## Supported inputs
+
+- **Remote URLs** (`https://...`): passed directly to Mistral
+- **Local files** (`/path/to/file` or `file:///path/to/file`): uploaded via Mistral's file API, then processed via a signed URL
+- **Base64 data URIs** (`data:application/pdf;base64,...`): passed inline
+
+### Supported formats
 
 - **Documents** (`document_url`): PDF, PPTX, DOCX, and more
 - **Images** (`image_url`): PNG, JPEG/JPG, AVIF, and more
