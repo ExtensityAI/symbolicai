@@ -1,5 +1,6 @@
 import logging
 from copy import deepcopy
+from pathlib import Path
 
 try:
     from mistralai.client import Mistral
@@ -82,12 +83,28 @@ class MistralOCREngine(Engine):
         if "OCR_ENGINE_MODEL" in kwargs:
             self.model = kwargs["OCR_ENGINE_MODEL"]
 
+    def _resolve_local_file(self, url):
+        """If url is a local file, upload to Mistral and return a signed HTTPS URL."""
+        # already a remote URL or inline data — nothing to resolve
+        if url.startswith(("http://", "https://", "data:")):
+            return url
+        path_str = url.removeprefix("file://")
+        path = Path(path_str)
+        if not path.is_file():
+            return url
+        uploaded = self.client.files.upload(
+            file={"file_name": path.name, "content": path.read_bytes()},
+            purpose="ocr",
+        )
+        signed = self.client.files.get_signed_url(file_id=uploaded.id, expiry=1)
+        return signed.url
+
     def prepare(self, argument):
         assert not argument.prop.processed_input, "MistralOCREngine does not support processed_input."
         document_url = getattr(argument.prop, "document_url", None)
         image_url = getattr(argument.prop, "image_url", None)
         assert document_url or image_url, "MistralOCREngine requires 'document_url' or 'image_url'."
-        argument.prop.prepared_input = str(document_url or image_url)
+        argument.prop.prepared_input = document_url or image_url
 
     def forward(self, argument):
         kwargs = argument.kwargs
@@ -99,9 +116,11 @@ class MistralOCREngine(Engine):
         assert document_url or image_url, "Provide document_url or image_url."
 
         if document_url:
-            document = {"type": "document_url", "document_url": str(document_url)}
+            resolved = self._resolve_local_file(document_url)
+            document = {"type": "document_url", "document_url": resolved}
         else:
-            document = {"type": "image_url", "image_url": str(image_url)}
+            resolved = self._resolve_local_file(image_url)
+            document = {"type": "image_url", "image_url": resolved}
 
         ocr_kwargs = {"model": self.model, "document": document}
 

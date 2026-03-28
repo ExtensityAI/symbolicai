@@ -7,13 +7,9 @@ class ocr(Expression):
         super().__init__(*args, **kwargs)
         self.name = self.__class__.__name__
 
-    def __call__(self, image_url: str | None = None, *, document_url: str | None = None, per_page: bool = False, **kwargs):
+    def __call__(self, image_url=None, *, document_url=None, per_page=False, **kwargs):
         url = document_url or image_url
         assert url is not None, "Provide image_url or document_url."
-
-        # normalize local paths to file:// URIs
-        if not url.startswith(("http://", "https://", "file://", "data:")):
-            url = f"file://{url}"
 
         if document_url:
             kwargs["document_url"] = document_url
