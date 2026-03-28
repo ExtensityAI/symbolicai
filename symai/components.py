@@ -1189,7 +1189,8 @@ class MetadataTracker(Expression):
         ):
             _, metadata = arg  # arg contains return value on 'return' event
             engine_name = frame.f_locals["self"].__class__.__name__
-            model_name = frame.f_locals["self"].model
+            # getattr fallback: not all Engine subclasses set self.model (e.g. FileEngine)
+            model_name = getattr(frame.f_locals["self"], "model", None)
             self._metadata[(self._metadata_id, engine_name, model_name)] = metadata
             self._metadata_id += 1
 
