@@ -1395,6 +1395,11 @@ class MetadataTracker(Expression):
                     token_details[(engine_name, model_name)]["prompt_breakdown"][
                         "cached_tokens"
                     ] += cache_read
+                    # Track thinking tokens (reported separately since Gemini 3.x SDK)
+                    thoughts_token_count = getattr(usage, "thoughts_token_count", 0) or 0
+                    token_details[(engine_name, model_name)]["completion_breakdown"][
+                        "reasoning_tokens"
+                    ] += thoughts_token_count
                     # Track thinking content if available
                     thinking_output = metadata.get("thinking", "")
                     if thinking_output:
@@ -1403,10 +1408,6 @@ class MetadataTracker(Expression):
                         token_details[(engine_name, model_name)]["thinking_content"].append(
                             thinking_output
                         )
-                    # Note: Gemini reasoning tokens are part of candidates_token_count
-                    token_details[(engine_name, model_name)]["completion_breakdown"][
-                        "reasoning_tokens"
-                    ] += 0
                 elif engine_name == "DeepSeekXReasoningEngine":
                     usage = metadata["raw_output"].usage
                     token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += (
