@@ -608,10 +608,12 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
 
         thinking_arg = kwargs.get("thinking", None)
         if thinking_arg and isinstance(thinking_arg, dict):
-            thinking_budget = thinking_arg.get("thinking_budget", 1024)
-            payload["thinking_config"] = types.ThinkingConfig(
-                include_thoughts=True, thinking_budget=thinking_budget
-            )
+            thinking_cfg = {"include_thoughts": True}
+            if "thinking_level" in thinking_arg:
+                thinking_cfg["thinking_level"] = thinking_arg["thinking_level"]
+            else:
+                thinking_cfg["thinking_budget"] = thinking_arg.get("thinking_budget", 1024)
+            payload["thinking_config"] = types.ThinkingConfig(**thinking_cfg)
 
         response_format = kwargs.get("response_format", None)
         if response_format and response_format.get("type") == "json_object":

@@ -171,12 +171,18 @@ and falls back to the standard 200K context behavior.
 
 ### Gemini (Google)
 
+Two ways to enable thinking — a **token budget** (exact cap) or a **preset level** (`"low"`, `"medium"`, `"high"`):
+
 ```python
 from symai import Symbol
 
+# Option 1: token budget (fine-grained control)
 thinking = {"thinking_budget": 1024}
 
-# gemini-2.5-pro
+# Option 2: preset level (simpler, recommended for gemini-3.1+)
+thinking = {"thinking_level": "high"}
+
+# gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-flash-lite-preview
 res, metadata = Symbol("Topic: Disneyland") \
     .query(
       "Write a dystopic take on the topic.",
@@ -329,7 +335,7 @@ For more detailed tracking of API calls, token usage, and estimating costs, you 
 >
 > - **OpenAI**: `GPTXChatEngine`, `GPTXReasoningEngine`, `OpenAIResponsesEngine`, `GPTXSearchEngine` (eg. `gpt-5-chat-latest`)
 > - **Claude (Anthropic)**: `ClaudeXChatEngine`, `ClaudeXReasoningEngine` (eg. `claude-sonnet-4-5`)
-> - **Gemini (Google)**: `GeminiXReasoningEngine` (e.g. `gemini-2.5-pro`, `gemini-2.5-flash`)
+> - **Gemini (Google)**: `GeminiXReasoningEngine` (e.g. `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-flash-lite-preview`)
 >
 > For other engines, `tracker.metadata` will still contain raw outputs, but `tracker.usage` may be empty or partial.
 
