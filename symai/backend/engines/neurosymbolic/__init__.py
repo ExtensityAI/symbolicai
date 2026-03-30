@@ -33,6 +33,7 @@ ENGINE_MAPPING = {
     **dict.fromkeys(CEREBRAS_CHAT_MODELS, CerebrasEngine),
     **dict.fromkeys(CEREBRAS_REASONING_MODELS, CerebrasEngine),
     **dict.fromkeys(DEEPSEEK_REASONING_MODELS, DeepSeekXReasoningEngine),
+    **dict.fromkeys(GOOGLE_CHAT_MODELS, GeminiXReasoningEngine),
     **dict.fromkeys(GOOGLE_REASONING_MODELS, GeminiXReasoningEngine),
     **dict.fromkeys(OPENAI_CHAT_MODELS, GPTXChatEngine),
     **dict.fromkeys(OPENAI_REASONING_MODELS, GPTXReasoningEngine),
