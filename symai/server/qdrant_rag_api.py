@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from symai.backend.engines.index.engine_qdrant import QdrantIndexEngine
 from symai.core import Argument
 from symai.symbol import Symbol as SymaiSymbol
+from symai.utils import UserMessage
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,9 @@ class ApiSettings(BaseModel):
     # API auth
     rag_api_token: str | None = Field(default_factory=lambda: _env_str("RAG_API_TOKEN"))
 
+
 SETTINGS = ApiSettings()
+
 
 class VectorPoint(BaseModel):
     id: int | str | uuid.UUID
@@ -324,6 +327,11 @@ def _translate_document_path(path: str) -> str:
         if idx != -1:
             relative_part = path[idx + len(project_name) :].lstrip("/")
             translated = (container_root / relative_part).resolve()
+            if not str(translated).startswith(str(container_root)):
+                UserMessage(
+                    f"Path traversal detected: '{path}' resolves outside container root",
+                    raise_with=ValueError,
+                )
             translated_str = str(translated)
             logger.debug("Translated path: %s -> %s", path, translated_str)
             return translated_str
@@ -379,7 +387,11 @@ def _embedding_from_query(query: str) -> list[float]:
             detail="SymbolicAI produced an unsupported embedding payload.",
         )
 
-    if embedding and isinstance(embedding[0], Sequence) and not isinstance(embedding[0], (str, bytes)):
+    if (
+        embedding
+        and isinstance(embedding[0], Sequence)
+        and not isinstance(embedding[0], (str, bytes))
+    ):
         if len(embedding) == 1:
             embedding = embedding[0]
         else:
@@ -422,7 +434,11 @@ async def require_token(
 
 @app.get("/", dependencies=[Depends(require_token)])
 async def root() -> dict[str, Any]:
-    return {"service": "SymbolicAI Qdrant RAG", "docs": "/docs", "default_index": SETTINGS.index_name}
+    return {
+        "service": "SymbolicAI Qdrant RAG",
+        "docs": "/docs",
+        "default_index": SETTINGS.index_name,
+    }
 
 
 @app.get("/healthz", dependencies=[Depends(require_token)])
@@ -446,7 +462,8 @@ async def healthz(engine: QdrantIndexEngine = Depends(get_engine)) -> dict[str, 
 
 @app.post("/points", dependencies=[Depends(require_token)])
 async def upsert_points(
-    payload: PointsUpsertRequest, engine: QdrantIndexEngine = Depends(get_engine)  # noqa: B008
+    payload: PointsUpsertRequest,
+    engine: QdrantIndexEngine = Depends(get_engine),  # noqa: B008
 ) -> dict[str, Any]:
     collection = _resolve_index_name(payload.index_name)
     points_data: list[dict[str, Any]] = []
@@ -461,7 +478,8 @@ async def upsert_points(
 
 @app.delete("/points", dependencies=[Depends(require_token)])
 async def delete_points(
-    payload: DeletePointsRequest, engine: QdrantIndexEngine = Depends(get_engine)  # noqa: B008
+    payload: DeletePointsRequest,
+    engine: QdrantIndexEngine = Depends(get_engine),  # noqa: B008
 ) -> dict[str, Any]:
     collection = _resolve_index_name(payload.index_name)
     ids = [str(v) if isinstance(v, uuid.UUID) else v for v in payload.ids]
@@ -545,7 +563,8 @@ async def list_points_by_metadata(
 
 @app.post("/retrieve", dependencies=[Depends(require_token)])
 async def retrieve_points(
-    payload: RetrieveRequest, engine: QdrantIndexEngine = Depends(get_engine)  # noqa: B008
+    payload: RetrieveRequest,
+    engine: QdrantIndexEngine = Depends(get_engine),  # noqa: B008
 ) -> dict[str, Any]:
     collection = _resolve_index_name(payload.index_name)
     results = await engine.retrieve(
@@ -559,7 +578,8 @@ async def retrieve_points(
 
 @app.post("/search", response_model=SearchResponse, dependencies=[Depends(require_token)])
 async def search(
-    payload: SearchRequest, engine: QdrantIndexEngine = Depends(get_engine)  # noqa: B008
+    payload: SearchRequest,
+    engine: QdrantIndexEngine = Depends(get_engine),  # noqa: B008
 ) -> SearchResponse:
     collection = _resolve_index_name(payload.index_name)
     vector = payload.embedding or _embedding_from_query(payload.query or "")
@@ -609,7 +629,8 @@ async def search(
 
 @app.post("/chunk-upsert", dependencies=[Depends(require_token)])
 async def chunk_and_upsert(
-    payload: ChunkUpsertRequest, engine: QdrantIndexEngine = Depends(get_engine)  # noqa: B008
+    payload: ChunkUpsertRequest,
+    engine: QdrantIndexEngine = Depends(get_engine),  # noqa: B008
 ) -> dict[str, Any]:
     collection = _resolve_index_name(payload.index_name)
     kwargs: dict[str, Any] = {"collection_name": collection}
@@ -640,7 +661,8 @@ async def list_collections(engine: QdrantIndexEngine = Depends(get_engine)) -> d
 
 @app.post("/collections", dependencies=[Depends(require_token)])
 async def create_collection(
-    payload: CollectionCreateRequest, engine: QdrantIndexEngine = Depends(get_engine)  # noqa: B008
+    payload: CollectionCreateRequest,
+    engine: QdrantIndexEngine = Depends(get_engine),  # noqa: B008
 ) -> dict[str, Any]:
     vector_size = payload.vector_size or SETTINGS.index_dims
     distance = payload.distance or SETTINGS.index_metric
@@ -654,7 +676,8 @@ async def create_collection(
 
 @app.get("/collections/{name}", dependencies=[Depends(require_token)])
 async def get_collection(
-    name: str, engine: QdrantIndexEngine = Depends(get_engine)  # noqa: B008
+    name: str,
+    engine: QdrantIndexEngine = Depends(get_engine),  # noqa: B008
 ) -> dict[str, Any]:
     info = await engine.get_collection_info(collection_name=name)
     return {"collection": name, "info": info}
@@ -662,8 +685,8 @@ async def get_collection(
 
 @app.delete("/collections/{name}", dependencies=[Depends(require_token)])
 async def delete_collection(
-    name: str, engine: QdrantIndexEngine = Depends(get_engine)  # noqa: B008
+    name: str,
+    engine: QdrantIndexEngine = Depends(get_engine),  # noqa: B008
 ) -> dict[str, Any]:
     await engine.delete_collection(collection_name=name)
     return {"collection": name, "deleted": True}
-
