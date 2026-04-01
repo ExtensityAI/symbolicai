@@ -1653,6 +1653,11 @@ class QdrantIndexEngine(Engine):
                 msg = "FileReader not initialized. Please ensure FileReader is available."
                 raise RuntimeError(msg)
             doc_path = Path(document_path)
+            if ".." in doc_path.parts:
+                UserMessage(
+                    f"Path traversal detected: '{document_path}' contains '..'",
+                    raise_with=ValueError,
+                )
             if not doc_path.exists():
                 msg = f"Document file not found: {document_path}"
                 raise FileNotFoundError(msg)
