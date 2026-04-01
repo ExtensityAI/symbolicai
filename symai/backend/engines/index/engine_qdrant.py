@@ -1,8 +1,9 @@
 import bisect
+import ipaddress
 import itertools
 import logging
+import socket
 import tempfile
-import urllib.request
 import uuid
 import warnings
 from dataclasses import dataclass
@@ -11,6 +12,8 @@ from typing import Any
 from urllib.parse import urlparse
 
 import numpy as np
+import requests
+from requests.adapters import HTTPAdapter
 
 from .... import core_ext
 from ....symbol import Result, Symbol
@@ -63,6 +66,27 @@ def chunks(iterable, batch_size=100):
     while chunk:
         yield chunk
         chunk = list(itertools.islice(it, batch_size))
+
+
+class PinningHTTPAdapter(HTTPAdapter):
+    """
+    HTTP adapter that pins DNS resolution to a specific validated IP.
+    Prevents DNS rebinding attacks by ensuring the connection uses
+    the same IP that was validated for SSRF protection.
+    """
+
+    def __init__(self, hostname: str, pinned_ip: str, **kwargs):
+        self.hostname = hostname
+        self.pinned_ip = pinned_ip
+        super().__init__(**kwargs)
+
+    def send(self, request, stream=False, timeout=None, verify=True, cert=None, proxies=None):
+        # Replace hostname with pinned IP in the request URL
+        # Original hostname is preserved in Host header for SNI and vhosts
+        request.url = request.url.replace(self.hostname, self.pinned_ip)
+        return super().send(
+            request, stream=stream, timeout=timeout, verify=verify, cert=cert, proxies=proxies
+        )
 
 
 class QdrantResult(Result):
@@ -1346,6 +1370,7 @@ class QdrantIndexEngine(Engine):
             or payload.get("file_path")
             or payload.get("path")
         )
+
         def _add_line_fragment(url: str) -> str:
             if not isinstance(url, str) or not url.startswith("file://") or "#" in url:
                 return url
@@ -1353,7 +1378,11 @@ class QdrantIndexEngine(Engine):
             is_pdf = Path(path).suffix.lower() == ".pdf"
 
             if is_pdf:
-                sp = payload.get("chunk_start_page") or payload.get("page") or payload.get("page_number")
+                sp = (
+                    payload.get("chunk_start_page")
+                    or payload.get("page")
+                    or payload.get("page_number")
+                )
                 try:
                     sp_int = int(sp) if sp is not None else None
                 except (TypeError, ValueError):
@@ -1475,6 +1504,7 @@ class QdrantIndexEngine(Engine):
     def _download_and_read_file(self, file_url: str) -> str:
         """
         Download file from URL and read it using FileReader.
+        Uses IP pinning to prevent DNS rebinding attacks.
 
         Args:
             file_url: URL to the file to download
@@ -1486,13 +1516,58 @@ class QdrantIndexEngine(Engine):
             msg = "FileReader not initialized"
             raise RuntimeError(msg)
 
-        file_path = Path(file_url)
-        suffix = file_path.suffix
-        with (
-            urllib.request.urlopen(file_url) as f,
-            tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file,
-        ):
-            tmp_file.write(f.read())
+        # Parse URL to extract hostname for DNS resolution
+        parsed = urlparse(file_url)
+        hostname = parsed.hostname
+        if hostname is None:
+            UserMessage("URL must have a valid hostname", raise_with=ValueError)
+
+        # Resolve DNS once and pin to this IP for the entire request.
+        # This prevents DNS rebinding where an attacker-controlled DNS server
+        # returns a public IP on first check but a private IP on second lookup.
+        try:
+            resolved_ip = socket.getaddrinfo(hostname, None)[0][4][0]
+        except socket.gaierror:
+            UserMessage(f"Could not resolve hostname: {hostname}", raise_with=ValueError)
+
+        # Validate resolved IP is not private/reserved (SSRF protection)
+        ip = ipaddress.ip_address(resolved_ip)
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+            UserMessage(
+                f"SSRF: Resolved IP {resolved_ip} is not allowed (private/reserved)",
+                raise_with=ValueError,
+            )
+
+        # Create session with pinning adapter to force connection to validated IP
+        session = requests.Session()
+        adapter = PinningHTTPAdapter(hostname, resolved_ip)
+        session.mount(f"{parsed.scheme}://", adapter)
+
+        # NOTE: Timeout set to (10s connect, 30s read).
+        # Trade-off: Prevents slowloris attacks and resource exhaustion, but large
+        # PDFs on slow connections may timeout. Adjust if users report issues with
+        # legitimate large documents.
+        try:
+            response = session.get(
+                file_url,
+                allow_redirects=False,  # Prevent redirect-based SSRF
+                timeout=(10, 30),  # (connect timeout, read timeout)
+                headers={"Host": hostname},  # For virtual host routing and SNI
+            )
+            response.raise_for_status()
+        except requests.exceptions.Timeout:
+            UserMessage("Request timeout downloading file", raise_with=RuntimeError)
+        except requests.exceptions.TooManyRedirects:
+            UserMessage("Redirects not allowed", raise_with=ValueError)
+        except requests.exceptions.RequestException as e:
+            UserMessage(f"Download failed: {e}", raise_with=RuntimeError)
+
+        # Extract extension from URL path
+        suffix = Path(parsed.path).suffix
+
+        # Write to temp file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
+            tmp_file.write(response.content)
             tmp_file.flush()
             tmp_file_name = tmp_file.name
 
@@ -1668,7 +1743,9 @@ class QdrantIndexEngine(Engine):
         chunk_data = []  # list of (chunk_text, payload, point_id)
         current_id = start_id if start_id is not None else 0
         for chunk_idx, chunk_item in enumerate(chunks):
-            chunk_text = ChonkieChunker.clean_text(str(chunk_item)) if ChonkieChunker else str(chunk_item)
+            chunk_text = (
+                ChonkieChunker.clean_text(str(chunk_item)) if ChonkieChunker else str(chunk_item)
+            )
             if not chunk_text.strip():
                 continue
 

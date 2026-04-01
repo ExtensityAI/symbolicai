@@ -7,6 +7,7 @@ Tests cover:
 - Document chunking and upsert functionality
 - Error handling and edge cases
 """
+
 import asyncio
 import os
 import time
@@ -37,11 +38,16 @@ except ImportError:
 
 AVAILABLE_PDFS = [(Path(__file__).parents[2] / "data" / "sample.pdf").as_posix()]
 
+
 def _check_qdrant_available():
     if QdrantClient is None:
         return False
-    url = SYMSERVER_CONFIG.get('url') or SYMAI_CONFIG.get('INDEXING_ENGINE_URL') or 'http://localhost:6333'
-    api_key = SYMAI_CONFIG.get('INDEXING_ENGINE_API_KEY')
+    url = (
+        SYMSERVER_CONFIG.get("url")
+        or SYMAI_CONFIG.get("INDEXING_ENGINE_URL")
+        or "http://localhost:6333"
+    )
+    api_key = SYMAI_CONFIG.get("INDEXING_ENGINE_API_KEY")
     try:
         client_kwargs = {"url": url}
         if api_key:
@@ -51,23 +57,29 @@ def _check_qdrant_available():
     except Exception:
         return False
 
+
 # Check if Qdrant is available
 QDrant_AVAILABLE = _check_qdrant_available()
+
 
 @pytest.fixture
 def engine():
     """Create a Qdrant engine instance for testing."""
     return QdrantIndexEngine(
-        url=SYMSERVER_CONFIG.get('url') or SYMAI_CONFIG.get('INDEXING_ENGINE_URL') or 'http://localhost:6333',
-        api_key=SYMAI_CONFIG.get('INDEXING_ENGINE_API_KEY'),
-        index_name='test_collection',
+        url=SYMSERVER_CONFIG.get("url")
+        or SYMAI_CONFIG.get("INDEXING_ENGINE_URL")
+        or "http://localhost:6333",
+        api_key=SYMAI_CONFIG.get("INDEXING_ENGINE_API_KEY"),
+        index_name="test_collection",
         index_dims=1536,
     )
+
 
 @pytest.fixture
 def test_collection_name():
     """Generate a unique collection name for each test."""
     return f"test_collection_{int(time.time() * 1000)}"
+
 
 def normalize_embedding(embedding, target_size=1536):
     """
@@ -81,7 +93,7 @@ def normalize_embedding(embedding, target_size=1536):
         List of floats with length target_size
     """
     # Convert to list format
-    if hasattr(embedding, 'tolist'):
+    if hasattr(embedding, "tolist"):
         query_vector = embedding.tolist()
     elif isinstance(embedding, list):
         query_vector = embedding
@@ -90,7 +102,11 @@ def normalize_embedding(embedding, target_size=1536):
 
     # Handle nested lists
     if query_vector and len(query_vector) > 0 and isinstance(query_vector[0], list):
-        query_vector = query_vector[0] if len(query_vector) == 1 else [item for sublist in query_vector for item in sublist]
+        query_vector = (
+            query_vector[0]
+            if len(query_vector) == 1
+            else [item for sublist in query_vector for item in sublist]
+        )
 
     # Pad or truncate to match target size
     if len(query_vector) != target_size:
@@ -101,6 +117,7 @@ def normalize_embedding(embedding, target_size=1536):
 
     return query_vector
 
+
 @pytest.mark.skipif(not QDrant_AVAILABLE, reason="Qdrant server not available")
 class TestQdrantEngineBasic:
     """Test basic engine functionality."""
@@ -108,7 +125,7 @@ class TestQdrantEngineBasic:
     def test_engine_initialization(self, engine):
         """Test that engine initializes correctly."""
         assert engine is not None
-        assert engine.index_name == 'test_collection'
+        assert engine.index_name == "test_collection"
         assert engine.index_dims == 1536
 
     @pytest.mark.asyncio
@@ -125,7 +142,7 @@ class TestQdrantEngineBasic:
 
         # Ensure correct size (engine will normalize the vector format)
         # Convert to list for size checking
-        if hasattr(embedding, 'tolist'):
+        if hasattr(embedding, "tolist"):
             embedding_list = embedding.tolist()
         elif isinstance(embedding, list):
             embedding_list = embedding
@@ -134,7 +151,11 @@ class TestQdrantEngineBasic:
 
         # Handle nested lists for size checking
         if embedding_list and len(embedding_list) > 0 and isinstance(embedding_list[0], list):
-            embedding_list = embedding_list[0] if len(embedding_list) == 1 else [item for sublist in embedding_list for item in sublist]
+            embedding_list = (
+                embedding_list[0]
+                if len(embedding_list) == 1
+                else [item for sublist in embedding_list for item in sublist]
+            )
 
         # Pad or truncate to match collection size
         if len(embedding_list) != 1536:
@@ -145,13 +166,7 @@ class TestQdrantEngineBasic:
             # Update embedding to use the adjusted list
             embedding = embedding_list
 
-        points = [
-            PointStruct(
-                id=1,
-                vector=embedding,
-                payload={"text": text}
-            )
-        ]
+        points = [PointStruct(id=1, vector=embedding, payload={"text": text})]
 
         # Add using manager method
         await engine.upsert(test_collection_name, points)
@@ -160,8 +175,9 @@ class TestQdrantEngineBasic:
         results = await engine.search(test_collection_name, embedding, limit=5)
 
         assert len(results) > 0, "Should find at least one result."
-        assert hasattr(results[0], 'payload'), "Result should have payload."
+        assert hasattr(results[0], "payload"), "Result should have payload."
         assert "Hello world" in str(results[0].payload.get("text", ""))
+
 
 @pytest.mark.skipif(not QDrant_AVAILABLE, reason="Qdrant server not available")
 class TestQdrantManagerMethods:
@@ -171,9 +187,7 @@ class TestQdrantManagerMethods:
     async def test_create_collection(self, engine, test_collection_name):
         """Test collection creation."""
         await engine.create_collection(
-            collection_name=test_collection_name,
-            vector_size=1536,
-            distance="Cosine"
+            collection_name=test_collection_name, vector_size=1536, distance="Cosine"
         )
 
         # Verify collection exists
@@ -209,16 +223,8 @@ class TestQdrantManagerMethods:
 
         # Create test points
         points = [
-            PointStruct(
-                id=1,
-                vector=[0.1] * 1536,
-                payload={"text": "Test document 1"}
-            ),
-            PointStruct(
-                id=2,
-                vector=[0.2] * 1536,
-                payload={"text": "Test document 2"}
-            ),
+            PointStruct(id=1, vector=[0.1] * 1536, payload={"text": "Test document 1"}),
+            PointStruct(id=2, vector=[0.2] * 1536, payload={"text": "Test document 2"}),
         ]
 
         await engine.upsert(test_collection_name, points)
@@ -235,16 +241,8 @@ class TestQdrantManagerMethods:
 
         # Add points
         points = [
-            PointStruct(
-                id=1,
-                vector=[0.1] * 1536,
-                payload={"text": "Alpha document"}
-            ),
-            PointStruct(
-                id=2,
-                vector=[0.2] * 1536,
-                payload={"text": "Beta document"}
-            ),
+            PointStruct(id=1, vector=[0.1] * 1536, payload={"text": "Alpha document"}),
+            PointStruct(id=2, vector=[0.2] * 1536, payload={"text": "Beta document"}),
         ]
         await engine.upsert(test_collection_name, points)
 
@@ -253,8 +251,8 @@ class TestQdrantManagerMethods:
         results = await engine.search(test_collection_name, query_vector, limit=2)
 
         assert len(results) > 0, "Search should return results."
-        assert hasattr(results[0], 'id'), "Results should have id attribute."
-        assert hasattr(results[0], 'score'), "Results should have score attribute."
+        assert hasattr(results[0], "id"), "Results should have id attribute."
+        assert hasattr(results[0], "score"), "Results should have score attribute."
 
     @pytest.mark.asyncio
     async def test_retrieve_points(self, engine, test_collection_name):
@@ -264,11 +262,7 @@ class TestQdrantManagerMethods:
 
         # Add points
         points = [
-            PointStruct(
-                id=100,
-                vector=[0.1] * 1536,
-                payload={"text": "Retrieved document"}
-            ),
+            PointStruct(id=100, vector=[0.1] * 1536, payload={"text": "Retrieved document"}),
         ]
         await engine.upsert(test_collection_name, points)
 
@@ -312,6 +306,7 @@ class TestQdrantManagerMethods:
         # Verify deleted
         assert not await engine.collection_exists(test_collection_name)
 
+
 @pytest.mark.skipif(not QDrant_AVAILABLE, reason="Qdrant server not available")
 class TestQdrantChunking:
     """Test document chunking and upsert functionality."""
@@ -329,9 +324,7 @@ class TestQdrantChunking:
         """
 
         num_chunks = await engine.chunk_and_upsert(
-            collection_name=test_collection_name,
-            text=text,
-            chunker_name="RecursiveChunker"
+            collection_name=test_collection_name, text=text, chunker_name="RecursiveChunker"
         )
 
         assert num_chunks > 0, "Should create at least one chunk."
@@ -349,9 +342,7 @@ class TestQdrantChunking:
         metadata = {"source": "test", "author": "test_author", "date": "2024-01-01"}
 
         num_chunks = await engine.chunk_and_upsert(
-            collection_name=test_collection_name,
-            text=text,
-            metadata=metadata
+            collection_name=test_collection_name, text=text, metadata=metadata
         )
 
         assert num_chunks > 0
@@ -362,7 +353,7 @@ class TestQdrantChunking:
 
         if results:
             # Check if payload contains metadata
-            assert hasattr(results[0], 'payload'), "Result should have payload."
+            assert hasattr(results[0], "payload"), "Result should have payload."
             # Note: payload structure may vary, so we just check it exists
 
     @pytest.mark.asyncio
@@ -376,7 +367,7 @@ class TestQdrantChunking:
             collection_name=test_collection_name,
             document_path=pdf_path,
             chunker_name="RecursiveChunker",
-            metadata={"source": os.path.basename(pdf_path)}
+            metadata={"source": os.path.basename(pdf_path)},
         )
 
         assert num_chunks > 0, f"Should create chunks from PDF: {pdf_path}"
@@ -404,9 +395,7 @@ class TestQdrantChunking:
 
             try:
                 num_chunks = await engine.chunk_and_upsert(
-                    collection_name=collection_name,
-                    text=text,
-                    chunker_name=chunker_name
+                    collection_name=collection_name, text=text, chunker_name=chunker_name
                 )
                 assert num_chunks > 0, f"Chunker {chunker_name} should create chunks."
             except Exception as e:
@@ -421,9 +410,7 @@ class TestQdrantChunking:
         text = "Test document for ID testing."
 
         num_chunks = await engine.chunk_and_upsert(
-            collection_name=test_collection_name,
-            text=text,
-            start_id=1000
+            collection_name=test_collection_name, text=text, start_id=1000
         )
 
         assert num_chunks > 0
@@ -433,6 +420,86 @@ class TestQdrantChunking:
         # but we can verify points exist
         info = await engine.get_collection_info(test_collection_name)
         assert info["points_count"] == num_chunks
+
+
+@pytest.mark.skipif(not QDrant_AVAILABLE, reason="Qdrant server not available")
+class TestQdrantUrlDownloads:
+    """Test document downloads from URLs with SSRF protection."""
+
+    # Real public PDF for testing successful downloads
+    VALID_PDF_URL = "https://arxiv.org/pdf/2508.03665"
+
+    # SSRF test URLs that should be blocked
+    SSRF_TEST_CASES = [
+        # Localhost variants
+        ("http://localhost:8080/admin", "localhost"),
+        ("http://127.0.0.1:3000/secrets", "127.0.0.1"),
+        ("http://0.0.0.0/test", "0.0.0.0"),
+        ("http://[::1]/api", "::1"),
+        # Private IP ranges
+        ("http://192.168.1.1/router", "192.168"),
+        ("http://10.0.0.1/internal", "10.0.0"),
+        ("http://172.16.0.1/admin", "172.16"),
+        # Link-local (cloud metadata)
+        ("http://169.254.169.254/latest/meta-data/", "169.254"),
+        # File scheme (should be blocked)
+        ("file:///etc/passwd", "file"),
+        ("file:///C:/Windows/System32/drivers/etc/hosts", "file"),
+    ]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("ssrf_url,expected_in_error", SSRF_TEST_CASES)
+    async def test_ssrf_blocked(self, engine, test_collection_name, ssrf_url, expected_in_error):
+        """Test that SSRF attacks via document_url are blocked."""
+        await engine.create_collection(test_collection_name, vector_size=1536)
+
+        # Attempt to download from SSRF URL should raise ValueError
+        with pytest.raises((ValueError, RuntimeError)) as exc_info:
+            await engine.chunk_and_upsert(
+                collection_name=test_collection_name,
+                document_url=ssrf_url,
+                chunker_name="RecursiveChunker",
+            )
+
+        # Verify error message contains expected hint about why it failed
+        error_msg = str(exc_info.value).lower()
+        assert (
+            "ssrf" in error_msg
+            or "private" in error_msg
+            or "not allowed" in error_msg
+            or "localhost" in error_msg
+            or expected_in_error.lower() in error_msg
+            or "could not resolve" in error_msg
+            or "hostname" in error_msg
+        ), f"SSRF error message should indicate blocked URL, got: {error_msg}"
+
+        # Verify no points were added (collection should still be empty)
+        info = await engine.get_collection_info(test_collection_name)
+        assert info["points_count"] == 0, "SSRF attempt should not add any chunks"
+
+    @pytest.mark.asyncio
+    @pytest.mark.skip(reason="External URL test - run manually when needed")
+    async def test_valid_url_download(self, engine, test_collection_name):
+        """Test downloading and chunking from a real public URL.
+
+        Note: This test is skipped by default to avoid external dependencies.
+        Run manually with: pytest -v -k test_valid_url_download --run-external
+        """
+        await engine.create_collection(test_collection_name, vector_size=1536)
+
+        num_chunks = await engine.chunk_and_upsert(
+            collection_name=test_collection_name,
+            document_url=self.VALID_PDF_URL,
+            chunker_name="RecursiveChunker",
+            metadata={"source": self.VALID_PDF_URL},
+        )
+
+        assert num_chunks > 0, f"Should create chunks from URL: {self.VALID_PDF_URL}"
+
+        # Verify chunks were added
+        info = await engine.get_collection_info(test_collection_name)
+        assert info["points_count"] == num_chunks
+
 
 @pytest.mark.skipif(not QDrant_AVAILABLE, reason="Qdrant server not available")
 class TestQdrantErrorHandling:
@@ -467,9 +534,7 @@ class TestQdrantErrorHandling:
 
         with pytest.raises(ValueError, match="Only one of"):
             await engine.chunk_and_upsert(
-                collection_name=test_collection_name,
-                text="test",
-                document_path="test.pdf"
+                collection_name=test_collection_name, text="test", document_path="test.pdf"
             )
 
     @pytest.mark.asyncio
@@ -477,6 +542,7 @@ class TestQdrantErrorHandling:
         """Test error when deleting nonexistent collection."""
         with pytest.raises(ValueError, match="does not exist"):
             await engine.delete_collection("nonexistent_collection")
+
 
 @pytest.mark.skipif(not QDrant_AVAILABLE, reason="Qdrant server not available")
 class TestQdrantSearchChunkedDocuments:
@@ -497,8 +563,7 @@ class TestQdrantSearchChunkedDocuments:
         visual information from the world.
         """
         num_chunks = await engine.chunk_and_upsert(
-            collection_name=test_collection_name,
-            text=document_text
+            collection_name=test_collection_name, text=document_text
         )
         assert num_chunks > 0
 
@@ -510,15 +575,15 @@ class TestQdrantSearchChunkedDocuments:
         results = await engine.search(test_collection_name, query_vector, limit=5)
 
         assert len(results) > 0, "Should find results for semantic query."
-        assert hasattr(results[0], 'score'), "Results should have similarity scores."
-        assert hasattr(results[0], 'payload'), "Results should have payload with text."
+        assert hasattr(results[0], "score"), "Results should have similarity scores."
+        assert hasattr(results[0], "payload"), "Results should have payload with text."
 
         # Verify that results contain relevant content
         found_relevant = False
         for result in results:
-            if hasattr(result, 'payload') and result.payload:
-                text = result.payload.get('text', '') or result.payload.get('content', '')
-                if 'machine learning' in text.lower() or 'artificial intelligence' in text.lower():
+            if hasattr(result, "payload") and result.payload:
+                text = result.payload.get("text", "") or result.payload.get("content", "")
+                if "machine learning" in text.lower() or "artificial intelligence" in text.lower():
                     found_relevant = True
                     break
         assert found_relevant, "Should find relevant chunks containing AI/ML content."
@@ -534,15 +599,12 @@ class TestQdrantSearchChunkedDocuments:
             "Python is a high-level programming language known for its simplicity and readability.",
             "JavaScript is the language of the web, used for both frontend and backend development.",
             "Rust is a systems programming language focused on safety and performance.",
-            "Go is a statically typed language developed by Google for concurrent programming."
+            "Go is a statically typed language developed by Google for concurrent programming.",
         ]
 
         total_chunks = 0
         for doc in documents:
-            chunks = await engine.chunk_and_upsert(
-                collection_name=test_collection_name,
-                text=doc
-            )
+            chunks = await engine.chunk_and_upsert(collection_name=test_collection_name, text=doc)
             total_chunks += chunks
 
         assert total_chunks > 0
@@ -560,9 +622,9 @@ class TestQdrantSearchChunkedDocuments:
         # Verify results contain programming language content
         found_language = False
         for result in results:
-            if hasattr(result, 'payload') and result.payload:
-                text = result.payload.get('text', '') or result.payload.get('content', '')
-                if any(lang in text.lower() for lang in ['python', 'javascript', 'rust', 'go']):
+            if hasattr(result, "payload") and result.payload:
+                text = result.payload.get("text", "") or result.payload.get("content", "")
+                if any(lang in text.lower() for lang in ["python", "javascript", "rust", "go"]):
                     found_language = True
                     break
         assert found_language, "Should find programming language content."
@@ -574,10 +636,11 @@ class TestQdrantSearchChunkedDocuments:
         await engine.create_collection(test_collection_name, vector_size=1536)
 
         # Add a long document that will create multiple chunks
-        long_text = ". ".join([f"Sentence number {i} about machine learning and data science." for i in range(50)])
+        long_text = ". ".join(
+            [f"Sentence number {i} about machine learning and data science." for i in range(50)]
+        )
         num_chunks = await engine.chunk_and_upsert(
-            collection_name=test_collection_name,
-            text=long_text
+            collection_name=test_collection_name, text=long_text
         )
         assert num_chunks > 0
 
@@ -611,14 +674,11 @@ class TestQdrantSearchChunkedDocuments:
             "Machine learning algorithms can learn from data without explicit programming.",
             "Cooking recipes require precise measurements and timing.",
             "Deep learning uses neural networks with many layers for complex tasks.",
-            "Gardening tips help plants grow healthy and strong."
+            "Gardening tips help plants grow healthy and strong.",
         ]
 
         for doc in documents:
-            await engine.chunk_and_upsert(
-                collection_name=test_collection_name,
-                text=doc
-            )
+            await engine.chunk_and_upsert(collection_name=test_collection_name, text=doc)
 
         # Search with ML-related query
         query_text = "neural networks and deep learning"
@@ -630,13 +690,17 @@ class TestQdrantSearchChunkedDocuments:
         assert len(results) > 0, "Should find results."
 
         # Verify scores are in descending order (highest similarity first)
-        scores = [r.score for r in results if hasattr(r, 'score')]
+        scores = [r.score for r in results if hasattr(r, "score")]
         if len(scores) > 1:
-            assert scores == sorted(scores, reverse=True), "Results should be ordered by score (descending)."
+            assert scores == sorted(scores, reverse=True), (
+                "Results should be ordered by score (descending)."
+            )
 
         # Verify top result has highest score
         if len(results) > 1:
-            assert results[0].score >= results[1].score, "First result should have highest or equal score."
+            assert results[0].score >= results[1].score, (
+                "First result should have highest or equal score."
+            )
 
     @pytest.mark.asyncio
     async def test_search_with_metadata_filter(self, engine, test_collection_name):
@@ -653,9 +717,7 @@ class TestQdrantSearchChunkedDocuments:
 
         for text, metadata in documents:
             await engine.chunk_and_upsert(
-                collection_name=test_collection_name,
-                text=text,
-                metadata=metadata
+                collection_name=test_collection_name, text=text, metadata=metadata
             )
 
         # Create query
@@ -670,24 +732,16 @@ class TestQdrantSearchChunkedDocuments:
         # Search with metadata filter for AI category
         try:
             query_filter = Filter(
-                must=[
-                    FieldCondition(
-                        key="category",
-                        match=MatchValue(value="AI")
-                    )
-                ]
+                must=[FieldCondition(key="category", match=MatchValue(value="AI"))]
             )
             filtered_results = await engine.search(
-                test_collection_name,
-                query_vector,
-                limit=10,
-                query_filter=query_filter
+                test_collection_name, query_vector, limit=10, query_filter=query_filter
             )
 
             # Verify filtered results only contain AI category
             for result in filtered_results:
-                if hasattr(result, 'payload') and result.payload:
-                    category = result.payload.get('category')
+                if hasattr(result, "payload") and result.payload:
+                    category = result.payload.get("category")
                     if category:
                         assert category == "AI", "Filtered results should only contain AI category."
         except Exception as e:
@@ -746,7 +800,9 @@ class TestQdrantSearchChunkedDocuments:
             payload = getattr(point, "payload", None) or {}
             category = payload.get("category")
             if category is not None:
-                assert category == "AI", "Dict-based filter in forward() should restrict to AI category."
+                assert category == "AI", (
+                    "Dict-based filter in forward() should restrict to AI category."
+                )
 
     @pytest.mark.asyncio
     async def test_forward_search_returns_search_result(self, engine, test_collection_name):
@@ -803,10 +859,7 @@ class TestQdrantSearchChunkedDocuments:
         ]
 
         for doc in documents:
-            await engine.chunk_and_upsert(
-                collection_name=test_collection_name,
-                text=doc
-            )
+            await engine.chunk_and_upsert(collection_name=test_collection_name, text=doc)
 
         # Create query
         query_text = "artificial intelligence and machine learning"
@@ -817,7 +870,7 @@ class TestQdrantSearchChunkedDocuments:
         all_results = await engine.search(test_collection_name, query_vector, limit=10)
         assert len(all_results) > 0
 
-        if all_results and hasattr(all_results[0], 'score'):
+        if all_results and hasattr(all_results[0], "score"):
             # Get the score of the last result
             min_score = all_results[-1].score if len(all_results) > 1 else all_results[0].score
 
@@ -826,19 +879,20 @@ class TestQdrantSearchChunkedDocuments:
             threshold = max(0.3, min_score - 0.1) if min_score > 0 else 0.3
 
             threshold_results = await engine.search(
-                test_collection_name,
-                query_vector,
-                limit=10,
-                score_threshold=threshold
+                test_collection_name, query_vector, limit=10, score_threshold=threshold
             )
 
             # Verify all results meet threshold
             for result in threshold_results:
-                if hasattr(result, 'score'):
-                    assert result.score >= threshold, f"Result score {result.score} should be >= threshold {threshold}."
+                if hasattr(result, "score"):
+                    assert result.score >= threshold, (
+                        f"Result score {result.score} should be >= threshold {threshold}."
+                    )
 
             # Threshold results should be <= all results
-            assert len(threshold_results) <= len(all_results), "Threshold should filter out low-scoring results."
+            assert len(threshold_results) <= len(all_results), (
+                "Threshold should filter out low-scoring results."
+            )
 
     @pytest.mark.asyncio
     @pytest.mark.skipif(len(AVAILABLE_PDFS) == 0, reason="No test PDF files available")
@@ -856,7 +910,7 @@ class TestQdrantSearchChunkedDocuments:
             collection_name=test_collection_name,
             document_path=pdf_path,
             chunker_name="RecursiveChunker",
-            metadata={"source": os.path.basename(pdf_path)}
+            metadata={"source": os.path.basename(pdf_path)},
         )
         assert num_chunks > 0
 
@@ -873,9 +927,9 @@ class TestQdrantSearchChunkedDocuments:
 
         # Verify results have payload with text
         for result in results:
-            assert hasattr(result, 'payload'), "Results should have payload."
+            assert hasattr(result, "payload"), "Results should have payload."
             if result.payload:
-                text = result.payload.get('text') or result.payload.get('content', '')
+                text = result.payload.get("text") or result.payload.get("content", "")
                 assert len(text) > 0, "Result payload should contain text content."
 
     @pytest.mark.asyncio
@@ -892,8 +946,7 @@ class TestQdrantSearchChunkedDocuments:
         Python has a large standard library and an active community of developers.
         """
         num_chunks = await engine.chunk_and_upsert(
-            collection_name=test_collection_name,
-            text=document_text
+            collection_name=test_collection_name, text=document_text
         )
         assert num_chunks > 0
 
@@ -909,14 +962,14 @@ class TestQdrantSearchChunkedDocuments:
         # Verify at least one result contains Python-related content
         found_python_content = False
         for result in results:
-            if hasattr(result, 'payload') and result.payload:
-                text = result.payload.get('text', '') or result.payload.get('content', '')
+            if hasattr(result, "payload") and result.payload:
+                text = result.payload.get("text", "") or result.payload.get("content", "")
                 text_lower = text.lower()
-                if 'python' in text_lower or 'guido' in text_lower or 'programming' in text_lower:
+                if "python" in text_lower or "guido" in text_lower or "programming" in text_lower:
                     found_python_content = True
                     # Verify the result has required attributes
-                    assert hasattr(result, 'id'), "Result should have id."
-                    assert hasattr(result, 'score'), "Result should have score."
+                    assert hasattr(result, "id"), "Result should have id."
+                    assert hasattr(result, "score"), "Result should have score."
                     break
 
         assert found_python_content, "Should find results containing Python-related content."
@@ -938,6 +991,7 @@ class TestQdrantSearchChunkedDocuments:
         # Should return empty list, not raise error
         assert isinstance(results, list), "Should return a list even for empty collection."
         assert len(results) == 0, "Should return empty results for empty collection."
+
 
 @pytest.mark.skipif(not QDrant_AVAILABLE, reason="Qdrant server not available")
 class TestQdrantLocalSearch:
@@ -1003,6 +1057,7 @@ class TestQdrantLocalSearch:
         assert isinstance(citations, list)
         assert len(citations) >= 1
 
+
 @pytest.mark.skipif(not QDrant_AVAILABLE, reason="Qdrant server not available")
 class TestQdrantIntegration:
     """Integration tests combining multiple operations."""
@@ -1016,10 +1071,7 @@ class TestQdrantIntegration:
 
         # Add documents via chunk_and_upsert
         text = "This is a comprehensive test document. It contains multiple sentences for testing."
-        num_chunks = await engine.chunk_and_upsert(
-            collection_name=test_collection_name,
-            text=text
-        )
+        num_chunks = await engine.chunk_and_upsert(collection_name=test_collection_name, text=text)
         assert num_chunks > 0
 
         # Search
@@ -1075,6 +1127,7 @@ class TestQdrantIntegration:
         for coll_name in collections:
             await engine.delete_collection(coll_name)
 
+
 @pytest.mark.skipif(not QDrant_AVAILABLE, reason="Qdrant server not available")
 class TestRagEmbedBatching:
     """Verify that chunk_and_upsert batch-embeds all chunks in a single API call.
@@ -1090,7 +1143,9 @@ class TestRagEmbedBatching:
     SAMPLE_PATH = Path(__file__).parents[2] / "data" / "sample.txt"
 
     @pytest.mark.asyncio
-    async def test_chunk_and_upsert_faster_than_sequential_embed(self, engine, test_collection_name):
+    async def test_chunk_and_upsert_faster_than_sequential_embed(
+        self, engine, test_collection_name
+    ):
 
         document = self.SAMPLE_PATH.read_text(encoding="utf-8")[:120_000]
 
@@ -1153,9 +1208,7 @@ class TestRagEmbedBatching:
             chunker_name="RecursiveChunker",
         )
 
-        query_vec = engine._normalize_vector(
-            Symbol("Odyssey travels adventures sea").embed().value
-        )
+        query_vec = engine._normalize_vector(Symbol("Odyssey travels adventures sea").embed().value)
 
         N = 8  # number of parallel searches
 
@@ -1176,12 +1229,15 @@ class TestRagEmbedBatching:
         await asyncio.gather(*[asyncio.to_thread(do_search) for _ in range(N)])
         concurrent_time = time.perf_counter() - t0
 
-        print(f"\nN={N} searches: sequential={sequential_time:.3f}s  concurrent={concurrent_time:.3f}s  speedup={sequential_time / concurrent_time:.1f}x")
+        print(
+            f"\nN={N} searches: sequential={sequential_time:.3f}s  concurrent={concurrent_time:.3f}s  speedup={sequential_time / concurrent_time:.1f}x"
+        )
 
         assert concurrent_time < sequential_time, (
             f"Concurrent search ({concurrent_time:.3f}s) should be faster than "
             f"sequential ({sequential_time:.3f}s) with max_workers=4"
         )
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

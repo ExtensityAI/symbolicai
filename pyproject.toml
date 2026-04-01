@@ -70,7 +70,7 @@ serpapi      = ["google_search_results>=2.4.2"]
 ocr          = ["mistralai>=1.0.0"]
 services     = ["fastapi>=0.110.0", "redis>=5.0.2", "uvicorn>=0.27.1"]
 solver       = ["z3-solver>=4.12.6.0"]
-qdrant       = ["qdrant-client", "chonkie>=0.4.1", "tokenizers"]
+qdrant       = ["qdrant-client", "chonkie>=0.4.1", "tokenizers", "requests"]
 all          = [
     "symbolicai[hf]",
     "symbolicai[wolframalpha]",
