@@ -152,6 +152,7 @@ def run_server():
         "qdrant" in arg.lower() or arg in _QDRANT_SERVER_FLAGS for arg in sys.argv[1:]
     )
     rag_requested = any(arg == "--rag" or arg.startswith("--rag-api") for arg in sys.argv[1:])
+    lean4_requested = "--lean4" in sys.argv[1:]
     uvicorn_reload_default = os.getenv("UVICORN_RELOAD", "").strip().lower() in {
         "1",
         "true",
@@ -348,7 +349,7 @@ def run_server():
                         raise RuntimeError(msg)
                 time.sleep(0.25)
         except KeyboardInterrupt:
-            UserMessage("Server stopped!")
+            UserMessage("Server stopped.", style="success")
         except Exception as e:
             UserMessage(f"Error running server: {e}")
         finally:
@@ -390,7 +391,7 @@ def run_server():
         try:
             subprocess.run(command, check=True)
         except KeyboardInterrupt:
-            UserMessage("Server stopped!")
+            UserMessage("Server stopped.", style="success")
         except Exception as e:
             UserMessage(f"Error running server: {e}")
         finally:
@@ -410,12 +411,41 @@ def run_server():
         try:
             command(host=args.host, port=args.port)
         except KeyboardInterrupt:
-            UserMessage("Server stopped!")
+            UserMessage("Server stopped.", style="success")
         except Exception as e:
             UserMessage(f"Error running server: {e}")
         finally:
             _symserver_config_["online"] = False
             _save_symserver_config(_symserver_config_)
+
+    elif lean4_requested:
+        # Lean4 server - check FORMAL_ENGINE and start container + FastAPI
+        from .server.lean4_server import lean4_server  # noqa
+
+        command, args = lean4_server()
+        _symserver_config_.update(zip(args[::2], args[1::2], strict=False))
+        _symserver_config_["online"] = True
+
+        # Extract port from command (uvicorn --port X)
+        port = 8000
+        for i, arg in enumerate(command):
+            if arg == "--port" and i + 1 < len(command):
+                port = int(command[i + 1])
+                break
+        _symserver_config_["url"] = f"http://localhost:{port}"
+
+        _save_symserver_config(_symserver_config_, include_home=True)
+
+        try:
+            subprocess.run(command, check=True)
+        except KeyboardInterrupt:
+            UserMessage("Server stopped.", style="success")
+        except Exception as e:
+            UserMessage(f"Error running server: {e}")
+        finally:
+            _symserver_config_["online"] = False
+            _save_symserver_config(_symserver_config_)
+
     else:
         msg = (
             "You're trying to run a local server without a recognised engine configuration. "
@@ -424,7 +454,8 @@ def run_server():
             "or pass any qdrant_server flag (e.g. symserver --docker-detach)\n"
             "  - llama.cpp (neuro-symbolic):    set NEUROSYMBOLIC_ENGINE_MODEL=llamacpp or "
             "EMBEDDING_ENGINE_MODEL=llamacpp in symai.config.json\n"
-            "  - HuggingFace (neuro-symbolic):  set NEUROSYMBOLIC_ENGINE_MODEL=huggingface in symai.config.json"
+            "  - HuggingFace (neuro-symbolic):  set NEUROSYMBOLIC_ENGINE_MODEL=huggingface in symai.config.json\n"
+            "  - Lean4 (formal):                symserver --lean4 (requires FORMAL_ENGINE=local)"
         )
         UserMessage(msg, raise_with=ValueError)
 
