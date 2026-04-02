@@ -151,7 +151,53 @@ The engine resolves the server URL in this order:
 1. `url` in `symserver.config.json` (set automatically by `symserver --lean4`)
 2. Auto-start a new server on a free port
 
-## Using with `@contract`
+## Using with `TypeValidationFunction` (Local)
+
+`TypeValidationFunction` gives the LLM structured output (via an `LLMDataModel` schema) with automatic retry/remedy. Combine it with the local engine to fix broken Lean4 code:
+
+```python
+from pydantic import Field
+
+from symai import Interface
+from symai.models import LLMDataModel
+from symai.strategy import TypeValidationFunction
+
+
+class BrokenLeanInput(LLMDataModel):
+    code: str = Field(description="The Lean4 code that fails to compile")
+    error: str = Field(description="The compiler error message")
+
+
+class FixedLeanCode(LLMDataModel):
+    code: str = Field(description="The corrected Lean4 code that should compile")
+    explanation: str = Field(description="Brief explanation of what was wrong and how it was fixed")
+
+
+lean = Interface("lean4_local")
+
+# Step 1: Get the compiler error
+broken = "theorem add_comm (a b : Nat) : a + b = b + a := by\n  sorry_not_a_tactic"
+result = lean(broken)
+print(result.raw["output"])  # "unknown tactic 'sorry_not_a_tactic'"
+
+# Step 2: Ask the LLM to fix it with structured output
+fixer = TypeValidationFunction(
+    retry_params={"tries": 3, "delay": 0.5, "max_delay": 4.0, "backoff": 2.0, "graceful": False},
+    accumulate_errors=True,
+)
+fixer.register_expected_data_model(
+    BrokenLeanInput(code=broken, error=result.raw["output"]), attach_to="input",
+)
+fixer.register_expected_data_model(FixedLeanCode, attach_to="output")
+
+fixed = fixer("Fix the broken Lean4 code. The proof must be valid (no sorry).")
+
+# Step 3: Verify the fix compiles
+check = lean(fixed.code)
+assert check.raw["status"] == "success"
+```
+
+## Using with `@contract` (Axiom)
 
 Each contract's post-condition can delegate LLM outputs to the formal engine for verification before accepting them. The `@contract` decorator calls the LLM (using the `prompt` property and the data models), then runs `post()` to validate. If `post()` raises, the contract feeds the error back to the LLM and retries.
 
@@ -230,4 +276,4 @@ class ProveTheorem(Expression):
         return self.contract_result
 ```
 
-See [`examples/formal_verification.ipynb`](../../../examples/formal_verification.ipynb) for a full runnable example.
+See [`examples/formal_verification.ipynb`](../../../examples/formal_verification.ipynb) for full runnable examples of both backends.
