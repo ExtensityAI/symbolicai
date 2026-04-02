@@ -10,6 +10,7 @@
 * [Custom Engine](ENGINES/custom_engine.md)
 * [Drawing Engine](ENGINES/drawing_engine.md)
 * [File Engine](ENGINES/file_engine.md)
+* [Formal Engine](ENGINES/formal_engine.md)
 * [Indexing Engine](ENGINES/indexing_engine.md)
 * [Local Engine](ENGINES/local_engine.md)
 * [OCR Engine](ENGINES/ocr_engine.md)
