@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import logging
 import os
+import resource
+import time
 import uuid
 from collections.abc import Sequence
 from pathlib import Path
 from threading import Lock
 from typing import Any
 
-from fastapi import Depends, FastAPI, Header, HTTPException, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -18,6 +20,8 @@ from symai.symbol import Symbol as SymaiSymbol
 from symai.utils import UserMessage
 
 logger = logging.getLogger(__name__)
+
+_STARTUP_TIME = time.monotonic()
 
 
 def _env_int(name: str, default: int) -> int:
@@ -191,6 +195,19 @@ class ChunkUpsertRequest(BaseModel):
         return values
 
 
+class BatchChunkItem(BaseModel):
+    text: str = Field(..., min_length=1)
+    metadata: dict[str, Any] | None = None
+    skip_chunking: bool = Field(default=False, description="If True, treat text as a single chunk (skip splitting).")
+
+
+class BatchChunkUpsertRequest(BaseModel):
+    index_name: str | None = None
+    items: list[BatchChunkItem] = Field(..., min_length=1)
+    chunker_name: str | None = None
+    chunker_kwargs: dict[str, Any] | None = None
+
+
 class CollectionCreateRequest(BaseModel):
     name: str
     vector_size: int | None = None
@@ -269,6 +286,34 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def request_logging_middleware(request: Request, call_next: Any) -> Response:
+    t0 = time.monotonic()
+    response = await call_next(request)
+    duration_ms = (time.monotonic() - t0) * 1000
+    path = request.url.path
+    method = request.method
+    status_code = response.status_code
+    log_msg = "RAG %s %s -> %d (%.0fms)"
+    if duration_ms > 5000:
+        logger.warning(log_msg, method, path, status_code, duration_ms)
+    elif status_code >= 400:
+        logger.error(log_msg, method, path, status_code, duration_ms)
+    else:
+        logger.info(log_msg, method, path, status_code, duration_ms)
+    return response
+
+
+def _rss_mb() -> float:
+    """Return current process RSS in megabytes."""
+    usage = resource.getrusage(resource.RUSAGE_SELF)
+    # ru_maxrss is in KB on Linux, bytes on macOS
+    if os.uname().sysname == "Darwin":
+        return usage.ru_maxrss / (1024 * 1024)
+    return usage.ru_maxrss / 1024
+
 
 ENGINE: QdrantIndexEngine | None = None
 ENGINE_LOCK = Lock()
@@ -443,9 +488,30 @@ async def root() -> dict[str, Any]:
 
 @app.get("/healthz", dependencies=[Depends(require_token)])
 async def healthz(engine: QdrantIndexEngine = Depends(get_engine)) -> dict[str, Any]:  # noqa: B008
+    collection_stats: dict[str, Any] = {}
     try:
         collections = await engine.list_collections()
         ready = True
+        for coll_name in collections:
+            try:
+                info = await engine.get_collection_info(collection_name=coll_name)
+                if isinstance(info, dict):
+                    collection_stats[coll_name] = {
+                        "points_count": info.get("points_count"),
+                        "vectors_count": info.get("vectors_count"),
+                        "indexed_vectors_count": info.get("indexed_vectors_count"),
+                    }
+                else:
+                    points_count = getattr(info, "points_count", None)
+                    vectors_count = getattr(info, "vectors_count", None)
+                    indexed = getattr(info, "indexed_vectors_count", None)
+                    collection_stats[coll_name] = {
+                        "points_count": points_count,
+                        "vectors_count": vectors_count,
+                        "indexed_vectors_count": indexed,
+                    }
+            except Exception:
+                collection_stats[coll_name] = {"error": "failed to fetch stats"}
     except Exception as exc:  # pragma: no cover
         logger.exception("Health check failed while listing collections: %s", exc)
         collections = []
@@ -454,9 +520,12 @@ async def healthz(engine: QdrantIndexEngine = Depends(get_engine)) -> dict[str, 
         "status": "ok" if ready else "degraded",
         "ready": ready,
         "collections": collections,
+        "collection_stats": collection_stats,
         "index_name": SETTINGS.index_name,
         "qdrant_url": SETTINGS.qdrant_url,
         "token_required": bool(SETTINGS.rag_api_token),
+        "rss_mb": round(_rss_mb(), 1),
+        "uptime_seconds": round(time.monotonic() - _STARTUP_TIME, 1),
     }
 
 
@@ -472,7 +541,13 @@ async def upsert_points(
         if isinstance(point_dict.get("id"), uuid.UUID):
             point_dict["id"] = str(point_dict["id"])
         points_data.append(point_dict)
+    t0 = time.monotonic()
     await engine.upsert(collection_name=collection, points=points_data)
+    duration_ms = (time.monotonic() - t0) * 1000
+    logger.info(
+        "upsert collection=%s points=%d duration=%.0fms",
+        collection, len(payload.points), duration_ms,
+    )
     return {"points_upserted": len(payload.points), "collection": collection}
 
 
@@ -512,9 +587,15 @@ async def delete_points_by_metadata(
         query_filter=payload.metadata,
         exact=payload.exact,
     )
+    t0 = time.monotonic()
     await engine.delete_by_filter(
         collection_name=collection,
         query_filter=payload.metadata,
+    )
+    duration_ms = (time.monotonic() - t0) * 1000
+    logger.info(
+        "delete-by-metadata collection=%s points_deleted=%d duration=%.0fms",
+        collection, int(count), duration_ms,
     )
     return {"points_deleted": int(count), "collection": collection}
 
@@ -582,7 +663,10 @@ async def search(
     engine: QdrantIndexEngine = Depends(get_engine),  # noqa: B008
 ) -> SearchResponse:
     collection = _resolve_index_name(payload.index_name)
+
+    t_embed = time.monotonic()
     vector = payload.embedding or _embedding_from_query(payload.query or "")
+    embed_ms = (time.monotonic() - t_embed) * 1000
 
     expected_dim = SETTINGS.index_dims
     if isinstance(vector, Sequence) and not isinstance(vector, (str, bytes)):
@@ -605,6 +689,7 @@ async def search(
     if payload.filter:
         query_filter = payload.filter
 
+    t_search = time.monotonic()
     results = await engine.search(
         collection_name=collection,
         query_vector=vector,
@@ -612,6 +697,7 @@ async def search(
         score_threshold=payload.score_threshold,
         query_filter=query_filter,
     )
+    search_ms = (time.monotonic() - t_search) * 1000
 
     matches: list[SearchMatch] = []
     for match in results:
@@ -624,6 +710,11 @@ async def search(
                 vector=serialized.get("vector") if payload.with_vectors else None,
             )
         )
+
+    logger.info(
+        "search collection=%s embed=%.0fms qdrant=%.0fms matches=%d",
+        collection, embed_ms, search_ms, len(matches),
+    )
     return SearchResponse(matches=matches)
 
 
@@ -649,8 +740,107 @@ async def chunk_and_upsert(
     if payload.start_id is not None:
         kwargs["start_id"] = payload.start_id
 
+    text_len = len(payload.text) if payload.text else 0
+    t0 = time.monotonic()
     chunks_indexed = await engine.chunk_and_upsert(**kwargs)
+    duration_ms = (time.monotonic() - t0) * 1000
+
+    logger.info(
+        "chunk-upsert collection=%s chunks=%d text_len=%d duration=%.0fms",
+        collection, chunks_indexed, text_len, duration_ms,
+    )
     return {"chunks_indexed": chunks_indexed, "collection": collection}
+
+
+@app.post("/batch-chunk-upsert", dependencies=[Depends(require_token)])
+async def batch_chunk_and_upsert(
+    payload: BatchChunkUpsertRequest,
+    engine: QdrantIndexEngine = Depends(get_engine),  # noqa: B008
+) -> dict[str, Any]:
+    collection = _resolve_index_name(payload.index_name)
+    t0 = time.monotonic()
+
+    chunker_name = payload.chunker_name
+    chunker_kwargs = payload.chunker_kwargs or {}
+
+    # Phase 1: Build list of (text, metadata) segments — chunk items that need chunking,
+    # pass through items that don't.
+    segments: list[tuple[str, dict[str, Any]]] = []  # (text, payload)
+
+    t_chunk = time.monotonic()
+    for item in payload.items:
+        text = (item.text or "").strip()
+        if not text:
+            continue
+        base_meta = dict(item.metadata or {})
+
+        if item.skip_chunking:
+            payload_dict = {"text": text, **base_meta}
+            segments.append((text, payload_dict))
+        else:
+            # Chunk using the engine's chunker
+            if engine.chunker is None:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Chunker not initialized on the engine.",
+                )
+            text_symbol = SymaiSymbol(text)
+            cn = chunker_name if chunker_name is not None else engine.chunker_name
+            chunks_symbol = engine.chunker.forward(text_symbol, chunker_name=cn, **chunker_kwargs)
+            chunks = chunks_symbol.value if hasattr(chunks_symbol, "value") else chunks_symbol
+            if not chunks:
+                continue
+            if not isinstance(chunks, list):
+                chunks = [chunks]
+            for chunk_idx, chunk_item in enumerate(chunks):
+                chunk_text = str(chunk_item).strip()
+                if not chunk_text:
+                    continue
+                payload_dict = {"text": chunk_text, **base_meta, "chunk_index": chunk_idx}
+                segments.append((chunk_text, payload_dict))
+    chunk_ms = (time.monotonic() - t_chunk) * 1000
+
+    if not segments:
+        logger.info("batch-chunk-upsert collection=%s segments=0 (empty)", collection)
+        return {"chunks_indexed": 0, "collection": collection}
+
+    # Phase 2: Batch embed all segments in one call.
+    t_embed = time.monotonic()
+    all_texts = [text for text, _ in segments]
+    raw_embeddings = SymaiSymbol(all_texts).embed().value
+    if Argument is not None and isinstance(raw_embeddings, Argument):
+        raw_embeddings = getattr(raw_embeddings, "value", raw_embeddings)
+    if hasattr(raw_embeddings, "tolist"):
+        raw_embeddings = raw_embeddings.tolist()
+    embed_ms = (time.monotonic() - t_embed) * 1000
+
+    # Phase 3: Build points with deterministic IDs.
+    vector_size = SETTINGS.index_dims
+    points: list[dict[str, Any]] = []
+    for (text, payload_dict), raw_vec in zip(segments, raw_embeddings, strict=True):
+        vec = engine._normalize_vector(raw_vec)
+        if len(vec) != vector_size:
+            if len(vec) > vector_size:
+                vec = vec[:vector_size]
+            else:
+                vec = vec + [0.0] * (vector_size - len(vec))
+        point_id = uuid.uuid5(uuid.NAMESPACE_DNS, text).int % (2**63)
+        points.append({"id": point_id, "vector": vec, "payload": payload_dict})
+
+    # Phase 4: Single upsert to Qdrant.
+    t_upsert = time.monotonic()
+    engine._ensure_collection_exists(collection)
+    engine._upsert_points_sync(collection_name=collection, points=points)
+    upsert_ms = (time.monotonic() - t_upsert) * 1000
+
+    total_ms = (time.monotonic() - t0) * 1000
+    logger.info(
+        "batch-chunk-upsert collection=%s items=%d segments=%d "
+        "chunk=%.0fms embed=%.0fms upsert=%.0fms total=%.0fms",
+        collection, len(payload.items), len(segments),
+        chunk_ms, embed_ms, upsert_ms, total_ms,
+    )
+    return {"chunks_indexed": len(points), "collection": collection}
 
 
 @app.get("/collections", dependencies=[Depends(require_token)])
