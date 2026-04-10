@@ -1806,6 +1806,8 @@ class ChonkieChunker(Expression):
         super().__init__(**symai_kwargs)
         self.tokenizer_name = tokenizer_name
         self.embedding_model_name = embedding_model_name
+        self._tokenizer_instance = None
+        self._chunker_cache: dict[tuple, object] = {}
 
     def forward(
         self, data: Symbol, chunker_name: str | None = "RecursiveChunker", **chunker_kwargs
@@ -1819,8 +1821,21 @@ class ChonkieChunker(Expression):
         chunks = [ChonkieChunker.clean_text(chunk.text) for chunk in chunker(data.value)]
         return self._to_symbol(chunks)
 
+    def _get_tokenizer(self):
+        """Return a cached HF Tokenizer instance, loading it once on first use."""
+        if self._tokenizer_instance is None:
+            chonkie_modules = _lazy_import_chonkie()
+            Tokenizer = chonkie_modules.get("Tokenizer")
+            if Tokenizer is None:
+                UserMessage(
+                    "Tokenizers library is not installed. Please install it with `pip install tokenizers`.",
+                    raise_with=ImportError,
+                )
+            self._tokenizer_instance = Tokenizer.from_pretrained(self.tokenizer_name)
+        return self._tokenizer_instance
+
     def _resolve_chunker(self, chunker_name: str, **chunker_kwargs):
-        """Resolve and instantiate a chunker by name."""
+        """Resolve and instantiate a chunker by name, with instance caching."""
         chunker_mapping = _get_chunker_mapping()
 
         if chunker_name not in chunker_mapping:
@@ -1830,49 +1845,48 @@ class ChonkieChunker(Expression):
             )
             raise ValueError(msg)
 
+        # Build a hashable cache key from chunker name + kwargs
+        cache_key = (chunker_name, tuple(sorted(chunker_kwargs.items())))
+        cached = self._chunker_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
         chunker_class = chunker_mapping[chunker_name]
-        chonkie_modules = _lazy_import_chonkie()
-        Tokenizer = chonkie_modules.get("Tokenizer")
+        chunker = None
 
         # Tokenizer-based chunkers (use tokenizer_name)
         if chunker_name in ["TokenChunker", "SentenceChunker", "RecursiveChunker"]:
-            if Tokenizer is None:
-                UserMessage(
-                    "Tokenizers library is not installed. Please install it with `pip install tokenizers`.",
-                    raise_with=ImportError,
-                )
-            tokenizer = Tokenizer.from_pretrained(self.tokenizer_name)
-            return chunker_class(tokenizer, **chunker_kwargs)
+            chunker = chunker_class(self._get_tokenizer(), **chunker_kwargs)
 
         # Embedding-based chunkers (use embedding_model_name)
-        if chunker_name in ["SemanticChunker", "LateChunker"]:
-            return chunker_class(embedding_model=self.embedding_model_name, **chunker_kwargs)
+        elif chunker_name in ["SemanticChunker", "LateChunker"]:
+            chunker = chunker_class(embedding_model=self.embedding_model_name, **chunker_kwargs)
 
         # CodeChunker and TableChunker use tokenizer (can use string or Tokenizer object)
-        if chunker_name in ["CodeChunker", "TableChunker"]:
-            # These can accept tokenizer as string (default 'character') or Tokenizer object
-            # If tokenizer not provided in kwargs, use tokenizer_name
+        elif chunker_name in ["CodeChunker", "TableChunker"]:
             if "tokenizer" not in chunker_kwargs:
                 chunker_kwargs["tokenizer"] = self.tokenizer_name
-            return chunker_class(**chunker_kwargs)
+            chunker = chunker_class(**chunker_kwargs)
 
         # SlumberChunker uses tokenizer (can use string or Tokenizer object)
-        if chunker_name == "SlumberChunker":
-            # SlumberChunker can accept tokenizer as string or Tokenizer object
-            # If tokenizer not provided in kwargs, use tokenizer_name
+        elif chunker_name == "SlumberChunker":
             if "tokenizer" not in chunker_kwargs:
                 chunker_kwargs["tokenizer"] = self.tokenizer_name
-            return chunker_class(**chunker_kwargs)
+            chunker = chunker_class(**chunker_kwargs)
 
         # NeuralChunker uses model parameter (defaults provided by chonkie)
-        if chunker_name == "NeuralChunker":
-            return chunker_class(**chunker_kwargs)
+        elif chunker_name == "NeuralChunker":
+            chunker = chunker_class(**chunker_kwargs)
 
-        msg = (
-            f"Chunker {chunker_name} not properly configured. "
-            f"Available chunkers: {list(chunker_mapping.keys())}."
-        )
-        raise ValueError(msg)
+        else:
+            msg = (
+                f"Chunker {chunker_name} not properly configured. "
+                f"Available chunkers: {list(chunker_mapping.keys())}."
+            )
+            raise ValueError(msg)
+
+        self._chunker_cache[cache_key] = chunker
+        return chunker
 
     @staticmethod
     def clean_text(text: str) -> str:
