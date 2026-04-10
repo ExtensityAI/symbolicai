@@ -76,8 +76,7 @@ class TestExtensionSets:
         for ext in (".jpg", ".jpeg", ".png"):
             assert ext in _IMAGE_EXTS, f"{ext} should be image"
         for ext in (
-            ".pdf", ".docx", ".pptx", ".xlsx", ".html", ".epub", ".ipynb",
-            ".mp3", ".wav", ".m4a", ".mp4", ".zip",
+            ".pdf", ".docx", ".pptx", ".xlsx", ".html", ".epub", ".ipynb", ".zip",
         ):
             assert ext in _RICH_FORMAT_EXTS, f"{ext} should be rich format"
 
@@ -257,19 +256,20 @@ class TestFileReaderComponent:
         with tempfile.TemporaryDirectory() as tmpdir:
             for ext in (
                 ".txt", ".md", ".py", ".json", ".csv",
-                ".pdf", ".docx", ".html", ".jpg", ".png", ".zip", ".mp3",
+                ".pdf", ".docx", ".html", ".jpg", ".png", ".zip",
             ):
                 (Path(tmpdir) / f"test{ext}").write_text("x")
-            # Also create an unsupported file
+            # Also create unsupported files
             (Path(tmpdir) / "test.exe").write_text("x")
+            (Path(tmpdir) / "test.mp3").write_text("x")
             files = FileReader.get_files(tmpdir)
             exts_found = {Path(f).suffix for f in files}
             assert ".exe" not in exts_found
+            assert ".mp3" not in exts_found
             assert ".txt" in exts_found
             assert ".pdf" in exts_found
             assert ".jpg" in exts_found
             assert ".zip" in exts_found
-            assert ".mp3" in exts_found
 
     def test_get_files_respects_max_depth(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -501,11 +501,11 @@ class TestRichFormats:
         result = Symbol(str(PNG_FILE)).open(backend="markitdown")
         assert result.value is not None
 
-    def test_audio(self):
+    def test_audio_raises_with_whisper_hint(self):
         if not AUDIO_FILE.exists():
             pytest.skip(f"Fixture not found: {AUDIO_FILE}")
-        result = Symbol(str(AUDIO_FILE)).open(backend="markitdown")
-        assert result.value is not None
+        with pytest.raises(ValueError, match="symbolicai\\[whisper\\]"):
+            Symbol(str(AUDIO_FILE)).open(backend="markitdown")
 
 
 class TestFileReaderBatch:
@@ -514,7 +514,7 @@ class TestFileReaderBatch:
     ALL_FIXTURES = (
         PLAIN_TEXT_FILE, PDF_FILE, DOCX_FILE, PPTX_FILE, XLSX_FILE,
         HTML_FILE, IPYNB_FILE, EPUB_FILE, JPG_FILE, PNG_FILE,
-        ZIP_FILE, XLS_FILE, AUDIO_FILE,
+        ZIP_FILE, XLS_FILE,
     )
 
     def test_parallel_batch_read_and_dump(self):

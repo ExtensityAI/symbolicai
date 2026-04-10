@@ -6,8 +6,6 @@ from dataclasses import dataclass
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-import tldextract
-
 from ....symbol import Result
 from ....utils import UserMessage
 from ...base import Engine
@@ -19,6 +17,7 @@ logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 try:
+    import tldextract
     from parallel import Parallel
     from parallel.resources.task_run import build_task_spec_param
     from parallel.types.beta import WebSearchResult
@@ -224,7 +223,6 @@ class ParallelEngine(Engine):
                 "or add it to your environment.",
                 raise_with=ValueError,
             )
-
         try:
             self.client = Parallel(api_key=self.api_key)
         except Exception as e:

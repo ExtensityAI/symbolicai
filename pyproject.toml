@@ -6,14 +6,6 @@ build-backend = "setuptools.build_meta"
 package = true
 required-version = ">=0.9.17"
 exclude-newer = "7 days"
-constraint-dependencies = [
-    "pyjwt>=2.12.0",
-    "pyasn1>=0.6.3",
-    "aiohttp>=3.13.4",       # CVE: unlimited trailer headers, multipart bypass, SSRF, duplicate host headers, etc.
-    "anthropic>=0.87.0",     # CVE: memory tool race condition + insecure file permissions
-    "cryptography>=46.0.6",  # CVE: incomplete DNS name constraint enforcement
-    "pygments>=2.20.0",      # CVE: ReDoS via inefficient GUID regex
-]
 
 [project]
 name = "symbolicai"
@@ -60,7 +52,7 @@ dependencies = [
     "rich>=13.9.4",
     "cerebras-cloud-sdk>=1.59.0",
     "scikit-learn>=1.7.0",
-    "markitdown[all]",
+    "markitdown[docx,outlook,pdf,pptx,xls,xlsx]",
     "dill>=0.4.0"
 ]
 

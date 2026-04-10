@@ -542,7 +542,6 @@ class FileReader(Expression):
             ".csv", ".tsv", ".log", ".docx", ".pptx", ".xlsx", ".xls",
             ".toml", ".html", ".htm", ".xml", ".epub", ".ipynb", ".zip",
             ".jpg", ".jpeg", ".png",
-            ".mp3", ".wav", ".m4a", ".mp4",
         ]
 
         folder = Path(folder_path)
