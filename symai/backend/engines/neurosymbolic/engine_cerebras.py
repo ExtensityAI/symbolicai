@@ -3,12 +3,14 @@ import logging
 import re
 from copy import deepcopy
 
+import tiktoken
 from cerebras.cloud.sdk import Cerebras
 
 from ....components import SelfPrompt
 from ....core_ext import retry
 from ....utils import UserMessage
 from ...base import Engine
+from ...mixin.cerebras import CerebrasMixin
 from ...settings import SYMAI_CONFIG
 
 logging.getLogger("cerebras").setLevel(logging.ERROR)
@@ -28,7 +30,7 @@ _NON_VERBOSE_OUTPUT = (
 )
 
 
-class CerebrasEngine(Engine):
+class CerebrasEngine(CerebrasMixin, Engine):
     def __init__(self, api_key: str | None = None, model: str | None = None):
         super().__init__()
         self.config = deepcopy(SYMAI_CONFIG)
@@ -45,6 +47,9 @@ class CerebrasEngine(Engine):
         self.model = self.config["NEUROSYMBOLIC_ENGINE_MODEL"]
         self.seed = None
         self.name = self.__class__.__name__
+        self.tokenizer = tiktoken.get_encoding("o200k_base")
+        self.max_context_tokens = self.api_max_context_tokens()
+        self.max_response_tokens = self.api_max_response_tokens()
 
         try:
             self.client = Cerebras(api_key=self.api_key)
@@ -76,19 +81,53 @@ class CerebrasEngine(Engine):
         if "seed" in kwargs:
             self.seed = kwargs["seed"]
 
-    def compute_required_tokens(self, _messages):
-        UserMessage(
-            "Token counting not implemented for this engine.", raise_with=NotImplementedError
-        )
+    def compute_required_tokens(self, messages):
+        tokens_per_message = 3
+        tokens_per_name = 1
+        num_tokens = 0
+        for message in messages:
+            num_tokens += tokens_per_message
+            for key, value in message.items():
+                if isinstance(value, str):
+                    num_tokens += len(self.tokenizer.encode(value, disallowed_special=()))
+                else:
+                    for v in value:
+                        if v["type"] == "text":
+                            num_tokens += len(
+                                self.tokenizer.encode(v["text"], disallowed_special=())
+                            )
+                if key == "name":
+                    num_tokens += tokens_per_name
+        num_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
+        return num_tokens
 
-    def compute_remaining_tokens(self, _prompts: list) -> int:
-        UserMessage(
-            "Token counting not implemented for this engine.", raise_with=NotImplementedError
-        )
+    def compute_remaining_tokens(self, prompts: list) -> int:
+        val = self.compute_required_tokens(prompts)
+        return min(self.max_context_tokens - val, self.max_response_tokens)
 
     def _handle_prefix(self, model_name: str) -> str:
         """Handle prefix for model name."""
         return model_name.replace("cerebras:", "")
+
+    @staticmethod
+    def _normalize_response_format(response_format: dict | None) -> dict | None:
+        """Normalize response_format to the Cerebras/OpenAI expected structure.
+
+        Cerebras expects json_schema as:
+            {"type": "json_schema", "json_schema": {"name": "...", "schema": {...}, "strict": true}}
+        but callers may pass the flat form:
+            {"type": "json_schema", "name": "...", "schema": {...}}
+        """
+        if not isinstance(response_format, dict):
+            return response_format
+        if response_format.get("type") != "json_schema":
+            return response_format
+        if "json_schema" in response_format:
+            return response_format  # already in correct format
+        # Reshape flat form into nested form
+        inner = {k: v for k, v in response_format.items() if k != "type"}
+        inner.setdefault("strict", True)
+        return {"type": "json_schema", "json_schema": inner}
 
     def _extract_thinking_content(self, outputs: list[str]) -> tuple[str | None, list[str]]:
         """Extract thinking content from textual output using <think>...</think> tags if present."""
@@ -310,7 +349,7 @@ class CerebrasEngine(Engine):
             )
             n = 1
 
-        response_format = kwargs.get("response_format")
+        response_format = self._normalize_response_format(kwargs.get("response_format"))
 
         return {
             "messages": messages,
