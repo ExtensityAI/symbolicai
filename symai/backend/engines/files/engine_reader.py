@@ -10,7 +10,6 @@ from pathlib import Path
 import cv2
 from box import Box, BoxList
 from markitdown import PRIORITY_GENERIC_FILE_FORMAT, PRIORITY_SPECIFIC_FILE_FORMAT, MarkItDown
-from markitdown.converters._audio_converter import AudioConverter
 from markitdown.converters._csv_converter import CsvConverter
 from markitdown.converters._docx_converter import DocxConverter
 from markitdown.converters._epub_converter import EpubConverter
@@ -29,7 +28,7 @@ from ....utils import UserMessage
 from ...base import Engine
 
 logger = logging.getLogger(__name__)
-for _noisy in ("pdfminer", "charset_normalizer", "PIL", "pydub"):
+for _noisy in ("pdfminer", "charset_normalizer", "PIL"):
     logging.getLogger(_noisy).setLevel(logging.CRITICAL)
 
 _SPECIFIC_CONVERTERS = (
@@ -39,7 +38,6 @@ _SPECIFIC_CONVERTERS = (
     XlsxConverter,
     XlsConverter,
     ImageConverter,
-    AudioConverter,
     IpynbConverter,
     OutlookMsgConverter,
     EpubConverter,
@@ -136,11 +134,6 @@ class SupportedFileType(Enum):
     JPG = ".jpg"
     JPEG = ".jpeg"
     PNG = ".png"
-    # Audio -- markitdown extracts metadata + optional speech transcription
-    MP3 = ".mp3"
-    WAV = ".wav"
-    M4A = ".m4a"
-    MP4 = ".mp4"
 
 
 _PLAIN_TEXT_EXTS = {
@@ -157,6 +150,7 @@ _PLAIN_TEXT_EXTS = {
     ".log",
 }
 _IMAGE_EXTS = {".jpg", ".jpeg", ".png"}
+_AUDIO_EXTS = {".mp3", ".wav", ".m4a", ".mp4"}
 _RICH_FORMAT_EXTS = {ft.value for ft in SupportedFileType} - _PLAIN_TEXT_EXTS - _IMAGE_EXTS
 _ALL_SUPPORTED_EXTS = _PLAIN_TEXT_EXTS | _IMAGE_EXTS | _RICH_FORMAT_EXTS
 
@@ -286,6 +280,14 @@ class FileEngine(Engine):
             return [""], {}
 
         ext = path_obj.suffix.lower()
+
+        # Audio files are not supported by this engine -- use the Whisper engine instead
+        if ext in _AUDIO_EXTS:
+            UserMessage(
+                f"Audio files ({ext}) are not supported by the file reader. "
+                "Use the speech-to-text engine instead: pip install symbolicai[whisper]",
+                raise_with=ValueError,
+            )
 
         # Images via cv2 unless explicitly markitdown (which returns EXIF + LLM caption)
         if ext in _IMAGE_EXTS and backend != "markitdown":
