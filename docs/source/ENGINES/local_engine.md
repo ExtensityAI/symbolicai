@@ -41,6 +41,145 @@ symserver --env cpp --cpp-server-path /path/to/llama.cpp/llama-server --help  # 
 
 The Neuro-Symbolic Engine now supports tool execution and structured JSON responses out of the box. For concrete examples, review the tests in `tests/engines/neurosymbolic/test_nesy_engine.py::test_tool_usage` and `tests/contract/test_contract.py`.
 
+### vLLM backend (experimental)
+
+> ⚠️ **Experimental.** This integration is provided on a best-effort basis. The
+> wire layer (symai engine ↔ vLLM's OpenAI-compatible API) is verified, but
+> vLLM's CPU backend itself is fragile on macOS Apple Silicon (no pre-built
+> wheels, `Qwen3_5MoeForConditionalGeneration` family does not load on CPU,
+> V1 `EngineCore` has a 60 s shm-broadcast timeout that trips on
+> reasoning-heavy generations). Expect breakage on non-CUDA hosts and treat
+> this as a preview — not something to base a production workflow on. For
+> actual local use on Apple Silicon, prefer the llama.cpp backend; reserve
+> this path for GPU hosts or for wiring / protocol testing.
+
+[vLLM](https://github.com/vllm-project/vllm) is a high-throughput OpenAI-compatible inference server. `symai` drives it the same way as the llama.cpp backend: `symserver` launches the vLLM server as a subprocess, and the neuro-symbolic engine talks to it over HTTP on `/v1/chat/completions`.
+
+Set the `NEUROSYMBOLIC_ENGINE_MODEL` to `vllm`:
+
+```json
+{
+  "NEUROSYMBOLIC_ENGINE_API_KEY": "",
+  "NEUROSYMBOLIC_ENGINE_MODEL": "vllm",
+  ...
+}
+```
+
+#### Install: clone + source build (the supported path on every platform)
+
+vLLM does not publish pre-built wheels for macOS, and its source build on macOS requires specific flags that uv's default resolver does not supply. The reliable, cross-platform path — and the one we actively tested against — is the same layout as the llama.cpp C++ backend: clone vLLM into its own directory with its own venv, build it there, and point `symserver` at that interpreter via `--vllm-python-path` (analogous to `--cpp-server-path` for llama.cpp).
+
+> ❗️**Tested against**❗️ vLLM main branch at commit
+> [`595562651a5a4539ffa910d8570c08fb5169bdc9`](https://github.com/vllm-project/vllm/commit/595562651a5a4539ffa910d8570c08fb5169bdc9)
+> (`0.1.dev50+g595562651`, ~50 commits past the `v0.11.0` tag). Newer commits
+> may work but are untested. Older commits (≤ `v0.11.0`) do **not** recognise
+> newer Qwen3 MoE architectures (e.g. `Qwen3_5MoeForConditionalGeneration`)
+> and will reject them at load time.
+
+Requirements for the source build:
+- macOS Sonoma or later, **or** Linux
+- Python 3.11 or 3.12
+- `uv` ≥ 0.9 (installs itself via `curl -LsSf https://astral.sh/uv/install.sh | sh`)
+- **macOS:** XCode Command Line Tools with Apple Clang ≥ 15.0
+- **Linux:** `gcc/g++ ≥ 12.3.0`
+
+One-time setup (separate venv outside `symai`):
+
+```bash
+git clone https://github.com/vllm-project/vllm.git ~/Devspace/projects/vllm
+cd ~/Devspace/projects/vllm
+git checkout 595562651a5a4539ffa910d8570c08fb5169bdc9      # pin to the tested commit
+uv venv --python 3.12 .venv
+VIRTUAL_ENV=$PWD/.venv uv pip install -r requirements/cpu.txt --index-strategy unsafe-best-match
+VIRTUAL_ENV=$PWD/.venv uv pip install -e .                 --index-strategy unsafe-best-match
+```
+
+The `--index-strategy unsafe-best-match` flag is required by vLLM's official build docs — it lets `uv` pull torch from the PyTorch index and everything else from PyPI in a single resolution. Without it, you hit `typing-extensions` conflicts and `uv pip install` returns happily while the native extension stays unbuilt. macOS auto-sets `VLLM_TARGET_DEVICE=cpu` inside the build.
+
+Build troubleshooting:
+- `'map' file not found` / other missing C++ headers → reinstall XCode Command Line Tools.
+- C++11/C++17 errors → edit `cmake/cpu_extension.cmake` and add `set(CMAKE_CXX_STANDARD 17)` before `set(CMAKE_CXX_STANDARD_REQUIRED ON)`.
+- `CUDA_HOME not set` while installing into the symai venv directly → you're in the wrong venv; run the steps above in the **vllm project's** venv.
+
+Once installed, confirm the native extension loaded correctly:
+
+```bash
+~/Devspace/projects/vllm/.venv/bin/python -c \
+  "import vllm, torch; torch.ops._C.silu_and_mul; print('vllm:', vllm.__version__, 'ops OK')"
+```
+
+Then, from the `symai` project, run `symserver` pointing at that interpreter:
+
+```bash
+symserver --vllm-python-path ~/Devspace/projects/vllm/.venv/bin/python \
+          --model Qwen/Qwen3-4B-Instruct-2507 \
+          --host localhost --port 8000 \
+          --dtype float16 \
+          --max-model-len 4096 \
+          --max-num-seqs 1 \
+          --enforce-eager \
+          --no-enable-prefix-caching
+```
+
+`vllm serve` auto-downloads the model from HuggingFace Hub on first use and honors `HF_HOME` / `HUGGINGFACE_HUB_CACHE`.
+
+#### Tool calling
+
+No tool-call parser is baked into `symserver`. Pass the parser that matches the model at launch time:
+
+```bash
+symserver --vllm-python-path ~/Devspace/projects/vllm/.venv/bin/python \
+          --model Qwen/Qwen3-4B-Instruct-2507 \
+          --host localhost --port 8000 \
+          --dtype float16 --max-model-len 4096 \
+          --enable-auto-tool-choice \
+          --tool-call-parser hermes
+```
+
+#### Reasoning / thinking traces
+
+If you want `metadata['thinking']` populated when calling the engine with `return_metadata=True`, launch with `--reasoning-parser`:
+
+```bash
+symserver --vllm-python-path ~/Devspace/projects/vllm/.venv/bin/python \
+          --model Qwen/Qwen3-4B-Thinking-2507 \
+          --host localhost --port 8000 \
+          --dtype float16 --max-model-len 4096 \
+          --reasoning-parser qwen3
+```
+
+The engine reads `choices[*].message.reasoning_content` and copies it into `metadata['thinking']`.
+
+#### Seeing every vLLM flag
+
+Any flag not consumed by `symserver` itself (`--help`, `--entrypoint`, `--vllm-python-path`) is forwarded verbatim, so the full server surface — `--tensor-parallel-size`, `--gpu-memory-utilization`, `--served-model-name`, `--chat-template`, `--enforce-eager`, `--trust-remote-code`, etc. — is available.
+
+```bash
+symserver --vllm-python-path ~/Devspace/projects/vllm/.venv/bin/python --help
+```
+
+#### Using it from Python
+
+Once the server is up, using the engine is transparent:
+
+```python
+from symai import Symbol
+
+sym = Symbol('Kitties are cute!').compose()
+print(sym)
+```
+
+#### Caveats — honest ones
+
+- **No macOS PyPI wheels.** `pip install vllm` on macOS will attempt a source build that defaults to the CUDA extension; do **not** do this inside the symai venv. The clone-and-build workflow above is the only clean path.
+- **macOS CPU supports only FP32 and FP16.** No BF16. Pass `--dtype float16` or `--dtype float32`. Memory-wise, a 36B BF16 model like `Qwen/Qwen3.6-35B-A3B` is ~72 GB at FP16 and fits on a 128 GB Apple Silicon, but…
+- **Qwen3.5-MoE architecture family is currently broken on vLLM CPU.** Models whose `architectures` field is `Qwen3_5MoeForConditionalGeneration` (e.g. `Qwen/Qwen3.6-35B-A3B`, `Qwen/Qwen3.5-35B-A3B`) load but fail in `process_weights_after_loading` — vLLM's CPU GEMM dispatcher expects 2-D linear weights, and MoE expert tensors are 3-D. Use a dense model (`Qwen3ForCausalLM`, `LlamaForCausalLM`, …) until upstream ships a fix.
+- **vLLM V1 CPU backend is fragile for long generations.** The shared-memory broadcast between `EngineCore` and `WorkerProc` uses a 60 s per-step timeout. On CPU, a single decode step can exceed that for reasoning-heavy models emitting long `<think>` traces, and the engine will declare the worker dead and shut down. For long outputs bump the timeout:
+  ```bash
+  VLLM_SHM_RING_BUFFER_WAIT_SECS=600 symserver --vllm-python-path …
+  ```
+- **Performance on Apple Silicon is poor.** vLLM's CPU backend primarily targets x86 AVX-512, falls back to generic PyTorch ops on ARM, and has no Metal backend. Per-token latency on macOS CPU is typically 3-10× slower than `llama.cpp` on the same hardware. vLLM's value is GPU serving with continuous batching; on a single-user macOS workstation, prefer the llama.cpp backend for actual use and reserve vLLM for CUDA hosts.
+
 ### HuggingFace backend
 Let's suppose we want to use `dolphin-2.9.3-mistral-7B-32k` from HuggingFace. First, download the model with the HuggingFace CLI:
 ```bash

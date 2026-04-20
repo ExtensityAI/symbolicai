@@ -104,6 +104,7 @@ def _start_symai():
     # *==============================================================================================================*
     if not (
         symai_config["NEUROSYMBOLIC_ENGINE_MODEL"].lower().startswith("llama")
+        or symai_config["NEUROSYMBOLIC_ENGINE_MODEL"].lower().startswith("vllm")
         or symai_config["NEUROSYMBOLIC_ENGINE_MODEL"].lower().startswith("huggingface")
     ) and (
         symai_config["NEUROSYMBOLIC_ENGINE_API_KEY"] is None
@@ -168,7 +169,7 @@ def run_server():
         - key/value pairs: ["--port", "6333"]
         - boolean flags: ["--no-cache"]
         """
-        cfg: dict[str, object] = {}
+        cfg = {}
         i = 0
         while i < len(args):
             tok = args[i]
@@ -375,6 +376,9 @@ def run_server():
 
             _symserver_config_["online"] = False
             _save_symserver_config(_symserver_config_)
+    # TODO: support NEUROSYMBOLIC_ENGINE_URL / EMBEDDING_ENGINE_URL in SYMAI_CONFIG
+    # so users can point to an externally-hosted server (e.g. vLLM on another host,
+    # llama.cpp already running) without requiring symserver to manage the subprocess.
     elif settings.SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL").startswith(
         "llama"
     ) or settings.SYMAI_CONFIG.get("EMBEDDING_ENGINE_MODEL").startswith("llama"):
@@ -382,10 +386,33 @@ def run_server():
         from .server.llama_cpp_server import llama_cpp_server  # noqa
 
         command, args = llama_cpp_server()
-        _symserver_config_.update(zip(args[::2], args[1::2], strict=False))
+        _symserver_config_.update(_args_to_config(args))
         _symserver_config_["online"] = True
 
         # @NOTE: Save in both places since you can start the server from anywhere and still not have a nesy engine configured
+        _save_symserver_config(_symserver_config_, include_home=True)
+
+        try:
+            subprocess.run(command, check=True)
+        except KeyboardInterrupt:
+            UserMessage("Server stopped.", style="success")
+        except Exception as e:
+            UserMessage(f"Error running server: {e}")
+        finally:
+            _symserver_config_["online"] = False
+            _save_symserver_config(_symserver_config_)
+
+    elif settings.SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL").startswith("vllm"):
+        # Keep optional vllm dependencies lazy.
+        from .server.vllm_server import vllm_server  # noqa
+
+        command, args = vllm_server()
+        # NOTE: _args_to_config handles bare boolean flags (e.g. --enable-auto-tool-choice,
+        # --enforce-eager) correctly; naive zip(args[::2], args[1::2]) misaligns when a
+        # boolean flag is followed by another flag.
+        _symserver_config_.update(_args_to_config(args))
+        _symserver_config_["online"] = True
+
         _save_symserver_config(_symserver_config_, include_home=True)
 
         try:
@@ -423,7 +450,7 @@ def run_server():
         from .server.lean4_server import lean4_server  # noqa
 
         command, args = lean4_server()
-        _symserver_config_.update(zip(args[::2], args[1::2], strict=False))
+        _symserver_config_.update(_args_to_config(args))
         _symserver_config_["online"] = True
 
         # Extract port from command (uvicorn --port X)
@@ -454,7 +481,9 @@ def run_server():
             "or pass any qdrant_server flag (e.g. symserver --docker-detach)\n"
             "  - llama.cpp (neuro-symbolic):    set NEUROSYMBOLIC_ENGINE_MODEL=llamacpp or "
             "EMBEDDING_ENGINE_MODEL=llamacpp in symai.config.json\n"
-            "  - HuggingFace (neuro-symbolic):  set NEUROSYMBOLIC_ENGINE_MODEL=huggingface in symai.config.json\n"
+            "  - vLLM (neuro-symbolic):         set NEUROSYMBOLIC_ENGINE_MODEL=vllm in symai.config.json\n"
+            "  - HuggingFace (neuro-symbolic):  set NEUROSYMBOLIC_ENGINE_MODEL=huggingface "
+            "in symai.config.json\n"
             "  - Lean4 (formal):                symserver --lean4 (requires FORMAL_ENGINE=local)"
         )
         UserMessage(msg, raise_with=ValueError)

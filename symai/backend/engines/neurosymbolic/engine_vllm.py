@@ -19,57 +19,7 @@ logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
-class LlamaCppTokenizer:
-    _server_endpoint = f"http://{SYMSERVER_CONFIG.get('--host')}:{SYMSERVER_CONFIG.get('--port')}"
-
-    @staticmethod
-    async def _encode(text: str) -> list[int]:
-        async with (
-            aiohttp.ClientSession() as session,
-            session.post(
-                f"{LlamaCppTokenizer._server_endpoint}/tokenize",
-                json={"content": text},
-            ) as res,
-        ):
-            if res.status != 200:
-                UserMessage(f"Request failed with status code: {res.status}", raise_with=ValueError)
-            response_json = await res.json()
-            return response_json["tokens"]
-
-    @staticmethod
-    def encode(text: str) -> list[int]:
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-        return loop.run_until_complete(LlamaCppTokenizer._encode(text))
-
-    @staticmethod
-    async def _decode(tokens: list[int]) -> str:
-        async with (
-            aiohttp.ClientSession() as session,
-            session.post(
-                f"{LlamaCppTokenizer._server_endpoint}/detokenize",
-                json={"tokens": tokens},
-            ) as res,
-        ):
-            if res.status != 200:
-                UserMessage(f"Request failed with status code: {res.status}", raise_with=ValueError)
-            response_json = await res.json()
-            return response_json["content"]
-
-    @staticmethod
-    def decode(tokens: list[int]) -> str:
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-        return loop.run_until_complete(LlamaCppTokenizer._decode(tokens))
-
-
-class LlamaCppEngine(Engine):
+class VLLMEngine(Engine):
     _retry_params: ClassVar[dict[str, Any]] = {
         "tries": 5,
         "delay": 2,
@@ -91,20 +41,21 @@ class LlamaCppEngine(Engine):
     ):
         super().__init__()
         self.config = deepcopy(SYMAI_CONFIG)
-        # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
+        # NOTE: allow EngineRepository.register to inject a model and flip id() at runtime
         if model is not None:
             self.config["NEUROSYMBOLIC_ENGINE_MODEL"] = model
         if self.id() != "neurosymbolic":
             return
         if not SYMSERVER_CONFIG.get("online"):
             UserMessage(
-                "You are using the llama.cpp engine, but the server endpoint is not started. Please start the server with `symserver [--args]` or run `symserver --help` to see the available options for this engine.",
+                "You are using the vLLM engine, but the server endpoint is not started. "
+                "Please start the server with `symserver --model <hf-repo-id> [--args]` or run "
+                "`symserver --help` to see the available options for this engine.",
                 raise_with=ValueError,
             )
-        self.server_endpoint = (
-            f"http://{SYMSERVER_CONFIG.get('--host')}:{SYMSERVER_CONFIG.get('--port')}"
-        )
-        self.tokenizer = LlamaCppTokenizer  # backwards compatibility with how we handle tokenization, i.e. self.tokenizer().encode(...)
+        host = SYMSERVER_CONFIG.get("--host") or "localhost"
+        port = SYMSERVER_CONFIG.get("--port") or 8000
+        self.server_endpoint = f"http://{host}:{port}"
         self.timeout_params = self._validate_timeout_params(timeout_params)
         self.retry_params = self._validate_retry_params(retry_params)
         self.name = self.__class__.__name__
@@ -112,9 +63,9 @@ class LlamaCppEngine(Engine):
     def id(self) -> str:
         if self.config.get("NEUROSYMBOLIC_ENGINE_MODEL") and self.config.get(
             "NEUROSYMBOLIC_ENGINE_MODEL"
-        ).startswith("llama"):
+        ).startswith("vllm"):
             return "neurosymbolic"
-        return super().id()  # default to unregistered
+        return super().id()
 
     def command(self, *args, **kwargs):
         super().command(*args, **kwargs)
@@ -126,24 +77,20 @@ class LlamaCppEngine(Engine):
             self.except_remedy = kwargs["except_remedy"]
 
     def compute_required_tokens(self, _messages) -> int:
-        # @TODO: quite non-trivial how to handle this with the llama.cpp server
-        UserMessage("Not implemented for llama.cpp!", raise_with=NotImplementedError)
+        # TODO: wire to vLLM's /tokenize endpoint once a VLLMTokenizer is added
+        UserMessage("Not implemented for vLLM!", raise_with=NotImplementedError)
 
     def compute_remaining_tokens(self, _prompts: list) -> int:
-        # @TODO: quite non-trivial how to handle this with the llama.cpp server
-        UserMessage("Not implemented for llama.cpp!", raise_with=NotImplementedError)
+        # TODO: wire to vLLM's /tokenize once VLLMTokenizer and max_model_len lookup exist
+        UserMessage("Not implemented for vLLM!", raise_with=NotImplementedError)
 
     def _validate_timeout_params(self, timeout_params):
-        if not isinstance(timeout_params, dict):
-            UserMessage("timeout_params must be a dictionary", raise_with=ValueError)
         assert all(key in timeout_params for key in ["read", "connect"]), (
             "Available keys: ['read', 'connect']"
         )
         return timeout_params
 
     def _validate_retry_params(self, retry_params):
-        if not isinstance(retry_params, dict):
-            UserMessage("retry_params must be a dictionary", raise_with=ValueError)
         assert all(
             key in retry_params
             for key in ["tries", "delay", "max_delay", "backoff", "jitter", "graceful"]
@@ -164,27 +111,33 @@ class LlamaCppEngine(Engine):
             return new_loop
 
     def _prepare_request_payload(self, argument: Argument) -> dict:
-        """Prepares the request payload from the argument."""
+        """Prepares the OpenAI-compatible chat/completions payload for vLLM."""
         kwargs = argument.kwargs
-        payload = {
-            "messages": argument.prop.prepared_input,
-            "temperature": kwargs.get("temperature", 0.6),
-            "frequency_penalty": kwargs.get("frequency_penalty", 0),
-            "presence_penalty": kwargs.get("presence_penalty", 0),
-            "top_p": kwargs.get("top_p", 0.95),
-            "min_p": kwargs.get("min_p", 0.05),
-            "stop": kwargs.get("stop"),
-            "seed": kwargs.get("seed"),
-            "max_tokens": kwargs.get("max_tokens"),
-            "top_k": kwargs.get("top_k", 40),
-            "repeat_penalty": kwargs.get("repeat_penalty", 1),
-            "logits_bias": kwargs.get("logits_bias"),
-            "logprobs": kwargs.get("logprobs", False),
-            "grammar": kwargs.get("grammar"),
-            "response_format": kwargs.get("response_format"),
-        }
+        # NOTE: only send fields the caller actually set — vLLM-specific sentinels
+        # (e.g. top_k=-1) get rejected by stricter OpenAI-compatible servers, and
+        # empty string for `stop` is rejected outright by vLLM.
+        payload = {"messages": argument.prop.prepared_input}
+        for key in (
+            "temperature",
+            "top_p",
+            "top_k",
+            "frequency_penalty",
+            "presence_penalty",
+            "stop",
+            "seed",
+            "max_tokens",
+            "logprobs",
+            "logit_bias",
+            "response_format",
+        ):
+            value = kwargs.get(key)
+            if value is None:
+                continue
+            if isinstance(value, (str, list, tuple)) and len(value) == 0:
+                continue
+            payload[key] = value
 
-        model = SYMSERVER_CONFIG.get("-m") or SYMSERVER_CONFIG.get("--model")
+        model = SYMSERVER_CONFIG.get("--served-model-name") or SYMSERVER_CONFIG.get("--model")
         if model:
             payload["model"] = model
 
@@ -196,6 +149,8 @@ class LlamaCppEngine(Engine):
         if tool_choice is not None:
             payload["tool_choice"] = tool_choice
 
+        # NOTE: extra_body lets users pass vLLM-specific knobs (guided_decoding, min_p,
+        # repetition_penalty, chat_template_kwargs, ...) without growing this signature
         extra_body = kwargs.get("extra_body")
         if isinstance(extra_body, dict):
             payload.update(extra_body)
@@ -203,7 +158,7 @@ class LlamaCppEngine(Engine):
         return payload
 
     async def _arequest(self, payload: dict) -> dict:
-        """Makes an async HTTP request to the llama.cpp server."""
+        """Makes an async HTTP request to the vLLM server."""
 
         @retry(**self.retry_params)
         async def _make_request():
@@ -224,7 +179,7 @@ class LlamaCppEngine(Engine):
 
     @staticmethod
     def _extract_thinking(response):
-        """Extract reasoning traces from llama.cpp responses."""
+        """Extract reasoning traces from vLLM responses (when --reasoning-parser is set)."""
         if not isinstance(response, dict):
             return None
         choices = response.get("choices", [])
@@ -245,6 +200,14 @@ class LlamaCppEngine(Engine):
             res = loop.run_until_complete(self._arequest(payload))
         except Exception as e:
             UserMessage(f"Error during generation. Caused by: {e}", raise_with=ValueError)
+
+        # NOTE: graceful retry returns None on repeated failure; surface that as a
+        # real error instead of letting the unpack below crash with a cryptic TypeError.
+        if res is None:
+            UserMessage(
+                "vLLM request returned no response after retries; check the server log.",
+                raise_with=ValueError,
+            )
 
         metadata = {"raw_output": res}
 
@@ -279,7 +242,8 @@ class LlamaCppEngine(Engine):
                 function = tool_call.get("function") or {}
                 if hit:
                     UserMessage(
-                        "Multiple function calls detected in the response but only the first one will be processed."
+                        "Multiple function calls detected in the response "
+                        "but only the first one will be processed."
                     )
                     return metadata
                 arguments = function.get("arguments")
@@ -317,13 +281,17 @@ class LlamaCppEngine(Engine):
             argument.prop.prepared_input = self._prepare_raw_input(argument)
             return
 
-        _non_verbose_output = """<META_INSTRUCTION/>\n You will NOT output verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. You will consider well formatted output, e.g. for sentences you will use punctuation, spaces, etc. or for code indentation, etc.\n"""
+        _non_verbose_output = (
+            "<META_INSTRUCTION/>\n You will NOT output verbose preambles or post explanation, "
+            'such as "Sure, let me...", "Hope that was helpful...", '
+            '"Yes, I can help you with that...", etc. You will consider well formatted output, '
+            "e.g. for sentences you will use punctuation, spaces, etc. or for code indentation, etc.\n"
+        )
 
-        # @TODO: Non-trivial how to handle user/system/assistant roles;
-        #       For instance Mixtral-8x7B can't use the system role with llama.cpp while other models can, or Mixtral-8x22B expects the conversation roles must
-        #       alternate user/assistant/user/assistant/..., so how to handle this?
-        #       For now just use the user, as one can rephrase the system from the user perspective.
-        user: str = ""
+        # NOTE: single user-role concatenation matches engine_llama_cpp.py's approach —
+        # many open-weights chat templates are strict about system/assistant/user
+        # alternation, so we stay on the safe side and rewrite context as user content.
+        user = ""
 
         if argument.prop.suppress_verbose_output:
             user += _non_verbose_output
@@ -341,7 +309,7 @@ class LlamaCppEngine(Engine):
         if argument.prop.payload:
             user += f"<ADDITIONAL_CONTEXT/>\n{payload!s}\n\n"
 
-        examples: list[str] = argument.prop.examples
+        examples = argument.prop.examples
         if examples and len(examples) > 0:
             user += f"<EXAMPLES/>\n{examples!s}\n\n"
 

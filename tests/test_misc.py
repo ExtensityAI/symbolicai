@@ -18,6 +18,7 @@ IS_RESPONSES_API = NEUROSYMBOLIC.startswith('responses:')
 
 @pytest.mark.mandatory
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('llama'), reason='llamacpp JSON format not yet supported')
+@pytest.mark.skipif(NEUROSYMBOLIC.startswith('vllm'), reason='vllm JSON format not yet supported')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('huggingface'), reason='huggingface JSON format not yet supported')
 def test_json_format():
     admin_role = 'system' if \
