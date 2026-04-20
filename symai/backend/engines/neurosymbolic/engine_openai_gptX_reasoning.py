@@ -12,6 +12,7 @@ from ....utils import UserMessage, encode_media_frames
 from ...base import Engine
 from ...mixin.openai import OpenAIMixin
 from ...settings import SYMAI_CONFIG
+from ..llm_request_logger import log_llm_request
 
 logging.getLogger("openai").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)
@@ -331,6 +332,15 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
         payload = self._prepare_request_payload(messages, argument)
         except_remedy = kwargs.get("except_remedy")
 
+        timeout = kwargs.get("timeout")
+        if timeout is not None:
+            payload["timeout"] = timeout
+        log_llm_request(
+            provider="openai",
+            engine="GPTXReasoningEngine",
+            model=payload.get("model"),
+            payload=payload,
+        )
         try:
             res = self.client.chat.completions.create(**payload)
 

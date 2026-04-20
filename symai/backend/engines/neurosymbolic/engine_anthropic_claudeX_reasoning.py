@@ -23,6 +23,7 @@ from ....utils import UserMessage, encode_media_frames
 from ...base import Engine
 from ...mixin.anthropic import AnthropicMixin
 from ...settings import SYMAI_CONFIG
+from ..llm_request_logger import log_llm_request
 
 logging.getLogger("anthropic").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)
@@ -186,8 +187,18 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         payload = self._prepare_request_payload(argument)
         except_remedy = kwargs.get("except_remedy")
 
+        timeout = kwargs.get("timeout", NOT_GIVEN)
+        log_llm_request(
+            provider="anthropic",
+            engine="ClaudeXReasoningEngine",
+            model=payload.get("model"),
+            payload={"system": system, "messages": messages, "timeout": timeout, **payload},
+        )
+        create_kwargs = dict(payload)
+        if timeout is not NOT_GIVEN:
+            create_kwargs["timeout"] = timeout
         try:
-            res = self.client.messages.create(system=system, messages=messages, **payload)
+            res = self.client.messages.create(system=system, messages=messages, **create_kwargs)
         except Exception as e:
             if anthropic.api_key is None or anthropic.api_key == "":
                 msg = "Anthropic API key is not set. Please set it in the config file or pass it as an argument to the command method."
