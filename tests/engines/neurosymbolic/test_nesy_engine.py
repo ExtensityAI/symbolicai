@@ -38,6 +38,7 @@ def test_init():
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('groq'), reason='feature not yet implemented')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('cerebras'), reason='feature not yet implemented')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('llama'), reason='feature not yet implemented')
+@pytest.mark.skipif(NEUROSYMBOLIC.startswith('vllm'), reason='vllm vision not wired')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('huggingface'), reason='feature not yet implemented')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('o3-mini'), reason='feature not supported by the model')
 def test_vision():
@@ -66,6 +67,7 @@ def test_vision():
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('groq'), reason='groq tokens computation is not supported')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('cerebras'), reason='cerebras tokens computation is not supported')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('llama'), reason='llamacpp tokens computation is not yet implemented')
+@pytest.mark.skipif(NEUROSYMBOLIC.startswith('vllm'), reason='vllm tokens computation is not yet implemented')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('huggingface'), reason='huggingface tokens computation is not yet implemented')
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith('deepseek'), reason='deepseek tokens computation is not yet implemented')
 def test_tokenizer():
