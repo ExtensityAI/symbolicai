@@ -17,7 +17,14 @@ logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
 class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
-    def __init__(self, api_key: str | None = None, model: str | None = None):
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model: str | None = None,
+        *,
+        client_timeout: float | None = None,
+        client_max_retries: int | None = None,
+    ):
         super().__init__()
         self.config = deepcopy(SYMAI_CONFIG)
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
@@ -35,7 +42,15 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
         self.seed = None
 
         try:
-            self.client = OpenAI(api_key=self.api_key, base_url="https://api.deepseek.com")
+            client_kwargs: dict = {
+                "api_key": self.api_key,
+                "base_url": "https://api.deepseek.com",
+            }
+            if client_timeout is not None:
+                client_kwargs["timeout"] = float(client_timeout)
+            if client_max_retries is not None:
+                client_kwargs["max_retries"] = int(client_max_retries)
+            self.client = OpenAI(**client_kwargs)
         except Exception as e:
             UserMessage(
                 f"Failed to initialize the DeepSeek client. Please check your library version. Caused by: {e}",

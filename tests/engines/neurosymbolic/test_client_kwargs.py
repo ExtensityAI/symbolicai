@@ -200,6 +200,102 @@ def test_gemini_only_timeout_supplied():
     assert http_options.retry_options is None
 
 
+# ---------- DeepSeek ----------
+
+def test_deepseek_forwards_client_kwargs():
+    from symai.backend.engines.neurosymbolic import engine_deepseekX_reasoning as mod
+
+    with patch.object(mod, "OpenAI") as sdk_ctor:
+        mod.DeepSeekXReasoningEngine(
+            api_key=DUMMY_KEY,
+            model="deepseek-reasoner",
+            client_timeout=TIMEOUT,
+            client_max_retries=MAX_RETRIES,
+        )
+
+    assert sdk_ctor.call_count == 1
+    kwargs = sdk_ctor.call_args.kwargs
+    assert kwargs["timeout"] == TIMEOUT
+    assert kwargs["max_retries"] == MAX_RETRIES
+    assert kwargs["api_key"] == DUMMY_KEY
+    assert kwargs["base_url"] == "https://api.deepseek.com"
+
+
+def test_deepseek_omits_kwargs_when_not_supplied():
+    from symai.backend.engines.neurosymbolic import engine_deepseekX_reasoning as mod
+
+    with patch.object(mod, "OpenAI") as sdk_ctor:
+        mod.DeepSeekXReasoningEngine(api_key=DUMMY_KEY, model="deepseek-reasoner")
+
+    kwargs = sdk_ctor.call_args.kwargs
+    assert "timeout" not in kwargs
+    assert "max_retries" not in kwargs
+
+
+# ---------- Groq ----------
+
+def test_groq_forwards_client_kwargs():
+    from symai.backend.engines.neurosymbolic import engine_groq as mod
+
+    with patch.object(mod.openai, "OpenAI") as sdk_ctor:
+        mod.GroqEngine(
+            api_key=DUMMY_KEY,
+            model="groq-llama-3.3-70b-versatile",
+            client_timeout=TIMEOUT,
+            client_max_retries=MAX_RETRIES,
+        )
+
+    assert sdk_ctor.call_count == 1
+    kwargs = sdk_ctor.call_args.kwargs
+    assert kwargs["timeout"] == TIMEOUT
+    assert kwargs["max_retries"] == MAX_RETRIES
+    assert kwargs["base_url"] == "https://api.groq.com/openai/v1"
+
+
+def test_groq_omits_kwargs_when_not_supplied():
+    from symai.backend.engines.neurosymbolic import engine_groq as mod
+
+    with patch.object(mod.openai, "OpenAI") as sdk_ctor:
+        mod.GroqEngine(api_key=DUMMY_KEY, model="groq-llama-3.3-70b-versatile")
+
+    kwargs = sdk_ctor.call_args.kwargs
+    assert "timeout" not in kwargs
+    assert "max_retries" not in kwargs
+
+
+# ---------- OpenRouter ----------
+
+def test_openrouter_forwards_client_kwargs():
+    from symai.backend.engines.neurosymbolic import engine_openrouter as mod
+
+    with patch.object(mod.openai, "OpenAI") as sdk_ctor:
+        mod.OpenRouterEngine(
+            api_key=DUMMY_KEY,
+            model="openrouter/anthropic/claude-3.5-sonnet",
+            client_timeout=TIMEOUT,
+            client_max_retries=MAX_RETRIES,
+        )
+
+    assert sdk_ctor.call_count == 1
+    kwargs = sdk_ctor.call_args.kwargs
+    assert kwargs["timeout"] == TIMEOUT
+    assert kwargs["max_retries"] == MAX_RETRIES
+    assert kwargs["base_url"] == "https://openrouter.ai/api/v1"
+
+
+def test_openrouter_omits_kwargs_when_not_supplied():
+    from symai.backend.engines.neurosymbolic import engine_openrouter as mod
+
+    with patch.object(mod.openai, "OpenAI") as sdk_ctor:
+        mod.OpenRouterEngine(
+            api_key=DUMMY_KEY, model="openrouter/anthropic/claude-3.5-sonnet"
+        )
+
+    kwargs = sdk_ctor.call_args.kwargs
+    assert "timeout" not in kwargs
+    assert "max_retries" not in kwargs
+
+
 # ---------- Cerebras ----------
 
 def test_cerebras_forwards_client_kwargs():
