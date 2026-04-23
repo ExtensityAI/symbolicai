@@ -152,6 +152,54 @@ def test_openai_responses_defaults_when_kwargs_omitted():
     assert timeout_obj.connect == 10.0
 
 
+# ---------- Google Gemini ----------
+
+def test_gemini_forwards_client_kwargs():
+    """Gemini's SDK takes timeout in ms (not seconds) and attempts = retries + 1.
+    The engine converts both, so we assert on the converted values."""
+    from symai.backend.engines.neurosymbolic import engine_google_geminiX_reasoning as mod
+
+    with patch.object(mod.genai, "Client") as sdk_ctor:
+        mod.GeminiXReasoningEngine(
+            api_key=DUMMY_KEY,
+            model="gemini-2.5-flash",
+            client_timeout=TIMEOUT,
+            client_max_retries=MAX_RETRIES,
+        )
+
+    assert sdk_ctor.call_count == 1
+    kwargs = sdk_ctor.call_args.kwargs
+    assert kwargs["api_key"] == DUMMY_KEY
+    http_options = kwargs["http_options"]
+    assert http_options.timeout == int(TIMEOUT * 1000)
+    assert http_options.retry_options.attempts == MAX_RETRIES + 1
+
+
+def test_gemini_omits_http_options_when_kwargs_not_supplied():
+    from symai.backend.engines.neurosymbolic import engine_google_geminiX_reasoning as mod
+
+    with patch.object(mod.genai, "Client") as sdk_ctor:
+        mod.GeminiXReasoningEngine(api_key=DUMMY_KEY, model="gemini-2.5-flash")
+
+    kwargs = sdk_ctor.call_args.kwargs
+    assert "http_options" not in kwargs
+
+
+def test_gemini_only_timeout_supplied():
+    from symai.backend.engines.neurosymbolic import engine_google_geminiX_reasoning as mod
+
+    with patch.object(mod.genai, "Client") as sdk_ctor:
+        mod.GeminiXReasoningEngine(
+            api_key=DUMMY_KEY,
+            model="gemini-2.5-flash",
+            client_timeout=TIMEOUT,
+        )
+
+    http_options = sdk_ctor.call_args.kwargs["http_options"]
+    assert http_options.timeout == int(TIMEOUT * 1000)
+    assert http_options.retry_options is None
+
+
 # ---------- Cerebras ----------
 
 def test_cerebras_forwards_client_kwargs():
