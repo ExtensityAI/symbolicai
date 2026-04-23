@@ -31,7 +31,14 @@ _NON_VERBOSE_OUTPUT = (
 
 
 class CerebrasEngine(CerebrasMixin, Engine):
-    def __init__(self, api_key: str | None = None, model: str | None = None):
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model: str | None = None,
+        *,
+        client_timeout: float | None = None,
+        client_max_retries: int | None = None,
+    ):
         super().__init__()
         self.config = deepcopy(SYMAI_CONFIG)
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
@@ -50,14 +57,27 @@ class CerebrasEngine(CerebrasMixin, Engine):
         self.tokenizer = tiktoken.get_encoding("o200k_base")
         self.max_context_tokens = self.api_max_context_tokens()
         self.max_response_tokens = self.api_max_response_tokens()
+        # Stored so re-init paths (command / _handle_forward_exception) reuse them.
+        self._client_timeout = client_timeout
+        self._client_max_retries = client_max_retries
 
         try:
-            self.client = Cerebras(api_key=self.api_key)
+            self.client = self._build_cerebras_client(self.api_key)
         except Exception as exc:
             UserMessage(
                 f"Failed to initialize Cerebras client. Please check your Cerebras SDK installation. Caused by: {exc}",
                 raise_with=ValueError,
             )
+
+    def _build_cerebras_client(self, api_key: str | None):
+        client_kwargs: dict = {"api_key": api_key}
+        timeout_val = getattr(self, "_client_timeout", None)
+        if timeout_val is not None:
+            client_kwargs["timeout"] = float(timeout_val)
+        retries_val = getattr(self, "_client_max_retries", None)
+        if retries_val is not None:
+            client_kwargs["max_retries"] = int(retries_val)
+        return Cerebras(**client_kwargs)
 
     def id(self) -> str:
         model_name = self.config.get("NEUROSYMBOLIC_ENGINE_MODEL")
@@ -70,7 +90,7 @@ class CerebrasEngine(CerebrasMixin, Engine):
         if "NEUROSYMBOLIC_ENGINE_API_KEY" in kwargs:
             self.api_key = kwargs["NEUROSYMBOLIC_ENGINE_API_KEY"]
             try:
-                self.client = Cerebras(api_key=self.api_key)
+                self.client = self._build_cerebras_client(self.api_key)
             except Exception as exc:
                 UserMessage(
                     f"Failed to reinitialize Cerebras client. Caused by: {exc}",
@@ -179,7 +199,7 @@ class CerebrasEngine(CerebrasMixin, Engine):
                 UserMessage(msg, raise_with=ValueError)
             self.api_key = config_key
             try:
-                self.client = Cerebras(api_key=self.api_key)
+                self.client = self._build_cerebras_client(self.api_key)
             except Exception as inner_exc:
                 UserMessage(
                     f"Failed to initialize Cerebras client after missing API key. Caused by: {inner_exc}",
