@@ -38,7 +38,14 @@ class TokenizerWrapper:
 
 
 class ClaudeXChatEngine(Engine, AnthropicMixin):
-    def __init__(self, api_key: str | None = None, model: str | None = None):
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model: str | None = None,
+        *,
+        client_timeout: float | None = None,
+        client_max_retries: int | None = None,
+    ):
         super().__init__()
         self.config = deepcopy(SYMAI_CONFIG)
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
@@ -53,7 +60,12 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
         self.tokenizer = TokenizerWrapper(self.compute_required_tokens)
         self.max_context_tokens = self.api_max_context_tokens()
         self.max_response_tokens = self.api_max_response_tokens()
-        self.client = anthropic.Anthropic(api_key=anthropic.api_key)
+        client_kwargs: dict = {"api_key": anthropic.api_key}
+        if client_timeout is not None:
+            client_kwargs["timeout"] = float(client_timeout)
+        if client_max_retries is not None:
+            client_kwargs["max_retries"] = int(client_max_retries)
+        self.client = anthropic.Anthropic(**client_kwargs)
 
     def id(self) -> str:
         if (

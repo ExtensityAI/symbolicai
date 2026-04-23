@@ -56,7 +56,14 @@ class GPTXChatEngine(Engine, OpenAIMixin):
     }
     _NON_VERBOSE_OUTPUT = """<META_INSTRUCTION/>\nYou do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc. Never add meta instructions information to your output!\n\n"""
 
-    def __init__(self, api_key: str | None = None, model: str | None = None):
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model: str | None = None,
+        *,
+        client_timeout: float | None = None,
+        client_max_retries: int | None = None,
+    ):
         super().__init__()
         self.config = deepcopy(SYMAI_CONFIG)
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
@@ -77,7 +84,16 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         self.name = self.__class__.__name__
 
         try:
-            self.client = openai.Client(api_key=openai.api_key)
+            # When caller supplies client_timeout / client_max_retries, override
+            # the SDK defaults (timeout=600s, max_retries=2) at client level so
+            # a stalled request actually terminates instead of being silently
+            # auto-retried. Otherwise keep SDK defaults for backward compat.
+            client_kwargs: dict = {"api_key": openai.api_key}
+            if client_timeout is not None:
+                client_kwargs["timeout"] = float(client_timeout)
+            if client_max_retries is not None:
+                client_kwargs["max_retries"] = int(client_max_retries)
+            self.client = openai.Client(**client_kwargs)
         except Exception as e:
             UserMessage(
                 f"Failed to initialize OpenAI client. Please check your OpenAI library version. Caused by: {e}",

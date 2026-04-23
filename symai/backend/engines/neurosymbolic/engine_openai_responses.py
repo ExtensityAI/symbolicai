@@ -45,7 +45,14 @@ class ResponsesTokenizer:
 
 
 class OpenAIResponsesEngine(Engine, OpenAIMixin):
-    def __init__(self, api_key: str | None = None, model: str | None = None):
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model: str | None = None,
+        *,
+        client_timeout: float | None = None,
+        client_max_retries: int | None = None,
+    ):
         super().__init__()
         self.config = deepcopy(SYMAI_CONFIG)
         if api_key is not None and model is not None:
@@ -66,10 +73,18 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
             # Pro/reasoning models (e.g. gpt-5.4-pro) can take minutes to respond,
             # causing transient server disconnects under default settings. A longer
             # connect timeout and automatic retries keep these requests resilient.
+            # client_timeout / client_max_retries let callers override when they
+            # want socket-level timeouts to actually terminate (and not be
+            # silently swallowed by the SDK's default internal retry loop).
+            if client_timeout is not None:
+                timeout_arg = httpx.Timeout(float(client_timeout), connect=10.0)
+            else:
+                timeout_arg = httpx.Timeout(600.0, connect=10.0)
+            retries_arg = client_max_retries if client_max_retries is not None else 3
             self.client = openai.Client(
                 api_key=openai.api_key,
-                timeout=httpx.Timeout(600.0, connect=10.0),
-                max_retries=3,
+                timeout=timeout_arg,
+                max_retries=retries_arg,
             )
         except Exception as e:
             UserMessage(

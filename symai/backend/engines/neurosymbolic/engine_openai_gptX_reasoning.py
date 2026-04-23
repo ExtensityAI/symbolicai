@@ -21,7 +21,14 @@ logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
 class GPTXReasoningEngine(Engine, OpenAIMixin):
-    def __init__(self, api_key: str | None = None, model: str | None = None):
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model: str | None = None,
+        *,
+        client_timeout: float | None = None,
+        client_max_retries: int | None = None,
+    ):
         super().__init__()
         self.config = deepcopy(SYMAI_CONFIG)
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
@@ -42,7 +49,12 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
         self.seed = None
 
         try:
-            self.client = openai.Client(api_key=openai.api_key)
+            client_kwargs: dict = {"api_key": openai.api_key}
+            if client_timeout is not None:
+                client_kwargs["timeout"] = float(client_timeout)
+            if client_max_retries is not None:
+                client_kwargs["max_retries"] = int(client_max_retries)
+            self.client = openai.Client(**client_kwargs)
         except Exception as e:
             UserMessage(
                 f"Failed to initialize OpenAI client. Please check your OpenAI library version. Caused by: {e}",
