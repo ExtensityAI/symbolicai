@@ -32,7 +32,14 @@ class TokenizerWrapper:
 
 
 class GeminiXReasoningEngine(Engine, GoogleMixin):
-    def __init__(self, api_key: str | None = None, model: str | None = None):
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model: str | None = None,
+        *,
+        client_timeout: float | None = None,
+        client_max_retries: int | None = None,
+    ):
         super().__init__()
         self.config = deepcopy(SYMAI_CONFIG)
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
@@ -48,7 +55,27 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
         self.tokenizer = TokenizerWrapper(self.compute_required_tokens)
         self.max_context_tokens = self.api_max_context_tokens()
         self.max_response_tokens = self.api_max_response_tokens()
-        self.client = genai.Client(api_key=self.api_key)
+
+        # google-genai takes timeout in milliseconds (int) and retry attempts
+        # (including the original request) rather than the flat seconds / retry
+        # count used by openai/anthropic/cerebras. Convert here so callers see a
+        # uniform client_timeout (seconds) / client_max_retries (retries after
+        # the original) contract across every engine.
+        http_options = None
+        if client_timeout is not None or client_max_retries is not None:
+            http_opts_kwargs: dict = {}
+            if client_timeout is not None:
+                http_opts_kwargs["timeout"] = int(float(client_timeout) * 1000)
+            if client_max_retries is not None:
+                http_opts_kwargs["retry_options"] = types.HttpRetryOptions(
+                    attempts=int(client_max_retries) + 1
+                )
+            http_options = types.HttpOptions(**http_opts_kwargs)
+
+        client_kwargs: dict = {"api_key": self.api_key}
+        if http_options is not None:
+            client_kwargs["http_options"] = http_options
+        self.client = genai.Client(**client_kwargs)
 
     def id(self) -> str:
         model = self.config.get("NEUROSYMBOLIC_ENGINE_MODEL")
