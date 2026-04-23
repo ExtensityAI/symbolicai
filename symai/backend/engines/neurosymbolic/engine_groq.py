@@ -28,7 +28,14 @@ _NON_VERBOSE_OUTPUT = (
 
 
 class GroqEngine(Engine):
-    def __init__(self, api_key: str | None = None, model: str | None = None):
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model: str | None = None,
+        *,
+        client_timeout: float | None = None,
+        client_max_retries: int | None = None,
+    ):
         super().__init__()
         self.config = deepcopy(SYMAI_CONFIG)
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
@@ -45,9 +52,15 @@ class GroqEngine(Engine):
         self.name = self.__class__.__name__
 
         try:
-            self.client = openai.OpenAI(
-                api_key=openai.api_key, base_url="https://api.groq.com/openai/v1"
-            )
+            client_kwargs: dict = {
+                "api_key": openai.api_key,
+                "base_url": "https://api.groq.com/openai/v1",
+            }
+            if client_timeout is not None:
+                client_kwargs["timeout"] = float(client_timeout)
+            if client_max_retries is not None:
+                client_kwargs["max_retries"] = int(client_max_retries)
+            self.client = openai.OpenAI(**client_kwargs)
         except Exception as e:
             UserMessage(
                 f"Failed to initialize OpenAI client. Please check your OpenAI library version. Caused by: {e}",
