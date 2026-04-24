@@ -46,7 +46,9 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
         client_timeout: float | None = None,
         client_max_retries: int | None = None,
     ):
-        super().__init__()
+        super().__init__(
+            client_timeout=client_timeout, client_max_retries=client_max_retries
+        )
         self.config = deepcopy(SYMAI_CONFIG)
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
         if api_key is not None and model is not None:
@@ -60,12 +62,9 @@ class ClaudeXChatEngine(Engine, AnthropicMixin):
         self.tokenizer = TokenizerWrapper(self.compute_required_tokens)
         self.max_context_tokens = self.api_max_context_tokens()
         self.max_response_tokens = self.api_max_response_tokens()
-        client_kwargs: dict = {"api_key": anthropic.api_key}
-        if client_timeout is not None:
-            client_kwargs["timeout"] = float(client_timeout)
-        if client_max_retries is not None:
-            client_kwargs["max_retries"] = int(client_max_retries)
-        self.client = anthropic.Anthropic(**client_kwargs)
+        self.client = anthropic.Anthropic(
+            **self._build_client_kwargs({"api_key": anthropic.api_key})
+        )
 
     def id(self) -> str:
         if (

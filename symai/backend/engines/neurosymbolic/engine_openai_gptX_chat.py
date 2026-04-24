@@ -64,7 +64,9 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         client_timeout: float | None = None,
         client_max_retries: int | None = None,
     ):
-        super().__init__()
+        super().__init__(
+            client_timeout=client_timeout, client_max_retries=client_max_retries
+        )
         self.config = deepcopy(SYMAI_CONFIG)
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
         if api_key is not None and model is not None:
@@ -84,16 +86,13 @@ class GPTXChatEngine(Engine, OpenAIMixin):
         self.name = self.__class__.__name__
 
         try:
-            # When caller supplies client_timeout / client_max_retries, override
+            # NOTE: When caller supplies client_timeout / client_max_retries, override
             # the SDK defaults (timeout=600s, max_retries=2) at client level so
             # a stalled request actually terminates instead of being silently
             # auto-retried. Otherwise keep SDK defaults for backward compat.
-            client_kwargs: dict = {"api_key": openai.api_key}
-            if client_timeout is not None:
-                client_kwargs["timeout"] = float(client_timeout)
-            if client_max_retries is not None:
-                client_kwargs["max_retries"] = int(client_max_retries)
-            self.client = openai.Client(**client_kwargs)
+            self.client = openai.Client(
+                **self._build_client_kwargs({"api_key": openai.api_key})
+            )
         except Exception as e:
             UserMessage(
                 f"Failed to initialize OpenAI client. Please check your OpenAI library version. Caused by: {e}",

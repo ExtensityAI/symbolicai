@@ -40,7 +40,9 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
         client_timeout: float | None = None,
         client_max_retries: int | None = None,
     ):
-        super().__init__()
+        super().__init__(
+            client_timeout=client_timeout, client_max_retries=client_max_retries
+        )
         self.config = deepcopy(SYMAI_CONFIG)
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
         if api_key is not None and model is not None:
@@ -56,26 +58,24 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
         self.max_context_tokens = self.api_max_context_tokens()
         self.max_response_tokens = self.api_max_response_tokens()
 
-        # google-genai takes timeout in milliseconds (int) and retry attempts
-        # (including the original request) rather than the flat seconds / retry
-        # count used by openai/anthropic/cerebras. Convert here so callers see a
-        # uniform client_timeout (seconds) / client_max_retries (retries after
-        # the original) contract across every engine.
         http_options = None
-        if client_timeout is not None or client_max_retries is not None:
-            http_opts_kwargs: dict = {}
-            if client_timeout is not None:
-                http_opts_kwargs["timeout"] = int(float(client_timeout) * 1000)
-            if client_max_retries is not None:
+        if self.client_timeout is not None or self.client_max_retries is not None:
+            http_opts_kwargs = {}
+            if self.client_timeout is not None:
+                # NOTE: google-genai takes timeout in milliseconds (int), not seconds
+                http_opts_kwargs["timeout"] = int(self.client_timeout * 1000)
+            if self.client_max_retries is not None:
+                # NOTE: attempts includes the original request; our contract
+                # counts retries after the original, so add 1
                 http_opts_kwargs["retry_options"] = types.HttpRetryOptions(
-                    attempts=int(client_max_retries) + 1
+                    attempts=self.client_max_retries + 1
                 )
             http_options = types.HttpOptions(**http_opts_kwargs)
 
-        client_kwargs: dict = {"api_key": self.api_key}
         if http_options is not None:
-            client_kwargs["http_options"] = http_options
-        self.client = genai.Client(**client_kwargs)
+            self.client = genai.Client(api_key=self.api_key, http_options=http_options)
+        else:
+            self.client = genai.Client(api_key=self.api_key)
 
     def id(self) -> str:
         model = self.config.get("NEUROSYMBOLIC_ENGINE_MODEL")

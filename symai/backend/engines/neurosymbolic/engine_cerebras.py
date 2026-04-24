@@ -39,7 +39,9 @@ class CerebrasEngine(CerebrasMixin, Engine):
         client_timeout: float | None = None,
         client_max_retries: int | None = None,
     ):
-        super().__init__()
+        super().__init__(
+            client_timeout=client_timeout, client_max_retries=client_max_retries
+        )
         self.config = deepcopy(SYMAI_CONFIG)
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
         if api_key is not None and model is not None:
@@ -57,9 +59,6 @@ class CerebrasEngine(CerebrasMixin, Engine):
         self.tokenizer = tiktoken.get_encoding("o200k_base")
         self.max_context_tokens = self.api_max_context_tokens()
         self.max_response_tokens = self.api_max_response_tokens()
-        # Stored so re-init paths (command / _handle_forward_exception) reuse them.
-        self._client_timeout = client_timeout
-        self._client_max_retries = client_max_retries
 
         try:
             self.client = self._build_cerebras_client(self.api_key)
@@ -70,14 +69,7 @@ class CerebrasEngine(CerebrasMixin, Engine):
             )
 
     def _build_cerebras_client(self, api_key: str | None):
-        client_kwargs: dict = {"api_key": api_key}
-        timeout_val = getattr(self, "_client_timeout", None)
-        if timeout_val is not None:
-            client_kwargs["timeout"] = float(timeout_val)
-        retries_val = getattr(self, "_client_max_retries", None)
-        if retries_val is not None:
-            client_kwargs["max_retries"] = int(retries_val)
-        return Cerebras(**client_kwargs)
+        return Cerebras(**self._build_client_kwargs({"api_key": api_key}))
 
     def id(self) -> str:
         model_name = self.config.get("NEUROSYMBOLIC_ENGINE_MODEL")

@@ -10,8 +10,15 @@ ENGINE_UNREGISTERED = "<UNREGISTERED/>"
 
 
 class Engine(ABC):
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        client_timeout: float | None = None,
+        client_max_retries: int | None = None,
+    ) -> None:
         super().__init__()
+        self.client_timeout = client_timeout
+        self.client_max_retries = client_max_retries
         self.verbose = False
         self.logging = False
         self.log_level = logging.DEBUG
@@ -33,6 +40,15 @@ class Engine(ABC):
         stream.setLevel(logging.INFO)
         stream.setFormatter(streamformat)
         self.logger.addHandler(stream)
+
+    def _build_client_kwargs(
+        self, base, *, timeout_key="timeout", max_retries_key="max_retries"
+    ):
+        if self.client_timeout is not None:
+            base[timeout_key] = self.client_timeout
+        if self.client_max_retries is not None:
+            base[max_retries_key] = self.client_max_retries
+        return base
 
     def __call__(self, argument: Any) -> tuple[list[str], dict]:
         log = {"Input": {"self": self, "args": argument.args, **argument.kwargs}}
