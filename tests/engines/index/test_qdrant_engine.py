@@ -25,6 +25,8 @@ except ImportError:
     FieldCondition = None
     MatchValue = None
 
+os.environ["SYMAI_UPLOAD_DIR"] = str(Path(__file__).parents[2] / "data")
+
 from symai import Symbol
 from symai.backend.engines.index.engine_qdrant import QdrantIndexEngine
 from symai.backend.settings import SYMAI_CONFIG, SYMSERVER_CONFIG
@@ -478,7 +480,6 @@ class TestQdrantUrlDownloads:
         assert info["points_count"] == 0, "SSRF attempt should not add any chunks"
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="External URL test - run manually when needed")
     async def test_valid_url_download(self, engine, test_collection_name):
         """Test downloading and chunking from a real public URL.
 
@@ -1237,6 +1238,268 @@ class TestRagEmbedBatching:
             f"Concurrent search ({concurrent_time:.3f}s) should be faster than "
             f"sequential ({sequential_time:.3f}s) with max_workers=4"
         )
+
+
+@pytest.mark.skipif(not QDrant_AVAILABLE, reason="Qdrant server not available")
+class TestQdrantMultitenancyIsolation:
+    """Test payload-based multi-tenancy isolation across all contamination vectors."""
+
+    @pytest.fixture
+    def tenant_engine(self):
+        return QdrantIndexEngine(
+            url=SYMSERVER_CONFIG.get("url")
+            or SYMAI_CONFIG.get("INDEXING_ENGINE_URL")
+            or "http://localhost:6333",
+            api_key=SYMAI_CONFIG.get("INDEXING_ENGINE_API_KEY"),
+            index_name="test_tenant_collection",
+            index_dims=1536,
+            default_tenant_id="test_tenant",
+        )
+
+    @pytest.mark.asyncio
+    async def test_tenant_id_injected_on_upsert(self, engine, test_collection_name):
+        await engine.create_collection(test_collection_name, vector_size=1536)
+        await engine.upsert(
+            test_collection_name,
+            [PointStruct(id=1, vector=[0.1] * 1536, payload={"text": "hello"})],
+            tenant_id="user_a",
+        )
+        retrieved = await engine.retrieve(test_collection_name, 1, tenant_id="user_a")
+        assert len(retrieved) == 1
+        assert retrieved[0]["payload"]["tenant_id"] == "user_a"
+
+    @pytest.mark.asyncio
+    async def test_tenant_id_overrides_caller_metadata(self, engine, test_collection_name):
+        await engine.create_collection(test_collection_name, vector_size=1536)
+        await engine.upsert(
+            test_collection_name,
+            [PointStruct(id=1, vector=[0.1] * 1536, payload={"tenant_id": "evil"})],
+            tenant_id="user_a",
+        )
+        retrieved = await engine.retrieve(test_collection_name, 1, tenant_id="user_a")
+        assert retrieved[0]["payload"]["tenant_id"] == "user_a"
+
+    @pytest.mark.asyncio
+    async def test_cross_tenant_id_collision_avoided(self, engine, test_collection_name):
+        await engine.create_collection(test_collection_name, vector_size=1536)
+        text = "Hello world"
+        chunks_a = await engine.chunk_and_upsert(
+            collection_name=test_collection_name, text=text, tenant_id="user_a"
+        )
+        chunks_b = await engine.chunk_and_upsert(
+            collection_name=test_collection_name, text=text, tenant_id="user_b"
+        )
+        assert chunks_a == 1
+        assert chunks_b == 1
+        info = await engine.get_collection_info(test_collection_name)
+        assert info["points_count"] == 2
+
+    @pytest.mark.asyncio
+    async def test_search_isolated_by_tenant(self, engine, test_collection_name):
+        await engine.create_collection(test_collection_name, vector_size=1536)
+        await engine.upsert(
+            test_collection_name,
+            [PointStruct(id=1, vector=[0.1] * 1536, payload={"text": "AI doc", "tenant_id": "a"})],
+        )
+        await engine.upsert(
+            test_collection_name,
+            [PointStruct(id=2, vector=[0.2] * 1536, payload={"text": "cooking doc", "tenant_id": "b"})],
+        )
+        results = await engine.search(
+            test_collection_name, [0.1] * 1536, limit=10, tenant_id="a"
+        )
+        assert all(
+            (getattr(r, "payload", None) or {}).get("tenant_id") == "a" for r in results
+        )
+
+    @pytest.mark.asyncio
+    async def test_search_with_tenant_and_user_filter(self, engine, test_collection_name):
+        await engine.create_collection(test_collection_name, vector_size=1536)
+        for tid, cat in [("a", "AI"), ("a", "Food"), ("b", "AI")]:
+            await engine.upsert(
+                test_collection_name,
+                [
+                    PointStruct(
+                        id=abs(hash((tid, cat))),
+                        vector=[0.1] * 1536,
+                        payload={"text": "x", "category": cat, "tenant_id": tid},
+                    )
+                ],
+            )
+        results = await engine.search(
+            test_collection_name,
+            [0.1] * 1536,
+            limit=10,
+            tenant_id="a",
+            query_filter={"category": "AI"},
+        )
+        for r in results:
+            p = getattr(r, "payload", None) or {}
+            assert p.get("tenant_id") == "a"
+            assert p.get("category") == "AI"
+
+    @pytest.mark.asyncio
+    async def test_retrieve_cross_tenant_returns_empty(self, engine, test_collection_name):
+        await engine.create_collection(test_collection_name, vector_size=1536)
+        await engine.upsert(
+            test_collection_name,
+            [PointStruct(id=1, vector=[0.1] * 1536, payload={"tenant_id": "b"})],
+        )
+        retrieved = await engine.retrieve(test_collection_name, 1, tenant_id="a")
+        assert retrieved == []
+
+    @pytest.mark.asyncio
+    async def test_delete_cross_tenant_is_noop(self, engine, test_collection_name):
+        await engine.create_collection(test_collection_name, vector_size=1536)
+        await engine.upsert(
+            test_collection_name,
+            [PointStruct(id=1, vector=[0.1] * 1536, payload={"tenant_id": "b"})],
+        )
+        await engine.delete(test_collection_name, 1, tenant_id="a")
+        info = await engine.get_collection_info(test_collection_name)
+        assert info["points_count"] == 1
+
+    @pytest.mark.asyncio
+    async def test_delete_by_filter_scoped_to_tenant(self, engine, test_collection_name):
+        await engine.create_collection(test_collection_name, vector_size=1536)
+        for tid, cat in [("a", "AI"), ("a", "Food"), ("b", "AI")]:
+            await engine.upsert(
+                test_collection_name,
+                [
+                    PointStruct(
+                        id=abs(hash((tid, cat))),
+                        vector=[0.1] * 1536,
+                        payload={"category": cat, "tenant_id": tid},
+                    )
+                ],
+            )
+        await engine.delete_by_filter(
+            test_collection_name, {"category": "AI"}, tenant_id="a"
+        )
+        info = await engine.get_collection_info(test_collection_name)
+        # a/AI deleted, a/Food and b/AI remain
+        assert info["points_count"] == 2
+
+    @pytest.mark.asyncio
+    async def test_count_scoped_to_tenant(self, engine, test_collection_name):
+        await engine.create_collection(test_collection_name, vector_size=1536)
+        for idx, tid in enumerate(["a", "a", "b"]):
+            await engine.upsert(
+                test_collection_name,
+                [
+                    PointStruct(
+                        id=idx + 100,
+                        vector=[0.1] * 1536,
+                        payload={"tenant_id": tid},
+                    )
+                ],
+            )
+        assert await engine.count(test_collection_name, tenant_id="a") == 2
+        assert await engine.count(test_collection_name, tenant_id="b") == 1
+
+    @pytest.mark.asyncio
+    async def test_document_exists_scoped_to_tenant(self, engine, test_collection_name):
+        await engine.create_collection(test_collection_name, vector_size=1536)
+        await engine.upsert(
+            test_collection_name,
+            [
+                PointStruct(
+                    id=1,
+                    vector=[0.1] * 1536,
+                    payload={"source": "report.pdf", "tenant_id": "a"},
+                )
+            ],
+        )
+        assert await engine.document_exists(test_collection_name, "report.pdf", tenant_id="a")
+        assert not await engine.document_exists(
+            test_collection_name, "report.pdf", tenant_id="b"
+        )
+
+    @pytest.mark.asyncio
+    async def test_list_documents_scoped_to_tenant(self, engine, test_collection_name):
+        await engine.create_collection(test_collection_name, vector_size=1536)
+        for tid, src in [("a", "a.pdf"), ("b", "b.pdf")]:
+            await engine.upsert(
+                test_collection_name,
+                [
+                    PointStruct(
+                        id=abs(hash(src)),
+                        vector=[0.1] * 1536,
+                        payload={"source": src, "tenant_id": tid},
+                    )
+                ],
+            )
+        docs_a = await engine.list_documents(test_collection_name, tenant_id="a")
+        assert docs_a == ["a.pdf"]
+        docs_b = await engine.list_documents(test_collection_name, tenant_id="b")
+        assert docs_b == ["b.pdf"]
+
+    @pytest.mark.asyncio
+    async def test_chunk_and_upsert_tenant_scoped_ids(self, engine, test_collection_name):
+        await engine.create_collection(test_collection_name, vector_size=1536)
+        text = "Identical content"
+        await engine.chunk_and_upsert(
+            collection_name=test_collection_name,
+            text=text,
+            tenant_id="user_a",
+            metadata={"source_type": "drive", "file_id": "f1"},
+        )
+        await engine.chunk_and_upsert(
+            collection_name=test_collection_name,
+            text=text,
+            tenant_id="user_b",
+            metadata={"source_type": "drive", "file_id": "f1"},
+        )
+        info = await engine.get_collection_info(test_collection_name)
+        assert info["points_count"] == 2
+
+    @pytest.mark.asyncio
+    async def test_forward_search_with_tenant_id(self, engine, test_collection_name):
+        await engine.create_collection(test_collection_name, vector_size=1536)
+        await engine.upsert(
+            test_collection_name,
+            [
+                PointStruct(
+                    id=1,
+                    vector=[0.1] * 1536,
+                    payload={"text": "AI", "tenant_id": "a"},
+                ),
+                PointStruct(
+                    id=2,
+                    vector=[0.2] * 1536,
+                    payload={"text": "Food", "tenant_id": "b"},
+                ),
+            ],
+        )
+        query_vector = [0.1] * 1536
+        decorator_kwargs = {
+            "prompt": query_vector,
+            "operation": "search",
+            "index_name": test_collection_name,
+            "ori_query": "test",
+            "index_dims": 1536,
+            "index_top_k": 10,
+            "tenant_id": "a",
+        }
+        argument = Argument(args=(), signature_kwargs={}, decorator_kwargs=decorator_kwargs)
+        results, _ = engine.forward(argument)
+        raw_points = results[0].raw or []
+        for point in raw_points:
+            payload = getattr(point, "payload", None) or {}
+            if "tenant_id" in payload:
+                assert payload["tenant_id"] == "a"
+
+    @pytest.mark.asyncio
+    async def test_no_tenant_id_behaves_as_before(self, engine, test_collection_name):
+        await engine.create_collection(test_collection_name, vector_size=1536)
+        points = [
+            PointStruct(id=1, vector=[0.1] * 1536, payload={"text": "Alpha document"}),
+            PointStruct(id=2, vector=[0.2] * 1536, payload={"text": "Beta document"}),
+        ]
+        await engine.upsert(test_collection_name, points)
+        results = await engine.search(test_collection_name, [0.15] * 1536, limit=2)
+        assert len(results) > 0
+        assert hasattr(results[0], "id")
 
 
 if __name__ == "__main__":

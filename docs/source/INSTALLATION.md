@@ -8,7 +8,7 @@ To get started with SymbolicAI, you can install it using pip:
 pip install symbolicai
 ```
 
-Alternatively, clone the repository and set up a Python virtual environment using uv:
+Alternatively, clone the repository and set up a Python virtual environment using [uv](https://docs.astral.sh/uv/) (>= 0.9.17):
 ```bash
 git clone git@github.com:ExtensityAI/symbolicai.git
 cd symbolicai
@@ -22,15 +22,19 @@ Running `symconfig` will now use this Python environment.
 SymbolicAI uses multiple engines to process text, speech and images. We also include search engine access to retrieve information from the web. To use all of them, you will need to also install the following dependencies and assign the API keys to the respective engines. E.g.:
 
 ```bash
-pip install "symbolicai[hf]",
-pip install "symbolicai[llamacpp]",
-pip install "symbolicai[bitsandbytes]",
-pip install "symbolicai[wolframalpha]",
-pip install "symbolicai[whisper]",
-pip install "symbolicai[scrape]",
-pip install "symbolicai[serpapi]",
-pip install "symbolicai[services]",
+pip install "symbolicai[bitsandbytes]"
+pip install "symbolicai[hf]"
+pip install "symbolicai[lean]"
+pip install "symbolicai[llama_cpp]"
+pip install "symbolicai[ocr]"
+pip install "symbolicai[qdrant]"
+pip install "symbolicai[scrape]"
+pip install "symbolicai[search]"
+pip install "symbolicai[serpapi]"
+pip install "symbolicai[services]"
 pip install "symbolicai[solver]"
+pip install "symbolicai[whisper]"
+pip install "symbolicai[wolframalpha]"
 ```
 
 Or, install all optional dependencies at once:
@@ -127,25 +131,27 @@ You can specify engine properties in a `symai.config.json` file in your project 
 Example of a configuration file with all engines enabled:
 ```json
 {
-    "NEUROSYMBOLIC_ENGINE_API_KEY": "<OPENAI_API_KEY>",
-    "NEUROSYMBOLIC_ENGINE_MODEL": "gpt-4o",
+    "NEUROSYMBOLIC_ENGINE_API_KEY": "<ANTHROPIC_API_KEY>",
+    "NEUROSYMBOLIC_ENGINE_MODEL": "claude-sonnet-4-6",
     "SYMBOLIC_ENGINE_API_KEY": "<WOLFRAMALPHA_API_KEY>",
     "SYMBOLIC_ENGINE": "wolframalpha",
+    "FORMAL_ENGINE_API_KEY": "<AXIOM_API_KEY>",
+    "FORMAL_ENGINE": "axiom",
     "EMBEDDING_ENGINE_API_KEY": "<OPENAI_API_KEY>",
     "EMBEDDING_ENGINE_MODEL": "text-embedding-3-small",
-    "SEARCH_ENGINE_API_KEY": "<PERPLEXITY_API_KEY>",
-    "SEARCH_ENGINE_MODEL": "sonar",
+    "SEARCH_ENGINE_API_KEY": "<PARALLEL_API_KEY>",
+    "SEARCH_ENGINE_MODEL": "parallel",
     "TEXT_TO_SPEECH_ENGINE_API_KEY": "<OPENAI_API_KEY>",
     "TEXT_TO_SPEECH_ENGINE_MODEL": "tts-1",
-    "INDEXING_ENGINE_API_KEY": "<PINECONE_API_KEY>",
-    "INDEXING_ENGINE_ENVIRONMENT": "us-west1-gcp",
-    "DRAWING_ENGINE_API_KEY": "<OPENAI_API_KEY>",
-    "DRAWING_ENGINE_MODEL": "dall-e-3",
+    "INDEXING_ENGINE": "qdrant",
+    "INDEXING_ENGINE_API_KEY": "<QDRANT_API_KEY>",
+    "INDEXING_ENGINE_URL": "http://localhost:6333",
+    "DRAWING_ENGINE_API_KEY": "<BFL_API_KEY>",
+    "DRAWING_ENGINE_MODEL": "flux-pro-1.1",
     "VISION_ENGINE_MODEL": "openai/clip-vit-base-patch32",
     "OCR_ENGINE_API_KEY": "<OCR_API_KEY>",
     "OCR_ENGINE_MODEL": "mistral-ocr-latest",
-    "SPEECH_TO_TEXT_ENGINE_MODEL": "turbo",
-    "SPEECH_TO_TEXT_API_KEY": ""
+    "SPEECH_TO_TEXT_ENGINE_MODEL": "turbo"
 }
 ```
 
@@ -154,14 +160,32 @@ With these steps completed, you should be ready to start using SymbolicAI in you
 > ❗️**NOTE**❗️By default, the user warnings are enabled. To disable them, export `SYMAI_WARNINGS=0` in your environment variables.
 
 ### Running tests
-Some examples of running tests locally:
+
+You can run the tests with the following command:
+
+```bash
+pytest
+```
+
+By default, it runs with the `-v --ignore=tests/test_imports` flags.
+
+We recommend to run the `test_imports.py` file separately, as it should be run only once (or occasionally, when you add new imports to the package):
+
+```bash
+pytest -q --tb=no tests/test_imports.py
+```
+
+Some additional examples of running tests locally:
+
 ```bash
 # Run all tests
 pytest tests
 # Run mandatory tests
 pytest -m mandatory
 ```
+
 Be sure to have your configuration set up correctly before running the tests. You can also run the tests with coverage to see how much of the code is covered by tests:
+
 ```bash
 pytest --cov=symbolicai tests
 ```

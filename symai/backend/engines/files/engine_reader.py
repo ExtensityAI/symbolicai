@@ -3,6 +3,7 @@ import csv
 import io
 import logging
 import tempfile
+import threading
 import types as _types
 from enum import Enum
 from pathlib import Path
@@ -168,6 +169,7 @@ class FileEngine(Engine):
     def __init__(self):
         super().__init__()
         self._converter = None  # lazy MarkItDown instance
+        self._md_lock = threading.Lock()
 
     def id(self) -> str:
         return "files"
@@ -202,8 +204,9 @@ class FileEngine(Engine):
     def _read_via_markitdown(self, source, caption_prompt=None):
         """Convert file (or URL) to Markdown text via markitdown converters."""
         md = self._get_converter()
-        md._llm_prompt = caption_prompt
-        return md.convert(str(source)).text_content
+        with self._md_lock:
+            md._llm_prompt = caption_prompt
+            return md.convert(str(source)).text_content
 
     def _read_image(self, path_obj):
         """Read image as RGB numpy array via cv2."""

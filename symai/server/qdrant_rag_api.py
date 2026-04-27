@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import resource
@@ -9,10 +10,11 @@ from collections.abc import Sequence
 from pathlib import Path
 from threading import Lock
 from typing import Any
+from urllib.parse import urlparse, urlunparse
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from symai.backend.engines.index.engine_qdrant import QdrantIndexEngine
 from symai.core import Argument
@@ -64,6 +66,12 @@ class ApiSettings(BaseModel):
 
 
 SETTINGS = ApiSettings()
+
+if not SETTINGS.rag_api_token and os.getenv("RAG_ALLOW_NO_TOKEN") != "1":
+    logger.critical(
+        "RAG_API_TOKEN is not set. The API will accept unauthenticated requests. "
+        "Set RAG_API_TOKEN or RAG_ALLOW_NO_TOKEN=1 to proceed."
+    )
 
 
 class VectorPoint(BaseModel):
@@ -126,15 +134,23 @@ class VectorPoint(BaseModel):
 
 
 class PointsUpsertRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     index_name: str | None = Field(default=None, description="Qdrant collection name.")
-    points: list[VectorPoint] = Field(..., min_items=1)
+    points: list[VectorPoint] = Field(..., min_items=1, max_items=10_000)
 
 
 class SearchRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     index_name: str | None = None
-    query: str | None = Field(default=None, description="Plain-text query embedded via SymbolicAI.")
-    embedding: list[float] | None = Field(default=None, description="Custom embedding vector.")
-    limit: int | None = None
+    query: str | None = Field(
+        default=None, description="Plain-text query embedded via SymbolicAI.", max_length=100_000
+    )
+    embedding: list[float] | None = Field(
+        default=None, description="Custom embedding vector.", max_length=16_384
+    )
+    limit: int | None = Field(default=None, ge=1, le=10_000)
     score_threshold: float | None = None
     filter: dict[str, Any] | None = None
     with_payload: bool = True
@@ -175,10 +191,12 @@ class SearchResponse(BaseModel):
 
 
 class ChunkUpsertRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     index_name: str | None = None
-    text: str | None = None
-    document_path: str | None = None
-    document_url: str | None = None
+    text: str | None = Field(default=None, max_length=10_000_000)
+    document_path: str | None = Field(default=None, max_length=4096)
+    document_url: str | None = Field(default=None, max_length=4096)
     metadata: dict[str, Any] | None = None
     chunker_name: str | None = None
     chunker_kwargs: dict[str, Any] | None = None
@@ -196,25 +214,33 @@ class ChunkUpsertRequest(BaseModel):
 
 
 class BatchChunkItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     text: str = Field(..., min_length=1)
     metadata: dict[str, Any] | None = None
     skip_chunking: bool = Field(default=False, description="If True, treat text as a single chunk (skip splitting).")
 
 
 class BatchChunkUpsertRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     index_name: str | None = None
-    items: list[BatchChunkItem] = Field(..., min_length=1)
+    items: list[BatchChunkItem] = Field(..., min_length=1, max_length=10_000)
     chunker_name: str | None = None
     chunker_kwargs: dict[str, Any] | None = None
 
 
 class CollectionCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: str
     vector_size: int | None = None
     distance: str | None = None
 
 
 class RetrieveRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     index_name: str | None = None
     ids: list[int | str | uuid.UUID] = Field(..., min_items=1)
     with_payload: bool = True
@@ -230,6 +256,8 @@ class RetrieveRequest(BaseModel):
 
 
 class DeletePointsRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     index_name: str | None = None
     ids: list[int | str | uuid.UUID] = Field(..., min_items=1)
 
@@ -243,6 +271,8 @@ class DeletePointsRequest(BaseModel):
 
 
 class MetadataFilterRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     index_name: str | None = None
     metadata: dict[str, Any]
     exact: bool = True
@@ -257,6 +287,8 @@ class MetadataFilterRequest(BaseModel):
 
 
 class MetadataListRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     index_name: str | None = None
     metadata: dict[str, Any]
     batch_size: int = Field(default=256, ge=1, le=4096)
@@ -477,6 +509,23 @@ async def require_token(
         )
 
 
+async def require_tenant(
+    x_tenant_id: str | None = Header(default=None, alias="X-Tenant-Id"),
+) -> str:
+    """Extract tenant_id from the trusted X-Tenant-Id header.
+
+    This dependency runs AFTER `require_token` has validated the caller's
+    API key. Because only first-party services hold valid API keys, the
+    header value is authoritative once authentication passes.
+    """
+    if x_tenant_id is None or not x_tenant_id.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing or empty X-Tenant-Id header.",
+        )
+    return x_tenant_id
+
+
 @app.get("/", dependencies=[Depends(require_token)])
 async def root() -> dict[str, Any]:
     return {
@@ -516,22 +565,29 @@ async def healthz(engine: QdrantIndexEngine = Depends(get_engine)) -> dict[str, 
         logger.exception("Health check failed while listing collections: %s", exc)
         collections = []
         ready = False
+    parsed = urlparse(SETTINGS.qdrant_url or "")
+    redacted_qdrant_url = (
+        urlunparse(parsed._replace(netloc="[REDACTED]"))
+        if parsed.password
+        else SETTINGS.qdrant_url
+    )
     return {
         "status": "ok" if ready else "degraded",
         "ready": ready,
         "collections": collections,
         "collection_stats": collection_stats,
         "index_name": SETTINGS.index_name,
-        "qdrant_url": SETTINGS.qdrant_url,
+        "qdrant_url": redacted_qdrant_url,
         "token_required": bool(SETTINGS.rag_api_token),
         "rss_mb": round(_rss_mb(), 1),
         "uptime_seconds": round(time.monotonic() - _STARTUP_TIME, 1),
     }
 
 
-@app.post("/points", dependencies=[Depends(require_token)])
+@app.post("/points", dependencies=[Depends(require_token), Depends(require_tenant)])
 async def upsert_points(
     payload: PointsUpsertRequest,
+    tenant_id: str = Depends(require_tenant),
     engine: QdrantIndexEngine = Depends(get_engine),  # noqa: B008
 ) -> dict[str, Any]:
     collection = _resolve_index_name(payload.index_name)
@@ -542,7 +598,9 @@ async def upsert_points(
             point_dict["id"] = str(point_dict["id"])
         points_data.append(point_dict)
     t0 = time.monotonic()
-    await engine.upsert(collection_name=collection, points=points_data)
+    await engine.upsert(
+        collection_name=collection, points=points_data, tenant_id=tenant_id
+    )
     duration_ms = (time.monotonic() - t0) * 1000
     logger.info(
         "upsert collection=%s points=%d duration=%.0fms",
@@ -551,20 +609,24 @@ async def upsert_points(
     return {"points_upserted": len(payload.points), "collection": collection}
 
 
-@app.delete("/points", dependencies=[Depends(require_token)])
+@app.delete("/points", dependencies=[Depends(require_token), Depends(require_tenant)])
 async def delete_points(
     payload: DeletePointsRequest,
+    tenant_id: str = Depends(require_tenant),
     engine: QdrantIndexEngine = Depends(get_engine),  # noqa: B008
 ) -> dict[str, Any]:
     collection = _resolve_index_name(payload.index_name)
     ids = [str(v) if isinstance(v, uuid.UUID) else v for v in payload.ids]
-    await engine.delete(collection_name=collection, points_selector=ids)
+    await engine.delete(
+        collection_name=collection, points_selector=ids, tenant_id=tenant_id
+    )
     return {"points_deleted": len(ids), "collection": collection}
 
 
-@app.post("/points/count-by-metadata", dependencies=[Depends(require_token)])
+@app.post("/points/count-by-metadata", dependencies=[Depends(require_token), Depends(require_tenant)])
 async def count_points_by_metadata(
     payload: MetadataFilterRequest,
+    tenant_id: str = Depends(require_tenant),
     engine: QdrantIndexEngine = Depends(get_engine),  # noqa: B008
 ) -> dict[str, Any]:
     collection = _resolve_index_name(payload.index_name)
@@ -572,13 +634,15 @@ async def count_points_by_metadata(
         collection_name=collection,
         query_filter=payload.metadata,
         exact=payload.exact,
+        tenant_id=tenant_id,
     )
     return {"count": int(count), "collection": collection}
 
 
-@app.post("/points/delete-by-metadata", dependencies=[Depends(require_token)])
+@app.post("/points/delete-by-metadata", dependencies=[Depends(require_token), Depends(require_tenant)])
 async def delete_points_by_metadata(
     payload: MetadataFilterRequest,
+    tenant_id: str = Depends(require_tenant),
     engine: QdrantIndexEngine = Depends(get_engine),  # noqa: B008
 ) -> dict[str, Any]:
     collection = _resolve_index_name(payload.index_name)
@@ -586,11 +650,13 @@ async def delete_points_by_metadata(
         collection_name=collection,
         query_filter=payload.metadata,
         exact=payload.exact,
+        tenant_id=tenant_id,
     )
     t0 = time.monotonic()
     await engine.delete_by_filter(
         collection_name=collection,
         query_filter=payload.metadata,
+        tenant_id=tenant_id,
     )
     duration_ms = (time.monotonic() - t0) * 1000
     logger.info(
@@ -600,14 +666,15 @@ async def delete_points_by_metadata(
     return {"points_deleted": int(count), "collection": collection}
 
 
-@app.post("/points/list-by-metadata", dependencies=[Depends(require_token)])
+@app.post("/points/list-by-metadata", dependencies=[Depends(require_token), Depends(require_tenant)])
 async def list_points_by_metadata(
     payload: MetadataListRequest,
+    tenant_id: str = Depends(require_tenant),
     engine: QdrantIndexEngine = Depends(get_engine),  # noqa: B008
 ) -> dict[str, Any]:
     collection = _resolve_index_name(payload.index_name)
-    engine._ensure_collection_exists(collection)
-    built_filter = engine._build_query_filter(payload.metadata)
+    await asyncio.to_thread(engine._ensure_collection_exists, collection)
+    built_filter = engine._build_query_filter(payload.metadata, tenant_id=tenant_id)
     if built_filter is None:
         detail = "metadata filter must not be empty"
         raise HTTPException(
@@ -618,7 +685,8 @@ async def list_points_by_metadata(
     points: list[dict[str, Any]] = []
     offset: Any | None = None
     while len(points) < payload.max_points:
-        records, next_offset = engine.client.scroll(
+        records, next_offset = await asyncio.to_thread(
+            engine.client.scroll,
             collection_name=collection,
             scroll_filter=built_filter,
             limit=payload.batch_size,
@@ -642,9 +710,10 @@ async def list_points_by_metadata(
     return {"points": points, "collection": collection}
 
 
-@app.post("/retrieve", dependencies=[Depends(require_token)])
+@app.post("/retrieve", dependencies=[Depends(require_token), Depends(require_tenant)])
 async def retrieve_points(
     payload: RetrieveRequest,
+    tenant_id: str = Depends(require_tenant),
     engine: QdrantIndexEngine = Depends(get_engine),  # noqa: B008
 ) -> dict[str, Any]:
     collection = _resolve_index_name(payload.index_name)
@@ -653,13 +722,15 @@ async def retrieve_points(
         ids=payload.ids,
         with_payload=payload.with_payload,
         with_vectors=payload.with_vectors,
+        tenant_id=tenant_id,
     )
     return {"collection": collection, "points": [_serialize_point(p) for p in results]}
 
 
-@app.post("/search", response_model=SearchResponse, dependencies=[Depends(require_token)])
+@app.post("/search", response_model=SearchResponse, dependencies=[Depends(require_token), Depends(require_tenant)])
 async def search(
     payload: SearchRequest,
+    tenant_id: str = Depends(require_tenant),
     engine: QdrantIndexEngine = Depends(get_engine),  # noqa: B008
 ) -> SearchResponse:
     collection = _resolve_index_name(payload.index_name)
@@ -696,6 +767,7 @@ async def search(
         limit=payload.limit or SETTINGS.index_top_k,
         score_threshold=payload.score_threshold,
         query_filter=query_filter,
+        tenant_id=tenant_id,
     )
     search_ms = (time.monotonic() - t_search) * 1000
 
@@ -718,9 +790,10 @@ async def search(
     return SearchResponse(matches=matches)
 
 
-@app.post("/chunk-upsert", dependencies=[Depends(require_token)])
+@app.post("/chunk-upsert", dependencies=[Depends(require_token), Depends(require_tenant)])
 async def chunk_and_upsert(
     payload: ChunkUpsertRequest,
+    tenant_id: str = Depends(require_tenant),
     engine: QdrantIndexEngine = Depends(get_engine),  # noqa: B008
 ) -> dict[str, Any]:
     collection = _resolve_index_name(payload.index_name)
@@ -739,6 +812,7 @@ async def chunk_and_upsert(
         kwargs["chunker_kwargs"] = payload.chunker_kwargs
     if payload.start_id is not None:
         kwargs["start_id"] = payload.start_id
+    kwargs["tenant_id"] = tenant_id
 
     text_len = len(payload.text) if payload.text else 0
     t0 = time.monotonic()
@@ -752,12 +826,14 @@ async def chunk_and_upsert(
     return {"chunks_indexed": chunks_indexed, "collection": collection}
 
 
-@app.post("/batch-chunk-upsert", dependencies=[Depends(require_token)])
+@app.post("/batch-chunk-upsert", dependencies=[Depends(require_token), Depends(require_tenant)])
 async def batch_chunk_and_upsert(
     payload: BatchChunkUpsertRequest,
+    tenant_id: str = Depends(require_tenant),
     engine: QdrantIndexEngine = Depends(get_engine),  # noqa: B008
 ) -> dict[str, Any]:
     collection = _resolve_index_name(payload.index_name)
+    await asyncio.to_thread(engine._ensure_tenant_index, collection)
     t0 = time.monotonic()
 
     chunker_name = payload.chunker_name
@@ -768,15 +844,18 @@ async def batch_chunk_and_upsert(
     segments: list[tuple[str, dict[str, Any]]] = []  # (text, payload)
 
     t_chunk = time.monotonic()
+    seg_idx = 0
     for item in payload.items:
         text = (item.text or "").strip()
         if not text:
             continue
         base_meta = dict(item.metadata or {})
+        base_meta["tenant_id"] = tenant_id
 
         if item.skip_chunking:
             payload_dict = {"text": text, **base_meta}
             segments.append((text, payload_dict))
+            seg_idx += 1
         else:
             # Chunk using the engine's chunker
             if engine.chunker is None:
@@ -798,6 +877,7 @@ async def batch_chunk_and_upsert(
                     continue
                 payload_dict = {"text": chunk_text, **base_meta, "chunk_index": chunk_idx}
                 segments.append((chunk_text, payload_dict))
+                seg_idx += 1
     chunk_ms = (time.monotonic() - t_chunk) * 1000
 
     if not segments:
@@ -817,20 +897,29 @@ async def batch_chunk_and_upsert(
     # Phase 3: Build points with deterministic IDs.
     vector_size = SETTINGS.index_dims
     points: list[dict[str, Any]] = []
-    for (text, payload_dict), raw_vec in zip(segments, raw_embeddings, strict=True):
+    for seg_idx, ((text, payload_dict), raw_vec) in enumerate(
+        zip(segments, raw_embeddings, strict=True)
+    ):
         vec = engine._normalize_vector(raw_vec)
         if len(vec) != vector_size:
             if len(vec) > vector_size:
                 vec = vec[:vector_size]
             else:
                 vec = vec + [0.0] * (vector_size - len(vec))
-        point_id = uuid.uuid5(uuid.NAMESPACE_DNS, text).int % (2**63)
+        point_id = engine._generate_chunk_point_id(
+            chunk_text=text,
+            chunk_index=seg_idx,
+            collection_name=collection,
+            tenant_id=tenant_id,
+        )
         points.append({"id": point_id, "vector": vec, "payload": payload_dict})
 
     # Phase 4: Single upsert to Qdrant.
     t_upsert = time.monotonic()
-    engine._ensure_collection_exists(collection)
-    engine._upsert_points_sync(collection_name=collection, points=points)
+    await asyncio.to_thread(engine._ensure_collection_exists, collection)
+    await asyncio.to_thread(
+        engine._upsert_points_sync, collection_name=collection, points=points
+    )
     upsert_ms = (time.monotonic() - t_upsert) * 1000
 
     total_ms = (time.monotonic() - t0) * 1000
