@@ -16,7 +16,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response, 
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from symai.backend.engines.index.engine_qdrant import QdrantIndexEngine
+from symai.backend.engines.index.engine_qdrant import QdrantIndexEngine, chunks
 from symai.core import Argument
 from symai.symbol import Symbol as SymaiSymbol
 from symai.utils import UserMessage
@@ -63,6 +63,9 @@ class ApiSettings(BaseModel):
 
     # API auth
     rag_api_token: str | None = Field(default_factory=lambda: _env_str("RAG_API_TOKEN"))
+
+    # Upload directory for document_path resolution
+    rag_upload_dir: str | None = Field(default_factory=lambda: _env_str("RAG_UPLOAD_DIR"))
 
 
 SETTINGS = ApiSettings()
@@ -201,6 +204,9 @@ class ChunkUpsertRequest(BaseModel):
     chunker_name: str | None = None
     chunker_kwargs: dict[str, Any] | None = None
     start_id: int | None = None
+    embed_batch_size: int = Field(
+        default_factory=lambda: _env_int("RAG_EMBED_BATCH_SIZE", 100)
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -228,6 +234,9 @@ class BatchChunkUpsertRequest(BaseModel):
     items: list[BatchChunkItem] = Field(..., min_length=1, max_length=10_000)
     chunker_name: str | None = None
     chunker_kwargs: dict[str, Any] | None = None
+    embed_batch_size: int = Field(
+        default_factory=lambda: _env_int("RAG_EMBED_BATCH_SIZE", 100)
+    )
 
 
 class CollectionCreateRequest(BaseModel):
@@ -372,6 +381,7 @@ def _build_engine() -> QdrantIndexEngine:
         index_metric=SETTINGS.index_metric,
         tokenizer_name=SETTINGS.tokenizer_name,
         embedding_model_name=SETTINGS.embedding_model_name,
+        upload_dir=SETTINGS.rag_upload_dir,
     )
 
 
@@ -813,6 +823,7 @@ async def chunk_and_upsert(
     if payload.start_id is not None:
         kwargs["start_id"] = payload.start_id
     kwargs["tenant_id"] = tenant_id
+    kwargs["embed_batch_size"] = payload.embed_batch_size
 
     text_len = len(payload.text) if payload.text else 0
     t0 = time.monotonic()
@@ -841,7 +852,7 @@ async def batch_chunk_and_upsert(
 
     # Phase 1: Build list of (text, metadata) segments — chunk items that need chunking,
     # pass through items that don't.
-    segments: list[tuple[str, dict[str, Any]]] = []  # (text, payload)
+    segments = []  # (text, payload)
 
     t_chunk = time.monotonic()
     seg_idx = 0
@@ -866,12 +877,12 @@ async def batch_chunk_and_upsert(
             text_symbol = SymaiSymbol(text)
             cn = chunker_name if chunker_name is not None else engine.chunker_name
             chunks_symbol = engine.chunker.forward(text_symbol, chunker_name=cn, **chunker_kwargs)
-            chunks = chunks_symbol.value if hasattr(chunks_symbol, "value") else chunks_symbol
-            if not chunks:
+            chunk_items = chunks_symbol.value if hasattr(chunks_symbol, "value") else chunks_symbol
+            if not chunk_items:
                 continue
-            if not isinstance(chunks, list):
-                chunks = [chunks]
-            for chunk_idx, chunk_item in enumerate(chunks):
+            if not isinstance(chunk_items, list):
+                chunk_items = [chunk_items]
+            for chunk_idx, chunk_item in enumerate(chunk_items):
                 chunk_text = str(chunk_item).strip()
                 if not chunk_text:
                     continue
@@ -884,19 +895,22 @@ async def batch_chunk_and_upsert(
         logger.info("batch-chunk-upsert collection=%s segments=0 (empty)", collection)
         return {"chunks_indexed": 0, "collection": collection}
 
-    # Phase 2: Batch embed all segments in one call.
+    # Phase 2: Batch embed all segments in sized chunks sequentially.
     t_embed = time.monotonic()
     all_texts = [text for text, _ in segments]
-    raw_embeddings = SymaiSymbol(all_texts).embed().value
-    if Argument is not None and isinstance(raw_embeddings, Argument):
-        raw_embeddings = getattr(raw_embeddings, "value", raw_embeddings)
-    if hasattr(raw_embeddings, "tolist"):
-        raw_embeddings = raw_embeddings.tolist()
+    raw_embeddings = []
+    for batch in chunks(all_texts, payload.embed_batch_size):
+        batch_emb = SymaiSymbol(batch).embed().value
+        if Argument is not None and isinstance(batch_emb, Argument):
+            batch_emb = getattr(batch_emb, "value", batch_emb)
+        if hasattr(batch_emb, "tolist"):
+            batch_emb = batch_emb.tolist()
+        raw_embeddings.extend(batch_emb)
     embed_ms = (time.monotonic() - t_embed) * 1000
 
     # Phase 3: Build points with deterministic IDs.
     vector_size = SETTINGS.index_dims
-    points: list[dict[str, Any]] = []
+    points = []
     for seg_idx, ((text, payload_dict), raw_vec) in enumerate(
         zip(segments, raw_embeddings, strict=True)
     ):

@@ -258,6 +258,44 @@ class TestTenantRequiredEndpoints:
         assert resp.status_code == 200
         mock_engine._ensure_tenant_index.assert_called_once()
 
+    def test_chunk_upsert_embed_batch_size(self, client, mock_engine):
+        resp = client.post(
+            "/chunk-upsert",
+            json={"text": "hello world", "embed_batch_size": 42},
+            headers=self.TENANT_HEADER,
+        )
+        assert resp.status_code == 200
+        _, kwargs = mock_engine.chunk_and_upsert.call_args
+        assert kwargs["embed_batch_size"] == 42
+
+    def test_batch_chunk_upsert_embed_batch_size(self, client):
+        with patch("symai.server.qdrant_rag_api.SymaiSymbol") as mock_sym:
+            mock_instance = mock_sym.return_value
+            mock_instance.embed.return_value.value = [[0.0] * 1536] * 2
+
+            resp = client.post(
+                "/batch-chunk-upsert",
+                json={
+                    "items": [
+                        {"text": "one", "skip_chunking": True},
+                        {"text": "two", "skip_chunking": True},
+                        {"text": "three", "skip_chunking": True},
+                        {"text": "four", "skip_chunking": True},
+                    ],
+                    "embed_batch_size": 2,
+                },
+                headers=self.TENANT_HEADER,
+            )
+            assert resp.status_code == 200
+            assert resp.json()["chunks_indexed"] == 4
+
+            calls = mock_sym.call_args_list
+            assert len(calls) == 2
+            assert len(calls[0][0][0]) == 2
+            assert len(calls[1][0][0]) == 2
+            assert calls[0][0][0] == ["one", "two"]
+            assert calls[1][0][0] == ["three", "four"]
+
 
 # ---------------------------------------------------------------------------
 # Endpoints that do NOT require X-Tenant-Id
