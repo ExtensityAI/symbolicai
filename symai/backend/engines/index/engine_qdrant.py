@@ -1,7 +1,10 @@
+import asyncio
 import bisect
 import ipaddress
 import itertools
 import logging
+import os
+import re
 import socket
 import tempfile
 import uuid
@@ -9,10 +12,11 @@ import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 
 import numpy as np
 import requests
+import urllib3
 from requests.adapters import HTTPAdapter
 
 from .... import core_ext
@@ -20,6 +24,17 @@ from ....symbol import Result, Symbol
 from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG, SYMSERVER_CONFIG
+
+UPLOAD_BASE_DIR = Path(os.getenv("SYMAI_UPLOAD_DIR", tempfile.gettempdir())).resolve()
+MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024
+
+
+def _secure_filename(name: str) -> str:
+    name = Path(name or "").name
+    name = re.sub(r"[^A-Za-z0-9_.-]+", "_", name).strip("._")
+    if not name:
+        UserMessage(f"Invalid filename: {name!r}", raise_with=ValueError)
+    return name
 
 warnings.filterwarnings("ignore", module="qdrant_client")
 try:
@@ -78,12 +93,24 @@ class PinningHTTPAdapter(HTTPAdapter):
     def __init__(self, hostname: str, pinned_ip: str, **kwargs):
         self.hostname = hostname
         self.pinned_ip = pinned_ip
+        self.assert_hostname = hostname
         super().__init__(**kwargs)
 
+    def init_poolmanager(self, connections, maxsize, block=False, **pool_kwargs):
+        self.poolmanager = urllib3.PoolManager(
+            num_pools=connections,
+            maxsize=maxsize,
+            block=block,
+            assert_hostname=self.assert_hostname,
+            server_hostname=self.assert_hostname,
+            **pool_kwargs,
+        )
+
     def send(self, request, stream=False, timeout=None, verify=True, cert=None, proxies=None):
-        # Replace hostname with pinned IP in the request URL
-        # Original hostname is preserved in Host header for SNI and vhosts
-        request.url = request.url.replace(self.hostname, self.pinned_ip)
+        # Rebuild URL properly, replacing only the netloc hostname
+        parsed = urlparse(request.url)
+        new_netloc = parsed.netloc.replace(self.hostname, self.pinned_ip)
+        request.url = urlunparse(parsed._replace(netloc=new_netloc))
         return super().send(
             request, stream=stream, timeout=timeout, verify=verify, cert=cert, proxies=proxies
         )
@@ -310,6 +337,7 @@ class QdrantIndexEngine(Engine):
         chunker_name: str | None = "RecursiveChunker",
         tokenizer_name: str | None = "gpt2",
         embedding_model_name: str | None = "minishlab/potion-base-8M",
+        default_tenant_id: str | None = None,
     ):
         super().__init__()
         self.index_name = index_name
@@ -317,6 +345,7 @@ class QdrantIndexEngine(Engine):
         self.index_top_k = index_top_k
         self.index_values = index_values
         self.index_metadata = index_metadata
+        self.default_tenant_id = default_tenant_id
         self.index_metric = self._parse_metric(index_metric)
         # Get URL from SYMSERVER_CONFIG if available, otherwise use provided or default
         if url:
@@ -377,6 +406,27 @@ class QdrantIndexEngine(Engine):
         }
         metric_lower = metric.lower()
         return metric_map.get(metric_lower, Distance.COSINE)
+
+    def _generate_chunk_point_id(
+        self,
+        chunk_text: str,
+        chunk_index: int,
+        collection_name: str,
+        tenant_id: str | None = None,
+    ) -> int:
+        """Generate a deterministic, collision-resistant point ID for a chunk.
+
+        NOTE: Uses uuid.NAMESPACE_DNS as the hashing namespace. This built-in
+        constant produces identical IDs across all Python installations for the
+        same (tenant, collection, index, text) tuple. If you need cross-server
+        isolation or want to version the ID scheme, pass a custom namespace UUID
+        here instead of NAMESPACE_DNS.
+        """
+        tenant_tag = tenant_id or "__global__"
+        return uuid.uuid5(
+            uuid.NAMESPACE_DNS,
+            f"{tenant_tag}:{collection_name}:{chunk_index}:{chunk_text}",
+        ).int % (2**63)
 
     def id(self) -> str:
         # Check if Qdrant is configured (either via server or direct connection)
@@ -455,7 +505,7 @@ class QdrantIndexEngine(Engine):
             # Reinitialize client to refresh collection list
             self._init_client()
 
-    def _build_query_filter(self, raw_filter: Any) -> Filter | None:
+    def _build_query_filter(self, raw_filter: Any, tenant_id: str | None = None) -> Filter | None:
         """Normalize various filter representations into a Qdrant Filter.
 
         Supports:
@@ -467,6 +517,9 @@ class QdrantIndexEngine(Engine):
         - scalar values (str/int/float/bool/None) → equality match (`MatchValue`)
         - list/tuple/set values → any-of match (`MatchAny`), commonly used for tags
 
+        When `tenant_id` is provided, a mandatory `tenant_id == ?` condition is
+        prepended to the `must` list so every query is scoped to that tenant.
+
         Example:
             {"category": "AI", "tags": ["rag", "paper"]}
 
@@ -475,12 +528,38 @@ class QdrantIndexEngine(Engine):
 
         Note: for complex logic (OR groups, ranges, geo), pass a real Qdrant `Filter`.
         """
-        if raw_filter is None or Filter is None:
+        if raw_filter is None and tenant_id is None:
+            return None
+        if Filter is None:
             return None
 
-        # Already a Filter instance → use directly
+        conditions: list = []
+
+        if tenant_id is not None:
+            if models is None:
+                UserMessage(
+                    "Qdrant filter models are not available. "
+                    "Please install `qdrant-client` to use filtering.",
+                    raise_with=ImportError,
+                )
+            conditions.append(
+                models.FieldCondition(
+                    key="tenant_id",
+                    match=models.MatchValue(value=tenant_id),
+                )
+            )
+
+        if raw_filter is None:
+            return Filter(must=conditions) if conditions else None
+
+        # Already a Filter instance → rebuild with tenant guard prepended to must
         if isinstance(raw_filter, Filter):
-            return raw_filter
+            return Filter(
+                must=conditions + (list(raw_filter.must) if raw_filter.must else []),
+                should=raw_filter.should,
+                must_not=raw_filter.must_not,
+                min_should=raw_filter.min_should,
+            )
 
         # Simple dict → build equality-based must filter
         if isinstance(raw_filter, dict):
@@ -491,7 +570,6 @@ class QdrantIndexEngine(Engine):
                     raise_with=ImportError,
                 )
 
-            conditions = []
             for key, value in raw_filter.items():
                 # We keep semantics simple and robust:
                 # - every entry becomes a must-condition (logical AND across keys)
@@ -564,6 +642,8 @@ class QdrantIndexEngine(Engine):
             kwargs["index_get"] = True
             self._configure_collection(**kwargs)
 
+        tenant_id = kwargs.get("tenant_id", self.default_tenant_id)
+
         treat_as_search_engine = False
         if operation == "search":
             # Ensure collection exists - fail fast if it doesn't
@@ -574,7 +654,7 @@ class QdrantIndexEngine(Engine):
             score_threshold = search_kwargs.pop("score_threshold", None)
             # Accept both `query_filter` and `filter` for convenience
             raw_filter = search_kwargs.pop("query_filter", search_kwargs.pop("filter", None))
-            query_filter = self._build_query_filter(raw_filter)
+            query_filter = self._build_query_filter(raw_filter, tenant_id=tenant_id)
             treat_as_search_engine = bool(search_kwargs.pop("treat_as_search_engine", False))
 
             # Use shared search helper that already handles retries and normalization
@@ -723,6 +803,30 @@ class QdrantIndexEngine(Engine):
             msg = f"Collection '{collection_name}' does not exist"
             raise ValueError(msg)
 
+    def _ensure_tenant_index(self, collection_name: str):
+        """Create a keyword payload index for tenant_id with is_tenant=True if missing."""
+        self._check_initialization()
+        if models is None:
+            return
+        try:
+            idx_info = self.client.get_collection(collection_name)
+            existing = getattr(idx_info, "payload_schema", {}) or {}
+            if "tenant_id" not in existing:
+                self.client.create_payload_index(
+                    collection_name=collection_name,
+                    field_name="tenant_id",
+                    field_schema=models.KeywordIndexParams(
+                        type=models.KeywordIndexType.KEYWORD,
+                        is_tenant=True,
+                    ),
+                )
+        except Exception as exc:
+            # Best-effort: index creation is optional for correctness,
+            # only required for Qdrant query-planning optimizations.
+            UserMessage(
+                f"Failed to create tenant_id payload index on {collection_name}: {exc}"
+            )
+
     # ==================== Collection Management ====================
 
     async def create_collection(
@@ -743,12 +847,14 @@ class QdrantIndexEngine(Engine):
         """
         self._check_initialization()
 
-        if self.client.collection_exists(collection_name):
+        if await asyncio.to_thread(self.client.collection_exists, collection_name):
             warnings.warn(f"Collection '{collection_name}' already exists")
             return
 
         # Use shared synchronous method
-        self._create_collection_sync(collection_name, vector_size, distance, **kwargs)
+        await asyncio.to_thread(
+            self._create_collection_sync, collection_name, vector_size, distance, **kwargs
+        )
 
     async def collection_exists(self, collection_name: str) -> bool:
         """
@@ -761,7 +867,7 @@ class QdrantIndexEngine(Engine):
             True if collection exists, False otherwise
         """
         self._check_initialization()
-        return self.client.collection_exists(collection_name)
+        return await asyncio.to_thread(self.client.collection_exists, collection_name)
 
     async def list_collections(self) -> list[str]:
         """
@@ -771,7 +877,7 @@ class QdrantIndexEngine(Engine):
             List of collection names
         """
         self._check_initialization()
-        collections = self.client.get_collections().collections
+        collections = (await asyncio.to_thread(self.client.get_collections)).collections
         return [collection.name for collection in collections]
 
     async def delete_collection(self, collection_name: str):
@@ -781,8 +887,8 @@ class QdrantIndexEngine(Engine):
         Args:
             collection_name: Name of the collection to delete
         """
-        self._ensure_collection_exists(collection_name)
-        self.client.delete_collection(collection_name)
+        await asyncio.to_thread(self._ensure_collection_exists, collection_name)
+        await asyncio.to_thread(self.client.delete_collection, collection_name)
 
     async def get_collection_info(self, collection_name: str) -> dict:
         """
@@ -794,8 +900,8 @@ class QdrantIndexEngine(Engine):
         Returns:
             Dictionary containing collection information
         """
-        self._ensure_collection_exists(collection_name)
-        collection_info = self.client.get_collection(collection_name)
+        await asyncio.to_thread(self._ensure_collection_exists, collection_name)
+        collection_info = await asyncio.to_thread(self.client.get_collection, collection_name)
         # Extract vector config - handle both single vector and named vectors
         vector_config = collection_info.config.params.vectors
         if hasattr(vector_config, "size"):
@@ -914,6 +1020,7 @@ class QdrantIndexEngine(Engine):
         self,
         collection_name: str,
         points: list[PointStruct] | list[dict],
+        tenant_id: str | None = None,
         **kwargs,
     ):
         """
@@ -922,15 +1029,28 @@ class QdrantIndexEngine(Engine):
         Args:
             collection_name: Name of the collection
             points: List of PointStruct objects or dictionaries with id, vector, and optional payload
+            tenant_id: Optional tenant ID to inject into every point payload
             **kwargs: Additional arguments for upsert operation
         """
+        tenant_id = tenant_id or self.default_tenant_id
+        if tenant_id is not None:
+            for point in points:
+                if isinstance(point, dict):
+                    payload = point.setdefault("payload", {})
+                    if isinstance(payload, dict):
+                        payload["tenant_id"] = tenant_id
+                else:
+                    if point.payload is None:
+                        point.payload = {}
+                    point.payload["tenant_id"] = tenant_id
         # Use shared synchronous method
-        self._upsert_points_sync(collection_name, points, **kwargs)
+        await asyncio.to_thread(self._upsert_points_sync, collection_name, points, **kwargs)
 
     async def insert(
         self,
         collection_name: str,
         points: list[PointStruct] | list[dict],
+        tenant_id: str | None = None,
         **kwargs,
     ):
         """
@@ -939,14 +1059,16 @@ class QdrantIndexEngine(Engine):
         Args:
             collection_name: Name of the collection
             points: List of PointStruct objects or dictionaries with id, vector, and optional payload
+            tenant_id: Optional tenant ID to inject into every point payload
             **kwargs: Additional arguments for insert operation
         """
-        await self.upsert(collection_name, points, **kwargs)
+        await self.upsert(collection_name, points, tenant_id=tenant_id, **kwargs)
 
     async def delete(
         self,
         collection_name: str,
         points_selector: list[int] | int,
+        tenant_id: str | None = None,
         **kwargs,
     ):
         """
@@ -955,16 +1077,38 @@ class QdrantIndexEngine(Engine):
         Args:
             collection_name: Name of the collection
             points_selector: Point IDs to delete (single ID or list of IDs)
+            tenant_id: Optional tenant ID to verify before deleting each point
             **kwargs: Additional arguments for delete operation
         """
-        self._ensure_collection_exists(collection_name)
+        await asyncio.to_thread(self._ensure_collection_exists, collection_name)
+        tenant_id = tenant_id or self.default_tenant_id
 
         # Convert single ID to list if needed
         if isinstance(points_selector, int):
             points_selector = [points_selector]
 
-        self.client.delete(
-            collection_name=collection_name, points_selector=points_selector, **kwargs
+        if tenant_id is not None:
+            # Load points and verify tenant_id before deleting
+            points = await asyncio.to_thread(
+                self.client.retrieve,
+                collection_name=collection_name,
+                ids=points_selector,
+                with_payload=True,
+            )
+            verified_ids = [
+                p.id
+                for p in points
+                if (getattr(p, "payload", None) or {}).get("tenant_id") == tenant_id
+            ]
+            if not verified_ids:
+                return
+            points_selector = verified_ids
+
+        await asyncio.to_thread(
+            self.client.delete,
+            collection_name=collection_name,
+            points_selector=points_selector,
+            **kwargs,
         )
 
     async def delete_by_filter(
@@ -972,6 +1116,7 @@ class QdrantIndexEngine(Engine):
         collection_name: str,
         query_filter: Any,
         shard_key: Any | None = None,
+        tenant_id: str | None = None,
         **kwargs,
     ):
         """
@@ -987,9 +1132,11 @@ class QdrantIndexEngine(Engine):
                 - a simple dict (see `_build_query_filter`) such as:
                   `{"source": "/abs/path/to/file.pdf"}` or `{"tags": ["rag", "paper"]}`
             shard_key: Optional shard key selector (advanced Qdrant deployments)
+            tenant_id: Optional tenant ID to scope the deletion
             **kwargs: Additional arguments forwarded to `QdrantClient.delete`
         """
-        self._ensure_collection_exists(collection_name)
+        await asyncio.to_thread(self._ensure_collection_exists, collection_name)
+        tenant_id = tenant_id or self.default_tenant_id
 
         if models is None or Filter is None:
             UserMessage(
@@ -998,13 +1145,18 @@ class QdrantIndexEngine(Engine):
                 raise_with=ImportError,
             )
 
-        built = self._build_query_filter(query_filter)
+        built = self._build_query_filter(query_filter, tenant_id=tenant_id)
         if built is None:
             msg = "delete_by_filter requires a non-empty `query_filter`"
             raise ValueError(msg)
 
         selector = models.FilterSelector(filter=built, shard_key=shard_key)
-        self.client.delete(collection_name=collection_name, points_selector=selector, **kwargs)
+        await asyncio.to_thread(
+            self.client.delete,
+            collection_name=collection_name,
+            points_selector=selector,
+            **kwargs,
+        )
 
     async def delete_documents(
         self,
@@ -1015,6 +1167,7 @@ class QdrantIndexEngine(Engine):
         metadata: dict[str, Any] | None = None,
         source_key: str = "source",
         shard_key: Any | None = None,
+        tenant_id: str | None = None,
         **kwargs,
     ):
         """
@@ -1036,6 +1189,7 @@ class QdrantIndexEngine(Engine):
             metadata: Additional payload key/value constraints (AND'ed with documents/tags).
             source_key: Payload key to match `documents` against (default: "source").
             shard_key: Optional shard key selector (advanced Qdrant deployments).
+            tenant_id: Optional tenant ID to scope the deletion
             **kwargs: Additional arguments forwarded to `QdrantClient.delete`.
         """
         filter_dict: dict[str, Any] = {}
@@ -1058,6 +1212,7 @@ class QdrantIndexEngine(Engine):
             collection_name=collection_name,
             query_filter=filter_dict,
             shard_key=shard_key,
+            tenant_id=tenant_id,
             **kwargs,
         )
 
@@ -1068,6 +1223,7 @@ class QdrantIndexEngine(Engine):
         *,
         exact: bool = True,
         shard_key_selector: Any | None = None,
+        tenant_id: str | None = None,
         **kwargs,
     ) -> int:
         """
@@ -1081,14 +1237,17 @@ class QdrantIndexEngine(Engine):
             query_filter: Optional filter (Qdrant `Filter` or dict via `_build_query_filter`)
             exact: If True, Qdrant performs an exact count (may be slower for huge collections)
             shard_key_selector: Optional shard key selector (advanced Qdrant deployments)
+            tenant_id: Optional tenant ID to scope the count
             **kwargs: Forwarded to `QdrantClient.count`
 
         Returns:
             Number of matching points
         """
-        self._ensure_collection_exists(collection_name)
-        built = self._build_query_filter(query_filter)
-        res = self.client.count(
+        await asyncio.to_thread(self._ensure_collection_exists, collection_name)
+        tenant_id = tenant_id or self.default_tenant_id
+        built = self._build_query_filter(query_filter, tenant_id=tenant_id)
+        res = await asyncio.to_thread(
+            self.client.count,
             collection_name=collection_name,
             count_filter=built,
             exact=exact,
@@ -1103,6 +1262,7 @@ class QdrantIndexEngine(Engine):
         query_filter: Any,
         *,
         shard_key_selector: Any | None = None,
+        tenant_id: str | None = None,
         **kwargs,
     ) -> bool:
         """
@@ -1112,6 +1272,7 @@ class QdrantIndexEngine(Engine):
             collection_name: Name of the collection
             query_filter: Filter selecting points (required)
             shard_key_selector: Optional shard key selector
+            tenant_id: Optional tenant ID to scope the check
             **kwargs: Forwarded to `count()`
 
         Returns:
@@ -1124,8 +1285,9 @@ class QdrantIndexEngine(Engine):
             await self.count(
                 collection_name=collection_name,
                 query_filter=query_filter,
-                exact=False,
+                exact=True,
                 shard_key_selector=shard_key_selector,
+                tenant_id=tenant_id,
                 **kwargs,
             )
             > 0
@@ -1138,6 +1300,7 @@ class QdrantIndexEngine(Engine):
         *,
         source_key: str = "source",
         shard_key_selector: Any | None = None,
+        tenant_id: str | None = None,
         **kwargs,
     ) -> bool:
         """
@@ -1151,6 +1314,7 @@ class QdrantIndexEngine(Engine):
             collection_name=collection_name,
             query_filter={source_key: document},
             shard_key_selector=shard_key_selector,
+            tenant_id=tenant_id,
             **kwargs,
         )
 
@@ -1161,6 +1325,7 @@ class QdrantIndexEngine(Engine):
         *,
         tags_key: str = "tags",
         shard_key_selector: Any | None = None,
+        tenant_id: str | None = None,
         **kwargs,
     ) -> bool:
         """
@@ -1172,6 +1337,7 @@ class QdrantIndexEngine(Engine):
             collection_name=collection_name,
             query_filter={tags_key: [tag]},
             shard_key_selector=shard_key_selector,
+            tenant_id=tenant_id,
             **kwargs,
         )
 
@@ -1184,6 +1350,7 @@ class QdrantIndexEngine(Engine):
         limit_documents: int | None = None,
         batch_size: int = 256,
         shard_key_selector: Any | None = None,
+        tenant_id: str | None = None,
         **kwargs,
     ) -> list[str]:
         """
@@ -1199,19 +1366,22 @@ class QdrantIndexEngine(Engine):
             limit_documents: Stop after collecting this many unique documents (optional)
             batch_size: Scroll page size (points per request)
             shard_key_selector: Optional shard key selector
+            tenant_id: Optional tenant ID to scope the scan
             **kwargs: Forwarded to `QdrantClient.scroll`
 
         Returns:
             Sorted list of unique document identifiers
         """
-        self._ensure_collection_exists(collection_name)
-        built = self._build_query_filter(query_filter)
+        await asyncio.to_thread(self._ensure_collection_exists, collection_name)
+        tenant_id = tenant_id or self.default_tenant_id
+        built = self._build_query_filter(query_filter, tenant_id=tenant_id)
 
         documents: set[str] = set()
         offset: Any | None = None
 
         while True:
-            records, next_offset = self.client.scroll(
+            records, next_offset = await asyncio.to_thread(
+                self.client.scroll,
                 collection_name=collection_name,
                 scroll_filter=built,
                 limit=batch_size,
@@ -1246,6 +1416,7 @@ class QdrantIndexEngine(Engine):
         limit_documents: int | None = None,
         batch_size: int = 256,
         shard_key_selector: Any | None = None,
+        tenant_id: str | None = None,
         **kwargs,
     ) -> list[str]:
         """
@@ -1262,6 +1433,7 @@ class QdrantIndexEngine(Engine):
             limit_documents=limit_documents,
             batch_size=batch_size,
             shard_key_selector=shard_key_selector,
+            tenant_id=tenant_id,
             **kwargs,
         )
 
@@ -1274,6 +1446,7 @@ class QdrantIndexEngine(Engine):
         tags_key: str = "tags",
         metadata: dict[str, Any] | None = None,
         shard_key_selector: Any | None = None,
+        tenant_id: str | None = None,
         **kwargs,
     ) -> int:
         """
@@ -1288,6 +1461,7 @@ class QdrantIndexEngine(Engine):
             tags_key=tags_key,
             metadata=metadata,
             shard_key_selector=shard_key_selector,
+            tenant_id=tenant_id,
             **kwargs,
         )
         return len(docs)
@@ -1298,6 +1472,7 @@ class QdrantIndexEngine(Engine):
         ids: list[int] | int,
         with_payload: bool = True,
         with_vectors: bool = False,
+        tenant_id: str | None = None,
         **kwargs,
     ) -> list[dict]:
         """
@@ -1313,13 +1488,15 @@ class QdrantIndexEngine(Engine):
         Returns:
             List of point dictionaries
         """
-        self._ensure_collection_exists(collection_name)
+        await asyncio.to_thread(self._ensure_collection_exists, collection_name)
+        tenant_id = tenant_id or self.default_tenant_id
 
         # Convert single ID to list if needed
         if isinstance(ids, int):
             ids = [ids]
 
-        points = self.client.retrieve(
+        points = await asyncio.to_thread(
+            self.client.retrieve,
             collection_name=collection_name,
             ids=ids,
             with_payload=with_payload,
@@ -1330,6 +1507,9 @@ class QdrantIndexEngine(Engine):
         # Convert to list of dicts for easier use
         result = []
         for point in points:
+            payload = getattr(point, "payload", None) or {}
+            if tenant_id is not None and payload.get("tenant_id") != tenant_id:
+                continue
             point_dict = {"id": point.id}
             if with_payload and point.payload:
                 point_dict["payload"] = point.payload
@@ -1473,6 +1653,7 @@ class QdrantIndexEngine(Engine):
         limit: int = 10,
         score_threshold: float | None = None,
         query_filter: Any = None,
+        tenant_id: str | None = None,
         **kwargs,
     ) -> list[ScoredPoint]:
         """
@@ -1484,19 +1665,27 @@ class QdrantIndexEngine(Engine):
             limit: Maximum number of results to return
             score_threshold: Minimum similarity score threshold
             query_filter: Optional filter to apply to the search
+            tenant_id: Optional tenant ID to scope the search
             **kwargs: Additional search parameters
 
         Returns:
             List of ScoredPoint objects containing id, score, and payload
         """
+        tenant_id = tenant_id or self.default_tenant_id
         # Accept both `query_filter` and `filter` for convenience and consistency
         # with forward()/local_search.
         if query_filter is None and "filter" in kwargs:
             query_filter = kwargs.pop("filter")
-        query_filter = self._build_query_filter(query_filter)
+        query_filter = self._build_query_filter(query_filter, tenant_id=tenant_id)
         # Use shared synchronous method
-        return self._search_sync(
-            collection_name, query_vector, limit, score_threshold, query_filter, **kwargs
+        return await asyncio.to_thread(
+            self._search_sync,
+            collection_name,
+            query_vector,
+            limit,
+            score_threshold,
+            query_filter,
+            **kwargs,
         )
 
     # ==================== Document Operations with Chunking ====================
@@ -1532,9 +1721,18 @@ class QdrantIndexEngine(Engine):
 
         # Validate resolved IP is not private/reserved (SSRF protection)
         ip = ipaddress.ip_address(resolved_ip)
-        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+        CGNAT_NETWORK = ipaddress.ip_network("100.64.0.0/10")
+        if (
+            ip.is_private
+            or ip.is_loopback
+            or ip.is_link_local
+            or ip.is_reserved
+            or ip.is_multicast
+            or ip.is_unspecified
+            or ip in CGNAT_NETWORK
+        ):
             UserMessage(
-                f"SSRF: Resolved IP {resolved_ip} is not allowed (private/reserved)",
+                f"SSRF: Resolved IP {resolved_ip} is not allowed",
                 raise_with=ValueError,
             )
 
@@ -1553,6 +1751,7 @@ class QdrantIndexEngine(Engine):
                 allow_redirects=False,  # Prevent redirect-based SSRF
                 timeout=(10, 30),  # (connect timeout, read timeout)
                 headers={"Host": hostname},  # For virtual host routing and SNI
+                stream=True,
             )
             response.raise_for_status()
         except requests.exceptions.Timeout:
@@ -1562,25 +1761,45 @@ class QdrantIndexEngine(Engine):
         except requests.exceptions.RequestException as e:
             UserMessage(f"Download failed: {e}", raise_with=RuntimeError)
 
-        # Extract extension from URL path
-        suffix = Path(parsed.path).suffix
+        # Determine file extension from Content-Type header, fall back to URL path
+        content_type = (response.headers.get("Content-Type") or "").split(";")[0].strip()
+        suffix = {
+            "application/pdf": ".pdf",
+            "text/plain": ".txt",
+            "text/html": ".html",
+            "application/msword": ".doc",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
+            "application/epub+zip": ".epub",
+        }.get(content_type) or Path(parsed.path).suffix
 
-        # Write to temp file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
-            tmp_file.write(response.content)
-            tmp_file.flush()
-            tmp_file_name = tmp_file.name
-
+        # Write to temp file with streaming size cap
+        tmp_file_name = None
         try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
+                tmp_file_name = tmp_file.name
+                total = 0
+                for chunk in response.iter_content(chunk_size=8192):
+                    total += len(chunk)
+                    if total > MAX_DOWNLOAD_BYTES:
+                        UserMessage(
+                            f"Download exceeds maximum allowed size ({MAX_DOWNLOAD_BYTES} bytes)",
+                            raise_with=ValueError,
+                        )
+                    tmp_file.write(chunk)
+                tmp_file.flush()
+
             # Rich formats (e.g., PDFs) require the markitdown backend.
             backend = "markitdown" if suffix.lower() == ".pdf" else "standard"
             content = self.reader(tmp_file_name, backend=backend)
             return content.value[0] if isinstance(content.value, list) else str(content.value)
         finally:
             # Clean up temporary file
-            tmp_path = Path(tmp_file_name)
-            if tmp_path.exists():
-                tmp_path.unlink()
+            if tmp_file_name is not None:
+                tmp_path = Path(tmp_file_name)
+                if tmp_path.exists():
+                    tmp_path.unlink()
 
     async def chunk_and_upsert(
         self,
@@ -1593,6 +1812,7 @@ class QdrantIndexEngine(Engine):
         start_id: int | None = None,
         metadata: dict | None = None,
         include_line_numbers: bool = True,
+        tenant_id: str | None = None,
         **upsert_kwargs,
     ):
         """
@@ -1607,12 +1827,16 @@ class QdrantIndexEngine(Engine):
             chunker_kwargs: Additional keyword arguments for the chunker
             start_id: Starting ID for the chunks (auto-incremented). If None, uses hash-based IDs
             metadata: Optional metadata to add to all chunk payloads
+            tenant_id: Optional tenant ID to inject into payload and scope IDs
             **upsert_kwargs: Additional arguments for upsert operation
 
         Returns:
             Number of chunks upserted
         """
-        self._ensure_collection_exists(collection_name)
+        await asyncio.to_thread(self._ensure_collection_exists, collection_name)
+        tenant_id = tenant_id or self.default_tenant_id
+        if tenant_id is not None:
+            await asyncio.to_thread(self._ensure_tenant_index, collection_name)
 
         # Validate input: exactly one of text, document_path, or document_url must be provided
         input_count = sum(x is not None for x in [text, document_path, document_url])
@@ -1652,23 +1876,20 @@ class QdrantIndexEngine(Engine):
             if self.reader is None:
                 msg = "FileReader not initialized. Please ensure FileReader is available."
                 raise RuntimeError(msg)
-            doc_path = Path(document_path)
-            if ".." in doc_path.parts:
-                UserMessage(
-                    f"Path traversal detected: '{document_path}' contains '..'",
-                    raise_with=ValueError,
-                )
-            if not doc_path.exists():
-                msg = f"Document file not found: {document_path}"
-                raise FileNotFoundError(msg)
+            safe_name = _secure_filename(document_path)
+            resolved = (UPLOAD_BASE_DIR / safe_name).resolve()
+            if not resolved.is_relative_to(UPLOAD_BASE_DIR):
+                UserMessage("Path traversal detected", raise_with=ValueError)
+            if not resolved.exists():
+                UserMessage(f"Document not found: {resolved}", raise_with=FileNotFoundError)
             # Rich formats (e.g., PDFs) require the markitdown backend.
-            backend = "markitdown" if doc_path.suffix.lower() == ".pdf" else "standard"
-            content = self.reader(document_path, backend=backend)
+            backend = "markitdown" if resolved.suffix.lower() == ".pdf" else "standard"
+            content = self.reader(str(resolved), backend=backend)
             text = content.value[0] if isinstance(content.value, list) else str(content.value)
             # Add source to metadata if not already present
             if metadata is None:
                 metadata = {}
-            metadata["source"] = str(doc_path.resolve())
+            metadata["source"] = str(resolved)
 
         # Handle document_url: download and read file using FileReader
         elif document_url is not None:
@@ -1746,7 +1967,6 @@ class QdrantIndexEngine(Engine):
         # Pass 1: build chunk metadata (text, payload, ID) without any embedding calls.
         # Line-number cursors are order-dependent so they must stay in this sequential pass.
         chunk_data = []  # list of (chunk_text, payload, point_id)
-        current_id = start_id if start_id is not None else 0
         for chunk_idx, chunk_item in enumerate(chunks):
             chunk_text = (
                 ChonkieChunker.clean_text(str(chunk_item)) if ChonkieChunker else str(chunk_item)
@@ -1757,6 +1977,8 @@ class QdrantIndexEngine(Engine):
             payload = {"text": chunk_text}
             if metadata:
                 payload.update(metadata)
+            if tenant_id is not None:
+                payload["tenant_id"] = tenant_id
 
             # Optionally include chunk location metadata (line numbers) for provenance.
             if include_line_numbers and full_text_raw is not None and full_text_clean is not None:
@@ -1798,10 +2020,20 @@ class QdrantIndexEngine(Engine):
                         payload["chunk_end_char"] = end_char
 
             if start_id is not None:
-                point_id = current_id
-                current_id += 1
+                point_id = int(
+                    uuid.uuid5(
+                        uuid.NAMESPACE_DNS,
+                        f"{tenant_id or '__global__'}:{collection_name}:{start_id}:{chunk_idx}",
+                    ).int
+                    % (2**63)
+                )
             else:
-                point_id = uuid.uuid5(uuid.NAMESPACE_DNS, chunk_text).int % (2**63)
+                point_id = self._generate_chunk_point_id(
+                    chunk_text=chunk_text,
+                    chunk_index=chunk_idx,
+                    collection_name=collection_name,
+                    tenant_id=tenant_id,
+                )
 
             chunk_data.append((chunk_text, payload, point_id))
 
@@ -1828,6 +2060,8 @@ class QdrantIndexEngine(Engine):
             points.append({"id": point_id, "vector": vec, "payload": payload})
 
         # Upsert the points using shared synchronous method
-        self._upsert_points_sync(collection_name=collection_name, points=points, **upsert_kwargs)
+        await asyncio.to_thread(
+            self._upsert_points_sync, collection_name=collection_name, points=points, **upsert_kwargs
+        )
 
         return len(points)
