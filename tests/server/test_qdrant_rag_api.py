@@ -47,7 +47,7 @@ def mock_engine():
     engine.search = AsyncMock(return_value=[])
     engine.chunk_and_upsert = AsyncMock(return_value=3)
     engine._ensure_collection_exists = MagicMock()
-    engine._ensure_tenant_index = MagicMock()
+    engine._ensure_payload_indexes = MagicMock()
     engine._build_query_filter = MagicMock(return_value={"must": []})
     engine.client = MagicMock()
     engine.client.scroll = MagicMock(return_value=([], None))
@@ -256,7 +256,7 @@ class TestTenantRequiredEndpoints:
             headers=self.TENANT_HEADER,
         )
         assert resp.status_code == 200
-        mock_engine._ensure_tenant_index.assert_called_once()
+        mock_engine._ensure_payload_indexes.assert_called_once()
 
     def test_chunk_upsert_embed_batch_size(self, client, mock_engine):
         resp = client.post(
@@ -419,6 +419,60 @@ class TestBodyTenantIdRejected:
 
 
 # ---------------------------------------------------------------------------
+# delete-by-tenant-file and delete-by-tenant endpoints
+# ---------------------------------------------------------------------------
+
+class TestDeleteByTenantFile:
+    """Tests for POST /delete-by-tenant-file."""
+
+    TENANT_HEADER = {"X-Tenant-Id": "t1"}  # noqa: RUF012
+
+    def test_success(self, client, mock_engine):
+        mock_engine.count = AsyncMock(return_value=3)
+        resp = client.post(
+            "/delete-by-tenant-file",
+            json={"file_id": "abc", "index_name": "custom"},
+            headers=self.TENANT_HEADER,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["points_deleted"] == 3
+        assert resp.json()["collection"] == "custom"
+        mock_engine.delete_by_filter.assert_awaited_once()
+        _, kwargs = mock_engine.delete_by_filter.call_args
+        assert kwargs["tenant_id"] == "t1"
+        assert kwargs["collection_name"] == "custom"
+
+    def test_empty_delete(self, client, mock_engine):
+        mock_engine.count = AsyncMock(return_value=0)
+        resp = client.post(
+            "/delete-by-tenant-file",
+            json={"file_id": "nonexistent"},
+            headers=self.TENANT_HEADER,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["points_deleted"] == 0
+
+
+class TestDeleteByTenant:
+    """Tests for POST /delete-by-tenant."""
+
+    TENANT_HEADER = {"X-Tenant-Id": "t1"}  # noqa: RUF012
+
+    def test_success(self, client, mock_engine):
+        mock_engine.count = AsyncMock(return_value=4)
+        resp = client.post(
+            "/delete-by-tenant",
+            json={"source_type": "dropbox"},
+            headers=self.TENANT_HEADER,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["points_deleted"] == 4
+        mock_engine.delete_by_filter.assert_awaited_once()
+        _, kwargs = mock_engine.delete_by_filter.call_args
+        assert kwargs["tenant_id"] == "t1"
+
+
+# ---------------------------------------------------------------------------
 # Integration-style tests (require real Qdrant)
 # ---------------------------------------------------------------------------
 
@@ -472,4 +526,189 @@ class TestTenantIsolationIntegration:
             payload = getattr(r, "payload", None) or {}
             assert payload.get("tenant_id") == "integration_tenant"
 
+        await real_engine.delete_collection(collection)
+
+
+class TestDeleteByTenantFileIntegration:
+    """Integration tests for /delete-by-tenant-file against real Qdrant."""
+
+    @pytest.fixture
+    async def real_engine(self):
+        url = (
+            SYMSERVER_CONFIG.get("url")
+            or SYMAI_CONFIG.get("INDEXING_ENGINE_URL")
+            or "http://localhost:6333"
+        )
+        api_key = SYMAI_CONFIG.get("INDEXING_ENGINE_API_KEY")
+        try:
+            engine = QdrantIndexEngine(
+                url=url,
+                api_key=api_key,
+                index_name="test_tenant_api",
+                index_dims=1536,
+            )
+            await engine.list_collections()
+            return engine
+        except Exception:
+            pytest.skip("Qdrant server not available")
+
+    @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        os.getenv("SKIP_INTEGRATION", "0") == "1",
+        reason="Integration tests skipped via SKIP_INTEGRATION env var",
+    )
+    async def test_delete_by_file_removes_matching_chunks(self, real_engine):
+        collection = f"test_del_file_{int(time.time() * 1000)}"
+        await real_engine.create_collection(collection, vector_size=1536)
+        await real_engine.upsert(
+            collection,
+            [
+                {
+                    "id": 1,
+                    "vector": [0.1] * 1536,
+                    "payload": {
+                        "tenant_id": "t1",
+                        "source_type": "gdrive",
+                        "file_id": "abc",
+                        "text": "chunk one",
+                    },
+                },
+                {
+                    "id": 2,
+                    "vector": [0.2] * 1536,
+                    "payload": {
+                        "tenant_id": "t1",
+                        "source_type": "gdrive",
+                        "file_id": "abc",
+                        "text": "chunk two",
+                    },
+                },
+                {
+                    "id": 3,
+                    "vector": [0.3] * 1536,
+                    "payload": {
+                        "tenant_id": "t1",
+                        "source_type": "gdrive",
+                        "file_id": "xyz",
+                        "text": "chunk three",
+                    },
+                },
+            ],
+        )
+        await real_engine.delete_by_filter(
+            collection,
+            {
+                "tenant_id": "t1",
+                "source_type": "gdrive",
+                "file_id": "abc",
+            },
+            tenant_id="t1",
+        )
+        count = await real_engine.count(collection, tenant_id="t1")
+        assert count == 1
+        remaining = await real_engine.retrieve(collection, 3, tenant_id="t1")
+        assert len(remaining) == 1
+        assert remaining[0]["payload"]["file_id"] == "xyz"
+        await real_engine.delete_collection(collection)
+
+    @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        os.getenv("SKIP_INTEGRATION", "0") == "1",
+        reason="Integration tests skipped via SKIP_INTEGRATION env var",
+    )
+    async def test_delete_by_file_isolated_by_tenant(self, real_engine):
+        collection = f"test_del_iso_{int(time.time() * 1000)}"
+        await real_engine.create_collection(collection, vector_size=1536)
+        await real_engine.upsert(
+            collection,
+            [
+                {
+                    "id": 1,
+                    "vector": [0.1] * 1536,
+                    "payload": {
+                        "tenant_id": "ta",
+                        "source_type": "gdrive",
+                        "file_id": "shared",
+                        "text": "a",
+                    },
+                },
+                {
+                    "id": 2,
+                    "vector": [0.2] * 1536,
+                    "payload": {
+                        "tenant_id": "tb",
+                        "source_type": "gdrive",
+                        "file_id": "shared",
+                        "text": "b",
+                    },
+                },
+            ],
+        )
+        await real_engine.delete_by_filter(
+            collection,
+            {
+                "tenant_id": "ta",
+                "source_type": "gdrive",
+                "file_id": "shared",
+            },
+            tenant_id="ta",
+        )
+        count_a = await real_engine.count(collection, tenant_id="ta")
+        count_b = await real_engine.count(collection, tenant_id="tb")
+        assert count_a == 0
+        assert count_b == 1
+        await real_engine.delete_collection(collection)
+
+    @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        os.getenv("SKIP_INTEGRATION", "0") == "1",
+        reason="Integration tests skipped via SKIP_INTEGRATION env var",
+    )
+    async def test_purge_tenant_deletes_all(self, real_engine):
+        collection = f"test_purge_{int(time.time() * 1000)}"
+        await real_engine.create_collection(collection, vector_size=1536)
+        await real_engine.upsert(
+            collection,
+            [
+                {
+                    "id": 1,
+                    "vector": [0.1] * 1536,
+                    "payload": {
+                        "tenant_id": "ta",
+                        "source_type": "gdrive",
+                        "file_id": "f1",
+                        "text": "a",
+                    },
+                },
+                {
+                    "id": 2,
+                    "vector": [0.2] * 1536,
+                    "payload": {
+                        "tenant_id": "ta",
+                        "source_type": "gdrive",
+                        "file_id": "f2",
+                        "text": "b",
+                    },
+                },
+                {
+                    "id": 3,
+                    "vector": [0.3] * 1536,
+                    "payload": {
+                        "tenant_id": "tb",
+                        "source_type": "gdrive",
+                        "file_id": "f1",
+                        "text": "c",
+                    },
+                },
+            ],
+        )
+        await real_engine.delete_by_filter(
+            collection,
+            {"tenant_id": "ta", "source_type": "gdrive"},
+            tenant_id="ta",
+        )
+        count_ta = await real_engine.count(collection, tenant_id="ta")
+        count_tb = await real_engine.count(collection, tenant_id="tb")
+        assert count_ta == 0
+        assert count_tb == 1
         await real_engine.delete_collection(collection)

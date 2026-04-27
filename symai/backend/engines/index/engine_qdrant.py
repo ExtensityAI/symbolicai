@@ -803,28 +803,46 @@ class QdrantIndexEngine(Engine):
             msg = f"Collection '{collection_name}' does not exist"
             raise ValueError(msg)
 
-    def _ensure_tenant_index(self, collection_name: str):
-        """Create a keyword payload index for tenant_id with is_tenant=True if missing."""
+    def _ensure_payload_indexes(self, collection_name: str):
+        """Create keyword payload indexes for tenant_id, source_type, and file_id if missing.
+
+        These indexes are required for performant tenant-scoped and metadata-based
+        delete-by-filter operations.
+        """
         self._check_initialization()
         if models is None:
             return
         try:
             idx_info = self.client.get_collection(collection_name)
             existing = getattr(idx_info, "payload_schema", {}) or {}
-            if "tenant_id" not in existing:
-                self.client.create_payload_index(
-                    collection_name=collection_name,
-                    field_name="tenant_id",
-                    field_schema=models.KeywordIndexParams(
-                        type=models.KeywordIndexType.KEYWORD,
-                        is_tenant=True,
-                    ),
-                )
+
+            index_configs = {
+                "tenant_id": models.KeywordIndexParams(
+                    type=models.KeywordIndexType.KEYWORD,
+                    is_tenant=True,
+                ),
+                "source_type": models.KeywordIndexParams(
+                    type=models.KeywordIndexType.KEYWORD,
+                    is_tenant=False,
+                ),
+                "file_id": models.KeywordIndexParams(
+                    type=models.KeywordIndexType.KEYWORD,
+                    is_tenant=False,
+                ),
+            }
+
+            for field_name, field_schema in index_configs.items():
+                if field_name not in existing:
+                    self.client.create_payload_index(
+                        collection_name=collection_name,
+                        field_name=field_name,
+                        field_schema=field_schema,
+                    )
         except Exception as exc:
             # Best-effort: index creation is optional for correctness,
             # only required for Qdrant query-planning optimizations.
             UserMessage(
-                f"Failed to create tenant_id payload index on {collection_name}: {exc}"
+                f"Failed to create payload indexes on {collection_name}: {exc}"
             )
 
     # ==================== Collection Management ====================
@@ -1838,7 +1856,7 @@ class QdrantIndexEngine(Engine):
         await asyncio.to_thread(self._ensure_collection_exists, collection_name)
         tenant_id = tenant_id or self.default_tenant_id
         if tenant_id is not None:
-            await asyncio.to_thread(self._ensure_tenant_index, collection_name)
+            await asyncio.to_thread(self._ensure_payload_indexes, collection_name)
 
         # Validate input: exactly one of text, document_path, or document_url must be provided
         input_count = sum(x is not None for x in [text, document_path, document_url])
