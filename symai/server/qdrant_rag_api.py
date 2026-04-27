@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 import os
 import resource
 import time
@@ -14,6 +13,7 @@ from urllib.parse import urlparse, urlunparse
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from loguru import logger
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from symai.backend.engines.index.engine_qdrant import QdrantIndexEngine, chunks
@@ -21,7 +21,12 @@ from symai.core import Argument
 from symai.symbol import Symbol as SymaiSymbol
 from symai.utils import UserMessage
 
-logger = logging.getLogger(__name__)
+try:
+    from qdrant_client.http import models
+    from qdrant_client.http.models import Filter
+except ImportError:
+    models = None
+    Filter = None
 
 _STARTUP_TIME = time.monotonic()
 
@@ -314,6 +319,21 @@ class MetadataListRequest(BaseModel):
         return value
 
 
+class DeleteByTenantFileRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    index_name: str | None = None
+    source_type: str = "gdrive"
+    file_id: str = Field(..., min_length=1)
+
+
+class DeleteByTenantRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    index_name: str | None = None
+    source_type: str = "gdrive"
+
+
 app = FastAPI(
     title="SymbolicAI Qdrant RAG API",
     version="0.1.0",
@@ -337,7 +357,7 @@ async def request_logging_middleware(request: Request, call_next: Any) -> Respon
     path = request.url.path
     method = request.method
     status_code = response.status_code
-    log_msg = "RAG %s %s -> %d (%.0fms)"
+    log_msg = "RAG {} {} -> {} ({:.0f}ms)"
     if duration_ms > 5000:
         logger.warning(log_msg, method, path, status_code, duration_ms)
     elif status_code >= 400:
@@ -420,7 +440,7 @@ def _translate_document_path(path: str) -> str:
                     raise_with=ValueError,
                 )
             translated_str = str(translated)
-            logger.debug("Translated path: %s -> %s", path, translated_str)
+            logger.debug("Translated path: {} -> {}", path, translated_str)
             return translated_str
     return path
 
@@ -572,7 +592,7 @@ async def healthz(engine: QdrantIndexEngine = Depends(get_engine)) -> dict[str, 
             except Exception:
                 collection_stats[coll_name] = {"error": "failed to fetch stats"}
     except Exception as exc:  # pragma: no cover
-        logger.exception("Health check failed while listing collections: %s", exc)
+        logger.exception("Health check failed while listing collections: {}", exc)
         collections = []
         ready = False
     parsed = urlparse(SETTINGS.qdrant_url or "")
@@ -613,7 +633,7 @@ async def upsert_points(
     )
     duration_ms = (time.monotonic() - t0) * 1000
     logger.info(
-        "upsert collection=%s points=%d duration=%.0fms",
+        "upsert collection={} points={} duration={:.0f}ms",
         collection, len(payload.points), duration_ms,
     )
     return {"points_upserted": len(payload.points), "collection": collection}
@@ -670,7 +690,7 @@ async def delete_points_by_metadata(
     )
     duration_ms = (time.monotonic() - t0) * 1000
     logger.info(
-        "delete-by-metadata collection=%s points_deleted=%d duration=%.0fms",
+        "delete-by-metadata collection={} points_deleted={} duration={:.0f}ms",
         collection, int(count), duration_ms,
     )
     return {"points_deleted": int(count), "collection": collection}
@@ -718,6 +738,103 @@ async def list_points_by_metadata(
         offset = next_offset
 
     return {"points": points, "collection": collection}
+
+
+@app.post(
+    "/delete-by-tenant-file",
+    dependencies=[Depends(require_token), Depends(require_tenant)],
+)
+async def delete_by_tenant_file(
+    payload: DeleteByTenantFileRequest,
+    tenant_id: str = Depends(require_tenant),
+    engine: QdrantIndexEngine = Depends(get_engine),  # noqa: B008
+) -> dict[str, Any]:
+    collection = _resolve_index_name(payload.index_name)
+    await asyncio.to_thread(engine._ensure_collection_exists, collection)
+    await asyncio.to_thread(engine._ensure_payload_indexes, collection)
+
+    if models is None or Filter is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Qdrant client models not available.",
+        )
+
+    query_filter = Filter(
+        must=[
+            models.FieldCondition(key="tenant_id", match=models.MatchValue(value=tenant_id)),
+            models.FieldCondition(
+                key="source_type", match=models.MatchValue(value=payload.source_type)
+            ),
+            models.FieldCondition(key="file_id", match=models.MatchValue(value=payload.file_id)),
+        ]
+    )
+
+    count = await engine.count(
+        collection_name=collection,
+        query_filter=query_filter,
+        exact=True,
+        tenant_id=tenant_id,
+    )
+    t0 = time.monotonic()
+    await engine.delete_by_filter(
+        collection_name=collection,
+        query_filter=query_filter,
+        tenant_id=tenant_id,
+    )
+    duration_ms = (time.monotonic() - t0) * 1000
+    logger.info(
+        "delete-by-tenant-file collection={} tenant={} file_id={} points_deleted={} duration={:.0f}ms",
+        collection, tenant_id, payload.file_id, int(count), duration_ms,
+    )
+    return {"points_deleted": int(count), "collection": collection}
+
+
+@app.post(
+    "/delete-by-tenant",
+    dependencies=[Depends(require_token), Depends(require_tenant)],
+)
+async def delete_by_tenant(
+    payload: DeleteByTenantRequest,
+    tenant_id: str = Depends(require_tenant),
+    engine: QdrantIndexEngine = Depends(get_engine),  # noqa: B008
+) -> dict[str, Any]:
+    collection = _resolve_index_name(payload.index_name)
+    await asyncio.to_thread(engine._ensure_collection_exists, collection)
+    await asyncio.to_thread(engine._ensure_payload_indexes, collection)
+
+    if models is None or Filter is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Qdrant client models not available.",
+        )
+
+    query_filter = Filter(
+        must=[
+            models.FieldCondition(key="tenant_id", match=models.MatchValue(value=tenant_id)),
+            models.FieldCondition(
+                key="source_type", match=models.MatchValue(value=payload.source_type)
+            ),
+        ]
+    )
+
+    count = await engine.count(
+        collection_name=collection,
+        query_filter=query_filter,
+        exact=True,
+        tenant_id=tenant_id,
+    )
+    t0 = time.monotonic()
+    await engine.delete_by_filter(
+        collection_name=collection,
+        query_filter=query_filter,
+        tenant_id=tenant_id,
+    )
+    duration_ms = (time.monotonic() - t0) * 1000
+    logger.info(
+        "delete-by-tenant collection={} tenant={} points_deleted={} duration={:.0f}ms",
+        collection, tenant_id, int(count), duration_ms,
+    )
+    return {"points_deleted": int(count), "collection": collection}
 
 
 @app.post("/retrieve", dependencies=[Depends(require_token), Depends(require_tenant)])
@@ -794,7 +911,7 @@ async def search(
         )
 
     logger.info(
-        "search collection=%s embed=%.0fms qdrant=%.0fms matches=%d",
+        "search collection={} embed={:.0f}ms qdrant={:.0f}ms matches={}",
         collection, embed_ms, search_ms, len(matches),
     )
     return SearchResponse(matches=matches)
@@ -831,7 +948,7 @@ async def chunk_and_upsert(
     duration_ms = (time.monotonic() - t0) * 1000
 
     logger.info(
-        "chunk-upsert collection=%s chunks=%d text_len=%d duration=%.0fms",
+        "chunk-upsert collection={} chunks={} text_len={} duration={:.0f}ms",
         collection, chunks_indexed, text_len, duration_ms,
     )
     return {"chunks_indexed": chunks_indexed, "collection": collection}
@@ -844,7 +961,7 @@ async def batch_chunk_and_upsert(
     engine: QdrantIndexEngine = Depends(get_engine),  # noqa: B008
 ) -> dict[str, Any]:
     collection = _resolve_index_name(payload.index_name)
-    await asyncio.to_thread(engine._ensure_tenant_index, collection)
+    await asyncio.to_thread(engine._ensure_payload_indexes, collection)
     t0 = time.monotonic()
 
     chunker_name = payload.chunker_name
@@ -892,7 +1009,7 @@ async def batch_chunk_and_upsert(
     chunk_ms = (time.monotonic() - t_chunk) * 1000
 
     if not segments:
-        logger.info("batch-chunk-upsert collection=%s segments=0 (empty)", collection)
+        logger.info("batch-chunk-upsert collection={} segments=0 (empty)", collection)
         return {"chunks_indexed": 0, "collection": collection}
 
     # Phase 2: Batch embed all segments in sized chunks sequentially.
@@ -938,8 +1055,8 @@ async def batch_chunk_and_upsert(
 
     total_ms = (time.monotonic() - t0) * 1000
     logger.info(
-        "batch-chunk-upsert collection=%s items=%d segments=%d "
-        "chunk=%.0fms embed=%.0fms upsert=%.0fms total=%.0fms",
+        "batch-chunk-upsert collection={} items={} segments={} "
+        "chunk={:.0f}ms embed={:.0f}ms upsert={:.0f}ms total={:.0f}ms",
         collection, len(payload.items), len(segments),
         chunk_ms, embed_ms, upsert_ms, total_ms,
     )

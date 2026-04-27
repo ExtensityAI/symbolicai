@@ -1501,5 +1501,20 @@ class TestQdrantMultitenancyIsolation:
         assert hasattr(results[0], "id")
 
 
+@pytest.mark.skipif(not QDrant_AVAILABLE, reason="Qdrant server not available")
+class TestPayloadIndexes:
+    """Test payload index creation for tenant_id, source_type, and file_id."""
+
+    @pytest.mark.asyncio
+    async def test_ensure_payload_indexes_creates_all(self, engine, test_collection_name):
+        await engine.create_collection(test_collection_name, vector_size=1536)
+        await asyncio.to_thread(engine._ensure_payload_indexes, test_collection_name)
+
+        idx_info = await asyncio.to_thread(engine.client.get_collection, test_collection_name)
+        existing = getattr(idx_info, "payload_schema", {}) or {}
+        assert "tenant_id" in existing
+        assert "source_type" in existing
+        assert "file_id" in existing
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
