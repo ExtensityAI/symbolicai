@@ -25,8 +25,6 @@ except ImportError:
     FieldCondition = None
     MatchValue = None
 
-os.environ["SYMAI_UPLOAD_DIR"] = str(Path(__file__).parents[2] / "data")
-
 from symai import Symbol
 from symai.backend.engines.index.engine_qdrant import QdrantIndexEngine
 from symai.backend.settings import SYMAI_CONFIG, SYMSERVER_CONFIG
@@ -74,6 +72,7 @@ def engine():
         api_key=SYMAI_CONFIG.get("INDEXING_ENGINE_API_KEY"),
         index_name="test_collection",
         index_dims=1536,
+        upload_dir=str(Path(__file__).parents[2] / "data"),
     )
 
 

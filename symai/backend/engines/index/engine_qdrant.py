@@ -3,7 +3,6 @@ import bisect
 import ipaddress
 import itertools
 import logging
-import os
 import re
 import socket
 import tempfile
@@ -25,7 +24,6 @@ from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG, SYMSERVER_CONFIG
 
-UPLOAD_BASE_DIR = Path(os.getenv("SYMAI_UPLOAD_DIR", tempfile.gettempdir())).resolve()
 MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024
 
 
@@ -338,6 +336,7 @@ class QdrantIndexEngine(Engine):
         tokenizer_name: str | None = "gpt2",
         embedding_model_name: str | None = "minishlab/potion-base-8M",
         default_tenant_id: str | None = None,
+        upload_dir: str | None = None,
     ):
         super().__init__()
         self.index_name = index_name
@@ -346,6 +345,7 @@ class QdrantIndexEngine(Engine):
         self.index_values = index_values
         self.index_metadata = index_metadata
         self.default_tenant_id = default_tenant_id
+        self.upload_dir = Path(upload_dir or tempfile.gettempdir()).resolve()
         self.index_metric = self._parse_metric(index_metric)
         # Get URL from SYMSERVER_CONFIG if available, otherwise use provided or default
         if url:
@@ -1813,6 +1813,7 @@ class QdrantIndexEngine(Engine):
         metadata: dict | None = None,
         include_line_numbers: bool = True,
         tenant_id: str | None = None,
+        embed_batch_size: int = 100,
         **upsert_kwargs,
     ):
         """
@@ -1828,6 +1829,7 @@ class QdrantIndexEngine(Engine):
             start_id: Starting ID for the chunks (auto-incremented). If None, uses hash-based IDs
             metadata: Optional metadata to add to all chunk payloads
             tenant_id: Optional tenant ID to inject into payload and scope IDs
+            embed_batch_size: Number of texts to embed in one batch (default 100)
             **upsert_kwargs: Additional arguments for upsert operation
 
         Returns:
@@ -1877,8 +1879,8 @@ class QdrantIndexEngine(Engine):
                 msg = "FileReader not initialized. Please ensure FileReader is available."
                 raise RuntimeError(msg)
             safe_name = _secure_filename(document_path)
-            resolved = (UPLOAD_BASE_DIR / safe_name).resolve()
-            if not resolved.is_relative_to(UPLOAD_BASE_DIR):
+            resolved = (self.upload_dir / safe_name).resolve()
+            if not resolved.is_relative_to(self.upload_dir):
                 UserMessage("Path traversal detected", raise_with=ValueError)
             if not resolved.exists():
                 UserMessage(f"Document not found: {resolved}", raise_with=FileNotFoundError)
@@ -1954,20 +1956,20 @@ class QdrantIndexEngine(Engine):
         chunks_symbol = self.chunker.forward(
             text_symbol, chunker_name=chunker_name, **chunker_kwargs
         )
-        chunks = chunks_symbol.value if hasattr(chunks_symbol, "value") else chunks_symbol
+        chunk_items = chunks_symbol.value if hasattr(chunks_symbol, "value") else chunks_symbol
 
-        if not chunks:
+        if not chunk_items:
             warnings.warn("No chunks generated from text")
             return 0
 
-        # Ensure chunks is a list
-        if not isinstance(chunks, list):
-            chunks = [chunks]
+        # Ensure chunk_items is a list
+        if not isinstance(chunk_items, list):
+            chunk_items = [chunk_items]
 
         # Pass 1: build chunk metadata (text, payload, ID) without any embedding calls.
         # Line-number cursors are order-dependent so they must stay in this sequential pass.
         chunk_data = []  # list of (chunk_text, payload, point_id)
-        for chunk_idx, chunk_item in enumerate(chunks):
+        for chunk_idx, chunk_item in enumerate(chunk_items):
             chunk_text = (
                 ChonkieChunker.clean_text(str(chunk_item)) if ChonkieChunker else str(chunk_item)
             )
@@ -2041,8 +2043,14 @@ class QdrantIndexEngine(Engine):
             warnings.warn("No valid points to upsert")
             return 0
 
-        # Single batch embed — one API call for all chunks.
-        raw_embeddings = Symbol([t for t, _, _ in chunk_data]).embed().value
+        # Embed in sized chunks sequentially to stay within provider limits.
+        texts = [t for t, _, _ in chunk_data]
+        raw_embeddings = []
+        for batch in chunks(texts, embed_batch_size):
+            batch_embeddings = Symbol(batch).embed().value
+            if hasattr(batch_embeddings, "tolist"):
+                batch_embeddings = batch_embeddings.tolist()
+            raw_embeddings.extend(batch_embeddings)
 
         # Pass 2: resize embeddings and assemble points.
         points = []
@@ -2053,7 +2061,7 @@ class QdrantIndexEngine(Engine):
                 if original_size > vector_size:
                     vec = vec[:vector_size]
                 else:
-                    vec = vec + [0.0] * (vector_size - original_size)
+                    vec = vec + [0.0] * (vector_size - len(vec))
                 warnings.warn(
                     f"Embedding size ({original_size}) adjusted to match collection vector size ({vector_size})"
                 )
