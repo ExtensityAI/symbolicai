@@ -34,6 +34,7 @@ def _secure_filename(name: str) -> str:
         UserMessage(f"Invalid filename: {name!r}", raise_with=ValueError)
     return name
 
+
 warnings.filterwarnings("ignore", module="qdrant_client")
 try:
     from qdrant_client import QdrantClient
@@ -105,9 +106,16 @@ class PinningHTTPAdapter(HTTPAdapter):
         )
 
     def send(self, request, stream=False, timeout=None, verify=True, cert=None, proxies=None):
-        # Rebuild URL properly, replacing only the netloc hostname
+        # NOTE: Fail closed if the prepared netloc does not literally contain the
+        # validated hostname. Without this, replace() silently no-ops and the
+        # connection target diverges from what was validated (SSRF).
         parsed = urlparse(request.url)
-        new_netloc = parsed.netloc.replace(self.hostname, self.pinned_ip)
+        if self.hostname not in parsed.netloc:
+            msg = (
+                f"Pinning failed: validated host {self.hostname!r} not in netloc {parsed.netloc!r}"
+            )
+            raise ValueError(msg)
+        new_netloc = parsed.netloc.replace(self.hostname, self.pinned_ip, 1)
         request.url = urlunparse(parsed._replace(netloc=new_netloc))
         return super().send(
             request, stream=stream, timeout=timeout, verify=verify, cert=cert, proxies=proxies
@@ -841,9 +849,7 @@ class QdrantIndexEngine(Engine):
         except Exception as exc:
             # Best-effort: index creation is optional for correctness,
             # only required for Qdrant query-planning optimizations.
-            UserMessage(
-                f"Failed to create payload indexes on {collection_name}: {exc}"
-            )
+            UserMessage(f"Failed to create payload indexes on {collection_name}: {exc}")
 
     # ==================== Collection Management ====================
 
@@ -1723,9 +1729,18 @@ class QdrantIndexEngine(Engine):
             msg = "FileReader not initialized"
             raise RuntimeError(msg)
 
-        # Parse URL to extract hostname for DNS resolution
-        parsed = urlparse(file_url)
-        hostname = parsed.hostname
+        try:
+            prepared = requests.PreparedRequest()
+            prepared.prepare_url(file_url, None)
+        except (
+            requests.exceptions.MissingSchema,
+            requests.exceptions.InvalidURL,
+            requests.exceptions.URLRequired,
+        ) as exc:
+            UserMessage(f"Invalid URL: {exc}", raise_with=ValueError)
+        canonical_url = prepared.url
+        canonical = urlparse(canonical_url)
+        hostname = canonical.hostname
         if hostname is None:
             UserMessage("URL must have a valid hostname", raise_with=ValueError)
 
@@ -1757,7 +1772,7 @@ class QdrantIndexEngine(Engine):
         # Create session with pinning adapter to force connection to validated IP
         session = requests.Session()
         adapter = PinningHTTPAdapter(hostname, resolved_ip)
-        session.mount(f"{parsed.scheme}://", adapter)
+        session.mount(f"{canonical.scheme}://", adapter)
 
         # NOTE: Timeout set to (10s connect, 30s read).
         # Trade-off: Prevents slowloris attacks and resource exhaustion, but large
@@ -1765,7 +1780,7 @@ class QdrantIndexEngine(Engine):
         # legitimate large documents.
         try:
             response = session.get(
-                file_url,
+                canonical_url,
                 allow_redirects=False,  # Prevent redirect-based SSRF
                 timeout=(10, 30),  # (connect timeout, read timeout)
                 headers={"Host": hostname},  # For virtual host routing and SNI
@@ -1790,7 +1805,7 @@ class QdrantIndexEngine(Engine):
             "application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
             "application/epub+zip": ".epub",
-        }.get(content_type) or Path(parsed.path).suffix
+        }.get(content_type) or Path(canonical.path).suffix
 
         # Write to temp file with streaming size cap
         tmp_file_name = None
@@ -2087,7 +2102,10 @@ class QdrantIndexEngine(Engine):
 
         # Upsert the points using shared synchronous method
         await asyncio.to_thread(
-            self._upsert_points_sync, collection_name=collection_name, points=points, **upsert_kwargs
+            self._upsert_points_sync,
+            collection_name=collection_name,
+            points=points,
+            **upsert_kwargs,
         )
 
         return len(points)
