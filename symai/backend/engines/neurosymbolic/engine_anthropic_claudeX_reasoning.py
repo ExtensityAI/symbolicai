@@ -78,6 +78,7 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
                 or "4-1" in self.config.get("NEUROSYMBOLIC_ENGINE_MODEL")
                 or "4-5" in self.config.get("NEUROSYMBOLIC_ENGINE_MODEL")
                 or "4-6" in self.config.get("NEUROSYMBOLIC_ENGINE_MODEL")
+                or "4-7" in self.config.get("NEUROSYMBOLIC_ENGINE_MODEL")
             )
         ):
             return "neurosymbolic"
@@ -390,11 +391,14 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         if thinking_type == "disabled":
             return {"type": "disabled"}, None
 
+        if model == "claude-opus-4-7":
+            return {"type": "adaptive"}, thinking_arg.get("effort")
+
         if thinking_type == "adaptive":
             if self.supports_adaptive_thinking(model):
                 return {"type": "adaptive"}, thinking_arg.get("effort")
             UserMessage(
-                "Adaptive thinking is only supported for claude-opus-4-6 and claude-sonnet-4-6; "
+                "Adaptive thinking is only supported for claude-opus-4-7, claude-opus-4-6 and claude-sonnet-4-6; "
                 "falling back to manual thinking."
             )
             return {
@@ -431,7 +435,7 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
             )
         if long_context_1m and not use_long_context_1m:
             UserMessage(
-                "long_context_1m is only supported for claude-opus-4-6, claude-sonnet-4-6, and claude-sonnet-4-5; "
+                "long_context_1m is only supported for claude-opus-4-7, claude-opus-4-6, claude-sonnet-4-6, and claude-sonnet-4-5; "
                 f"falling back to {effective_context_tokens} token context."
             )
 
@@ -447,6 +451,12 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
             "top_p", NOT_GIVEN if temperature is not None else 1
         )  # @NOTE:'You should either alter temperature or top_p, but not both.'
         top_k = kwargs.get("top_k", NOT_GIVEN)
+
+        if model == "claude-opus-4-7":
+            temperature = NOT_GIVEN
+            top_p = NOT_GIVEN
+            top_k = NOT_GIVEN
+
         stream = kwargs.get(
             "stream", True
         )  # Do NOT remove this default value! Getting tons of API errors because they can't process requests >10m

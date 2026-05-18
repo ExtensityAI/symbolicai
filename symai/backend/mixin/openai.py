@@ -37,6 +37,8 @@ SUPPORTED_REASONING_MODELS = [
     "gpt-5.4",
     "gpt-5.4-mini",
     "gpt-5.4-nano",
+    "gpt-5.5",
+    "gpt-5.5-2026-04-23",
 ]
 SUPPORTED_EMBEDDING_MODELS = [
     "text-embedding-ada-002",
@@ -118,7 +120,12 @@ class OpenAIMixin:
             return 400_000
         if self.model == "gpt-4.1" or self.model == "gpt-4.1-mini" or self.model == "gpt-4.1-nano":
             return 1_047_576
-        if self.model == "gpt-5.4" or self.model == "gpt-5.4-pro":
+        if (
+            self.model == "gpt-5.4"
+            or self.model == "gpt-5.4-pro"
+            or self.model == "gpt-5.5"
+            or self.model == "gpt-5.5-2026-04-23"
+        ):
             return 1_050_000
         msg = f"Unsupported model: {self.model}"
         UserMessage(msg)
@@ -171,6 +178,8 @@ class OpenAIMixin:
             or self.model == "gpt-5.4-pro"
             or self.model == "gpt-5.4-mini"
             or self.model == "gpt-5.4-nano"
+            or self.model == "gpt-5.5"
+            or self.model == "gpt-5.5-2026-04-23"
         ):
             return 128_000
         if self.model == "gpt-5-pro":

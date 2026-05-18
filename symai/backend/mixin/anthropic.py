@@ -10,6 +10,7 @@ SUPPORTED_CHAT_MODELS = [
     "claude-3-haiku-20240307",
 ]
 SUPPORTED_REASONING_MODELS = [
+    "claude-opus-4-7",
     "claude-opus-4-6",
     "claude-sonnet-4-6",
     "claude-opus-4-5",
@@ -26,11 +27,16 @@ CACHE_CONTROL_1H = {"type": "ephemeral", "ttl": "1h"}
 LONG_CONTEXT_1M_TOKENS = 1_000_000
 LONG_CONTEXT_1M_BETA_HEADER = "context-1m-2025-08-07"
 LONG_CONTEXT_1M_MODELS = {
+    "claude-opus-4-7",
     "claude-opus-4-6",
     "claude-sonnet-4-6",
     "claude-sonnet-4-5",
 }
-ADAPTIVE_THINKING_MODELS = {"claude-opus-4-6", "claude-sonnet-4-6"}
+ADAPTIVE_THINKING_MODELS = {
+    "claude-opus-4-7",
+    "claude-opus-4-6",
+    "claude-sonnet-4-6",
+}
 
 
 class AnthropicMixin:
@@ -52,6 +58,8 @@ class AnthropicMixin:
     def api_max_context_tokens(self, long_context_1m: bool = False, model: str | None = None):
         selected_model = self.model if model is None else model
         if long_context_1m and self.supports_long_context_1m(selected_model):
+            return LONG_CONTEXT_1M_TOKENS
+        if selected_model == "claude-opus-4-7":
             return LONG_CONTEXT_1M_TOKENS
         if (
             selected_model == "claude-opus-4-6"
@@ -75,7 +83,7 @@ class AnthropicMixin:
         return None
 
     def api_max_response_tokens(self):
-        if self.model == "claude-opus-4-6":
+        if self.model == "claude-opus-4-7" or self.model == "claude-opus-4-6":
             return 128_000
 
         if (
