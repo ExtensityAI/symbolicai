@@ -69,6 +69,8 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
             or self.config.get("NEUROSYMBOLIC_ENGINE_MODEL") == "gpt-5.1"
             or self.config.get("NEUROSYMBOLIC_ENGINE_MODEL") == "gpt-5-mini"
             or self.config.get("NEUROSYMBOLIC_ENGINE_MODEL") == "gpt-5-nano"
+            or self.config.get("NEUROSYMBOLIC_ENGINE_MODEL") == "gpt-5.5"
+            or self.config.get("NEUROSYMBOLIC_ENGINE_MODEL") == "gpt-5.5-2026-04-23"
         ):
             return "neurosymbolic"
         return super().id()  # default to unregistered
@@ -94,6 +96,8 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
             "gpt-5.1",
             "gpt-5-mini",
             "gpt-5-nano",
+            "gpt-5.5",
+            "gpt-5.5-2026-04-23",
         }:
             tokens_per_message = 3
             tokens_per_name = 1
@@ -140,6 +144,8 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
             or self.model == "gpt-5.1"
             or self.model == "gpt-5-mini"
             or self.model == "gpt-5-nano"
+            or self.model == "gpt-5.5"
+            or self.model == "gpt-5.5-2026-04-23"
         ) and "<<vision:" in content:
             parts = _extract_pattern(content)
             for p in parts:
@@ -481,6 +487,8 @@ class GPTXReasoningEngine(Engine, OpenAIMixin):
             "gpt-5.1",
             "gpt-5-mini",
             "gpt-5-nano",
+            "gpt-5.5",
+            "gpt-5.5-2026-04-23",
         }:
             images = [{"type": "image_url", "image_url": {"url": file}} for file in image_files]
             user_prompt = {
