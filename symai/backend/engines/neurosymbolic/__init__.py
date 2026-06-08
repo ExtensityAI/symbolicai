@@ -9,6 +9,7 @@ from ...mixin import (
     GOOGLE_REASONING_MODELS,
     GROQ_CHAT_MODELS,
     GROQ_REASONING_MODELS,
+    LITELLM_CHAT_MODELS,
     OPENAI_CHAT_MODELS,
     OPENAI_REASONING_MODELS,
     OPENAI_RESPONSES_MODELS,
@@ -21,6 +22,7 @@ from .engine_cerebras import CerebrasEngine
 from .engine_deepseekX_reasoning import DeepSeekXReasoningEngine
 from .engine_google_geminiX_reasoning import GeminiXReasoningEngine
 from .engine_groq import GroqEngine
+from .engine_litellm import LiteLLMChatEngine
 from .engine_openai_gptX_chat import GPTXChatEngine
 from .engine_openai_gptX_reasoning import GPTXReasoningEngine
 from .engine_openai_responses import OpenAIResponsesEngine
@@ -40,6 +42,7 @@ ENGINE_MAPPING = {
     **dict.fromkeys(OPENAI_RESPONSES_MODELS, OpenAIResponsesEngine),
     **dict.fromkeys(GROQ_CHAT_MODELS, GroqEngine),
     **dict.fromkeys(GROQ_REASONING_MODELS, GroqEngine),
+    **dict.fromkeys(LITELLM_CHAT_MODELS, LiteLLMChatEngine),
     **dict.fromkeys(OPENROUTER_CHAT_MODELS, OpenRouterEngine),
     **dict.fromkeys(OPENROUTER_REASONING_MODELS, OpenRouterEngine),
 }
@@ -56,6 +59,8 @@ __all__ = [
     "GOOGLE_REASONING_MODELS",
     "GROQ_CHAT_MODELS",
     "GROQ_REASONING_MODELS",
+    "LITELLM_CHAT_MODELS",
+    "LiteLLMChatEngine",
     "OPENAI_CHAT_MODELS",
     "OPENAI_REASONING_MODELS",
     "OPENAI_RESPONSES_MODELS",
