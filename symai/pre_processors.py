@@ -430,12 +430,15 @@ class UnwrapListSymbolsPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
         entries = argument.prop.entries
         res = []
-        # unwrap entries
+        # unwrap entries - pass through non-string types (bytes, Part, Content) for multimodal support
         for entry in entries:
-            if type(entry) is not str:
-                res.append(str(entry))
-            else:
+            if isinstance(entry, (str, bytes)):
                 res.append(entry)
+            elif hasattr(entry, '__class__') and entry.__class__.__name__ in ('Part', 'Content'):
+                # Pass through Google genai types for multimodal embedding
+                res.append(entry)
+            else:
+                res.append(str(entry))
         argument.prop.entries = res
         return ""
 

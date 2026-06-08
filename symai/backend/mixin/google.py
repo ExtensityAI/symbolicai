@@ -9,10 +9,23 @@ SUPPORTED_REASONING_MODELS = [
     "gemini-2.5-pro",
     "gemini-2.5-flash",
 ]
+SUPPORTED_EMBEDDING_MODELS = [
+    "gemini-embedding-001",
+    "gemini-embedding-2",
+]
 
 
 class GoogleMixin:
+    def api_embedding_dims(self):
+        if self.model in SUPPORTED_EMBEDDING_MODELS:
+            return 3072
+        return None
+
     def api_max_context_tokens(self):
+        if self.model == "gemini-embedding-001":
+            return 2048
+        if self.model == "gemini-embedding-2":
+            return 8192
         if self.model.startswith(("gemini-2.5-", "gemini-3")):
             return 1_048_576
         return None

@@ -2590,6 +2590,12 @@ class EmbeddingPrimitives(Primitive):
         This method uses the @core.embed decorator to generate embeddings for the Symbol's value.
         If the value is not a list, it is converted to a list.
 
+        Supports multimodal inputs: text (str), images (bytes/Part), and mixed content (Content).
+        Each engine handles unpacking based on its capabilities.
+
+        Note: When passing raw bytes, MIME type detection is handled internally via the filetype
+        library (supports 100+ formats). Users can also pass Part objects for explicit MIME type control.
+
         Args:
             **kwargs: Additional keyword arguments for the @core.embed decorator.
 
@@ -2598,10 +2604,7 @@ class EmbeddingPrimitives(Primitive):
         """
         value = self.value
         if not isinstance(value, list):
-            # must convert to list of str for embedding
-            value = [str(value)]
-        # ensure that all values are strings
-        value = [str(v) for v in value]
+            value = [value]
 
         @core.embed(entries=value, **kwargs)
         def _func(_) -> list:
