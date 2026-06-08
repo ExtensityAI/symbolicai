@@ -9,6 +9,7 @@
 * [CLIP Engine](ENGINES/clip_engine.md)
 * [Custom Engine](ENGINES/custom_engine.md)
 * [Drawing Engine](ENGINES/drawing_engine.md)
+* [Embedding Engine](ENGINES/embedding_engine.md)
 * [File Engine](ENGINES/file_engine.md)
 * [Formal Engine](ENGINES/formal_engine.md)
 * [Indexing Engine](ENGINES/indexing_engine.md)
