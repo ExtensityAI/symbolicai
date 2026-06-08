@@ -16,7 +16,7 @@ class GeminiEmbeddingEngine(Engine, GoogleMixin):
         super().__init__()
         self.config = SYMAI_CONFIG
         self._api_key = api_key or self.config.get("EMBEDDING_ENGINE_API_KEY")
-        self._model = model or self.config.get("EMBEDDING_ENGINE_MODEL", "text-embedding-004")
+        self._model = model or self.config.get("EMBEDDING_ENGINE_MODEL", "gemini-embedding-001")
         if self.id() != "embedding":
             return
         if not self._api_key:
