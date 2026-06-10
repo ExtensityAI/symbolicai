@@ -1,6 +1,6 @@
 # https://ai.google.dev/gemini-api/docs/models/gemini
 SUPPORTED_CHAT_MODELS = [
-    "gemini-3.1-flash-lite-preview",
+    "gemini-3.1-flash-lite",  # GA; preview id shut down 2026-05-25
 ]
 SUPPORTED_REASONING_MODELS = [
     # Check the latest snapshots; ie. *-06-05, etc
