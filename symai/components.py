@@ -1647,10 +1647,24 @@ class MetadataTracker(Expression):
 class DynamicEngine(Expression):
     """Context manager for dynamically switching neurosymbolic engine models."""
 
-    def __init__(self, model: str, api_key: str, _debug: bool = False, **_kwargs):
+    def __init__(
+        self,
+        model: str,
+        api_key: str,
+        _debug: bool = False,
+        *,
+        client_timeout: float | None = None,
+        client_max_retries: int | None = None,
+        **_kwargs,
+    ):
         super().__init__()
         self.model = model
         self.api_key = api_key
+        # Client-level HTTP settings (real request timeout / retries). Callers pin these
+        # via e.g. components.*.dynamic_engine_name configs; forward them to the
+        # neurosymbolic engine so per-component calls get real hang protection.
+        self.client_timeout = client_timeout
+        self.client_max_retries = client_max_retries
         self._entered = False
         self._lock = Lock()
         self.engine_instance = None
@@ -1713,7 +1727,14 @@ class DynamicEngine(Expression):
 
             if engine_class is None:
                 UserMessage(f"Unsupported model '{self.model}'", raise_with=ValueError)
-            return engine_class(api_key=self.api_key, model=self.model)
+            # Forward client-level HTTP settings to neurosymbolic engines (all accept
+            # client_timeout / client_max_retries); the search/OCR engines above do not.
+            client_kwargs = {}
+            if self.client_timeout is not None:
+                client_kwargs["client_timeout"] = self.client_timeout
+            if self.client_max_retries is not None:
+                client_kwargs["client_max_retries"] = self.client_max_retries
+            return engine_class(api_key=self.api_key, model=self.model, **client_kwargs)
         except Exception as e:
             UserMessage(
                 f"Failed to create engine for model '{self.model}': {e!s}", raise_with=ValueError
