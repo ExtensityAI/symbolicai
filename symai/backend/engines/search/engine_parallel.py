@@ -20,7 +20,7 @@ try:
     import tldextract
     from parallel import Parallel
     from parallel.resources.task_run import build_task_spec_param
-    from parallel.types.beta import WebSearchResult
+    from parallel.types.web_search_result import WebSearchResult
 
     logging.getLogger("parallel").setLevel(logging.ERROR)
 except ImportError:
