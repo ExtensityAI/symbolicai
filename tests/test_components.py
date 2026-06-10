@@ -149,3 +149,30 @@ def test_chonkie_chunker_pdf():
     for chunk in chunks.value:
         assert isinstance(chunk, str), "Each chunk should be a string"
         assert len(chunk) > 0, "Each chunk should not be empty"
+
+
+def test_dynamic_engine_forwards_client_timeout(monkeypatch):
+    # Regression: DynamicEngine must propagate client_timeout / client_max_retries to the
+    # neurosymbolic engine it creates (previously they were swallowed into **_kwargs and
+    # dropped, so per-component calls lost real HTTP-hang protection).
+    import symai.backend.engines.neurosymbolic as nesy
+
+    class _DummyEngine:
+        def __init__(self, api_key=None, model=None, client_timeout=None, client_max_retries=None):
+            self.api_key = api_key
+            self.model = model
+            self.client_timeout = client_timeout
+            self.client_max_retries = client_max_retries
+
+    monkeypatch.setitem(nesy.ENGINE_MAPPING, "dummy-model", _DummyEngine)
+
+    de = DynamicEngine("dummy-model", "key", client_timeout=42.0, client_max_retries=7)
+    engine = de._create_engine_instance()
+    assert engine.client_timeout == 42.0
+    assert engine.client_max_retries == 7
+
+    # Backward-compat: when not configured, the engine keeps its SDK defaults (None here).
+    de_default = DynamicEngine("dummy-model", "key")
+    engine_default = de_default._create_engine_instance()
+    assert engine_default.client_timeout is None
+    assert engine_default.client_max_retries is None
