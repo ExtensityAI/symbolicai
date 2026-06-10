@@ -82,18 +82,6 @@ def _start_symai():
         UserMessage(
             f"No configuration file found for the environment. A new configuration file has been created at {_symai_config_path_}. Please configure your environment."
         )
-        sys.exit(1)
-
-    # Load and manage configurations
-    symai_config = config_manager.load_config("symai.config.json")
-
-    # POST-MIGRATION CHECKS
-    # *==============================================================================================================*
-    if "TEXT_TO_SPEECH_ENGINE_API_KEY" not in symai_config:
-        updates = {
-            "TEXT_TO_SPEECH_ENGINE_API_KEY": symai_config.get("NEUROSYMBOLIC_ENGINE_API_KEY", "")
-        }
-        config_manager.migrate_config("symai.config.json", updates)
 
     # Load all configurations
     symai_config = config_manager.load_config("symai.config.json")
@@ -122,12 +110,11 @@ def _start_symai():
                 "symserver.config.json", fallback_to_home=True
             )
 
-        # If still not valid, warn and exit
+        # If still not valid, warn and continue
         if not symai_config.get("NEUROSYMBOLIC_ENGINE_API_KEY"):
             UserMessage(
                 "The mandatory neuro-symbolic engine is not initialized. Please set NEUROSYMBOLIC_ENGINE_MODEL and NEUROSYMBOLIC_ENGINE_API_KEY."
             )
-            sys.exit(1)
 
     settings.SYMAI_CONFIG = symai_config
     settings.SYMSH_CONFIG = symsh_config
