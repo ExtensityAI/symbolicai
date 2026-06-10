@@ -6,6 +6,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
+import httpx
 from openai import OpenAI
 
 from ....symbol import Result
@@ -239,7 +240,13 @@ class SearchResult(Result):
 class GPTXSearchEngine(Engine):
     MAX_ALLOWED_DOMAINS = 20
 
-    def __init__(self, api_key: str | None = None, model: str | None = None):
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model: str | None = None,
+        *,
+        client_timeout: float | None = None,
+    ):
         super().__init__()
         self.config = deepcopy(SYMAI_CONFIG)
         if api_key is not None and model is not None:
@@ -249,9 +256,21 @@ class GPTXSearchEngine(Engine):
         self.model = self.config.get(
             "SEARCH_ENGINE_MODEL", "gpt-4.1"
         )  # Default to gpt-4.1 as per docs
+        self.client_timeout = client_timeout
         self.name = self.__class__.__name__
         try:
-            self.client = OpenAI(api_key=self.api_key)
+            if self.client_timeout is not None:
+                # Socket-level timeout so a hung web_search call raises instead of blocking
+                # the caller indefinitely (the search engine otherwise has no timeout). Keep
+                # max_retries low so the timeout actually terminates the request rather than
+                # being retried away by the SDK's default retry loop.
+                self.client = OpenAI(
+                    api_key=self.api_key,
+                    timeout=httpx.Timeout(self.client_timeout, connect=10.0),
+                    max_retries=1,
+                )
+            else:
+                self.client = OpenAI(api_key=self.api_key)
         except Exception as e:
             UserMessage(f"Failed to initialize OpenAI client: {e}", raise_with=ValueError)
 
