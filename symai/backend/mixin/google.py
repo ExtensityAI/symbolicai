@@ -4,6 +4,7 @@ SUPPORTED_CHAT_MODELS = [
 ]
 SUPPORTED_REASONING_MODELS = [
     # Check the latest snapshots; ie. *-06-05, etc
+    "gemini-3.5-flash",
     "gemini-3.1-pro-preview",
     "gemini-3-flash-preview",
     "gemini-2.5-pro",
