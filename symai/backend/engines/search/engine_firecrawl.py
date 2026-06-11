@@ -178,6 +178,9 @@ class FirecrawlEngine(Engine):
         self.model = self.config.get("SEARCH_ENGINE_MODEL")
         self.name = self.__class__.__name__
 
+        if api_key is None and self.id() != "search":
+            return
+
         if Firecrawl is None:
             UserMessage(
                 "firecrawl SDK is not installed. Install with 'pip install firecrawl-py' "

@@ -218,7 +218,7 @@ class ParallelEngine(Engine):
         self.model = self.config.get("SEARCH_ENGINE_MODEL")
         self.name = self.__class__.__name__
 
-        if self.id() != "search":
+        if api_key is None and self.id() != "search":
             return
 
         if Parallel is None:

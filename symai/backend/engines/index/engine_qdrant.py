@@ -385,6 +385,9 @@ class QdrantIndexEngine(Engine):
         self.reader = None
         self.tokenizer = None
 
+        if url is None and api_key is self._default_api_key and self.id() != "index":
+            return
+
         # Initialize chunker if available
         if ChonkieChunker:
             try:

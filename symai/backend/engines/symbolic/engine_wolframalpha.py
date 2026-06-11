@@ -26,8 +26,12 @@ class WolframAlphaEngine(Engine):
         super().__init__()
         self.config = deepcopy(SYMAI_CONFIG)
         self.api_key = self.config["SYMBOLIC_ENGINE_API_KEY"] if api_key is None else api_key
-        self.client = wa.Client(self.api_key)
         self.name = self.__class__.__name__
+
+        if api_key is None and self.id() != "symbolic":
+            return
+
+        self.client = wa.Client(self.api_key)
 
     def id(self) -> str:
         if self.config["SYMBOLIC_ENGINE_API_KEY"]:
