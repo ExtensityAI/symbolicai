@@ -61,6 +61,7 @@ dependencies = [
     "rich>=13.9.4",
     "cerebras-cloud-sdk>=1.59.0",
     "scikit-learn>=1.7.0",
+    "jinja2>=3.1.0",
     "markitdown[docx,outlook,pdf,pptx,xls,xlsx]",
     "dill>=0.4.0",
     "filetype>=1.2.0"

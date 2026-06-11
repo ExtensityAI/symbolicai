@@ -1,21 +1,27 @@
+import json
 import threading
 from collections.abc import Callable
-from enum import Enum
+from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
+
+import jinja2
+import toml
+from pydantic import BaseModel
 
 from .exceptions import TemplatePropertyException
 from .utils import UserMessage
 
 
 class Prompt:
-    stop_token = "EOF"
+    """Few-shot example container rendered by engines through ``str(examples)``."""
 
     def __init__(self, value, **format_kwargs):
         super().__init__()
+        self._value = []
         if isinstance(value, str):
-            self._value = [value]
+            self._value.append(value)
         elif isinstance(value, list):
-            self._value = []
             for v in value:
                 if isinstance(v, str):
                     self._value.append(v)
@@ -23,8 +29,7 @@ class Prompt:
                     self._value += v.value
                 else:
                     msg = f"List of values must be strings or Prompts, not {type(v)}"
-                    UserMessage(msg)
-                    raise ValueError(msg)
+                    UserMessage(msg, raise_with=ValueError)
         elif isinstance(value, Prompt):
             self._value += value.value
         elif isinstance(value, Callable):
@@ -32,40 +37,33 @@ class Prompt:
             self._value += res.value
         else:
             msg = f"Prompt value must be of type str, List[str], Prompt, or List[Prompt], not {type(value)}"
-            UserMessage(msg)
-            raise TypeError(msg)
-        self.dynamic_value = []
+            UserMessage(msg, raise_with=TypeError)
         self.format_kwargs = format_kwargs
 
     @property
     def value(self) -> list[str]:
         return self._value
 
-    def __call__(self, *_args: Any, **_kwds: Any) -> list["Prompt"]:
+    def __call__(self, *_args: Any, **_kwds: Any) -> list[str]:
         return self.value
 
     def __str__(self) -> str:
         val_ = "\n".join([str(p) for p in self.value])
-        for p in self.dynamic_value:
-            val_ += f"\n{p}"
         if len(self.format_kwargs) > 0:
             for k, v in self.format_kwargs.items():
                 template_ = "{" + k + "}"
                 count = val_.count(template_)
                 if count <= 0:
                     msg = f"Template property `{k}` not found."
-                    UserMessage(msg)
-                    raise TemplatePropertyException(msg)
+                    UserMessage(msg, raise_with=TemplatePropertyException)
                 if count > 1:
                     msg = (
                         f"Template property {k} found multiple times ({count}), expected only once."
                     )
-                    UserMessage(msg)
-                    raise TemplatePropertyException(msg)
+                    UserMessage(msg, raise_with=TemplatePropertyException)
                 if v is None:
                     msg = f"Invalid value: Template property {k} is None."
-                    UserMessage(msg)
-                    raise TemplatePropertyException(msg)
+                    UserMessage(msg, raise_with=TemplatePropertyException)
                 val_ = val_.replace(template_, v)
         return val_
 
@@ -75,182 +73,117 @@ class Prompt:
     def __repr__(self) -> str:
         return self.__str__()
 
-    def append(self, value: str) -> None:
-        self.dynamic_value.append(value)
-
-    def remove(self, value: str) -> None:
-        self.dynamic_value.remove(value)
-
-    def clear(self) -> None:
-        self.dynamic_value.clear()
-
-
-class PromptLanguage(Enum):
-    ENGLISH = "en"
-    GERMAN = "de"
-    SPANISH = "es"
-
-
-class ModelName(Enum):
-    ALL = "all"
-
 
 class PromptRegistry:
     _instance = None
-    _default_language = None
-    _default_model = None
-    _prompt_values = None
-    _prompt_instructions = None
-    _prompt_tags = None
-    _model_fallback = True
-    _lock = threading.Lock()  # to ensure thread safety
-
-    _tag_prefix = "[["
-    _tag_suffix = "]]"
+    _lock = threading.Lock()
 
     def __new__(cls):
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
                     cls._instance = super().__new__(cls)
-                    cls._instance._default_language = PromptLanguage.ENGLISH
-                    cls._instance._default_model = ModelName.ALL
-                    cls._instance._model_fallback = True
-                    cls._instance._prompt_values = {ModelName.ALL: {PromptLanguage.ENGLISH: {}}}
-                    cls._instance._prompt_instructions = {
-                        ModelName.ALL: {PromptLanguage.ENGLISH: {}}
-                    }
-                    cls._instance._prompt_tags = {ModelName.ALL: {PromptLanguage.ENGLISH: {}}}
+                    cls._instance._initialized = False
         return cls._instance
 
-    @property
-    def model_fallback(self) -> bool:
-        return self._model_fallback
+    def __init__(self):
+        if self._initialized:
+            return
 
-    @model_fallback.setter
-    def model_fallback(self, value: bool):
-        with self._lock:
-            self._model_fallback = value
-
-    @property
-    def default_language(self) -> PromptLanguage:
-        return self._default_language
-
-    @default_language.setter
-    def default_language(self, lang: PromptLanguage):
-        with self._lock:
-            self._default_language = lang
-
-    @property
-    def default_model(self) -> ModelName:
-        return self._default_model
-
-    @default_model.setter
-    def default_model(self, model: ModelName):
-        with self._lock:
-            self._default_model = model
-
-    def _init_model_lang(self, model: ModelName, lang: PromptLanguage):
-        model = model if model is not None else self._default_model
-        lang = lang if lang is not None else self._default_language
-
-        if model not in self._prompt_values:
-            self._prompt_values[model] = {}
-        if lang not in self._prompt_values[model]:
-            self._prompt_values[model][lang] = {}
-
-        return model, lang
-
-    def _retrieve_value(self, dictionary, model: ModelName, lang: PromptLanguage, key: str):
-        model = model if model is not None else self._default_model
-        lang = lang if lang is not None else self._default_language
-
-        if model in dictionary and lang in dictionary[model] and key in dictionary[model][lang]:
-            return dictionary[model][lang][key]
-        if self._model_fallback and model != ModelName.ALL:
-            return self._retrieve_value(dictionary, ModelName.ALL, lang, key)
-
-        msg = (
-            f"Prompt value {key} not found for language {lang} and model {model} "
-            f"(fallback: {self._model_fallback})"
+        self._manifest = SimpleNamespace()
+        self._templates = {}
+        self.jinja_env = jinja2.Environment(
+            loader=jinja2.BaseLoader(),
+            autoescape=False,
+            undefined=jinja2.StrictUndefined,
+            trim_blocks=True,
         )
-        UserMessage(msg)
-        raise ValueError(msg)
+        self.jinja_env.filters["tojson"] = self.tojson_filter
+        self._initialized = True
 
-    def register_value(
-        self,
-        lang: PromptLanguage,
-        key: str,
-        prompt: str,
-        model: ModelName = ModelName.ALL,
-    ):
-        with self._lock:
-            model, lang = self._init_model_lang(model, lang)
-            self._prompt_values[model][lang][key] = prompt
+    @staticmethod
+    def tojson_filter(value: Any, indent: int = 2) -> str:
+        if isinstance(value, BaseModel):
+            value = value.model_dump(mode="json")
+        if isinstance(value, SimpleNamespace):
+            value = PromptRegistry.manifest_to_dict(value)
+        return json.dumps(value, indent=indent, ensure_ascii=False)
 
-    def register_instruction(
-        self, lang: PromptLanguage, key, instruction, model: ModelName = ModelName.ALL
-    ):
-        with self._lock:
-            model, lang = self._init_model_lang(model, lang)
-            self._prompt_instructions[model][lang][key] = instruction
+    @staticmethod
+    def manifest_to_object(value: Any) -> Any:
+        if isinstance(value, dict):
+            namespace = SimpleNamespace()
+            for key, item in value.items():
+                setattr(namespace, key, PromptRegistry.manifest_to_object(item))
+            return namespace
+        if isinstance(value, list):
+            return [PromptRegistry.manifest_to_object(item) for item in value]
+        return value
 
-    def register_tag(
-        self, lang: PromptLanguage, key, tag, model: ModelName = ModelName.ALL, delimiters=None
-    ):
-        with self._lock:
-            model, lang = self._init_model_lang(model, lang)
-            if delimiters is not None:
-                self._prompt_tags[model][lang][key] = {"tag": tag, "delimiters": delimiters}
-            else:
-                self._prompt_tags[model][lang][key] = tag
+    @staticmethod
+    def manifest_to_dict(value: Any) -> Any:
+        if isinstance(value, SimpleNamespace):
+            return {key: PromptRegistry.manifest_to_dict(item) for key, item in vars(value).items()}
+        if isinstance(value, list):
+            return [PromptRegistry.manifest_to_dict(item) for item in value]
+        return value
 
-    def value(self, key, model: ModelName = ModelName.ALL, lang: PromptLanguage = None) -> str:
-        return self._retrieve_value(self._prompt_values, model, lang, key)
+    @property
+    def manifest(self) -> SimpleNamespace:
+        return self._manifest
 
-    def instruction(
-        self, key, model: ModelName = ModelName.ALL, lang: PromptLanguage = None
-    ) -> str:
-        return self._retrieve_value(self._prompt_instructions, model, lang, key)
+    def load_from_folder(self, folder: str | Path):
+        """Load templates and an optional manifest from a folder."""
+        folder = Path(folder)
+        if not folder.is_dir():
+            msg = f"Template folder not found: {folder}"
+            UserMessage(msg, raise_with=FileNotFoundError)
 
-    def tag(
-        self, key, model: ModelName = ModelName.ALL, lang: PromptLanguage = None, format=True
-    ) -> str:
-        tag_data = self._retrieve_value(self._prompt_tags, model, lang, key)
+        manifest_path = folder / "manifest.toml"
+        manifest = SimpleNamespace()
+        if manifest_path.is_file():
+            manifest = self.manifest_to_object(toml.load(manifest_path))
 
-        if isinstance(tag_data, dict):
-            tag_value = tag_data["tag"]
-            if format:
-                prefix, suffix = tag_data["delimiters"]
-                return f"{prefix}{tag_value}{suffix}"
-            return tag_value
+        jinja_files = list(folder.rglob("*.jinja"))
+        if not jinja_files:
+            msg = f"No .jinja files found in {folder}"
+            UserMessage(msg, raise_with=ValueError)
 
-        if format:
-            return f"{self._tag_prefix}{tag_data}{self._tag_suffix}"
-        return tag_data
+        templates = {}
+        for path in jinja_files:
+            rel = path.relative_to(folder)
+            dot_key = ".".join(rel.with_suffix("").parts)
+            templates[dot_key] = path.read_text()
 
-    def has_value(self, key, model: ModelName = ModelName.ALL, lang: PromptLanguage = None) -> bool:
-        try:
-            value = self._retrieve_value(self._prompt_values, model, lang, key)
-            return value is not None
-        except ValueError:
-            return False
+        self._manifest = manifest
+        self._templates = templates
 
-    def has_instruction(
-        self, key, model: ModelName = ModelName.ALL, lang: PromptLanguage = None
-    ) -> bool:
-        try:
-            value = self._retrieve_value(self._prompt_instructions, model, lang, key)
-            return value is not None
-        except ValueError:
-            return False
+    def set_manifest(self, manifest: dict[str, Any]) -> None:
+        """Set the manifest object available as ``manifest`` during rendering."""
+        self._manifest = self.manifest_to_object(manifest)
 
-    def has_tag(self, key, model: ModelName = ModelName.ALL, lang: PromptLanguage = None) -> bool:
-        try:
-            value = self._retrieve_value(self._prompt_tags, model, lang, key)
-            return value is not None
-        except ValueError:
-            return False
+    def register_template(self, key: str, template: str):
+        """Register a Jinja template."""
+        self._templates[key] = template
+
+    def template(self, key: str) -> str:
+        """Retrieve a registered raw template."""
+        if key not in self._templates:
+            msg = f"Template '{key}' not found in registry"
+            UserMessage(msg, raise_with=ValueError)
+        return self._templates[key]
+
+    def render(self, key: str, **variables) -> str:
+        """Render a template with the manifest object and runtime variables."""
+        context = {"manifest": self._manifest}
+        context.update(variables)
+
+        template_obj = self.jinja_env.from_string(self.template(key))
+        return template_obj.render(**context)
+
+    def has_template(self, key: str) -> bool:
+        """Check if a template exists."""
+        return key in self._templates
 
 
 class JsonPromptTemplate(Prompt):
@@ -944,35 +877,29 @@ def _llm_ping_():
     "Ping if google is still available."
     import os
     response = os.system("ping -c 1 google.com")
-    return response == 0 """
-                + Prompt.stop_token,
+    return response == 0 EOF""",
                 """$> Create a random number between 1 and 100 =>
 def _llm_random_():
     "Create a random number between 1 and 100."
     import random
-    return random.randint(1, 100) """
-                + Prompt.stop_token,
+    return random.randint(1, 100) EOF""",
                 """$> Write any sentence in capital letters =>
 def _llm_upper_(input_):
     "Write any sentence in capital letters."
-    return input_.upper() """
-                + Prompt.stop_token,
+    return input_.upper() EOF""",
                 """$> Open a file from the file system =>
 def _llm_open_(file_name):
     "Open a file form the file system."
-    return open(file_name, "r") """
-                + Prompt.stop_token,
+    return open(file_name, "r") EOF""",
                 """$> Call OpenAI GPT-3 to perform an action given a user input =>
 def _llm_action_(input_):
     "Call OpenAI GPT-3 to perform an action given a user input."
     import openai
-    openai.Completion.create(prompt=input_, model="text-davinci-003") """
-                + Prompt.stop_token,
+    openai.Completion.create(prompt=input_, model="text-davinci-003") EOF""",
                 """$> Create a prompt to translate a user query to an answer in well-formatted structure =>
 def _llm_action_(query_, answer_):
     "Create a prompt to translate a user query to an answer in well-formatted structure."
-    return f"Query: {query_} => {answer_}" """
-                + Prompt.stop_token,
+    return f"Query: {query_} => {answer_}" EOF""",
             ]
         )
 
