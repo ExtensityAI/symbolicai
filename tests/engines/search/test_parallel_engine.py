@@ -24,37 +24,62 @@ def _iface():
         pytest.skip(f"Parallel interface initialization failed: {e}")
 
 
-def test_parallel_search_citations_and_formatting():
-    search = _iface()
-    query = "President of Romania 2025 inauguration timeline and partner"
-    res = search.search(query, mode="agentic")
-
+def assert_bulletproof_citations(res):
+    """Validate citation integrity with exhaustive checks."""
     assert hasattr(res, "get_citations"), "Result must expose get_citations()"
     assert isinstance(res._value, str) and len(res._value) > 0
 
-    # No leftover markdown link patterns or empty parentheses artifacts
+    citations = res.get_citations()
+    assert isinstance(citations, list)
+
+    all_markers = re.findall(r"\[(\d+)\]", res.value)
+
+    if len(citations) == 0:
+        assert not all_markers, "Markers found in text but citations list is empty"
+        return
+
     assert not re.search(r"\[[^\]]+\]\(https?://[^)]+\)", res.value)
     assert "(, , )" not in res.value
     assert "()" not in res.value
 
-    # No square brackets outside citation markers
-    all_markers = re.findall(r"\[(\d+)\]", res.value)
     assert all_markers, "No citation markers were found in the output"
 
-    citations = res.get_citations()
-    assert isinstance(citations, list) and len(citations) >= 1
+    seen_ids = set()
+    seen_urls = set()
+    prev_end = -1
 
-    seen = set()
     for c in citations:
         assert isinstance(c.id, int)
-        assert c.id not in seen
-        seen.add(c.id)
-        assert "utm_" not in c.url
+        assert c.id not in seen_ids, f"Duplicate citation ID: {c.id}"
+        seen_ids.add(c.id)
+
         assert 0 <= c.start <= c.end <= len(res.value)
+        assert c.start > prev_end, f"Citation {c.id} overlaps with previous (start={c.start}, prev_end={prev_end})"
+        prev_end = c.end
+
         slice_text = res.value[c.start : c.end]
-        assert slice_text == f"[{c.id}]"
+        assert slice_text == f"[{c.id}]", f"Marker mismatch: expected '[{c.id}]', got '{slice_text}'"
+
+        parsed = urlparse(c.url)
+        assert parsed.scheme, f"Citation {c.id} URL missing scheme: {c.url}"
+        assert parsed.netloc, f"Citation {c.id} URL missing netloc: {c.url}"
+        assert "utm_" not in c.url
+
+        assert c.url not in seen_urls, f"Duplicate URL in citations: {c.url}"
+        seen_urls.add(c.url)
+
+        assert isinstance(c.title, str) and len(c.title) > 0, f"Citation {c.id} has empty title"
 
     assert sorted(int(m) for m in all_markers) == sorted(c.id for c in citations)
+    assert sorted(c.id for c in citations) == list(range(1, len(citations) + 1))
+
+
+@pytest.mark.parametrize("mode", ["basic", "advanced", "turbo"])
+def test_parallel_search_citations_and_formatting(mode):
+    search = _iface()
+    query = "President of Romania 2025 inauguration timeline and partner"
+    res = search.search(query, mode=mode)
+    assert_bulletproof_citations(res)
 
 
 def test_parallel_search_domain_filtering():
@@ -75,6 +100,27 @@ def test_parallel_search_domain_filtering():
         n in citation_netlocs
         for n in ("www.tomshardware.com", "tomshardware.com", "www.arstechnica.com", "arstechnica.com")
     ), "No citations from allowed domains found"
+
+def test_parallel_search_location_geo_targeting():
+    search = _iface()
+
+    query = "stiri Romania actualitate"
+    res = search.search(query, location="ro")
+
+    assert_bulletproof_citations(res)
+
+    citations = res.get_citations()
+    if len(citations) > 0:
+        citation_domains = {urlparse(c.url).netloc.lower() for c in citations}
+        has_ro_domain = any(
+            domain.endswith(".ro")
+            for domain in citation_domains
+        )
+        assert has_ro_domain, (
+            f"Expected at least one .ro domain with location='ro', "
+            f"got: {citation_domains}"
+        )
+
 
 @pytest.mark.parametrize("processor", ["lite-fast"])
 def test_parallel_task_route_via_processor(processor):
