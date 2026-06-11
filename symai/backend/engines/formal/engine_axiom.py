@@ -45,15 +45,19 @@ class AxiomEngine(Engine):
 
     def __init__(self, api_key: str | None = None):
         super().__init__()
+        self.config = deepcopy(SYMAI_CONFIG)
+        self.api_key = self.config.get("FORMAL_ENGINE_API_KEY") if api_key is None else api_key
+        self.name = self.__class__.__name__
+
+        if api_key is None and self.id() != "formal":
+            return
+
         if AxleClient is None:
             UserMessage(
                 "axle is not installed. Install with `pip install symbolicai[lean]`",
                 raise_with=ImportError,
             )
-        self.config = deepcopy(SYMAI_CONFIG)
-        self.api_key = self.config.get("FORMAL_ENGINE_API_KEY") if api_key is None else api_key
         self.client = AxleClient(api_key=self.api_key)
-        self.name = self.__class__.__name__
 
     def id(self) -> str:
         if self.config.get("FORMAL_ENGINE_API_KEY") and self.config.get("FORMAL_ENGINE") == "axiom":

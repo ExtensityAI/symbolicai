@@ -107,6 +107,10 @@ class WhisperEngine(Engine):
         self.text = []
         self.formatter = WhisperTimestampsFormatter()
         self.name = self.__class__.__name__
+
+        if model is None and to_device is None and self.id() != "speech-to-text":
+            return
+
         if self.model is None or self.model_id != self.old_model_id:
             device_fallback = "cpu"
             device = "cuda" if torch.cuda.is_available() else device_fallback

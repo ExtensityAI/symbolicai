@@ -18,8 +18,12 @@ class TTSEngine(Engine):
         self.model_id = self.config["TEXT_TO_SPEECH_ENGINE_MODEL"] if model is None else model
         self.tokens = []
         self.text = []
-        self.client = OpenAI(api_key=self.api_key)
         self.name = self.__class__.__name__
+
+        if api_key is None and model is None and self.id() != "text-to-speech":
+            return
+
+        self.client = OpenAI(api_key=self.api_key)
 
     def id(self) -> str:
         if self.config["TEXT_TO_SPEECH_ENGINE_API_KEY"]:

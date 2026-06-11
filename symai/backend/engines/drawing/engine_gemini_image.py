@@ -51,6 +51,10 @@ class GeminiImageEngine(Engine):
         self.api_key = self.config.get("DRAWING_ENGINE_API_KEY") if api_key is None else api_key
         self.model = self.config.get("DRAWING_ENGINE_MODEL") if model is None else model
         self.name = self.__class__.__name__
+
+        if api_key is None and model is None and self.id() != "drawing":
+            return
+
         self.client = genai.Client(api_key=self.api_key)
 
     def id(self) -> str:

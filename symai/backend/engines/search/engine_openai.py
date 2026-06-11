@@ -258,6 +258,10 @@ class GPTXSearchEngine(Engine):
         )  # Default to gpt-4.1 as per docs
         self.client_timeout = client_timeout
         self.name = self.__class__.__name__
+
+        if api_key is None and model is None and self.id() != "search":
+            return
+
         try:
             if self.client_timeout is not None:
                 # Socket-level timeout so a hung web_search call raises instead of blocking
