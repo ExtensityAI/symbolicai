@@ -27,6 +27,7 @@
 * [Expressions](FEATURES/expressions.md)
 * [Error Handling](FEATURES/error_handling.md)
 * [Module Import](FEATURES/import.md)
+* [Prompt Registry](FEATURES/prompt_registry.md)
 
 ## Tutorials
 * [Chatbot Tutorial](TUTORIALS/chatbot.md)
