@@ -15,6 +15,7 @@ logging.getLogger("requests").setLevel(logging.ERROR)
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
+logging.getLogger("filelock").setLevel(logging.ERROR)
 
 try:
     import tldextract
@@ -74,7 +75,7 @@ class ParallelSearchResult(Result):
         super().__init__(value, **kwargs)
         self._citations: list[Citation] = []
         # value is either:
-        #   - SearchResult (from beta.search) with .results: list[WebSearchResult]
+        #   - SearchResult (from search) with .results: list[WebSearchResult]
         #   - list[WebSearchResult] (from _task path)
         items = value.results if hasattr(value, "results") else value
         text, citations = self._build_text_and_citations(items)
@@ -217,6 +218,9 @@ class ParallelEngine(Engine):
         self.model = self.config.get("SEARCH_ENGINE_MODEL")
         self.name = self.__class__.__name__
 
+        if self.id() != "search":
+            return
+
         if Parallel is None:
             UserMessage(
                 "parallel-web SDK is not installed. Install with 'pip install parallel-web' "
@@ -276,13 +280,16 @@ class ParallelEngine(Engine):
     def _build_source_policy(self, kwargs: dict[str, Any]) -> dict[str, Any] | None:
         include = self._normalize_domains(kwargs.get("allowed_domains"), self.MAX_INCLUDE_DOMAINS)
         exclude = self._normalize_domains(kwargs.get("excluded_domains"), self.MAX_EXCLUDE_DOMAINS)
-        if not include and not exclude:
+        after_date = kwargs.get("after_date")
+        if not include and not exclude and not after_date:
             return None
         policy = {}
         if include:
             policy["include_domains"] = include
         if exclude:
             policy["exclude_domains"] = exclude
+        if after_date:
+            policy["after_date"] = after_date
         return policy
 
     def _search(self, queries: list[str], kwargs: dict[str, Any]):
@@ -291,22 +298,51 @@ class ParallelEngine(Engine):
                 "ParallelEngine._search requires at least one query.", raise_with=ValueError
             )
 
-        mode = kwargs.get("mode") or "one-shot"
+        mode = kwargs.get("mode") or "advanced"
         max_results = kwargs.get("max_results", 10)
         max_chars_per_result = kwargs.get("max_chars_per_result", 15000)
-        excerpts = {"max_chars_per_result": max_chars_per_result}
         source_policy = self._build_source_policy(kwargs)
         objective = kwargs.get("objective")
 
+        advanced_settings: dict[str, Any] = {}
+        if max_results:
+            advanced_settings["max_results"] = max_results
+        if max_chars_per_result:
+            advanced_settings["excerpt_settings"] = {
+                "max_chars_per_result": max_chars_per_result
+            }
+        if source_policy:
+            advanced_settings["source_policy"] = source_policy
+
+        location = kwargs.get("location")
+        if location:
+            advanced_settings["location"] = location
+
+        fetch_policy = kwargs.get("fetch_policy")
+        if fetch_policy:
+            advanced_settings["fetch_policy"] = fetch_policy
+
+        search_kwargs = {
+            "objective": objective,
+            "search_queries": queries,
+            "mode": mode,
+            "advanced_settings": advanced_settings or None,
+        }
+
+        max_chars_total = kwargs.get("max_chars_total")
+        if max_chars_total:
+            search_kwargs["max_chars_total"] = max_chars_total
+
+        client_model = kwargs.get("client_model")
+        if client_model:
+            search_kwargs["client_model"] = client_model
+
+        session_id = kwargs.get("session_id")
+        if session_id:
+            search_kwargs["session_id"] = session_id
+
         try:
-            result = self.client.beta.search(
-                objective=objective,
-                search_queries=queries,
-                max_results=max_results,
-                excerpts=excerpts,
-                mode=mode,
-                source_policy=source_policy,
-            )
+            result = self.client.search(**search_kwargs)
         except Exception as e:
             UserMessage(f"Failed to call Parallel Search API: {e}", raise_with=ValueError)
         return [ParallelSearchResult(result)], {"raw_output": result}
@@ -343,6 +379,18 @@ class ParallelEngine(Engine):
                 create_kwargs["task_spec"] = build_task_spec_param(output_schema, task_input)
             except Exception as exc:
                 UserMessage(f"Invalid task output schema: {exc}", raise_with=ValueError)
+
+        previous_interaction_id = kwargs.get("previous_interaction_id")
+        if previous_interaction_id:
+            create_kwargs["previous_interaction_id"] = previous_interaction_id
+
+        mcp_servers = kwargs.get("mcp_servers")
+        if mcp_servers:
+            create_kwargs["mcp_servers"] = mcp_servers
+
+        location = kwargs.get("location")
+        if location:
+            create_kwargs["advanced_settings"] = {"location": location}
 
         try:
             run = self.client.task_run.create(**create_kwargs)
@@ -451,16 +499,47 @@ class ParallelEngine(Engine):
         return items, "\n\n".join(prefix_parts)
 
     def _extract(self, url: str, kwargs: dict[str, Any]):
-        excerpts = kwargs.get("excerpts", True)
         full_content = kwargs.get("full_content", False)
         objective = kwargs.get("objective")
+
+        advanced_settings: dict[str, Any] = {}
+        if full_content:
+            advanced_settings["full_content"] = full_content
+
+        max_chars_per_result = kwargs.get("max_chars_per_result")
+        if max_chars_per_result:
+            advanced_settings["excerpt_settings"] = {
+                "max_chars_per_result": max_chars_per_result
+            }
+
+        fetch_policy = kwargs.get("fetch_policy")
+        if fetch_policy:
+            advanced_settings["fetch_policy"] = fetch_policy
+
+        extract_kwargs = {
+            "urls": [url],
+            "objective": objective,
+            "advanced_settings": advanced_settings or None,
+        }
+
+        max_chars_total = kwargs.get("max_chars_total")
+        if max_chars_total:
+            extract_kwargs["max_chars_total"] = max_chars_total
+
+        client_model = kwargs.get("client_model")
+        if client_model:
+            extract_kwargs["client_model"] = client_model
+
+        session_id = kwargs.get("session_id")
+        if session_id:
+            extract_kwargs["session_id"] = session_id
+
+        search_queries = kwargs.get("search_queries")
+        if search_queries:
+            extract_kwargs["search_queries"] = search_queries
+
         try:
-            result = self.client.beta.extract(
-                urls=[url],
-                objective=objective,
-                excerpts=excerpts,
-                full_content=full_content,
-            )
+            result = self.client.extract(**extract_kwargs)
         except Exception as e:
             UserMessage(f"Failed to call Parallel Extract API: {e}", raise_with=ValueError)
         return [ParallelExtractResult(result)], {"raw_output": result, "final_url": url}
