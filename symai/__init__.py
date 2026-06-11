@@ -618,7 +618,7 @@ from .imports import Import  # noqa
 from .interfaces import Interface  # noqa
 from .post_processors import PostProcessor  # noqa
 from .pre_processors import PreProcessor  # noqa
-from .prompts import Prompt, PromptLanguage, PromptRegistry  # noqa
+from .prompts import Prompt, PromptRegistry  # noqa
 from .shell import Shell  # noqa
 from .strategy import Strategy  # noqa
 from .symbol import Call, Expression, GlobalSymbolPrimitive, Metadata, Symbol  # noqa
@@ -639,7 +639,6 @@ __all__ = [
     "PreProcessor",
     "PrimitiveDisabler",
     "Prompt",
-    "PromptLanguage",
     "PromptRegistry",
     "Shell",
     "Strategy",
