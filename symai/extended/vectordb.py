@@ -142,7 +142,11 @@ class VectorDB(Expression):
         return current_document
 
     def _embed_batch(self, batch):
-        emb = self.model(batch)
+        emb = self.model.encode(
+            batch,
+            convert_to_numpy=True,
+            normalize_embeddings=True,
+            )
         if len(emb.shape) == 1:
             return [emb]
         if len(emb.shape) == 2:
