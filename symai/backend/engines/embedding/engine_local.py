@@ -1,28 +1,30 @@
+from copy import deepcopy
+
 import numpy as np
+from sentence_transformers import SentenceTransformer
 
 from ....symbol import Symbol
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
-from sentence_transformers import SentenceTransformer
 
 
 class LocalEmbeddingEngine(Engine):
+    DEFAULT_MODEL = "sentence-transformers/all-mpnet-base-v2"
+
     def __init__(self, model: str | None = None):
         super().__init__()
-        self.config = SYMAI_CONFIG
-
-        self.model_name = self.config.get("EMBEDDING_ENGINE_MODEL", model)
-        if not self.model_name:
-            self.model_name = 'all-mpnet-base-v2'
-        actual_model_name = self.model_name.replace("local/", "")
-
-        self._model = SentenceTransformer(actual_model_name,
-                                            trust_remote_code=True
-        )
-        self.embedding_dim = 384 # It gets dynamically updated
+        self.config = deepcopy(SYMAI_CONFIG)
+        self.model_name = model or self.config.get("EMBEDDING_ENGINE_MODEL") or self.DEFAULT_MODEL
+        self.model = SentenceTransformer(self.model_name.replace("local:", ""))
+        self.embedding_dim = 384  # NOTE: Gets dynamically updated in forward()
+        self.name = self.__class__.__name__
 
     def id(self) -> str:
-        if self.model_name:
+        if (
+            not self.model_name
+            or self.model_name.startswith("local:")
+            or self.model_name == self.DEFAULT_MODEL
+        ):
             return "embedding"
         return super().id()
 
@@ -31,12 +33,14 @@ class LocalEmbeddingEngine(Engine):
         kwargs = argument.kwargs
 
         inp = prepared_input.value if isinstance(prepared_input, Symbol) else prepared_input
+        if not isinstance(inp, list):
+            inp = [inp]
         new_dim = kwargs.get("new_dim")
 
-        output = self._model.encode(
-                        inp,
-                        convert_to_numpy=True,
-                )
+        output = self.model.encode(
+            inp,
+            convert_to_numpy=True,
+        )
 
         if hasattr(output, "value"):
             output = output.value
@@ -51,7 +55,7 @@ class LocalEmbeddingEngine(Engine):
 
         if new_dim:
             mn = min(new_dim, self.embedding_dim)
-            output = [self._normalize_l2(emb[:mn]) for emb in output if emb is not None]
+            output = [self.normalize_l2(emb[:mn]) for emb in output if emb is not None]
 
         metadata = {"raw_output": output}
         return [output], metadata
@@ -62,7 +66,7 @@ class LocalEmbeddingEngine(Engine):
         )
         argument.prop.prepared_input = argument.prop.entries
 
-    def _normalize_l2(self, x):
+    def normalize_l2(self, x):
         x = np.array(x)
         if x.ndim == 1:
             norm = np.linalg.norm(x)
