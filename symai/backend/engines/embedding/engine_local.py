@@ -1,30 +1,28 @@
 import numpy as np
 
+from ....symbol import Symbol
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
-from ....interfaces import Interface
+from sentence_transformers import SentenceTransformer
+
 
 class LocalEmbeddingEngine(Engine):
     def __init__(self, model: str | None = None):
         super().__init__()
         self.config = SYMAI_CONFIG
-        self.model_name = model or self.config.get("EMBEDDING_ENGINE_MODEL", "local")
 
+        self.model_name = self.config.get("EMBEDDING_ENGINE_MODEL", model)
+        if not self.model_name:
+            self.model_name = 'all-mpnet-base-v2'
         actual_model_name = self.model_name.replace("local/", "")
 
-        if actual_model_name == "local" or actual_model_name == "":
-            self._local_model = Interface("ExtensityAI/embeddings")
-        else:
-            # Pass the custom model name directly to the ExtensityAI constructor
-            self._local_model = Interface("ExtensityAI/embeddings", model=actual_model_name)
+        self._model = SentenceTransformer(actual_model_name,
+                                            trust_remote_code=True
+        )
         self.embedding_dim = 384 # It gets dynamically updated
 
     def id(self) -> str:
-        if (
-            not self.model_name
-            or self.model_name == "local"
-            or self.model_name.startswith("local/")
-        ):
+        if self.model_name:
             return "embedding"
         return super().id()
 
@@ -32,10 +30,13 @@ class LocalEmbeddingEngine(Engine):
         prepared_input = argument.prop.prepared_input
         kwargs = argument.kwargs
 
-        inp = prepared_input if isinstance(prepared_input, list) else [prepared_input]
+        inp = prepared_input.value if isinstance(prepared_input, Symbol) else prepared_input
         new_dim = kwargs.get("new_dim")
 
-        output = self._local_model(inp)
+        output = self._model.encode(
+                        inp,
+                        convert_to_numpy=True,
+                )
 
         if hasattr(output, "value"):
             output = output.value
@@ -53,7 +54,7 @@ class LocalEmbeddingEngine(Engine):
             output = [self._normalize_l2(emb[:mn]) for emb in output if emb is not None]
 
         metadata = {"raw_output": output}
-        return [output], metadata
+        return output, metadata
 
 
     def prepare(self, argument):
