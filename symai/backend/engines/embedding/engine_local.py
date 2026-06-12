@@ -54,8 +54,7 @@ class LocalEmbeddingEngine(Engine):
             output = [self._normalize_l2(emb[:mn]) for emb in output if emb is not None]
 
         metadata = {"raw_output": output}
-        return output, metadata
-
+        return [output], metadata
 
     def prepare(self, argument):
         assert not argument.prop.processed_input, (
