@@ -92,20 +92,25 @@ class VectorDB(Expression):
                 self.load()
 
     def _init_embedding_model(self):
-        model_name = self.config.get(
-            "EMBEDDING_ENGINE_MODEL",
-            "sentence-transformers/all-mpnet-base-v2"
-        )
+        if (
+            self.config["EMBEDDING_ENGINE_API_KEY"] is None
+            or self.config["EMBEDDING_ENGINE_API_KEY"] == ""
+        ):
+            model_name = self.config.get(
+                "EMBEDDING_ENGINE_MODEL",
+                "sentence-transformers/all-mpnet-base-v2"
+            )
+            if model_name.startswith("local/"):
+                model_name = model_name.replace("local/", "")
 
-        if model_name.startswith("local/"):
-            model_name = model_name.replace("local/", "")
+            self.model_name = model_name
 
-        self.model_name = model_name
-
-        self.model = SentenceTransformer(
-            model_name,
-            trust_remote_code=True,
-        )
+            self.model = SentenceTransformer(
+                model_name,
+                trust_remote_code=True,
+            )
+        else:
+            self.model = lambda x: Symbol(x).embedding
 
     def _unwrap_documents(self, documents):
         if isinstance(documents, Symbol):
@@ -142,11 +147,18 @@ class VectorDB(Expression):
         return current_document
 
     def _embed_batch(self, batch):
-        emb = self.model.encode(
-            batch,
-            convert_to_numpy=True,
-            normalize_embeddings=True,
-            )
+        if self.config["EMBEDDING_ENGINE_API_KEY"] == "" or \
+            not self.config["EMBEDDING_ENGINE_API_KEY"]:
+            emb = self.model.encode(
+                batch,
+                convert_to_numpy=True,
+                normalize_embeddings=True,
+                )
+            if not hasattr(emb, "shape"):
+                emb = [emb]
+        else:
+            emb = self.model(batch)
+
         if len(emb.shape) == 1:
             return [emb]
         if len(emb.shape) == 2:
