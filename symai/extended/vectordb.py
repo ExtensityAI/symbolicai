@@ -5,12 +5,15 @@ from collections.abc import Mapping
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, ClassVar
-from sentence_transformers import SentenceTransformer
 
 import numpy as np
 
+try:
+    from sentence_transformers import SentenceTransformer
+except ImportError:
+    SentenceTransformer = None
+
 from ..backend.settings import HOME_PATH, SYMAI_CONFIG
-from ..interfaces import Interface
 from ..symbol import Expression, Symbol
 from ..utils import UserMessage
 from .metrics import (
@@ -36,6 +39,7 @@ class VectorDB(Expression):
     _default_top_k: ClassVar[int] = 5
     _default_storage_path: ClassVar[Path] = HOME_PATH / "localdb"
     _default_index_name: ClassVar[str] = "dataindex"
+    _default_normalize_embeddings: ClassVar[bool] = False
 
     def __init__(
         self,
@@ -48,6 +52,7 @@ class VectorDB(Expression):
         index_dims=_default_index_dims,
         top_k=_default_top_k,
         index_name=_default_index_name,
+        normalize_embeddings=_default_normalize_embeddings,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -59,6 +64,7 @@ class VectorDB(Expression):
         self.index_dims = index_dims
         self.index_top_k = top_k
         self.index_name = index_name
+        self.normalize_embeddings = normalize_embeddings
         # init embedding function
         self._init_embedding_model()
         self.embedding_function = embedding_function or self._get_embedding
@@ -92,24 +98,24 @@ class VectorDB(Expression):
                 self.load()
 
     def _init_embedding_model(self):
-        if (
-            self.config["EMBEDDING_ENGINE_API_KEY"] is None
-            or self.config["EMBEDDING_ENGINE_API_KEY"] == ""
-        ):
-            model_name = self.config.get(
-                "EMBEDDING_ENGINE_MODEL",
-                "sentence-transformers/all-mpnet-base-v2"
+        model_name = self.config.get("EMBEDDING_ENGINE_MODEL", "")
+        # NOTE: Empty or "local:" prefix means use SentenceTransformer directly;
+        # anything else (llamacpp, gemini, openai, etc.) delegates to the engine
+        # registry via Symbol(x).embedding.
+        if not model_name or model_name.startswith("local:"):
+            if SentenceTransformer is None:
+                UserMessage(
+                    "sentence-transformers is not installed. "
+                    "Install with: pip install symbolicai[hf]",
+                    raise_with=ImportError,
+                )
+            model_name = (
+                model_name.replace("local:", "") or "sentence-transformers/all-mpnet-base-v2"
             )
-            if model_name.startswith("local/"):
-                model_name = model_name.replace("local/", "")
-
             self.model_name = model_name
-
-            self.model = SentenceTransformer(
-                model_name,
-                trust_remote_code=True,
-            )
+            self.model = SentenceTransformer(model_name)
         else:
+            self.model_name = model_name
             self.model = lambda x: Symbol(x).embedding
 
     def _unwrap_documents(self, documents):
@@ -147,16 +153,20 @@ class VectorDB(Expression):
         return current_document
 
     def _embed_batch(self, batch):
-        if self.config["EMBEDDING_ENGINE_API_KEY"] == "" or \
-            not self.config["EMBEDDING_ENGINE_API_KEY"]:
+        if isinstance(self.model, SentenceTransformer):
+            # NOTE: Local SentenceTransformer path — call .encode() directly.
+            # Set normalize_embeddings=True to make dot product and euclidean
+            # similarity metrics behave like cosine similarity for local models.
             emb = self.model.encode(
                 batch,
                 convert_to_numpy=True,
-                normalize_embeddings=True,
-                )
+                normalize_embeddings=self.normalize_embeddings,
+            )
             if not hasattr(emb, "shape"):
-                emb = [emb]
+                emb = np.array([emb])
         else:
+            # NOTE: Cloud / engine-registry path — self.model is a lambda
+            # that resolves embedding via EngineRepository.query("embedding").
             emb = self.model(batch)
 
         if len(emb.shape) == 1:
