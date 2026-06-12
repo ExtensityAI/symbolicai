@@ -5,6 +5,7 @@ from collections.abc import Mapping
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, ClassVar
+from sentence_transformers import SentenceTransformer
 
 import numpy as np
 
@@ -91,13 +92,20 @@ class VectorDB(Expression):
                 self.load()
 
     def _init_embedding_model(self):
-        if (
-            self.config["EMBEDDING_ENGINE_API_KEY"] is None
-            or self.config["EMBEDDING_ENGINE_API_KEY"] == ""
-        ):
-            self.model = Interface("ExtensityAI/embeddings")  # default to local model
-        else:
-            self.model = lambda x: Symbol(x).embedding
+        model_name = self.config.get(
+            "EMBEDDING_ENGINE_MODEL",
+            "sentence-transformers/all-mpnet-base-v2"
+        )
+
+        if model_name.startswith("local/"):
+            model_name = model_name.replace("local/", "")
+
+        self.model_name = model_name
+
+        self.model = SentenceTransformer(
+            model_name,
+            trust_remote_code=True,
+        )
 
     def _unwrap_documents(self, documents):
         if isinstance(documents, Symbol):
