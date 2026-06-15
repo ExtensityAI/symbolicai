@@ -1,6 +1,8 @@
 # Prompt Registry
 
-The `PromptRegistry` is a singleton that manages Jinja2 templates and an optional TOML manifest. It replaces the previous enum-based language/model system with a file-driven approach: you organize prompts as `.jinja` files in a folder, optionally alongside a `manifest.toml`, and load them in one call.
+The `PromptRegistry` manages Jinja2 templates and an optional TOML manifest. It replaces the previous enum-based language/model system with a file-driven approach: you organize prompts as `.jinja` files in a folder, optionally alongside a `manifest.toml`, and load them in one call.
+
+Each instance of `PromptRegistry` is independent, so you can maintain multiple registries in the same process without state leaking between them.
 
 ## Folder Layout
 
