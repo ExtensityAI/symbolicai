@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 import numpy as np
-from sentence_transformers import SentenceTransformer
 
 try:
     from sentence_transformers import SentenceTransformer
