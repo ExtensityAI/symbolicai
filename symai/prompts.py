@@ -1,5 +1,4 @@
 import json
-import threading
 from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
@@ -75,21 +74,7 @@ class Prompt:
 
 
 class PromptRegistry:
-    _instance = None
-    _lock = threading.Lock()
-
-    def __new__(cls):
-        if cls._instance is None:
-            with cls._lock:
-                if cls._instance is None:
-                    cls._instance = super().__new__(cls)
-                    cls._instance._initialized = False
-        return cls._instance
-
     def __init__(self):
-        if self._initialized:
-            return
-
         self._manifest = SimpleNamespace()
         self._templates = {}
         self.jinja_env = jinja2.Environment(
@@ -99,7 +84,6 @@ class PromptRegistry:
             trim_blocks=True,
         )
         self.jinja_env.filters["tojson"] = self.tojson_filter
-        self._initialized = True
 
     @staticmethod
     def tojson_filter(value: Any, indent: int = 2) -> str:
