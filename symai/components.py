@@ -1304,6 +1304,28 @@ class MetadataTracker(Expression):
                     token_details[(engine_name, model_name)]["completion_breakdown"][
                         "reasoning_tokens"
                     ] += usage.output_tokens_details.reasoning_tokens
+                elif engine_name == "GeminiSearchEngine":
+                    #NOTE: Gemini grounding exposes token accounting on `interaction.usage`
+                    # with its own field names (total_input_tokens, total_thought_tokens,
+                    # total_cached_tokens). These fields are Optional in the SDK, so guard
+                    # against None with `or 0`.
+                    usage = metadata["raw_output"].usage
+                    token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += (
+                        usage.total_input_tokens
+                    )
+                    token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += (
+                        usage.total_output_tokens
+                    )
+                    token_details[(engine_name, model_name)]["usage"]["total_tokens"] += (
+                        usage.total_tokens
+                    )
+                    token_details[(engine_name, model_name)]["usage"]["total_calls"] += 1
+                    token_details[(engine_name, model_name)]["prompt_breakdown"][
+                        "cached_tokens"
+                    ] += getattr(usage, "total_cached_tokens", 0) or 0
+                    token_details[(engine_name, model_name)]["completion_breakdown"][
+                        "reasoning_tokens"
+                    ] += getattr(usage, "total_thought_tokens", 0) or 0
                 elif engine_name == "CerebrasEngine":
                     usage = metadata["raw_output"].usage
                     token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += (

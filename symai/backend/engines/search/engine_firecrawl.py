@@ -1,9 +1,7 @@
 import json
 import logging
 from copy import deepcopy
-from dataclasses import dataclass
 from typing import Any
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 try:
     from firecrawl import Firecrawl
@@ -15,39 +13,20 @@ from ....symbol import Result
 from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
+from .utils import Citation, CitationResultMixin, normalize_url
 
 logging.getLogger("requests").setLevel(logging.ERROR)
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 logging.getLogger("httpx").setLevel(logging.ERROR)
 
-TRACKING_KEYS = {
-    "utm_source",
-    "utm_medium",
-    "utm_campaign",
-    "utm_term",
-    "utm_content",
-}
 
-
-@dataclass
-class Citation:
-    id: int
-    title: str
-    url: str
-    start: int
-    end: int
-
-    def __hash__(self):
-        return hash((self.url,))
-
-
-class FirecrawlSearchResult(Result):
+class FirecrawlSearchResult(CitationResultMixin, Result):
     def __init__(
         self, value: dict[str, Any] | Any, max_chars_per_result: int | None = None, **kwargs
     ) -> None:
         raw_dict = value.model_dump() if hasattr(value, "model_dump") else value
         super().__init__(raw_dict, **kwargs)
-        self._citations: list[Citation] = []
+        self._citations = []
         self._max_chars_per_result = max_chars_per_result
         try:
             text, citations = self._build_text_and_citations(raw_dict)
@@ -69,15 +48,23 @@ class FirecrawlSearchResult(Result):
         parts = []
         citations = []
         cursor = 0
+        seen_urls = set()
+        cid = 0
 
-        for idx, item in enumerate(results, 1):
+        for item in results:
             # Handle both SearchResultWeb (url/title at top level) and Document (url/title in metadata)
             metadata = item.get("metadata") or {}
-            url = item.get("url") or metadata.get("url") or metadata.get("source_url") or ""
+            raw_url = item.get("url") or metadata.get("url") or metadata.get("source_url") or ""
             title = item.get("title") or metadata.get("title") or ""
 
-            if not url:
+            if not raw_url:
                 continue
+
+            url = normalize_url(raw_url)
+            if url in seen_urls:
+                continue
+            seen_urls.add(url)
+            cid += 1
 
             # Check if this is a scraped result (has markdown content)
             markdown = item.get("markdown", "")
@@ -106,34 +93,15 @@ class FirecrawlSearchResult(Result):
             parts.append(result_text)
             cursor += len(result_text)
 
-            marker = f"[{idx}]"
+            marker = f"[{cid}]"
             start = cursor
             parts.append(marker)
             cursor += len(marker)
 
-            citations.append(Citation(id=idx, title=title, url=url, start=start, end=cursor))
+            citations.append(Citation(id=cid, title=title, url=url, start=start, end=cursor))
 
         text = "".join(parts)
         return text, citations
-
-    def __str__(self) -> str:
-        if isinstance(self._value, str) and self._value:
-            return self._value
-        try:
-            return json.dumps(self.raw, indent=2)
-        except TypeError:
-            return str(self.raw)
-
-    def _repr_html_(self) -> str:
-        if isinstance(self._value, str) and self._value:
-            return f"<pre>{self._value}</pre>"
-        try:
-            return f"<pre>{json.dumps(self.raw, indent=2)}</pre>"
-        except Exception:
-            return f"<pre>{self.raw!s}</pre>"
-
-    def get_citations(self) -> list[Citation]:
-        return self._citations
 
 
 class FirecrawlExtractResult(Result):
@@ -214,16 +182,6 @@ class FirecrawlEngine(Engine):
         if "SEARCH_ENGINE_MODEL" in kwargs:
             self.model = kwargs["SEARCH_ENGINE_MODEL"]
 
-    def _normalize_url(self, url: str) -> str:
-        parts = urlsplit(url)
-        filtered_query = [
-            (k, v)
-            for k, v in parse_qsl(parts.query, keep_blank_values=True)
-            if k not in TRACKING_KEYS and not k.lower().startswith("utm_")
-        ]
-        query = urlencode(filtered_query, doseq=True)
-        return urlunsplit((parts.scheme, parts.netloc, parts.path, query, parts.fragment))
-
     def _search(self, query: str, kwargs: dict[str, Any]):
         if not query:
             UserMessage(
@@ -276,7 +234,7 @@ class FirecrawlEngine(Engine):
         }
 
     def _extract(self, url: str, kwargs: dict[str, Any]):
-        normalized_url = self._normalize_url(url)
+        normalized_url = normalize_url(url)
 
         # Build scrape kwargs
         scrape_kwargs = {"formats": kwargs.get("formats", ["markdown"])}

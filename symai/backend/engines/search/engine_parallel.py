@@ -2,14 +2,19 @@ import json
 import logging
 import re
 from copy import deepcopy
-from dataclasses import dataclass
 from typing import Any
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from urllib.parse import urlsplit
 
 from ....symbol import Result
 from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
+from .utils import (
+    Citation,
+    CitationResultMixin,
+    normalize_domains,
+    normalize_url,
+)
 
 logging.getLogger("requests").setLevel(logging.ERROR)
 logging.getLogger("urllib3").setLevel(logging.ERROR)
@@ -18,7 +23,6 @@ logging.getLogger("httpcore").setLevel(logging.ERROR)
 logging.getLogger("filelock").setLevel(logging.ERROR)
 
 try:
-    import tldextract
     from parallel import Parallel
     from parallel.resources.task_run import build_task_spec_param
     from parallel.types.web_search_result import WebSearchResult
@@ -28,14 +32,6 @@ except ImportError:
     Parallel = None
     WebSearchResult = None
 
-
-TRACKING_KEYS = {
-    "utm_source",
-    "utm_medium",
-    "utm_campaign",
-    "utm_term",
-    "utm_content",
-}
 
 # --- Pre-compiled regex patterns ---
 # Matches Markdown links like "[label](https://example.com "title")" and captures the label and URL.
@@ -58,22 +54,10 @@ _RE_UNSAFE_ID_CHARS = re.compile(r"[^A-Za-z0-9._:-]+")
 _RE_SLUG = re.compile(r"[^a-z0-9]+")
 
 
-@dataclass
-class Citation:
-    id: int
-    title: str
-    url: str
-    start: int
-    end: int
-
-    def __hash__(self):
-        return hash((self.url,))
-
-
-class ParallelSearchResult(Result):
+class ParallelSearchResult(CitationResultMixin, Result):
     def __init__(self, value, **kwargs) -> None:
         super().__init__(value, **kwargs)
-        self._citations: list[Citation] = []
+        self._citations = []
         # value is either:
         #   - SearchResult (from search) with .results: list[WebSearchResult]
         #   - list[WebSearchResult] (from _task path)
@@ -81,19 +65,6 @@ class ParallelSearchResult(Result):
         text, citations = self._build_text_and_citations(items)
         self._value = text
         self._citations = citations
-
-    def _normalize_url(self, url: str) -> str:
-        parts = urlsplit(url)
-        scheme = parts.scheme.lower() if parts.scheme else "https"
-        netloc = parts.netloc.lower()
-        path = parts.path.rstrip("/") or "/"
-        filtered_query = [
-            (k, v)
-            for k, v in parse_qsl(parts.query, keep_blank_values=True)
-            if k not in TRACKING_KEYS and not k.lower().startswith("utm_")
-        ]
-        query = urlencode(filtered_query, doseq=True)
-        return urlunsplit((scheme, netloc, path, query, ""))
 
     def _sanitize_excerpt(self, text: str) -> str:
         cleaned = _RE_MARKDOWN_LINK.sub(lambda m: (m.group("label") or "").strip(), text)
@@ -116,19 +87,19 @@ class ParallelSearchResult(Result):
             url = item.url
             if not url:
                 continue
-            normalized_url = self._normalize_url(url)
+            normalized_url = normalize_url(url)
             if normalized_url in seen_urls:
                 continue
             seen_urls.add(normalized_url)
 
-            title = item.title or urlsplit(normalized_url).netloc
+            title = item.title or urlsplit(normalized_url).hostname or ""
             excerpts = item.excerpts or []
             excerpt_parts = [p for ex in excerpts if (p := self._sanitize_excerpt(ex))]
             if not excerpt_parts:
                 continue
 
             combined_excerpt = "\n\n".join(excerpt_parts)
-            raw_id = urlsplit(normalized_url).netloc or normalized_url
+            raw_id = urlsplit(normalized_url).hostname or normalized_url
             source_id = _RE_UNSAFE_ID_CHARS.sub("-", raw_id).strip("-") or f"source-{cid}"
             block_body = f"{source_id}\n\n{combined_excerpt}"
 
@@ -159,25 +130,6 @@ class ParallelSearchResult(Result):
 
         text = "".join(pieces)
         return text, citations
-
-    def __str__(self) -> str:
-        if isinstance(self._value, str) and self._value:
-            return self._value
-        try:
-            return json.dumps(self.raw, indent=2)
-        except TypeError:
-            return str(self.raw)
-
-    def _repr_html_(self) -> str:
-        if isinstance(self._value, str) and self._value:
-            return f"<pre>{self._value}</pre>"
-        try:
-            return f"<pre>{json.dumps(self.raw, indent=2)}</pre>"
-        except Exception:
-            return f"<pre>{self.raw!s}</pre>"
-
-    def get_citations(self) -> list[Citation]:
-        return self._citations
 
 
 class ParallelExtractResult(Result):
@@ -245,19 +197,7 @@ class ParallelEngine(Engine):
             self.model = kwargs["SEARCH_ENGINE_MODEL"]
 
     def _normalize_domains(self, domains: list[str] | None, max_count: int) -> list[str]:
-        if not isinstance(domains, list):
-            return []
-        seen = set()
-        out = []
-        for d in domains:
-            fqdn = tldextract.extract(d).fqdn
-            if not fqdn or fqdn in seen:
-                continue
-            seen.add(fqdn)
-            out.append(fqdn)
-            if len(out) >= max_count:
-                break
-        return out
+        return normalize_domains(domains, max_count)
 
     def _coerce_search_queries(self, value: Any) -> list[str]:  # called from forward + prepare
         if value is None:
@@ -304,13 +244,11 @@ class ParallelEngine(Engine):
         source_policy = self._build_source_policy(kwargs)
         objective = kwargs.get("objective")
 
-        advanced_settings: dict[str, Any] = {}
+        advanced_settings = {}
         if max_results:
             advanced_settings["max_results"] = max_results
         if max_chars_per_result:
-            advanced_settings["excerpt_settings"] = {
-                "max_chars_per_result": max_chars_per_result
-            }
+            advanced_settings["excerpt_settings"] = {"max_chars_per_result": max_chars_per_result}
         if source_policy:
             advanced_settings["source_policy"] = source_policy
 
@@ -502,15 +440,13 @@ class ParallelEngine(Engine):
         full_content = kwargs.get("full_content", False)
         objective = kwargs.get("objective")
 
-        advanced_settings: dict[str, Any] = {}
+        advanced_settings = {}
         if full_content:
             advanced_settings["full_content"] = full_content
 
         max_chars_per_result = kwargs.get("max_chars_per_result")
         if max_chars_per_result:
-            advanced_settings["excerpt_settings"] = {
-                "max_chars_per_result": max_chars_per_result
-            }
+            advanced_settings["excerpt_settings"] = {"max_chars_per_result": max_chars_per_result}
 
         fetch_policy = kwargs.get("fetch_policy")
         if fetch_policy:
