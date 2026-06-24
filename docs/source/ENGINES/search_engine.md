@@ -153,6 +153,53 @@ Here's how to configure the OpenAI search engine:
 
 This engine calls the OpenAI Responses API under the hood. When you target a reasoning-capable model, pass a `reasoning` dictionary matching the Responses payload schema (for example `{"effort": "low", "summary": "auto"}`). If omitted, the engine falls back to the default effort/summary settings shown above.
 
+## Gemini Search
+You can also use Google's Gemini grounding (via the `google-genai` interactions API with the `google_search` tool) to answer queries with inline citations:
+
+```python
+from symai.interfaces import Interface
+search = Interface("gemini_search")
+res = search('Who won the UEFA Euro 2024 final and what was the score?')
+```
+
+The Gemini search engine returns a `GeminiSearchResult` object that includes citations for the information. You can access these citations using:
+
+```python
+citations = res.get_citations()
+for c in citations:
+    print(f"[{c.id}] {c.title}: {c.url}")
+```
+
+Each citation carries an integer `id`, the source `title`, the resolved `url`, and the `start`/`end` offsets of its `[id] (title)` marker within `res.value`. By default, Gemini's opaque Vertex AI redirect URLs (`vertexaisearch.cloud.google.com`) are followed to the real source URLs; pass `resolve_urls=False` to keep the raw redirects.
+
+The engine supports a few customization options:
+
+```python
+# Provide a custom system prompt
+res = search("Summarize the latest research on quantum error correction",
+             system_message="You are a precise research assistant.")
+
+# Target a specific Gemini model
+res = search("Explain quantum computing developments",
+             model="gemini-3.1-pro-preview")
+
+# Disable Vertex redirect resolution
+res = search("What is the capital of France?", resolve_urls=False)
+```
+
+Here's how to configure the Gemini search engine:
+
+```bash
+{
+    …
+    "SEARCH_ENGINE_API_KEY": "…",
+    "SEARCH_ENGINE_MODEL": "gemini-3.5-flash",
+    …
+}
+```
+
+Supported models are `gemini-3.5-flash` (default), `gemini-3.1-pro-preview`, and `gemini-3.1-flash-lite`. The engine is auto-registered as the active `search` engine when `SEARCH_ENGINE_MODEL` is one of these.
+
 ## Firecrawl
 Firecrawl.dev provides web scraping and search capabilities with built-in handling of dynamic JavaScript content and anti-bot mechanisms. The engine converts web pages into clean markdown and can perform web searches across multiple sources with advanced filtering and content extraction.
 
