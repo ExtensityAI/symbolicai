@@ -216,4 +216,13 @@ class GeminiSearchEngine(Engine, GoogleMixin):
             else argument.kwargs.get("system_message")
         )
 
+        # NOTE: Gemini's interactions API has no `tool_choice`/force-grounding flag (unlike
+        # OpenAI's web_search), so the only lever left is a system-instruction nudge. This
+        # engine is a search engine, so search takes priority over the model's own knowledge;
+        # we always prepend the nudge to force grounded answers.
+        system_message = (
+            f"{system_message}\n\n"
+            "You must always issue a Google Search to ground your answer before responding."
+        )
+
         argument.prop.prepared_input = (system_message, f"{argument.prop.query}")

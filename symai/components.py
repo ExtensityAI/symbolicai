@@ -1326,6 +1326,15 @@ class MetadataTracker(Expression):
                     token_details[(engine_name, model_name)]["completion_breakdown"][
                         "reasoning_tokens"
                     ] += getattr(usage, "total_thought_tokens", 0) or 0
+                    #NOTE: Gemini 3 bills per *search query*, not per prompt. One forward() may
+                    # bundle several queries inside a single google_search_call step, or skip
+                    # search entirely (grounding_tool_count is None then). total_calls counts
+                    # engine invocations, so we surface the authoritative emitted-query count
+                    # (usage.grounding_tool_count) separately via extras. Both the list and the
+                    # inner count are Optional in the SDK, hence the `or` guards.
+                    token_details[(engine_name, model_name)]["extras"]["google_search_queries"] += (
+                        sum(gtc.count or 0 for gtc in usage.grounding_tool_count or [])
+                    )
                 elif engine_name == "CerebrasEngine":
                     usage = metadata["raw_output"].usage
                     token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += (
