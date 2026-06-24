@@ -1,5 +1,5 @@
 from ... import core
-from ...backend.engines.search.engine_serpapi import SearchResult
+from ...backend.engines.search.engine_serpapi import SerpApiSearchResult
 from ...symbol import Expression, Symbol
 
 
@@ -8,11 +8,11 @@ class serpapi(Expression):
         super().__init__(*args, **kwargs)
         self.name = self.__class__.__name__
 
-    def __call__(self, query: Symbol, **kwargs) -> SearchResult:
+    def __call__(self, query: Symbol, **kwargs) -> SerpApiSearchResult:
         query = self._to_symbol(query)
 
         @core.search(query=query.value, **kwargs)
-        def _func(_) -> SearchResult:
+        def _func(_) -> SerpApiSearchResult:
             pass
 
         return _func(self)

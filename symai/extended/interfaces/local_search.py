@@ -4,7 +4,7 @@ from ...backend.engines.index.engine_qdrant import QdrantIndexEngine
 from ...symbol import Expression, Symbol
 
 if TYPE_CHECKING:
-    from ...backend.engines.index.engine_qdrant import SearchResult
+    from ...backend.engines.index.engine_qdrant import QdrantSearchResult
 
 
 class local_search(Expression):
@@ -22,7 +22,7 @@ class local_search(Expression):
         self.api_key = api_key
         self.name = self.__class__.__name__
 
-    def search(self, query: Symbol, **kwargs) -> "SearchResult":
+    def search(self, query: Symbol, **kwargs) -> "QdrantSearchResult":
         symbol = self._to_symbol(query)
         options = dict(kwargs)
 
@@ -38,7 +38,7 @@ class local_search(Expression):
             options["index_top_k"] = index_top_k
 
         # Bypass decorator/EngineRepository pipeline entirely (and thus `forward()`).
-        # We query Qdrant directly and then format results into the same SearchResult
+        # We query Qdrant directly and then format results into the same QdrantSearchResult
         # structure used by `parallel.search` (citations, inline markers, etc.).
         engine_kwargs = {"index_name": index_name}
         if self.url:

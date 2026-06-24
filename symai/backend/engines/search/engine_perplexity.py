@@ -14,7 +14,7 @@ logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
-class SearchResult(Result):
+class PerplexitySearchResult(Result):
     def __init__(self, value, **kwargs) -> None:
         super().__init__(value, **kwargs)
         if value.get("error"):
@@ -90,7 +90,7 @@ class PerplexityEngine(Engine):
             res = requests.post(
                 "https://api.perplexity.ai/chat/completions", json=payload, headers=headers
             )
-            res = SearchResult(res.json())
+            res = PerplexitySearchResult(res.json())
         except Exception as e:
             UserMessage(f"Failed to make request: {e}", raise_with=ValueError)
 
