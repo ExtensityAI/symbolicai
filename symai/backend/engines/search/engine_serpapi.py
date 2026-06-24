@@ -13,7 +13,7 @@ except ImportError:
     GoogleSearch = None
 
 
-class SearchResult(Result):
+class SerpApiSearchResult(Result):
     def __init__(self, value, **kwargs) -> None:
         super().__init__(value, **kwargs)
         if "answer_box" in value and "answer" in value["answer_box"]:
@@ -93,7 +93,7 @@ class SerpApiEngine(Engine):
                 search = GoogleSearch(query)
                 res = search.get_dict()
 
-            toret = SearchResult(res)
+            toret = SerpApiSearchResult(res)
             rsp.append(toret)
 
         metadata = {}

@@ -21,7 +21,7 @@ logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
-class SearchResult(CitationResultMixin, Result):
+class OpenAISearchResult(CitationResultMixin, Result):
     def __init__(self, value, **kwargs) -> None:
         super().__init__(value, **kwargs)
         if value.get("error"):
@@ -164,7 +164,7 @@ class GPTXSearchEngine(Engine):
 
         try:
             res = self.client.responses.create(**payload)
-            res = SearchResult(res.dict())
+            res = OpenAISearchResult(res.dict())
         except Exception as e:
             UserMessage(f"Failed to make request: {e}", raise_with=ValueError)
 
