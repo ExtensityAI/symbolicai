@@ -19,7 +19,7 @@ from anthropic.types import (
 )
 
 from ....components import SelfPrompt
-from ....utils import UserMessage, encode_media_frames
+from ....utils import encode_media_frames
 from ...base import Engine
 from ...mixin.anthropic import AnthropicMixin
 from ...settings import SYMAI_CONFIG
@@ -29,6 +29,8 @@ logging.getLogger("requests").setLevel(logging.ERROR)
 logging.getLogger("urllib").setLevel(logging.ERROR)
 logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
+
+logger = logging.getLogger(__name__)
 
 
 class TokenizerWrapper:
@@ -48,9 +50,7 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         client_timeout: float | None = None,
         client_max_retries: int | None = None,
     ):
-        super().__init__(
-            client_timeout=client_timeout, client_max_retries=client_max_retries
-        )
+        super().__init__(client_timeout=client_timeout, client_max_retries=client_max_retries)
         self.config = deepcopy(SYMAI_CONFIG)
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
         if api_key is not None and model is not None:
@@ -105,8 +105,9 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
             count_response = self.client.messages.count_tokens(**count_params)
             return count_response.input_tokens
         except Exception as e:
-            UserMessage(f"Claude count_tokens failed: {e}")
-            UserMessage(f"Error counting tokens for Claude: {e!s}", raise_with=RuntimeError)
+            logger.warning("Claude count_tokens failed: %s", e)
+            msg = f"Error counting tokens for Claude: {e!s}"
+            raise RuntimeError(msg) from e
 
     def _normalize_messages_for_claude(self, messages):
         claude_messages = []
@@ -132,8 +133,8 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
             return "user", part
         if isinstance(part, dict):
             return part.get("role"), str(part.get("content", ""))
-        UserMessage(f"Unsupported message part type: {type(part)}", raise_with=ValueError)
-        return None, ""
+        msg = f"Unsupported message part type: {type(part)}"
+        raise ValueError(msg)
 
     def _build_message_payload(self, role, content_str):
         message_content = []
@@ -154,7 +155,8 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         return {"role": role, "content": message_content}
 
     def compute_remaining_tokens(self, _prompts: list) -> int:
-        UserMessage("Method not implemented.", raise_with=NotImplementedError)
+        msg = "Method not implemented."
+        raise NotImplementedError(msg)
 
     def _handle_image_content(self, content: str) -> list:
         """Handle image content by processing vision patterns and returning image file data."""
@@ -185,7 +187,7 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
                         {"data": buffer[0], "media_type": f"image/{ext}", "type": "base64"}
                     )
                 else:
-                    UserMessage("No frames found for image!")
+                    logger.warning("No frames found for image!")
         return image_files
 
     def _remove_vision_pattern(self, text: str) -> str:
@@ -204,12 +206,12 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         except Exception as e:
             if anthropic.api_key is None or anthropic.api_key == "":
                 msg = "Anthropic API key is not set. Please set it in the config file or pass it as an argument to the command method."
-                UserMessage(msg)
+                logger.warning(msg)
                 if (
                     self.config["NEUROSYMBOLIC_ENGINE_API_KEY"] is None
                     or self.config["NEUROSYMBOLIC_ENGINE_API_KEY"] == ""
                 ):
-                    UserMessage(msg, raise_with=ValueError)
+                    raise ValueError(msg) from e
                 anthropic.api_key = self.config["NEUROSYMBOLIC_ENGINE_API_KEY"]
 
             callback = self.client.messages.create
@@ -218,7 +220,8 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
             if except_remedy is not None:
                 res = except_remedy(self, e, callback, argument)
             else:
-                UserMessage(f"Error during generation. Caused by: {e}", raise_with=ValueError)
+                msg = f"Error during generation. Caused by: {e}"
+                raise ValueError(msg) from e
 
         if payload["stream"]:
             res = list(res)  # Unpack the iterator to a list
@@ -241,7 +244,6 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
     def _prepare_raw_input(self, argument):
         if not argument.prop.processed_input:
             msg = "Need to provide a prompt instruction to the engine if `raw_input` is enabled!"
-            UserMessage(msg)
             raise ValueError(msg)
         system = NOT_GIVEN
         prompt = copy(argument.prop.processed_input)
@@ -291,10 +293,8 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         if argument.prop.response_format:
             response_format = argument.prop.response_format
             if not (response_format.get("type") is not None):
-                UserMessage(
-                    'Response format type is required! Expected format `{"type": "json_object"}` or other supported types. Refer to Anthropic documentation for details.',
-                    raise_with=AssertionError,
-                )
+                msg = 'Response format type is required! Expected format `{"type": "json_object"}` or other supported types. Refer to Anthropic documentation for details.'
+                raise AssertionError(msg)
             system += non_verbose_output
             system += f"<RESPONSE_FORMAT/>\n{response_format['type']}\n\n"
 
@@ -347,7 +347,8 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
             thinking=argument.kwargs.get("thinking", NOT_GIVEN),
         )
         if response is None:
-            UserMessage("Self-prompting failed to return a response.", raise_with=ValueError)
+            msg = "Self-prompting failed to return a response."
+            raise ValueError(msg)
 
         updated_prompt = self._format_user_prompt(response["user"], image_files)
         return response["system"], updated_prompt
@@ -398,7 +399,7 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         if thinking_type == "adaptive":
             if self.supports_adaptive_thinking(model):
                 return {"type": "adaptive"}, thinking_arg.get("effort")
-            UserMessage(
+            logger.warning(
                 "Adaptive thinking is only supported for claude-opus-4-8, claude-opus-4-7, claude-opus-4-6 and claude-sonnet-4-6; "
                 "falling back to manual thinking."
             )
@@ -435,9 +436,10 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
                 long_context_1m=True, model=model
             )
         if long_context_1m and not use_long_context_1m:
-            UserMessage(
+            logger.warning(
                 "long_context_1m is only supported for claude-opus-4-8, claude-opus-4-7, claude-opus-4-6, claude-sonnet-4-6, and claude-sonnet-4-5; "
-                f"falling back to {effective_context_tokens} token context."
+                "falling back to %s token context.",
+                effective_context_tokens,
             )
 
         extra_headers = None
@@ -506,10 +508,8 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         if isinstance(res, Message):
             return self._collect_message_response(res)
 
-        UserMessage(
-            f"Unexpected response type from Anthropic API: {type(res)}", raise_with=ValueError
-        )
-        return {}
+        msg = f"Unexpected response type from Anthropic API: {type(res)}"
+        raise ValueError(msg)
 
     def _collect_stream_response(self, response_chunks):
         accumulators = {"thinking": "", "text": ""}
@@ -557,9 +557,11 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         tool_call_info = active_tool_calls.pop(chunk.index)
         try:
             tool_call_info["input"] = json.loads(tool_call_info["input_json_str"])
-        except json.JSONDecodeError as error:
-            UserMessage(
-                f"Failed to parse JSON for tool call {tool_call_info['name']}: {error}. Raw JSON: '{tool_call_info['input_json_str']}'"
+        except json.JSONDecodeError:
+            logger.exception(
+                "Failed to parse JSON for tool call %s. Raw JSON: '%s'",
+                tool_call_info["name"],
+                tool_call_info["input_json_str"],
             )
             tool_call_info["input"] = {}
         tool_calls_raw.append(tool_call_info)
@@ -569,7 +571,7 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
             return None
 
         if len(tool_calls_raw) > 1:
-            UserMessage(
+            logger.warning(
                 "Multiple tool calls detected in the stream but only the first one will be processed."
             )
 
@@ -605,7 +607,7 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
 
         if isinstance(content_block, ToolUseBlock):
             if tool_call_detected:
-                UserMessage(
+                logger.warning(
                     "Multiple tool use blocks detected in the response but only the first one will be processed."
                 )
                 return function_call_data, tool_call_detected
