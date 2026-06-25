@@ -3,7 +3,6 @@ from copy import deepcopy
 
 import requests
 
-from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG, SYMSERVER_CONFIG
 
@@ -11,6 +10,8 @@ logging.getLogger("requests").setLevel(logging.ERROR)
 logging.getLogger("urllib").setLevel(logging.ERROR)
 logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
+
+logger = logging.getLogger(__name__)
 
 
 class HFTokenizer:
@@ -27,9 +28,8 @@ class HFTokenizer:
         )
 
         if res.status_code != 200:
-            UserMessage(
-                f"Request failed with status code: {res.status_code}", raise_with=ValueError
-            )
+            msg = f"Request failed with status code: {res.status_code}"
+            raise ValueError(msg)
 
         res = res.json()
 
@@ -46,9 +46,8 @@ class HFTokenizer:
         )
 
         if res.status_code != 200:
-            UserMessage(
-                f"Request failed with status code: {res.status_code}", raise_with=ValueError
-            )
+            msg = f"Request failed with status code: {res.status_code}"
+            raise ValueError(msg)
 
         res = res.json()
 
@@ -65,10 +64,12 @@ class HFEngine(Engine):
         if self.id() != "neurosymbolic":
             return
         if not SYMSERVER_CONFIG.get("online"):
-            UserMessage(
-                "You are using the huggingface engine, but the server endpoint is not started. Please start the server with `symserver [--args]` or run `symserver --help` to see the available options for this engine.",
-                raise_with=ValueError,
+            msg = (
+                "You are using the huggingface engine, but the server endpoint is not started. "
+                "Please start the server with `symserver [--args]` or run `symserver --help` "
+                "to see the available options for this engine."
             )
+            raise ValueError(msg)
         self.server_endpoint = (
             f"http://{SYMSERVER_CONFIG.get('host')}:{SYMSERVER_CONFIG.get('port')}"
         )
@@ -92,16 +93,12 @@ class HFEngine(Engine):
             self.except_remedy = kwargs["except_remedy"]
 
     def compute_required_tokens(self, _messages) -> int:
-        UserMessage(
-            "Not implemented for HFEngine. Please use the tokenizer directly to compute tokens.",
-            raise_with=NotImplementedError,
-        )
+        msg = "Not implemented for HFEngine. Please use the tokenizer directly to compute tokens."
+        raise NotImplementedError(msg)
 
     def compute_remaining_tokens(self, _prompts: list) -> int:
-        UserMessage(
-            "Not implemented for HFEngine. Please use the tokenizer directly to compute tokens.",
-            raise_with=NotImplementedError,
-        )
+        msg = "Not implemented for HFEngine. Please use the tokenizer directly to compute tokens."
+        raise NotImplementedError(msg)
 
     def forward(self, argument):
         kwargs = argument.kwargs
@@ -142,9 +139,8 @@ class HFEngine(Engine):
             )
 
             if res.status_code != 200:
-                UserMessage(
-                    f"Request failed with status code: {res.status_code}", raise_with=ValueError
-                )
+                msg = f"Request failed with status code: {res.status_code}"
+                raise ValueError(msg)
 
             res = res.json()
 
@@ -152,7 +148,8 @@ class HFEngine(Engine):
             if except_remedy is not None:
                 res = except_remedy(self, e, argument)
             else:
-                UserMessage(f"Error during generation. Caused by: {e}", raise_with=ValueError)
+                msg = f"Error during generation. Caused by: {e}"
+                raise ValueError(msg) from e
 
         metadata = {"raw_output": res}
 
@@ -162,10 +159,8 @@ class HFEngine(Engine):
 
     def _prepare_raw_input(self, argument):
         if not argument.prop.processed_input:
-            UserMessage(
-                "Need to provide a prompt instruction to the engine if raw_input is enabled.",
-                raise_with=ValueError,
-            )
+            msg = "Need to provide a prompt instruction to the engine if raw_input is enabled."
+            raise ValueError(msg)
         value = argument.prop.processed_input
         if not isinstance(value, list):
             if not isinstance(value, dict):
