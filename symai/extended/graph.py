@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Callable
 from multiprocessing import Pool
 
@@ -7,7 +8,8 @@ from ..post_processors import StripPostProcessor
 from ..pre_processors import PreProcessor
 from ..prompts import Prompt
 from ..symbol import Expression, Symbol
-from ..utils import UserMessage
+
+logger = logging.getLogger(__name__)
 
 _DEFAULT_SENTENCE_FORMATTER = SentenceFormatter()
 
@@ -65,7 +67,7 @@ class Graph(Expression):
 
         if len(str(s)) > 0:
             if self.verbose:
-                UserMessage(str(s))
+                logger.debug("%s", s)
             r = _func(self, s)
             rec = str(r)
             lines = rec.split("\n")
@@ -83,7 +85,7 @@ class Graph(Expression):
                             res += stripped_line + "\n"
                     except Exception as e:
                         if self.verbose:
-                            UserMessage(str(e))
+                            logger.warning("%s", e)
                         pass
         return res
 

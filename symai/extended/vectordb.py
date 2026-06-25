@@ -15,7 +15,6 @@ except ImportError:
 
 from ..backend.settings import HOME_PATH, SYMAI_CONFIG
 from ..symbol import Expression, Symbol
-from ..utils import UserMessage
 from .metrics import (
     adams_similarity,
     cosine_similarity,
@@ -27,6 +26,8 @@ from .metrics import (
 
 logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
 logging.getLogger("datasets").setLevel(logging.WARNING)
+
+logger = logging.getLogger(__name__)
 
 
 class VectorDB(Expression):
@@ -85,10 +86,8 @@ class VectorDB(Expression):
         elif "adams" in similarity_metric:
             self.similarity_metric = adams_similarity
         else:
-            UserMessage(
-                "Similarity metric not supported. Please use either 'dot', 'cosine', 'euclidean', 'adams', or 'derrida'.",
-                raise_with=ValueError,
-            )
+            msg = "Similarity metric not supported. Please use either 'dot', 'cosine', 'euclidean', 'adams', or 'derrida'."
+            raise ValueError(msg)
 
         if load_on_init:
             if isinstance(load_on_init, (str, Path)):
@@ -104,11 +103,8 @@ class VectorDB(Expression):
         # registry via Symbol(x).embedding.
         if not model_name or model_name.startswith("local:"):
             if SentenceTransformer is None:
-                UserMessage(
-                    "sentence-transformers is not installed. "
-                    "Install with: pip install symbolicai[hf]",
-                    raise_with=ImportError,
-                )
+                msg = "sentence-transformers is not installed. Install with: pip install symbolicai[hf]"
+                raise ImportError(msg)
             model_name = (
                 model_name.replace("local:", "") or "sentence-transformers/all-mpnet-base-v2"
             )
@@ -173,7 +169,8 @@ class VectorDB(Expression):
             return [emb]
         if len(emb.shape) == 2:
             return [emb[index] for index in range(emb.shape[0])]
-        return UserMessage("Embeddings must be a 1D or 2D array.", raise_with=ValueError)
+        msg = "Embeddings must be a 1D or 2D array."
+        raise ValueError(msg)
 
     def _raise_texts_unassigned(self):
         error_message = "local variable 'texts' referenced before assignment"
@@ -269,7 +266,8 @@ class VectorDB(Expression):
         if self.vectors is None:
             self.vectors = np.empty((0, len(vector)), dtype=np.float32)
         elif len(vector) != self.vectors.shape[1]:
-            UserMessage("All vectors must have the same length.", raise_with=ValueError)
+            msg = "All vectors must have the same length."
+            raise ValueError(msg)
         # convert the vector to a numpy array if it is not already
         if isinstance(vector, list):
             vector = np.array(vector)
