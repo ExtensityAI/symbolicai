@@ -1,6 +1,7 @@
 import copy
 import inspect
 import json
+import logging
 import sys
 from collections import defaultdict
 from collections.abc import Callable, Iterator
@@ -17,7 +18,6 @@ if TYPE_CHECKING:
 import numpy as np
 from beartype import beartype
 from box import Box
-from loguru import logger
 from pyvis.network import Network
 from tqdm import tqdm
 
@@ -43,6 +43,8 @@ from .utils import UserMessage
 if TYPE_CHECKING:
     from .backend.engines.index.engine_vectordb import VectorDBResult
 
+
+logger = logging.getLogger(__name__)
 _DEFAULT_PARAGRAPH_FORMATTER = ParagraphFormatter()
 
 
@@ -538,10 +540,30 @@ class FileReader(Expression):
     @staticmethod
     def get_files(folder_path: str, max_depth: int = 1) -> list[str]:
         accepted_formats = [
-            ".pdf", ".md", ".txt", ".py", ".json", ".yaml", ".yml",
-            ".csv", ".tsv", ".log", ".docx", ".pptx", ".xlsx", ".xls",
-            ".toml", ".html", ".htm", ".xml", ".epub", ".ipynb", ".zip",
-            ".jpg", ".jpeg", ".png",
+            ".pdf",
+            ".md",
+            ".txt",
+            ".py",
+            ".json",
+            ".yaml",
+            ".yml",
+            ".csv",
+            ".tsv",
+            ".log",
+            ".docx",
+            ".pptx",
+            ".xlsx",
+            ".xls",
+            ".toml",
+            ".html",
+            ".htm",
+            ".xml",
+            ".epub",
+            ".ipynb",
+            ".zip",
+            ".jpg",
+            ".jpeg",
+            ".png",
         ]
 
         folder = Path(folder_path)
@@ -572,6 +594,7 @@ class FileReader(Expression):
     def _read_file(path, **kwargs):
         """Top-level helper for multiprocessing — returns a plain string."""
         from symai import Symbol  # noqa: PLC0415
+
         return Symbol(path).open(**kwargs).value
 
     def forward(self, files: str | list[str], workers: int = 1, **kwargs) -> Expression:
@@ -585,7 +608,9 @@ class FileReader(Expression):
         else:
             results = [None] * len(files)
             with ProcessPoolExecutor(max_workers=workers) as pool:
-                futures = {pool.submit(self._read_file, f, **kwargs): i for i, f in enumerate(files)}
+                futures = {
+                    pool.submit(self._read_file, f, **kwargs): i for i, f in enumerate(files)
+                }
                 for fut in as_completed(futures):
                     results[futures[fut]] = fut.result()
         return self.sym_return_type(results)
@@ -1305,7 +1330,7 @@ class MetadataTracker(Expression):
                         "reasoning_tokens"
                     ] += usage.output_tokens_details.reasoning_tokens
                 elif engine_name == "GeminiSearchEngine":
-                    #NOTE: Gemini grounding exposes token accounting on `interaction.usage`
+                    # NOTE: Gemini grounding exposes token accounting on `interaction.usage`
                     # with its own field names (total_input_tokens, total_thought_tokens,
                     # total_cached_tokens). These fields are Optional in the SDK, so guard
                     # against None with `or 0`.
@@ -1326,7 +1351,7 @@ class MetadataTracker(Expression):
                     token_details[(engine_name, model_name)]["completion_breakdown"][
                         "reasoning_tokens"
                     ] += getattr(usage, "total_thought_tokens", 0) or 0
-                    #NOTE: Gemini 3 bills per *search query*, not per prompt. One forward() may
+                    # NOTE: Gemini 3 bills per *search query*, not per prompt. One forward() may
                     # bundle several queries inside a single google_search_call step, or skip
                     # search entirely (grounding_tool_count is None then). total_calls counts
                     # engine invocations, so we surface the authoritative emitted-query count
@@ -1359,7 +1384,7 @@ class MetadataTracker(Expression):
                     usage = self._extract_claude_usage(raw_output)
                     if usage is None:
                         # Skip if we can't extract usage (shouldn't happen normally)
-                        logger.warning(f"Could not extract usage from {engine_name} response.")
+                        logger.warning("Could not extract usage from %s response.", engine_name)
                         token_details[(engine_name, model_name)]["usage"]["total_calls"] += 1
                         token_details[(engine_name, model_name)]["prompt_breakdown"][
                             "cached_tokens"
@@ -1460,8 +1485,13 @@ class MetadataTracker(Expression):
                         )
                     # Note: DeepSeek reasoning tokens might be in completion_tokens_details
                     reasoning_tokens = 0
-                    if hasattr(usage, "completion_tokens_details") and usage.completion_tokens_details:
-                        reasoning_tokens = getattr(usage.completion_tokens_details, "reasoning_tokens", 0) or 0
+                    if (
+                        hasattr(usage, "completion_tokens_details")
+                        and usage.completion_tokens_details
+                    ):
+                        reasoning_tokens = (
+                            getattr(usage.completion_tokens_details, "reasoning_tokens", 0) or 0
+                        )
                     token_details[(engine_name, model_name)]["completion_breakdown"][
                         "reasoning_tokens"
                     ] += reasoning_tokens
@@ -1485,7 +1515,7 @@ class MetadataTracker(Expression):
                     extras["pages_processed"] = extras.get("pages_processed", 0) + pages_processed
                     extras["doc_size_bytes"] = extras.get("doc_size_bytes", 0) + doc_size_bytes
                 else:
-                    logger.warning(f"Tracking {engine_name} is not supported.")
+                    logger.warning("Tracking %s is not supported.", engine_name)
                     continue
             except Exception as e:
                 UserMessage(
@@ -1528,12 +1558,14 @@ class MetadataTracker(Expression):
                     output_tokens += getattr(evt_usage, "output_tokens", 0) or 0
 
             # Create a simple object-like dict to hold usage (using Box for attribute access)
-            return Box({
-                "input_tokens": input_tokens,
-                "output_tokens": output_tokens,
-                "cache_creation_input_tokens": cache_creation,
-                "cache_read_input_tokens": cache_read,
-            })
+            return Box(
+                {
+                    "input_tokens": input_tokens,
+                    "output_tokens": output_tokens,
+                    "cache_creation_input_tokens": cache_creation,
+                    "cache_read_input_tokens": cache_read,
+                }
+            )
 
         return None
 
@@ -1653,7 +1685,8 @@ class MetadataTracker(Expression):
         for (_, engine_name), metadata in list(self._metadata.items())[1:]:
             if not self._can_accumulate_engine(engine_name):
                 logger.warning(
-                    f"Metadata accumulation for {engine_name} is not supported. Try `.usage` instead for now."
+                    "Metadata accumulation for %s is not supported. Try `.usage` instead for now.",
+                    engine_name,
                 )
                 continue
 
@@ -1915,13 +1948,7 @@ class ChonkieChunker(Expression):
             chunker = chunker_class(embedding_model=self.embedding_model_name, **chunker_kwargs)
 
         # CodeChunker and TableChunker use tokenizer (can use string or Tokenizer object)
-        elif chunker_name in ["CodeChunker", "TableChunker"]:
-            if "tokenizer" not in chunker_kwargs:
-                chunker_kwargs["tokenizer"] = self.tokenizer_name
-            chunker = chunker_class(**chunker_kwargs)
-
-        # SlumberChunker uses tokenizer (can use string or Tokenizer object)
-        elif chunker_name == "SlumberChunker":
+        elif chunker_name in ["CodeChunker", "TableChunker"] or chunker_name == "SlumberChunker":
             if "tokenizer" not in chunker_kwargs:
                 chunker_kwargs["tokenizer"] = self.tokenizer_name
             chunker = chunker_class(**chunker_kwargs)

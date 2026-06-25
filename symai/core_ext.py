@@ -8,16 +8,17 @@ import random
 import threading
 import time
 import traceback
+import warnings
 from collections.abc import Callable
 from pathlib import Path
 
 import dill
-from loguru import logger
 
 from . import __root_dir__
 from .functional import EngineRepository
 from .utils import UserMessage
 
+logger = logging.getLogger(__name__)
 logging.getLogger("multiprocessing").setLevel(logging.ERROR)
 
 # -----------------------------------------------------------
@@ -298,9 +299,9 @@ def deprecated(reason: str = ""):
 
             @functools.wraps(original_init)
             def new_init(self, *args, **kwargs):
-                logger.warning(
+                warnings.warn(
                     f"{obj.__name__} is deprecated and will be removed in future versions. {reason}",
-                    category=DeprecationWarning,
+                    DeprecationWarning,
                     stacklevel=2,
                 )
                 original_init(self, *args, **kwargs)
@@ -311,9 +312,9 @@ def deprecated(reason: str = ""):
         # If obj is a function or method
         @functools.wraps(obj)
         def wrapper(*args, **kwargs):
-            logger.warning(
+            warnings.warn(
                 f"{obj.__name__} is deprecated and will be removed in future versions. {reason}",
-                category=DeprecationWarning,
+                DeprecationWarning,
                 stacklevel=2,
             )
             return obj(*args, **kwargs)

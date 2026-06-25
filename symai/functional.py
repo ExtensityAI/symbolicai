@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 import importlib
 import inspect
+import logging
 import pkgutil
 import sys
 import traceback
@@ -10,7 +11,6 @@ import warnings
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from loguru import logger
 from pydantic import BaseModel
 
 from .backend import engines
@@ -34,6 +34,8 @@ else:
     Callable = Any
     ModuleType = type(importlib)
     PostProcessor = PreProcessor = Any
+
+logger = logging.getLogger(__name__)
 
 
 class ConstraintViolationException(Exception):
@@ -69,7 +71,7 @@ def _cast_collection_response(rsp: Any, return_constraint: type) -> Any:
     try:
         res = ast.literal_eval(rsp)
     except Exception:
-        logger.warning(f"Failed to cast return type to {return_constraint} for {rsp!s}")
+        logger.warning("Failed to cast return type to %s for %s", return_constraint, rsp)
         warnings.warn(f"Failed to cast return type to {return_constraint}", stacklevel=2)
         res = rsp
     assert res is not None, (
@@ -282,8 +284,8 @@ def _process_query_single(
             break
         except Exception as e:
             stack_trace = traceback.format_exc()
-            logger.error(f"Failed to execute query: {e!s}")
-            logger.error(f"Stack trace: {stack_trace}")
+            logger.error("Failed to execute query: %s", e)
+            logger.error("Stack trace: %s", stack_trace)
             if _ == trials - 1:
                 result = _execute_query_fallback(
                     func, instance, argument, error=e, stack_trace=stack_trace
@@ -330,8 +332,8 @@ def _run_query_with_retries(
             break
         except Exception as error:
             stack_trace = traceback.format_exc()
-            logger.error(f"Failed to execute query: {error!s}")
-            logger.error(f"Stack trace: {stack_trace}")
+            logger.error("Failed to execute query: %s", error)
+            logger.error("Stack trace: %s", stack_trace)
             if try_cnt < trials:
                 continue
             rsp = _execute_query_fallback(
@@ -492,7 +494,7 @@ class EngineRepository:
                                 id_, instance, allow_engine_override=allow_engine_override
                             )
                     except Exception as e:
-                        logger.error(f"Failed to register engine {attribute!s}: {e!s}")
+                        logger.error("Failed to register engine %s: %s", attribute, e)
 
     @staticmethod
     def get(engine_name: str, *_args, **_kwargs):

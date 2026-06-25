@@ -7,12 +7,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-from loguru import logger
-
 from .backend.settings import HOME_PATH
 from .symbol import Expression
 from .utils import UserMessage
 
+logger = logging.getLogger(__name__)
 logging.getLogger("subprocess").setLevel(logging.ERROR)
 
 
@@ -59,7 +58,7 @@ class Import(Expression):
             if module_path.exists():
                 shutil.rmtree(module_path)
             shutil.copytree(local_path, module_path)
-            logger.info(f"Copied local package from {local_path} to {module_path}")
+            logger.info("Copied local package from %s to %s", local_path, module_path)
 
             # Install dependencies
             package_json = module_path / "package.json"
@@ -86,7 +85,7 @@ class Import(Expression):
                                     [sys.executable, "-m", "pip", "install", dependency_name]
                                 )
         except Exception as e:
-            logger.error(f"Error installing from local path: {e}")
+            logger.error("Error installing from local path: %s", e)
             raise
 
     @staticmethod
@@ -154,7 +153,7 @@ class Import(Expression):
                     )
                     module_classes.append(module_class)
                 except (ImportError, ModuleNotFoundError) as e:
-                    logger.error(f"Error importing module {relative_module_path}: {e}")
+                    logger.error("Error importing module %s: %s", relative_module_path, e)
                     raise
         return module_classes
 
@@ -207,7 +206,7 @@ class Import(Expression):
                     module_obj = importlib.import_module(relative_module_path)
                     module_class = getattr(module_obj, expr["type"])
                 except (ImportError, ModuleNotFoundError) as e:
-                    logger.error(f"Error importing module {relative_module_path}: {e}")
+                    logger.error("Error importing module %s: %s", relative_module_path, e)
                     raise
 
                 if return_single:
@@ -277,7 +276,7 @@ class Import(Expression):
         relative_module_path = ".".join([*module_parts, module_rel])
         class_ = expr["type"]
         if verbose:
-            logger.info(f"Loading module '{relative_module_path}.{expr['type']}'")
+            logger.info("Loading module '%s.%s'", relative_module_path, expr["type"])
         module_class = getattr(importlib.import_module(relative_module_path), class_)
         return module_class(*args, **kwargs)
 
@@ -304,12 +303,12 @@ class Import(Expression):
         if not Import.exists(module):
             if is_local_path:
                 Import.get_from_local(module, str(local_path_obj))
-                logger.success(f"Module '{module}' installed from local path.")
+                logger.info("Module '%s' installed from local path.", module)
             else:
                 Import.get_from_github(module, submodules)
-                logger.success(f"Module '{module}' installed from GitHub.")
+                logger.info("Module '%s' installed from GitHub.", module)
         else:
-            logger.info(f"Module '{module}' already installed.")
+            logger.info("Module '%s' already installed.", module)
 
     @staticmethod
     def remove(module: str):
@@ -327,9 +326,9 @@ class Import(Expression):
                     path_obj.unlink()
 
                 shutil.rmtree(module_path_obj, onerror=del_rw)
-                logger.success(f"Removed local module at '{module}'")
+                logger.info("Removed local module at '%s'", module)
             else:
-                logger.error(f"Local module '{module}' not found.")
+                logger.error("Local module '%s' not found.", module)
         else:
             # For GitHub modules, remove from packages directory
             module_path = BASE_PACKAGE_PATH / module
@@ -341,15 +340,15 @@ class Import(Expression):
                     path_obj.unlink()
 
                 shutil.rmtree(module_path, onerror=del_rw)
-                logger.success(f"Removed module '{module}'")
+                logger.info("Removed module '%s'", module)
 
                 # Check if folder is empty and remove it
                 parent_path = BASE_PACKAGE_PATH / module.split("/", maxsplit=1)[0]
                 if parent_path.exists() and not any(parent_path.iterdir()):
                     parent_path.rmdir()
-                    logger.info(f"Removed empty parent folder '{parent_path}'")
+                    logger.info("Removed empty parent folder '%s'", parent_path)
             else:
-                logger.error(f"Module '{module}' not found.")
+                logger.error("Module '%s' not found.", module)
 
     @staticmethod
     def list_installed():
@@ -388,10 +387,10 @@ class Import(Expression):
             if submodules:
                 pull_cmd.extend(["pull", "--recurse-submodules"])
                 subprocess.check_call(pull_cmd)
-                logger.success(f"Module '{module}' and its submodules updated.")
+                logger.info("Module '%s' and its submodules updated.", module)
             else:
                 pull_cmd.extend(["pull"])
                 subprocess.check_call(pull_cmd)
-                logger.success(f"Module '{module}' updated.")
+                logger.info("Module '%s' updated.", module)
         else:
-            logger.warning(f"Module '{module}' not found.")
+            logger.warning("Module '%s' not found.", module)
