@@ -1,7 +1,5 @@
 import json
 
-from IPython.utils import io
-
 from ....symbol import Result
 from ....utils import UserMessage
 from ...base import Engine
@@ -89,9 +87,8 @@ class SerpApiEngine(Engine):
             }
 
             # send to Google
-            with io.capture_output():  # disables prints from GoogleSearch
-                search = GoogleSearch(query)
-                res = search.get_dict()
+            search = GoogleSearch(query)  # TODO refactor!: make sure we suppress io again here
+            res = search.get_dict()
 
             toret = SerpApiSearchResult(res)
             rsp.append(toret)
