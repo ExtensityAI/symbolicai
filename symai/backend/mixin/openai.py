@@ -1,5 +1,3 @@
-from ...utils import UserMessage
-
 SUPPORTED_COMPLETION_MODELS = [
     "davinci-002",
 ]
@@ -128,7 +126,6 @@ class OpenAIMixin:
         ):
             return 1_050_000
         msg = f"Unsupported model: {self.model}"
-        UserMessage(msg)
         raise ValueError(msg)
 
     def api_max_response_tokens(self):
@@ -185,7 +182,6 @@ class OpenAIMixin:
         if self.model == "gpt-5-pro":
             return 272_000
         msg = f"Unsupported model: {self.model}"
-        UserMessage(msg)
         raise ValueError(msg)
 
     def api_embedding_dims(self):
@@ -196,5 +192,4 @@ class OpenAIMixin:
         if self.model == "text-embedding-3-large":
             return 3_072
         msg = f"Unsupported model: {self.model}"
-        UserMessage(msg)
         raise ValueError(msg)

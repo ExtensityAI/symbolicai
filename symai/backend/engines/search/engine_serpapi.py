@@ -1,9 +1,11 @@
 import json
+import logging
 
 from ....symbol import Result
-from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
+
+logger = logging.getLogger(__name__)
 
 try:
     from serpapi import GoogleSearch
@@ -56,7 +58,7 @@ class SerpApiEngine(Engine):
             and self.config.get("SEARCH_ENGINE_MODEL") == "google"
         ):  # only support Google for now
             if GoogleSearch is None:
-                UserMessage(
+                logger.warning(
                     "SerpApi is not installed. Please install it with `pip install symbolicai[serpapi]`"
                 )
             return "search"

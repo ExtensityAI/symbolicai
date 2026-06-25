@@ -1,12 +1,14 @@
 import itertools
+import logging
 from copy import deepcopy
 from typing import ClassVar
 
 from ....extended.vectordb import VectorDB
 from ....symbol import Result
-from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
+
+logger = logging.getLogger(__name__)
 
 
 def chunks(iterable, batch_size=100):
@@ -139,10 +141,8 @@ class VectorDBIndexEngine(Engine):
 
         if operation == "search":
             if isinstance(query, list) and len(query) > 1:
-                UserMessage(
-                    "VectorDB indexing engine does not support multiple queries. Pass a single string query instead.",
-                    raise_with=ValueError,
-                )
+                msg = "VectorDB indexing engine does not support multiple queries. Pass a single string query instead."
+                raise ValueError(msg)
             query_vector = self.index[index_name].embedding_function([query])[0]
             results = self.index[index_name](
                 vector=query_vector, top_k=top_k, return_similarities=similarities
@@ -173,15 +173,11 @@ class VectorDBIndexEngine(Engine):
             elif kwargs.get("purge", maybe_as_prompt == "purge"):
                 self.purge(index_name)
             else:
-                UserMessage(
-                    'Invalid configuration; please use either "load", "save", or "purge".',
-                    raise_with=ValueError,
-                )
+                msg = 'Invalid configuration; please use either "load", "save", or "purge".'
+                raise ValueError(msg)
         else:
-            UserMessage(
-                'Invalid operation; please use either "search", "add", or "config".',
-                raise_with=ValueError,
-            )
+            msg = 'Invalid operation; please use either "search", "add", or "config".'
+            raise ValueError(msg)
 
         metadata = {}
         rsp = VectorDBResult(rsp, query[0], None)

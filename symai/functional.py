@@ -21,7 +21,6 @@ from .prompts import (
     ProbabilisticBooleanModeStrict,
     ProbabilisticBooleanModeTolerant,
 )
-from .utils import UserMessage
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -63,8 +62,8 @@ def _probabilistic_bool(rsp: str, mode=ProbabilisticBooleanMode.TOLERANT) -> boo
     if mode == ProbabilisticBooleanMode.TOLERANT:
         # allow for probabilistic boolean / fault tolerance
         return val in ProbabilisticBooleanModeTolerant
-    UserMessage(f"Invalid mode {mode} for probabilistic boolean!", raise_with=ValueError)
-    return False
+    msg = f"Invalid mode {mode} for probabilistic boolean!"
+    raise ValueError(msg)
 
 
 def _cast_collection_response(rsp: Any, return_constraint: type) -> Any:
@@ -91,7 +90,8 @@ def _cast_with_fallback(rsp: Any, return_constraint: type) -> Any:
         return return_constraint(rsp)
     except (ValueError, TypeError):
         if return_constraint is int:
-            UserMessage(f"Cannot convert {rsp} to int", raise_with=ConstraintViolationException)
+            msg = f"Cannot convert {rsp} to int"
+            raise ConstraintViolationException(msg) from None
         warnings.warn(f"Failed to cast {rsp} to {return_constraint}", stacklevel=2)
         return rsp
 
@@ -135,10 +135,8 @@ def _apply_postprocessors(
 
     for constraint in argument.prop.constraints:
         if not constraint(rsp):
-            UserMessage(
-                f"Constraint not satisfied for value {rsp!r} with constraint {constraint}",
-                raise_with=ConstraintViolationException,
-            )
+            msg = f"Constraint not satisfied for value {rsp!r} with constraint {constraint}"
+            raise ConstraintViolationException(msg)
     return rsp, metadata
 
 
@@ -418,10 +416,10 @@ class EngineRepository:
         self = EngineRepository()
         # Check if the engine is already registered
         if id in self._engines and not allow_engine_override:
-            UserMessage(
-                f"Engine {id} is already registered. Set allow_engine_override to True to override.",
-                raise_with=ValueError,
+            msg = (
+                f"Engine {id} is already registered. Set allow_engine_override to True to override."
             )
+            raise ValueError(msg)
 
         self._engines[id] = engine_instance
 
@@ -441,17 +439,13 @@ class EngineRepository:
         # filter out engine class type
         engines = [t for t in types if issubclass(t, Engine) and t is not Engine]
         if len(engines) > 1 and selected_engine is None:
-            UserMessage(
-                f"Multiple engines found in plugin {plugin}. Please specify the engine to use.",
-                raise_with=ValueError,
-            )
+            msg = f"Multiple engines found in plugin {plugin}. Please specify the engine to use."
+            raise ValueError(msg)
         if len(engines) > 1 and selected_engine is not None:
             engine = [e for e in engines if selected_engine in str(e)]
             if len(engine) <= 0:
-                UserMessage(
-                    f"No engine named {selected_engine} found in plugin {plugin}.",
-                    raise_with=ValueError,
-                )
+                msg = f"No engine named {selected_engine} found in plugin {plugin}."
+                raise ValueError(msg)
         engine = engines[0](*args, **kwargs)
         EngineRepository.register(id, engine, allow_engine_override=allow_engine_override)
 
@@ -481,10 +475,8 @@ class EngineRepository:
                         # Assume the class has an 'init' static method to initialize it
                         engine_id_func_ = getattr(instance, "id", None)
                         if engine_id_func_ is None:
-                            UserMessage(
-                                f"Engine {instance!s} does not have an id. Please add a method id() to the class.",
-                                raise_with=ValueError,
-                            )
+                            msg = f"Engine {instance!s} does not have an id. Please add a method id() to the class."
+                            raise ValueError(msg)
                         # call engine_() to get the id of the engine
                         id_ = engine_id_func_()
                         # only registered configured engine
@@ -509,14 +501,13 @@ class EngineRepository:
             subpackage_name = engine_name.replace("-", "_")
             subpackage = importlib.import_module(f"{engines.__package__}.{subpackage_name}", None)
             if subpackage is None:
-                UserMessage(
-                    f"The symbolicai library does not contain the engine named {engine_name}.",
-                    raise_with=ValueError,
-                )
+                msg = f"The symbolicai library does not contain the engine named {engine_name}."
+                raise ValueError(msg)
             self.register_from_package(subpackage)
         engine = self._engines.get(engine_name, None)
         if engine is None:
-            UserMessage(f"No engine named {engine_name} is registered.", raise_with=ValueError)
+            msg = f"No engine named {engine_name} is registered."
+            raise ValueError(msg)
         return engine
 
     @staticmethod
@@ -538,8 +529,8 @@ class EngineRepository:
             if engine:
                 # Call the command function for the engine with provided arguments
                 return engine.command(*args, **kwargs)
-        UserMessage(f"No engine named <{engine_name}> is registered.", raise_with=ValueError)
-        return None
+        msg = f"No engine named <{engine_name}> is registered."
+        raise ValueError(msg)
 
     @staticmethod
     def query(engine: str, *args, **kwargs) -> tuple:
@@ -550,8 +541,8 @@ class EngineRepository:
             if engine_allows_batching:
                 return _process_query_single(engine, *args, **kwargs)
             return _process_query(engine, *args, **kwargs)
-        UserMessage(f"No engine named {engine} is registered.", raise_with=ValueError)
-        return None
+        msg = f"No engine named {engine} is registered."
+        raise ValueError(msg)
 
     @staticmethod
     def bind_property(engine: str, property: str, *_args, **_kwargs):
@@ -560,8 +551,8 @@ class EngineRepository:
         engine = self.get(engine)
         if engine:
             return getattr(engine, property, None)
-        UserMessage(f"No engine named {engine} is registered.", raise_with=ValueError)
-        return None
+        msg = f"No engine named {engine} is registered."
+        raise ValueError(msg)
 
     def get_dynamic_engine_instance(self):
         # 1) Primary: use ContextVar (fast, async-safe)
@@ -588,9 +579,8 @@ class EngineRepository:
                     else dict(frame.f_locals)
                 )
             except Exception:
-                UserMessage(
-                    "Unexpected failure copying frame locals while resolving DynamicEngine.",
-                    raise_with=None,
+                logger.warning(
+                    "Unexpected failure copying frame locals while resolving DynamicEngine."
                 )
                 locals_copy = {}
             for value in locals_copy.values():

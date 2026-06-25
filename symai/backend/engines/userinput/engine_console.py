@@ -1,5 +1,8 @@
-from ....utils import UserMessage
+import logging
+
 from ...base import Engine
+
+logger = logging.getLogger(__name__)
 
 
 class UserInputEngine(Engine):
@@ -16,7 +19,7 @@ class UserInputEngine(Engine):
 
         mock = kwargs.get("mock", False)
         if mock:  # mock user input
-            UserMessage(msg)
+            logger.info(msg)
             rsp = mock
         else:
             rsp = input(msg)

@@ -1,3 +1,5 @@
+import logging
+
 import requests
 import torch
 
@@ -8,9 +10,10 @@ except ImportError:
 
 from PIL import Image
 
-from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
+
+logger = logging.getLogger(__name__)
 
 
 class Blip2Engine(Engine):
@@ -44,10 +47,8 @@ class Blip2Engine(Engine):
 
     def forward(self, argument):
         if load_model_and_preprocess is None:
-            UserMessage(
-                "Blip2 is not installed. Please install it with `pip install symbolicai[blip2]`",
-                raise_with=ImportError,
-            )
+            msg = "Blip2 is not installed. Please install it with `pip install symbolicai[blip2]`"
+            raise ImportError(msg)
         if self.model is None:
             self.model, self.vis_processors, self.txt_processors = load_model_and_preprocess(
                 name=self.name_id, model_type=self.model_id, is_eval=True, device=self.device

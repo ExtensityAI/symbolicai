@@ -6,7 +6,6 @@ from google import genai
 from google.genai import types
 
 from ....symbol import Result
-from ....utils import UserMessage
 from ...base import Engine
 from ...mixin.google import GoogleMixin
 from ...settings import SYMAI_CONFIG
@@ -18,6 +17,8 @@ logging.getLogger("requests").setLevel(logging.ERROR)
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
+
+logger = logging.getLogger(__name__)
 
 
 SUPPORTED_SEARCH_MODELS = [
@@ -52,7 +53,8 @@ class GeminiSearchResult(CitationResultMixin, Result):
         except Exception as e:
             self._value = None
             self._citations = []
-            UserMessage(f"Failed to parse response: {e}", raise_with=ValueError)
+            msg = f"Failed to parse response: {e}"
+            raise ValueError(msg) from e
 
     def _extract_text_and_annotations(self):
         segments = []
@@ -145,7 +147,8 @@ class GeminiSearchEngine(Engine, GoogleMixin):
         try:
             self.client = self._build_client()
         except Exception as e:
-            UserMessage(f"Failed to initialize Gemini client: {e}", raise_with=ValueError)
+            msg = f"Failed to initialize Gemini client: {e}"
+            raise ValueError(msg) from e
 
     def id(self) -> str:
         model = self.config.get("SEARCH_ENGINE_MODEL")
@@ -176,7 +179,8 @@ class GeminiSearchEngine(Engine, GoogleMixin):
             try:
                 self.client = self._build_client()
             except Exception as e:
-                UserMessage(f"Failed to re-initialize Gemini client: {e}", raise_with=ValueError)
+                msg = f"Failed to re-initialize Gemini client: {e}"
+                raise ValueError(msg) from e
         if "SEARCH_ENGINE_MODEL" in kwargs:
             self.model = kwargs["SEARCH_ENGINE_MODEL"]
 
@@ -200,7 +204,8 @@ class GeminiSearchEngine(Engine, GoogleMixin):
         try:
             interaction = self.client.interactions.create(**create_kwargs)
         except Exception as e:
-            UserMessage(f"Failed to make request: {e}", raise_with=ValueError)
+            msg = f"Failed to make request: {e}"
+            raise ValueError(msg) from e
 
         resolve_urls = kwargs.get("resolve_urls", True)
         res = GeminiSearchResult(interaction.model_dump(), resolve_urls=resolve_urls)

@@ -1,7 +1,9 @@
+import logging
+
 import numpy as np
 from scipy import linalg
 
-from ..utils import UserMessage
+logger = logging.getLogger(__name__)
 
 
 def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
@@ -40,10 +42,10 @@ def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
     # Product might be almost singular
     covmean, _ = linalg.sqrtm(sigma1.dot(sigma2), disp=False)
     if not np.isfinite(covmean).all():
-        msg = (
-            f"fid calculation produces singular product; adding {eps} to diagonal of cov estimates"
+        logger.warning(
+            "fid calculation produces singular product; adding %s to diagonal of cov estimates",
+            eps,
         )
-        UserMessage(msg)
         offset = np.eye(sigma1.shape[0]) * eps
         covmean = linalg.sqrtm((sigma1 + offset).dot(sigma2 + offset))
 
@@ -51,7 +53,8 @@ def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
     if np.iscomplexobj(covmean):
         if not np.allclose(np.diagonal(covmean).imag, 0, atol=1e-3):
             m = np.max(np.abs(covmean.imag))
-            UserMessage(f"Imaginary component {m}", raise_with=ValueError)
+            msg = f"Imaginary component {m}"
+            raise ValueError(msg)
         covmean = covmean.real
 
     tr_covmean = np.trace(covmean)

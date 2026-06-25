@@ -9,7 +9,6 @@ from pathlib import Path
 
 from .backend.settings import HOME_PATH
 from .symbol import Expression
-from .utils import UserMessage
 
 logger = logging.getLogger(__name__)
 logging.getLogger("subprocess").setLevel(logging.ERROR)
@@ -165,7 +164,6 @@ class Import(Expression):
             expression_list = list(expressions)
             return expression_list, len(expression_list) == 1
         msg = "Invalid type for 'expressions'. Must be str, list or tuple."
-        UserMessage(msg)
         raise Exception(msg)
 
     @staticmethod
@@ -251,7 +249,6 @@ class Import(Expression):
             package_path = module_path_obj
             if not (package_path / "package.json").exists():
                 msg = f"No package.json found in {module}"
-                UserMessage(msg)
                 raise ValueError(msg)
 
             with (package_path / "package.json").open() as f:
@@ -268,7 +265,6 @@ class Import(Expression):
                 pkg = json.load(f)
         if "run" not in pkg:
             msg = f"Module '{module}' has no 'run' expression defined."
-            UserMessage(msg)
             raise Exception(msg)
         expr = pkg["run"]
         module_rel = expr["module"].replace("/", ".")
@@ -282,7 +278,6 @@ class Import(Expression):
 
     def __call__(self, *_args, **_kwargs):
         msg = "Cannot call Import class directly. Use Import.load_module_class(module) instead."
-        UserMessage(msg)
         raise Exception(msg)
 
     @staticmethod

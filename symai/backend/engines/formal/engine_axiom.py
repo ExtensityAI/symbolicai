@@ -1,13 +1,15 @@
 import asyncio
 import dataclasses
+import logging
 import threading
 from copy import deepcopy
 from typing import ClassVar
 
 from ....symbol import Result
-from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
+
+logger = logging.getLogger(__name__)
 
 try:
     from axle import AxleClient
@@ -53,10 +55,8 @@ class AxiomEngine(Engine):
             return
 
         if AxleClient is None:
-            UserMessage(
-                "axle is not installed. Install with `pip install symbolicai[lean]`",
-                raise_with=ImportError,
-            )
+            msg = "axle is not installed. Install with `pip install symbolicai[lean]`"
+            raise ImportError(msg)
         self.client = AxleClient(api_key=self.api_key)
 
     def id(self) -> str:
@@ -90,10 +90,8 @@ class AxiomEngine(Engine):
         config = argument.kwargs.get("config", {})
 
         if tool not in self.TOOLS:
-            UserMessage(
-                f"Unknown tool '{tool}'. Must be one of: {', '.join(sorted(self.TOOLS))}",
-                raise_with=ValueError,
-            )
+            msg = f"Unknown tool '{tool}'. Must be one of: {', '.join(sorted(self.TOOLS))}"
+            raise ValueError(msg)
 
         fn = getattr(self.client, tool)
         content = argument.prop.prepared_input

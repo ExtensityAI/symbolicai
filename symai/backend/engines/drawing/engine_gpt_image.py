@@ -8,7 +8,6 @@ import openai
 import requests
 
 from ....symbol import Result
-from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
 
@@ -18,6 +17,8 @@ logging.getLogger("requests").setLevel(logging.ERROR)
 logging.getLogger("urllib").setLevel(logging.ERROR)
 logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
+
+logger = logging.getLogger(__name__)
 
 
 class GPTImageResult(Result):
@@ -101,7 +102,8 @@ class GPTImageEngine(Engine):
         operation = kwargs.get("operation")
 
         if operation is None:
-            UserMessage("Operation not specified!", raise_with=ValueError)
+            msg = "Operation not specified!"
+            raise ValueError(msg)
 
         n = kwargs.get("n", 1)
 
@@ -140,8 +142,8 @@ class GPTImageEngine(Engine):
             return openai.images.create_variation
         if operation == "edit":
             return openai.images.edit
-        UserMessage(f"Unknown image operation: {operation}", raise_with=ValueError)
-        return openai.images.generate
+        msg = f"Unknown image operation: {operation}"
+        raise ValueError(msg)
 
     def _dispatch_operation(self, operation, prompt, model, n, kwargs):
         if operation == "create":
@@ -150,7 +152,8 @@ class GPTImageEngine(Engine):
             return self._execute_variation(model, n, kwargs)
         if operation == "edit":
             return self._execute_edit(prompt, model, n, kwargs)
-        return UserMessage(f"Unknown image operation: {operation}", raise_with=ValueError)
+        msg = f"Unknown image operation: {operation}"
+        raise ValueError(msg)
 
     def _execute_create(self, prompt, model, n, kwargs):
         create_kwargs = {

@@ -6,12 +6,13 @@ import torch
 from PIL import Image
 from transformers import CLIPModel, CLIPProcessor
 
-from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
 
 # supress warnings
 logging.getLogger("PIL").setLevel(logging.WARNING)
+
+logger = logging.getLogger(__name__)
 
 
 class CLIPEngine(Engine):
@@ -75,9 +76,8 @@ class CLIPEngine(Engine):
                 dim=1
             )  # we can take the softmax to get the label probabilities
         else:
-            UserMessage(
-                "CLIPEngine requires either image or text input.", raise_with=NotImplementedError
-            )
+            msg = "CLIPEngine requires either image or text input."
+            raise NotImplementedError(msg)
 
         rsp = rsp.squeeze().detach().cpu().numpy()
 

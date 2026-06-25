@@ -1,4 +1,5 @@
 import json
+import logging
 from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
@@ -9,7 +10,8 @@ import toml
 from pydantic import BaseModel
 
 from .exceptions import TemplatePropertyException
-from .utils import UserMessage
+
+logger = logging.getLogger(__name__)
 
 
 class Prompt:
@@ -28,7 +30,7 @@ class Prompt:
                     self._value += v.value
                 else:
                     msg = f"List of values must be strings or Prompts, not {type(v)}"
-                    UserMessage(msg, raise_with=ValueError)
+                    raise ValueError(msg)
         elif isinstance(value, Prompt):
             self._value += value.value
         elif isinstance(value, Callable):
@@ -36,7 +38,7 @@ class Prompt:
             self._value += res.value
         else:
             msg = f"Prompt value must be of type str, List[str], Prompt, or List[Prompt], not {type(value)}"
-            UserMessage(msg, raise_with=TypeError)
+            raise TypeError(msg)
         self.format_kwargs = format_kwargs
 
     @property
@@ -54,15 +56,15 @@ class Prompt:
                 count = val_.count(template_)
                 if count <= 0:
                     msg = f"Template property `{k}` not found."
-                    UserMessage(msg, raise_with=TemplatePropertyException)
+                    raise TemplatePropertyException(msg)
                 if count > 1:
                     msg = (
                         f"Template property {k} found multiple times ({count}), expected only once."
                     )
-                    UserMessage(msg, raise_with=TemplatePropertyException)
+                    raise TemplatePropertyException(msg)
                 if v is None:
                     msg = f"Invalid value: Template property {k} is None."
-                    UserMessage(msg, raise_with=TemplatePropertyException)
+                    raise TemplatePropertyException(msg)
                 val_ = val_.replace(template_, v)
         return val_
 
@@ -121,7 +123,7 @@ class PromptRegistry:
         folder = Path(folder)
         if not folder.is_dir():
             msg = f"Template folder not found: {folder}"
-            UserMessage(msg, raise_with=FileNotFoundError)
+            raise FileNotFoundError(msg)
 
         manifest_path = folder / "manifest.toml"
         manifest = SimpleNamespace()
@@ -131,7 +133,7 @@ class PromptRegistry:
         jinja_files = list(folder.rglob("*.jinja"))
         if not jinja_files:
             msg = f"No .jinja files found in {folder}"
-            UserMessage(msg, raise_with=ValueError)
+            raise ValueError(msg)
 
         templates = {}
         for path in jinja_files:
@@ -154,7 +156,7 @@ class PromptRegistry:
         """Retrieve a registered raw template."""
         if key not in self._templates:
             msg = f"Template '{key}' not found in registry"
-            UserMessage(msg, raise_with=ValueError)
+            raise ValueError(msg)
         return self._templates[key]
 
     def render(self, key: str, **variables) -> str:

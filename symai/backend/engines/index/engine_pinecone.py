@@ -1,12 +1,14 @@
 import contextlib
 import itertools
+import logging
 import warnings
 
 from .... import core_ext
 from ....symbol import Result
-from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
+
+logger = logging.getLogger(__name__)
 
 warnings.filterwarnings("ignore", module="pinecone")
 with contextlib.suppress(BaseException):
@@ -140,7 +142,7 @@ class PineconeIndexEngine(Engine):
     def id(self) -> str:
         if SYMAI_CONFIG["INDEXING_ENGINE_API_KEY"]:
             if Pinecone is None:
-                UserMessage(
+                logger.warning(
                     "Pinecone is not installed. Please install it with `pip install symbolicai[pinecone]`."
                 )
             return "index"
@@ -203,7 +205,8 @@ class PineconeIndexEngine(Engine):
             self._configure_index(**kwargs)
 
         else:
-            UserMessage("Invalid operation", raise_with=ValueError)
+            msg = "Invalid operation"
+            raise ValueError(msg)
 
         metadata = {}
 

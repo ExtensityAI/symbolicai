@@ -11,6 +11,7 @@ Or it auto-starts when the engine is first used.
 from __future__ import annotations
 
 import contextlib
+import logging
 import socket
 import subprocess
 import sys
@@ -24,9 +25,10 @@ if TYPE_CHECKING:
     from ....core import Argument
 
 from ....symbol import Result
-from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG, SYMSERVER_CONFIG
+
+logger = logging.getLogger(__name__)
 
 
 class LeanResult(Result):
@@ -83,18 +85,18 @@ class Lean4LocalEngine(Engine):
         if self._is_server_healthy():
             return
 
-        UserMessage("Lean4 Server not running. Starting server...")
+        logger.info("Lean4 Server not running. Starting server...")
         self._start_server()
 
         start_time = time.time()
         while time.time() - start_time < self.SERVER_START_TIMEOUT:
             if self._is_server_healthy():
-                UserMessage("Lean4 Server is ready!")
+                logger.info("Lean4 Server is ready!")
                 return
             time.sleep(0.5)
 
         msg = f"Lean4 Server failed to start within {self.SERVER_START_TIMEOUT}s"
-        UserMessage(msg, raise_with=RuntimeError)
+        raise RuntimeError(msg)
 
     def _is_server_healthy(self) -> bool:
         """Check if Lean4 Server is healthy."""
@@ -129,7 +131,7 @@ class Lean4LocalEngine(Engine):
             )
         except (OSError, subprocess.SubprocessError) as e:
             msg = f"Failed to start Lean4 Server: {e}"
-            UserMessage(msg, raise_with=RuntimeError)
+            raise RuntimeError(msg) from e
 
     def _post_check(self, code: str) -> requests.Response:
         """POST to /check, retrying once if the server connection drops."""
@@ -173,8 +175,7 @@ class Lean4LocalEngine(Engine):
             return [result], metadata
 
         except requests.RequestException as e:
-            msg = f"Lean4 Server request failed: {e}"
-            UserMessage(msg)
+            logger.exception("Lean4 Server request failed")
             result = LeanResult({"output": str(e), "status": "error"})
             return [result], {"status": "error", "message": str(e)}
 

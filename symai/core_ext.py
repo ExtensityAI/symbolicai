@@ -16,7 +16,6 @@ import dill
 
 from . import __root_dir__
 from .functional import EngineRepository
-from .utils import UserMessage
 
 logger = logging.getLogger(__name__)
 logging.getLogger("multiprocessing").setLevel(logging.ERROR)
@@ -263,7 +262,7 @@ def error_logging(debug: bool = False):
                 logger.error(e)
                 if debug:
                     # Simple message:
-                    UserMessage(f"Function: {func.__name__} call failed. Error: {e}")
+                    logger.debug("Function: %s call failed. Error: %s", func.__name__, e)
                     # print traceback
                     traceback.print_exc()
                 raise e
