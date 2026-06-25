@@ -317,6 +317,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
             return value.value
         # Preserve Box/BoxList (dict/list subclasses with dot-access) as-is
         from box import Box, BoxList  # noqa: PLC0415
+
         if isinstance(value, (Box, BoxList)):
             return value
         if isinstance(value, list):
@@ -355,7 +356,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
         callables: list[tuple[str, Callable]] | None = None,
         semantic: bool = False,
         **kwargs,
-    ) -> "Symbol":
+    ):
         """
         Create a new Symbol instance.
 
