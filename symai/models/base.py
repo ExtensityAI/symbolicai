@@ -1,4 +1,5 @@
 import json
+import logging
 from enum import Enum
 from functools import lru_cache
 from types import UnionType
@@ -8,7 +9,7 @@ from attr import dataclass
 from pydantic import BaseModel, Field, create_model, model_validator
 from pydantic_core import PydanticUndefined
 
-from ..utils import UserMessage
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -45,7 +46,8 @@ class LLMDataModel(BaseModel):
             if cls._is_const_field(field_info):
                 const_value = cls._get_const_value(field_info)
                 if field_name in values and values[field_name] != const_value:
-                    UserMessage(f"{field_name} must be {const_value!r}", raise_with=ValueError)
+                    msg = f"{field_name} must be {const_value!r}"
+                    raise ValueError(msg)
         return values
 
     @staticmethod

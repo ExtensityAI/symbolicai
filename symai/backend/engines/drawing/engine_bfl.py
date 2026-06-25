@@ -6,7 +6,6 @@ from pathlib import Path
 import requests
 
 from ....symbol import Result
-from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
 
@@ -14,6 +13,8 @@ logging.getLogger("requests").setLevel(logging.ERROR)
 logging.getLogger("urllib").setLevel(logging.ERROR)
 logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
+
+logger = logging.getLogger(__name__)
 
 
 class FluxResult(Result):
@@ -91,10 +92,8 @@ class DrawingEngine(Engine):
                 data = response.json()
                 request_id = data.get("id")
                 if not request_id:
-                    UserMessage(
-                        f"Failed to get request ID! Response payload: {data}",
-                        raise_with=Exception,
-                    )
+                    msg = f"Failed to get request ID! Response payload: {data}"
+                    raise Exception(msg)
 
                 while True:
                     time.sleep(5)
@@ -119,8 +118,8 @@ class DrawingEngine(Engine):
 
             metadata = {}
             return [rsp], metadata
-        UserMessage(f"Unknown operation: {kwargs['operation']}", raise_with=Exception)
-        return [], {}
+        msg = f"Unknown operation: {kwargs['operation']}"
+        raise Exception(msg)
 
     def prepare(self, argument):
         argument.prop.prepared_input = str(argument.prop.processed_input)

@@ -23,11 +23,12 @@ from requests.structures import CaseInsensitiveDict
 from urllib3.util.retry import Retry
 
 from ....symbol import Result
-from ....utils import UserMessage
 from ...base import Engine
 
 logging.getLogger("pdfminer").setLevel(logging.WARNING)
 logging.getLogger("trafilatura").setLevel(logging.WARNING)
+
+logger = logging.getLogger(__name__)
 
 
 class RequestsResult(Result):
@@ -94,7 +95,15 @@ class RequestsEngine(Engine):
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0",
     ]
 
-    def __init__(self, timeout=15, verify_ssl=True, user_agent=None, retries=3, backoff_factor=0.5, retry_status_codes=(500, 502, 503, 504)):
+    def __init__(
+        self,
+        timeout=15,
+        verify_ssl=True,
+        user_agent=None,
+        retries=3,
+        backoff_factor=0.5,
+        retry_status_codes=(500, 502, 503, 504),
+    ):
         """
         Args:
             timeout: Seconds to wait for network operations before aborting.
@@ -111,7 +120,9 @@ class RequestsEngine(Engine):
         self._user_agent_override = user_agent
 
         self.session = requests.Session()
-        self.session.headers.update({k: v for k, v in self.DEFAULT_HEADERS.items() if k != "User-Agent"})
+        self.session.headers.update(
+            {k: v for k, v in self.DEFAULT_HEADERS.items() if k != "User-Agent"}
+        )
 
         retry_strategy = Retry(
             total=retries,
@@ -260,7 +271,12 @@ class RequestsEngine(Engine):
         # Avoid loops
         if target == resp.url:
             return resp
-        return self.session.get(target, timeout=timeout, allow_redirects=True, headers={"User-Agent": self._get_user_agent()})
+        return self.session.get(
+            target,
+            timeout=timeout,
+            allow_redirects=True,
+            headers={"User-Agent": self._get_user_agent()},
+        )
 
     def _fetch_with_playwright(
         self,
@@ -282,7 +298,6 @@ class RequestsEngine(Engine):
             logging.getLogger("playwright").setLevel(logging.WARNING)
         except ImportError as exc:
             msg = "Playwright is not installed. Install symbolicai[scrape] with Playwright extras to enable render_js."
-            UserMessage(msg)
             raise RuntimeError(msg) from exc
 
         timeout_seconds = timeout if timeout is not None else self.timeout
@@ -323,7 +338,6 @@ class RequestsEngine(Engine):
                 final_url, status, headers = self._rendered_response_metadata(page, response)
                 if navigation_error and not content:
                     msg = f"Playwright timed out while rendering {url}"
-                    UserMessage(msg)
                     raise requests.exceptions.Timeout(msg) from navigation_error
             finally:
                 context.close()
@@ -376,8 +390,11 @@ class RequestsEngine(Engine):
             )
         else:
             resp = self.session.get(
-                clean_url, timeout=self.timeout, allow_redirects=True, verify=self.verify_ssl,
-                headers={"User-Agent": self._get_user_agent()}
+                clean_url,
+                timeout=self.timeout,
+                allow_redirects=True,
+                verify=self.verify_ssl,
+                headers={"User-Agent": self._get_user_agent()},
             )
         resp.raise_for_status()
 

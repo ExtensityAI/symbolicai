@@ -6,7 +6,6 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from ....symbol import Result
-from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
 from .utils import (
@@ -21,6 +20,8 @@ logging.getLogger("urllib3").setLevel(logging.ERROR)
 logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
 logging.getLogger("filelock").setLevel(logging.ERROR)
+
+logger = logging.getLogger(__name__)
 
 try:
     from parallel import Parallel
@@ -174,15 +175,16 @@ class ParallelEngine(Engine):
             return
 
         if Parallel is None:
-            UserMessage(
+            msg = (
                 "parallel-web SDK is not installed. Install with 'pip install parallel-web' "
-                "or add it to your environment.",
-                raise_with=ValueError,
+                "or add it to your environment."
             )
+            raise ValueError(msg)
         try:
             self.client = Parallel(api_key=self.api_key)
         except Exception as e:
-            UserMessage(f"Failed to initialize Parallel client: {e}", raise_with=ValueError)
+            msg = f"Failed to initialize Parallel client: {e}"
+            raise ValueError(msg) from e
 
     def id(self) -> str:
         if self.api_key and self.model == "parallel":
@@ -234,9 +236,8 @@ class ParallelEngine(Engine):
 
     def _search(self, queries: list[str], kwargs: dict[str, Any]):
         if not queries:
-            UserMessage(
-                "ParallelEngine._search requires at least one query.", raise_with=ValueError
-            )
+            msg = "ParallelEngine._search requires at least one query."
+            raise ValueError(msg)
 
         mode = kwargs.get("mode") or "advanced"
         max_results = kwargs.get("max_results", 10)
@@ -282,15 +283,15 @@ class ParallelEngine(Engine):
         try:
             result = self.client.search(**search_kwargs)
         except Exception as e:
-            UserMessage(f"Failed to call Parallel Search API: {e}", raise_with=ValueError)
+            msg = f"Failed to call Parallel Search API: {e}"
+            raise ValueError(msg) from e
         return [ParallelSearchResult(result)], {"raw_output": result}
 
     def _task(self, queries: list[str], kwargs: dict[str, Any]):
         processor = kwargs.get("processor")
         if not processor or not str(processor).strip():
-            UserMessage(
-                "ParallelEngine.task requires a non-empty processor.", raise_with=ValueError
-            )
+            msg = "ParallelEngine.task requires a non-empty processor."
+            raise ValueError(msg)
 
         task_input = (
             queries[0]
@@ -316,7 +317,8 @@ class ParallelEngine(Engine):
             try:
                 create_kwargs["task_spec"] = build_task_spec_param(output_schema, task_input)
             except Exception as exc:
-                UserMessage(f"Invalid task output schema: {exc}", raise_with=ValueError)
+                msg = f"Invalid task output schema: {exc}"
+                raise ValueError(msg) from exc
 
         previous_interaction_id = kwargs.get("previous_interaction_id")
         if previous_interaction_id:
@@ -333,7 +335,8 @@ class ParallelEngine(Engine):
         try:
             run = self.client.task_run.create(**create_kwargs)
         except Exception as e:
-            UserMessage(f"Failed to create Parallel task: {e}", raise_with=ValueError)
+            msg = f"Failed to create Parallel task: {e}"
+            raise ValueError(msg) from e
 
         result_kwargs = {}
         timeout = kwargs.get("task_timeout") or kwargs.get("timeout")
@@ -344,12 +347,14 @@ class ParallelEngine(Engine):
             try:
                 result_kwargs["api_timeout"] = int(api_timeout)
             except (TypeError, ValueError) as exc:
-                UserMessage(f"api_timeout must be numeric: {exc}", raise_with=ValueError)
+                msg = f"api_timeout must be numeric: {exc}"
+                raise ValueError(msg) from exc
 
         try:
             task_result = self.client.task_run.result(run.run_id, **result_kwargs)
         except Exception as e:
-            UserMessage(f"Failed to fetch Parallel task result: {e}", raise_with=ValueError)
+            msg = f"Failed to fetch Parallel task result: {e}"
+            raise ValueError(msg) from e
 
         output = task_result.output
         items, prefix = self._task_output_to_items(output)
@@ -477,7 +482,8 @@ class ParallelEngine(Engine):
         try:
             result = self.client.extract(**extract_kwargs)
         except Exception as e:
-            UserMessage(f"Failed to call Parallel Extract API: {e}", raise_with=ValueError)
+            msg = f"Failed to call Parallel Extract API: {e}"
+            raise ValueError(msg) from e
         return [ParallelExtractResult(result)], {"raw_output": result, "final_url": url}
 
     def forward(self, argument):
@@ -492,10 +498,8 @@ class ParallelEngine(Engine):
             raw_query = argument.prop.query
         search_queries = self._coerce_search_queries(raw_query)
         if not search_queries:
-            UserMessage(
-                "ParallelEngine.forward requires at least one non-empty query or url.",
-                raise_with=ValueError,
-            )
+            msg = "ParallelEngine.forward requires at least one non-empty query or url."
+            raise ValueError(msg)
         processor = kwargs.get("processor")
         if processor is not None:
             return self._task(search_queries, kwargs)

@@ -1,4 +1,5 @@
 import contextlib
+import logging
 import re
 from collections.abc import Iterable
 from itertools import takewhile
@@ -6,9 +7,10 @@ from itertools import takewhile
 import torch
 
 from ....symbol import Expression, Result
-from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
+
+logger = logging.getLogger(__name__)
 
 try:
     import whisper
@@ -120,8 +122,10 @@ class WhisperEngine(Engine):
             try:
                 self.model = whisper.load_model(self.model_id, device=device)
             except RuntimeError:
-                UserMessage(
-                    f"Whisper failed to load model on device {device}. Fallback to {device_fallback}."
+                logger.warning(
+                    "Whisper failed to load model on device %s. Fallback to %s.",
+                    device,
+                    device_fallback,
                 )
                 self.model = whisper.load_model(self.model_id, device=device_fallback)
             self.old_model_id = self.model_id
@@ -131,10 +135,8 @@ class WhisperEngine(Engine):
     def id(self) -> str:
         if self.config["SPEECH_TO_TEXT_ENGINE_MODEL"]:
             if whisper is None:
-                UserMessage(
-                    "Whisper is not installed. Please install it with `pip install symbolicai[whisper]`",
-                    raise_with=ImportError,
-                )
+                msg = "Whisper is not installed. Please install it with `pip install symbolicai[whisper]`"
+                raise ImportError(msg)
             return "speech-to-text"
         return super().id()  # default to unregistered
 
@@ -189,7 +191,8 @@ class WhisperEngine(Engine):
             else:
                 rsp = " ".join(self.text)
         else:
-            UserMessage(f"Unknown whisper command prompt: {prompt}", raise_with=ValueError)
+            msg = f"Unknown whisper command prompt: {prompt}"
+            raise ValueError(msg)
 
         metadata = {}
         rsp = WhisperResult(rsp)

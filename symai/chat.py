@@ -10,7 +10,6 @@ from .post_processors import ConsolePostProcessor, StripPostProcessor
 from .pre_processors import ConsoleInputPreProcessor
 from .prompts import MemoryCapabilities, SymbiaCapabilities
 from .symbol import Expression, Symbol
-from .utils import UserMessage
 
 logger = logging.getLogger(__name__)
 logging.getLogger("charset_normalizer").setLevel(logging.ERROR)
@@ -105,7 +104,7 @@ class ChatBot(Expression):
         reply = f"{self.name}: {self._narration(message, self._last_user_input, reflection, context, ltmem_recall, stmem_recall, **kwargs)}"
 
         if end:
-            UserMessage(f"\n\n{reply}", text="extensity")
+            logger.info("\n\n%s", reply)
 
         return Symbol(reply)
 

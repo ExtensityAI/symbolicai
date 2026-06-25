@@ -38,7 +38,6 @@ from .pre_processors import JsonPreProcessor, PreProcessor
 from .processor import ProcessorPipeline
 from .prompts import JsonPromptTemplate, Prompt
 from .symbol import Expression, Metadata, Symbol
-from .utils import UserMessage
 
 if TYPE_CHECKING:
     from .backend.engines.index.engine_vectordb import VectorDBResult
@@ -225,12 +224,12 @@ class Stream(Expression):
             if len(vals) == 1:
                 self.expr = vals[0]
             else:
-                UserMessage(
+                msg = (
                     "This component does either not inherit from TrackerTraceable or has an invalid number of component "
                     f"declarations: {len(vals)}! Only one component that inherits from TrackerTraceable is allowed in the "
-                    "with stream clause.",
-                    raise_with=ValueError,
+                    "with stream clause."
                 )
+                raise ValueError(msg)
 
         res = sym.stream(expr=self.expr, char_token_ratio=self.char_token_ratio, **kwargs)
         if self.retrieval is not None:
@@ -242,7 +241,8 @@ class Stream(Expression):
                 return res[0]
             if self.retrieval == "contains":
                 return [r for r in res if self.expr in r]
-            UserMessage(f"Invalid retrieval method: {self.retrieval}", raise_with=ValueError)
+            msg = f"Invalid retrieval method: {self.retrieval}"
+            raise ValueError(msg)
 
         return res
 
@@ -383,7 +383,8 @@ class Metric(Expression):
             elif len(sym.value.shape) == 2:
                 pass
             else:
-                UserMessage(f"Invalid shape: {sym.value.shape}", raise_with=ValueError)
+                msg = f"Invalid shape: {sym.value.shape}"
+                raise ValueError(msg)
             # normalize between 0 and 1 and sum to 1
             sym._value = np.exp(sym.value) / (np.exp(sym.value).sum() + self.eps)
         return sym
@@ -587,7 +588,7 @@ class FileReader(Expression):
             if FileReader.exists(file):
                 not_skipped.append(file)
             else:
-                UserMessage(f"Skipping file: {file}")
+                logger.warning("Skipping file: %s", file)
         return not_skipped
 
     @staticmethod
@@ -843,8 +844,9 @@ class SimilarityClassification(Expression):
         self.in_memory = in_memory
 
         if self.in_memory:
-            UserMessage(
-                f"Caching mode is enabled! It is your responsability to empty the .cache folder if you did changes to the classes. The cache is located at {HOME_PATH}/cache"
+            logger.warning(
+                "Caching mode is enabled! It is your responsability to empty the .cache folder if you did changes to the classes. The cache is located at %s/cache",
+                HOME_PATH,
             )
 
     def forward(self, x: Symbol) -> Symbol:
@@ -1040,7 +1042,7 @@ class FunctionWithUsage(Function):
 
     def print_verbose(self, msg):
         if self.verbose:
-            UserMessage(msg)
+            logger.info(msg)
 
     def _format_usage(self, prompt_tokens, completion_tokens, total_tokens):
         return Box(
@@ -1089,9 +1091,8 @@ class FunctionWithUsage(Function):
             self.total_tokens += total_tokens
         else:
             if self.missing_usage_exception and "preview" not in kwargs:
-                UserMessage(
-                    "Missing usage in metadata of neursymbolic engine", raise_with=Exception
-                )
+                msg = "Missing usage in metadata of neursymbolic engine"
+                raise Exception(msg)
             prompt_tokens = 0
             completion_tokens = 0
             total_tokens = 0
@@ -1223,7 +1224,7 @@ class MetadataTracker(Expression):
     def _accumulate_completion_token_details(self):
         """Parses the return object and accumulates completion token details per token type"""
         if not self._metadata:
-            UserMessage("No metadata available to generate usage details.")
+            logger.warning("No metadata available to generate usage details.")
             return {}
 
         token_details = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
@@ -1518,9 +1519,8 @@ class MetadataTracker(Expression):
                     logger.warning("Tracking %s is not supported.", engine_name)
                     continue
             except Exception as e:
-                UserMessage(
-                    f"Failed to parse metadata for {engine_name}: {e}", raise_with=AttributeError
-                )
+                msg = f"Failed to parse metadata for {engine_name}: {e}"
+                raise AttributeError(msg) from e
 
         # Convert to normal dict
         return {**token_details}
@@ -1674,7 +1674,7 @@ class MetadataTracker(Expression):
     def _accumulate_metadata(self):
         """Accumulates metadata across all tracked engine calls."""
         if not self._metadata:
-            UserMessage("No metadata available to generate usage details.")
+            logger.warning("No metadata available to generate usage details.")
             return {}
 
         # Use first entry as base
@@ -1790,7 +1790,8 @@ class DynamicEngine(Expression):
                     return engine_class(api_key=self.api_key, model=self.model)
 
             if engine_class is None:
-                UserMessage(f"Unsupported model '{self.model}'", raise_with=ValueError)
+                msg = f"Unsupported model '{self.model}'"
+                raise ValueError(msg)
             # Forward client-level HTTP settings to neurosymbolic engines (all accept
             # client_timeout / client_max_retries); the search/OCR engines above do not.
             client_kwargs = {}
@@ -1800,9 +1801,8 @@ class DynamicEngine(Expression):
                 client_kwargs["client_max_retries"] = self.client_max_retries
             return engine_class(api_key=self.api_key, model=self.model, **client_kwargs)
         except Exception as e:
-            UserMessage(
-                f"Failed to create engine for model '{self.model}': {e!s}", raise_with=ValueError
-            )
+            msg = f"Failed to create engine for model '{self.model}': {e!s}"
+            raise ValueError(msg) from e
 
 
 # Chonkie chunker imports - lazy loaded
@@ -1898,10 +1898,8 @@ class ChonkieChunker(Expression):
         self, data: Symbol, chunker_name: str | None = "RecursiveChunker", **chunker_kwargs
     ) -> Symbol:
         if not _is_chonkie_available():
-            UserMessage(
-                "chonkie library is not installed. Please install it with `pip install chonkie tokenizers`.",
-                raise_with=ImportError,
-            )
+            msg = "chonkie library is not installed. Please install it with `pip install chonkie tokenizers`."
+            raise ImportError(msg)
         chunker = self._resolve_chunker(chunker_name, **chunker_kwargs)
         chunks = [ChonkieChunker.clean_text(chunk.text) for chunk in chunker(data.value)]
         return self._to_symbol(chunks)
@@ -1912,10 +1910,8 @@ class ChonkieChunker(Expression):
             chonkie_modules = _lazy_import_chonkie()
             Tokenizer = chonkie_modules.get("Tokenizer")
             if Tokenizer is None:
-                UserMessage(
-                    "Tokenizers library is not installed. Please install it with `pip install tokenizers`.",
-                    raise_with=ImportError,
-                )
+                msg = "Tokenizers library is not installed. Please install it with `pip install tokenizers`."
+                raise ImportError(msg)
             self._tokenizer_instance = Tokenizer.from_pretrained(self.tokenizer_name)
         return self._tokenizer_instance
 

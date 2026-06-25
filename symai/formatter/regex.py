@@ -1,7 +1,8 @@
+import logging
 import re
 from pathlib import Path
 
-from ..utils import UserMessage
+logger = logging.getLogger(__name__)
 
 # Define variables for magic numbers
 MAX_HEADING_LENGTH = 7
@@ -63,10 +64,10 @@ def generate_emoji_pattern(file_name):
                     #         pass
 
     except FileNotFoundError:
-        UserMessage(f"Error: File '{file_name}' not found in {current_dir}")
+        logger.warning("Error: File '%s' not found in %s", file_name, current_dir)
         return None
-    except Exception as e:
-        UserMessage(f"Error reading file: {e}")
+    except Exception:
+        logger.exception("Error reading file")
         return None
 
     # Sort the emoji codes

@@ -8,9 +8,10 @@ from PIL.Image import Image
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 
 from ....symbol import Result
-from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
+
+logger = logging.getLogger(__name__)
 
 
 def image_to_byte_array(image: Image, format="PNG") -> bytes:
@@ -114,10 +115,8 @@ class LLaMACppClientEngine(Engine):
         if not argument.prop.raw_input:
             return False
         if not argument.prop.processed_input:
-            UserMessage(
-                "Need to provide a prompt instruction to the engine if raw_input is enabled.",
-                raise_with=ValueError,
-            )
+            msg = "Need to provide a prompt instruction to the engine if raw_input is enabled."
+            raise ValueError(msg)
         argument.prop.prepared_input = argument.prop.processed_input
         return True
 

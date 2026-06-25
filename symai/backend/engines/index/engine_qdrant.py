@@ -20,7 +20,6 @@ from requests.adapters import HTTPAdapter
 
 from .... import core_ext
 from ....symbol import Result, Symbol
-from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG, SYMSERVER_CONFIG
 
@@ -31,7 +30,8 @@ def _secure_filename(name: str) -> str:
     name = Path(name or "").name
     name = re.sub(r"[^A-Za-z0-9_.-]+", "_", name).strip("._")
     if not name:
-        UserMessage(f"Invalid filename: {name!r}", raise_with=ValueError)
+        msg = f"Invalid filename: {name!r}"
+        raise ValueError(msg)
     return name
 
 
@@ -71,6 +71,8 @@ except ImportError:
     Tokenizer = None
 
 logging.getLogger("qdrant_client").setLevel(logging.ERROR)
+
+logger = logging.getLogger(__name__)
 
 
 def chunks(iterable, batch_size=100):
@@ -224,7 +226,8 @@ class QdrantSearchResult(Result):
     def __init__(self, value: dict[str, Any] | Any, **kwargs) -> None:
         super().__init__(value, **kwargs)
         if isinstance(value, dict) and value.get("error"):
-            UserMessage(value["error"], raise_with=ValueError)
+            msg = value["error"]
+            raise ValueError(msg)
         results = self._coerce_results(value)
         text, citations = self._build_text_and_citations(results)
         self._value = text
@@ -443,10 +446,8 @@ class QdrantIndexEngine(Engine):
         # Check if Qdrant is configured (either via server or direct connection)
         if SYMSERVER_CONFIG.get("online") or self.url:
             if QdrantClient is None:
-                UserMessage(
-                    "Qdrant client is not installed. Please install it with `pip install qdrant-client`.",
-                    raise_with=ImportError,
-                )
+                msg = "Qdrant client is not installed. Please install it with `pip install qdrant-client`."
+                raise ImportError(msg)
             return "index"
         return super().id()  # default to unregistered
 
@@ -461,10 +462,8 @@ class QdrantIndexEngine(Engine):
         """Initialize Qdrant client if not already initialized."""
         if self.client is None:
             if QdrantClient is None:
-                UserMessage(
-                    "Qdrant client is not installed. Please install it with `pip install qdrant-client`.",
-                    raise_with=ImportError,
-                )
+                msg = "Qdrant client is not installed. Please install it with `pip install qdrant-client`."
+                raise ImportError(msg)
 
             client_kwargs = {"url": self.url}
             if self.api_key:
@@ -548,11 +547,8 @@ class QdrantIndexEngine(Engine):
 
         if tenant_id is not None:
             if models is None:
-                UserMessage(
-                    "Qdrant filter models are not available. "
-                    "Please install `qdrant-client` to use filtering.",
-                    raise_with=ImportError,
-                )
+                msg = "Qdrant filter models are not available. Please install `qdrant-client` to use filtering."
+                raise ImportError(msg)
             conditions.append(
                 models.FieldCondition(
                     key="tenant_id",
@@ -575,11 +571,8 @@ class QdrantIndexEngine(Engine):
         # Simple dict → build equality-based must filter
         if isinstance(raw_filter, dict):
             if models is None:
-                UserMessage(
-                    "Qdrant filter models are not available. "
-                    "Please install `qdrant-client` to use filtering.",
-                    raise_with=ImportError,
-                )
+                msg = "Qdrant filter models are not available. Please install `qdrant-client` to use filtering."
+                raise ImportError(msg)
 
             for key, value in raw_filter.items():
                 # We keep semantics simple and robust:
@@ -849,10 +842,10 @@ class QdrantIndexEngine(Engine):
                         field_name=field_name,
                         field_schema=field_schema,
                     )
-        except Exception as exc:
+        except Exception:
             # Best-effort: index creation is optional for correctness,
             # only required for Qdrant query-planning optimizations.
-            UserMessage(f"Failed to create payload indexes on {collection_name}: {exc}")
+            logger.exception("Failed to create payload indexes on %s", collection_name)
 
     # ==================== Collection Management ====================
 
@@ -1166,11 +1159,8 @@ class QdrantIndexEngine(Engine):
         tenant_id = tenant_id or self.default_tenant_id
 
         if models is None or Filter is None:
-            UserMessage(
-                "Qdrant filter models are not available. "
-                "Please install `qdrant-client` to use filter-based deletion.",
-                raise_with=ImportError,
-            )
+            msg = "Qdrant filter models are not available. Please install `qdrant-client` to use filter-based deletion."
+            raise ImportError(msg)
 
         built = self._build_query_filter(query_filter, tenant_id=tenant_id)
         if built is None:
@@ -1740,20 +1730,23 @@ class QdrantIndexEngine(Engine):
             requests.exceptions.InvalidURL,
             requests.exceptions.URLRequired,
         ) as exc:
-            UserMessage(f"Invalid URL: {exc}", raise_with=ValueError)
+            msg = f"Invalid URL: {exc}"
+            raise ValueError(msg) from exc
         canonical_url = prepared.url
         canonical = urlparse(canonical_url)
         hostname = canonical.hostname
         if hostname is None:
-            UserMessage("URL must have a valid hostname", raise_with=ValueError)
+            msg = "URL must have a valid hostname"
+            raise ValueError(msg)
 
         # Resolve DNS once and pin to this IP for the entire request.
         # This prevents DNS rebinding where an attacker-controlled DNS server
         # returns a public IP on first check but a private IP on second lookup.
         try:
             resolved_ip = socket.getaddrinfo(hostname, None)[0][4][0]
-        except socket.gaierror:
-            UserMessage(f"Could not resolve hostname: {hostname}", raise_with=ValueError)
+        except socket.gaierror as exc:
+            msg = f"Could not resolve hostname: {hostname}"
+            raise ValueError(msg) from exc
 
         # Validate resolved IP is not private/reserved (SSRF protection)
         ip = ipaddress.ip_address(resolved_ip)
@@ -1767,10 +1760,8 @@ class QdrantIndexEngine(Engine):
             or ip.is_unspecified
             or ip in CGNAT_NETWORK
         ):
-            UserMessage(
-                f"SSRF: Resolved IP {resolved_ip} is not allowed",
-                raise_with=ValueError,
-            )
+            msg = f"SSRF: Resolved IP {resolved_ip} is not allowed"
+            raise ValueError(msg)
 
         # Create session with pinning adapter to force connection to validated IP
         session = requests.Session()
@@ -1790,12 +1781,15 @@ class QdrantIndexEngine(Engine):
                 stream=True,
             )
             response.raise_for_status()
-        except requests.exceptions.Timeout:
-            UserMessage("Request timeout downloading file", raise_with=RuntimeError)
-        except requests.exceptions.TooManyRedirects:
-            UserMessage("Redirects not allowed", raise_with=ValueError)
-        except requests.exceptions.RequestException as e:
-            UserMessage(f"Download failed: {e}", raise_with=RuntimeError)
+        except requests.exceptions.Timeout as exc:
+            msg = "Request timeout downloading file"
+            raise RuntimeError(msg) from exc
+        except requests.exceptions.TooManyRedirects as exc:
+            msg = "Redirects not allowed"
+            raise ValueError(msg) from exc
+        except requests.exceptions.RequestException as exc:
+            msg = f"Download failed: {exc}"
+            raise RuntimeError(msg) from exc
 
         # Determine file extension from Content-Type header, fall back to URL path
         content_type = (response.headers.get("Content-Type") or "").split(";")[0].strip()
@@ -1819,10 +1813,8 @@ class QdrantIndexEngine(Engine):
                 for chunk in response.iter_content(chunk_size=8192):
                     total += len(chunk)
                     if total > MAX_DOWNLOAD_BYTES:
-                        UserMessage(
-                            f"Download exceeds maximum allowed size ({MAX_DOWNLOAD_BYTES} bytes)",
-                            raise_with=ValueError,
-                        )
+                        msg = f"Download exceeds maximum allowed size ({MAX_DOWNLOAD_BYTES} bytes)"
+                        raise ValueError(msg)
                     tmp_file.write(chunk)
                 tmp_file.flush()
 
@@ -1917,9 +1909,11 @@ class QdrantIndexEngine(Engine):
             safe_name = _secure_filename(document_path)
             resolved = (self.upload_dir / safe_name).resolve()
             if not resolved.is_relative_to(self.upload_dir):
-                UserMessage("Path traversal detected", raise_with=ValueError)
+                msg = "Path traversal detected"
+                raise ValueError(msg)
             if not resolved.exists():
-                UserMessage(f"Document not found: {resolved}", raise_with=FileNotFoundError)
+                msg = f"Document not found: {resolved}"
+                raise FileNotFoundError(msg)
             # Rich formats (e.g., PDFs) require the markitdown backend.
             backend = "markitdown" if resolved.suffix.lower() == ".pdf" else "standard"
             content = self.reader(str(resolved), backend=backend)

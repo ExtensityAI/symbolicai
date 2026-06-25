@@ -8,7 +8,6 @@ except ImportError:
     Mistral = None
 
 from ....symbol import Result
-from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
 
@@ -59,19 +58,18 @@ class MistralOCREngine(Engine):
             return
 
         if Mistral is None:
-            UserMessage(
+            msg = (
                 "mistralai SDK is not installed. "
-                "Install with 'pip install symbolicai[ocr]' or 'pip install mistralai'.",
-                raise_with=ImportError,
+                "Install with 'pip install symbolicai[ocr]' or 'pip install mistralai'."
             )
+            raise ImportError(msg)
 
         self.client = Mistral(api_key=self.api_key)
 
     def id(self) -> str:
-        if (
-            self.config.get("OCR_ENGINE_API_KEY")
-            and self.config.get("OCR_ENGINE_MODEL", "").lower().startswith("mistral")
-        ):
+        if self.config.get("OCR_ENGINE_API_KEY") and self.config.get(
+            "OCR_ENGINE_MODEL", ""
+        ).lower().startswith("mistral"):
             return "ocr"
         return super().id()
 
@@ -100,7 +98,9 @@ class MistralOCREngine(Engine):
         return signed.url
 
     def prepare(self, argument):
-        assert not argument.prop.processed_input, "MistralOCREngine does not support processed_input."
+        assert not argument.prop.processed_input, (
+            "MistralOCREngine does not support processed_input."
+        )
         document_url = getattr(argument.prop, "document_url", None)
         image_url = getattr(argument.prop, "image_url", None)
         assert document_url or image_url, "MistralOCREngine requires 'document_url' or 'image_url'."
@@ -132,7 +132,8 @@ class MistralOCREngine(Engine):
         try:
             result = self.client.ocr.process(**ocr_kwargs)
         except Exception as e:
-            UserMessage(f"Mistral OCR request failed: {e}", raise_with=RuntimeError)
+            msg = f"Mistral OCR request failed: {e}"
+            raise RuntimeError(msg) from e
 
         rsp = MistralOCRResult(result, per_page=per_page)
         metadata = {"raw_output": result}
