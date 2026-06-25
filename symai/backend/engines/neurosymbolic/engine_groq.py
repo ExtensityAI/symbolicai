@@ -7,7 +7,6 @@ import openai
 
 from ....components import SelfPrompt
 from ....core_ext import retry
-from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG
 
@@ -16,6 +15,8 @@ logging.getLogger("requests").setLevel(logging.ERROR)
 logging.getLogger("urllib").setLevel(logging.ERROR)
 logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
+
+logger = logging.getLogger(__name__)
 
 
 _NON_VERBOSE_OUTPUT = (
@@ -36,9 +37,7 @@ class GroqEngine(Engine):
         client_timeout: float | None = None,
         client_max_retries: int | None = None,
     ):
-        super().__init__(
-            client_timeout=client_timeout, client_max_retries=client_max_retries
-        )
+        super().__init__(client_timeout=client_timeout, client_max_retries=client_max_retries)
         self.config = deepcopy(SYMAI_CONFIG)
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
         if api_key is not None and model is not None:
@@ -63,10 +62,8 @@ class GroqEngine(Engine):
                 )
             )
         except Exception as e:
-            UserMessage(
-                f"Failed to initialize OpenAI client. Please check your OpenAI library version. Caused by: {e}",
-                raise_with=ValueError,
-            )
+            msg = f"Failed to initialize OpenAI client. Please check your OpenAI library version. Caused by: {e}"
+            raise ValueError(msg) from e
 
     def id(self) -> str:
         if self.config.get("NEUROSYMBOLIC_ENGINE_MODEL") and self.config.get(
@@ -85,14 +82,12 @@ class GroqEngine(Engine):
             self.seed = kwargs["seed"]
 
     def compute_required_tokens(self, _messages):
-        UserMessage(
-            "Token counting not implemented for this engine.", raise_with=NotImplementedError
-        )
+        msg = "Token counting not implemented for this engine."
+        raise NotImplementedError(msg)
 
     def compute_remaining_tokens(self, _prompts: list) -> int:
-        UserMessage(
-            "Token counting not implemented for this engine.", raise_with=NotImplementedError
-        )
+        msg = "Token counting not implemented for this engine."
+        raise NotImplementedError(msg)
 
     def _handle_prefix(self, model_name: str) -> str:
         """Handle prefix for model name."""
@@ -135,12 +130,12 @@ class GroqEngine(Engine):
         except Exception as e:
             if openai.api_key is None or openai.api_key == "":
                 msg = "Groq API key is not set. Please set it in the config file or pass it as an argument to the command method."
-                UserMessage(msg)
+                logger.warning(msg)
                 if (
                     self.config["NEUROSYMBOLIC_ENGINE_API_KEY"] is None
                     or self.config["NEUROSYMBOLIC_ENGINE_API_KEY"] == ""
                 ):
-                    UserMessage(msg, raise_with=ValueError)
+                    raise ValueError(msg) from e
                 openai.api_key = self.config["NEUROSYMBOLIC_ENGINE_API_KEY"]
 
             callback = self.client.chat.completions.create
@@ -153,7 +148,8 @@ class GroqEngine(Engine):
             if except_remedy is not None:
                 res = except_remedy(self, e, callback, argument)
             else:
-                UserMessage(f"Error during generation. Caused by: {e}", raise_with=ValueError)
+                msg = f"Error during generation. Caused by: {e}"
+                raise ValueError(msg) from e
 
         metadata = {"raw_output": res}
         if payload.get("tools"):
@@ -168,10 +164,8 @@ class GroqEngine(Engine):
 
     def _prepare_raw_input(self, argument):
         if not argument.prop.processed_input:
-            UserMessage(
-                "Need to provide a prompt instruction to the engine if raw_input is enabled.",
-                raise_with=ValueError,
-            )
+            msg = "Need to provide a prompt instruction to the engine if raw_input is enabled."
+            raise ValueError(msg)
         value = argument.prop.processed_input
         # convert to dict if not already
         if not isinstance(value, list):
@@ -246,7 +240,8 @@ class GroqEngine(Engine):
             self_prompter = SelfPrompt()
             res = self_prompter({"user": user_prompt["content"], "system": system})
             if res is None:
-                UserMessage("Self-prompting failed!", raise_with=ValueError)
+                msg = "Self-prompting failed!"
+                raise ValueError(msg)
             return res["system"], {"role": "user", "content": res["user"]}
         return system, user_prompt
 
@@ -263,7 +258,7 @@ class GroqEngine(Engine):
             for tool_call in res.choices[0].message.tool_calls:
                 if hasattr(tool_call, "function") and tool_call.function:
                     if hit:
-                        UserMessage(
+                        logger.warning(
                             "Multiple function calls detected in the response but only the first one will be processed."
                         )
                         break
@@ -291,14 +286,14 @@ class GroqEngine(Engine):
             "stream_options",
         ]:
             if param in kwargs:
-                UserMessage(
-                    f"The parameter {param} is not supported by the Groq API. It will be ignored."
+                logger.warning(
+                    "The parameter %s is not supported by the Groq API. It will be ignored.", param
                 )
                 del kwargs[param]
 
         n = kwargs.get("n", 1)
         if n > 1:
-            UserMessage(
+            logger.warning(
                 "If N is supplied, it must be equal to 1. We default to 1 to not crash your program."
             )
             n = 1

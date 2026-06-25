@@ -9,7 +9,6 @@ import nest_asyncio
 
 from ....core import Argument
 from ....core_ext import retry
-from ....utils import UserMessage
 from ...base import Engine
 from ...settings import SYMAI_CONFIG, SYMSERVER_CONFIG
 
@@ -17,6 +16,8 @@ logging.getLogger("requests").setLevel(logging.ERROR)
 logging.getLogger("urllib").setLevel(logging.ERROR)
 logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
+
+logger = logging.getLogger(__name__)
 
 
 class VLLMEngine(Engine):
@@ -47,12 +48,12 @@ class VLLMEngine(Engine):
         if self.id() != "neurosymbolic":
             return
         if not SYMSERVER_CONFIG.get("online"):
-            UserMessage(
+            msg = (
                 "You are using the vLLM engine, but the server endpoint is not started. "
                 "Please start the server with `symserver --model <hf-repo-id> [--args]` or run "
-                "`symserver --help` to see the available options for this engine.",
-                raise_with=ValueError,
+                "`symserver --help` to see the available options for this engine."
             )
+            raise ValueError(msg)
         host = SYMSERVER_CONFIG.get("--host") or "localhost"
         port = SYMSERVER_CONFIG.get("--port") or 8000
         self.server_endpoint = f"http://{host}:{port}"
@@ -78,11 +79,13 @@ class VLLMEngine(Engine):
 
     def compute_required_tokens(self, _messages) -> int:
         # TODO: wire to vLLM's /tokenize endpoint once a VLLMTokenizer is added
-        UserMessage("Not implemented for vLLM!", raise_with=NotImplementedError)
+        msg = "Not implemented for vLLM!"
+        raise NotImplementedError(msg)
 
     def compute_remaining_tokens(self, _prompts: list) -> int:
         # TODO: wire to vLLM's /tokenize once VLLMTokenizer and max_model_len lookup exist
-        UserMessage("Not implemented for vLLM!", raise_with=NotImplementedError)
+        msg = "Not implemented for vLLM!"
+        raise NotImplementedError(msg)
 
     def _validate_timeout_params(self, timeout_params):
         assert all(key in timeout_params for key in ["read", "connect"]), (
@@ -103,7 +106,8 @@ class VLLMEngine(Engine):
         try:
             current_loop = asyncio.get_event_loop()
             if current_loop.is_closed():
-                UserMessage("Event loop is closed.", raise_with=RuntimeError)
+                msg = "Event loop is closed."
+                raise RuntimeError(msg)
             return current_loop
         except RuntimeError:
             new_loop = asyncio.new_event_loop()
@@ -170,9 +174,8 @@ class VLLMEngine(Engine):
                 session.post(f"{self.server_endpoint}/v1/chat/completions", json=payload) as res,
             ):
                 if res.status != 200:
-                    UserMessage(
-                        f"Request failed with status code: {res.status}", raise_with=ValueError
-                    )
+                    msg = f"Request failed with status code: {res.status}"
+                    raise ValueError(msg)
                 return await res.json()
 
         return await _make_request()
@@ -199,15 +202,14 @@ class VLLMEngine(Engine):
         try:
             res = loop.run_until_complete(self._arequest(payload))
         except Exception as e:
-            UserMessage(f"Error during generation. Caused by: {e}", raise_with=ValueError)
+            msg = f"Error during generation. Caused by: {e}"
+            raise ValueError(msg) from e
 
         # NOTE: graceful retry returns None on repeated failure; surface that as a
         # real error instead of letting the unpack below crash with a cryptic TypeError.
         if res is None:
-            UserMessage(
-                "vLLM request returned no response after retries; check the server log.",
-                raise_with=ValueError,
-            )
+            msg = "vLLM request returned no response after retries; check the server log."
+            raise ValueError(msg)
 
         metadata = {"raw_output": res}
 
@@ -241,7 +243,7 @@ class VLLMEngine(Engine):
                     continue
                 function = tool_call.get("function") or {}
                 if hit:
-                    UserMessage(
+                    logger.warning(
                         "Multiple function calls detected in the response "
                         "but only the first one will be processed."
                     )
@@ -265,10 +267,8 @@ class VLLMEngine(Engine):
 
     def _prepare_raw_input(self, argument):
         if not argument.prop.processed_input:
-            UserMessage(
-                "Need to provide a prompt instruction to the engine if raw_input is enabled.",
-                raise_with=ValueError,
-            )
+            msg = "Need to provide a prompt instruction to the engine if raw_input is enabled."
+            raise ValueError(msg)
         value = argument.prop.processed_input
         if not isinstance(value, list):
             if not isinstance(value, dict):
