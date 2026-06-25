@@ -1,9 +1,10 @@
 import argparse
+import logging
 import subprocess
 import sys
 from pathlib import Path
 
-from loguru import logger
+logger = logging.getLogger(__name__)
 
 
 def llama_cpp_server():
@@ -30,7 +31,7 @@ def llama_cpp_server():
                 logger.error("Error: --cpp-server-path is required when using cpp environment")
                 sys.exit(1)
             if not Path(main_args.cpp_server_path).exists():
-                logger.error(f"Error: Executable not found at {main_args.cpp_server_path}")
+                logger.error("Error: Executable not found at %s", main_args.cpp_server_path)
                 sys.exit(1)
             command = [main_args.cpp_server_path, "--help"]
             subprocess.run(command, check=False)
@@ -41,7 +42,7 @@ def llama_cpp_server():
             logger.error("Error: --cpp-server-path is required when using cpp environment")
             sys.exit(1)
         if not Path(main_args.cpp_server_path).exists():
-            logger.error(f"Error: Executable not found at {main_args.cpp_server_path}")
+            logger.error("Error: Executable not found at %s", main_args.cpp_server_path)
             sys.exit(1)
         command = [
             main_args.cpp_server_path,

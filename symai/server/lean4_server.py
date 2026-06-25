@@ -7,15 +7,15 @@ This module provides the symserver integration for Lean4. It:
 """
 
 import argparse
+import logging
 import socket
 import subprocess
 import sys
 from pathlib import Path
 
-from loguru import logger
-
 from symai.backend.settings import SYMAI_CONFIG
 
+logger = logging.getLogger(__name__)
 IMAGE_NAME = "lean4-container-image"
 
 
@@ -69,7 +69,7 @@ def lean4_server() -> tuple[list[str], list[str]]:
                 check=True,
             )
     except subprocess.CalledProcessError as e:
-        logger.error(f"Failed to build container image: {e}")
+        logger.error("Failed to build container image: %s", e)
         sys.exit(1)
 
     # Try requested port, fall back to OS-assigned if taken
@@ -78,7 +78,7 @@ def lean4_server() -> tuple[list[str], list[str]]:
             port = args.port
         else:
             port = _find_free_port()
-            logger.info(f"Port {args.port} taken, using port {port}")
+            logger.info("Port %s taken, using port %s", args.port, port)
 
     # Start FastAPI server (ContainerManager inside lean4_fastapi handles Docker lifecycle)
     command = [

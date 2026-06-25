@@ -1,8 +1,6 @@
 import logging
 import re
 
-from loguru import logger
-
 from . import core
 from .backend.settings import HOME_PATH
 from .components import InContextClassification
@@ -14,6 +12,7 @@ from .prompts import MemoryCapabilities, SymbiaCapabilities
 from .symbol import Expression, Symbol
 from .utils import UserMessage
 
+logger = logging.getLogger(__name__)
 logging.getLogger("charset_normalizer").setLevel(logging.ERROR)
 
 
@@ -75,10 +74,10 @@ class ChatBot(Expression):
             memory_usage = str(self.detect_memory_usage(scratchpad))
 
             if self.verbose:
-                logger.debug(f"Scratchpad:\n{scratchpad}\n")
-                logger.debug(f"Memory usage:\n{memory_usage}\n")
-                logger.debug(f"Retrieved from short-term memory:\n{stmem_recall}\n")
-                logger.debug(f"Retrieved from long-term memory:\n{ltmem_recall}\n")
+                logger.debug("Scratchpad:\n%s\n", scratchpad)
+                logger.debug("Memory usage:\n%s\n", memory_usage)
+                logger.debug("Retrieved from short-term memory:\n%s\n", stmem_recall)
+                logger.debug("Retrieved from long-term memory:\n%s\n", ltmem_recall)
 
             do = self._extract_category(memory_usage)
             reflection = self._extract_reflection(memory_usage)
@@ -92,7 +91,7 @@ class ChatBot(Expression):
                 )
                 self.long_term_memory("save", operation="config", index_name=self.index_name)
                 if self.verbose:
-                    logger.debug(f"Store new long-term memory:\n{reflection}\n")
+                    logger.debug("Store new long-term memory:\n%s\n", reflection)
                 message = f"{self.name} inform the user that the memory was stored."
             elif do == "DUPLICATE":
                 message = f"{self.name} engages the user in a conversation about the duplicate topic, showing the user she remembered the past interaction."
@@ -100,8 +99,8 @@ class ChatBot(Expression):
                 message = f"{self.name} discusses the topic with the user."
 
         if self.verbose:
-            logger.debug(f"Storing new short-term memory:\nUser: {self._last_user_input}\n")
-            logger.debug(f"Storing new short-term memory:\n{self.name}: {reflection}\n")
+            logger.debug("Storing new short-term memory:\nUser: %s\n", self._last_user_input)
+            logger.debug("Storing new short-term memory:\n%s: %s\n", self.name, reflection)
 
         reply = f"{self.name}: {self._narration(message, self._last_user_input, reflection, context, ltmem_recall, stmem_recall, **kwargs)}"
 
@@ -192,7 +191,7 @@ The chatbot always reply in the following format
             pass
 
         if self.verbose:
-            logger.debug(f"Narration:\n{prompt}\n")
+            logger.debug("Narration:\n%s\n", prompt)
         return _func(self).replace(f"{self.name}: ", "").strip()
 
 
@@ -240,7 +239,7 @@ class SymbiaChat(ChatBot):
 
     def _log_verbose(self, title: str, content) -> None:
         if self.verbose:
-            logger.debug(f"{title}:\n{content}\n")
+            logger.debug("%s:\n%s\n", title, content)
 
     def _context_from_user(self, usr: Symbol) -> str:
         text = str(usr)

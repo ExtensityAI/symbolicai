@@ -9,12 +9,7 @@ from typing import Any, ClassVar
 import numpy as np
 from anthropic import transform_schema
 from beartype import beartype
-from loguru import logger
 from pydantic import BaseModel, ValidationError
-from rich.console import Console
-from rich.markup import escape
-from rich.panel import Panel
-from rich.table import Table
 
 from .backend.settings import SYMAI_CONFIG
 from .components import Function
@@ -22,6 +17,8 @@ from .context import CURRENT_ENGINE_VAR
 from .models import LLMDataModel, TypeValidationError, build_dynamic_llm_datamodel
 from .symbol import Expression
 from .utils import UserMessage
+
+logger = logging.getLogger(__name__)
 
 
 class ValidationFunction(Function):
@@ -53,7 +50,6 @@ class ValidationFunction(Function):
     ):
         super().__init__(*args, **kwargs)
         self.retry_params = {**self._default_retry_params, **(retry_params or {})}
-        self.console = Console()
 
         # Standard remedy function for JSON correction:
         self.remedy_function = Function(
@@ -83,10 +79,7 @@ class ValidationFunction(Function):
             response_format={"type": "json_object"},
         )
 
-        if not verbose:
-            logger.disable(__name__)
-        else:
-            logger.enable(__name__)
+        logger.disabled = not verbose
 
     def prepare_seeds(self, num_seeds: int, **kwargs):
         # Get list of seeds for remedy (to avoid same remedy for same input)
@@ -144,22 +137,9 @@ class ValidationFunction(Function):
         UserMessage(msg)
         raise NotImplementedError(msg)
 
-    def display_panel(self, content, title, border_style="cyan", style="#f0eee6", padding=(1, 2)):
-        """
-        Display content in a rich panel with consistent formatting.
-
-        Args:
-            content: The content to display in the panel
-            title: The title of the panel
-            border_style: Color of the panel border (default: "cyan")
-            style: Style of the panel content (default: "#f0eee6")
-            padding: Padding for the panel (default: (1,2))
-        """
-        body = escape(content)
-        panel = Panel.fit(
-            body, title=title, padding=padding, border_style=border_style, style=style
-        )
-        self.console.print(panel)
+    def display_panel(self, content, title, **_kwargs):
+        """Print content under a titled header (plain text)."""
+        print(f"\n--- {title} ---\n{content}\n")
 
     def forward(self, *args, **kwargs):
         return super().forward(*args, **kwargs)  # Just propagate to Function
@@ -344,7 +324,7 @@ Important guidelines:
         remedy_seeds: list[Any],
         kwargs: dict,
     ) -> str:
-        logger.info(f"Validation attempt {attempt_index + 1} failed, pausing before retry…")
+        logger.info("Validation attempt %s failed, pausing before retry…", attempt_index + 1)
         self._pause(attempt_index)
         error_str = self._format_validation_error(error)
         errors.append(error_str)
@@ -366,7 +346,7 @@ Important guidelines:
         if self.verbose:
             self.display_panel(self.remedy_function.dynamic_context, title="New Context")
 
-        with (self.dynamic_engine if self.dynamic_engine is not None else nullcontext()):
+        with self.dynamic_engine if self.dynamic_engine is not None else nullcontext():
             json_str = self.remedy_function(seed=remedy_seeds[attempt_index], **kwargs).value
         logger.info("Applied remedy function with updated context!")
         return json_str
@@ -386,7 +366,9 @@ Important guidelines:
         for attempt in range(total_attempts):
             if attempt != self.retry_params["tries"]:
                 logger.info(
-                    f"Attempt {attempt + 1}/{self.retry_params['tries']}: Attempting validation…"
+                    "Attempt %s/%s: Attempting validation…",
+                    attempt + 1,
+                    self.retry_params["tries"],
                 )
             try:
                 result = self.output_data_model.model_validate_json(
@@ -471,7 +453,7 @@ Important guidelines:
                 json_str = super().forward(context, *args, **kwargs).value
 
         remedy_seeds = self.prepare_seeds(self.retry_params["tries"] + 1, **kwargs)
-        logger.info(f"Prepared {len(remedy_seeds)} remedy seeds for validation attempts…")
+        logger.info("Prepared %s remedy seeds for validation attempts…", len(remedy_seeds))
 
         result, json_str, errors = self._run_validation_attempts(
             prompt,
@@ -485,7 +467,7 @@ Important guidelines:
         if result is None:
             return self._handle_validation_failure(prompt, json_str, errors)
 
-        logger.success("Validation completed successfully!")
+        logger.info("Validation completed successfully!")
         self.remedy_function.clear()
         return result
 
@@ -521,10 +503,7 @@ class contract:
         self._accumulate_errors = accumulate_errors
         self._verbose = verbose
 
-        if not verbose:
-            logger.disable(__name__)
-        else:
-            logger.enable(__name__)
+        logger.disabled = not verbose
 
     def _is_valid_input(self, input_value):
         if input_value is None:
@@ -544,7 +523,7 @@ class contract:
             UserMessage(msg)
             raise ValueError(msg)
         if not issubclass(output_type, LLMDataModel):
-            logger.error(f"Invalid return type: {output_type}")
+            logger.error("Invalid return type: %s", output_type)
             msg = "The return type annotation must be a subclass of `LLMDataModel`."
             UserMessage(msg)
             raise TypeError(msg)
@@ -585,7 +564,7 @@ class contract:
                     raise TypeError(msg)
                 dynamic_model = build_dynamic_llm_datamodel(sig.return_annotation)
         except Exception as err:
-            logger.exception(f"Failed to build dynamic LLMDataModel from {resolved_param}!")
+            logger.exception("Failed to build dynamic LLMDataModel from %s!", resolved_param)
             msg = (
                 "The type annotation must be a subclass of `LLMDataModel` or a "
                 "valid Python typing object supported by Pydantic."
@@ -596,7 +575,9 @@ class contract:
         dynamic_model._is_dynamic_model = True
         return dynamic_model
 
-    def _try_remedy_with_exception(self, wrapped_self, prompt, f_semantic_conditions, **remedy_kwargs):
+    def _try_remedy_with_exception(
+        self, wrapped_self, prompt, f_semantic_conditions, **remedy_kwargs
+    ):
         try:
             data_model = wrapped_self._f_type_validation_remedy(
                 prompt, f_semantic_conditions=f_semantic_conditions, **remedy_kwargs
@@ -619,7 +600,7 @@ class contract:
             op_start = time.perf_counter()
             try:
                 assert wrapped_self.pre(input_value)
-                logger.success("Pre-condition validation successful!")
+                logger.info("Pre-condition validation successful!")
                 return input_value
             except Exception:
                 logger.exception("Pre-condition validation failed!")
@@ -649,7 +630,7 @@ class contract:
                 wrapped_self._contract_timing[it]["input_validation"] = (
                     time.perf_counter() - op_start
                 )
-            logger.success("Pre-condition validation successful!")
+            logger.info("Pre-condition validation successful!")
             return input_value
         logger.info("Skip; no pre-condition validation was required!")
         return input_value
@@ -657,18 +638,17 @@ class contract:
     def _validate_output(self, wrapped_self, input_value, output, it, **remedy_kwargs):
         logger.info("Starting output validation...")
         remedy = wrapped_self._f_type_validation_remedy  # per-instance, thread-safe
-        remedy.register_expected_data_model(
-            input_value, attach_to="input", override=True
-        )
-        remedy.register_expected_data_model(
-            output, attach_to="output", override=True
-        )
+        remedy.register_expected_data_model(input_value, attach_to="input", override=True)
+        remedy.register_expected_data_model(output, attach_to="output", override=True)
 
         op_start = time.perf_counter()
         try:
             logger.info("Getting a valid output type...")
             output = self._try_remedy_with_exception(
-                wrapped_self, prompt=wrapped_self.prompt, f_semantic_conditions=None, **remedy_kwargs
+                wrapped_self,
+                prompt=wrapped_self.prompt,
+                f_semantic_conditions=None,
+                **remedy_kwargs,
             )
             if output is None:  # output is None when graceful mode is enabled
                 return output
@@ -677,7 +657,7 @@ class contract:
             raise e
         finally:
             wrapped_self._contract_timing[it]["output_validation"] = time.perf_counter() - op_start
-        logger.success("Type successfully created!")
+        logger.info("Type successfully created!")
 
         if self.post_remedy:
             logger.info("Validating post-conditions with remedy...")
@@ -690,7 +670,7 @@ class contract:
             op_start = time.perf_counter()
             try:
                 assert wrapped_self.post(output)
-                logger.success("Post-condition validation successful!")
+                logger.info("Post-condition validation successful!")
                 return output
             except Exception:
                 logger.exception("Post-condition validation failed!")
@@ -704,7 +684,7 @@ class contract:
                 wrapped_self._contract_timing[it]["output_validation"] += (
                     time.perf_counter() - op_start
                 )
-            logger.success("Post-condition validation successful!")
+            logger.info("Post-condition validation successful!")
             return output
         if hasattr(wrapped_self, "post"):
             logger.info("Validating post-conditions without remedy...")
@@ -718,7 +698,7 @@ class contract:
                 wrapped_self._contract_timing[it]["output_validation"] = (
                     time.perf_counter() - op_start
                 )
-            logger.success("Post-condition validation successful!")
+            logger.info("Post-condition validation successful!")
             return output
         logger.info("Skip; no post-condition validation was required!")
         return output
@@ -763,7 +743,7 @@ class contract:
         is_dynamic_model = getattr(input_value, "_is_dynamic_model", False)
         input_value = input_value if not is_dynamic_model else input_value.value
 
-        logger.info(f"Executing 'act' method on {wrapped_self.__class__.__name__}…")
+        logger.info("Executing 'act' method on %s…", wrapped_self.__class__.__name__)
 
         op_start = time.perf_counter()
         try:
@@ -784,7 +764,7 @@ class contract:
             UserMessage(msg)
             raise TypeError(msg)
 
-        logger.success("'act' method executed successfully!")
+        logger.info("'act' method executed successfully!")
         return act_output
 
     def _build_wrapped_init(self, original_init):
@@ -959,7 +939,7 @@ class contract:
 
     def _finalize_contract_output(self, output, output_type, wrapped_self):
         if not isinstance(output, output_type):
-            logger.error(f"Output type mismatch: {type(output)}")
+            logger.error("Output type mismatch: %s", type(output))
             if self.remedy_retry_params["graceful"]:
                 if getattr(output_type, "_is_dynamic_model", False) and hasattr(output, "value"):
                     return output.value
@@ -973,7 +953,7 @@ class contract:
         if not wrapped_self.contract_successful:
             logger.warning("Contract validation failed!")
         else:
-            logger.success("Contract validation successful!")
+            logger.info("Contract validation successful!")
 
         if getattr(output_type, "_is_dynamic_model", False):
             return output.value
@@ -1026,11 +1006,9 @@ class contract:
     def _build_contract_perf_stats(self):
         def contract_perf_stats(wrapped_self):
             """Analyzes and prints timing statistics across all forward calls."""
-            console = Console()
-
             num_calls = len(wrapped_self._contract_timing)
             if num_calls == 0:
-                console.print("No contract executions recorded.")
+                print("No contract executions recorded.")
                 return {}
 
             ordered_operations = [
@@ -1093,22 +1071,36 @@ class contract:
 
             stats["contract_execution"]["percentage"] = 100.0
 
-            table = Table(
-                title=f"Contract Execution Summary ({num_calls} Forward Calls)", show_header=True
+            header = (
+                "Operation",
+                "Count",
+                "Total(s)",
+                "Mean(s)",
+                "Std(s)",
+                "Min(s)",
+                "Max(s)",
+                "% Total",
             )
-            table.add_column("Operation", style="cyan")
-            table.add_column("Count", justify="right", style="blue")
-            table.add_column("Total Time (s)", justify="right", style="green")
-            table.add_column("Mean (s)", justify="right", style="yellow")
-            table.add_column("Std Dev (s)", justify="right", style="magenta")
-            table.add_column("Min (s)", justify="right", style="red")
-            table.add_column("Max (s)", justify="right", style="red")
-            table.add_column("% of Total", justify="right", style="cyan")
-
+            rows = []
             for op in ordered_operations[:-1]:
                 s = stats[op]
-                table.add_row(
-                    op.replace("_", " ").title(),
+                rows.append(
+                    (
+                        op.replace("_", " ").title(),
+                        str(s["count"]),
+                        f"{s['total']:.3f}",
+                        f"{s['mean']:.3f}",
+                        f"{s['std']:.3f}",
+                        f"{s['min']:.3f}",
+                        f"{s['max']:.3f}",
+                        f"{s['percentage']:.1f}%",
+                    )
+                )
+
+            s = stats["overhead"]
+            rows.append(
+                (
+                    "Overhead",
                     str(s["count"]),
                     f"{s['total']:.3f}",
                     f"{s['mean']:.3f}",
@@ -1117,36 +1109,28 @@ class contract:
                     f"{s['max']:.3f}",
                     f"{s['percentage']:.1f}%",
                 )
-
-            s = stats["overhead"]
-            table.add_row(
-                "Overhead",
-                str(s["count"]),
-                f"{s['total']:.3f}",
-                f"{s['mean']:.3f}",
-                f"{s['std']:.3f}",
-                f"{s['min']:.3f}",
-                f"{s['max']:.3f}",
-                f"{s['percentage']:.1f}%",
-                style="bold blue",
             )
 
             s = stats["contract_execution"]
-            table.add_row(
-                "Total Execution",
-                "N/A",
-                f"{s['total']:.3f}",
-                f"{s['mean']:.3f}",
-                f"{s['std']:.3f}",
-                f"{s['min']:.3f}",
-                f"{s['max']:.3f}",
-                "100.0%",
-                style="bold magenta",
+            rows.append(
+                (
+                    "Total Execution",
+                    "N/A",
+                    f"{s['total']:.3f}",
+                    f"{s['mean']:.3f}",
+                    f"{s['std']:.3f}",
+                    f"{s['min']:.3f}",
+                    f"{s['max']:.3f}",
+                    "100.0%",
+                )
             )
 
-            console.print("\n")
-            console.print(table)
-            console.print("\n")
+            widths = [max(len(h), *(len(r[i]) for r in rows)) for i, h in enumerate(header)]
+            print(f"\nContract Execution Summary ({num_calls} Forward Calls)")
+            print("  ".join(h.ljust(widths[i]) for i, h in enumerate(header)))
+            for r in rows:
+                print("  ".join(r[i].ljust(widths[i]) for i in range(len(header))))
+            print()
 
             return stats
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import resource
 import time
@@ -13,7 +14,6 @@ from urllib.parse import urlparse, urlunparse
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-from loguru import logger
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from symai.backend.engines.index.engine_qdrant import QdrantIndexEngine, chunks
@@ -21,6 +21,7 @@ from symai.core import Argument
 from symai.symbol import Symbol as SymaiSymbol
 from symai.utils import UserMessage
 
+logger = logging.getLogger(__name__)
 try:
     from qdrant_client.http import models
     from qdrant_client.http.models import Filter
@@ -209,9 +210,7 @@ class ChunkUpsertRequest(BaseModel):
     chunker_name: str | None = None
     chunker_kwargs: dict[str, Any] | None = None
     start_id: int | None = None
-    embed_batch_size: int = Field(
-        default_factory=lambda: _env_int("RAG_EMBED_BATCH_SIZE", 100)
-    )
+    embed_batch_size: int = Field(default_factory=lambda: _env_int("RAG_EMBED_BATCH_SIZE", 100))
 
     @model_validator(mode="before")
     @classmethod
@@ -229,7 +228,9 @@ class BatchChunkItem(BaseModel):
 
     text: str = Field(..., min_length=1)
     metadata: dict[str, Any] | None = None
-    skip_chunking: bool = Field(default=False, description="If True, treat text as a single chunk (skip splitting).")
+    skip_chunking: bool = Field(
+        default=False, description="If True, treat text as a single chunk (skip splitting)."
+    )
 
 
 class BatchChunkUpsertRequest(BaseModel):
@@ -239,9 +240,7 @@ class BatchChunkUpsertRequest(BaseModel):
     items: list[BatchChunkItem] = Field(..., min_length=1, max_length=10_000)
     chunker_name: str | None = None
     chunker_kwargs: dict[str, Any] | None = None
-    embed_batch_size: int = Field(
-        default_factory=lambda: _env_int("RAG_EMBED_BATCH_SIZE", 100)
-    )
+    embed_batch_size: int = Field(default_factory=lambda: _env_int("RAG_EMBED_BATCH_SIZE", 100))
 
 
 class CollectionCreateRequest(BaseModel):
@@ -440,7 +439,7 @@ def _translate_document_path(path: str) -> str:
                     raise_with=ValueError,
                 )
             translated_str = str(translated)
-            logger.debug("Translated path: {} -> {}", path, translated_str)
+            logger.debug("Translated path: %s -> %s", path, translated_str)
             return translated_str
     return path
 
@@ -592,14 +591,12 @@ async def healthz(engine: QdrantIndexEngine = Depends(get_engine)) -> dict[str, 
             except Exception:
                 collection_stats[coll_name] = {"error": "failed to fetch stats"}
     except Exception as exc:  # pragma: no cover
-        logger.exception("Health check failed while listing collections: {}", exc)
+        logger.exception("Health check failed while listing collections: %s", exc)
         collections = []
         ready = False
     parsed = urlparse(SETTINGS.qdrant_url or "")
     redacted_qdrant_url = (
-        urlunparse(parsed._replace(netloc="[REDACTED]"))
-        if parsed.password
-        else SETTINGS.qdrant_url
+        urlunparse(parsed._replace(netloc="[REDACTED]")) if parsed.password else SETTINGS.qdrant_url
     )
     return {
         "status": "ok" if ready else "degraded",
@@ -628,13 +625,13 @@ async def upsert_points(
             point_dict["id"] = str(point_dict["id"])
         points_data.append(point_dict)
     t0 = time.monotonic()
-    await engine.upsert(
-        collection_name=collection, points=points_data, tenant_id=tenant_id
-    )
+    await engine.upsert(collection_name=collection, points=points_data, tenant_id=tenant_id)
     duration_ms = (time.monotonic() - t0) * 1000
     logger.info(
-        "upsert collection={} points={} duration={:.0f}ms",
-        collection, len(payload.points), duration_ms,
+        "upsert collection=%s points=%s duration=%.0fms",
+        collection,
+        len(payload.points),
+        duration_ms,
     )
     return {"points_upserted": len(payload.points), "collection": collection}
 
@@ -647,13 +644,13 @@ async def delete_points(
 ) -> dict[str, Any]:
     collection = _resolve_index_name(payload.index_name)
     ids = [str(v) if isinstance(v, uuid.UUID) else v for v in payload.ids]
-    await engine.delete(
-        collection_name=collection, points_selector=ids, tenant_id=tenant_id
-    )
+    await engine.delete(collection_name=collection, points_selector=ids, tenant_id=tenant_id)
     return {"points_deleted": len(ids), "collection": collection}
 
 
-@app.post("/points/count-by-metadata", dependencies=[Depends(require_token), Depends(require_tenant)])
+@app.post(
+    "/points/count-by-metadata", dependencies=[Depends(require_token), Depends(require_tenant)]
+)
 async def count_points_by_metadata(
     payload: MetadataFilterRequest,
     tenant_id: str = Depends(require_tenant),
@@ -669,7 +666,9 @@ async def count_points_by_metadata(
     return {"count": int(count), "collection": collection}
 
 
-@app.post("/points/delete-by-metadata", dependencies=[Depends(require_token), Depends(require_tenant)])
+@app.post(
+    "/points/delete-by-metadata", dependencies=[Depends(require_token), Depends(require_tenant)]
+)
 async def delete_points_by_metadata(
     payload: MetadataFilterRequest,
     tenant_id: str = Depends(require_tenant),
@@ -690,13 +689,17 @@ async def delete_points_by_metadata(
     )
     duration_ms = (time.monotonic() - t0) * 1000
     logger.info(
-        "delete-by-metadata collection={} points_deleted={} duration={:.0f}ms",
-        collection, int(count), duration_ms,
+        "delete-by-metadata collection=%s points_deleted=%s duration=%.0fms",
+        collection,
+        int(count),
+        duration_ms,
     )
     return {"points_deleted": int(count), "collection": collection}
 
 
-@app.post("/points/list-by-metadata", dependencies=[Depends(require_token), Depends(require_tenant)])
+@app.post(
+    "/points/list-by-metadata", dependencies=[Depends(require_token), Depends(require_tenant)]
+)
 async def list_points_by_metadata(
     payload: MetadataListRequest,
     tenant_id: str = Depends(require_tenant),
@@ -783,8 +786,12 @@ async def delete_by_tenant_file(
     )
     duration_ms = (time.monotonic() - t0) * 1000
     logger.info(
-        "delete-by-tenant-file collection={} tenant={} file_id={} points_deleted={} duration={:.0f}ms",
-        collection, tenant_id, payload.file_id, int(count), duration_ms,
+        "delete-by-tenant-file collection=%s tenant=%s file_id=%s points_deleted=%s duration=%.0fms",
+        collection,
+        tenant_id,
+        payload.file_id,
+        int(count),
+        duration_ms,
     )
     return {"points_deleted": int(count), "collection": collection}
 
@@ -831,8 +838,11 @@ async def delete_by_tenant(
     )
     duration_ms = (time.monotonic() - t0) * 1000
     logger.info(
-        "delete-by-tenant collection={} tenant={} points_deleted={} duration={:.0f}ms",
-        collection, tenant_id, int(count), duration_ms,
+        "delete-by-tenant collection=%s tenant=%s points_deleted=%s duration=%.0fms",
+        collection,
+        tenant_id,
+        int(count),
+        duration_ms,
     )
     return {"points_deleted": int(count), "collection": collection}
 
@@ -854,7 +864,11 @@ async def retrieve_points(
     return {"collection": collection, "points": [_serialize_point(p) for p in results]}
 
 
-@app.post("/search", response_model=SearchResponse, dependencies=[Depends(require_token), Depends(require_tenant)])
+@app.post(
+    "/search",
+    response_model=SearchResponse,
+    dependencies=[Depends(require_token), Depends(require_tenant)],
+)
 async def search(
     payload: SearchRequest,
     tenant_id: str = Depends(require_tenant),
@@ -911,8 +925,11 @@ async def search(
         )
 
     logger.info(
-        "search collection={} embed={:.0f}ms qdrant={:.0f}ms matches={}",
-        collection, embed_ms, search_ms, len(matches),
+        "search collection=%s embed=%.0fms qdrant=%.0fms matches=%s",
+        collection,
+        embed_ms,
+        search_ms,
+        len(matches),
     )
     return SearchResponse(matches=matches)
 
@@ -948,8 +965,11 @@ async def chunk_and_upsert(
     duration_ms = (time.monotonic() - t0) * 1000
 
     logger.info(
-        "chunk-upsert collection={} chunks={} text_len={} duration={:.0f}ms",
-        collection, chunks_indexed, text_len, duration_ms,
+        "chunk-upsert collection=%s chunks=%s text_len=%s duration=%.0fms",
+        collection,
+        chunks_indexed,
+        text_len,
+        duration_ms,
     )
     return {"chunks_indexed": chunks_indexed, "collection": collection}
 
@@ -1009,7 +1029,7 @@ async def batch_chunk_and_upsert(
     chunk_ms = (time.monotonic() - t_chunk) * 1000
 
     if not segments:
-        logger.info("batch-chunk-upsert collection={} segments=0 (empty)", collection)
+        logger.info("batch-chunk-upsert collection=%s segments=0 (empty)", collection)
         return {"chunks_indexed": 0, "collection": collection}
 
     # Phase 2: Batch embed all segments in sized chunks sequentially.
@@ -1048,17 +1068,20 @@ async def batch_chunk_and_upsert(
     # Phase 4: Single upsert to Qdrant.
     t_upsert = time.monotonic()
     await asyncio.to_thread(engine._ensure_collection_exists, collection)
-    await asyncio.to_thread(
-        engine._upsert_points_sync, collection_name=collection, points=points
-    )
+    await asyncio.to_thread(engine._upsert_points_sync, collection_name=collection, points=points)
     upsert_ms = (time.monotonic() - t_upsert) * 1000
 
     total_ms = (time.monotonic() - t0) * 1000
     logger.info(
-        "batch-chunk-upsert collection={} items={} segments={} "
-        "chunk={:.0f}ms embed={:.0f}ms upsert={:.0f}ms total={:.0f}ms",
-        collection, len(payload.items), len(segments),
-        chunk_ms, embed_ms, upsert_ms, total_ms,
+        "batch-chunk-upsert collection=%s items=%s segments=%s "
+        "chunk=%.0fms embed=%.0fms upsert=%.0fms total=%.0fms",
+        collection,
+        len(payload.items),
+        len(segments),
+        chunk_ms,
+        embed_ms,
+        upsert_ms,
+        total_ms,
     )
     return {"chunks_indexed": len(points), "collection": collection}
 
