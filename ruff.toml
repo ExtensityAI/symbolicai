@@ -59,9 +59,12 @@ unfixable = []
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [lint.per-file-ignores]
-# CLI/reporting output intentionally written to stdout (config inspector, contract perf report)
+# Intentional user-facing stdout output (config inspector, contract perf report,
+# Conversation auto_print, solver CLI result)
 "symai/__init__.py" = ["T201"]
 "symai/strategy.py" = ["T201"]
+"symai/extended/conversation.py" = ["T201"]
+"symai/extended/solver.py" = ["T201"]
 
 [format]
 quote-style = "double"

@@ -1,4 +1,3 @@
-import logging
 import pickle
 from collections.abc import Callable
 from datetime import datetime
@@ -10,8 +9,6 @@ from ..interfaces import Interface
 from ..memory import SlidingWindowStringConcatMemory
 from ..symbol import Symbol
 from .seo_query_optimizer import SEOQueryOptimizer
-
-logger = logging.getLogger(__name__)
 
 
 class CodeFormatter:
@@ -185,7 +182,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         # if user is requesting to preview the response, then return only the preview result
         if kwargs.get("preview"):
             if self.auto_print:
-                logger.debug("%s", res)
+                print(res)
             return res
 
         ### --- asses memory update --- ###
@@ -195,7 +192,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         # WARN: DO NOT PROCESS THE RES BY REMOVING `<<<` AND `>>>` TAGS
 
         if self.auto_print:
-            logger.debug("%s", res)
+            print(res)
         return res
 
     def _apply_truncation_overrides(self, kwargs: dict[str, Any]) -> dict[str, Any]:
@@ -233,7 +230,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         memory = self.index(search_query, *args, **kwargs)
 
         if "raw_result" in kwargs:
-            logger.debug("%s", memory)
+            print(memory)
         return memory
 
     def _build_payload(self, kwargs: dict[str, Any], memory) -> str:

@@ -297,7 +297,7 @@ def process_query(args) -> None:
     query = args.query
     solver = Solver()
     res = solver(query)
-    logger.debug("%s", res)
+    print(res)
 
 
 def run() -> None:
