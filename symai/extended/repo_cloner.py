@@ -48,15 +48,15 @@ class RepositoryCloner(Expression):
                     logger.info("Repository %s updated.", repo_name)
                 else:
                     logger.info("Repository %s is up-to-date.", repo_name)
-            except Exception as e:
+            except Exception:
                 logger.exception("An error occurred")
-                raise e from e
+                raise
         else:
             logger.info("Cloning repository %s...", repo_name)
             try:
                 Repo.clone_from(url, self.repo_dir / repo_name)
                 logger.info("Repository %s cloned successfully.", repo_name)
-            except Exception as e:
+            except Exception:
                 logger.exception("Failed to clone the repository. An error occurred")
-                raise e from e
+                raise
         return str(self.repo_dir / repo_name)

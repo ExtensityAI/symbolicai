@@ -538,6 +538,7 @@ def display_config():
 
     print("\nLegend:")
     print("⚙️  symai.config.json (Main SymbolicAI configuration)")
+    print("🖥️  symsh.config.json (Shell configuration)")
     print("🌐  symserver.config.json (Server configuration)")
     print("\nNote: API keys and URIs are truncated for security")
 

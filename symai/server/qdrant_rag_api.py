@@ -355,7 +355,7 @@ async def request_logging_middleware(request: Request, call_next: Any) -> Respon
     path = request.url.path
     method = request.method
     status_code = response.status_code
-    log_msg = "RAG {} {} -> {} ({:.0f}ms)"
+    log_msg = "RAG %s %s -> %s (%.0fms)"
     if duration_ms > 5000:
         logger.warning(log_msg, method, path, status_code, duration_ms)
     elif status_code >= 400:
