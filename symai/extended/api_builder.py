@@ -1,9 +1,12 @@
+import logging
+
 from .. import core
 from ..components import Execute
 from ..post_processors import CodeExtractPostProcessor
 from ..pre_processors import PreProcessor
 from ..symbol import Expression, Symbol
-from ..utils import UserMessage
+
+logger = logging.getLogger(__name__)
 
 API_BUILDER_DESCRIPTION = """[Description]
 You are an API coding tool for Python that creates API calls to any web URL based on user requests.
@@ -134,14 +137,14 @@ class APIExecutor(Expression):
     def forward(self, request: Symbol, **_kwargs) -> Symbol:
         self._request = self._to_symbol(request)
         if self._verbose:
-            UserMessage(f"[REQUEST] {self._request}")
+            logger.debug("[REQUEST] %s", self._request)
         # Generate the code to implement the API call
         self._code = self.builder(self._request)
         if self._verbose:
-            UserMessage(f"[GENERATED_CODE] {self._code}")
+            logger.debug("[GENERATED_CODE] %s", self._code)
         # Execute the code to define the 'run' function
         self._result = self.executor(self._code, request=self._request)
         if self._verbose:
-            UserMessage(f"[RESULT]: {self._result}")
+            logger.debug("[RESULT]: %s", self._result)
         self._value = self._result
         return self

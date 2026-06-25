@@ -1,3 +1,4 @@
+import logging
 import re
 import shutil
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -7,8 +8,9 @@ import requests
 
 from ..backend.settings import HOME_PATH
 from ..symbol import Expression, Symbol
-from ..utils import UserMessage
 from .file_merger import FileMerger
+
+logger = logging.getLogger(__name__)
 
 
 class ArxivPdfParser(Expression):
@@ -44,8 +46,8 @@ class ArxivPdfParser(Expression):
                 url = future_to_url[future]
                 try:
                     pdf_files.append(future.result())
-                except Exception as exc:
-                    UserMessage(f"{url!r} generated an exception: {exc}")
+                except Exception:
+                    logger.exception("%r generated an exception", url)
 
         if len(pdf_files) == 0:
             return None

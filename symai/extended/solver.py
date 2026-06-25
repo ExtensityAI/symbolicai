@@ -1,4 +1,5 @@
 import argparse
+import logging
 
 try:
     import z3
@@ -11,8 +12,9 @@ from ..post_processors import CodeExtractPostProcessor, StripPostProcessor
 from ..pre_processors import PreProcessor
 from ..prompts import Prompt
 from ..symbol import Expression, Symbol
-from ..utils import UserMessage
 from .conversation import Conversation
+
+logger = logging.getLogger(__name__)
 
 #############################################################################################
 #
@@ -240,7 +242,7 @@ class SATSolver(Expression):
             m = S.model()
             # Return the solution
             return m[query]
-        UserMessage("Cannot solve the puzzle. Returned: " + str(r))
+        logger.warning("Cannot solve the puzzle. Returned: %s", r)
         return None
 
 
@@ -273,18 +275,19 @@ class Solver(Expression):
 
         if problem == "Arithmetics formula" or problem == "Equations":
             formula = self.rewrite_formula(sym, **kwargs)
-            UserMessage(str(formula))
+            logger.debug("%s", formula)
         elif problem == "Implication and logical expressions":
             res = self.conv(sym, **kwargs)
             code = self.pp(str(res), None, tag="python")
             formula = self.solver(code, lambda: "German")
-            UserMessage(str(formula))
+            logger.debug("%s", formula)
         elif (
             problem == "Probability and statistics"
             or problem == "Linear algebra"
             or problem == "Linguistic problem with relations"
         ):
-            UserMessage("This feature is not yet implemented.", raise_with=NotImplementedError)
+            msg = "This feature is not yet implemented."
+            raise NotImplementedError(msg)
         else:
             return "Sorry, something went wrong. Please check if your backend is available and try again or report an issue to the devs. :("
         return None
@@ -294,7 +297,7 @@ def process_query(args) -> None:
     query = args.query
     solver = Solver()
     res = solver(query)
-    UserMessage(str(res))
+    logger.debug("%s", res)
 
 
 def run() -> None:

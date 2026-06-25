@@ -1,3 +1,4 @@
+import logging
 import pickle
 from collections.abc import Callable
 from datetime import datetime
@@ -8,8 +9,9 @@ from ..components import FileReader
 from ..interfaces import Interface
 from ..memory import SlidingWindowStringConcatMemory
 from ..symbol import Symbol
-from ..utils import UserMessage
 from .seo_query_optimizer import SEOQueryOptimizer
+
+logger = logging.getLogger(__name__)
 
 
 class CodeFormatter:
@@ -61,9 +63,8 @@ class Conversation(SlidingWindowStringConcatMemory):
         self.indexer = None
         self.index = None
         if index_name is not None:
-            UserMessage(
-                "Index not supported for conversation class.", raise_with=NotImplementedError
-            )
+            msg = "Index not supported for conversation class."
+            raise NotImplementedError(msg)
 
     def __getstate__(self):
         state = super().__getstate__().copy()
@@ -78,9 +79,8 @@ class Conversation(SlidingWindowStringConcatMemory):
         self.seo_opt = SEOQueryOptimizer()
         self.reader = FileReader()
         if self.index_name is not None:
-            UserMessage(
-                "Index not supported for conversation class.", raise_with=NotImplementedError
-            )
+            msg = "Index not supported for conversation class."
+            raise NotImplementedError(msg)
 
     def store_system_message(self, message: str, *_args, **_kwargs):
         val = f"[SYSTEM_INSTRUCTION::]: <<<\n{message!s}\n>>>\n"
@@ -110,12 +110,14 @@ class Conversation(SlidingWindowStringConcatMemory):
         path_obj = Path(path)
         if path_obj.exists():
             if path_obj.stat().st_size <= 0:
-                UserMessage("File is empty.", raise_with=Exception)
+                msg = "File is empty."
+                raise Exception(msg)
             # Load the conversation object from a pickle file
             with path_obj.open("rb") as handle:
                 conversation_state = pickle.load(handle)
         else:
-            UserMessage("File does not exist or is empty.", raise_with=Exception)
+            msg = "File does not exist or is empty."
+            raise Exception(msg)
 
         # Create a new instance of the `Conversation` class and restore
         # the state from the saved conversation
@@ -132,9 +134,8 @@ class Conversation(SlidingWindowStringConcatMemory):
         self.seo_opt = SEOQueryOptimizer()
         self.reader = FileReader()
         if self.index_name is not None:
-            UserMessage(
-                "Index not supported for conversation class.", raise_with=NotImplementedError
-            )
+            msg = "Index not supported for conversation class."
+            raise NotImplementedError(msg)
         return self
 
     def commit(self, target_file: str | None = None, formatter: Callable | None = None):
@@ -148,7 +149,8 @@ class Conversation(SlidingWindowStringConcatMemory):
                 file_link = file_link[0]
             else:
                 file_link = None  # cannot commit to multiple files
-                UserMessage("Cannot commit to multiple files.", raise_with=Exception)
+                msg = "Cannot commit to multiple files."
+                raise Exception(msg)
         if file_link:
             # if file extension is .py, then format code
             format_ = formatter
@@ -162,7 +164,8 @@ class Conversation(SlidingWindowStringConcatMemory):
             with Path(file_link).open("w") as file:
                 file.write(str(val))
         else:
-            UserMessage("File link is not set or a set of files.", raise_with=Exception)
+            msg = "File link is not set or a set of files."
+            raise Exception(msg)
 
     def save(self, path: str, replace: bool = False) -> Symbol:
         return Symbol(self._memory).save(path, replace=replace)
@@ -182,7 +185,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         # if user is requesting to preview the response, then return only the preview result
         if kwargs.get("preview"):
             if self.auto_print:
-                UserMessage(str(res), style="text")
+                logger.debug("%s", res)
             return res
 
         ### --- asses memory update --- ###
@@ -192,7 +195,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         # WARN: DO NOT PROCESS THE RES BY REMOVING `<<<` AND `>>>` TAGS
 
         if self.auto_print:
-            UserMessage(str(res), style="text")
+            logger.debug("%s", res)
         return res
 
     def _apply_truncation_overrides(self, kwargs: dict[str, Any]) -> dict[str, Any]:
@@ -230,7 +233,7 @@ class Conversation(SlidingWindowStringConcatMemory):
         memory = self.index(search_query, *args, **kwargs)
 
         if "raw_result" in kwargs:
-            UserMessage(str(memory), style="text")
+            logger.debug("%s", memory)
         return memory
 
     def _build_payload(self, kwargs: dict[str, Any], memory) -> str:
@@ -250,5 +253,3 @@ class Conversation(SlidingWindowStringConcatMemory):
         self._value = res.value  # save last response
         val = self.build_tag(self.bot_tag, res)
         self.store(val)
-
-

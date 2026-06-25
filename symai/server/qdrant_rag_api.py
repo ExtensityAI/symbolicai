@@ -19,7 +19,6 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from symai.backend.engines.index.engine_qdrant import QdrantIndexEngine, chunks
 from symai.core import Argument
 from symai.symbol import Symbol as SymaiSymbol
-from symai.utils import UserMessage
 
 logger = logging.getLogger(__name__)
 try:
@@ -434,10 +433,8 @@ def _translate_document_path(path: str) -> str:
             relative_part = path[idx + len(project_name) :].lstrip("/")
             translated = (container_root / relative_part).resolve()
             if not str(translated).startswith(str(container_root)):
-                UserMessage(
-                    f"Path traversal detected: '{path}' resolves outside container root",
-                    raise_with=ValueError,
-                )
+                msg = f"Path traversal detected: '{path}' resolves outside container root"
+                raise ValueError(msg)
             translated_str = str(translated)
             logger.debug("Translated path: %s -> %s", path, translated_str)
             return translated_str

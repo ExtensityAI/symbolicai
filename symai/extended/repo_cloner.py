@@ -1,10 +1,12 @@
+import logging
 from pathlib import Path
 
 from git import Repo
 
 from ..backend.settings import HOME_PATH
 from ..symbol import Expression
-from ..utils import UserMessage
+
+logger = logging.getLogger(__name__)
 
 
 class RepositoryCloner(Expression):
@@ -37,24 +39,24 @@ class RepositoryCloner(Expression):
         """
         repo_name = url.rsplit("/", maxsplit=1)[-1].replace(".git", "")
         if (self.repo_dir / repo_name).is_dir():
-            UserMessage(f"Repository {repo_name} already exists. Checking for updates...")
+            logger.info("Repository %s already exists. Checking for updates...", repo_name)
             try:
                 repo = Repo(self.repo_dir / repo_name)
                 current = repo.head.commit
                 repo.remotes.origin.pull()
                 if current != repo.head.commit:
-                    UserMessage(f"Repository {repo_name} updated.")
+                    logger.info("Repository %s updated.", repo_name)
                 else:
-                    UserMessage(f"Repository {repo_name} is up-to-date.")
+                    logger.info("Repository %s is up-to-date.", repo_name)
             except Exception as e:
-                UserMessage(f"An error occurred: {e}")
-                raise e
+                logger.exception("An error occurred")
+                raise e from e
         else:
-            UserMessage(f"Cloning repository {repo_name}...")
+            logger.info("Cloning repository %s...", repo_name)
             try:
                 Repo.clone_from(url, self.repo_dir / repo_name)
-                UserMessage(f"Repository {repo_name} cloned successfully.")
+                logger.info("Repository %s cloned successfully.", repo_name)
             except Exception as e:
-                UserMessage(f"Failed to clone the repository. An error occurred: {e}")
-                raise e
+                logger.exception("Failed to clone the repository. An error occurred")
+                raise e from e
         return str(self.repo_dir / repo_name)

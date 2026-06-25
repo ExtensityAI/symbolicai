@@ -1,5 +1,6 @@
 import importlib
 import inspect
+import logging
 import pickle
 from typing import Any, Generic, TypeVar
 
@@ -14,7 +15,8 @@ from symai.backend import settings
 
 from .. import core_ext
 from ..symbol import Expression, Symbol
-from ..utils import UserMessage
+
+logger = logging.getLogger(__name__)
 
 # Configure Redis server connection parameters and executable path
 HOST = "localhost"
@@ -28,11 +30,13 @@ def is_redis_running(host: str, port: int) -> bool:
     try:
         r = redis.Redis(host=host, port=port)
         r.ping()
-        UserMessage(f"Redis server is running at {host}:{port}")
+        logger.info("Redis server is running at %s:%s", host, port)
         return True
     except RedisConnectionError:
-        UserMessage(
-            f"Redis server is not running at {host}:{port} or is not reachable - falling back to in-memory storage"
+        logger.warning(
+            "Redis server is not running at %s:%s or is not reachable - falling back to in-memory storage",
+            host,
+            port,
         )
         return False
 
@@ -385,7 +389,6 @@ def generic_forward(request: GenericRequest, _api_key: str = Security(get_api_ke
     # Check if cls is subclass of Expression and instantiate
     if not issubclass(cls, components_module.Expression):
         msg = "The provided class name must be a subclass of Expression"
-        UserMessage(msg)
         raise ValueError(msg)
     # Initialize the class with provided init_args, requiring unpacking **kwargs
     instance = cls(*request.init_args, **request.init_kwargs)
@@ -467,7 +470,6 @@ def extended_forward(request: GenericRequest, _api_key: str = Security(get_api_k
         # iterate over the extended_type Union and check if the class name is in the __dict__
         if cls is None:
             msg = f"Class {request.class_name} not found in extended types"
-            UserMessage(msg)
             raise ImportError(msg)
         # Initialize the class with provided init_args and init_kwargs
         instance = cls(*request.init_args, **request.init_kwargs)

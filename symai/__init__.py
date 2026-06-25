@@ -9,7 +9,6 @@ import urllib.request
 import warnings
 
 from .backend import settings
-from .utils import UserMessage
 
 # do not remove - hides the libraries' debug messages
 logging.getLogger("urllib3").setLevel(logging.WARNING)
@@ -20,6 +19,7 @@ logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 logging.getLogger("huggingface").setLevel(logging.ERROR)
 
 _symai_log = logging.getLogger("symai")
+logger = logging.getLogger(__name__)
 _symai_log.addHandler(logging.NullHandler())
 if os.environ.get("SYMAI_WARNINGS", "1") == "0":
     _symai_log.setLevel(logging.ERROR)
@@ -79,8 +79,9 @@ def _start_symai():
 
     if not _symai_config_path_.exists():
         setup_wizard(_symai_config_path_)
-        UserMessage(
-            f"No configuration file found for the environment. A new configuration file has been created at {_symai_config_path_}. Please configure your environment."
+        logger.warning(
+            "No configuration file found for the environment. A new configuration file has been created at %s. Please configure your environment.",
+            _symai_config_path_,
         )
 
     # Load all configurations
@@ -100,8 +101,10 @@ def _start_symai():
     ):
         # Try to fallback to the global (home) config if environment is not home
         if config_manager.config_dir != config_manager._home_config_dir:
-            UserMessage(
-                f"You didn't configure your environment ({config_manager.config_dir})! Falling back to the global ({config_manager._home_config_dir}) configuration if it exists."
+            logger.warning(
+                "You didn't configure your environment (%s)! Falling back to the global (%s) configuration if it exists.",
+                config_manager.config_dir,
+                config_manager._home_config_dir,
             )
             # Force loading from home
             symai_config = config_manager.load_config("symai.config.json", fallback_to_home=True)
@@ -112,7 +115,7 @@ def _start_symai():
 
         # If still not valid, warn and continue
         if not symai_config.get("NEUROSYMBOLIC_ENGINE_API_KEY"):
-            UserMessage(
+            logger.warning(
                 "The mandatory neuro-symbolic engine is not initialized. Please set NEUROSYMBOLIC_ENGINE_MODEL and NEUROSYMBOLIC_ENGINE_API_KEY."
             )
 
@@ -337,9 +340,9 @@ def run_server():
                         raise RuntimeError(msg)
                 time.sleep(0.25)
         except KeyboardInterrupt:
-            UserMessage("Server stopped.", style="success")
-        except Exception as e:
-            UserMessage(f"Error running server: {e}")
+            logger.info("Server stopped.")
+        except Exception:
+            logger.exception("Error running server")
         finally:
             # Best-effort shutdown for companion processes (if used).
             try:
@@ -382,9 +385,9 @@ def run_server():
         try:
             subprocess.run(command, check=True)
         except KeyboardInterrupt:
-            UserMessage("Server stopped.", style="success")
-        except Exception as e:
-            UserMessage(f"Error running server: {e}")
+            logger.info("Server stopped.")
+        except Exception:
+            logger.exception("Error running server")
         finally:
             _symserver_config_["online"] = False
             _save_symserver_config(_symserver_config_)
@@ -405,9 +408,9 @@ def run_server():
         try:
             subprocess.run(command, check=True)
         except KeyboardInterrupt:
-            UserMessage("Server stopped.", style="success")
-        except Exception as e:
-            UserMessage(f"Error running server: {e}")
+            logger.info("Server stopped.")
+        except Exception:
+            logger.exception("Error running server")
         finally:
             _symserver_config_["online"] = False
             _save_symserver_config(_symserver_config_)
@@ -425,9 +428,9 @@ def run_server():
         try:
             command(host=args.host, port=args.port)
         except KeyboardInterrupt:
-            UserMessage("Server stopped.", style="success")
-        except Exception as e:
-            UserMessage(f"Error running server: {e}")
+            logger.info("Server stopped.")
+        except Exception:
+            logger.exception("Error running server")
         finally:
             _symserver_config_["online"] = False
             _save_symserver_config(_symserver_config_)
@@ -453,9 +456,9 @@ def run_server():
         try:
             subprocess.run(command, check=True)
         except KeyboardInterrupt:
-            UserMessage("Server stopped.", style="success")
-        except Exception as e:
-            UserMessage(f"Error running server: {e}")
+            logger.info("Server stopped.")
+        except Exception:
+            logger.exception("Error running server")
         finally:
             _symserver_config_["online"] = False
             _save_symserver_config(_symserver_config_)
@@ -473,7 +476,7 @@ def run_server():
             "in symai.config.json\n"
             "  - Lean4 (formal):                symserver --lean4 (requires FORMAL_ENGINE=local)"
         )
-        UserMessage(msg, raise_with=ValueError)
+        raise ValueError(msg)
 
 
 # *==============================================================================================================*
