@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import base64
-import inspect
-import os
+import logging
 import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -14,7 +13,7 @@ import numpy as np
 from box import Box
 from PIL import Image
 
-from .misc.console import ConsoleStyle
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from .components import MetadataTracker
@@ -159,26 +158,10 @@ class Args:
 
 
 class UserMessage:
-    def __init__(
-        self,
-        message: str,
-        stacklevel: int = 1,
-        style: str = "warn",
-        raise_with: Exception | None = None,
-    ) -> None:
-        if os.environ.get("SYMAI_WARNINGS", "1") == "1":
-            caller = inspect.getframeinfo(inspect.stack()[stacklevel][0])
-            lineno = caller.lineno
-            filename = caller.filename
-            filename = filename[filename.find("symbolicai") :]
-            with ConsoleStyle(style) as console:
-                if style == "warn":
-                    console.print(
-                        f"{filename}:{lineno}: {UserWarning.__name__}: {message}", escape=True
-                    )
-                else:
-                    console.print(f"{message}", escape=True)
-        # Always raise the warning if raise_with is provided
+    """Deprecated logging bridge. Prefer logging.getLogger(__name__); raise exceptions with a plain `raise`."""
+
+    def __init__(self, message: str, raise_with: Exception | None = None, **_: object) -> None:
+        logger.warning("%s", message)
         if raise_with is not None:
             raise raise_with(message)
 

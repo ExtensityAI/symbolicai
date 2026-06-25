@@ -36,7 +36,6 @@ for _module_name in [
     "file_merger",
     "graph",
     "html_style_template",
-    "packages",
     "repo_cloner",
     "solver",
     "summarizer",
