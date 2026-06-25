@@ -33,7 +33,7 @@ def encode_media_frames(file_path):
     if ext.lower() == "gif":
         if file_path.startswith("http"):
             msg = "GIF files from URLs are not supported. Please download the file and try again."
-            UserMessage(msg, raise_with=ValueError)
+            raise ValueError(msg)
 
         ext = "jpeg"
         # get frames from gif
@@ -49,7 +49,7 @@ def encode_media_frames(file_path):
     if ext.lower() == "mp4" or ext.lower() == "avi" or ext.lower() == "mov":
         if file_path.startswith("http"):
             msg = "Video files from URLs are not supported. Please download the file and try again."
-            UserMessage(msg, raise_with=ValueError)
+            raise ValueError(msg)
 
         ext = "jpeg"
         video = cv2.VideoCapture(file_path)
@@ -64,7 +64,6 @@ def encode_media_frames(file_path):
         video.release()
         return base64Frames, ext
     msg = f"File extension {ext} not supported"
-    UserMessage(msg)
     raise ValueError(msg)
 
 
@@ -157,15 +156,6 @@ class Args:
                 setattr(self, key, value)
 
 
-class UserMessage:
-    """Deprecated logging bridge. Prefer logging.getLogger(__name__); raise exceptions with a plain `raise`."""
-
-    def __init__(self, message: str, raise_with: Exception | None = None, **_: object) -> None:
-        logger.warning("%s", message)
-        if raise_with is not None:
-            raise raise_with(message)
-
-
 # Function to format bytes to a human-readable string
 def format_bytes(bytes):
     if bytes < 1024:
@@ -185,7 +175,7 @@ def semassert(condition: bool, message: str = ""):
     if not condition:
         base_msg = "Assertion failed due to model capability limitations in handling this type of semantic computation"
         full_msg = f"{base_msg}. {message}" if message else base_msg
-        UserMessage(f"⚠️  SEMANTIC ASSERT: {full_msg}")
+        logger.warning("⚠️  SEMANTIC ASSERT: %s", full_msg)
         return False
     return True
 
@@ -243,7 +233,8 @@ class RuntimeInfo:
             try:
                 return RuntimeInfo.from_usage_stats(tracker.usage, total_elapsed_time)
             except Exception as e:
-                UserMessage(f"Failed to parse metadata: {e}", raise_with=ValueError)
+                msg = f"Failed to parse metadata: {e}"
+                raise ValueError(msg) from e
         return RuntimeInfo(0, 0, 0, 0, 0, 0, 0, 0, {})
 
     @staticmethod
