@@ -60,6 +60,7 @@ dependencies = [
     "markitdown[docx,outlook,pdf,pptx,xls,xlsx]",
     "dill>=0.4.0",
     "filetype>=1.2.0",
+    "python-box>=7.1.1",
 ]
 
 [project.optional-dependencies]
