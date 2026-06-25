@@ -8,11 +8,6 @@ import time
 import urllib.request
 import warnings
 
-from rich.console import Console
-from rich.panel import Panel
-from rich.table import Table
-from rich.tree import Tree
-
 from .backend import settings
 from .utils import UserMessage
 
@@ -23,6 +18,11 @@ logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("httpcore").setLevel(logging.ERROR)
 logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 logging.getLogger("huggingface").setLevel(logging.ERROR)
+
+_symai_log = logging.getLogger("symai")
+_symai_log.addHandler(logging.NullHandler())
+if os.environ.get("SYMAI_WARNINGS", "1") == "0":
+    _symai_log.setLevel(logging.ERROR)
 
 
 warnings.simplefilter("ignore")
@@ -491,86 +491,52 @@ def format_config_content(config: dict) -> str:
 
 def display_config():
     """Display all configuration paths and their content."""
+    print(f"SymbolicAI Configuration Inspector v{__version__}\n")
+    print("Configuration Locations")
 
-    console = Console()
-
-    # Create header
-    console.print(
-        Panel.fit(
-            f"[bold cyan]SymbolicAI Configuration Inspector v{__version__}[/bold cyan]",
-            border_style="cyan",
-        )
-    )
-
-    # Create main tree
-    tree = Tree("[bold]Configuration Locations[/bold]")
-
-    # Debug config
-    debug_branch = tree.add("[yellow]Debug Mode Config (CWD)[/yellow]")
+    print("  Debug Mode Config (CWD):")
     debug_config = config_manager._debug_dir / "symai.config.json"
     if debug_config.exists():
         with debug_config.open() as f:
             content = json.load(f)
-        debug_branch.add(f"📄 [green]{debug_config}[/green]\n{format_config_content(content)}")
+        print(f"    📄 {debug_config}\n{format_config_content(content)}")
     else:
-        debug_branch.add("[dim]No debug config found[/dim]")
+        print("    No debug config found")
 
-    # Environment config
-    env_branch = tree.add("[yellow]Environment Config[/yellow]")
     env_configs = {
         "symai.config.json": "⚙️",
         "symsh.config.json": "🖥️",
         "symserver.config.json": "🌐",
     }
 
-    for config_file, icon in env_configs.items():
-        config_path = config_manager._env_config_dir / config_file
-        if config_path.exists():
-            with config_path.open() as f:
-                content = json.load(f)
-            env_branch.add(f"{icon} [green]{config_path}[/green]\n{format_config_content(content)}")
-        else:
-            env_branch.add(f"[dim]{icon} {config_file} (not found)[/dim]")
+    for label, base_dir in (
+        ("Environment Config", config_manager._env_config_dir),
+        ("Home Directory Config (Global)", config_manager._home_config_dir),
+    ):
+        print(f"  {label}:")
+        for config_file, icon in env_configs.items():
+            config_path = base_dir / config_file
+            if config_path.exists():
+                with config_path.open() as f:
+                    content = json.load(f)
+                print(f"    {icon} {config_path}\n{format_config_content(content)}")
+            else:
+                print(f"    {icon} {config_file} (not found)")
 
-    # Home (global) config
-    home_branch = tree.add("[yellow]Home Directory Config (Global)[/yellow]")
-    for config_file, icon in env_configs.items():
-        config_path = config_manager._home_config_dir / config_file
-        if config_path.exists():
-            with config_path.open() as f:
-                content = json.load(f)
-            home_branch.add(
-                f"{icon} [green]{config_path}[/green]\n{format_config_content(content)}"
-            )
-        else:
-            home_branch.add(f"[dim]{icon} {config_file} (not found)[/dim]")
-
-    # Active configuration summary
-    summary = Table(show_header=True, header_style="bold magenta")
-    summary.add_column("Configuration Type")
-    summary.add_column("Active Path")
-
+    print("\nActive Configuration Summary:")
     active_paths = {
         "Primary Config Dir": config_manager.get_active_config_dir(),
         "symai.config.json": config_manager.get_active_path("symai.config.json"),
         "symsh.config.json": config_manager.get_active_path("symsh.config.json"),
         "symserver.config.json": config_manager.get_active_path("symserver.config.json"),
     }
-
     for config_type, path in active_paths.items():
-        summary.add_row(config_type, str(path))
+        print(f"  {config_type}: {path}")
 
-    # Print everything
-    console.print(tree)
-    console.print("\n[bold]Active Configuration Summary:[/bold]")
-    console.print(summary)
-
-    # Print help
-    console.print("\n[bold]Legend:[/bold]")
-    console.print("⚙️  symai.config.json (Main SymbolicAI configuration)")
-    console.print("🖥️  symsh.config.json (Shell configuration)")
-    console.print("🌐  symserver.config.json (Server configuration)")
-    console.print("\n[dim]Note: API keys and URIs are truncated for security[/dim]")
+    print("\nLegend:")
+    print("⚙️  symai.config.json (Main SymbolicAI configuration)")
+    print("🌐  symserver.config.json (Server configuration)")
+    print("\nNote: API keys and URIs are truncated for security")
 
 
 # *==============================================================================================================*
@@ -619,7 +585,6 @@ from .interfaces import Interface  # noqa
 from .post_processors import PostProcessor  # noqa
 from .pre_processors import PreProcessor  # noqa
 from .prompts import Prompt, PromptRegistry  # noqa
-from .shell import Shell  # noqa
 from .strategy import Strategy  # noqa
 from .symbol import Call, Expression, GlobalSymbolPrimitive, Metadata, Symbol  # noqa
 
@@ -640,7 +605,6 @@ __all__ = [
     "PrimitiveDisabler",
     "Prompt",
     "PromptRegistry",
-    "Shell",
     "Strategy",
     "Symbol",
     "__root_dir__",
