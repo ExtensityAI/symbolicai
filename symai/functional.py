@@ -424,32 +424,6 @@ class EngineRepository:
         self._engines[id] = engine_instance
 
     @staticmethod
-    def register_from_plugin(
-        id: str,
-        plugin: str,
-        selected_engine: str | None = None,
-        allow_engine_override: bool = False,
-        *args,
-        **kwargs,
-    ) -> None:
-        # Lazy import keeps functional -> imports -> symbol -> core -> functional cycle broken.
-        from .imports import Import  # noqa
-
-        types = Import.load_module_class(plugin)
-        # filter out engine class type
-        engines = [t for t in types if issubclass(t, Engine) and t is not Engine]
-        if len(engines) > 1 and selected_engine is None:
-            msg = f"Multiple engines found in plugin {plugin}. Please specify the engine to use."
-            raise ValueError(msg)
-        if len(engines) > 1 and selected_engine is not None:
-            engine = [e for e in engines if selected_engine in str(e)]
-            if len(engine) <= 0:
-                msg = f"No engine named {selected_engine} found in plugin {plugin}."
-                raise ValueError(msg)
-        engine = engines[0](*args, **kwargs)
-        EngineRepository.register(id, engine, allow_engine_override=allow_engine_override)
-
-    @staticmethod
     def register_from_package(
         package: ModuleType, allow_engine_override: bool = False, *args, **kwargs
     ) -> None:

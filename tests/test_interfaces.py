@@ -4,6 +4,7 @@ import pytest
 
 import symai.interfaces as interfaces_module
 from symai import Expression
+from symai.imports import Import
 from symai.interfaces import Interface
 
 
@@ -57,3 +58,13 @@ def test_bundled_interface_shadows_installed_plugin(monkeypatch):
 def test_interface_unknown_name_raises_clear_error():
     with pytest.raises(ValueError, match="No interface or installed"):
         Interface("definitely_not_a_real_interface")
+
+
+def test_import_construction_raises_actionable_removal_error():
+    with pytest.raises(RuntimeError, match="pip install"):
+        Import("nonexistent-owner/nonexistent-repo")
+
+
+def test_interface_namespaced_name_raises_actionable_removal_error():
+    with pytest.raises(RuntimeError, match="pip install"):
+        Interface("nonexistent-owner/nonexistent-repo")
