@@ -21,8 +21,12 @@ logging.getLogger("huggingface").setLevel(logging.ERROR)
 _symai_log = logging.getLogger("symai")
 logger = logging.getLogger(__name__)
 _symai_log.addHandler(logging.NullHandler())
+
 if os.environ.get("SYMAI_WARNINGS", "1") == "0":
-    _symai_log.setLevel(logging.ERROR)
+    _symai_log.setLevel(logging.WARNING)
+    _symai_log.warning(
+        'The `SYMAI_WARNINGS` env var will be deprecated in the future. Instead, configure the `symai` logger via `logging.getLogger("symai")`.'
+    )
 
 
 warnings.simplefilter("ignore")
