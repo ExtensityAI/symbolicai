@@ -578,7 +578,7 @@ def test_act_contract_state_interaction():
                 assert t.confidence >= 0.9
     except Exception as e:
         # Allow LLM errors or validation failures if LLM doesn't cooperate for "pass" case
-        logging.warning(f"State interaction pass test encountered: {e}. This might be due to LLM variability.")
+        logging.warning("State interaction pass test encountered: %s. This might be due to LLM variability.", e)
         pass
 
 
@@ -684,7 +684,7 @@ def test_contract_result_propagation():
             if output.triplets:
                 for triplet in output.triplets:
                     if self.intermediate_text_from_act and self.intermediate_text_from_act[:5] in triplet.subject.name:
-                        logging.info(f"Post-validation: Found data from 'act' in triplet: {triplet.subject.name}")
+                        logging.info("Post-validation: Found data from 'act' in triplet: %s", triplet.subject.name)
                         return True # Found evidence of act's output influencing the result
                 # If no triplet contains evidence, it might still be a pass if LLM chose not to include it.
                 # For a robust test, prompt might need to be more directive.
@@ -717,11 +717,11 @@ def test_contract_result_propagation():
     # However, if `post_remedy=True` and `post` passes, and `verbose=True` in contract,
     # logs would show the LLM call and the data flow.
     # The `post` method above includes a log if it finds evidence.
-    logging.info(f"Resulting KG for propagation test: {result.model_dump_json(indent=2)}")
+    logging.info("Resulting KG for propagation test: %s", result.model_dump_json(indent=2))
 
     if result.triplets and contract_instance.intermediate_text_from_act:
         found_evidence = any(contract_instance.intermediate_text_from_act[:5] in t.subject.name for t in result.triplets)
-        logging.info(f"Evidence of 'act' data in final result: {found_evidence}")
+        logging.info("Evidence of 'act' data in final result: %s", found_evidence)
 
 
 @pytest.mark.mandatory

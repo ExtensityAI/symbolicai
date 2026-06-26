@@ -30,12 +30,6 @@
 * [Prompt Registry](FEATURES/prompt_registry.md)
 
 ## Tutorials
-* [Chatbot Tutorial](TUTORIALS/chatbot.md)
 * [Handling Large Contexts](TUTORIALS/context.md)
 * [SQL Data Query](TUTORIALS/data_query.md)
 * [Video Tutorials](TUTORIALS/video_tutorials.md)
-
-## Tools
-* [Chatbot CLI](TOOLS/chatbot.md)
-* [Package Manager](TOOLS/packages.md)
-* [Shell](TOOLS/shell.md)

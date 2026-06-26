@@ -8,7 +8,6 @@ from ..components import FileReader
 from ..interfaces import Interface
 from ..memory import SlidingWindowStringConcatMemory
 from ..symbol import Symbol
-from .seo_query_optimizer import SEOQueryOptimizer
 
 
 class CodeFormatter:
@@ -43,7 +42,6 @@ class Conversation(SlidingWindowStringConcatMemory):
         self.file_link = file_link
         self.url_link = url_link
         self.index_name = index_name
-        self.seo_opt = SEOQueryOptimizer()
         self.reader = FileReader()
         self.scraper = Interface("naive_scrape")
         self.user_tag = "USER::"
@@ -65,7 +63,6 @@ class Conversation(SlidingWindowStringConcatMemory):
 
     def __getstate__(self):
         state = super().__getstate__().copy()
-        state.pop("seo_opt", None)
         state.pop("indexer", None)
         state.pop("index", None)
         state.pop("reader", None)
@@ -73,7 +70,6 @@ class Conversation(SlidingWindowStringConcatMemory):
 
     def __setstate__(self, state):
         self.__dict__.update(state)
-        self.seo_opt = SEOQueryOptimizer()
         self.reader = FileReader()
         if self.index_name is not None:
             msg = "Index not supported for conversation class."
@@ -128,7 +124,6 @@ class Conversation(SlidingWindowStringConcatMemory):
         self.file_link = conversation_state.file_link
         self.url_link = conversation_state.url_link
         self.index_name = conversation_state.index_name
-        self.seo_opt = SEOQueryOptimizer()
         self.reader = FileReader()
         if self.index_name is not None:
             msg = "Index not supported for conversation class."
@@ -225,8 +220,6 @@ class Conversation(SlidingWindowStringConcatMemory):
             memory_shards = memory_shards[:2] + retained
 
         search_query = query | "\n" | "\n".join(memory_shards)
-        if kwargs.get("use_seo_opt"):
-            search_query = self.seo_opt("[Query]:" | search_query)
         memory = self.index(search_query, *args, **kwargs)
 
         if "raw_result" in kwargs:
