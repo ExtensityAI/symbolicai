@@ -141,6 +141,5 @@ class SymAIConfig:
 
 
 SYMAI_CONFIG = {}
-SYMSH_CONFIG = {}
 SYMSERVER_CONFIG = {}
 HOME_PATH = Path(SymAIConfig().config_dir)

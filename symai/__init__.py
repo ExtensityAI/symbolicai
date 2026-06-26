@@ -47,31 +47,6 @@ def _start_symai():
     config_manager._env_config_dir.mkdir(parents=True, exist_ok=True)
     config_manager._home_config_dir.mkdir(parents=True, exist_ok=True)
 
-    # CREATE THE SHELL CONFIGURATION FILE IF IT DOES NOT EXIST YET
-    # *==============================================================================================================*
-    _symsh_config_path_ = config_manager.get_config_path("symsh.config.json")
-    if not _symsh_config_path_.exists():
-        config_manager.save_config(
-            "symsh.config.json",
-            {
-                "colors": {
-                    "completion-menu.completion.current": "bg:#323232 #212121",
-                    "completion-menu.completion": "bg:#800080 #212121",
-                    "scrollbar.background": "bg:#222222",
-                    "scrollbar.button": "bg:#776677",
-                    "history-completion": "bg:#212121 #f5f5f5",
-                    "path-completion": "bg:#800080 #f5f5f5",
-                    "file-completion": "bg:#9040b2 #f5f5f5",
-                    "history-completion-selected": "bg:#efefef #b3d7ff",
-                    "path-completion-selected": "bg:#efefef #b3d7ff",
-                    "file-completion-selected": "bg:#efefef #b3d7ff",
-                },
-                "map-nt-cmd": True,
-                "show-splash-screen": True,
-                "plugin_prefix": None,
-            },
-        )
-
     # CREATE A SERVER CONFIGURATION FILE IF IT DOES NOT EXIST YET
     # *==============================================================================================================*
     _symserver_config_path_ = config_manager.get_config_path("symserver.config.json")
@@ -90,7 +65,6 @@ def _start_symai():
 
     # Load all configurations
     symai_config = config_manager.load_config("symai.config.json")
-    symsh_config = config_manager.load_config("symsh.config.json")
     symserver_config = config_manager.load_config("symserver.config.json")
 
     # CHECK IF THE USER HAS A NEUROSYMBOLIC API KEY
@@ -112,7 +86,6 @@ def _start_symai():
             )
             # Force loading from home
             symai_config = config_manager.load_config("symai.config.json", fallback_to_home=True)
-            symsh_config = config_manager.load_config("symsh.config.json", fallback_to_home=True)
             symserver_config = config_manager.load_config(
                 "symserver.config.json", fallback_to_home=True
             )
@@ -124,9 +97,8 @@ def _start_symai():
             )
 
     settings.SYMAI_CONFIG = symai_config
-    settings.SYMSH_CONFIG = symsh_config
     settings.SYMSERVER_CONFIG = symserver_config
-    return symai_config, symsh_config, symserver_config
+    return symai_config, symserver_config
 
 
 from .server.qdrant_server import _QDRANT_SERVER_FLAGS  # noqa: E402
@@ -512,7 +484,6 @@ def display_config():
 
     env_configs = {
         "symai.config.json": "⚙️",
-        "symsh.config.json": "🖥️",
         "symserver.config.json": "🌐",
     }
 
@@ -534,7 +505,6 @@ def display_config():
     active_paths = {
         "Primary Config Dir": config_manager.get_active_config_dir(),
         "symai.config.json": config_manager.get_active_path("symai.config.json"),
-        "symsh.config.json": config_manager.get_active_path("symsh.config.json"),
         "symserver.config.json": config_manager.get_active_path("symserver.config.json"),
     }
     for config_type, path in active_paths.items():
@@ -542,7 +512,6 @@ def display_config():
 
     print("\nLegend:")
     print("⚙️  symai.config.json (Main SymbolicAI configuration)")
-    print("🖥️  symsh.config.json (Shell configuration)")
     print("🌐  symserver.config.json (Server configuration)")
     print("\nNote: API keys and URIs are truncated for security")
 
@@ -581,7 +550,7 @@ def setup_wizard(_symai_config_path_):
     )
 
 
-_symai_config_, _symsh_config_, _symserver_config_ = _start_symai()
+_symai_config_, _symserver_config_ = _start_symai()
 
 from .backend.base import Engine  # noqa
 from .components import Function, PrimitiveDisabler  # noqa
