@@ -235,68 +235,6 @@ def _execute_query_fallback(func, instance, argument, error=None, stack_trace=No
     raise error from None
 
 
-def _process_query_single(
-    engine,
-    instance,
-    func: Callable,
-    constraints: list[Callable] | None = None,
-    default: object | None = None,
-    limit: int = 1,
-    trials: int = 1,
-    pre_processors: list[PreProcessor] | None = None,
-    post_processors: list[PostProcessor] | None = None,
-    argument=None,
-):
-    if constraints is None:
-        constraints = []
-    if pre_processors and not isinstance(pre_processors, list):
-        pre_processors = [pre_processors]
-    if post_processors and not isinstance(post_processors, list):
-        post_processors = [post_processors]
-
-    argument = _prepare_argument(
-        argument,
-        engine,
-        instance,
-        func,
-        constraints,
-        default,
-        limit,
-        trials,
-        pre_processors,
-        post_processors,
-    )
-
-    preprocessed_input = _apply_preprocessors(argument, instance, pre_processors)
-    argument.prop.processed_input = preprocessed_input
-    engine.prepare(argument)
-
-    result = None
-    metadata = None
-    for _ in range(trials):
-        try:
-            outputs = engine.executor_callback(argument)
-            result, metadata = _apply_postprocessors(
-                outputs, argument.prop.return_constraint, post_processors, argument
-            )
-            break
-        except Exception as e:
-            stack_trace = traceback.format_exc()
-            logger.error("Failed to execute query: %s", e)
-            logger.error("Stack trace: %s", stack_trace)
-            if _ == trials - 1:
-                result = _execute_query_fallback(
-                    func, instance, argument, error=e, stack_trace=stack_trace
-                )
-                if result is None:
-                    raise e
-
-    limited_result = _limit_number_results(result, argument, argument.prop.return_constraint)
-    if argument.prop.return_metadata:
-        return limited_result, metadata
-    return limited_result
-
-
 def _normalize_processors(
     pre_processors: list[PreProcessor] | PreProcessor | None,
     post_processors: list[PostProcessor] | PostProcessor | None,
@@ -511,9 +449,6 @@ class EngineRepository:
         self = EngineRepository()
         engine = self.get(engine)
         if engine:
-            engine_allows_batching = getattr(engine, "allows_batching", False)
-            if engine_allows_batching:
-                return _process_query_single(engine, *args, **kwargs)
             return _process_query(engine, *args, **kwargs)
         msg = f"No engine named {engine} is registered."
         raise ValueError(msg)
