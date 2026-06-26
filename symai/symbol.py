@@ -1154,25 +1154,6 @@ class Expression(Symbol):
 
         return Expression(_func(Expression()))
 
-    @staticmethod
-    def register(engines: dict[str, Any], **kwargs) -> "Symbol":
-        """
-        Configure multiple engines.
-
-        Args:
-            engines (Dict[str, Any]): A dictionary containing engine names as keys and their configurations as values.
-            **kwargs: Arbitrary keyword arguments to be used by the core.register decorator.
-
-        Returns:
-            Symbol: An Expression object representing the register result.
-        """
-
-        @core.register(engines=engines, **kwargs)
-        def _func(_):
-            pass
-
-        return Expression(_func(Expression()))
-
     def copy(self) -> Any:
         """
         Returns a deep copy of the own object.

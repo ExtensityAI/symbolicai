@@ -2107,21 +2107,6 @@ def command(engines: list[str] | None = None, **decorator_kwargs):
     return decorator
 
 
-def register(engines: dict[str, Any]):
-    """Decorates a function to initialize custom engines as backends."""
-
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(instance, **kwargs):
-            return EngineRepository.register(
-                engines=engines, engine_instance=instance, func=func, **kwargs
-            )
-
-        return wrapper
-
-    return decorator
-
-
 def tune(
     operation: str = "create",
     pre_processors: list[pre.PreProcessor] | None = None,
