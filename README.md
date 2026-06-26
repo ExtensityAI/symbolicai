@@ -215,9 +215,8 @@ SymbolicAI now features a configuration management system with priority-based lo
 
 ### Configuration Files
 
-The system manages three main configuration files:
+The system manages two main configuration files:
 - `symai.config.json`: Main SymbolicAI configuration
-- `symsh.config.json`: Shell configuration
 - `symserver.config.json`: Server configuration
 
 ### Viewing Your Configuration
@@ -245,12 +244,10 @@ my_project/              # Debug mode (highest priority)
 
 {python_env}/.symai/     # Environment config (second priority)
 ├── symai.config.json
-├── symsh.config.json
 └── symserver.config.json
 
 ~/.symai/                # Global config (lowest priority)
 ├── symai.config.json
-├── symsh.config.json
 └── symserver.config.json
 ```
 

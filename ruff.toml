@@ -60,9 +60,10 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [lint.per-file-ignores]
 # Intentional user-facing stdout output (config inspector, contract perf report,
-# Conversation auto_print, solver CLI result)
+# Conversation auto_print, solver CLI result, engine time_clock/verbose toggles)
 "symai/__init__.py" = ["T201"]
 "symai/strategy.py" = ["T201"]
+"symai/backend/base.py" = ["T201"]
 "symai/extended/conversation.py" = ["T201"]
 "symai/extended/solver.py" = ["T201"]
 

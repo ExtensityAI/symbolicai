@@ -3,8 +3,6 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any
 
-from .settings import HOME_PATH
-
 logger = logging.getLogger(__name__)
 
 ENGINE_UNREGISTERED = "<UNREGISTERED/>"
@@ -24,23 +22,9 @@ class Engine(ABC):
         self.logging = False
         self.log_level = logging.DEBUG
         self.time_clock = False
-        # create formatter
-        __root_dir__ = HOME_PATH
-        __root_dir__.mkdir(parents=True, exist_ok=True)
-        __file_path__ = __root_dir__ / "engine.log"
-        logging.basicConfig(
-            filename=__file_path__,
-            filemode="a",
-            format="%(asctime)s %(name)s %(levelname)s %(message)s",
-        )
-        self.logger = logging.getLogger()
-        self.logger.setLevel(logging.DEBUG)
-        # logging to console
-        stream = logging.StreamHandler()
-        streamformat = logging.Formatter("%(asctime)s %(message)s")
-        stream.setLevel(logging.INFO)
-        stream.setFormatter(streamformat)
-        self.logger.addHandler(stream)
+        # library code must not add handlers or touch the root logger; the
+        # application owns logging configuration for the `symai` logger tree.
+        self.logger = logger
 
     def _build_client_kwargs(self, base, *, timeout_key="timeout", max_retries_key="max_retries"):
         if self.client_timeout is not None:
@@ -60,12 +44,12 @@ class Engine(ABC):
         req_time = time.time() - start_time
         metadata["time"] = req_time
         if self.time_clock:
-            logger.debug("%s: %s sec", argument.prop.func, req_time)
+            print(f"{argument.prop.func}: {req_time} sec")
         log["Output"] = res
         if self.verbose:
             view = {k: v for k, v in list(log["Input"].items()) if k != "self"}
             input_ = f"{str(log['Input']['self'])[:50]}, {argument.prop.func!s}, {view!s}"
-            logger.debug("%s %s", input_[:150], str(log["Output"])[:100])
+            print(f"{input_[:150]} {str(log['Output'])[:100]}")
         if self.logging:
             self.logger.log(self.log_level, log)
 
@@ -165,7 +149,7 @@ class BatchEngine(Engine):
 
         total_time = time.time() - start_time
         if self.time_clock:
-            logger.debug("Total execution time: %s sec", total_time)
+            print(f"Total execution time: {total_time} sec")
 
         return self._prepare_batch_results(arguments, results, metadata_list, total_time)
 

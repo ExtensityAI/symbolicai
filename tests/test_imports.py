@@ -25,7 +25,6 @@ _IMPORT_NAME = {
     "gitpython": "git",
     "google-genai": "google.genai",
     "google_search_results": "serpapi",
-    "ipython": "IPython",
     "llama-cpp-python": "llama_cpp",
     "opencv-python": "cv2",
     "openai-whisper": "whisper",
