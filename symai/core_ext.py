@@ -20,6 +20,15 @@ from .functional import EngineRepository
 logger = logging.getLogger(__name__)
 logging.getLogger("multiprocessing").setLevel(logging.ERROR)
 
+
+class SymbolicAIDeprecationWarning(DeprecationWarning):
+    """Deprecation warnings emitted by SymbolicAI's own `@deprecated` decorator."""
+
+
+# Surface SymbolicAI's own deprecations (shown once per call site) without
+# touching the host application's filters for any other warning category.
+warnings.filterwarnings("default", category=SymbolicAIDeprecationWarning)
+
 # -----------------------------------------------------------
 # Global registry so we create **one** pool and reuse it
 # -----------------------------------------------------------
@@ -300,7 +309,7 @@ def deprecated(reason: str = ""):
             def new_init(self, *args, **kwargs):
                 warnings.warn(
                     f"{obj.__name__} is deprecated and will be removed in future versions. {reason}",
-                    DeprecationWarning,
+                    SymbolicAIDeprecationWarning,
                     stacklevel=2,
                 )
                 original_init(self, *args, **kwargs)
@@ -313,7 +322,7 @@ def deprecated(reason: str = ""):
         def wrapper(*args, **kwargs):
             warnings.warn(
                 f"{obj.__name__} is deprecated and will be removed in future versions. {reason}",
-                DeprecationWarning,
+                SymbolicAIDeprecationWarning,
                 stacklevel=2,
             )
             return obj(*args, **kwargs)

@@ -6,7 +6,6 @@ import subprocess
 import sys
 import time
 import urllib.request
-import warnings
 
 from .backend import settings
 
@@ -21,15 +20,6 @@ logging.getLogger("huggingface").setLevel(logging.ERROR)
 _symai_log = logging.getLogger("symai")
 logger = logging.getLogger(__name__)
 _symai_log.addHandler(logging.NullHandler())
-
-if os.environ.get("SYMAI_WARNINGS", "1") == "0":
-    _symai_log.setLevel(logging.WARNING)
-    _symai_log.warning(
-        'The `SYMAI_WARNINGS` env var will be deprecated in the future. Instead, configure the `symai` logger via `logging.getLogger("symai")`.'
-    )
-
-
-warnings.simplefilter("ignore")
 
 # set the environment variable for the transformers library
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -105,6 +95,7 @@ from .server.qdrant_server import _QDRANT_SERVER_FLAGS  # noqa: E402
 
 
 def run_server():
+    logging.basicConfig(level=logging.INFO)
     _symserver_config_ = {}
 
     def _save_symserver_config(config: dict, *, include_home: bool = False) -> None:
@@ -470,6 +461,7 @@ def format_config_content(config: dict) -> str:
 
 def display_config():
     """Display all configuration paths and their content."""
+    logging.basicConfig(level=logging.WARNING)
     print(f"SymbolicAI Configuration Inspector v{__version__}\n")
     print("Configuration Locations")
 

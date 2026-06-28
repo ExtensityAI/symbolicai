@@ -1,3 +1,5 @@
+import contextlib
+import io
 import json
 import logging
 
@@ -88,9 +90,11 @@ class SerpApiEngine(Engine):
                 "hl": "en",
             }
 
-            # send to Google
-            search = GoogleSearch(query)  # TODO refactor!: make sure we suppress io again here
-            res = search.get_dict()
+            # serpapi's GoogleSearch writes diagnostics to stdout/stderr; keep it quiet
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
+                search = GoogleSearch(query)
+                res = search.get_dict()
 
             toret = SerpApiSearchResult(res)
             rsp.append(toret)

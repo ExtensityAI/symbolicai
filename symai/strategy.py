@@ -47,7 +47,7 @@ class ValidationFunction(Function):
         *args,
         **kwargs,
     ):
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, verbose=verbose, **kwargs)
         self.retry_params = {**self._default_retry_params, **(retry_params or {})}
 
         # Standard remedy function for JSON correction:
@@ -77,8 +77,6 @@ class ValidationFunction(Function):
             """,
             response_format={"type": "json_object"},
         )
-
-        logger.disabled = not verbose
 
     def prepare_seeds(self, num_seeds: int, **kwargs):
         # Get list of seeds for remedy (to avoid same remedy for same input)
@@ -497,8 +495,6 @@ class contract:
         self.remedy_retry_params = remedy_retry_params
         self._accumulate_errors = accumulate_errors
         self._verbose = verbose
-
-        logger.disabled = not verbose
 
     def _is_valid_input(self, input_value):
         if input_value is None:

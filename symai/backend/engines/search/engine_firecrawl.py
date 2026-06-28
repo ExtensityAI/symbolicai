@@ -1,11 +1,15 @@
 import json
 import logging
+import warnings
 from copy import deepcopy
 from typing import Any
 
 try:
-    from firecrawl import Firecrawl
-    from firecrawl.v2.types import ScrapeOptions
+    with warnings.catch_warnings():
+        # firecrawl's pydantic models emit field-shadow UserWarnings at import; not actionable here
+        warnings.filterwarnings("ignore", category=UserWarning, module=r"firecrawl\..*")
+        from firecrawl import Firecrawl
+        from firecrawl.v2.types import ScrapeOptions
 except ImportError:
     Firecrawl = None
 
