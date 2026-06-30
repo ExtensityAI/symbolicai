@@ -1605,7 +1605,7 @@ def expand(
     default: object | None = None,
     stop: str | list[str] = "",
     limit: int | None = 1,
-    pre_processors: list[pre.PreProcessor] | None = _PREPROCESSOR_EXPAND_FUNCTION,
+    pre_processors: list[pre.PreProcessor] | None = pre.ExpandFunctionPreProcessor(),
     post_processors: list[post.PostProcessor] | None = None,
     **decorator_kwargs,
 ):
