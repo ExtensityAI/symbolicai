@@ -1,6 +1,6 @@
-from ... import core
-from ...backend.engines.speech_to_text.engine_local_whisper import WhisperResult
-from ...symbol import Expression
+from symai import core
+from symai.backend.engines.speech_to_text.engine_local_whisper import WhisperResult
+from symai.symbol import Expression
 
 
 class whisper(Expression):

@@ -1,6 +1,6 @@
 import logging
 
-from ...base import Engine
+from symai.backend.base import Engine
 
 logger = logging.getLogger(__name__)
 

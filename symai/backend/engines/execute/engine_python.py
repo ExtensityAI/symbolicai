@@ -1,8 +1,8 @@
 import sys
 import traceback
 
-from ....symbol import Result
-from ...base import Engine
+from symai.backend.base import Engine
+from symai.symbol import Result
 
 
 def full_stack():

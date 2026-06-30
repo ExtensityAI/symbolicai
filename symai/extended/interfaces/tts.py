@@ -1,5 +1,5 @@
-from ... import core
-from ...symbol import Expression, Result, Symbol
+from symai import core
+from symai.symbol import Expression, Result, Symbol
 
 
 class tts(Expression):

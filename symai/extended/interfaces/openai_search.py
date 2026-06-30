@@ -1,6 +1,6 @@
-from ... import core
-from ...backend.engines.search.engine_openai import OpenAISearchResult
-from ...symbol import Expression, Symbol
+from symai import core
+from symai.backend.engines.search.engine_openai import OpenAISearchResult
+from symai.symbol import Expression, Symbol
 
 
 class openai_search(Expression):

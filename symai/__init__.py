@@ -7,7 +7,7 @@ import sys
 import time
 import urllib.request
 
-from .backend import settings
+from symai.backend import settings
 
 # do not remove - hides the libraries' debug messages
 logging.getLogger("urllib3").setLevel(logging.WARNING)
@@ -91,7 +91,7 @@ def _start_symai():
     return symai_config, symserver_config
 
 
-from .server.qdrant_server import _QDRANT_SERVER_FLAGS  # noqa: E402
+from symai.server.qdrant_server import _QDRANT_SERVER_FLAGS  # noqa: E402
 
 
 def run_server():
@@ -174,7 +174,7 @@ def run_server():
             ]
         )
     ):
-        from .server.qdrant_server import qdrant_server  # noqa
+        from symai.server.qdrant_server import qdrant_server  # noqa
 
         # Optional RAG API companion server (FastAPI/uvicorn) configuration.
         # We parse these args first, then pass the remaining args to the Qdrant wrapper.
@@ -340,7 +340,7 @@ def run_server():
         "llama"
     ) or settings.SYMAI_CONFIG.get("EMBEDDING_ENGINE_MODEL").startswith("llama"):
         # Keep optional llama_cpp dependencies lazy.
-        from .server.llama_cpp_server import llama_cpp_server  # noqa
+        from symai.server.llama_cpp_server import llama_cpp_server  # noqa
 
         command, args = llama_cpp_server()
         _symserver_config_.update(_args_to_config(args))
@@ -361,7 +361,7 @@ def run_server():
 
     elif settings.SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL").startswith("vllm"):
         # Keep optional vllm dependencies lazy.
-        from .server.vllm_server import vllm_server  # noqa
+        from symai.server.vllm_server import vllm_server  # noqa
 
         command, args = vllm_server()
         # NOTE: _args_to_config handles bare boolean flags (e.g. --enable-auto-tool-choice,
@@ -384,7 +384,7 @@ def run_server():
 
     elif settings.SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL").startswith("huggingface"):
         # HuggingFace server stack is optional; import only when requested.
-        from .server.huggingface_server import huggingface_server  # noqa
+        from symai.server.huggingface_server import huggingface_server  # noqa
 
         command, args = huggingface_server()
         _symserver_config_.update(vars(args))
@@ -404,7 +404,7 @@ def run_server():
 
     elif lean4_requested:
         # Lean4 server - check FORMAL_ENGINE and start container + FastAPI
-        from .server.lean4_server import lean4_server  # noqa
+        from symai.server.lean4_server import lean4_server  # noqa
 
         command, args = lean4_server()
         _symserver_config_.update(_args_to_config(args))
@@ -543,15 +543,15 @@ def setup_wizard(_symai_config_path_):
 
 _symai_config_, _symserver_config_ = _start_symai()
 
-from .backend.base import Engine  # noqa
-from .components import Function, Interface, PrimitiveDisabler  # noqa
-from .core import few_shot, zero_shot  # noqa
-from .functional import EngineRepository  # noqa
-from .post_processors import PostProcessor  # noqa
-from .pre_processors import PreProcessor  # noqa
-from .prompts import Prompt, PromptRegistry  # noqa
-from .strategy import Strategy  # noqa
-from .symbol import Call, Expression, GlobalSymbolPrimitive, Metadata, Symbol  # noqa
+from symai.backend.base import Engine  # noqa
+from symai.components import Function, Interface, PrimitiveDisabler  # noqa
+from symai.core import few_shot, zero_shot  # noqa
+from symai.functional import EngineRepository  # noqa
+from symai.post_processors import PostProcessor  # noqa
+from symai.pre_processors import PreProcessor  # noqa
+from symai.prompts import Prompt, PromptRegistry  # noqa
+from symai.strategy import Strategy  # noqa
+from symai.symbol import Call, Expression, GlobalSymbolPrimitive, Metadata, Symbol  # noqa
 
 __all__ = [
     "SYMAI_VERSION",

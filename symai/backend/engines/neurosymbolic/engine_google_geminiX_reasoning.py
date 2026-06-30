@@ -9,11 +9,11 @@ import requests
 from google import genai
 from google.genai import types
 
-from ....components import SelfPrompt
-from ....utils import encode_media_frames
-from ...base import Engine
-from ...mixin.google import GoogleMixin
-from ...settings import SYMAI_CONFIG
+from symai.backend.base import Engine
+from symai.backend.mixin.google import GoogleMixin
+from symai.backend.settings import SYMAI_CONFIG
+from symai.components import SelfPrompt
+from symai.utils import encode_media_frames
 
 logging.getLogger("google.genai").setLevel(logging.ERROR)
 logging.getLogger("google_genai").propagate = False

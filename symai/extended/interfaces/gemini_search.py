@@ -1,6 +1,6 @@
-from ... import core
-from ...backend.engines.search.engine_gemini import GeminiSearchResult
-from ...symbol import Expression, Symbol
+from symai import core
+from symai.backend.engines.search.engine_gemini import GeminiSearchResult
+from symai.symbol import Expression, Symbol
 
 
 class gemini_search(Expression):

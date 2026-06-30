@@ -6,11 +6,11 @@ from copy import deepcopy
 import tiktoken
 from cerebras.cloud.sdk import Cerebras
 
-from ....components import SelfPrompt
-from ....core_ext import retry
-from ...base import Engine
-from ...mixin.cerebras import CerebrasMixin
-from ...settings import SYMAI_CONFIG
+from symai.backend.base import Engine
+from symai.backend.mixin.cerebras import CerebrasMixin
+from symai.backend.settings import SYMAI_CONFIG
+from symai.components import SelfPrompt
+from symai.core_ext import retry
 
 logging.getLogger("cerebras").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)

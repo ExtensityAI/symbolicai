@@ -13,10 +13,10 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
-from .backend import engines
-from .backend.base import ENGINE_UNREGISTERED, Engine
-from .context import CURRENT_ENGINE_VAR
-from .prompts import (
+from symai.backend import engines
+from symai.backend.base import ENGINE_UNREGISTERED, Engine
+from symai.context import CURRENT_ENGINE_VAR
+from symai.prompts import (
     ProbabilisticBooleanModeMedium,
     ProbabilisticBooleanModeStrict,
     ProbabilisticBooleanModeTolerant,
@@ -26,9 +26,9 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from types import ModuleType
 
-    from .core import Argument
-    from .post_processors import PostProcessor
-    from .pre_processors import PreProcessor
+    from symai.core import Argument
+    from symai.post_processors import PostProcessor
+    from symai.pre_processors import PreProcessor
 else:
     Callable = Any
     ModuleType = type(importlib)
@@ -466,7 +466,7 @@ class EngineRepository:
 
         # 2) Fallback: walk ONLY current thread frames (legacy behavior)
         # Keeping DynamicEngine import lazy prevents functional importing components before it finishes loading.
-        from .components import DynamicEngine  # noqa
+        from symai.components import DynamicEngine  # noqa
 
         try:
             frame = sys._getframe()

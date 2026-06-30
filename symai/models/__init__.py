@@ -1,4 +1,4 @@
-from .base import (
+from symai.models.base import (
     Const,
     CustomConstraint,
     LengthConstraint,

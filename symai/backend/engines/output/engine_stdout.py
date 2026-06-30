@@ -1,4 +1,4 @@
-from ...base import Engine
+from symai.backend.base import Engine
 
 
 class OutputEngine(Engine):

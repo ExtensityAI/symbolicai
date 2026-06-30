@@ -1,6 +1,6 @@
-from ... import core
-from ...backend.engines.formal.engine_lean4_local import LeanResult
-from ...symbol import Expression
+from symai import core
+from symai.backend.engines.formal.engine_lean4_local import LeanResult
+from symai.symbol import Expression
 
 
 class lean4_local(Expression):

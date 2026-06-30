@@ -7,10 +7,10 @@ from typing import Any, ClassVar
 import aiohttp
 import nest_asyncio
 
-from ....core import Argument
-from ....core_ext import retry
-from ...base import Engine
-from ...settings import SYMAI_CONFIG, SYMSERVER_CONFIG
+from symai.backend.base import Engine
+from symai.backend.settings import SYMAI_CONFIG, SYMSERVER_CONFIG
+from symai.core import Argument
+from symai.core_ext import retry
 
 logging.getLogger("requests").setLevel(logging.ERROR)
 logging.getLogger("urllib").setLevel(logging.ERROR)

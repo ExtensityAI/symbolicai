@@ -8,9 +8,9 @@ try:
 except ImportError:
     SentenceTransformer = None
 
-from ....symbol import Symbol
-from ...base import Engine
-from ...settings import SYMAI_CONFIG
+from symai.backend.base import Engine
+from symai.backend.settings import SYMAI_CONFIG
+from symai.symbol import Symbol
 
 logger = logging.getLogger(__name__)
 

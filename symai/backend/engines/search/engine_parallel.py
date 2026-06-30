@@ -5,15 +5,15 @@ from copy import deepcopy
 from typing import Any
 from urllib.parse import urlsplit
 
-from ....symbol import Result
-from ...base import Engine
-from ...settings import SYMAI_CONFIG
-from .utils import (
+from symai.backend.base import Engine
+from symai.backend.engines.search.utils import (
     Citation,
     CitationResultMixin,
     normalize_domains,
     normalize_url,
 )
+from symai.backend.settings import SYMAI_CONFIG
+from symai.symbol import Result
 
 logging.getLogger("requests").setLevel(logging.ERROR)
 logging.getLogger("urllib3").setLevel(logging.ERROR)

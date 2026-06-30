@@ -6,9 +6,9 @@ from itertools import takewhile
 
 import torch
 
-from ....symbol import Expression, Result
-from ...base import Engine
-from ...settings import SYMAI_CONFIG
+from symai.backend.base import Engine
+from symai.backend.settings import SYMAI_CONFIG
+from symai.symbol import Expression, Result
 
 logger = logging.getLogger(__name__)
 

@@ -11,11 +11,11 @@ from anthropic import transform_schema
 from beartype import beartype
 from pydantic import BaseModel, ValidationError
 
-from .backend.settings import SYMAI_CONFIG
-from .components import Function
-from .context import CURRENT_ENGINE_VAR
-from .models import LLMDataModel, build_dynamic_llm_datamodel
-from .symbol import Expression
+from symai.backend.settings import SYMAI_CONFIG
+from symai.components import Function
+from symai.context import CURRENT_ENGINE_VAR
+from symai.models import LLMDataModel, build_dynamic_llm_datamodel
+from symai.symbol import Expression
 
 logger = logging.getLogger(__name__)
 

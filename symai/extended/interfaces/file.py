@@ -1,5 +1,5 @@
-from ... import core
-from ...symbol import Expression, Symbol
+from symai import core
+from symai.symbol import Expression, Symbol
 
 
 class file(Expression):

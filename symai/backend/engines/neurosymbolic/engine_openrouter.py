@@ -4,10 +4,10 @@ from copy import deepcopy
 
 import openai
 
-from ....components import SelfPrompt
-from ....core_ext import retry
-from ...base import Engine
-from ...settings import SYMAI_CONFIG
+from symai.backend.base import Engine
+from symai.backend.settings import SYMAI_CONFIG
+from symai.components import SelfPrompt
+from symai.core_ext import retry
 
 logging.getLogger("openai").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)

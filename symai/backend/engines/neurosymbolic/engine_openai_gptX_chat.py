@@ -7,12 +7,12 @@ from typing import ClassVar
 import openai
 import tiktoken
 
-from ....components import SelfPrompt
-from ....symbol import Symbol
-from ....utils import encode_media_frames
-from ...base import Engine
-from ...mixin.openai import OpenAIMixin
-from ...settings import SYMAI_CONFIG
+from symai.backend.base import Engine
+from symai.backend.mixin.openai import OpenAIMixin
+from symai.backend.settings import SYMAI_CONFIG
+from symai.components import SelfPrompt
+from symai.symbol import Symbol
+from symai.utils import encode_media_frames
 
 logging.getLogger("openai").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)

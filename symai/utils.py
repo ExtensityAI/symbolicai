@@ -15,7 +15,7 @@ from PIL import Image
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from .components import MetadataTracker
+    from symai.components import MetadataTracker
 
 
 def encode_media_frames(file_path):

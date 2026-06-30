@@ -6,8 +6,8 @@ import torch
 from PIL import Image
 from transformers import CLIPModel, CLIPProcessor
 
-from ...base import Engine
-from ...settings import SYMAI_CONFIG
+from symai.backend.base import Engine
+from symai.backend.settings import SYMAI_CONFIG
 
 # supress warnings
 logging.getLogger("PIL").setLevel(logging.WARNING)

@@ -1,4 +1,4 @@
-from .engine_mistral import MistralOCREngine
+from symai.backend.engines.ocr.engine_mistral import MistralOCREngine
 
 OCR_ENGINE_MAPPING = {
     "mistral": MistralOCREngine,

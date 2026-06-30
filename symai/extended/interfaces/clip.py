@@ -1,7 +1,7 @@
 import numpy as np
 
-from ... import core
-from ...symbol import Expression
+from symai import core
+from symai.symbol import Expression
 
 
 class clip(Expression):

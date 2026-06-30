@@ -1,4 +1,4 @@
-from . import primitives as _primitives
+from symai.ops import primitives as _primitives
 
 __all__ = getattr(_primitives, "__all__", None)  # noqa
 if __all__ is None:

@@ -11,14 +11,14 @@ from typing import TYPE_CHECKING, Any, Literal, Union
 import numpy as np
 import torch
 
-from .. import core, core_ext
-from ..prompts import Prompt
-from .measures import calculate_frechet_distance, calculate_mmd
+from symai import core, core_ext
+from symai.ops.measures import calculate_frechet_distance, calculate_mmd
+from symai.prompts import Prompt
 
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from ..symbol import Expression, Symbol
+    from symai.symbol import Expression, Symbol
 
 
 class Primitive:
@@ -1405,7 +1405,7 @@ class IterationPrimitives(Primitive):
             KeyError: If the key or index is not found in the Symbol value.
         """
         # Local import avoids ops.primitives -> post_processors -> symbol -> ops circular load.
-        from ..post_processors import ASTPostProcessor  # noqa
+        from symai.post_processors import ASTPostProcessor  # noqa
 
         if not isinstance(self.value, (str, dict, list)):
             msg = f"Setting item is not supported for {type(self.value)}. Supported types are str, dict, and list."
@@ -1446,7 +1446,7 @@ class IterationPrimitives(Primitive):
             KeyError: If the key or index is not found in the Symbol value.
         """
         # Local import avoids ops.primitives -> post_processors -> symbol -> ops circular load.
-        from ..post_processors import ASTPostProcessor  # noqa
+        from symai.post_processors import ASTPostProcessor  # noqa
 
         if not isinstance(self.value, (str, dict, list)):
             msg = f"Setting item is not supported for {type(self.value)}. Supported types are str, dict, and list."
