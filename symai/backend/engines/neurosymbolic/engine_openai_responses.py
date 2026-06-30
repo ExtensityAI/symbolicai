@@ -254,7 +254,11 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
         return []
 
     def _build_user_text(self, argument, image_files: list[str]) -> str:
-        suffix = str(argument.prop.processed_input)
+        from ....prompts import strip_cache_breakpoints
+
+        # This engine does not honor manual cache breakpoints yet; strip the symai
+        # CACHE_BREAKPOINT marker so the reserved token can never leak into a request.
+        suffix = strip_cache_breakpoints(str(argument.prop.processed_input))
         if len(image_files) > 0:
             suffix = self._remove_vision_pattern(suffix)
         return suffix

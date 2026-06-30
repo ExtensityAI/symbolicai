@@ -197,6 +197,7 @@ class ClaudeXReasoningEngine(Engine, AnthropicMixin):
         kwargs = argument.kwargs
         system, messages = argument.prop.prepared_input
         payload = self._prepare_request_payload(argument)
+        messages, payload = self.apply_cache_breakpoints_to_messages(messages, payload)
         except_remedy = kwargs.get("except_remedy")
 
         try:

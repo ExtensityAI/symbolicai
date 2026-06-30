@@ -12,6 +12,32 @@ from .exceptions import TemplatePropertyException
 from .utils import UserMessage
 
 
+# Provider-neutral, prompt-level cache-breakpoint control. A consumer embeds this
+# opaque reserved marker in prompt text to denote a manual cache breakpoint. Engines
+# that support prompt caching (currently the Anthropic backend) split the text on the
+# marker into ordered content blocks and apply ``cache_control`` to every block except
+# the last; engines that do not honor it strip the marker (a no-op when absent), so the
+# token never reaches a provider. The namespaced token makes collision with natural
+# prompt text effectively impossible (and on collision it is stripped before the request).
+CACHE_BREAKPOINT = "symai:cache_breakpoint"
+
+
+def split_cache_breakpoints(text: str) -> list[str]:
+    """Split ``text`` on :data:`CACHE_BREAKPOINT` markers into ordered segments, with
+    the markers removed. Joining the result (no separator) equals
+    :func:`strip_cache_breakpoints` of the input."""
+    if not text:
+        return [text]
+    return text.split(CACHE_BREAKPOINT)
+
+
+def strip_cache_breakpoints(text: str) -> str:
+    """Remove every :data:`CACHE_BREAKPOINT` marker from ``text`` (no-op when absent)."""
+    if not text:
+        return text
+    return text.replace(CACHE_BREAKPOINT, "")
+
+
 class Prompt:
     """Few-shot example container rendered by engines through ``str(examples)``."""
 
