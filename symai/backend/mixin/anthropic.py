@@ -53,6 +53,71 @@ class AnthropicMixin:
             return None
         return selected
 
+    def apply_cache_breakpoints_to_messages(self, messages, payload):
+        """Honor symai ``CACHE_BREAKPOINT`` markers embedded in user-message text.
+
+        When a resolved ``cache_control`` is present (``payload['extra_body']
+        ['cache_control']``) and a message's text contains the marker, split that text
+        into ordered content blocks, put the ``cache_control`` on every block except the
+        last, and drop the top-level ``extra_body`` auto-cache form (block-level
+        breakpoints supersede it). When caching is disabled or no marker is present, the
+        marker is stripped (a no-op when absent). Returns ``(messages, payload)`.
+        """
+        from ...prompts import (
+            CACHE_BREAKPOINT,
+            split_cache_breakpoints,
+            strip_cache_breakpoints,
+        )
+
+        cache_control = (payload.get("extra_body") or {}).get("cache_control")
+        enabled = cache_control is not None
+        did_split = False
+        new_messages = []
+        for message in messages:
+            images, text = self._extract_message_text(message.get("content"))
+            if text is None or CACHE_BREAKPOINT not in text:
+                new_messages.append(message)
+                continue
+            if enabled:
+                segments = split_cache_breakpoints(text)
+                blocks = []
+                for index, segment in enumerate(segments):
+                    block = {"type": "text", "text": segment}
+                    if index < len(segments) - 1:
+                        block["cache_control"] = dict(cache_control)
+                    blocks.append(block)
+                new_messages.append({**message, "content": [*images, *blocks]})
+                did_split = True
+            else:
+                stripped = strip_cache_breakpoints(text)
+                content = stripped if not images else [*images, {"type": "text", "text": stripped}]
+                new_messages.append({**message, "content": content})
+        if did_split and "extra_body" in payload:
+            payload = {key: value for key, value in payload.items() if key != "extra_body"}
+        return new_messages, payload
+
+    @staticmethod
+    def _extract_message_text(content):
+        """Return ``(non_text_blocks, joined_text)`` for Anthropic message content.
+
+        ``joined_text`` is ``None`` when there is no text content to inspect.
+        """
+        if isinstance(content, str):
+            return [], content
+        if isinstance(content, list):
+            images = [
+                block
+                for block in content
+                if not (isinstance(block, dict) and block.get("type") == "text")
+            ]
+            texts = [
+                block.get("text", "")
+                for block in content
+                if isinstance(block, dict) and block.get("type") == "text"
+            ]
+            return images, "".join(texts)
+        return [], None
+
     def supports_adaptive_thinking(self, model: str) -> bool:
         return model in ADAPTIVE_THINKING_MODELS
 
