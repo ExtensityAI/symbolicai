@@ -48,63 +48,10 @@ class ClusterPostProcessor(PostProcessor):
         del self.clustering_kwargs
 
 
-class TemplatePostProcessor(PostProcessor):
-    def __call__(self, response, argument) -> Any:
-        template = argument.prop.template
-        placeholder = argument.prop.placeholder
-        template = argument.prop.template
-        parts = str(template).split(placeholder)
-        return f"{parts[0]}{response}{parts[1]}"
-
-
 class SplitNewLinePostProcessor(PostProcessor):
     def __call__(self, response, _argument) -> Any:
         tmp = response.split("\n")
         return [t.strip() for t in tmp if len(t.strip()) > 0]
-
-
-class JsonTruncatePostProcessor(PostProcessor):
-    def __call__(self, response, _argument) -> Any:
-        count_b = response.count("[JSON_BEGIN]")
-        count_e = response.count("[JSON_END]")
-        if count_b > 1 or count_e > 1:
-            msg = "More than one [JSON_BEGIN] or [JSON_END] found. Please only generate one JSON response."
-            raise ValueError(msg)
-        # cut off everything until the first '{'
-        start_idx = response.find("{")
-        response = response[start_idx:]
-        # find the first occurence of '}' looking backwards
-        end_idx = response.rfind("}") + 1
-        response = response[:end_idx]
-        # search after the first character of '{' if it is a '"' and if not, replace it
-        try:
-            if response[1:].strip()[0] == "'":
-                response = response.replace("'", '"')
-        except IndexError:
-            pass
-        return response
-
-
-class JsonTruncateMarkdownPostProcessor(PostProcessor):
-    def __call__(self, response, _argument) -> Any:
-        count_b = response.count("```json")
-        count_e = response.count("```")
-        if count_b > 1 or count_e > 2:
-            msg = "More than one ```json Markdown found. Please only generate one JSON response."
-            raise ValueError(msg)
-        # cut off everything until the first '{'
-        start_idx = response.find("{")
-        response = response[start_idx:]
-        # find the first occurence of '}' looking backwards
-        end_idx = response.rfind("}") + 1
-        response = response[:end_idx]
-        # search after the first character of '{' if it is a '"' and if not, replace it
-        try:
-            if response[1:].strip()[0] == "'":
-                response = response.replace("'", '"')
-        except IndexError:
-            pass
-        return response
 
 
 class CodeExtractPostProcessor(PostProcessor):
@@ -205,15 +152,3 @@ class ExpandFunctionPostProcessor(PostProcessor):
 class CaseInsensitivePostProcessor(PostProcessor):
     def __call__(self, response, _argument) -> Any:
         return str(response).lower()
-
-
-class ConfirmToBoolPostProcessor(PostProcessor):
-    def __call__(self, response, _argument) -> Any:
-        if response is None:
-            return False
-        rsp = response.strip()
-        # Lazy Symbol import prevents post_processors -> symbol -> core -> functional -> post_processors cycle.
-        from .symbol import Symbol  # noqa
-
-        sym = Symbol(rsp)
-        return bool(sym.isinstanceof("confirming answer"))

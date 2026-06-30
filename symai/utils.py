@@ -97,14 +97,6 @@ def encode_image_url(image_url):
     return [enc_im], ext
 
 
-class Args:
-    def __init__(self, skip_none: bool = False, **kwargs):
-        # for each key set an attribute
-        for key, value in kwargs.items():
-            if (value is not None or not skip_none) and not key.startswith("_"):
-                setattr(self, key, value)
-
-
 def semassert(condition: bool, message: str = ""):
     """
     Weak assertion for semantic operations that informs about model limitations.
