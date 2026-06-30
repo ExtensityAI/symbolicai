@@ -28,8 +28,8 @@ except ImportError:
 from symai import Symbol
 from symai.backend.engines.index.engine_qdrant import QdrantIndexEngine
 from symai.backend.settings import SYMAI_CONFIG, SYMSERVER_CONFIG
+from symai.components import Interface
 from symai.core import Argument
-from symai.interfaces import Interface
 
 try:
     from symai.components import ChonkieChunker

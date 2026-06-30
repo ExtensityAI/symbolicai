@@ -536,7 +536,6 @@ def setup_wizard(_symai_config_path_):
             "TEXT_TO_SPEECH_ENGINE_MODEL": "",
             "TEXT_TO_SPEECH_ENGINE_VOICE": "",
             "INDEXING_ENGINE_API_KEY": "",
-            "INDEXING_ENGINE_ENVIRONMENT": "",
             "CAPTION_ENGINE_MODEL": "",
         },
     )
@@ -545,12 +544,9 @@ def setup_wizard(_symai_config_path_):
 _symai_config_, _symserver_config_ = _start_symai()
 
 from .backend.base import Engine  # noqa
-from .components import Function, PrimitiveDisabler  # noqa
+from .components import Function, Interface, PrimitiveDisabler  # noqa
 from .core import few_shot, zero_shot  # noqa
-from .extended import Conversation  # noqa
 from .functional import EngineRepository  # noqa
-from .imports import Import  # noqa
-from .interfaces import Interface  # noqa
 from .post_processors import PostProcessor  # noqa
 from .pre_processors import PreProcessor  # noqa
 from .prompts import Prompt, PromptRegistry  # noqa
@@ -560,13 +556,11 @@ from .symbol import Call, Expression, GlobalSymbolPrimitive, Metadata, Symbol  #
 __all__ = [
     "SYMAI_VERSION",
     "Call",
-    "Conversation",
     "Engine",
     "EngineRepository",
     "Expression",
     "Function",
     "GlobalSymbolPrimitive",
-    "Import",
     "Interface",
     "Metadata",
     "PostProcessor",

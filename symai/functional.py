@@ -37,10 +37,6 @@ else:
 logger = logging.getLogger(__name__)
 
 
-class ConstraintViolationException(Exception):
-    pass
-
-
 class ProbabilisticBooleanMode(Enum):
     STRICT = 0
     MEDIUM = 1
@@ -91,7 +87,7 @@ def _cast_with_fallback(rsp: Any, return_constraint: type) -> Any:
     except (ValueError, TypeError):
         if return_constraint is int:
             msg = f"Cannot convert {rsp} to int"
-            raise ConstraintViolationException(msg) from None
+            raise ValueError(msg) from None
         warnings.warn(f"Failed to cast {rsp} to {return_constraint}", stacklevel=2)
         return rsp
 
@@ -133,10 +129,6 @@ def _apply_postprocessors(
             rsp = pp(rsp, argument)
     rsp = _cast_return_type(rsp, return_constraint, mode)
 
-    for constraint in argument.prop.constraints:
-        if not constraint(rsp):
-            msg = f"Constraint not satisfied for value {rsp!r} with constraint {constraint}"
-            raise ConstraintViolationException(msg)
     return rsp, metadata
 
 
