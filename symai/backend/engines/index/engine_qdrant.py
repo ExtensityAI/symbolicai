@@ -220,7 +220,7 @@ class Citation:
         return hash((self.url,))
 
 
-class SearchResult(Result):
+class QdrantSearchResult(Result):
     def __init__(self, value: dict[str, Any] | Any, **kwargs) -> None:
         super().__init__(value, **kwargs)
         if isinstance(value, dict) and value.get("error"):
@@ -1671,7 +1671,7 @@ class QdrantIndexEngine(Engine):
                 }
             )
 
-        return SearchResult({"results": results})
+        return QdrantSearchResult({"results": results})
 
     async def search(
         self,
