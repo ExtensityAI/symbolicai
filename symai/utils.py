@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import base64
 import logging
-import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -98,73 +97,12 @@ def encode_image_url(image_url):
     return [enc_im], ext
 
 
-def ignore_exception(exception=Exception, default=None):
-    """Decorator for ignoring exception from a function
-    e.g.   @ignore_exception(DivideByZero)
-    e.g.2. ignore_exception(DivideByZero)(Divide)(2/0)
-    """
-
-    def dec(function):
-        def _dec(*args, **kwargs):
-            try:
-                return function(*args, **kwargs)
-            except exception:
-                return default
-
-        return _dec
-
-    return dec
-
-
-def prep_as_str(x):
-    return f"'{x!s}'" if ignore_exception()(int)(str(x)) is None else str(x)
-
-
-def deprecated(message):
-    def deprecated_decorator(func):
-        def deprecated_func(*args, **kwargs):
-            warnings.warn(
-                f"{func.__name__} is a deprecated function. {message}",
-                category=DeprecationWarning,
-                stacklevel=2,
-            )
-            warnings.simplefilter("default", DeprecationWarning)
-            return func(*args, **kwargs)
-
-        return deprecated_func
-
-    return deprecated_decorator
-
-
-def toggle_test(enabled: bool = True, default=None):
-    def test_decorator(func):
-        def test_func(*args, **kwargs):
-            if enabled:
-                return func(*args, **kwargs)
-            return default
-
-        return test_func
-
-    return test_decorator
-
-
 class Args:
     def __init__(self, skip_none: bool = False, **kwargs):
         # for each key set an attribute
         for key, value in kwargs.items():
             if (value is not None or not skip_none) and not key.startswith("_"):
                 setattr(self, key, value)
-
-
-# Function to format bytes to a human-readable string
-def format_bytes(bytes):
-    if bytes < 1024:
-        return f"{bytes} bytes"
-    if bytes < 1048576:
-        return f"{bytes / 1024:.2f} KB"
-    if bytes < 1073741824:
-        return f"{bytes / 1048576:.2f} MB"
-    return f"{bytes / 1073741824:.2f} GB"
 
 
 def semassert(condition: bool, message: str = ""):
