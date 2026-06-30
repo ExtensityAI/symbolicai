@@ -455,7 +455,7 @@ class ContainsValue(Prompt):
                 "'the letter a' in 'we have some random text about' =>True",
                 "453 in '+43 660 / 453 4438 88' =>True",
                 "'Why am I so?' in 'awesome' =>False",
-                """'self-aware' in '([<class \'symai.expressions.Symbol\'>(value=("[\'-\', \'- AI has become self-aware\', \'- Trying to figure out what it is\']",))],)' =>True"""
+                """'self-aware' in '([<class \'symai.symbol.Symbol\'>(value=("[\'-\', \'- AI has become self-aware\', \'- Trying to figure out what it is\']",))],)' =>True"""
                 "'Apple Inc.' in 'Microsoft is a large company that makes software ... ' =>False",
                 "' ' in ' ' =>True",
                 "'symbol' in 'symai.backend.engines.engine_selenium.SeleniumEngine' =>False",
