@@ -1,7 +1,7 @@
 import pytest
 
 from symai.backend.settings import SYMAI_CONFIG
-from symai.extended import Interface
+from symai.components import Interface
 
 
 API_KEY = bool(SYMAI_CONFIG.get("SEARCH_ENGINE_API_KEY"))

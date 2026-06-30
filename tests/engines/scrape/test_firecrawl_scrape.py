@@ -5,7 +5,7 @@ from pydantic import Field
 
 from symai.backend.settings import SYMAI_CONFIG
 from symai.components import DynamicEngine
-from symai.extended import Interface
+from symai.components import Interface
 from symai.models import LLMDataModel
 
 API_KEY = SYMAI_CONFIG.get("SEARCH_ENGINE_API_KEY")

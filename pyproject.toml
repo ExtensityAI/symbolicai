@@ -109,7 +109,7 @@ all = [
     "symbolicai[lean]",
     "symbolicai[ocr]",
 ]
-dev = ["pytest-asyncio>=1.3.0"]
+dev = ["pytest-asyncio>=1.3.0", "pytest-xdist>=3.6.0"]
 
 [tool.setuptools.dynamic]
 version = { attr = "symai.SYMAI_VERSION" }
@@ -121,7 +121,7 @@ include = ["symai*"]
 exclude = ["tests", "examples", "notebooks", "outputs", "assets"]
 
 [dependency-groups]
-dev = ["ruff>=0.14.4", "pytest>=8.3.1", "pytest-asyncio>=1.3.0"]
+dev = ["ruff>=0.14.4", "pytest>=8.3.1", "pytest-asyncio>=1.3.0", "pytest-xdist>=3.6.0"]
 
 [project.urls]
 "Homepage" = "https://extensity.ai"

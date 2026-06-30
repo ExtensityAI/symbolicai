@@ -5,7 +5,7 @@ import pytest
 
 from symai.backend.settings import SYMAI_CONFIG
 from symai.components import MetadataTracker
-from symai.extended import Interface
+from symai.components import Interface
 from symai.utils import RuntimeInfo
 
 API_KEY = SYMAI_CONFIG.get("OCR_ENGINE_API_KEY")

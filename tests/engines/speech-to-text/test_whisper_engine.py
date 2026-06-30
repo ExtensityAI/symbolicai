@@ -4,7 +4,7 @@ import pytest
 
 from symai.backend.engines.speech_to_text.engine_local_whisper import WhisperResult
 from symai.backend.settings import SYMAI_CONFIG
-from symai.extended import Interface
+from symai.components import Interface
 from symai.utils import semassert
 
 try:

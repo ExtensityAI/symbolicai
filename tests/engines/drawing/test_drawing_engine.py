@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from symai.backend.settings import SYMAI_CONFIG
-from symai.extended import Interface
+from symai.components import Interface
 
 DRAWING_ENGINE = SYMAI_CONFIG.get("DRAWING_ENGINE_MODEL")
 
