@@ -23,7 +23,7 @@ pip install symbolicai[ocr]
 ## Usage
 
 ```python
-from symai.interfaces import Interface
+from symai import Interface
 
 ocr = Interface('ocr')
 
@@ -97,7 +97,7 @@ Mistral OCR uses page-based billing. Use `MetadataTracker` to capture usage:
 
 ```python
 from symai.components import MetadataTracker
-from symai.interfaces import Interface
+from symai import Interface
 from symai.utils import RuntimeInfo
 
 ocr = Interface('ocr')

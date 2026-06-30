@@ -19,7 +19,7 @@ Supported models:
 - `gpt-image-1`
 
 ```python
-from symai.interfaces import Interface
+from symai import Interface
 
 gpt_image = Interface('gpt_image')
 
@@ -44,7 +44,7 @@ print(paths[0])  # → /tmp/tmpabcd.png
 ```
 
 ```python
-from symai.interfaces import Interface
+from symai import Interface
 from pathlib import Path
 
 gpt_image = Interface('gpt_image')
@@ -60,7 +60,7 @@ paths = gpt_image(
 ```
 
 ```python
-from symai.interfaces import Interface
+from symai import Interface
 from pathlib import Path
 
 gpt_image = Interface('gpt_image')
@@ -112,7 +112,7 @@ Use `Interface('flux')` to call Flux via https://api.us1.bfl.ai.
 Supported models: any `flux-*`, e.g. configured in `SYMAI_CONFIG["DRAWING_ENGINE_MODEL"]`.
 
 ```python
-from symai.interfaces import Interface
+from symai import Interface
 
 flux = Interface('flux')
 
@@ -167,7 +167,7 @@ Supported models (as of this release):
 - `gemini-3-pro-image-preview`
 
 ```python
-from symai.interfaces import Interface
+from symai import Interface
 
 nanobanana = Interface("nanobanana")
 
