@@ -20,10 +20,10 @@ import requests
 import urllib3
 from requests.adapters import HTTPAdapter
 
-from .... import core_ext
-from ....symbol import Result, Symbol
-from ...base import Engine
-from ...settings import SYMAI_CONFIG, SYMSERVER_CONFIG
+from symai import core_ext
+from symai.backend.base import Engine
+from symai.backend.settings import SYMAI_CONFIG, SYMSERVER_CONFIG
+from symai.symbol import Result, Symbol
 
 MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024
 
@@ -62,7 +62,7 @@ except ImportError:
     ScoredPoint = None
 
 try:
-    from ....components import ChonkieChunker, FileReader
+    from symai.components import ChonkieChunker, FileReader
 except ImportError:
     ChonkieChunker = None
     FileReader = None

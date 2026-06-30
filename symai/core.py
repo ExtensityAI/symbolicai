@@ -4,11 +4,11 @@ from typing import Any
 
 from box import Box
 
-from . import post_processors as post
-from . import pre_processors as pre
-from . import prompts as prm
-from .functional import EngineRepository
-from .symbol import Expression, Metadata
+from symai import post_processors as post
+from symai import pre_processors as pre
+from symai import prompts as prm
+from symai.functional import EngineRepository
+from symai.symbol import Expression, Metadata
 
 # Module-level singletons used to provide default prompt and processor instances.
 _PREPROCESSOR_EXPAND_FUNCTION = pre.ExpandFunctionPreProcessor()

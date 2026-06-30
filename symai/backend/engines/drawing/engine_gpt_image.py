@@ -7,9 +7,9 @@ from pathlib import Path
 import openai
 import requests
 
-from ....symbol import Result
-from ...base import Engine
-from ...settings import SYMAI_CONFIG
+from symai.backend.base import Engine
+from symai.backend.settings import SYMAI_CONFIG
+from symai.symbol import Result
 
 # silence noisy libraries
 logging.getLogger("openai").setLevel(logging.ERROR)

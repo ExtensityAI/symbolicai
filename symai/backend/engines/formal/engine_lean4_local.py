@@ -22,11 +22,11 @@ from typing import TYPE_CHECKING
 import requests
 
 if TYPE_CHECKING:
-    from ....core import Argument
+    from symai.core import Argument
 
-from ....symbol import Result
-from ...base import Engine
-from ...settings import SYMAI_CONFIG, SYMSERVER_CONFIG
+from symai.backend.base import Engine
+from symai.backend.settings import SYMAI_CONFIG, SYMSERVER_CONFIG
+from symai.symbol import Result
 
 logger = logging.getLogger(__name__)
 

@@ -1,4 +1,18 @@
-from ...mixin import (
+from symai.backend.engines.neurosymbolic.engine_anthropic_claudeX_chat import ClaudeXChatEngine
+from symai.backend.engines.neurosymbolic.engine_anthropic_claudeX_reasoning import (
+    ClaudeXReasoningEngine,
+)
+from symai.backend.engines.neurosymbolic.engine_cerebras import CerebrasEngine
+from symai.backend.engines.neurosymbolic.engine_deepseekX_reasoning import DeepSeekXReasoningEngine
+from symai.backend.engines.neurosymbolic.engine_google_geminiX_reasoning import (
+    GeminiXReasoningEngine,
+)
+from symai.backend.engines.neurosymbolic.engine_groq import GroqEngine
+from symai.backend.engines.neurosymbolic.engine_openai_gptX_chat import GPTXChatEngine
+from symai.backend.engines.neurosymbolic.engine_openai_gptX_reasoning import GPTXReasoningEngine
+from symai.backend.engines.neurosymbolic.engine_openai_responses import OpenAIResponsesEngine
+from symai.backend.engines.neurosymbolic.engine_openrouter import OpenRouterEngine
+from symai.backend.mixin import (
     ANTHROPIC_CHAT_MODELS,
     ANTHROPIC_REASONING_MODELS,
     CEREBRAS_CHAT_MODELS,
@@ -15,16 +29,6 @@ from ...mixin import (
     OPENROUTER_CHAT_MODELS,
     OPENROUTER_REASONING_MODELS,
 )
-from .engine_anthropic_claudeX_chat import ClaudeXChatEngine
-from .engine_anthropic_claudeX_reasoning import ClaudeXReasoningEngine
-from .engine_cerebras import CerebrasEngine
-from .engine_deepseekX_reasoning import DeepSeekXReasoningEngine
-from .engine_google_geminiX_reasoning import GeminiXReasoningEngine
-from .engine_groq import GroqEngine
-from .engine_openai_gptX_chat import GPTXChatEngine
-from .engine_openai_gptX_reasoning import GPTXReasoningEngine
-from .engine_openai_responses import OpenAIResponsesEngine
-from .engine_openrouter import OpenRouterEngine
 
 # create the mapping
 ENGINE_MAPPING = {

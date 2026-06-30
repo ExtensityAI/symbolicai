@@ -3,10 +3,10 @@ from copy import deepcopy
 
 from openai import OpenAI
 
-from ....components import SelfPrompt
-from ...base import Engine
-from ...mixin.deepseek import DeepSeekMixin
-from ...settings import SYMAI_CONFIG
+from symai.backend.base import Engine
+from symai.backend.mixin.deepseek import DeepSeekMixin
+from symai.backend.settings import SYMAI_CONFIG
+from symai.components import SelfPrompt
 
 logging.getLogger("openai").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)

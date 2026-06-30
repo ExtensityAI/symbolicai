@@ -7,11 +7,11 @@ import httpx
 import openai
 import tiktoken
 
-from ....components import SelfPrompt
-from ....utils import encode_media_frames
-from ...base import Engine
-from ...mixin.openai import SUPPORTED_REASONING_MODELS, OpenAIMixin
-from ...settings import SYMAI_CONFIG
+from symai.backend.base import Engine
+from symai.backend.mixin.openai import SUPPORTED_REASONING_MODELS, OpenAIMixin
+from symai.backend.settings import SYMAI_CONFIG
+from symai.components import SelfPrompt
+from symai.utils import encode_media_frames
 
 logging.getLogger("openai").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)

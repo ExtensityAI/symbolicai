@@ -8,8 +8,8 @@ import traceback
 from collections.abc import Callable
 from pathlib import Path
 
-from . import __root_dir__
-from .functional import EngineRepository
+from symai import __root_dir__
+from symai.functional import EngineRepository
 
 logger = logging.getLogger(__name__)
 

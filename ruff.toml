@@ -39,7 +39,7 @@ target-version = "py310"
 # Rules URL: https://docs.astral.sh/ruff/rules
 select = [
   "F","E4","E7","E9",
-  "I","UP","B","SIM","C4","A","ARG","ISC","RET","RSE",
+  "I","TID252","UP","B","SIM","C4","A","ARG","ISC","RET","RSE",
   "G","LOG","TC","PTH","EM","C90",
   "PLE","PLC","PLW",
   "RUF","T10","T20"
@@ -57,6 +57,9 @@ unfixable = []
 
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[lint.flake8-tidy-imports]
+ban-relative-imports = "all"
 
 [lint.per-file-ignores]
 # Intentional user-facing stdout output (config inspector, contract perf report,

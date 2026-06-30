@@ -1,5 +1,5 @@
-from ... import core
-from ...symbol import Expression, Result
+from symai import core
+from symai.symbol import Expression, Result
 
 
 class python(Expression):

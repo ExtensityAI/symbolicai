@@ -1,10 +1,10 @@
 from typing import TYPE_CHECKING
 
-from ...backend.engines.index.engine_qdrant import QdrantIndexEngine
-from ...symbol import Expression, Symbol
+from symai.backend.engines.index.engine_qdrant import QdrantIndexEngine
+from symai.symbol import Expression, Symbol
 
 if TYPE_CHECKING:
-    from ...backend.engines.index.engine_qdrant import QdrantSearchResult
+    from symai.backend.engines.index.engine_qdrant import QdrantSearchResult
 
 
 class local_search(Expression):

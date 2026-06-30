@@ -16,15 +16,13 @@ from beartype import beartype
 from box import Box
 from tqdm import tqdm
 
-from . import core, core_ext
-from .backend.base import Engine
-from .context import CURRENT_ENGINE_VAR
-from .post_processors import (
-    PostProcessor,
-)
-from .pre_processors import PreProcessor
-from .prompts import Prompt
-from .symbol import Expression, Symbol
+from symai import core, core_ext
+from symai.backend.base import Engine
+from symai.context import CURRENT_ENGINE_VAR
+from symai.post_processors import PostProcessor
+from symai.pre_processors import PreProcessor
+from symai.prompts import Prompt
+from symai.symbol import Expression, Symbol
 
 logger = logging.getLogger(__name__)
 
@@ -235,7 +233,7 @@ class PrimitiveDisabler(Expression):
 
     def __enter__(self):
         # Import Symbol lazily so components does not clash with symbol during load.
-        from .symbol import Symbol  # noqa
+        from symai.symbol import Symbol  # noqa
 
         frame = inspect.currentframe()
         f_locals = frame.f_back.f_locals
@@ -936,9 +934,9 @@ class DynamicEngine(Expression):
     def _create_engine_instance(self):
         """Create an engine instance based on the model name."""
         # Deferred to avoid components <-> neurosymbolic engine circular imports.
-        from .backend.engines.neurosymbolic import ENGINE_MAPPING  # noqa
-        from .backend.engines.ocr import OCR_ENGINE_MAPPING  # noqa
-        from .backend.engines.search import SEARCH_ENGINE_MAPPING  # noqa
+        from symai.backend.engines.neurosymbolic import ENGINE_MAPPING  # noqa
+        from symai.backend.engines.ocr import OCR_ENGINE_MAPPING  # noqa
+        from symai.backend.engines.search import SEARCH_ENGINE_MAPPING  # noqa
 
         try:
             # Check neurosymbolic engines first

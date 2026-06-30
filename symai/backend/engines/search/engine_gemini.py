@@ -5,11 +5,11 @@ import httpx
 from google import genai
 from google.genai import types
 
-from ....symbol import Result
-from ...base import Engine
-from ...mixin.google import GoogleMixin
-from ...settings import SYMAI_CONFIG
-from .utils import CitationResultMixin, insert_citation_markers
+from symai.backend.base import Engine
+from symai.backend.engines.search.utils import CitationResultMixin, insert_citation_markers
+from symai.backend.mixin.google import GoogleMixin
+from symai.backend.settings import SYMAI_CONFIG
+from symai.symbol import Result
 
 logging.getLogger("google.genai").setLevel(logging.ERROR)
 logging.getLogger("google_genai").propagate = False

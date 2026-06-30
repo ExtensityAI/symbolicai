@@ -6,9 +6,9 @@ import numpy as np
 from google import genai
 from google.genai.types import Content, EmbedContentConfig, Part
 
-from ...base import Engine
-from ...mixin.google import GoogleMixin
-from ...settings import SYMAI_CONFIG
+from symai.backend.base import Engine
+from symai.backend.mixin.google import GoogleMixin
+from symai.backend.settings import SYMAI_CONFIG
 
 logging.getLogger("google.generativeai").setLevel(logging.ERROR)
 

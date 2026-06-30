@@ -1,6 +1,6 @@
-from ... import core
-from ...backend.engines.symbolic.engine_wolframalpha import WolframResult
-from ...symbol import Expression
+from symai import core
+from symai.backend.engines.symbolic.engine_wolframalpha import WolframResult
+from symai.symbol import Expression
 
 
 class wolframalpha(Expression):

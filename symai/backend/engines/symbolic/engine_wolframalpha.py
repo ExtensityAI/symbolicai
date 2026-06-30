@@ -1,9 +1,9 @@
 import logging
 from copy import deepcopy
 
-from ....symbol import Result
-from ...base import Engine
-from ...settings import SYMAI_CONFIG
+from symai.backend.base import Engine
+from symai.backend.settings import SYMAI_CONFIG
+from symai.symbol import Result
 
 logger = logging.getLogger(__name__)
 

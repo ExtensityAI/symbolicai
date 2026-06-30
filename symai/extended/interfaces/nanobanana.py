@@ -1,6 +1,6 @@
-from ... import core
-from ...backend.engines.drawing.engine_gemini_image import GeminiImageResult
-from ...symbol import Expression
+from symai import core
+from symai.backend.engines.drawing.engine_gemini_image import GeminiImageResult
+from symai.symbol import Expression
 
 
 class nanobanana(Expression):

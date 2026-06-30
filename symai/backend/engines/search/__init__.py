@@ -1,5 +1,5 @@
-from .engine_firecrawl import FirecrawlEngine
-from .engine_parallel import ParallelEngine
+from symai.backend.engines.search.engine_firecrawl import FirecrawlEngine
+from symai.backend.engines.search.engine_parallel import ParallelEngine
 
 SEARCH_ENGINE_MAPPING = {
     "firecrawl": FirecrawlEngine,

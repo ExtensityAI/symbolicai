@@ -1,6 +1,6 @@
-from ... import core
-from ...backend.engines.formal.engine_axiom import AxiomResult
-from ...symbol import Expression
+from symai import core
+from symai.backend.engines.formal.engine_axiom import AxiomResult
+from symai.symbol import Expression
 
 
 class axiom(Expression):

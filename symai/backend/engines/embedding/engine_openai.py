@@ -4,9 +4,9 @@ from copy import deepcopy
 import numpy as np
 import openai
 
-from ...base import Engine
-from ...mixin.openai import OpenAIMixin
-from ...settings import SYMAI_CONFIG
+from symai.backend.base import Engine
+from symai.backend.mixin.openai import OpenAIMixin
+from symai.backend.settings import SYMAI_CONFIG
 
 logging.getLogger("openai").setLevel(logging.ERROR)
 logging.getLogger("requests").setLevel(logging.ERROR)

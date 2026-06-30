@@ -13,10 +13,10 @@ try:
 except ImportError:
     Firecrawl = None
 
-from ....symbol import Result
-from ...base import Engine
-from ...settings import SYMAI_CONFIG
-from .utils import Citation, CitationResultMixin, normalize_url
+from symai.backend.base import Engine
+from symai.backend.engines.search.utils import Citation, CitationResultMixin, normalize_url
+from symai.backend.settings import SYMAI_CONFIG
+from symai.symbol import Result
 
 logging.getLogger("requests").setLevel(logging.ERROR)
 logging.getLogger("urllib3").setLevel(logging.ERROR)

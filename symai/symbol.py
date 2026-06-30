@@ -8,8 +8,8 @@ from typing import Any, ClassVar, Generic, TypeVar
 import numpy as np
 from box import Box
 
-from . import core
-from .ops import SYMBOL_PRIMITIVES
+from symai import core
+from symai.ops import SYMBOL_PRIMITIVES
 
 T = TypeVar("T")
 

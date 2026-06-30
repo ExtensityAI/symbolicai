@@ -4,15 +4,15 @@ from copy import deepcopy
 import httpx
 from openai import OpenAI
 
-from ....symbol import Result
-from ...base import Engine
-from ...mixin import OPENAI_CHAT_MODELS, OPENAI_REASONING_MODELS
-from ...settings import SYMAI_CONFIG
-from .utils import (
+from symai.backend.base import Engine
+from symai.backend.engines.search.utils import (
     CitationResultMixin,
     insert_citation_markers,
     normalize_domains,
 )
+from symai.backend.mixin import OPENAI_CHAT_MODELS, OPENAI_REASONING_MODELS
+from symai.backend.settings import SYMAI_CONFIG
+from symai.symbol import Result
 
 logging.getLogger("requests").setLevel(logging.ERROR)
 logging.getLogger("urllib3").setLevel(logging.ERROR)

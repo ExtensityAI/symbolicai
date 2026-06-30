@@ -1,6 +1,6 @@
-from ... import core
-from ...backend.engines.drawing.engine_gpt_image import GPTImageResult
-from ...symbol import Expression, Symbol
+from symai import core
+from symai.backend.engines.drawing.engine_gpt_image import GPTImageResult
+from symai.symbol import Expression, Symbol
 
 
 class dall_e(Expression):

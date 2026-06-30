@@ -10,8 +10,8 @@ except ImportError:
 
 from PIL import Image
 
-from ...base import Engine
-from ...settings import SYMAI_CONFIG
+from symai.backend.base import Engine
+from symai.backend.settings import SYMAI_CONFIG
 
 logger = logging.getLogger(__name__)
 

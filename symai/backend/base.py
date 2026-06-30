@@ -81,7 +81,7 @@ class Engine(ABC):
 
     def preview(self, argument):
         # Used here to avoid backend.base <-> symbol circular import.
-        from ..symbol import (  # noqa
+        from symai.symbol import (  # noqa
             Symbol,
         )
 

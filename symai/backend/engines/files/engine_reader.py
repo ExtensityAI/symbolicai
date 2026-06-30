@@ -25,7 +25,7 @@ from markitdown.converters._rss_converter import RssConverter
 from markitdown.converters._xlsx_converter import XlsConverter, XlsxConverter
 from markitdown.converters._zip_converter import ZipConverter
 
-from ...base import Engine
+from symai.backend.base import Engine
 
 logger = logging.getLogger(__name__)
 for _noisy in ("pdfminer", "charset_normalizer", "PIL"):
@@ -64,7 +64,7 @@ class _SymaiVisionClient:
     class _Completions:
         @staticmethod
         def create(*, model, messages):  # noqa: ARG004
-            from ....symbol import Symbol  # noqa: PLC0415
+            from symai.symbol import Symbol  # noqa: PLC0415
 
             # Extract text prompt and image data URI from OpenAI-format vision messages
             prompt, data_uri = "", ""
@@ -180,7 +180,7 @@ class FileEngine(Engine):
         md = MarkItDown(enable_builtins=False)
 
         # Wire SymAI vision adapter for LLM-powered converters (image captions, PPTX)
-        from ...settings import SYMAI_CONFIG  # noqa: PLC0415
+        from symai.backend.settings import SYMAI_CONFIG  # noqa: PLC0415
 
         md._llm_client = _SymaiVisionClient()
         md._llm_model = SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL", "")

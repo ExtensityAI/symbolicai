@@ -16,11 +16,11 @@ from anthropic.types import (
     ToolUseBlock,
 )
 
-from ....components import SelfPrompt
-from ....utils import encode_media_frames
-from ...base import Engine
-from ...mixin.anthropic import AnthropicMixin
-from ...settings import SYMAI_CONFIG
+from symai.backend.base import Engine
+from symai.backend.mixin.anthropic import AnthropicMixin
+from symai.backend.settings import SYMAI_CONFIG
+from symai.components import SelfPrompt
+from symai.utils import encode_media_frames
 
 logger = logging.getLogger(__name__)
 
