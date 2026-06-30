@@ -1,24 +1,18 @@
 import asyncio
-import atexit
 import functools
 import logging
-import multiprocessing as mp
 import pickle
 import random
-import threading
 import time
 import traceback
 import warnings
 from collections.abc import Callable
 from pathlib import Path
 
-import dill
-
 from . import __root_dir__
 from .functional import EngineRepository
 
 logger = logging.getLogger(__name__)
-logging.getLogger("multiprocessing").setLevel(logging.ERROR)
 
 
 class SymbolicAIDeprecationWarning(DeprecationWarning):
@@ -28,65 +22,6 @@ class SymbolicAIDeprecationWarning(DeprecationWarning):
 # Surface SymbolicAI's own deprecations (shown once per call site) without
 # touching the host application's filters for any other warning category.
 warnings.filterwarnings("default", category=SymbolicAIDeprecationWarning)
-
-# -----------------------------------------------------------
-# Global registry so we create **one** pool and reuse it
-# -----------------------------------------------------------
-_pool_registry: dict[int, mp.pool.Pool] = {}
-_pool_lock = threading.Lock()
-
-
-def _get_pool(workers: int) -> mp.pool.Pool:
-    pool = _pool_registry.get(workers)
-    if pool is not None:
-        return pool
-    with _pool_lock:
-        pool = _pool_registry.get(workers)
-        if pool is None:
-            pool = mp.Pool(processes=workers)
-            _pool_registry[workers] = pool
-    return pool
-
-
-@atexit.register
-def _shutdown_pools() -> None:
-    for pool in _pool_registry.values():
-        pool.close()
-        pool.join()
-
-
-def _run_in_process(expr, func, args, kwargs):
-    expr = dill.loads(expr)
-    func = dill.loads(func)
-    return func(expr, *args, **kwargs)
-
-
-def _parallel(func: Callable, expressions: list[Callable], worker: int = mp.cpu_count() // 2):
-    pickled_exprs = [dill.dumps(expr) for expr in expressions]
-    pickled_func = dill.dumps(func)
-    pool = _get_pool(worker)
-
-    def proxy_function(*args, **kwargs):
-        return pool.starmap(
-            _run_in_process, [(expr, pickled_func, args, kwargs) for expr in pickled_exprs]
-        )
-
-    return proxy_function
-
-
-# Decorator
-def parallel(expressions: list[Callable], worker: int = mp.cpu_count() // 2):
-    def decorator_parallel(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            # Run expressions in parallel
-            parallel_func = _parallel(func, expressions, worker=worker)
-            # Call the proxy function to execute in parallel and capture results
-            return parallel_func(*args, **kwargs)
-
-        return wrapper
-
-    return decorator_parallel
 
 
 def bind(engine: str, property: str):
