@@ -7,7 +7,7 @@ SymbolicAI supports multiple indexing engines for vector search and RAG (Retriev
 By default, text indexing and retrieval is performed with the local naive vector engine using the `Interface` abstraction:
 
 ```python
-from symai.interfaces import Interface
+from symai import Interface
 
 db = Interface('naive_vectordb', index_name="my_index")
 db("Hello world", operation="add")
@@ -241,7 +241,7 @@ Note: PDF page provenance is only available when the PDF extraction output prese
 Example:
 
 ```python
-from symai.interfaces import Interface
+from symai import Interface
 from qdrant_client.http import models
 
 # url and api_key are optional; defaults fall back to SYMSERVER_CONFIG / SYMAI_CONFIG.

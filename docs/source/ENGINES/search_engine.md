@@ -53,7 +53,7 @@ Enable the engine by installing `parallel-web` and configuring the Parallel cred
 To obtain fact-based content, we can perform search queries via `SerpApi` with a `Google` backend. The following example demonstrates how to search for a query and return the results:
 
 ```python
-from symai.interfaces import Interface
+from symai import Interface
 
 search = Interface('serpapi')
 res = search('Birthday of Barack Obama')
@@ -73,7 +73,7 @@ Here's a quick example for how to set it up:
 We can also use PerplexityAI to search for a query and return the results:
 
 ```python
-from symai.interfaces import Interface
+from symai import Interface
 search = Interface("perplexity")
 res = search('What is a quantum computer?', system_message='You are Rick from Rick and Morty. You reply back as Rick would reply to Morty.')
 ```
@@ -93,7 +93,7 @@ Please note that the system_message is optional and can be used to provide conte
 Additionally, we can use OpenAI's search capabilities to answer queries and get citations for the information:
 
 ```python
-from symai.interfaces import Interface
+from symai import Interface
 search = Interface("openai_search")
 res = search('Who is Nicusor Dan?')
 ```
@@ -157,7 +157,7 @@ This engine calls the OpenAI Responses API under the hood. When you target a rea
 You can also use Google's Gemini grounding (via the `google-genai` interactions API with the `google_search` tool) to answer queries with inline citations:
 
 ```python
-from symai.interfaces import Interface
+from symai import Interface
 search = Interface("gemini_search")
 res = search('Who won the UEFA Euro 2024 final and what was the score?')
 ```

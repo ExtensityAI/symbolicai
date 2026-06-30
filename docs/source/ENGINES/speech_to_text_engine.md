@@ -3,7 +3,7 @@
 To transcribe audio files, we can perform speech transcription using `whisper`. The following example demonstrates how to transcribe an audio file and return the text:
 
 ```python
-from symai.interfaces import Interface
+from symai import Interface
 
 speech = Interface('whisper')
 res = speech('examples/sample.mp3')
