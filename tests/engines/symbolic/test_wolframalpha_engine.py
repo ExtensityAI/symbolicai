@@ -1,4 +1,4 @@
-from symai.extended import Interface
+from symai.components import Interface
 from symai.utils import semassert
 
 try:

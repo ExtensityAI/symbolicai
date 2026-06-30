@@ -4,7 +4,7 @@ import logging
 import pytest
 
 from symai.backend.engines.scrape.engine_requests import RequestsResult
-from symai.extended import Interface
+from symai.components import Interface
 
 logging.getLogger("trafilatura").setLevel(logging.WARNING)
 logging.getLogger("pdfminer").setLevel(logging.WARNING)
