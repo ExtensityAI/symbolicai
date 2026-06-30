@@ -806,7 +806,7 @@ class TestQdrantSearchChunkedDocuments:
 
     @pytest.mark.asyncio
     async def test_forward_search_returns_search_result(self, engine, test_collection_name):
-        """Ensure search mode can emit SearchResult-style output for citations."""
+        """Ensure search mode can emit QdrantSearchResult-style output for citations."""
 
         if not AVAILABLE_PDFS:
             pytest.skip("No test PDF files available")
@@ -995,7 +995,7 @@ class TestQdrantSearchChunkedDocuments:
 
 @pytest.mark.skipif(not QDrant_AVAILABLE, reason="Qdrant server not available")
 class TestQdrantLocalSearch:
-    """Local search (SearchResult) behavior."""
+    """Local search (QdrantSearchResult) behavior."""
 
     @pytest.mark.asyncio
     async def test_local_search_text_citations(self, engine, test_collection_name):
@@ -1302,14 +1302,14 @@ class TestQdrantMultitenancyIsolation:
         )
         await engine.upsert(
             test_collection_name,
-            [PointStruct(id=2, vector=[0.2] * 1536, payload={"text": "cooking doc", "tenant_id": "b"})],
+            [
+                PointStruct(
+                    id=2, vector=[0.2] * 1536, payload={"text": "cooking doc", "tenant_id": "b"}
+                )
+            ],
         )
-        results = await engine.search(
-            test_collection_name, [0.1] * 1536, limit=10, tenant_id="a"
-        )
-        assert all(
-            (getattr(r, "payload", None) or {}).get("tenant_id") == "a" for r in results
-        )
+        results = await engine.search(test_collection_name, [0.1] * 1536, limit=10, tenant_id="a")
+        assert all((getattr(r, "payload", None) or {}).get("tenant_id") == "a" for r in results)
 
     @pytest.mark.asyncio
     async def test_search_with_tenant_and_user_filter(self, engine, test_collection_name):
@@ -1372,9 +1372,7 @@ class TestQdrantMultitenancyIsolation:
                     )
                 ],
             )
-        await engine.delete_by_filter(
-            test_collection_name, {"category": "AI"}, tenant_id="a"
-        )
+        await engine.delete_by_filter(test_collection_name, {"category": "AI"}, tenant_id="a")
         info = await engine.get_collection_info(test_collection_name)
         # a/AI deleted, a/Food and b/AI remain
         assert info["points_count"] == 2
@@ -1410,9 +1408,7 @@ class TestQdrantMultitenancyIsolation:
             ],
         )
         assert await engine.document_exists(test_collection_name, "report.pdf", tenant_id="a")
-        assert not await engine.document_exists(
-            test_collection_name, "report.pdf", tenant_id="b"
-        )
+        assert not await engine.document_exists(test_collection_name, "report.pdf", tenant_id="b")
 
     @pytest.mark.asyncio
     async def test_list_documents_scoped_to_tenant(self, engine, test_collection_name):
@@ -1515,6 +1511,7 @@ class TestPayloadIndexes:
         assert "tenant_id" in existing
         assert "source_type" in existing
         assert "file_id" in existing
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
