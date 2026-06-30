@@ -1,2 +1,0 @@
-class TemplatePropertyException(Exception):
-    pass

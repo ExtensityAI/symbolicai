@@ -9,8 +9,6 @@ import jinja2
 import toml
 from pydantic import BaseModel
 
-from .exceptions import TemplatePropertyException
-
 logger = logging.getLogger(__name__)
 
 
@@ -56,15 +54,15 @@ class Prompt:
                 count = val_.count(template_)
                 if count <= 0:
                     msg = f"Template property `{k}` not found."
-                    raise TemplatePropertyException(msg)
+                    raise ValueError(msg)
                 if count > 1:
                     msg = (
                         f"Template property {k} found multiple times ({count}), expected only once."
                     )
-                    raise TemplatePropertyException(msg)
+                    raise ValueError(msg)
                 if v is None:
                     msg = f"Invalid value: Template property {k} is None."
-                    raise TemplatePropertyException(msg)
+                    raise ValueError(msg)
                 val_ = val_.replace(template_, v)
         return val_
 
