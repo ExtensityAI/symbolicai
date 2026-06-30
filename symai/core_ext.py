@@ -5,7 +5,6 @@ import pickle
 import random
 import time
 import traceback
-import warnings
 from collections.abc import Callable
 from pathlib import Path
 
@@ -13,15 +12,6 @@ from . import __root_dir__
 from .functional import EngineRepository
 
 logger = logging.getLogger(__name__)
-
-
-class SymbolicAIDeprecationWarning(DeprecationWarning):
-    """Deprecation warnings emitted by SymbolicAI's own `@deprecated` decorator."""
-
-
-# Surface SymbolicAI's own deprecations (shown once per call site) without
-# touching the host application's filters for any other warning category.
-warnings.filterwarnings("default", category=SymbolicAIDeprecationWarning)
 
 
 def bind(engine: str, property: str):
@@ -214,54 +204,3 @@ def error_logging(debug: bool = False):
         return _dec
 
     return dec
-
-
-def deprecated(reason: str = ""):
-    """
-    Mark a class, method, or function as deprecated.
-
-    Args:
-        reason (str): Explanation of why the item is deprecated and/or what to use instead
-
-    Example usage:
-        @deprecated("Use new_function() instead")
-        def old_function(): pass
-
-        @deprecated()
-        class OldClass: pass
-
-        class MyClass:
-            @deprecated("Use new_method() instead")
-            def old_method(self): pass
-    """
-
-    def decorator(obj):
-        if isinstance(obj, type):
-            # If obj is a class
-            original_init = obj.__init__
-
-            @functools.wraps(original_init)
-            def new_init(self, *args, **kwargs):
-                warnings.warn(
-                    f"{obj.__name__} is deprecated and will be removed in future versions. {reason}",
-                    SymbolicAIDeprecationWarning,
-                    stacklevel=2,
-                )
-                original_init(self, *args, **kwargs)
-
-            obj.__init__ = new_init
-            return obj
-
-        # If obj is a function or method
-        @functools.wraps(obj)
-        def wrapper(*args, **kwargs):
-            warnings.warn(
-                f"{obj.__name__} is deprecated and will be removed in future versions. {reason}",
-                SymbolicAIDeprecationWarning,
-                stacklevel=2,
-            )
-            return obj(*args, **kwargs)
-
-        return wrapper
-
-    return decorator
