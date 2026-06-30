@@ -7,19 +7,6 @@ class PreProcessor:
         raise NotImplementedError
 
 
-class RawInputPreProcessor(PreProcessor):
-    def __call__(self, argument) -> Any:
-        return f"{argument.prop.prompt!s}"
-
-
-class JsonPreProcessor(PreProcessor):
-    def __call__(self, argument) -> None:
-        assert len(argument.args) == 1
-        self.format = format
-        value = str(argument.args[0])
-        return f"{value} => [JSON_BEGIN]"
-
-
 class FormatPreProcessor(PreProcessor):
     def __init__(self, format: str) -> None:
         self.format_str = format
@@ -68,11 +55,6 @@ class DeleteIndexPreProcessor(PreProcessor):
         return f"{a} remove {b} =>"
 
 
-class PromptPreProcessor(PreProcessor):
-    def __call__(self, argument) -> Any:
-        return f"{argument.prop.prompt} $>"
-
-
 class ComparePreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
         assert len(argument.args) == 1
@@ -113,19 +95,6 @@ class CombinePreProcessor(PreProcessor):
         a = str(argument.prop.instance)
         b = str(argument.args[0])
         return f"{a} + {b} =>"
-
-
-class TemplatePreProcessor(PreProcessor):
-    def __call__(self, argument) -> Any:
-        placeholder = argument.prop.placeholder
-        template = argument.prop.template
-        parts = str(template).split(placeholder)
-        assert len(parts) == 2, (
-            f"Your template must contain exactly one placeholder '{placeholder}' split:"
-            + str(len(parts))
-        )
-        argument.prop.template_suffix = parts[1]
-        return f"----------\n[Template]:\n{parts[0]}"
 
 
 class NegatePreProcessor(PreProcessor):
@@ -170,14 +139,6 @@ class ExtractPatternPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
         assert len(argument.args) == 1
         return f"from '{argument.prop.instance!s}' extract '{argument.args[0]!s}' =>"
-
-
-class SimpleSymbolicExpressionPreProcessor(PreProcessor):
-    def __call__(self, argument) -> Any:
-        assert len(argument.args) >= 1
-        val = str(argument.args[0])
-        val = val.replace("self", str(argument.prop.instance))
-        return f"expr :{val} =: =>"
 
 
 class LogicExpressionPreProcessor(PreProcessor):
@@ -225,14 +186,6 @@ class GenerateTextPreProcessor(PreProcessor):
         return f"{argument.prop.instance!s}"
 
 
-class ClusterPreProcessor(PreProcessor):
-    def __call__(self, argument) -> Any:
-        assert isinstance(argument.prop.instance.value, list), (
-            "ClusterPreProcessor can only be applied to a list"
-        )
-        return argument.prop.instance.value
-
-
 class ForEachPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
         val = str(argument.prop.instance)
@@ -275,16 +228,6 @@ class ExpandFunctionPreProcessor(PreProcessor):
         return f"{val} =>\ndef"
 
 
-class ArgsPreProcessor(PreProcessor):
-    def __init__(self, format: str = "") -> None:
-        self.format = format
-
-    def __call__(self, argument) -> Any:
-        args_ = [str(arg) for arg in argument.args]
-        args_ = [str(argument.prop.instance), *args_]
-        return self.format.format(*args_)
-
-
 class ModifyPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
         changes = argument.prop.changes
@@ -303,45 +246,6 @@ class MapExpressionPreProcessor(PreProcessor):
         val = str(argument.prop.instance)
         instruction = argument.prop.context
         return f"text '{val}' {instruction} =>"
-
-
-class ArgsToInputPreProcessor(PreProcessor):
-    def __init__(self, skip: list[int] | None = None) -> None:
-        super().__init__()
-        skip = [skip] if skip and isinstance(skip, int) else skip
-        self.skip = skip if skip is not None else []
-
-    def __call__(self, argument) -> Any:
-        input_ = ""
-        for i, arg in enumerate(argument.args):
-            if i in self.skip:
-                continue
-            input_ += f"{arg!s}\n"
-        return input_
-
-
-class SelfToInputPreProcessor(PreProcessor):
-    def __init__(self, skip: list[int] | None = None) -> None:
-        super().__init__()
-        skip = [skip] if skip and isinstance(skip, int) else skip
-        self.skip = skip if skip is not None else []
-
-    def __call__(self, argument) -> Any:
-        return f"{argument.prop.instance!s}\n"
-
-
-class DataTemplatePreProcessor(PreProcessor):
-    def __init__(self, skip: list[int] | None = None) -> None:
-        super().__init__()
-        self.skip = skip if skip is not None else []
-
-    def __call__(self, argument) -> Any:
-        input_ = f"[Data]:\n{argument.prop.instance!s}\n"
-        for i, arg in enumerate(argument.args):
-            if i in self.skip:
-                continue
-            input_ += f"{arg!s}\n"
-        return input_
 
 
 class ConsoleInputPreProcessor(PreProcessor):
