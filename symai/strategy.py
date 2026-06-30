@@ -14,7 +14,7 @@ from pydantic import BaseModel, ValidationError
 from .backend.settings import SYMAI_CONFIG
 from .components import Function
 from .context import CURRENT_ENGINE_VAR
-from .models import LLMDataModel, TypeValidationError, build_dynamic_llm_datamodel
+from .models import LLMDataModel, build_dynamic_llm_datamodel
 from .symbol import Expression
 
 logger = logging.getLogger(__name__)
@@ -393,11 +393,9 @@ Important guidelines:
         logger.error("All validation attempts failed!")
         if self.retry_params["graceful"]:
             return
-        raise TypeValidationError(
-            prompt=prompt,
-            result=json_str,
-            violations=errors,
-        )
+        violations = "\n".join(errors)
+        msg = f"[[Prompt]]\n{prompt}\n\n[[Result]]\n{json_str}\n\n[[Violations]]\n{violations}"
+        raise ValueError(msg)
 
     def _build_response_format(self, kwargs: dict) -> dict:
         response_format = kwargs.get("response_format")
