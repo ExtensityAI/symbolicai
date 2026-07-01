@@ -8,34 +8,9 @@ from symai import post_processors as post
 from symai import pre_processors as pre
 from symai import prompts as prm
 from symai.functional import EngineRepository
-
-# ============================================================================
-# Engine hook decorators
-# ============================================================================
-
-
-# NOTE: bind is defined before the deferred `symboi.symbol` import below to
-# break a cycle: symboi.symbol imports symboi.ops.primitives, whose class bodies
-# use `core.bind` as a decorator during this module's initialization.
-def bind(engine: str, property: str):
-    """
-    Bind to an engine and retrieve one of its properties.
-    """
-
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*_args, **_kwargs):
-            return EngineRepository.bind_property(engine=engine, property=property)
-
-        return wrapper
-
-    return decorator
-
-
-from symai.symbol import Expression, Metadata  # noqa: E402
+from symai.symbol import Expression, Metadata
 
 # Module-level singletons used to provide default prompt and processor instances.
-_PREPROCESSOR_EXPAND_FUNCTION = pre.ExpandFunctionPreProcessor()
 _PROMPT_CLEAN_TEXT = prm.CleanText()
 _PROMPT_COMBINE_TEXT = prm.CombineText()
 _PROMPT_COMPARE_VALUES = prm.CompareValues()
@@ -152,11 +127,6 @@ class Argument(Expression):
         for key, value in signature_kwargs.items():
             kwargs[key] = value
         return kwargs
-
-
-# ============================================================================
-# Engine query / operator decorators
-# ============================================================================
 
 
 def few_shot(

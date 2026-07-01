@@ -12,6 +12,7 @@ import numpy as np
 import torch
 
 from symai import core
+from symai.functional import EngineRepository
 from symai.ops.measures import calculate_frechet_distance, calculate_mmd
 from symai.prompts import Prompt
 
@@ -1503,16 +1504,15 @@ class ValueHandlingPrimitives(Primitive):
         """
         return self.tokenizer().encode(str(self))
 
-    @core.bind(engine="neurosymbolic", property="tokenizer")
     def tokenizer(self) -> Callable:
         """
         The tokenizer method.
-        This method is bound to the 'neurosymbolic' engine using the @decorator.bind() decorator.
+        Returns the tokenizer bound to the 'neurosymbolic' engine.
 
         Returns:
             Callable: The tokenizer.
         """
-        pass
+        return EngineRepository.bind_property(engine="neurosymbolic", property="tokenizer")
 
     @property
     def type(self):
@@ -2325,15 +2325,14 @@ class ExecutionControlPrimitives(Primitive):
             ValueError: If the Expression object exceeds the maximum allowed tokens.
         """
 
-        @core.bind(engine="neurosymbolic", property="max_context_tokens")
-        def _max_tokens(_):
-            pass
-
-        max_ctxt_tokens = int(_max_tokens(self) * token_ratio)
+        max_context_tokens = EngineRepository.bind_property(
+            engine="neurosymbolic", property="max_context_tokens"
+        )
+        max_ctxt_tokens = int(max_context_tokens * token_ratio)
         prev = expr(self, preview=True, **kwargs)
         prev = str(prev)
 
-        if len(prev) > _max_tokens(self):
+        if len(prev) > max_context_tokens:
             n_splits = (len(prev) // max_ctxt_tokens) + 1
 
             for i in range(n_splits):
