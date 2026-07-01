@@ -24,8 +24,6 @@ _IMPORT_NAME = {
     "firecrawl-py": "firecrawl",
     "gitpython": "git",
     "google-genai": "google.genai",
-    "google_search_results": "serpapi",
-    "llama-cpp-python": "llama_cpp",
     "opencv-python": "cv2",
     "openai-whisper": "whisper",
     "parallel-web": "parallel",

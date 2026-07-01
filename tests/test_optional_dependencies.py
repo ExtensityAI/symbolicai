@@ -5,7 +5,7 @@ import sys
 import numpy as np
 import pytest
 
-from symai.ops.measures import calculate_frechet_distance
+from symai.ops.primitives import EmbeddingPrimitives
 
 
 def test_frechet_distance_raises_clear_error_without_scipy(monkeypatch):
@@ -21,11 +21,15 @@ def test_frechet_distance_raises_clear_error_without_scipy(monkeypatch):
     monkeypatch.setattr(builtins, "__import__", fake_import)
 
     with pytest.raises(ImportError, match="cluster"):
-        calculate_frechet_distance(np.zeros(3), np.eye(3), np.zeros(3), np.eye(3))
+        EmbeddingPrimitives.calculate_frechet_distance(
+            np.zeros(3), np.eye(3), np.zeros(3), np.eye(3)
+        )
 
 
 def test_frechet_distance_works_with_scipy():
-    d = calculate_frechet_distance(np.zeros(3), np.eye(3), np.zeros(3), np.eye(3))
+    d = EmbeddingPrimitives.calculate_frechet_distance(
+        np.zeros(3), np.eye(3), np.zeros(3), np.eye(3)
+    )
     assert d == pytest.approx(0.0, abs=1e-6)
 
 

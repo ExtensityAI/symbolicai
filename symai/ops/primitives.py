@@ -12,7 +12,7 @@ import numpy as np
 import torch
 
 from symai import core
-from symai.ops.measures import calculate_frechet_distance, calculate_mmd
+from symai.functional import EngineRepository
 from symai.prompts import Prompt
 
 logger = logging.getLogger(__name__)
@@ -1503,16 +1503,15 @@ class ValueHandlingPrimitives(Primitive):
         """
         return self.tokenizer().encode(str(self))
 
-    @core.bind(engine="neurosymbolic", property="tokenizer")
     def tokenizer(self) -> Callable:
         """
         The tokenizer method.
-        This method is bound to the 'neurosymbolic' engine using the @decorator.bind() decorator.
+        Returns the tokenizer bound to the 'neurosymbolic' engine.
 
         Returns:
             Callable: The tokenizer.
         """
-        pass
+        return EngineRepository.bind_property(engine="neurosymbolic", property="tokenizer")
 
     @property
     def type(self):
@@ -2200,39 +2199,6 @@ class ExecutionControlPrimitives(Primitive):
 
         return self._to_type(_func(self))
 
-    def execute(self, **kwargs) -> "Symbol":
-        """
-        Executes the symbol's expression using the @core.execute decorator.
-
-        Args:
-            **kwargs: Additional keyword arguments to pass to the core.execute decorator.
-
-        Returns:
-            Symbol: The result of the executed expression as a Symbol.
-        """
-
-        @core.execute(**kwargs)
-        def _func(_):
-            pass
-
-        return _func(self)
-
-    def fexecute(self, **kwargs) -> "Symbol":
-        """
-        Executes the symbol's expression using the fallback execute method (ftry).
-
-        Args:
-            **kwargs: Additional keyword arguments to pass to the core.execute decorator.
-
-        Returns:
-            Symbol: The result of the executed expression as a Symbol.
-        """
-
-        def _func(sym: "Symbol", **kargs):
-            return sym.execute(**kargs)
-
-        return self.ftry(_func, **kwargs)
-
     def simulate(self, **kwargs) -> "Symbol":
         """
         Uses the @core.simulate decorator, simulates the value of the symbol. Used for hypothesis testing or code simulation.
@@ -2325,15 +2291,14 @@ class ExecutionControlPrimitives(Primitive):
             ValueError: If the Expression object exceeds the maximum allowed tokens.
         """
 
-        @core.bind(engine="neurosymbolic", property="max_context_tokens")
-        def _max_tokens(_):
-            pass
-
-        max_ctxt_tokens = int(_max_tokens(self) * token_ratio)
+        max_context_tokens = EngineRepository.bind_property(
+            engine="neurosymbolic", property="max_context_tokens"
+        )
+        max_ctxt_tokens = int(max_context_tokens * token_ratio)
         prev = expr(self, preview=True, **kwargs)
         prev = str(prev)
 
-        if len(prev) > _max_tokens(self):
+        if len(prev) > max_context_tokens:
             n_splits = (len(prev) // max_ctxt_tokens) + 1
 
             for i in range(n_splits):
@@ -2344,85 +2309,6 @@ class ExecutionControlPrimitives(Primitive):
 
         else:
             yield expr(self, **kwargs)
-
-    def ftry(self, expr: "Expression", retries: int | None = 1, **kwargs) -> "Symbol":
-        # TODO: find a way to pass on the constraints and behavior from the self.expr to the corrected code
-        """
-        Tries to evaluate a Symbol using a given Expression.
-        This method evaluates a Symbol using a given Expression.
-        If it fails, it retries the evaluation a specified number of times.
-
-        Args:
-            expr (Expression): The Expression object to evaluate the Symbol.
-            retries (Optional[int]): The number of retries if the evaluation fails. Defaults to 1.
-            **kwargs: Additional keyword arguments for the given Expression.
-
-        Returns:
-            Symbol: A Symbol object with the evaluated result.
-
-        Raises:
-            Exception: If the evaluation fails after all retries.
-        """
-        prompt = {"out_msg": ""}
-
-        def output_handler(input_):
-            prompt["out_msg"] = input_
-
-        kwargs["output_handler"] = output_handler
-        retry_cnt: int = 0
-        code = self  # original input
-
-        if hasattr(expr, "prompt"):
-            prompt["prompt_instruction"] = expr.prompt
-
-        sym = self  # used for getting passed from one iteration to the next
-        while True:
-            try:
-                sym = expr(sym, **kwargs)  # run the expression
-                retry_cnt = 0
-
-                return sym
-
-            except Exception as e:
-                retry_cnt += 1
-                if retry_cnt > retries:
-                    raise e
-                # analyze the error
-                payload = (
-                    f"[ORIGINAL_USER_PROMPT]\n{prompt['prompt_instruction']}\n\n"
-                    if "prompt_instruction" in prompt
-                    else ""
-                )
-                payload = (
-                    payload
-                    + f"[ORIGINAL_USER_DATA]\n{code}\n\n[ORIGINAL_GENERATED_OUTPUT]\n{prompt['out_msg']}"
-                )
-                probe = sym.analyze(
-                    query="What is the issue in this expression?", payload=payload, exception=e
-                )
-                # attempt to correct the error
-                payload = (
-                    f"[ORIGINAL_USER_PROMPT]\n{prompt['prompt_instruction']}\n\n"
-                    if "prompt_instruction" in prompt
-                    else ""
-                )
-                payload = payload + f"[ANALYSIS]\n{probe}\n\n"
-                context = f"Try to correct the error of the original user request based on the analysis above: \n [GENERATED_OUTPUT]\n{prompt['out_msg']}\n\n"
-                constraints = expr.constraints if hasattr(expr, "constraints") else []
-
-                if hasattr(expr, "post_processor"):
-                    post_processor = expr.post_processor
-                    sym = code.correct(
-                        context=context,
-                        exception=e,
-                        payload=payload,
-                        constraints=constraints,
-                        post_processor=post_processor,
-                    )
-                else:
-                    sym = code.correct(
-                        context=context, exception=e, payload=payload, constraints=constraints
-                    )
 
 
 class DictHandlingPrimitives(Primitive):
@@ -2536,6 +2422,103 @@ class EmbeddingPrimitives(Primitive):
     This mixin contains functionalities that deal with embedding symbol values.
     New functionalities in this mixin might include different types of embedding methods, similarity and distance measures etc.
     """
+
+    @staticmethod
+    def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
+        """Numpy implementation of the Frechet Distance.
+        The Frechet distance between two multivariate Gaussians X_1 ~ N(mu_1, C_1)
+        and X_2 ~ N(mu_2, C_2) is
+                d^2 = ||mu_1 - mu_2||^2 + Tr(C_1 + C_2 - 2*sqrt(C_1*C_2)).
+
+        Stable version by Dougal J. Sutherland.
+
+        Params:
+        -- mu1   : Numpy array containing the activations of a layer of the
+                inception net (like returned by the function 'get_predictions')
+                for generated samples.
+        -- mu2   : The sample mean over activations, precalculated on a
+                representative data set.
+        -- sigma1: The covariance matrix over activations for generated samples.
+        -- sigma2: The covariance matrix over activations, precalculated on a
+                representative data set.
+
+        Returns:
+        --   : The Frechet Distance.
+        """
+
+        try:
+            from scipy import linalg  # noqa: PLC0415
+        except ImportError as e:
+            msg = "The 'frechet' distance kernel requires scipy; install `symbolicai[cluster]`."
+            raise ImportError(msg) from e
+
+        mu1 = np.atleast_1d(mu1).squeeze()
+        mu2 = np.atleast_1d(mu2).squeeze()
+
+        sigma1 = np.atleast_2d(sigma1)
+        sigma2 = np.atleast_2d(sigma2)
+
+        assert mu1.shape == mu2.shape, "Training and test mean vectors have different lengths"
+        assert sigma1.shape == sigma2.shape, (
+            "Training and test covariances have different dimensions"
+        )
+
+        diff = mu1 - mu2
+
+        covmean = linalg.sqrtm(sigma1.dot(sigma2))
+        if not np.isfinite(covmean).all():
+            msg = (
+                f"fid calculation produces singular product; adding {eps} "
+                "to diagonal of cov estimates"
+            )
+            logger.warning(msg)
+            offset = np.eye(sigma1.shape[0]) * eps
+            covmean = linalg.sqrtm((sigma1 + offset).dot(sigma2 + offset))
+
+        if np.iscomplexobj(covmean):
+            if not np.allclose(np.diagonal(covmean).imag, 0, atol=1e-3):
+                m = np.max(np.abs(covmean.imag))
+                msg = f"Imaginary component {m}"
+                raise ValueError(msg)
+            covmean = covmean.real
+
+        tr_covmean = np.trace(covmean)
+        return diff.dot(diff) + np.trace(sigma1) + np.trace(sigma2) - 2 * tr_covmean
+
+    @staticmethod
+    def calculate_mmd(x, y, kernel="rbf", kernel_mul=2.0, kernel_num=5, fix_sigma=None, eps=1e-9):
+        def gaussian_kernel(source, target, kernel_mul, kernel_num, fix_sigma):
+            n_samples = source.shape[0] + target.shape[0]
+            total = np.concatenate([source, target], axis=0)
+            total0 = np.expand_dims(total, 0)
+            total1 = np.expand_dims(total, 1)
+            l2_distance = np.sum((total0 - total1) ** 2, axis=2)
+
+            bandwidth = fix_sigma or np.sum(l2_distance) / (n_samples**2 - n_samples + eps)
+            bandwidth /= kernel_mul ** (kernel_num // 2)
+            bandwidth_list = [bandwidth * (kernel_mul**i) for i in range(kernel_num)]
+            kernel_val = [
+                np.exp(-l2_distance / (bandwidth_temp + eps)) for bandwidth_temp in bandwidth_list
+            ]
+            return np.sum(kernel_val, axis=0)
+
+        def linear_mmd2(f_of_x, f_of_y):
+            delta = f_of_x.mean(axis=0) - f_of_y.mean(axis=0)
+            return np.dot(delta, delta.T)
+
+        if kernel == "linear":
+            return linear_mmd2(x, y)
+        if kernel == "rbf":
+            batch_size = x.shape[0]
+            kernels = gaussian_kernel(
+                x, y, kernel_mul=kernel_mul, kernel_num=kernel_num, fix_sigma=fix_sigma
+            )
+            xx = np.mean(kernels[:batch_size, :batch_size])
+            yy = np.mean(kernels[batch_size:, batch_size:])
+            xy = np.mean(kernels[:batch_size, batch_size:])
+            yx = np.mean(kernels[batch_size:, :batch_size])
+            return xx + yy - xy - yx
+        return None
 
     def embed(self, **kwargs) -> "Symbol":
         """
@@ -2789,10 +2772,10 @@ class EmbeddingPrimitives(Primitive):
         assert sigma1 is not None and sigma2 is not None, (
             "Frechet distance requires covariance matrices for both inputs"
         )
-        return calculate_frechet_distance(lhs.T, sigma1, rhs.T, sigma2, eps)
+        return self.calculate_frechet_distance(lhs.T, sigma1, rhs.T, sigma2, eps)
 
     def _kernel_mmd(self, lhs, rhs, eps, _kwargs):
-        return calculate_mmd(lhs.T, rhs.T, eps=eps)
+        return self.calculate_mmd(lhs.T, rhs.T, eps=eps)
 
     def similarity(
         self,
@@ -2929,41 +2912,6 @@ class IOHandlingPrimitives(Primitive):
     This mixin contains functionalities related to input/output operations.
     """
 
-    def input(self, message: str = "Please add more information", **kwargs) -> "Symbol":
-        """
-        Request user input and return a Symbol containing the user input.
-
-        Args:
-            message (str, optional): The message displayed to request the user input. Defaults to 'Please add more information'.
-            **kwargs: Additional keyword arguments to be passed to the `@core.userinput` decorator.
-
-        Returns:
-            Symbol: The resulting Symbol after receiving the user input.
-
-        Examples:
-        --------
-        >>> from symai import Symbol
-        >>> s = Symbol().input('Please enter your name')
-        >>> [output: 'John']
-
-        >>> s = Symbol('I was born in')
-        >>> s = s.input('Please enter the year of your birth')
-        >>> [output: 'I was born in 1990'] # if Symbol has a <str> value inputs will be concatenated
-
-        # Works identically for the `Expression` class
-        """
-
-        @core.userinput(**kwargs)
-        def _func(_, message) -> str:
-            pass
-
-        res = _func(self, message)
-        condition = self.value is not None and isinstance(self.value, str)
-
-        if hasattr(self, "sym_return_type"):
-            return self.sym_return_type(self.value if condition else "") | res
-        return self._to_type(self.value if condition else "") | self._to_type(res)
-
     def open(self, path: str | None = None, **kwargs) -> "Symbol":
         """
         Open a file and store its content in an Expression object as a string.
@@ -3040,37 +2988,6 @@ class PersistencePrimitives(Primitive):
     Future functionalities in this mixin might include different ways of serialization and deserialization, or more complex expansion techniques etc.
     """
 
-    def expand(self, *args, **kwargs) -> str:
-        """
-        Expand the current Symbol and create a new sub-component.
-        The function writes a self-contained function (with all imports) to solve a specific user problem task.
-        This method uses the `@core.expand` decorator with a maximum token limit of 2048, and allows additional keyword
-        arguments to be passed to the decorator.
-
-        Args:
-            *args: Additional arguments for the `@core.expand` decorator.
-            **kwargs: Additional keyword arguments for the `@core.expand` decorator.
-
-        Returns:
-            Symbol: The name of the newly created sub-component.
-        """
-
-        @core.expand(**kwargs)
-        def _func(_, *args):
-            pass
-
-        _tmp_llm_func = self._to_type(_func(self, *args))
-        func_name = str(_tmp_llm_func.extract("function name"))
-
-        def _llm_func(*args, **kwargs):
-            res = _tmp_llm_func.fexecute(*args, **kwargs)
-
-            return res["locals"][func_name]()
-
-        setattr(self, func_name, _llm_func)
-
-        return func_name
-
     def save(self, path: str, replace: bool | None = False, serialize: bool | None = True) -> None:
         """
         Save the current Symbol to a file.
@@ -3115,31 +3032,6 @@ class PersistencePrimitives(Primitive):
         """
         with Path(path).open("rb") as f:
             return pickle.load(f)
-
-
-class OutputHandlingPrimitives(Primitive):
-    """
-    This mixin include functionalities related to outputting symbols. It can be expanded in the future to include different types of output methods or complex output formatting, etc.
-    """
-
-    def output(self, *args, **kwargs) -> "Symbol":
-        """
-        Output the current Symbol to an output handler.
-        This method uses the `@core.output` decorator and allows additional keyword arguments to be passed to the decorator.
-
-        Args:
-            *args: Additional arguments for the `@core.output` decorator.
-            **kwargs: Additional keyword arguments for the `@core.output` decorator.
-
-        Returns:
-            Symbol: The resulting Symbol after the output operation.
-        """
-
-        @core.output(**kwargs)
-        def _func(_, *_func_args, **_func_kwargs):
-            return self.value
-
-        return self._to_type(_func(self, self.value, *args))
 
 
 # @TODO: add tests

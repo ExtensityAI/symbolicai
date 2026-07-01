@@ -1,12 +1,9 @@
 import ast
-import logging
 import re
 from collections import namedtuple
 from typing import Any
 
 import numpy as np
-
-logger = logging.getLogger(__name__)
 
 
 class PostProcessor:
@@ -137,22 +134,9 @@ class ASTPostProcessor(PostProcessor):
             return obj
 
 
-class ConsolePostProcessor(PostProcessor):
-    def __call__(self, response, argument) -> Any:
-        verbose = argument.prop.verbose
-        if verbose:
-            logger.debug("Argument: %s", argument)
-        return response
-
-
 class TakeLastPostProcessor(PostProcessor):
     def __call__(self, response, _argument) -> Any:
         return response[-1]
-
-
-class ExpandFunctionPostProcessor(PostProcessor):
-    def __call__(self, response, _argument) -> Any:
-        return "def " + response
 
 
 class CaseInsensitivePostProcessor(PostProcessor):
