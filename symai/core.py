@@ -1841,42 +1841,6 @@ def text_to_speech(
     return decorator
 
 
-def output(
-    constraints: list[Callable] | None = None,
-    default: object | None = None,
-    pre_processors: list[pre.PreProcessor] | None = None,
-    post_processors: list[post.PostProcessor] | None = None,
-    **decorator_kwargs,
-):
-    """Offers an output stream for writing results."""
-    if post_processors is None:
-        post_processors = [post.ConsolePostProcessor()]
-    if pre_processors is None:
-        pre_processors = [pre.ConsolePreProcessor()]
-    if constraints is None:
-        constraints = []
-
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(instance, *signature_args, **signature_kwargs):
-            # Construct container object for the arguments and kwargs
-            argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
-            return EngineRepository.query(
-                engine="output",
-                instance=instance,
-                func=func,
-                constraints=constraints,
-                default=default,
-                pre_processors=pre_processors,
-                post_processors=post_processors,
-                argument=argument,
-            )
-
-        return wrapper
-
-    return decorator
-
-
 def scrape(
     url: str,
     constraints: list[Callable] | None = None,

@@ -2938,31 +2938,6 @@ class PersistencePrimitives(Primitive):
             return pickle.load(f)
 
 
-class OutputHandlingPrimitives(Primitive):
-    """
-    This mixin include functionalities related to outputting symbols. It can be expanded in the future to include different types of output methods or complex output formatting, etc.
-    """
-
-    def output(self, *args, **kwargs) -> "Symbol":
-        """
-        Output the current Symbol to an output handler.
-        This method uses the `@core.output` decorator and allows additional keyword arguments to be passed to the decorator.
-
-        Args:
-            *args: Additional arguments for the `@core.output` decorator.
-            **kwargs: Additional keyword arguments for the `@core.output` decorator.
-
-        Returns:
-            Symbol: The resulting Symbol after the output operation.
-        """
-
-        @core.output(**kwargs)
-        def _func(_, *_func_args, **_func_kwargs):
-            return self.value
-
-        return self._to_type(_func(self, self.value, *args))
-
-
 # @TODO: add tests
 class FineTuningPrimitives(Primitive):
     """

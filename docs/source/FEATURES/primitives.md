@@ -98,7 +98,6 @@ either syntactic (`Symbol(...).syn` or `Symbol(...)`) or semantic (`Symbol(...).
 | `.open(path?)`             | IO Handling      | ✓       |         | Open a file and read its contents. |
 | `.save(path, serialize?, replace?)` | Persistence | ✓ |  | Save a symbol to file (pickle/text). |
 | `.load(path)`             | Persistence      | ✓       |         | Load a symbol from file. |
-| `.output()` | Output Handling | ✓    | | Handle/capture output with handler. |
 
 ---
 ## 1. Syntactic **vs.** Semantic Symbols
@@ -1082,30 +1081,4 @@ Load previously saved Symbol data:
 loader_sym = Symbol()
 loaded_sym = loader_sym.load("/path/to/file.pkl")
 # => Restored Symbol with original data
-```
-
-## 22. Output Processing Operations
-
-### Output Handling (`output`)
-
-Process and format Symbol output with custom handlers:
-
-```python
-sym_test = Symbol("Hello, output test!")
-
-# Basic output processing
-result = sym_test.output()
-# => Structured output with processed information
-
-# Custom handler function
-def custom_handler(input_dict):
-   # Process the input dictionary
-    pass
-
-result_with_handler = sym_test.output(handler=custom_handler)
-# => Output processed through custom handler
-
-# With additional arguments
-result_with_args = sym_test.output("arg1", "arg2", custom_param="value")
-# => Output including method arguments and parameters
 ```

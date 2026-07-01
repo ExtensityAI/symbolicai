@@ -1,13 +1,10 @@
 import ast
-import logging
 import re
 from collections import namedtuple
 from typing import Any
 
 import numpy as np
 from sklearn.cluster import HDBSCAN
-
-logger = logging.getLogger(__name__)
 
 
 class PostProcessor:
@@ -129,14 +126,6 @@ class ASTPostProcessor(PostProcessor):
             return {key: self._recursive_parse(value) for key, value in obj.items()}
         else:
             return obj
-
-
-class ConsolePostProcessor(PostProcessor):
-    def __call__(self, response, argument) -> Any:
-        verbose = argument.prop.verbose
-        if verbose:
-            logger.debug("Argument: %s", argument)
-        return response
 
 
 class TakeLastPostProcessor(PostProcessor):
