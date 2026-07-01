@@ -1,7 +1,6 @@
 import logging
 
 import numpy as np
-from scipy import linalg
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +26,12 @@ def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
     Returns:
     --   : The Frechet Distance.
     """
+
+    try:
+        from scipy import linalg  # noqa: PLC0415
+    except ImportError as e:
+        msg = "The 'frechet' distance kernel requires scipy; install `symbolicai[cluster]`."
+        raise ImportError(msg) from e
 
     mu1 = np.atleast_1d(mu1).squeeze()
     mu2 = np.atleast_1d(mu2).squeeze()

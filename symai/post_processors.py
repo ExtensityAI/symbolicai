@@ -5,7 +5,6 @@ from collections import namedtuple
 from typing import Any
 
 import numpy as np
-from sklearn.cluster import HDBSCAN
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +32,13 @@ class ClusterPostProcessor(PostProcessor):
         assert hasattr(self, "clustering_kwargs"), (
             "'clustering_kwargs' must be set in the class before calling __call__; use 'set' method."
         )
+
+        try:
+            from sklearn.cluster import HDBSCAN  # noqa: PLC0415
+        except ImportError as e:
+            msg = "Symbol.cluster() requires scikit-learn; install `symbolicai[cluster]`."
+            raise ImportError(msg) from e
+
         clustering = HDBSCAN(**self.clustering_kwargs).fit(response)
         ids = np.unique(clustering.labels_)
         map_ = {}
