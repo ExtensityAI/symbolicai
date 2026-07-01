@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import base64
+import importlib
+import io
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import cv2
 import httpx
-import numpy as np
 from box import Box
-from PIL import Image
+from PIL import Image, ImageSequence
 
 logger = logging.getLogger(__name__)
 
@@ -19,49 +19,49 @@ if TYPE_CHECKING:
 
 
 def encode_media_frames(file_path):
-    ext = file_path.split(".")[-1]
-    if (
-        ext.lower() == "jpg"
-        or ext.lower() == "jpeg"
-        or ext.lower() == "png"
-        or ext.lower() == "webp"
-    ):
+    ext = file_path.split(".")[-1].lower()
+    if ext == "jpg" or ext == "jpeg" or ext == "png" or ext == "webp":
         if file_path.startswith("http"):
             return encode_image_url(file_path)
         return encode_image_local(file_path)
-    if ext.lower() == "gif":
+    if ext == "gif":
         if file_path.startswith("http"):
             msg = "GIF files from URLs are not supported. Please download the file and try again."
             raise ValueError(msg)
 
-        ext = "jpeg"
-        # get frames from gif
-        base64Frames = []
+        base64_frames = []
         with Image.open(file_path) as frames:
-            for frame in range(frames.n_frames):
-                frames.seek(frame)
-                # get the image as bytes in memory (using BytesIO)
-                current_frame = np.array(frames.convert("RGB"))
-                _, buffer = cv2.imencode(".jpg", current_frame)
-                base64Frames.append(base64.b64encode(buffer).decode("utf-8"))
-        return base64Frames, ext
-    if ext.lower() == "mp4" or ext.lower() == "avi" or ext.lower() == "mov":
+            for frame in ImageSequence.Iterator(frames):
+                buffer = io.BytesIO()
+                frame.convert("RGB").save(buffer, format="JPEG")
+                base64_frames.append(base64.b64encode(buffer.getvalue()).decode("utf-8"))
+        return base64_frames, "jpeg"
+    if ext == "mp4" or ext == "avi" or ext == "mov":
         if file_path.startswith("http"):
             msg = "Video files from URLs are not supported. Please download the file and try again."
             raise ValueError(msg)
 
-        ext = "jpeg"
+        try:
+            cv2 = importlib.import_module("cv2")
+        except ImportError as exc:
+            msg = (
+                "Video frame extraction for mp4/avi/mov requires the optional OpenCV "
+                "dependency. Install it with `symbolicai[video]`."
+            )
+            raise ImportError(msg) from exc
+
         video = cv2.VideoCapture(file_path)
-        # get frames from video
-        base64Frames = []
-        while video.isOpened():
-            success, frame = video.read()
-            if not success:
-                break
-            _, buffer = cv2.imencode(".jpg", frame)
-            base64Frames.append(base64.b64encode(buffer).decode("utf-8"))
-        video.release()
-        return base64Frames, ext
+        base64_frames = []
+        try:
+            while video.isOpened():
+                success, frame = video.read()
+                if not success:
+                    break
+                _, buffer = cv2.imencode(".jpg", frame)
+                base64_frames.append(base64.b64encode(buffer).decode("utf-8"))
+        finally:
+            video.release()
+        return base64_frames, "jpeg"
     msg = f"File extension {ext} not supported"
     raise ValueError(msg)
 

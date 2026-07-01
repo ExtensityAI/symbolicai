@@ -280,7 +280,7 @@ class GPTXChatEngine(Engine, OpenAIMixin):
                             raise ValueError(msg)
                     buffer, ext = encode_media_frames(img_)
                     if len(buffer) > 1:
-                        step = len(buffer) // max_frames_spacing  # max frames spacing
+                        step = max(1, len(buffer) // max_frames_spacing)  # max frames spacing
                         frames = []
                         indices = list(range(0, len(buffer), step))[:max_used_frames]
                         for i in indices:
