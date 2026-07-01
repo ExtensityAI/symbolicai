@@ -29,7 +29,7 @@ def _compute_required_tokens(*_args, **_kwargs):
 def test_init():
     x = Symbol("This is a test!")
 
-    if all(id not in NEUROSYMBOLIC for id in ["3-7", "4-0", "4-1", "4-5"]):
+    if all(model_marker not in NEUROSYMBOLIC for model_marker in ["3-7", "4-0", "4-1", "4-5"]):
         x.query("What is this?")
     else:
         x.query(
@@ -50,9 +50,9 @@ def test_init():
     NEUROSYMBOLIC.startswith("o3-mini"), reason="feature not supported by the model"
 )
 def test_vision():
-    file = Path(__file__).parent.parent.parent.parent / "assets" / "images" / "cat.jpg"
+    file = Path(__file__).parent.parent.parent.parent / "artifacts" / "images" / "cat.jpg"
     x = Symbol(f"<<vision:{file}:>>")
-    if all(id not in NEUROSYMBOLIC for id in ["3-7", "4-0", "4-1", "4-5"]):
+    if all(model_marker not in NEUROSYMBOLIC for model_marker in ["3-7", "4-0", "4-1", "4-5"]):
         res = x.query("What is in the image?")
     else:
         res = x.query(
@@ -62,10 +62,10 @@ def test_vision():
     # it makes sense here to explicitly check if there is a cat; we are testing the vision component
     assert "cat" in res.value
 
-    file = "https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/cat.jpg"
+    file = "https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/artifacts/images/cat.jpg"
     x = Symbol(f"<<vision:{file}:>>")
 
-    if all(id not in NEUROSYMBOLIC for id in ["3-7", "4-0", "4-1", "4-5"]):
+    if all(model_marker not in NEUROSYMBOLIC for model_marker in ["3-7", "4-0", "4-1", "4-5"]):
         res = x.query("What is in the image?")
     else:
         res = x.query(
@@ -247,7 +247,7 @@ def test_tool_usage():
             "Analyze the input request and select the most appropriate function to call from the provided options.",
             tools=tools,
         )
-        res, metadata = fn(
+        _, metadata = fn(
             "what's the temperature in Bogotá, Colombia", raw_output=True, return_metadata=True
         )
         assert "function_call" in metadata
@@ -282,7 +282,7 @@ def test_tool_usage():
             "Analyze the input request and select the most appropriate function to call from the provided options.",
             tools=tools,
         )
-        res, metadata = fn(
+        _, metadata = fn(
             "what's the temperature in Bogotá, Colombia", raw_output=True, return_metadata=True
         )
         assert "function_call" in metadata
@@ -310,7 +310,7 @@ def test_tool_usage():
             "Analyze the input request and select the most appropriate function to call from the provided options.",
             tools=tools,
         )
-        res, metadata = fn(
+        _, metadata = fn(
             "What's the S&P 500 at today",
             raw_output=True,
             max_tokens=CLAUDE_MAX_TOKENS,
@@ -327,14 +327,14 @@ def test_tool_usage():
         # Test case 1: Callable Python function
         def get_capital(country: str | None = None) -> str:
             """Gets the capital city of a given country."""
-            return "Paris"
+            return f"The capital of {country} is Paris."
 
         tools = [get_capital]
         fn = Function(
             "Analyze the input request and select the most appropriate function to call from the provided options.",
             tools=tools,
         )
-        res, metadata = fn(
+        _, metadata = fn(
             "What's the capital of France?",
             raw_output=True,
             thinking=GEMINI_THINKING,
@@ -369,7 +369,7 @@ def test_tool_usage():
             "Analyze the input request and select the most appropriate function to call from the provided options.",
             tools=tools,
         )
-        res, metadata = fn(
+        _, metadata = fn(
             "What is the weather like in Boston?",
             raw_output=True,
             thinking=GEMINI_THINKING,
@@ -385,7 +385,7 @@ def test_tool_usage():
 @pytest.mark.mandatory
 def test_raw_output():
     if NEUROSYMBOLIC.startswith("claude"):
-        if all(id not in NEUROSYMBOLIC for id in ["3-7", "4-0", "4-1", "4-5"]):
+        if all(model_marker not in NEUROSYMBOLIC for model_marker in ["3-7", "4-0", "4-1", "4-5"]):
             S = Expression.prompt("What is the capital of France?", raw_output=True)
         else:
             S = Expression.prompt(

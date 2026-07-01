@@ -43,7 +43,7 @@ Evaluations are resolved in the language domain and by best effort. We showcase 
 
 In the example below, we can observe how operations on word embeddings (colored boxes) are performed. Words are tokenized and mapped to a vector space where semantic operations can be executed using vector arithmetic.
 
-<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img3.png" width="450px">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/artifacts/images/img3.png" width="450px">
 
 Similar to word2vec, we aim to perform contextualized operations on different symbols. However, as opposed to operating in vector space, we work in the natural language domain. This provides us the ability to perform arithmetic on words, sentences, paragraphs, etc., and verify the results in a human-readable format.
 

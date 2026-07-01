@@ -81,7 +81,7 @@ The `prompt` and `constraints` attributes behave similarly to those in the `zero
 
 To provide a more comprehensive understanding of our conceptual implementation, refer to the flow diagram below, containing the most important classes:
 
-<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img9.png" width="600px">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/artifacts/images/img9.png" width="600px">
 
 The colors indicate logical groups of data processing steps. `Yellow` represents input and output data, `blue` shows places where one can customize or prepare the input of the engine, `green` indicates post-processing steps of the engine response, `red` displays the application of constraints (including attempted casting of the `return type signature` if specified in the decorated method), and `grey` denotes the custom method defining all properties, thus having access to all the previously mentioned objects.
 
@@ -136,7 +136,7 @@ True
 
 In general, the semantics of Symbol operations may vary depending on the context hierarchy of the expression class and the operations used. To better illustrate this, we display our conceptual prompt design in the following figure:
 
-<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img4.png" width="350px">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/artifacts/images/img4.png" width="350px">
 
 The figure illustrates the hierarchical prompt design as a container for information provided to the neural computation engine to define a task-specific operation. The `yellow` and `green` highlighted boxes indicate mandatory string placements, dashed boxes represent optional placeholders, and the `red` box marks the starting point of model prediction.
 

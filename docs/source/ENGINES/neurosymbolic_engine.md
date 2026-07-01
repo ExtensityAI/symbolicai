@@ -471,7 +471,7 @@ Vision tokens (e.g. `<<vision:path/to/cat.jpg:>>`) can be passed in prompts on s
 from pathlib import Path
 from symai import Symbol
 
-file = Path("assets/images/cat.jpg")
+file = Path("artifacts/images/cat.jpg")
 res = Symbol(f"<<vision:{file}:>>").query("What is in the image?")
 assert "cat" in res.value.lower()
 ```

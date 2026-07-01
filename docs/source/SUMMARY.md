@@ -6,7 +6,6 @@
 
 ## Engines
 * [Neuro-Symbolic Engine](ENGINES/neurosymbolic_engine.md)
-* [CLIP Engine](ENGINES/clip_engine.md)
 * [Custom Engine](ENGINES/custom_engine.md)
 * [Drawing Engine](ENGINES/drawing_engine.md)
 * [Embedding Engine](ENGINES/embedding_engine.md)
@@ -25,7 +24,6 @@
 * [Primitives](FEATURES/primitives.md)
 * [Operations](FEATURES/operations.md)
 * [Expressions](FEATURES/expressions.md)
-* [Error Handling](FEATURES/error_handling.md)
 * [Module Import](FEATURES/import.md)
 * [Prompt Registry](FEATURES/prompt_registry.md)
 

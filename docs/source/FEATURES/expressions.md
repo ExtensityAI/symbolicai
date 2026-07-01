@@ -19,7 +19,7 @@ Other important properties inherited from the Symbol class include `sym_return_t
 ## Expression Structure
 Expressions may have more complex structures and can be further sub-classed, as shown in the `Sequence` expression example in the following figure:
 
-<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img2.png" width="720px">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/artifacts/images/img2.png" width="720px">
 
 A Sequence expression can hold multiple expressions evaluated at runtime.
 
@@ -59,7 +59,7 @@ The example above opens a stream, passes a `Sequence` object which cleans, trans
 
 This approach has the drawback of processing chunks independently, meaning there is no shared context or information among chunks. To address this issue, the `Cluster` expression can be used, where the independent chunks are merged based on their similarity, as illustrated in the following figure:
 
-<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img6.png" width="720px">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/artifacts/images/img6.png" width="720px">
 
 In the illustrated example, all individual chunks are merged by clustering the information within each chunk. It consolidates contextually related information, merging them meaningfully. The clustered information can then be labeled by streaming through the content of each cluster and extracting the most relevant labels, providing interpretable node summaries.
 
