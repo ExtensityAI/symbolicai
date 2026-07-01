@@ -222,12 +222,6 @@ class SufficientInformationPreProcessor(PreProcessor):
         return f"query {query} content {val} =>"
 
 
-class ExpandFunctionPreProcessor(PreProcessor):
-    def __call__(self, argument) -> Any:
-        val = str(argument.prop.instance)
-        return f"{val} =>\ndef"
-
-
 class ModifyPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
         changes = argument.prop.changes
@@ -246,16 +240,6 @@ class MapExpressionPreProcessor(PreProcessor):
         val = str(argument.prop.instance)
         instruction = argument.prop.context
         return f"text '{val}' {instruction} =>"
-
-
-class ConsoleInputPreProcessor(PreProcessor):
-    def __init__(self, skip: list[int] | None = None) -> None:
-        super().__init__()
-        skip = [skip] if skip and isinstance(skip, int) else skip
-        self.skip = skip if skip is not None else []
-
-    def __call__(self, argument) -> Any:
-        return f"\n{argument.args[0]!s}\n$> "
 
 
 class ConsolePreProcessor(PreProcessor):

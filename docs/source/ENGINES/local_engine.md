@@ -2,10 +2,8 @@
 ## Local Neuro-Symbolic Engine
 
 You can use a locally hosted instance for the Neuro-Symbolic Engine. We build on top of:
-- [llama.cpp](https://github.com/ggerganov/llama.cpp/tree/master) either through:
+- [llama.cpp](https://github.com/ggerganov/llama.cpp/tree/master) through the `llama-server` binary:
     > ❗️**NOTE**❗️ Latest `llama.cpp` commit on `master` branch on November 5th, 2025 that we tested `symai` with is `a5c07dcd7b49`. We used the build [setup](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md).
-  - Direct C++ server from llama.cpp
-  - [llama-cpp-python](https://github.com/abetlen/llama-cpp-python?tab=readme-ov-file)
 - [huggingface/transformers](https://huggingface.co/docs/transformers/en/index) through a custom FastAPI server.
 
 ### llama.cpp backend
@@ -21,22 +19,14 @@ With `symai`, first set the `NEUROSYMBOLIC_ENGINE_MODEL` to `llamacpp`:
 }
 ```
 
-You can then run the server in two ways:
-
-1. Using Python bindings:
+Run the llama.cpp server binary through `symserver`:
 ```bash
-symserver --env python --model ./llama-pro-8b-instruct.Q4_K_M.gguf --n_gpu_layers -1 --chat_format llama-3 --port 8000 --host localhost
-```
-
-2. Using C++ server directly:
-```bash
-symserver --env cpp --cpp-server-path /path/to/llama.cpp/llama-server -ngl -1 -m gpt-oss-120b/Q4_1/gpt-oss-120b-Q4_1-00001-of-00002.gguf -fa 'on' -b 8092 -ub 1024 --port 8000 --host localhost -c 0 -n 4096 -t 14 --jinja
+symserver --cpp-server-path /path/to/llama.cpp/llama-server -ngl -1 -m gpt-oss-120b/Q4_1/gpt-oss-120b-Q4_1-00001-of-00002.gguf -fa 'on' -b 8092 -ub 1024 --port 8000 --host localhost -c 0 -n 4096 -t 14 --jinja
 ```
 
 To see all available options, run:
 ```bash
-symserver --env python --help  # for Python bindings
-symserver --env cpp --cpp-server-path /path/to/llama.cpp/llama-server --help  # for C++ server
+symserver --cpp-server-path /path/to/llama.cpp/llama-server --help
 ```
 
 The Neuro-Symbolic Engine now supports tool execution and structured JSON responses out of the box. For concrete examples, review the tests in `tests/engines/neurosymbolic/test_nesy_engine.py::test_tool_usage` and `tests/contract/test_contract.py`.
@@ -67,7 +57,7 @@ Set the `NEUROSYMBOLIC_ENGINE_MODEL` to `vllm`:
 
 #### Install: clone + source build (the supported path on every platform)
 
-vLLM does not publish pre-built wheels for macOS, and its source build on macOS requires specific flags that uv's default resolver does not supply. The reliable, cross-platform path — and the one we actively tested against — is the same layout as the llama.cpp C++ backend: clone vLLM into its own directory with its own venv, build it there, and point `symserver` at that interpreter via `--vllm-python-path` (analogous to `--cpp-server-path` for llama.cpp).
+vLLM does not publish pre-built wheels for macOS, and its source build on macOS requires specific flags that uv's default resolver does not supply. The reliable, cross-platform path is the same layout as the llama.cpp binary backend: clone vLLM into its own directory with its own venv, build it there, and point `symserver` at that interpreter via `--vllm-python-path` (analogous to `--cpp-server-path` for llama.cpp).
 
 > ❗️**Tested against**❗️ vLLM main branch at commit
 > [`595562651a5a4539ffa910d8570c08fb5169bdc9`](https://github.com/vllm-project/vllm/commit/595562651a5a4539ffa910d8570c08fb5169bdc9)
@@ -238,16 +228,9 @@ For instance, to use the Nomic embed text model, first download it:
 huggingface-cli download nomic-ai/nomic-embed-text-v1.5-GGUF nomic-embed-text-v1.5.Q8_0.gguf --local-dir .
 ```
 
-Then start the server with embedding-specific parameters using either:
-
-Python bindings:
+Then start the llama.cpp server binary with embedding-specific parameters:
 ```bash
-symserver --env python --model nomic-embed-text-v1.5.Q8_0.gguf --embedding True --n_ctx 2048 --rope_scaling_type 2 --rope_freq_scale 0.75 --n_batch 32 --port 8000 --host localhost
-```
-
-C++ server:
-```bash
-symserver --env cpp --cpp-server-path /path/to/llama.cpp/llama-server -ngl -1 -m nomic-embed-text-v1.5.Q8_0.gguf --embedding -b 8092 -ub 1024 --port 8000 --host localhost -t 14 --mlock --no-mmap
+symserver --cpp-server-path /path/to/llama.cpp/llama-server -ngl -1 -m nomic-embed-text-v1.5.Q8_0.gguf --embedding -b 8092 -ub 1024 --port 8000 --host localhost -t 14 --mlock --no-mmap
 ```
 
 The server supports batch processing for embeddings. Here's how to use it with `symai`:

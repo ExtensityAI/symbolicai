@@ -1675,34 +1675,6 @@ def test_execution_control_pr():
         analyzed = sym_code.analyze(exception=e, query="What went wrong?")
         display_op(f"[{sym_code}].analyze(exception={type(e).__name__}, query='What went wrong?')", analyzed, "analyze", "semantic")
 
-    # Test execute method with simple code
-    sym_simple_code = Symbol(dedent("""
-    def run():
-        return 2 + 3
-    res = run()
-    """))
-    executed = sym_simple_code.execute()
-    display_op(f"[{sym_simple_code.value.strip()}].execute()", executed, "execute", "syntactic")
-
-    # Test execute with more complex expression
-    sym_math_code = Symbol(dedent("""
-    def run():
-        import math
-        return math.sqrt(16)
-    res = run()
-    """))
-    executed_math = sym_math_code.execute()
-    display_op(f"[{sym_math_code.value.strip()}].execute()", executed_math, "execute", "syntactic")
-
-    # Test fexecute method (fallback execute)
-    sym_fallback = Symbol(dedent("""
-    def run():
-        return sum([1, 2, 3, 4])
-    res = run()
-    """))
-    fexecuted = sym_fallback.fexecute()
-    display_op(f"[{sym_fallback.value.strip()}].fexecute()", fexecuted, "fexecute", "syntactic")
-
     # Test simulate method (for code simulation)
     sym_code = Symbol("x = 5; y = 10; result = x + y")
     simulated = sym_code.simulate()
@@ -1774,34 +1746,6 @@ def test_execution_control_pr():
         display_op(f"[{sym_large_text}].stream(simple_expr, token_ratio=0.8)", f"Streamed {len(streamed_results)} chunks", "stream", "semantic")
     except Exception as e:
         print(f"Stream test encountered issue: {e}")
-
-    # Test ftry method (fault-tolerant execution)
-    try:
-        class TestExpr(Expression):
-            def __init__(self, should_fail=False):
-                super().__init__()
-                self.should_fail = should_fail
-                self.attempt_count = 0
-
-            def __call__(self, sym, **kwargs):
-                self.attempt_count += 1
-                if self.should_fail and self.attempt_count <= 1:
-                    raise ValueError("Intentional failure for testing")
-                return Symbol(f"Success on attempt {self.attempt_count}: {sym.value}")
-
-        sym_test = Symbol("test data")
-        failing_expr = TestExpr(should_fail=True)
-
-        # Test ftry with retry logic
-        ftry_result = sym_test.ftry(failing_expr, retries=2)
-        display_op(f"[{sym_test}].ftry(failing_expr, retries=2)", ftry_result, "ftry", "semantic")
-
-        # Test ftry with successful expression
-        success_expr = TestExpr(should_fail=False)
-        ftry_success = sym_test.ftry(success_expr, retries=1)
-        display_op(f"[{sym_test}].ftry(success_expr, retries=1)", ftry_success, "ftry", "semantic")
-    except Exception as e:
-        print(f"Ftry test encountered issue: {e}")
 
 @pytest.mark.mandatory
 def test_dict_handling_pr():
@@ -2110,9 +2054,7 @@ def test_io_handling_pr():
         display_op("Symbol().open()", f"ValueError: {e!s}", "open", "syntactic")
         assert "Path is not provided" in str(e)
 
-    assert hasattr(sym_no_path, 'input'), "Symbol should have input method"
-    assert callable(sym_no_path.input), "input should be callable"
-    display_op("Symbol().input()", "input method is callable (requires interaction)", "input", "syntactic")
+
 
 @pytest.mark.mandatory
 def test_persistence_pr():
@@ -2214,37 +2156,6 @@ def test_persistence_pr():
     finally:
         if os.path.exists(replace_base_path):
             os.unlink(replace_base_path)
-
-    # Test expand() method functionality
-    sym_expand = Symbol("Calculate the fibonacci sequence up to 10 numbers")
-
-    try:
-        # Test expand method - it should return a function name
-        func_name = sym_expand.expand()
-        display_op(f"Symbol('{sym_expand}').expand()", f"generated function: {func_name}", "expand", "semantic")
-
-        # Check that expand returns a string (function name)
-        assert isinstance(func_name, str), "expand() should return a function name as string"
-        assert len(func_name) > 0, "function name should not be empty"
-
-        # Check that the function was added as an attribute to the Symbol
-        assert hasattr(sym_expand, func_name), f"Symbol should have the generated function '{func_name}' as attribute"
-        assert callable(getattr(sym_expand, func_name)), f"Generated function '{func_name}' should be callable"
-
-    except Exception as e:
-        # If expand fails due to missing LLM configuration, that's expected
-        display_op(f"Symbol('{sym_expand}').expand()", f"Error (expected if LLM not configured): {type(e).__name__}", "expand", "semantic")
-
-    # Test expand with different problem
-    sym_math = Symbol("Write a function to calculate square root")
-    try:
-        math_func_name = sym_math.expand()
-        display_op(f"Symbol('{sym_math}').expand()", f"generated function: {math_func_name}", "expand", "semantic")
-        assert isinstance(math_func_name, str)
-        assert hasattr(sym_math, math_func_name)
-
-    except Exception as e:
-        display_op(f"Symbol('{sym_math}').expand()", f"Error (expected if LLM not configured): {type(e).__name__}", "expand", "semantic")
 
 @pytest.mark.mandatory
 def test_output_handling_pr():
