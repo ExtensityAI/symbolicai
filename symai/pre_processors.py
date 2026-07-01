@@ -242,34 +242,6 @@ class MapExpressionPreProcessor(PreProcessor):
         return f"text '{val}' {instruction} =>"
 
 
-class ConsolePreProcessor(PreProcessor):
-    def __init__(self, skip: list[int] | None = None) -> None:
-        super().__init__()
-        skip = [skip] if skip and isinstance(skip, int) else skip
-        self.skip = skip if skip is not None else []
-
-    def __call__(self, argument) -> Any:
-        # _func is called as: _func(self, self.value, *method_args, **method_kwargs)
-        # argument.args[0] == symbol value, argument.prop.instance == Symbol object
-        if argument.args:
-            symbol_obj = argument.prop.instance
-            symbol_value = argument.args[0]
-            method_args = argument.args[1:]
-            object_ = f"symbol_value: {symbol_value!r}"
-
-            # kwargs passed at Symbol-construction time (e.g. test_kwarg=…)
-            if symbol_obj._kwargs:
-                object_ += f"\nsymbol_kwargs: {symbol_obj._kwargs}"
-
-            if method_args:
-                object_ += f"\nmethod_args: {method_args}"
-            if argument.kwargs:
-                object_ += f"\nmethod_kwargs: {argument.kwargs}"
-        else:
-            object_ = f"args: {argument.args}\nkwargs: {argument.kwargs}"
-        return object_
-
-
 class LanguagePreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
         language = argument.prop.language
