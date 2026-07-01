@@ -1,10 +1,9 @@
-import asyncio
 import logging
 from typing import Any, ClassVar
 
 import aiohttp
-import nest_asyncio
 
+from symai.backend.async_bridge import run_async
 from symai.backend.base import Engine
 from symai.backend.settings import SYMAI_CONFIG, SYMSERVER_CONFIG
 
@@ -77,20 +76,6 @@ class LlamaCppEmbeddingEngine(Engine):
         ), "Available keys: ['tries', 'delay', 'max_delay', 'backoff', 'jitter', 'graceful']"
         return retry_params
 
-    @staticmethod
-    def _get_event_loop() -> asyncio.AbstractEventLoop:
-        """Gets or creates an event loop."""
-        try:
-            current_loop = asyncio.get_event_loop()
-            if current_loop.is_closed():
-                msg = "Event loop is closed."
-                raise RuntimeError(msg)
-            return current_loop
-        except RuntimeError:
-            new_loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(new_loop)
-            return new_loop
-
     async def _arequest(self, text: str, embd_normalize: str) -> dict:
         """Makes an async HTTP request to the llama.cpp server."""
 
@@ -124,11 +109,8 @@ class LlamaCppEmbeddingEngine(Engine):
             msg = "new_dim is not yet supported"
             raise NotImplementedError(msg)
 
-        nest_asyncio.apply()
-        loop = self._get_event_loop()
-
         try:
-            res = loop.run_until_complete(self._arequest(inp, embd_normalize))
+            res = run_async(self._arequest(inp, embd_normalize))
         except Exception as e:
             msg = f"Request failed with error: {e!s}"
             raise ValueError(msg) from e

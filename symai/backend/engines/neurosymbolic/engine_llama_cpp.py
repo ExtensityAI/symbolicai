@@ -1,12 +1,11 @@
-import asyncio
 import json
 import logging
 from copy import deepcopy
 from typing import Any, ClassVar
 
 import aiohttp
-import nest_asyncio
 
+from symai.backend.async_bridge import run_async
 from symai.backend.base import Engine
 from symai.backend.settings import SYMAI_CONFIG, SYMSERVER_CONFIG
 from symai.core import Argument
@@ -39,12 +38,7 @@ class LlamaCppTokenizer:
 
     @staticmethod
     def encode(text: str) -> list[int]:
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-        return loop.run_until_complete(LlamaCppTokenizer._encode(text))
+        return run_async(LlamaCppTokenizer._encode(text))
 
     @staticmethod
     async def _decode(tokens: list[int]) -> str:
@@ -63,12 +57,7 @@ class LlamaCppTokenizer:
 
     @staticmethod
     def decode(tokens: list[int]) -> str:
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-        return loop.run_until_complete(LlamaCppTokenizer._decode(tokens))
+        return run_async(LlamaCppTokenizer._decode(tokens))
 
 
 class LlamaCppEngine(Engine):
@@ -158,20 +147,6 @@ class LlamaCppEngine(Engine):
         ), "Available keys: ['tries', 'delay', 'max_delay', 'backoff', 'jitter', 'graceful']"
         return retry_params
 
-    @staticmethod
-    def _get_event_loop() -> asyncio.AbstractEventLoop:
-        """Gets or creates an event loop."""
-        try:
-            current_loop = asyncio.get_event_loop()
-            if current_loop.is_closed():
-                msg = "Event loop is closed."
-                raise RuntimeError(msg)
-            return current_loop
-        except RuntimeError:
-            new_loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(new_loop)
-            return new_loop
-
     def _prepare_request_payload(self, argument: Argument) -> dict:
         """Prepares the request payload from the argument."""
         kwargs = argument.kwargs
@@ -245,11 +220,8 @@ class LlamaCppEngine(Engine):
     def forward(self, argument):
         payload = self._prepare_request_payload(argument)
 
-        nest_asyncio.apply()
-        loop = self._get_event_loop()
-
         try:
-            res = loop.run_until_complete(self._arequest(payload))
+            res = run_async(self._arequest(payload))
         except Exception as e:
             msg = f"Error during generation. Caused by: {e}"
             raise ValueError(msg) from e
