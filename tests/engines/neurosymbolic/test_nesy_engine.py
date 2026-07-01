@@ -11,7 +11,7 @@ from symai import Expression, Symbol
 from symai.backend.mixin.openai import SUPPORTED_REASONING_MODELS
 from symai.backend.settings import SYMAI_CONFIG
 from symai.components import Function
-from symai.core_ext import bind
+from symai.core import bind
 
 NEUROSYMBOLIC = SYMAI_CONFIG.get('NEUROSYMBOLIC_ENGINE_MODEL')
 CLAUDE_THINKING = {"budget_tokens": 1024}
