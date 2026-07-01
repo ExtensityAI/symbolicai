@@ -3,7 +3,7 @@ import logging
 from copy import deepcopy
 from typing import Any, ClassVar
 
-import aiohttp
+import httpx
 
 from symai.backend.async_bridge import run_async
 from symai.backend.base import Engine
@@ -23,17 +23,15 @@ class LlamaCppTokenizer:
 
     @staticmethod
     async def _encode(text: str) -> list[int]:
-        async with (
-            aiohttp.ClientSession() as session,
-            session.post(
+        async with httpx.AsyncClient() as client:
+            res = await client.post(
                 f"{LlamaCppTokenizer._server_endpoint}/tokenize",
                 json={"content": text},
-            ) as res,
-        ):
-            if res.status != 200:
-                msg = f"Request failed with status code: {res.status}"
+            )
+            if res.status_code != 200:
+                msg = f"Request failed with status code: {res.status_code}"
                 raise ValueError(msg)
-            response_json = await res.json()
+            response_json = res.json()
             return response_json["tokens"]
 
     @staticmethod
@@ -42,17 +40,15 @@ class LlamaCppTokenizer:
 
     @staticmethod
     async def _decode(tokens: list[int]) -> str:
-        async with (
-            aiohttp.ClientSession() as session,
-            session.post(
+        async with httpx.AsyncClient() as client:
+            res = await client.post(
                 f"{LlamaCppTokenizer._server_endpoint}/detokenize",
                 json={"tokens": tokens},
-            ) as res,
-        ):
-            if res.status != 200:
-                msg = f"Request failed with status code: {res.status}"
+            )
+            if res.status_code != 200:
+                msg = f"Request failed with status code: {res.status_code}"
                 raise ValueError(msg)
-            response_json = await res.json()
+            response_json = res.json()
             return response_json["content"]
 
     @staticmethod
@@ -190,17 +186,19 @@ class LlamaCppEngine(Engine):
         """Makes an async HTTP request to the llama.cpp server."""
 
         async def _make_request():
-            timeout = aiohttp.ClientTimeout(
-                sock_connect=self.timeout_params["connect"], sock_read=self.timeout_params["read"]
+            timeout = httpx.Timeout(
+                timeout=None,
+                connect=self.timeout_params["connect"],
+                read=self.timeout_params["read"],
+                write=None,
+                pool=None,
             )
-            async with (
-                aiohttp.ClientSession(timeout=timeout) as session,
-                session.post(f"{self.server_endpoint}/v1/chat/completions", json=payload) as res,
-            ):
-                if res.status != 200:
-                    msg = f"Request failed with status code: {res.status}"
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                res = await client.post(f"{self.server_endpoint}/v1/chat/completions", json=payload)
+                if res.status_code != 200:
+                    msg = f"Request failed with status code: {res.status_code}"
                     raise ValueError(msg)
-                return await res.json()
+                return res.json()
 
         return await _make_request()
 

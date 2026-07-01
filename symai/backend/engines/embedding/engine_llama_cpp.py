@@ -1,7 +1,7 @@
 import logging
 from typing import Any, ClassVar
 
-import aiohttp
+import httpx
 
 from symai.backend.async_bridge import run_async
 from symai.backend.base import Engine
@@ -80,20 +80,22 @@ class LlamaCppEmbeddingEngine(Engine):
         """Makes an async HTTP request to the llama.cpp server."""
 
         async def _make_request():
-            timeout = aiohttp.ClientTimeout(
-                sock_connect=self.timeout_params["connect"], sock_read=self.timeout_params["read"]
+            timeout = httpx.Timeout(
+                timeout=None,
+                connect=self.timeout_params["connect"],
+                read=self.timeout_params["read"],
+                write=None,
+                pool=None,
             )
-            async with (
-                aiohttp.ClientSession(timeout=timeout) as session,
-                session.post(
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                res = await client.post(
                     f"{self.server_endpoint}/v1/embeddings",
                     json={"content": text, "embd_normalize": embd_normalize},
-                ) as res,
-            ):
-                if res.status != 200:
-                    msg = f"Request failed with status code: {res.status}"
+                )
+                if res.status_code != 200:
+                    msg = f"Request failed with status code: {res.status_code}"
                     raise ValueError(msg)
-                return await res.json()
+                return res.json()
 
         return await _make_request()
 

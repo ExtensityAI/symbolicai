@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, Union
 
 import numpy as np
-import torch
 
 from symai import core
 from symai.functional import EngineRepository
@@ -42,9 +41,7 @@ class Primitive:
 
     @staticmethod
     def _is_iterable(value):
-        return isinstance(
-            value, (list, tuple, set, dict, bytes, bytearray, range, torch.Tensor, np.ndarray)
-        )
+        return isinstance(value, (list, tuple, set, dict, bytes, bytearray, range, np.ndarray))
 
 
 class OperatorPrimitives(Primitive):
@@ -2579,8 +2576,6 @@ class EmbeddingPrimitives(Primitive):
                 else:
                     # convert to numpy array
                     self._metadata.embedding = np.asarray(self.value)
-            elif isinstance(self.value, torch.Tensor):
-                self._metadata.embedding = self.value.detach().cpu().numpy()
             else:
                 # compute the embedding and store as numpy array
                 self._metadata.embedding = np.asarray(self.embed().value)
@@ -2591,7 +2586,7 @@ class EmbeddingPrimitives(Primitive):
 
     def _ensure_numpy_format(self, x, cast=False):
         # if it is a Symbol, get its value
-        if not isinstance(x, (np.ndarray, torch.Tensor, list)):
+        if not isinstance(x, (np.ndarray, list)):
             if not isinstance(
                 x, self._symbol_type
             ):  # @NOTE: enforce Symbol to avoid circular import
@@ -2605,9 +2600,6 @@ class EmbeddingPrimitives(Primitive):
         if isinstance(x, (list, tuple)):
             assert len(x) > 0, "Cannot compute similarity with empty list"
             x = np.asarray(x)
-        # if it is a tensor, convert it to numpy
-        elif isinstance(x, torch.Tensor):
-            x = x.detach().cpu().numpy()
         else:
             x = np.asarray(x)
 
@@ -2627,7 +2619,7 @@ class EmbeddingPrimitives(Primitive):
 
     def _is_numeric_sequence(self, operand: Iterable):
         for item in operand:
-            if isinstance(item, (list, tuple, np.ndarray, torch.Tensor, self._symbol_type)):
+            if isinstance(item, (list, tuple, np.ndarray, self._symbol_type)):
                 return False
             if isinstance(item, (numbers.Real, np.generic)):
                 continue
@@ -2779,7 +2771,7 @@ class EmbeddingPrimitives(Primitive):
 
     def similarity(
         self,
-        other: Union["Symbol", list, np.ndarray, torch.Tensor],
+        other: Union["Symbol", list, np.ndarray],
         metric: Literal[
             "cosine", "angular-cosine", "product", "manhattan", "euclidean", "minkowski", "jaccard"
         ] = "cosine",
@@ -2824,7 +2816,7 @@ class EmbeddingPrimitives(Primitive):
 
     def distance(
         self,
-        other: Union["Symbol", list, np.ndarray, torch.Tensor],
+        other: Union["Symbol", list, np.ndarray],
         kernel: Literal[
             "gaussian",
             "rbf",
@@ -2898,11 +2890,9 @@ class EmbeddingPrimitives(Primitive):
         idx = [str(uuid.uuid4()) for _ in range(len(self.value))]
         query = [{"text": str(self.value[i])} for i in range(len(self.value))]
 
-        # convert embeds to list if it is a tensor or numpy array
+        # convert embeds to list if it is a numpy array
         if isinstance(embeds, np.ndarray):
             embeds = embeds.tolist()
-        elif isinstance(embeds, torch.Tensor):
-            embeds = embeds.cpu().numpy().tolist()
 
         return list(zip(idx, embeds, query, strict=False))
 
@@ -3059,9 +3049,9 @@ class FineTuningPrimitives(Primitive):
         return self.sym_return_type(_func(self))
 
     @property
-    def data(self) -> torch.Tensor:
+    def data(self) -> np.ndarray:
         """
-        Get the data as a Pytorch tensor.
+        Get the data as a NumPy array.
 
         Returns:
             Any: The data of the symbol.
@@ -3070,24 +3060,17 @@ class FineTuningPrimitives(Primitive):
         if self._metadata.data is None:
             # compute the data and store as numpy array
             self._metadata.data = self.embedding
-        # if the data is a tensor, return it
-        if isinstance(self._metadata.data, torch.Tensor):
-            # return tensor
-            return self._metadata.data
-        # if the data is a numpy array, convert it to tensor
         if isinstance(self._metadata.data, np.ndarray):
-            # convert to tensor
-            self._metadata.data = torch.from_numpy(self._metadata.data)
             return self._metadata.data
-        msg = f"Expected data to be a tensor or numpy array, got {type(self._metadata.data)}"
+        msg = f"Expected data to be a numpy array, got {type(self._metadata.data)}"
         raise TypeError(msg)
 
     @data.setter
-    def data(self, data: torch.Tensor) -> None:
+    def data(self, data: np.ndarray) -> None:
         """
         Set the data of the symbol.
 
         Args:
-            data (torch.Tensor): The data to set.
+            data (np.ndarray): The data to set.
         """
         self._metadata.data = data
