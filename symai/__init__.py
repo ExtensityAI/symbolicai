@@ -6,6 +6,7 @@ import subprocess
 import sys
 import time
 import urllib.request
+from importlib.metadata import version
 
 from symai.backend import settings
 
@@ -27,7 +28,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # Create singleton instance
 config_manager = settings.SymAIConfig()
 
-SYMAI_VERSION = "1.18.0"
+SYMAI_VERSION = version("symbolicai")
 __version__ = SYMAI_VERSION
 __root_dir__ = config_manager.config_dir
 
