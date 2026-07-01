@@ -22,7 +22,7 @@ from IPython.display import display
 We can create contextual prompts to define the semantic operations for our model. However, this takes away a lot of our context size and since the GPT-3 context length is limited to 4097 tokens, this might quickly become a problem. Luckily we can use the `Stream` processing expression. This expression opens up a data stream and computes the remaining context length for processing the input data. Then it chunks the sequence and computes the result for each chunk. The chunks can be processed with a `Sequence` expression, that allows multiple chained operations in a sequential manner.
 
 In the following example we show how we can extract news from a particular website and try to recombine all individual chunks again by clustering the information among the chunks and then recombining them. This gives us a way to consolidate contextually related information and recombine them in a meaningful way. Furthermore, the clustered information can then be labeled by looking / streaming through the values within the cluster and collecting the most relevant labels.
-<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img6.png" width="720px">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/artifacts/images/img6.png" width="720px">
 If we repeat this process, we now get a way of building up a hierarchical cluster with labels as entry points to allow information retrieval from our new data structure.
 To make manners more concrete, lets take a look at how to build up a news generator. Let us first start by importing some pre-defined string constants. These constants are used to define how the text is processed and how we desire the output to be formatted.
 

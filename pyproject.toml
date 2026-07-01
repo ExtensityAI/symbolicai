@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools", "setuptools-scm"]
-build-backend = "setuptools.build_meta"
+requires = ["uv_build>=0.9.28,<0.12.0"]
+build-backend = "uv_build"
 
 [tool.uv]
 package = true
@@ -18,7 +18,7 @@ torch = { index = "pytorch-cpu" }
 
 [project]
 name = "symbolicai"
-dynamic = ["version"]
+version = "1.18.0"
 authors = [
     { name = "Marius-Constantin Dinu", email = "marius@extensity.ai" },
     { name = "Leoveanu-Condrei Claudiu", email = "leo@extensity.ai" },
@@ -27,10 +27,10 @@ description = "A Neurosymbolic Perspective on Large Language Models"
 readme = "README.md"
 requires-python = ">=3.11"
 keywords = ["probabilistic programming", "machine learning"]
-license = { file = "LICENSE" }
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: BSD License",
     "Operating System :: OS Independent",
 ]
 dependencies = [
@@ -101,14 +101,25 @@ all = [
 ]
 dev = ["pytest-asyncio>=1.3.0", "pytest-xdist>=3.6.0"]
 
-[tool.setuptools.dynamic]
-version = { attr = "symai.SYMAI_VERSION" }
-[tool.setuptools.package-data]
-"*" = ["*.json", "*.md", "*.pytxt"]
-
-[tool.setuptools.packages.find]
-include = ["symai*"]
-exclude = ["tests", "examples", "notebooks", "outputs", "assets"]
+[tool.uv.build-backend]
+module-name = "symai"
+module-root = ""
+source-exclude = [
+    "/.github",
+    "/artifacts",
+    "/build",
+    "/dist",
+    "/docs",
+    "/examples",
+    "/pytest.ini",
+    "/ruff.toml",
+    "/tests",
+    "/uv.lock",
+    "*.egg-info",
+    "*.pyc",
+    ".DS_Store",
+    "__pycache__",
+]
 
 [dependency-groups]
 dev = ["ruff>=0.14.4", "pytest>=8.3.1", "pytest-asyncio>=1.3.0", "pytest-xdist>=3.6.0"]

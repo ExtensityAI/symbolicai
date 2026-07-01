@@ -1,5 +1,5 @@
 # **SymbolicAI: A neuro-symbolic perspective on LLMs**
-<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/refs/heads/main/assets/images/banner.png">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/refs/heads/main/artifacts/images/banner.png">
 
 <div align="center">
 
@@ -14,7 +14,7 @@
 
 ---
 
-<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/preview.gif">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/artifacts/images/preview.gif">
 
 ## What is SymbolicAI?
 
