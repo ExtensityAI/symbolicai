@@ -339,7 +339,7 @@ def run_server():
     elif settings.SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL").startswith(
         "llama"
     ) or settings.SYMAI_CONFIG.get("EMBEDDING_ENGINE_MODEL").startswith("llama"):
-        # Keep optional llama_cpp dependencies lazy.
+        # Build the llama.cpp binary command only when this local backend is selected.
         from symai.server.llama_cpp_server import llama_cpp_server  # noqa
 
         command, args = llama_cpp_server()
@@ -437,7 +437,7 @@ def run_server():
             "  - Qdrant (indexing/RAG):         set INDEXING_ENGINE=qdrant in symai.config.json, "
             "or pass any qdrant_server flag (e.g. symserver --docker-detach)\n"
             "  - llama.cpp (neuro-symbolic):    set NEUROSYMBOLIC_ENGINE_MODEL=llamacpp or "
-            "EMBEDDING_ENGINE_MODEL=llamacpp in symai.config.json\n"
+            "EMBEDDING_ENGINE_MODEL=llamacpp, then pass --cpp-server-path to the llama.cpp binary\n"
             "  - vLLM (neuro-symbolic):         set NEUROSYMBOLIC_ENGINE_MODEL=vllm in symai.config.json\n"
             "  - HuggingFace (neuro-symbolic):  set NEUROSYMBOLIC_ENGINE_MODEL=huggingface "
             "in symai.config.json\n"
@@ -525,7 +525,6 @@ def setup_wizard(_symai_config_path_):
             "EMBEDDING_ENGINE_MODEL": "",
             "DRAWING_ENGINE_API_KEY": "",
             "DRAWING_ENGINE_MODEL": "",
-            "VISION_ENGINE_MODEL": "",
             "SEARCH_ENGINE_API_KEY": "",
             "SEARCH_ENGINE_MODEL": "",
             "OCR_ENGINE_API_KEY": "",
@@ -536,7 +535,6 @@ def setup_wizard(_symai_config_path_):
             "TEXT_TO_SPEECH_ENGINE_MODEL": "",
             "TEXT_TO_SPEECH_ENGINE_VOICE": "",
             "INDEXING_ENGINE_API_KEY": "",
-            "CAPTION_ENGINE_MODEL": "",
         },
     )
 

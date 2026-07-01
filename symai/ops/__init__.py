@@ -27,7 +27,6 @@ SYMBOL_PRIMITIVES = [
     _primitives.IndexingPrimitives,
     _primitives.IOHandlingPrimitives,
     _primitives.PersistencePrimitives,
-    _primitives.OutputHandlingPrimitives,
     _primitives.FineTuningPrimitives,
 ]
 

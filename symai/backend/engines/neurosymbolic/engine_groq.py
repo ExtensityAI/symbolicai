@@ -309,12 +309,16 @@ class GroqEngine(Engine):
             if tools:
                 tools = None
 
+        # NOTE: gpt-oss reasoning models return empty completions when an empty stop ("") is sent,
+        # so treat an empty stop sequence as "no stop".
+        stop = kwargs.get("stop") or None
+
         payload = {
             "messages": messages,
             "model": self._handle_prefix(kwargs.get("model", self.model)),
             "seed": kwargs.get("seed", self.seed),
             "max_completion_tokens": kwargs.get("max_completion_tokens"),
-            "stop": kwargs.get("stop"),
+            "stop": stop,
             "temperature": kwargs.get("temperature", 1),  # Default temperature for gpt-oss-120b
             "frequency_penalty": kwargs.get("frequency_penalty", 0),
             "presence_penalty": kwargs.get("presence_penalty", 0),

@@ -806,42 +806,6 @@ class ListObjects(Prompt):
         )
 
 
-class ExpandFunction(Prompt):
-    def __init__(self):
-        super().__init__(
-            [
-                """$> Ping if google is still available =>
-def _llm_ping_():
-    "Ping if google is still available."
-    import os
-    response = os.system("ping -c 1 google.com")
-    return response == 0 EOF""",
-                """$> Create a random number between 1 and 100 =>
-def _llm_random_():
-    "Create a random number between 1 and 100."
-    import random
-    return random.randint(1, 100) EOF""",
-                """$> Write any sentence in capital letters =>
-def _llm_upper_(input_):
-    "Write any sentence in capital letters."
-    return input_.upper() EOF""",
-                """$> Open a file from the file system =>
-def _llm_open_(file_name):
-    "Open a file form the file system."
-    return open(file_name, "r") EOF""",
-                """$> Call OpenAI GPT-3 to perform an action given a user input =>
-def _llm_action_(input_):
-    "Call OpenAI GPT-3 to perform an action given a user input."
-    import openai
-    openai.Completion.create(prompt=input_, model="text-davinci-003") EOF""",
-                """$> Create a prompt to translate a user query to an answer in well-formatted structure =>
-def _llm_action_(query_, answer_):
-    "Create a prompt to translate a user query to an answer in well-formatted structure."
-    return f"Query: {query_} => {answer_}" EOF""",
-            ]
-        )
-
-
 class ForEach(Prompt):
     def __init__(self):
         super().__init__(
