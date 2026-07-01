@@ -9,9 +9,8 @@ from symai.utils import semassert
 
 try:
     import whisper  # noqa: F401
-except ImportError as e:
-    msg = "whisper is not installed. Please install it."
-    raise ImportError(msg) from e
+except ImportError:
+    pytest.skip("whisper is not installed", allow_module_level=True)
 
 if SYMAI_CONFIG.get("SPEECH_TO_TEXT_ENGINE_MODEL") not in [
     "tiny",
@@ -21,8 +20,10 @@ if SYMAI_CONFIG.get("SPEECH_TO_TEXT_ENGINE_MODEL") not in [
     "large",
     "turbo",
 ]:
-    msg = "The model you have selected is not supported by the whisper engine. Please select a supported model: [tiny, base, small, medium, large, turbo]"
-    raise ValueError(msg)
+    pytest.skip(
+        "SPEECH_TO_TEXT_ENGINE_MODEL is not a whisper model; skipping whisper tests",
+        allow_module_level=True,
+    )
 
 model = SYMAI_CONFIG.get("SPEECH_TO_TEXT_ENGINE_MODEL")
 audiofile = (Path(__file__).parent.parent.parent / "data/sample.mp3").as_posix()
