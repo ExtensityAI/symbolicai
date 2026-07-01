@@ -31,7 +31,8 @@ class MyEngine(Engine):
     return ...
 
 # register your engine
-EngineRepository.register('neurosymbolic', engine, allow_engine_override=True)
+custom_engine = MyEngine()
+EngineRepository.register('neurosymbolic', custom_engine, allow_engine_override=True)
 ```
 
 Any engine is derived from the base class `Engine` and is then registered in the engines repository using its registry ID. The ID is for instance used in `core.py` decorators to address where to send the zero/few-shot statements using the class `EngineRepository`. You can find the `EngineRepository` defined in `functional.py` with the respective `query` method. Every engine has therefore three main methods you need to implement. The `id`, `prepare` and `forward` method. The `id` return the engine category. The `prepare` and `forward` methods have a signature variable called  `argument` which carries all necessary pipeline relevant data. For instance, the output of the `argument.prop.preprocessed_input` contains the pre-processed output of the `PreProcessor` objects and is usually what you need to build and pass on to the `argument.prop.prepared_input`, which is then used in the `forward` call.

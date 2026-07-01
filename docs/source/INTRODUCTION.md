@@ -33,7 +33,7 @@ In time, and with sufficient data, we can gradually transition from general-purp
 1. **Symbols**: All data objects are treated as symbols, with natural language as the primary interface for interaction.
 2. **Operations**: Contextualized functions that manipulate symbols and return new objects.
 3. **Expressions**: Non-terminal symbols that can be further evaluated, allowing for complex computational graphs.
-4. **Engines**: Various backends (e.g., GPT-3, WolframAlpha, CLIP) that power different types of computations and transformations.
+4. **Engines**: Various backends (e.g., OpenAI, Anthropic, WolframAlpha, OCR, Qdrant, and image generation providers) that power different types of computations and transformations.
 
 ## <img src="https://media.giphy.com/media/mGcNjsfWAjY5AEZNw6/giphy.gif" width="50"> More fun facts!
 

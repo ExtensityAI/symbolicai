@@ -23,6 +23,7 @@ SymbolicAI uses multiple engines to process text, speech and images. We also inc
 
 ```bash
 pip install "symbolicai[bitsandbytes]"
+pip install "symbolicai[cluster]"
 pip install "symbolicai[hf]"
 pip install "symbolicai[lean]"
 pip install "symbolicai[ocr]"
@@ -31,6 +32,7 @@ pip install "symbolicai[scrape]"
 pip install "symbolicai[search]"
 pip install "symbolicai[services]"
 pip install "symbolicai[solver]"
+pip install "symbolicai[video]"
 pip install "symbolicai[whisper]"
 pip install "symbolicai[wolframalpha]"
 ```
@@ -181,5 +183,5 @@ pytest -m mandatory
 Be sure to have your configuration set up correctly before running the tests. You can also run the tests with coverage to see how much of the code is covered by tests:
 
 ```bash
-pytest --cov=symbolicai tests
+pytest --cov=symai tests
 ```

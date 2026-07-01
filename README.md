@@ -79,7 +79,7 @@ Because the projections return the *same underlying object* with just a differen
 | `.startswith(prefix)`    | String Helper    | ✓         | ✓        | Check if a string starts with given prefix (in both modes). |
 | `.choice(cases, default)` | Pattern Matching|           | ✓        | Select best match from provided cases. |
 | `.foreach(condition, apply)`| Execution Control |         | ✓        | Apply action to each element. |
-| `.cluster(**clustering_kwargs?)`              | Data Clustering  |         | ✓        | Cluster data into groups semantically. (uses sklearn's DBSCAN)|
+| `.cluster(**clustering_kwargs?)`              | Data Clustering  |         | ✓        | Cluster data into groups semantically. Uses scikit-learn's HDBSCAN via `symbolicai[cluster]`. |
 | `.similarity(other, metric?, normalize?)` | Embedding    |         | ✓        | Compute similarity between embeddings. |
 | ... | ...    |   ...|  ...        | ... |
 
@@ -161,6 +161,7 @@ SymbolicAI uses multiple engines to process text, speech and images. We also inc
 
 ```bash
 pip install "symbolicai[bitsandbytes]"
+pip install "symbolicai[cluster]"
 pip install "symbolicai[hf]"
 pip install "symbolicai[lean]"
 pip install "symbolicai[ocr]"
@@ -169,6 +170,7 @@ pip install "symbolicai[scrape]"
 pip install "symbolicai[search]"
 pip install "symbolicai[services]"
 pip install "symbolicai[solver]"
+pip install "symbolicai[video]"
 pip install "symbolicai[whisper]"
 pip install "symbolicai[wolframalpha]"
 ```
@@ -301,12 +303,13 @@ pytest -m mandatory
 ```
 Be sure to have your configuration set up correctly before running the tests. You can also run the tests with coverage to see how much of the code is covered by tests:
 ```bash
-pytest --cov=symbolicai tests
+pytest --cov=symai tests
 ```
 
 ## 🪜 Next Steps
 
-Now, there are tools like DeepWiki that provide better documentation than we could ever write, and we don’t want to compete with that; we'll correct it where it's plain wrong. Please go read SymbolicAI's DeepWiki [page](https://deepwiki.com/ExtensityAI/symbolicai/). There's a lot of interesting stuff in there. Last but not least, check out our [paper](https://arxiv.org/abs/2402.00854) that describes the framework in detail. If you like watching videos, we have a series of tutorials that you can find [here](https://extensityai.gitbook.io/symbolicai/tutorials/video_tutorials).
+Read SymbolicAI's DeepWiki [page](https://deepwiki.com/ExtensityAI/symbolicai/) for a generated
+code tour, and check out our [paper](https://arxiv.org/abs/2402.00854) for the framework design.
 
 ## 📜 Citation
 
