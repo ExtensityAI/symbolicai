@@ -144,11 +144,6 @@ class TakeLastPostProcessor(PostProcessor):
         return response[-1]
 
 
-class ExpandFunctionPostProcessor(PostProcessor):
-    def __call__(self, response, _argument) -> Any:
-        return "def " + response
-
-
 class CaseInsensitivePostProcessor(PostProcessor):
     def __call__(self, response, _argument) -> Any:
         return str(response).lower()

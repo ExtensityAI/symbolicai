@@ -1,62 +1,35 @@
 import argparse
-import logging
 import subprocess
-import sys
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
 
-
-def llama_cpp_server():
-    parser = argparse.ArgumentParser(description="A wrapper for llama_cpp.", add_help=False)
-    parser.add_argument(
-        "--help", action="store_true", help="Show available options for llama_cpp server."
+def llama_cpp_server() -> tuple:
+    parser = argparse.ArgumentParser(
+        description="A wrapper for the llama.cpp server binary.", add_help=False
     )
     parser.add_argument(
-        "--env",
-        choices=["python", "cpp"],
-        default="python",
-        help="Choose programming environment (python or cpp)",
+        "--help", action="store_true", help="Show available options for llama.cpp server."
     )
     parser.add_argument("--cpp-server-path", type=str, help="Path to llama.cpp server executable")
 
     main_args, llama_cpp_args = parser.parse_known_args()
 
+    if not main_args.cpp_server_path:
+        if main_args.help:
+            parser.print_help()
+            raise SystemExit(0)
+        msg = "Error: --cpp-server-path is required for the llama.cpp server binary"
+        raise SystemExit(msg)
+
+    cpp_server_path = Path(main_args.cpp_server_path)
+    if not cpp_server_path.exists():
+        msg = f"Error: Executable not found at {cpp_server_path}"
+        raise SystemExit(msg)
+
     if main_args.help:
-        if main_args.env == "python":
-            command = [sys.executable, "-m", "llama_cpp.server", "--help"]
-            subprocess.run(command, check=False)
-        else:
-            if not main_args.cpp_server_path:
-                logger.error("Error: --cpp-server-path is required when using cpp environment")
-                sys.exit(1)
-            if not Path(main_args.cpp_server_path).exists():
-                logger.error("Error: Executable not found at %s", main_args.cpp_server_path)
-                sys.exit(1)
-            command = [main_args.cpp_server_path, "--help"]
-            subprocess.run(command, check=False)
-        sys.exit(0)
+        subprocess.run([cpp_server_path, "--help"], check=False)
+        raise SystemExit(0)
 
-    if main_args.env == "cpp":
-        if not main_args.cpp_server_path:
-            logger.error("Error: --cpp-server-path is required when using cpp environment")
-            sys.exit(1)
-        if not Path(main_args.cpp_server_path).exists():
-            logger.error("Error: Executable not found at %s", main_args.cpp_server_path)
-            sys.exit(1)
-        command = [
-            main_args.cpp_server_path,
-            *llama_cpp_args,
-        ]
-        llama_cpp_args = [
-            arg for arg in llama_cpp_args if not arg.startswith("--embedding")
-        ]  # Exclude embedding argument
-    else:  # python
-        command = [
-            sys.executable,
-            "-m",
-            "llama_cpp.server",
-            *llama_cpp_args,
-        ]
-
-    return command, llama_cpp_args
+    command = [cpp_server_path, *llama_cpp_args]
+    args = [arg for arg in llama_cpp_args if not arg.startswith("--embedding")]
+    return command, args

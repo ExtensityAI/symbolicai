@@ -2200,39 +2200,6 @@ class ExecutionControlPrimitives(Primitive):
 
         return self._to_type(_func(self))
 
-    def execute(self, **kwargs) -> "Symbol":
-        """
-        Executes the symbol's expression using the @core.execute decorator.
-
-        Args:
-            **kwargs: Additional keyword arguments to pass to the core.execute decorator.
-
-        Returns:
-            Symbol: The result of the executed expression as a Symbol.
-        """
-
-        @core.execute(**kwargs)
-        def _func(_):
-            pass
-
-        return _func(self)
-
-    def fexecute(self, **kwargs) -> "Symbol":
-        """
-        Executes the symbol's expression using the fallback execute method (ftry).
-
-        Args:
-            **kwargs: Additional keyword arguments to pass to the core.execute decorator.
-
-        Returns:
-            Symbol: The result of the executed expression as a Symbol.
-        """
-
-        def _func(sym: "Symbol", **kargs):
-            return sym.execute(**kargs)
-
-        return self.ftry(_func, **kwargs)
-
     def simulate(self, **kwargs) -> "Symbol":
         """
         Uses the @core.simulate decorator, simulates the value of the symbol. Used for hypothesis testing or code simulation.
@@ -2343,85 +2310,6 @@ class ExecutionControlPrimitives(Primitive):
 
         else:
             yield expr(self, **kwargs)
-
-    def ftry(self, expr: "Expression", retries: int | None = 1, **kwargs) -> "Symbol":
-        # TODO: find a way to pass on the constraints and behavior from the self.expr to the corrected code
-        """
-        Tries to evaluate a Symbol using a given Expression.
-        This method evaluates a Symbol using a given Expression.
-        If it fails, it retries the evaluation a specified number of times.
-
-        Args:
-            expr (Expression): The Expression object to evaluate the Symbol.
-            retries (Optional[int]): The number of retries if the evaluation fails. Defaults to 1.
-            **kwargs: Additional keyword arguments for the given Expression.
-
-        Returns:
-            Symbol: A Symbol object with the evaluated result.
-
-        Raises:
-            Exception: If the evaluation fails after all retries.
-        """
-        prompt = {"out_msg": ""}
-
-        def output_handler(input_):
-            prompt["out_msg"] = input_
-
-        kwargs["output_handler"] = output_handler
-        retry_cnt: int = 0
-        code = self  # original input
-
-        if hasattr(expr, "prompt"):
-            prompt["prompt_instruction"] = expr.prompt
-
-        sym = self  # used for getting passed from one iteration to the next
-        while True:
-            try:
-                sym = expr(sym, **kwargs)  # run the expression
-                retry_cnt = 0
-
-                return sym
-
-            except Exception as e:
-                retry_cnt += 1
-                if retry_cnt > retries:
-                    raise e
-                # analyze the error
-                payload = (
-                    f"[ORIGINAL_USER_PROMPT]\n{prompt['prompt_instruction']}\n\n"
-                    if "prompt_instruction" in prompt
-                    else ""
-                )
-                payload = (
-                    payload
-                    + f"[ORIGINAL_USER_DATA]\n{code}\n\n[ORIGINAL_GENERATED_OUTPUT]\n{prompt['out_msg']}"
-                )
-                probe = sym.analyze(
-                    query="What is the issue in this expression?", payload=payload, exception=e
-                )
-                # attempt to correct the error
-                payload = (
-                    f"[ORIGINAL_USER_PROMPT]\n{prompt['prompt_instruction']}\n\n"
-                    if "prompt_instruction" in prompt
-                    else ""
-                )
-                payload = payload + f"[ANALYSIS]\n{probe}\n\n"
-                context = f"Try to correct the error of the original user request based on the analysis above: \n [GENERATED_OUTPUT]\n{prompt['out_msg']}\n\n"
-                constraints = expr.constraints if hasattr(expr, "constraints") else []
-
-                if hasattr(expr, "post_processor"):
-                    post_processor = expr.post_processor
-                    sym = code.correct(
-                        context=context,
-                        exception=e,
-                        payload=payload,
-                        constraints=constraints,
-                        post_processor=post_processor,
-                    )
-                else:
-                    sym = code.correct(
-                        context=context, exception=e, payload=payload, constraints=constraints
-                    )
 
 
 class DictHandlingPrimitives(Primitive):
@@ -2928,41 +2816,6 @@ class IOHandlingPrimitives(Primitive):
     This mixin contains functionalities related to input/output operations.
     """
 
-    def input(self, message: str = "Please add more information", **kwargs) -> "Symbol":
-        """
-        Request user input and return a Symbol containing the user input.
-
-        Args:
-            message (str, optional): The message displayed to request the user input. Defaults to 'Please add more information'.
-            **kwargs: Additional keyword arguments to be passed to the `@core.userinput` decorator.
-
-        Returns:
-            Symbol: The resulting Symbol after receiving the user input.
-
-        Examples:
-        --------
-        >>> from symai import Symbol
-        >>> s = Symbol().input('Please enter your name')
-        >>> [output: 'John']
-
-        >>> s = Symbol('I was born in')
-        >>> s = s.input('Please enter the year of your birth')
-        >>> [output: 'I was born in 1990'] # if Symbol has a <str> value inputs will be concatenated
-
-        # Works identically for the `Expression` class
-        """
-
-        @core.userinput(**kwargs)
-        def _func(_, message) -> str:
-            pass
-
-        res = _func(self, message)
-        condition = self.value is not None and isinstance(self.value, str)
-
-        if hasattr(self, "sym_return_type"):
-            return self.sym_return_type(self.value if condition else "") | res
-        return self._to_type(self.value if condition else "") | self._to_type(res)
-
     def open(self, path: str | None = None, **kwargs) -> "Symbol":
         """
         Open a file and store its content in an Expression object as a string.
@@ -3038,37 +2891,6 @@ class PersistencePrimitives(Primitive):
     This mixin contains functionalities related to expanding symbols and saving/loading symbols to/from disk.
     Future functionalities in this mixin might include different ways of serialization and deserialization, or more complex expansion techniques etc.
     """
-
-    def expand(self, *args, **kwargs) -> str:
-        """
-        Expand the current Symbol and create a new sub-component.
-        The function writes a self-contained function (with all imports) to solve a specific user problem task.
-        This method uses the `@core.expand` decorator with a maximum token limit of 2048, and allows additional keyword
-        arguments to be passed to the decorator.
-
-        Args:
-            *args: Additional arguments for the `@core.expand` decorator.
-            **kwargs: Additional keyword arguments for the `@core.expand` decorator.
-
-        Returns:
-            Symbol: The name of the newly created sub-component.
-        """
-
-        @core.expand(**kwargs)
-        def _func(_, *args):
-            pass
-
-        _tmp_llm_func = self._to_type(_func(self, *args))
-        func_name = str(_tmp_llm_func.extract("function name"))
-
-        def _llm_func(*args, **kwargs):
-            res = _tmp_llm_func.fexecute(*args, **kwargs)
-
-            return res["locals"][func_name]()
-
-        setattr(self, func_name, _llm_func)
-
-        return func_name
 
     def save(self, path: str, replace: bool | None = False, serialize: bool | None = True) -> None:
         """

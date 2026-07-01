@@ -17,7 +17,7 @@ def vllm_server():
     --gpu-memory-utilization, --enable-auto-tool-choice, --tool-call-parser,
     --served-model-name, ...) is available.
 
-    Two entrypoint models, mirroring `llama_cpp_server.py`:
+    Two entrypoint modes are available:
 
     * Default: use the current environment — `python -m vllm.entrypoints.openai.api_server`
       (`--entrypoint module`) or `vllm serve` (`--entrypoint cli`). Requires vLLM

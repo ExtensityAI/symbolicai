@@ -352,11 +352,15 @@ class CerebrasEngine(CerebrasMixin, Engine):
 
         response_format = self._normalize_response_format(kwargs.get("response_format"))
 
+        # NOTE: gpt-oss reasoning models return empty completions when an empty stop ("") is sent,
+        # so treat an empty stop sequence as "no stop".
+        stop = kwargs.get("stop") or None
+
         return {
             "messages": messages,
             "model": self._handle_prefix(kwargs.get("model", self.model)),
             "max_completion_tokens": kwargs.get("max_completion_tokens"),
-            "stop": kwargs.get("stop"),
+            "stop": stop,
             "temperature": kwargs.get("temperature", 1),
             "top_p": kwargs.get("top_p", 1),
             "n": n,
