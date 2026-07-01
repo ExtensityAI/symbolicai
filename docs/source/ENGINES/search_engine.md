@@ -4,7 +4,7 @@
 Parallel.ai provides unified search and scrape capabilities through the `parallel-web` SDK. When you invoke `.search(...)` on the Parallel interface, responses are normalized into a `SearchResult` that flattens excerpt text and appends inline citation markers. All URLs are deduplicated and cleaned of tracking parameters, and you can access structured citations via `result.get_citations()`.
 
 ```python
-from symai.extended import Interface
+from symai import Interface
 
 engine = Interface("parallel")
 result = engine.search(
@@ -186,7 +186,7 @@ Firecrawl.dev provides web scraping and search capabilities with built-in handli
 ### Comprehensive Search Example
 
 ```python
-from symai.extended import Interface
+from symai import Interface
 
 engine = Interface("firecrawl")
 

@@ -89,7 +89,7 @@ either syntactic (`Symbol(...).syn` or `Symbol(...)`) or semantic (`Symbol(...).
 | `.dict(context, **kwargs)` | Dict Handling    |         | ✓        | Convert text/list into a dict semantically. |
 | `.template(template, placeholder?)` | Template Styling |    ✓  | | Fill in placeholders in a template string. |
 | `.style(description, libraries?)` | Template Styling |        | ✓ | Style text/code (e.g., syntax highlighting). |
-| `.cluster(**clustering_kwargs?)`              | Data Clustering  |         | ✓        | Cluster data into groups semantically. (uses sklearn's DBSCAN)|
+| `.cluster(**clustering_kwargs?)`              | Data Clustering  |         | ✓        | Cluster data into groups semantically. Uses scikit-learn's HDBSCAN via `symbolicai[cluster]`. |
 | `.embed()`                | Embedding        |         | ✓        | Generate embeddings for text/data. |
 | `.embedding`              | Embedding        |         | ✓        | Retrieve embeddings as a numpy array. |
 | `.similarity(other, metric?, normalize?)` | Embedding    |         | ✓        | Compute similarity between embeddings. |

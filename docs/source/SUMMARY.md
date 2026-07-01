@@ -22,12 +22,4 @@
 ## Features
 * [Contracts](FEATURES/contracts.md)
 * [Primitives](FEATURES/primitives.md)
-* [Operations](FEATURES/operations.md)
-* [Expressions](FEATURES/expressions.md)
-* [Module Import](FEATURES/import.md)
 * [Prompt Registry](FEATURES/prompt_registry.md)
-
-## Tutorials
-* [Handling Large Contexts](TUTORIALS/context.md)
-* [SQL Data Query](TUTORIALS/data_query.md)
-* [Video Tutorials](TUTORIALS/video_tutorials.md)

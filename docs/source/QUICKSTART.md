@@ -89,4 +89,5 @@ res = S1 & S2 # Therefore, it is Sunday.
 ```
 
 ### 🪜 Next Steps
-Now, there are tools like DeepWiki that provide better documentation than we could ever write, and we don’t want to compete with that; we'll correct it where it's plain wrong. Please go read SymbolicAI's DeepWiki [page](https://deepwiki.com/ExtensityAI/symbolicai/). There's a lot of interesting stuff in there. Last but not least, check out our [paper](https://arxiv.org/abs/2402.00854) that describes the framework in detail. If you like watching videos, we have a series of tutorials that you can find [here](https://extensityai.gitbook.io/symbolicai/tutorials/video_tutorials).
+Read SymbolicAI's DeepWiki [page](https://deepwiki.com/ExtensityAI/symbolicai/) for a generated
+code tour, and check out our [paper](https://arxiv.org/abs/2402.00854) for the framework design.
