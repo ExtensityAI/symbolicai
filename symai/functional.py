@@ -360,7 +360,13 @@ class EngineRepository:
         self = EngineRepository()
         # Iterate over all modules in the given package and import them
         for _, module_name, _ in pkgutil.iter_modules(package.__path__, package.__name__ + "."):
-            module = importlib.import_module(module_name)
+            try:
+                module = importlib.import_module(module_name)
+            except ImportError as e:
+                logger.debug(
+                    "Skipping engine module %s (missing optional dependency): %s", module_name, e
+                )
+                continue
 
             # Check all classes defined in the module
             for attribute_name in dir(module):
