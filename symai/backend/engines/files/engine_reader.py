@@ -8,7 +8,7 @@ import types as _types
 from enum import Enum
 from pathlib import Path
 
-import cv2
+import numpy as np
 from box import Box, BoxList
 from markitdown import PRIORITY_GENERIC_FILE_FORMAT, PRIORITY_SPECIFIC_FILE_FORMAT, MarkItDown
 from markitdown.converters._csv_converter import CsvConverter
@@ -24,6 +24,7 @@ from markitdown.converters._pptx_converter import PptxConverter
 from markitdown.converters._rss_converter import RssConverter
 from markitdown.converters._xlsx_converter import XlsConverter, XlsxConverter
 from markitdown.converters._zip_converter import ZipConverter
+from PIL import Image
 
 from symai.backend.base import Engine
 
@@ -208,14 +209,13 @@ class FileEngine(Engine):
             return md.convert(str(source)).text_content
 
     def _read_image(self, path_obj):
-        """Read image as RGB numpy array via cv2."""
-        img = cv2.imread(str(path_obj))
-        assert img is not None, f"cv2 failed to read image: {path_obj}"
-        return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        """Read image as RGB numpy array via Pillow."""
+        with Image.open(path_obj) as img:
+            return np.asarray(img.convert("RGB"))
 
     # ------------------------------------------------------------------
     # Backend dispatch methods — each returns a text result or raises.
-    # Images (cv2) are handled before dispatch so these never see image exts
+    # Images (Pillow) are handled before dispatch so these never see image exts
     # (except _forward_markitdown, which converts images to EXIF + LLM caption).
     # ------------------------------------------------------------------
 
@@ -286,7 +286,7 @@ class FileEngine(Engine):
             )
             raise ValueError(msg)
 
-        # Images via cv2 unless explicitly markitdown (which returns EXIF + LLM caption)
+        # Images via Pillow unless explicitly markitdown (which returns EXIF + LLM caption)
         if ext in _IMAGE_EXTS and backend != "markitdown":
             return [self._read_image(path_obj)], {}
 

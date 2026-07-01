@@ -44,7 +44,7 @@ dependencies = [
     "anthropic>=0.87.0",
     "google-genai>=1.16.1",
     "tiktoken>=0.8.0",
-    "opencv-python>=4.8.1.78",
+    "pillow>=10.0.0",
     "requests-toolbelt>=1.0.0",
     "beartype>=0.18.2",
     "pydantic>=2.8.2",
@@ -83,6 +83,7 @@ scrape = [
 wolframalpha = ["wolframalpha>=5.0.0"]
 lean = ["docker>=7.0.0", "axiom-axle>=1.0.0"]
 whisper = ["openai-whisper>=20240930", "numba>=0.62.1", "llvmlite>=0.45.1"]
+video = ["opencv-python>=4.8.1.78"]
 search = ["firecrawl-py>=4.12.0", "parallel-web>=1.0.1", "tldextract>=5.1.0"]
 ocr = ["mistralai>=1.0.0"]
 services = ["fastapi>=0.110.0", "redis>=5.0.2", "uvicorn>=0.27.1"]
@@ -93,6 +94,7 @@ all = [
     "symbolicai[hf]",
     "symbolicai[wolframalpha]",
     "symbolicai[whisper]",
+    "symbolicai[video]",
     "symbolicai[scrape]",
     "symbolicai[search]",
     "symbolicai[services]",
