@@ -3631,7 +3631,6 @@ dependencies = [
     { name = "pydantic-core" },
     { name = "python-box" },
     { name = "requests-toolbelt" },
-    { name = "scikit-learn" },
     { name = "tiktoken" },
     { name = "toml" },
     { name = "torch", version = "2.9.1", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'darwin'" },
@@ -3661,6 +3660,7 @@ all = [
     { name = "qdrant-client" },
     { name = "redis" },
     { name = "requests" },
+    { name = "scikit-learn" },
     { name = "sentence-transformers" },
     { name = "sentencepiece" },
     { name = "tldextract" },
@@ -3674,6 +3674,9 @@ all = [
 ]
 bitsandbytes = [
     { name = "bitsandbytes" },
+]
+cluster = [
+    { name = "scikit-learn" },
 ]
 dev = [
     { name = "pytest-asyncio" },
@@ -3788,9 +3791,10 @@ requires-dist = [
     { name = "redis", marker = "extra == 'services'", specifier = ">=5.0.2" },
     { name = "requests", marker = "extra == 'qdrant'" },
     { name = "requests-toolbelt", specifier = ">=1.0.0" },
-    { name = "scikit-learn", specifier = ">=1.7.0" },
+    { name = "scikit-learn", marker = "extra == 'cluster'", specifier = ">=1.7.0" },
     { name = "sentence-transformers", marker = "extra == 'hf'", specifier = ">=2.5.1" },
     { name = "sentencepiece", marker = "extra == 'hf'", specifier = ">=0.2.0" },
+    { name = "symbolicai", extras = ["cluster"], marker = "extra == 'all'" },
     { name = "symbolicai", extras = ["hf"], marker = "extra == 'all'" },
     { name = "symbolicai", extras = ["lean"], marker = "extra == 'all'" },
     { name = "symbolicai", extras = ["ocr"], marker = "extra == 'all'" },
@@ -3815,7 +3819,7 @@ requires-dist = [
     { name = "wolframalpha", marker = "extra == 'wolframalpha'", specifier = ">=5.0.0" },
     { name = "z3-solver", marker = "extra == 'solver'", specifier = ">=4.12.6.0" },
 ]
-provides-extras = ["bitsandbytes", "hf", "scrape", "llama-cpp", "wolframalpha", "lean", "whisper", "search", "serpapi", "ocr", "services", "solver", "qdrant", "all", "dev"]
+provides-extras = ["bitsandbytes", "hf", "scrape", "llama-cpp", "wolframalpha", "lean", "whisper", "search", "serpapi", "ocr", "services", "solver", "qdrant", "cluster", "all", "dev"]
 
 [package.metadata.requires-dev]
 dev = [
