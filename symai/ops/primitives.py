@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any, Literal, Union
 import numpy as np
 import torch
 
-from symai import core, core_ext
+from symai import core
 from symai.ops.measures import calculate_frechet_distance, calculate_mmd
 from symai.prompts import Prompt
 
@@ -1503,7 +1503,7 @@ class ValueHandlingPrimitives(Primitive):
         """
         return self.tokenizer().encode(str(self))
 
-    @core_ext.bind(engine="neurosymbolic", property="tokenizer")
+    @core.bind(engine="neurosymbolic", property="tokenizer")
     def tokenizer(self) -> Callable:
         """
         The tokenizer method.
@@ -2325,7 +2325,7 @@ class ExecutionControlPrimitives(Primitive):
             ValueError: If the Expression object exceeds the maximum allowed tokens.
         """
 
-        @core_ext.bind(engine="neurosymbolic", property="max_context_tokens")
+        @core.bind(engine="neurosymbolic", property="max_context_tokens")
         def _max_tokens(_):
             pass
 

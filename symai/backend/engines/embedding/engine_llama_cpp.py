@@ -7,7 +7,6 @@ import nest_asyncio
 
 from symai.backend.base import Engine
 from symai.backend.settings import SYMAI_CONFIG, SYMSERVER_CONFIG
-from symai.core_ext import retry
 
 logging.getLogger("requests").setLevel(logging.ERROR)
 logging.getLogger("urllib").setLevel(logging.ERROR)
@@ -95,7 +94,6 @@ class LlamaCppEmbeddingEngine(Engine):
     async def _arequest(self, text: str, embd_normalize: str) -> dict:
         """Makes an async HTTP request to the llama.cpp server."""
 
-        @retry(**self.retry_params)
         async def _make_request():
             timeout = aiohttp.ClientTimeout(
                 sock_connect=self.timeout_params["connect"], sock_read=self.timeout_params["read"]

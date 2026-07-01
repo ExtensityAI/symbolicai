@@ -20,7 +20,6 @@ import requests
 import urllib3
 from requests.adapters import HTTPAdapter
 
-from symai import core_ext
 from symai.backend.base import Engine
 from symai.backend.settings import SYMAI_CONFIG, SYMSERVER_CONFIG
 from symai.symbol import Result, Symbol
@@ -708,13 +707,6 @@ class QdrantIndexEngine(Engine):
         argument.prop.prepared_input = argument.prop.prompt
 
     def _upsert(self, collection_name: str, points: list[PointStruct]):
-        @core_ext.retry(
-            tries=self.tries,
-            delay=self.delay,
-            max_delay=self.max_delay,
-            backoff=self.backoff,
-            jitter=self.jitter,
-        )
         def _func():
             return self.client.upsert(collection_name=collection_name, points=points)
 
@@ -741,13 +733,6 @@ class QdrantIndexEngine(Engine):
         return vector
 
     def _query(self, collection_name: str, query_vector: list[float], top_k: int, **kwargs):
-        @core_ext.retry(
-            tries=self.tries,
-            delay=self.delay,
-            max_delay=self.max_delay,
-            backoff=self.backoff,
-            jitter=self.jitter,
-        )
         def _func():
             qdrant_kwargs = dict(kwargs)
             query_vector_normalized = self._normalize_vector(query_vector)

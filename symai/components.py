@@ -16,7 +16,7 @@ from beartype import beartype
 from box import Box
 from tqdm import tqdm
 
-from symai import core, core_ext
+from symai import core
 from symai.backend.base import Engine
 from symai.context import CURRENT_ENGINE_VAR
 from symai.post_processors import PostProcessor
@@ -285,21 +285,7 @@ class SelfPrompt(Expression):
         :return: A dictionary containing the new prompts in the same format:
                  {'user': '...', 'system': '...'}
         """
-        tries = kwargs.get("tries", self._default_retry_tries)
-        delay = kwargs.get("delay", self._default_retry_delay)
-        max_delay = kwargs.get("max_delay", self._default_retry_max_delay)
-        backoff = kwargs.get("backoff", self._default_retry_backoff)
-        jitter = kwargs.get("jitter", self._default_retry_jitter)
-        graceful = kwargs.get("graceful", self._default_retry_graceful)
 
-        @core_ext.retry(
-            tries=tries,
-            delay=delay,
-            max_delay=max_delay,
-            backoff=backoff,
-            jitter=jitter,
-            graceful=graceful,
-        )
         @core.zero_shot(
             prompt=(
                 "Based on the following prompt, generate a new system (or developer) prompt and a new user prompt. "
