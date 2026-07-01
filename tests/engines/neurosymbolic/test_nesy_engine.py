@@ -14,6 +14,13 @@ from symai.components import Function
 from symai.core import bind
 
 NEUROSYMBOLIC = SYMAI_CONFIG.get('NEUROSYMBOLIC_ENGINE_MODEL')
+
+if not NEUROSYMBOLIC:
+    pytest.skip(
+        "NEUROSYMBOLIC_ENGINE_MODEL is not configured; skipping neurosymbolic engine tests",
+        allow_module_level=True,
+    )
+
 CLAUDE_THINKING = {"budget_tokens": 1024}
 GEMINI_THINKING = {"thinking_budget": 1024}
 CLAUDE_MAX_TOKENS = 4092
