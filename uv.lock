@@ -3625,7 +3625,6 @@ name = "symbolicai"
 source = { editable = "." }
 dependencies = [
     { name = "anthropic" },
-    { name = "attrs" },
     { name = "beartype" },
     { name = "cerebras-cloud-sdk" },
     { name = "filetype" },
@@ -3637,10 +3636,8 @@ dependencies = [
     { name = "openai" },
     { name = "pillow" },
     { name = "pydantic" },
-    { name = "pydantic-core" },
     { name = "python-box" },
     { name = "tiktoken" },
-    { name = "toml" },
     { name = "tqdm" },
 ]
 
@@ -3762,7 +3759,6 @@ dev = [
 requires-dist = [
     { name = "accelerate", marker = "extra == 'hf'", specifier = ">=0.33.0" },
     { name = "anthropic", specifier = ">=0.87.0" },
-    { name = "attrs", specifier = ">=23.2.0" },
     { name = "axiom-axle", marker = "extra == 'lean'", specifier = ">=1.0.0" },
     { name = "beartype", specifier = ">=0.18.2" },
     { name = "beautifulsoup4", marker = "extra == 'scrape'", specifier = ">=4.12.3" },
@@ -3792,7 +3788,6 @@ requires-dist = [
     { name = "pillow", specifier = ">=10.0.0" },
     { name = "playwright", marker = "extra == 'scrape'", specifier = ">=1.45.0" },
     { name = "pydantic", specifier = ">=2.8.2" },
-    { name = "pydantic-core", specifier = ">=2.20.1" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=1.3.0" },
     { name = "pytest-xdist", marker = "extra == 'dev'", specifier = ">=3.6.0" },
     { name = "python-box", specifier = ">=7.1.1" },
@@ -3817,7 +3812,6 @@ requires-dist = [
     { name = "tiktoken", specifier = ">=0.8.0" },
     { name = "tldextract", marker = "extra == 'search'", specifier = ">=5.1.0" },
     { name = "tokenizers", marker = "extra == 'qdrant'" },
-    { name = "toml", specifier = ">=0.10.2" },
     { name = "torch", marker = "extra == 'hf'", specifier = "<2.10.0", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "extra == 'whisper'", specifier = "<2.10.0", index = "https://download.pytorch.org/whl/cpu" },
     { name = "tqdm", specifier = ">=4.66.3" },
@@ -3999,15 +3993,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/1f/8c/34acdcc8fa973bac37d5e01505bf6f24353ddd22afca9e848283a6a430a1/tokie-0.0.10-cp314-cp314-manylinux_2_28_aarch64.whl", hash = "sha256:a96450b25adad9e71466e16ae77b4aa36a00ce0d5be0d4af6dc6e0bb82b361e2", size = 2727485, upload-time = "2026-05-28T17:56:37.243Z" },
     { url = "https://files.pythonhosted.org/packages/30/64/795e8befa06fc7dcbd12ce1b63bfe9bc50d4a5d4c6742b5bc7383ebf81d1/tokie-0.0.10-cp314-cp314-pyemscripten_2026_0_wasm32.whl", hash = "sha256:84d457a1bba82561ad618fc227b3f93e27f3cd6e9248a23c4406b81318ce64e5", size = 761029, upload-time = "2026-05-28T17:56:39.393Z" },
     { url = "https://files.pythonhosted.org/packages/62/88/0da7795e99f373a63a52ccf2afa055032d3e6aabbb8860f7ffa7a64504aa/tokie-0.0.10-cp314-cp314-win_amd64.whl", hash = "sha256:c517811de6a9f4ed230619317f50e1c9a5f2bc948f11f95251ee93cff3c67cb7", size = 2309656, upload-time = "2026-05-28T17:56:40.828Z" },
-]
-
-[[package]]
-name = "toml"
-version = "0.10.2"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/be/ba/1f744cdc819428fc6b5084ec34d9b30660f6f9daaf70eead706e3203ec3c/toml-0.10.2.tar.gz", hash = "sha256:b3bda1d108d5dd99f4a20d24d9c348e91c4db7ab1b749200bded2f839ccbe68f", size = 22253, upload-time = "2020-11-01T01:40:22.204Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/44/6f/7120676b6d73228c96e17f1f794d8ab046fc910d781c8d151120c3f1569e/toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b", size = 16588, upload-time = "2020-11-01T01:40:20.672Z" },
 ]
 
 [[package]]

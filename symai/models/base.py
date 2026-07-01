@@ -1,13 +1,12 @@
 import json
 import logging
+from dataclasses import dataclass
 from enum import Enum
 from functools import lru_cache
 from types import UnionType
 from typing import Any, Literal, Union, get_args, get_origin
 
-from attr import dataclass
 from pydantic import BaseModel, Field, create_model, model_validator
-from pydantic_core import PydanticUndefined
 
 logger = logging.getLogger(__name__)
 
@@ -94,8 +93,8 @@ class LLMDataModel(BaseModel):
 
     @staticmethod
     def _has_default_value(field_info) -> bool:
-        """Check if a field has a default value."""
-        return field_info.default != ... and field_info.default != PydanticUndefined
+        """Check if a field has a concrete default value."""
+        return not field_info.is_required() and field_info.default_factory is None
 
     def format_field(
         self, key: str, value: Any, indent: int = 0, visited: set | None = None, depth: int = 0

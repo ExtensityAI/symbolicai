@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import jinja2
-import toml
+import tomllib
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -126,7 +126,8 @@ class PromptRegistry:
         manifest_path = folder / "manifest.toml"
         manifest = SimpleNamespace()
         if manifest_path.is_file():
-            manifest = self.manifest_to_object(toml.load(manifest_path))
+            with manifest_path.open("rb") as manifest_file:
+                manifest = self.manifest_to_object(tomllib.load(manifest_file))
 
         jinja_files = list(folder.rglob("*.jinja"))
         if not jinja_files:

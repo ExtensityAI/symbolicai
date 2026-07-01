@@ -34,8 +34,6 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "attrs>=23.2.0",
-    "toml>=0.10.2",
     "numpy>=1.26.4,<=2.1.3",
     "tqdm>=4.66.3",
     "openai>=1.60.0",
@@ -45,7 +43,6 @@ dependencies = [
     "pillow>=10.0.0",
     "beartype>=0.18.2",
     "pydantic>=2.8.2",
-    "pydantic-core>=2.20.1",
     "cerebras-cloud-sdk>=1.59.0",
     "jinja2>=3.1.0",
     "markitdown[docx,outlook,pdf,pptx,xls,xlsx]",
