@@ -1,6 +1,3 @@
-SUPPORTED_COMPLETION_MODELS = [
-    "davinci-002",
-]
 SUPPORTED_CHAT_MODELS = [
     "gpt-3.5-turbo",
     "gpt-3.5-turbo-16k",
@@ -37,11 +34,6 @@ SUPPORTED_REASONING_MODELS = [
     "gpt-5.4-nano",
     "gpt-5.5",
     "gpt-5.5-2026-04-23",
-]
-SUPPORTED_EMBEDDING_MODELS = [
-    "text-embedding-ada-002",
-    "text-embedding-3-small",
-    "text-embedding-3-large",
 ]
 SUPPORTED_RESPONSES_MODELS = [
     f"responses:{m}" for m in SUPPORTED_CHAT_MODELS + SUPPORTED_REASONING_MODELS
