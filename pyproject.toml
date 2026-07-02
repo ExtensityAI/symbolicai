@@ -83,7 +83,7 @@ search = ["firecrawl-py>=4.12.0", "parallel-web>=1.0.1", "tldextract>=5.1.0"]
 ocr = ["mistralai>=1.0.0"]
 services = ["fastapi>=0.110.0", "redis>=5.0.2", "uvicorn>=0.27.1"]
 solver = ["z3-solver>=4.12.6.0"]
-qdrant = ["qdrant-client", "chonkie>=0.4.1", "tokenizers", "requests"]
+qdrant = ["qdrant-client", "chonkie>=0.4.1", "tokenizers"]
 cluster = ["scikit-learn>=1.7.0"]
 all = [
     "symbolicai[hf]",

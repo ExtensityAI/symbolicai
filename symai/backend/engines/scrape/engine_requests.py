@@ -11,16 +11,14 @@ import io
 import logging
 import random
 import re
+import time
 from typing import Any, ClassVar
 from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
 
-import requests
+import httpx
 import trafilatura
 from bs4 import BeautifulSoup
 from pdfminer.high_level import extract_text
-from requests.adapters import HTTPAdapter
-from requests.structures import CaseInsensitiveDict
-from urllib3.util.retry import Retry
 
 from symai.backend.base import Engine
 from symai.symbol import Result
@@ -40,7 +38,7 @@ class RequestsResult(Result):
 
     def extract(self):
         ctype = self.raw.headers.get("Content-Type", "").lower()
-        is_pdf = "application/pdf" in ctype or self.raw.url.lower().endswith(".pdf")
+        is_pdf = "application/pdf" in ctype or str(self.raw.url).lower().endswith(".pdf")
         try:
             if is_pdf:
                 with io.BytesIO(self.raw.content) as fh:
@@ -59,7 +57,7 @@ class RequestsEngine(Engine):
 
     The engine favors clarity over stealth. Helper methods normalize cookie
     metadata before handing it to Playwright so that the headless browser and
-    the requests session stay aligned.
+    the httpx client stay aligned.
     """
 
     COMMON_BYPASS_COOKIES: ClassVar[dict[str, str]] = {
@@ -118,21 +116,40 @@ class RequestsEngine(Engine):
         self.verify_ssl = verify_ssl
         self.name = self.__class__.__name__
         self._user_agent_override = user_agent
+        self.retries = retries
+        self.backoff_factor = backoff_factor
+        self.retry_status_codes = set(retry_status_codes)
 
-        self.session = requests.Session()
-        self.session.headers.update(
-            {k: v for k, v in self.DEFAULT_HEADERS.items() if k != "User-Agent"}
+        self.client = httpx.Client(
+            headers={k: v for k, v in self.DEFAULT_HEADERS.items() if k != "User-Agent"},
+            verify=verify_ssl,
+            follow_redirects=True,
+            timeout=timeout,
         )
 
-        retry_strategy = Retry(
-            total=retries,
-            backoff_factor=backoff_factor,
-            status_forcelist=retry_status_codes,
-            allowed_methods=["GET", "HEAD"],
-        )
-        adapter = HTTPAdapter(max_retries=retry_strategy)
-        self.session.mount("http://", adapter)
-        self.session.mount("https://", adapter)
+    def _get_with_retries(self, url: str, **kwargs) -> httpx.Response:
+        """GET with retry on connection errors and retryable status codes.
+
+        Mirrors the old urllib3 Retry(total, backoff_factor, status_forcelist).
+        """
+        response = None
+        last_exc: Exception | None = None
+        for attempt in range(self.retries + 1):
+            try:
+                response = self.client.get(url, **kwargs)
+            except httpx.RequestError as exc:
+                last_exc = exc
+                if attempt >= self.retries:
+                    raise
+            else:
+                if response.status_code not in self.retry_status_codes or attempt >= self.retries:
+                    return response
+
+            time.sleep(self.backoff_factor * (2**attempt))
+
+        if last_exc is not None:
+            raise last_exc
+        return response
 
     def _get_user_agent(self) -> str:
         """Return user agent: override if set, otherwise random from pool."""
@@ -143,7 +160,7 @@ class RequestsEngine(Engine):
         if not netloc:
             return
         for k, v in self.COMMON_BYPASS_COOKIES.items():
-            self.session.cookies.set(k, v, domain=netloc)
+            self.client.cookies.set(k, v, domain=netloc)
 
     @staticmethod
     def _normalize_http_only(raw_value, key_present):
@@ -201,7 +218,7 @@ class RequestsEngine(Engine):
         if not hostname:
             return []
         cookie_payload = []
-        for cookie in self.session.cookies:
+        for cookie in self.client.cookies.jar:
             payload = self._playwright_cookie_payload(cookie, hostname)
             if payload:
                 cookie_payload.append(payload)
@@ -233,7 +250,7 @@ class RequestsEngine(Engine):
 
     def _sync_cookies_from_context(self, context) -> None:
         for cookie in context.cookies():
-            self.session.cookies.set(
+            self.client.cookies.set(
                 cookie["name"],
                 cookie["value"],
                 domain=cookie.get("domain"),
@@ -244,7 +261,7 @@ class RequestsEngine(Engine):
     def _rendered_response_metadata(page, response):
         final_url = page.url
         status = response.status if response is not None else 200
-        headers = CaseInsensitiveDict(response.headers if response is not None else {})
+        headers = httpx.Headers(response.headers if response is not None else {})
         if "content-type" not in headers:
             headers["Content-Type"] = "text/html; charset=utf-8"
         return final_url, status, headers
@@ -259,7 +276,6 @@ class RequestsEngine(Engine):
             return resp
         # Use apparent encoding to decode legacy charsets
         soup = BeautifulSoup(resp.text, "html.parser")
-        resp.encoding = resp.encoding or resp.apparent_encoding
         meta = soup.find("meta", attrs={"http-equiv": re.compile("^refresh$", re.I)})
         if not meta or "content" not in meta.attrs:
             return resp
@@ -267,14 +283,14 @@ class RequestsEngine(Engine):
         if not m:
             return resp
         refresh_url = m.group(1).strip().strip("'\"")
-        target = urljoin(resp.url, refresh_url)
+        target = urljoin(str(resp.url), refresh_url)
         # Avoid loops
-        if target == resp.url:
+        if target == str(resp.url):
             return resp
-        return self.session.get(
+        return self._get_with_retries(
             target,
             timeout=timeout,
-            allow_redirects=True,
+            follow_redirects=True,
             headers={"User-Agent": self._get_user_agent()},
         )
 
@@ -287,7 +303,7 @@ class RequestsEngine(Engine):
     ):
         """
         Render the target URL in a headless browser to execute JavaScript and
-        return a synthetic ``requests.Response`` object to keep downstream
+        return a synthetic ``httpx.Response`` object to keep downstream
         processing consistent with the non-JS path.
         """
         try:
@@ -311,7 +327,7 @@ class RequestsEngine(Engine):
         content = ""
         final_url = url
         status = 200
-        headers = CaseInsensitiveDict()
+        headers = httpx.Headers()
 
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(headless=True)
@@ -338,18 +354,17 @@ class RequestsEngine(Engine):
                 final_url, status, headers = self._rendered_response_metadata(page, response)
                 if navigation_error and not content:
                     msg = f"Playwright timed out while rendering {url}"
-                    raise requests.exceptions.Timeout(msg) from navigation_error
+                    raise httpx.TimeoutException(msg) from navigation_error
             finally:
                 context.close()
                 browser.close()
 
-        rendered_response = requests.Response()
-        rendered_response.status_code = status
-        rendered_response._content = content.encode("utf-8", errors="replace")
-        rendered_response.url = final_url
-        rendered_response.headers = headers
-        rendered_response.encoding = "utf-8"
-        return rendered_response
+        return httpx.Response(
+            status_code=status,
+            headers=headers,
+            content=content.encode("utf-8", errors="replace"),
+            request=httpx.Request("GET", final_url),
+        )
 
     def id(self) -> str:
         return "scrape"
@@ -389,11 +404,9 @@ class RequestsEngine(Engine):
                 timeout=render_timeout,
             )
         else:
-            resp = self.session.get(
+            resp = self._get_with_retries(
                 clean_url,
                 timeout=self.timeout,
-                allow_redirects=True,
-                verify=self.verify_ssl,
                 headers={"User-Agent": self._get_user_agent()},
             )
         resp.raise_for_status()
@@ -407,7 +420,7 @@ class RequestsEngine(Engine):
         metadata = {
             "response_source": "playwright" if render_js else "requests",
             "render_js": bool(render_js),
-            "final_url": resp.url,
+            "final_url": str(resp.url),
         }
         result = RequestsResult(resp, output_format)
         return [result], metadata
