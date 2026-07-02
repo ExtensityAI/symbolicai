@@ -39,10 +39,6 @@ class Primitive:
             self.__disable_none_shortcut__ or Primitive.__disable_none_shortcut__
         )
 
-    @staticmethod
-    def _is_iterable(value):
-        return isinstance(value, (list, tuple, set, dict, bytes, bytearray, range, np.ndarray))
-
 
 class OperatorPrimitives(Primitive):
     __hash__ = None

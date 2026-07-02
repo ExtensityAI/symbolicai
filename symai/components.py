@@ -1,4 +1,3 @@
-import copy
 import inspect
 import json
 import logging
@@ -102,10 +101,6 @@ class FileReader(Expression):
                 if depth <= max_depth:
                     files.append(file_path.as_posix())
         return files
-
-    @staticmethod
-    def expand_user_path(path: str) -> str:
-        return Path(path).expanduser().resolve().as_posix()
 
     @staticmethod
     def integrity_check(files: list[str]) -> list[str]:
@@ -720,22 +715,6 @@ class MetadataTracker(Expression):
 
         return None
 
-    def _can_accumulate_engine(self, engine_name: str) -> bool:
-        supported_engines = (
-            "GPTXChatEngine",
-            "GPTXReasoningEngine",
-            "GPTXSearchEngine",
-            "ClaudeXChatEngine",
-            "ClaudeXReasoningEngine",
-            "GeminiXReasoningEngine",
-            "DeepSeekXReasoningEngine",
-            "GroqEngine",
-            "CerebrasEngine",
-            "EmbeddingEngine",
-            "MistralOCREngine",
-        )
-        return engine_name in supported_engines
-
     def _track_parallel_usage_items(self, token_details, engine_name, metadata):
         usage_items = getattr(metadata.get("raw_output", None), "usage", None)
         if not usage_items:
@@ -748,107 +727,6 @@ class MetadataTracker(Expression):
             count = getattr(item, "count", None)
             if name in ("sku_search", "sku_extract_excerpts") and isinstance(count, (int, float)):
                 extras[name] = extras.get(name, 0) + count
-
-    def _accumulate_time_field(self, accumulated: dict, metadata: dict) -> None:
-        if "time" in metadata and "time" in accumulated:
-            accumulated["time"] += metadata["time"]
-
-    def _accumulate_usage_fields(self, accumulated: dict, metadata: dict) -> None:
-        if "raw_output" not in metadata or "raw_output" not in accumulated:
-            return
-
-        metadata_raw_output = metadata["raw_output"]
-        accumulated_raw_output = accumulated["raw_output"]
-
-        # Handle both OpenAI/Anthropic-style (usage) and Gemini-style (usage_metadata)
-        current_usage = getattr(metadata_raw_output, "usage", None) or getattr(
-            metadata_raw_output, "usage_metadata", None
-        )
-        accumulated_usage = getattr(accumulated_raw_output, "usage", None) or getattr(
-            accumulated_raw_output, "usage_metadata", None
-        )
-
-        if not current_usage or not accumulated_usage:
-            return
-
-        # Handle both OpenAI-style (completion_tokens, prompt_tokens),
-        # Anthropic-style (output_tokens, input_tokens),
-        # and Gemini-style (candidates_token_count, prompt_token_count) fields
-        token_attrs = [
-            "completion_tokens",
-            "prompt_tokens",
-            "total_tokens",
-            "input_tokens",
-            "output_tokens",
-            "candidates_token_count",
-            "prompt_token_count",
-            "total_token_count",
-        ]
-        for attr in token_attrs:
-            if hasattr(current_usage, attr) and hasattr(accumulated_usage, attr):
-                current_val = getattr(current_usage, attr) or 0
-                accumulated_val = getattr(accumulated_usage, attr) or 0
-                setattr(accumulated_usage, attr, accumulated_val + current_val)
-
-        # Handle Anthropic cache tokens and Gemini cached tokens
-        cache_attrs = [
-            "cache_creation_input_tokens",
-            "cache_read_input_tokens",
-            "cached_content_token_count",
-        ]
-        for attr in cache_attrs:
-            if hasattr(current_usage, attr) and hasattr(accumulated_usage, attr):
-                current_val = getattr(current_usage, attr) or 0
-                accumulated_val = getattr(accumulated_usage, attr) or 0
-                setattr(accumulated_usage, attr, accumulated_val + current_val)
-
-        for detail_attr in ["completion_tokens_details", "prompt_tokens_details"]:
-            if not hasattr(current_usage, detail_attr) or not hasattr(
-                accumulated_usage, detail_attr
-            ):
-                continue
-
-            current_details = getattr(current_usage, detail_attr)
-            accumulated_details = getattr(accumulated_usage, detail_attr)
-
-            for attr in dir(current_details):
-                if attr.startswith("_") or not hasattr(accumulated_details, attr):
-                    continue
-
-                current_val = getattr(current_details, attr)
-                accumulated_val = getattr(accumulated_details, attr)
-                if isinstance(current_val, (int, float)) and isinstance(
-                    accumulated_val, (int, float)
-                ):
-                    setattr(accumulated_details, attr, accumulated_val + current_val)
-
-    def _accumulate_metadata(self):
-        """Accumulates metadata across all tracked engine calls."""
-        if not self._metadata:
-            logger.warning("No metadata available to generate usage details.")
-            return {}
-
-        # Use first entry as base
-        first_key = next(iter(self._metadata))
-        accumulated = copy.deepcopy(self._metadata[first_key])
-
-        # Skipz first entry
-        for (_, engine_name), metadata in list(self._metadata.items())[1:]:
-            if not self._can_accumulate_engine(engine_name):
-                logger.warning(
-                    "Metadata accumulation for %s is not supported. Try `.usage` instead for now.",
-                    engine_name,
-                )
-                continue
-
-            self._accumulate_time_field(accumulated, metadata)
-            self._accumulate_usage_fields(accumulated, metadata)
-
-        return accumulated
-
-    @property
-    def metadata_acc(self) -> dict:
-        return self._accumulate_metadata()
 
     @property
     def metadata(self) -> list[dict]:

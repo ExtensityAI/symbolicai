@@ -495,12 +495,6 @@ class QdrantIndexEngine(Engine):
                 **kwargs,
             )
 
-    def _init_collection(
-        self, collection_name: str, collection_dims: int, collection_metric: Distance
-    ):
-        """Initialize or create Qdrant collection (legacy method, uses _create_collection_sync)."""
-        self._create_collection_sync(collection_name, collection_dims, collection_metric)
-
     def _configure_collection(self, **kwargs):
         collection_name = kwargs.get("index_name", self.index_name)
         del_ = kwargs.get("index_del", False)
