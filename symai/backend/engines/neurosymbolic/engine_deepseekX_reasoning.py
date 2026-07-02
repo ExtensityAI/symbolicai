@@ -3,17 +3,15 @@ from copy import deepcopy
 
 from openai import OpenAI
 
-from ....components import SelfPrompt
-from ....utils import UserMessage
-from ...base import Engine
-from ...mixin.deepseek import DeepSeekMixin
-from ...settings import SYMAI_CONFIG
+from symai.backend.base import Engine
+from symai.backend.mixin.deepseek import DeepSeekMixin
+from symai.backend.settings import SYMAI_CONFIG
+from symai.components import SelfPrompt
+from symai.utils import silence_noisy_loggers
 
-logging.getLogger("openai").setLevel(logging.ERROR)
-logging.getLogger("requests").setLevel(logging.ERROR)
-logging.getLogger("urllib").setLevel(logging.ERROR)
-logging.getLogger("httpx").setLevel(logging.ERROR)
-logging.getLogger("httpcore").setLevel(logging.ERROR)
+silence_noisy_loggers("openai")
+
+logger = logging.getLogger(__name__)
 
 
 class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
@@ -25,9 +23,7 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
         client_timeout: float | None = None,
         client_max_retries: int | None = None,
     ):
-        super().__init__(
-            client_timeout=client_timeout, client_max_retries=client_max_retries
-        )
+        super().__init__(client_timeout=client_timeout, client_max_retries=client_max_retries)
         self.config = deepcopy(SYMAI_CONFIG)
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
         if api_key is not None and model is not None:
@@ -50,10 +46,8 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
                 )
             )
         except Exception as e:
-            UserMessage(
-                f"Failed to initialize the DeepSeek client. Please check your library version. Caused by: {e}",
-                raise_with=RuntimeError,
-            )
+            msg = f"Failed to initialize the DeepSeek client. Please check your library version. Caused by: {e}"
+            raise RuntimeError(msg) from e
 
     def id(self) -> str:
         if self.config.get("NEUROSYMBOLIC_ENGINE_MODEL") and self.config.get(
@@ -72,24 +66,18 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
             self.seed = kwargs["seed"]
 
     def compute_required_tokens(self, _messages):
-        UserMessage(
-            'Method "compute_required_tokens" not implemented for DeepSeekXReasoningEngine.',
-            raise_with=NotImplementedError,
-        )
+        msg = 'Method "compute_required_tokens" not implemented for DeepSeekXReasoningEngine.'
+        raise NotImplementedError(msg)
 
     def compute_remaining_tokens(self, _prompts: list) -> int:
-        UserMessage(
-            'Method "compute_remaining_tokens" not implemented for DeepSeekXReasoningEngine.',
-            raise_with=NotImplementedError,
-        )
+        msg = 'Method "compute_remaining_tokens" not implemented for DeepSeekXReasoningEngine.'
+        raise NotImplementedError(msg)
 
     def truncate(
         self, _prompts: list[dict], _truncation_percentage: float | None, _truncation_type: str
     ) -> list[dict]:
-        UserMessage(
-            'Method "truncate" not implemented for DeepSeekXReasoningEngine.',
-            raise_with=NotImplementedError,
-        )
+        msg = 'Method "truncate" not implemented for DeepSeekXReasoningEngine.'
+        raise NotImplementedError(msg)
 
     def forward(self, argument):
         kwargs = argument.kwargs
@@ -103,12 +91,12 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
         except Exception as e:
             if self.api_key is None or self.api_key == "":
                 msg = "DeepSeek API key is not set. Please set it in the config file or pass it as an argument to the command method."
-                UserMessage(msg)
+                logger.warning(msg)
                 if (
                     self.config["NEUROSYMBOLIC_ENGINE_API_KEY"] is None
                     or self.config["NEUROSYMBOLIC_ENGINE_API_KEY"] == ""
                 ):
-                    UserMessage(msg, raise_with=ValueError)
+                    raise ValueError(msg) from e
                 self.api_key = self.config["NEUROSYMBOLIC_ENGINE_API_KEY"]
 
             callback = self.client.chat.completions.create
@@ -117,7 +105,8 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
             if except_remedy is not None:
                 res = except_remedy(self, e, callback, argument)
             else:
-                UserMessage(f"Error during generation. Caused by: {e}", raise_with=ValueError)
+                msg = f"Error during generation. Caused by: {e}"
+                raise ValueError(msg) from e
 
         reasoning_content = res.choices[0].message.reasoning_content
         content = res.choices[0].message.content
@@ -127,10 +116,8 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
 
     def _prepare_raw_input(self, argument):
         if not argument.prop.processed_input:
-            UserMessage(
-                "A prompt instruction is required for DeepSeekXReasoningEngine when raw_input is enabled.",
-                raise_with=ValueError,
-            )
+            msg = "A prompt instruction is required for DeepSeekXReasoningEngine when raw_input is enabled."
+            raise ValueError(msg)
         value = argument.prop.processed_input
         # convert to dict if not already
         if not isinstance(value, list):
@@ -151,10 +138,8 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
         if prop.response_format:
             _rsp_fmt = prop.response_format
             if not (_rsp_fmt.get("type") is not None):
-                UserMessage(
-                    'Response format type is required! Expected format `{"type": "json_object"}` or other supported types.',
-                    raise_with=AssertionError,
-                )
+                msg = 'Response format type is required! Expected format `{"type": "json_object"}` or other supported types.'
+                raise AssertionError(msg)
             system += _non_verbose_output
             system += f"<RESPONSE_FORMAT/>\n{_rsp_fmt['type']}\n\n"
 
@@ -193,9 +178,8 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
 
             res = self_prompter({"user": user_prompt["content"], "system": system})
             if res is None:
-                UserMessage(
-                    "Self-prompting failed for DeepSeekXReasoningEngine.", raise_with=ValueError
-                )
+                msg = "Self-prompting failed for DeepSeekXReasoningEngine."
+                raise ValueError(msg)
 
             user_prompt = {"role": "user", "content": res["user"]}
             system = res["system"]

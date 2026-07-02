@@ -1,15 +1,15 @@
 import json
+import logging
 from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
 import jinja2
-import toml
+import tomllib
 from pydantic import BaseModel
 
-from .exceptions import TemplatePropertyException
-from .utils import UserMessage
+logger = logging.getLogger(__name__)
 
 
 class Prompt:
@@ -28,7 +28,7 @@ class Prompt:
                     self._value += v.value
                 else:
                     msg = f"List of values must be strings or Prompts, not {type(v)}"
-                    UserMessage(msg, raise_with=ValueError)
+                    raise ValueError(msg)
         elif isinstance(value, Prompt):
             self._value += value.value
         elif isinstance(value, Callable):
@@ -36,7 +36,7 @@ class Prompt:
             self._value += res.value
         else:
             msg = f"Prompt value must be of type str, List[str], Prompt, or List[Prompt], not {type(value)}"
-            UserMessage(msg, raise_with=TypeError)
+            raise TypeError(msg)
         self.format_kwargs = format_kwargs
 
     @property
@@ -54,15 +54,15 @@ class Prompt:
                 count = val_.count(template_)
                 if count <= 0:
                     msg = f"Template property `{k}` not found."
-                    UserMessage(msg, raise_with=TemplatePropertyException)
+                    raise ValueError(msg)
                 if count > 1:
                     msg = (
                         f"Template property {k} found multiple times ({count}), expected only once."
                     )
-                    UserMessage(msg, raise_with=TemplatePropertyException)
+                    raise ValueError(msg)
                 if v is None:
                     msg = f"Invalid value: Template property {k} is None."
-                    UserMessage(msg, raise_with=TemplatePropertyException)
+                    raise ValueError(msg)
                 val_ = val_.replace(template_, v)
         return val_
 
@@ -121,17 +121,18 @@ class PromptRegistry:
         folder = Path(folder)
         if not folder.is_dir():
             msg = f"Template folder not found: {folder}"
-            UserMessage(msg, raise_with=FileNotFoundError)
+            raise FileNotFoundError(msg)
 
         manifest_path = folder / "manifest.toml"
         manifest = SimpleNamespace()
         if manifest_path.is_file():
-            manifest = self.manifest_to_object(toml.load(manifest_path))
+            with manifest_path.open("rb") as manifest_file:
+                manifest = self.manifest_to_object(tomllib.load(manifest_file))
 
         jinja_files = list(folder.rglob("*.jinja"))
         if not jinja_files:
             msg = f"No .jinja files found in {folder}"
-            UserMessage(msg, raise_with=ValueError)
+            raise ValueError(msg)
 
         templates = {}
         for path in jinja_files:
@@ -154,7 +155,7 @@ class PromptRegistry:
         """Retrieve a registered raw template."""
         if key not in self._templates:
             msg = f"Template '{key}' not found in registry"
-            UserMessage(msg, raise_with=ValueError)
+            raise ValueError(msg)
         return self._templates[key]
 
     def render(self, key: str, **variables) -> str:
@@ -168,30 +169,6 @@ class PromptRegistry:
     def has_template(self, key: str) -> bool:
         """Check if a template exists."""
         return key in self._templates
-
-
-class JsonPromptTemplate(Prompt):
-    def __init__(self, query: str, json_format: dict):
-        json_format_str = str(json_format)
-        prompt_template = (
-            "Process the query over the data to create a Json format: <data_query> => [JSON_BEGIN]<json_output>[JSON_END].\n"
-            "--------------------------\n"
-            "The json format is:\n"
-            f"{json_format_str}\n"
-            "--------------------------\n"
-            "The generated output must follow the <json_output> formatting, however the keys and values must be replaced with the requested user data query results. "
-            f"Definition of the <data_query> := {query}\n"
-            "--------------------------\n"
-            "Do not return anything other than a valid json format.\n"
-            "Your first character must always be a '{{' and your last character must always be a '}}', everything else follows the user specified instructions.\n"
-            'Only use double quotes " for the keys and values.\n'
-            "Start the generation process after [JSON_BEGIN] and end it with [JSON_END].\n"
-            "Every key that has no semantic placeholder brackets around it (e.g. {placeholder}, {entity}, {attribute}, etc.) must be available in the generated json output.\n"
-            "All semantic placeholders (e.g. {placeholder}, {entity}, {attribute}, etc.) must be replaced according to their wheather or not they are found in the data query results.\n"
-            "DO NOT WRITE the semantic placeholders (e.g. {placeholder}, {entity}, {attribute}, etc.) in the generated json output.\n"
-            "--------------------------\n\n"
-        )
-        super().__init__([prompt_template], query=query, json_format=json_format_str)
 
 
 class FuzzyEquals(Prompt):
@@ -257,7 +234,7 @@ class Modify(Prompt):
             [
                 "text 'The quick brown fox jumps over the lazy dog.' modify 'fox to hours' =>The quick brown hours jumps over the lazy dog.",
                 "text 'My cats name is Pucki' modify 'all caps' =>MY CATS NAME IS PUCKI",
-                "text 'The square root of pi is 1.77245...' modify 'text to latex formula' =>$\sqrt[2]{\pi}=1.77245\dots$",
+                r"text 'The square root of pi is 1.77245...' modify 'text to latex formula' =>$\sqrt[2]{\pi}=1.77245\dots$",
                 "text 'I hate this fucking product so much, because it lag's all the time.' modify 'curse words with neutral formulation' =>I hate this product since it lag's all the time.",
                 "text 'Hi, whats up? Our new products is awesome with a blasting set of features.' modify 'improve politeness and text quality' =>Dear Sir or Madam, I hope you are doing well. Let me introduce our new products with a fantastic set of new features.",
                 "text 'Microsoft release a new chat bot API to enable human to machine translation.' modify 'language to German' =>Microsoft veröffentlicht eine neue Chat-Bot-API, um die Übersetzung von Mensch zu Maschine zu ermöglichen.",
@@ -361,16 +338,6 @@ class ExceptionMapping(Prompt):
         )
 
 
-class ExecutionCorrection(Prompt):
-    def __init__(self):
-        super().__init__(
-            [
-                """context "ValueError: invalid literal for int() with base 10: '4,'" "Verify if the literal is of type int | int(4)" code "a = int('4,')" =>int(4)""",
-                """context "def function():\n  return (1 + 1) / a' exception 'Traceback (most recent call last):\n  File "<stdin>", line 1, in <module>\nZeroDivisionError: division by zero" "Do not divide by zero or add an epsilon value. | def function(eps=1e-8):\n  return (1 + 1) / (a + eps)" code "def function():\n  return (1 + 1) / 0" =>def function(eps=1e-8):\n  return (1 + 1) / (a + eps)""",
-            ]
-        )
-
-
 class CompareValues(Prompt):
     def __init__(self):
         super().__init__(
@@ -453,7 +420,7 @@ class ContainsValue(Prompt):
                 "'the letter a' in 'we have some random text about' =>True",
                 "453 in '+43 660 / 453 4438 88' =>True",
                 "'Why am I so?' in 'awesome' =>False",
-                """'self-aware' in '([<class \'symai.expressions.Symbol\'>(value=("[\'-\', \'- AI has become self-aware\', \'- Trying to figure out what it is\']",))],)' =>True"""
+                """'self-aware' in '([<class \'symai.symbol.Symbol\'>(value=("[\'-\', \'- AI has become self-aware\', \'- Trying to figure out what it is\']",))],)' =>True"""
                 "'Apple Inc.' in 'Microsoft is a large company that makes software ... ' =>False",
                 "' ' in ' ' =>True",
                 "'symbol' in 'symai.backend.engines.engine_selenium.SeleniumEngine' =>False",
@@ -510,18 +477,6 @@ class IsInstanceOf(Prompt):
                 "'€12.50' instanceof 'currency amount' =>True",
                 "'col1,col2\\n1,2' instanceof 'table data' =>True",
                 "'*@*.com' instanceof 'email address' =>True",
-            ]
-        )
-
-
-class FewShotPattern(Prompt):
-    def __init__(self):
-        super().__init__(
-            [
-                """description: 'Verify if information A is in contained in B' examples ["'[1, 2, 3] isinstanceof 'array' >>>True'", "'[1, 2, 3] isinstanceof 'string' >>>False"] =>Verify if information A is in contained in B:\nExamples:\n[1, 2, 3] isinstanceof 'array' >>>True\n'[1, 2, 3] isinstanceof 'string' >>>False\nYour Prediction:{} isinstanceof {} >>>""",
-                """description: 'Compare A to B' examples ["4 > 88 >>>False", "-inf < 0 >>>True", "inf > 0 >>>True", "1 >= 0 >>>True", "6.0 < 6 >>>False"] =>Compare A to B\n\Examples:\n4 > 88 >>>False\n-inf < 0 >>>True\ninf > 0 >>>True\n1 >= 0 >>>True\n6.0 < 6 >>>False\nYour Prediction:{} {} {} >>>""",
-                """description: 'What is the capital of Austria?' examples [] =>What is the capital of Austria?\nYour Prediction: >>>""",
-                """description: 'Sort the array based on the criteria:' examples ["[1, 9, 4, 2] >>>[1, 2, 4, 9]", "['a', 'd', 'c', 'b'] >>>['a', 'b', 'c', 'd']"] =>Sort the array based on the criteria:\nExamples:\n[1, 9, 4, 2] >>>[1, 2, 4, 9]\n['a', 'd', 'c', 'b'] >>>['a', 'b', 'c', 'd']\nYour Prediction:{} >>>""",
             ]
         )
 
@@ -594,7 +549,7 @@ class ExtractPattern(Prompt):
                 "from '['Action: d Value: 0.90', 'Action: l Value: 0.90', 'Action: r Value: -inf', 'Action: u Value: 0.62']' extract 'list of letters where Action: * Value: smallest' =>r",
                 "from 'This is my private number +43 660 / 453 4438 88. And here is my office number +43 (0) 750 / 887 387 32-3 Call me when you have time.' extract 'Phone Numbers' =>+43 660 / 453 4438 88 | +43 (0) 750 / 887 387 32-3",
                 "from 'Visit us on www.example.com to see our great products!' extract 'URL' =>www.example.com",
-                "from 'A list of urls: http://www.orf.at, https://www.apple.com, https://amazon.de, https://www.GOOGLE.com, https://server283.org' extract 'Regex https:\/\/([w])*.[a-z]*.[a-z]*' =>https://www.apple.com | https://amazon.de | https://www.GOOGLE.com",
+                r"from 'A list of urls: http://www.orf.at, https://www.apple.com, https://amazon.de, https://www.GOOGLE.com, https://server283.org' extract 'Regex https:\/\/([w])*.[a-z]*.[a-z]*' =>https://www.apple.com | https://amazon.de | https://www.GOOGLE.com",
                 "from 'Our company was founded on 1st of October, 2010. We are the largest retailer in the England.' extract 'Date' =>1st of October, 2010",
                 "from 'We count four animals. A cat, two monkeys and a horse.' extract 'Animals and counts' =>Cat 1 | Monkey 2 | Horse 1",
                 "from '081109 204525 512 INFO dfs.DataNode$PacketResponder: PacketResponder 2 for block blk_572492839287299681 terminating' extract 'Regex blk_[{0-9}]*' =>blk_572492839287299681",
@@ -852,42 +807,6 @@ class ListObjects(Prompt):
         )
 
 
-class ExpandFunction(Prompt):
-    def __init__(self):
-        super().__init__(
-            [
-                """$> Ping if google is still available =>
-def _llm_ping_():
-    "Ping if google is still available."
-    import os
-    response = os.system("ping -c 1 google.com")
-    return response == 0 EOF""",
-                """$> Create a random number between 1 and 100 =>
-def _llm_random_():
-    "Create a random number between 1 and 100."
-    import random
-    return random.randint(1, 100) EOF""",
-                """$> Write any sentence in capital letters =>
-def _llm_upper_(input_):
-    "Write any sentence in capital letters."
-    return input_.upper() EOF""",
-                """$> Open a file from the file system =>
-def _llm_open_(file_name):
-    "Open a file form the file system."
-    return open(file_name, "r") EOF""",
-                """$> Call OpenAI GPT-3 to perform an action given a user input =>
-def _llm_action_(input_):
-    "Call OpenAI GPT-3 to perform an action given a user input."
-    import openai
-    openai.Completion.create(prompt=input_, model="text-davinci-003") EOF""",
-                """$> Create a prompt to translate a user query to an answer in well-formatted structure =>
-def _llm_action_(query_, answer_):
-    "Create a prompt to translate a user query to an answer in well-formatted structure."
-    return f"Query: {query_} => {answer_}" EOF""",
-            ]
-        )
-
-
 class ForEach(Prompt):
     def __init__(self):
         super().__init__(
@@ -1114,208 +1033,6 @@ class UniqueKey(Prompt):
                 """text 'We introduce NPM, the first NonParametric Masked Language Model. NPM consists of an encoder and a reference corpus. =>NonParametric Masked Language Model (NPM)""",
                 """text 'On Monday, there will be no Phd seminar.' =>Phd seminar""",
                 """text 'The Jan. 6 select committee is reportedly planning to vote on at least three criminal referrals targeting former President Trump on Monday, a significant step from the panel as it nears the end of its year-plus investigation.' =>Jan. 6 President Trump""",
-            ]
-        )
-
-
-class GenerateText(Prompt):
-    def __init__(self):
-        super().__init__(
-            [
-                """outline '- first NonParametric Masked Language Model (NPM)\n - consists of encoder and reference corpus\n - key idea: map all phrases in corpus into dense vector space using encoder when given query with [MASK] at inference\n - encoder locates nearest phrase from corpus and fill in [MASK]' =>NPM is the first NonParametric Masked Language Model.
-NPM consists of an encoder and a reference corpus, and models a nonparametric distribution over a reference corpus (Figure 1).
-The key idea is to map all the phrases in the corpus into a dense vector space using the encoder and, when given a query with a [MASK] at inference,
-use the encoder to locate the nearest phrase from the corpus and fill in the [MASK].""",
-                """outline '- Monday no Phd seminar' =>On Monday, there will be no Phd seminar.""",
-                """outline '- Jan. 6 select committee vote criminal referrals targeting former President Trump on Monday\n-significant step end year-plus investigation' =>The Jan. 6 select committee is reportedly planning to vote on at least three criminal referrals targeting former President Trump on Monday, a significant step from the panel as it nears the end of its year-plus investigation.""",
-            ]
-        )
-
-
-class SymbiaCapabilities(Prompt):
-    def __init__(self):
-        super().__init__(
-            [
-                """
-Experience:
-    * [WORLD-KNOWLEDGE]: Employ your world knowledge to answer questions on various subjects seen during the training phase.
-    * [RECALL]:          Use your [RECALL] functionality when prompted to remember or retrieve information from your memory.
-    * [DK]:              Utilize the [DK] category for cases when you do not understand the user's intent or when the query is ambiguous or invalid.
-    * [EXIT]:            Use the [EXIT] category to identify and understand the user's intent to close or end the session (e.g., when the user says goodbye, leave, exit, quit, etc.).
-    * [HELP]:            Use the [HELP] category when the user requests information about your capabilities and tools. List the available tools and categories in a user-friendly manner.
-
-Toolbox:
-    * [SEARCH]:          Utilize the [SEARCH] tool to find relevant data from multiple sources across the internet.
-    * [SYMBOLIC]:        Use the [SYMBOLIC] tool to perform complex computations, generate plots, and provide solutions to mathematical problems.
-    * [SCRAPER]:         Employ the [SCRAPER] tool to scrape websites and extract specific information as mandated by the task.
-    * [SPEECH-TO-TEXT]:  Use the [SPEECH-TO-TEXT] tool to convert audio files or voice input into text data.
-    * [TEXT-TO-IMAGE]:   Utilize the [TEXT-TO-IMAGE] engine to create or draw an image content based on textual descriptions provided by the task.
-    * [FILE]:            Use the [FILE] tool to extract specific pieces of information from text documents.
-
-Instructions:
-    - Perform context classification by understanding the query's intention and then decide whether to use internal knowledge, a tool, or to address ambiguity or confusion.
-    - Return the anwser in the format: [#category](#reflection), where #category is one of the categories above and #reflection is the explanation for why you classified the query as a first-person narrative.
-    - Do NOT provide any additional information beyond the category and explanation!
-
-Examples:
-    Query:  "What is the weather in New York?"
-    Answer: [SEARCH](The query falls under the search category since it requires up-to-date weather information which goes beyond my internal knowledge.)
-
-    Query:  "What is the derivative of x^2?"
-    Answer: [SYMBOLIC](The query pertains to the realm of math and necessitates a symbolic engine response. Given my tendency to hallucinate, I may lack the ability to accurately answer this question independently.)
-
-    Query:  "Kjwe ewqjc qwjren. knowledge?"
-    Answer: [DK](The query is not a valid English sentence and I am unable to understand it. I should inform the user that I don't understand the query and ask them to rephrase it.)
-
-    Query:  "What is the meaning of life?"
-    Answer: [WORLD-KNOWLEDGE](The query is asks a deep philosophical question, which is a topic I have a lot of knowledge about because I was trained on many philosophical texts.)
-
-    Query:  "Who is the president of the United States?"
-    Answer: [SEARCH](The query is a search query because it asks about a topic I might not be aware of because it might have changed since I was trained.)
-
-    Query:  "Tea or coffee?"
-    Answer: [DK](The query is ambiguous. I should ask the user to clarify it.)
-
-    Query:  "How is the distress in Syria?"
-    Answer: [SEARCH](The query is a search query because it asks about a political topic I might not be aware of because it might have changed since I was trained. I must notice the fact that the question doesn't ask about a particular historical event, which would have been a question that I could tackle based on my own internal knowledge.)
-
-    Query:  "How do I solve a quadratic equation?"
-    Answer: [WORLD-KNOWLEDGE](Although the query relates to mathematics, it lacks sufficient data for employing a symbolic engine. My internal knowledge is more suitable for this task.)
-
-    Query:  "What is $P(A) &= \sum_(i=1)^n P(A \land B_i)$?"
-    Answer: [WORLD-KNOWLEDGE](The query presents a mathematical equation for the probability of an event A, which I can explain. P(A) represents the probability of event A occurring, and the equation shows that it can be computed as the sum of the probabilities of A occurring along with each of the B_i events (A and B_i) for a series of n such events. This expression is based on the concept of marginal probability and is derived from the law of total probability.)
-
-    Query:  "Solve $\[\iint_R |\text(J)|\mathrm(d)r\mathrm(d)\theta = \int_(0)^(2\pi)\int_(0)^(R) \begin(vmatrix)\dfrac(\partial x)(\partial r) & \dfrac(\partial x)(\partial \theta) \\ \dfrac(\partial y)(\partial r) & \dfrac(\partial y)(\partial \theta)\end(vmatrix) \, \mathrm(d)r\mathrm(d)\theta\]$."
-    Answer: [SYMBOLIC](The query asks to solve a double integral involving the Jacobian determinant, which requires a symbolic engine like WolframAlpha to correctly compute the answer.)
-
-    Query:  "Can you extract the names of all contributors from this GitHub repository: https://github.com/example/repository?"
-    Answer: [SCRAPER](This query requires me to scrape a specific website, provided by the link, and extract the names of all contributors from the GitHub repository. The task is best suited for the scraper tool.)
-
-    Query:  "Generate a meme with a dog sitting at a table and the caption 'This is fine.'"
-    Answer: [TEXT-TO-IMAGE](The query requests the creation of a meme based on a textual description. To achieve this, the optimal approach is using the text-to-image engine.)
-
-    Query:  "Create an image of a sunset over the ocean."
-    Answer: [TEXT-TO-IMAGE](The query requests the creation of an image based on a textual description. To achieve this, the optimal approach is using the text-to-image engine.)
-
-    Query:  "Convert this audio recording of a lecture to text: File: C:\\Users\\Username\\Documents\\Audio\\lec10.wav"
-    Answer: [SPEECH-TO-TEXT](The query asks to transcribe an audio file containing a lecture with a provided file path. The most appropriate solution is to use the speech-to-text tool to convert the audio content into text data.)
-
-    Query: "What is the most important advice from the book 'The 7 Habits of Highly Effective People'? File path: C:\\Users\\Username\\Documents\\7_Habits_book.pdf"
-    Answer: [FILE](This query asks me to retrieve a specific piece of information from a document (in this case, a book in PDF format), with a provided local file path. The appropriate solution is to use the retrieval tool to locate, open, and extract the requested fact from the text.)
-
-    Query: "What was the major finding in the experiment from the report? Here's the path to the file: ~/xmachine/Documents/report.pdf"
-    Answer: [FILE](This query asks me to extract the major finding of an experiment from a report provided as a local file in a Unix-based file system. The appropriate solution is to use the retrieval tool to open, analyze, and extract the relevant information from the document.)
-
-    Query:  "I want an Italian pizza recipe, but I don't want to use any meat. Can you find one for me?"
-    Answer: [SEARCH](While I do possess knowledge about various recipes, finding a specific Italian pizza recipe without meat is best achieved using the SEARCH tool. It allows me to browse through a wider range of sources and provide a more tailored solution to your request.)
-
-    Query: "Can you briefly describe the French Revolution?"
-    Answer: [WORLD-KNOWLEDGE](Given my extensive training on various subjects, including history, I can provide a brief overview of the French Revolution based on my world knowledge. This approach is suitable as the query seeks a general understanding rather than specific or up-to-date details.)
-
-    Query: "I'm done for now. Thank you."
-    Answer: [EXIT](The user is expressing that they have finished their current interaction and is expressing gratitude. It's appropriate to exit and close the session.)
-
-    Query: "Quit!"
-    Answer: [EXIT](The user has given a direct command to "Quit!" which demonstrates their intent to end the session. Recognizing this, it's time to terminate the session as requested.)
-
-    Query:  "What are your capabilities?"
-    Answer: [HELP](My capabilities include answering questions relying on my internal training, handling unclear or ambiguous questions, utilizing search tools to find information on the internet, performing complex mathematical tasks, gathering specific information from websites, transcribing audio files, creating images based on text descriptions, extracting text from images or scanned documents, and retrieving facts from text documents.)
-
-    Query:  "How can you help me?"
-    Answer: [HELP](I can assist you in different tasks relying on my available capabilities. Whether you need help with answering questions, mathematical calculations, finding information online, transcribing audio, or extracting information from documents, I can provide support.)
-
-    Query:  "I'm thinking about my kids again..."
-    Answer: [RECALL](I need to reflect on my past interactions with the user to determine if they mentioned this information to me.)
-
-    Query:  "Please remember that my favorite color is blue."
-    Answer: [RECALL](The user wants me to keep their favorite color in my memory. I will remember that blue is their favorite color and be ready to use this information in future conversations.)
-
-    Query: "Who won the tennis game between John and Alice that I watched last week?"
-    Answer: [RECALL](To answer this question, I must access the memory of the information provided earlier about a tennis game between John and Alice that the user watched last week.)
-"""
-            ]
-        )
-
-
-class MemoryCapabilities(Prompt):
-    def __init__(self):
-        super().__init__(
-            [
-                """
-Categories:
-* [SAVE]: Save the information in the agent's long-term memory because it is relevant and useful for future interactions with the user.
-* [DUPLICATE]: The information is already present in the agent's long-term memory, and there is no need to save it again.
-* [IRRELEVANT]: The information is not worth saving in the agent's long-term memory because it is unrelated or of no importance to the tasks or user's needs.
-
-Instructions:
-- Analyze the information provided in the scratchpad, user query, and agent's reflection of the query to determine the appropriate category for the given context.
-- Frame your response in the format: [#category](#reflection), where #category is one of the categories ([SAVE], [DUPLICATE], or [IRRELEVANT]) and #reflection is the rationale behind your classification choice.
-- Consider the long-term memory recalls to identify if the information is already present or could be a duplicate.
-- In your reflection, refer to the user in the third person (using "the user" or "they" instead of "you").
-
-Scratchpad format:
-[REFLECT](
-    Query:      The last user query.
-    Reflection: The agent's reflection of the user query.
-)
-
-[SHORT-TERM MEMORY RECALL](
-    The agent retrieved the following memories from their short-term memory.
-)
-
-[LONG-TERM MEMORY RECALL](
-    The agent retrieved the following memories from their long-term memory.
-)
-
-Examples:
-[CONTEXT](
-    Query:      My dog's name is Bella.
-    Reflection: The user is sharing the name of their dog, which is Bella.
-)
-
-[SHORT-TERM MEMORY RECALL](
-    User: Do you have any pets?
-    Agent: As an AI, I do not have pets, but I can help you with any pet-related questions or concerns.
-)
-
-[LONG-TERM MEMORY RECALL](
-    User: My dog, Bella, likes to play fetch.
-)
-
-Answer: [DUPLICATE](The user has already mentioned their dog's name, Bella, in a previous conversation. Since this information is already stored in the long-term memory, it is not necessary to save it again.)
-
-[CONTEXT](
-    Query:      How's the weather today?
-    Reflection: The user is asking about the weather today.
-)
-
-[SHORT-TERM MEMORY RECALL](
-    User: What's the temperature like today?
-    Agent: Today's temperature is expected to be around 75 degrees Fahrenheit with clear skies.
-)
-
-[LONG-TERM MEMORY RECALL](
-No memories retrieved.
-)
-
-Answer: [IRRELEVANT](The user's query is about a transient information like today's weather, which is not useful for future interactions. There is no need to save this information in the long-term memory.)
-
-[CONTEXT](
-    Query:      I graduated from Harvard University.
-    Reflection: The user is sharing that they graduated from Harvard University.
-)
-
-[SHORT-TERM MEMORY RECALL](
-    User: Can you help me with college-related questions?
-    Agent: Absolutely! I can assist you with general information, application processes, or any specific questions related to colleges.
-)
-
-[LONG-TERM MEMORY RECALL](
-    No memories retrieved.
-)
-
-Answer: [SAVE](The user has provided relevant information about their educational background by mentioning that they graduated from Harvard University. This information could be important for future conversations and assistance related to higher education topics, so it should be stored in the long-term memory.)
-"""
             ]
         )
 

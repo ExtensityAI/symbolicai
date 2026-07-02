@@ -7,13 +7,14 @@ from pathlib import Path
 from google import genai
 from google.genai import types
 
-from ....symbol import Result
-from ....utils import UserMessage
-from ...base import Engine
-from ...settings import SYMAI_CONFIG
+from symai.backend.base import Engine
+from symai.backend.settings import SYMAI_CONFIG
+from symai.symbol import Result
 
 logging.getLogger("google.genai").setLevel(logging.ERROR)
 logging.getLogger("google_genai").propagate = False
+
+logger = logging.getLogger(__name__)
 
 
 class GeminiImageResult(Result):
@@ -40,7 +41,8 @@ class GeminiImageResult(Result):
                     f.write(data)
                 paths.append(path)
         if not paths:
-            UserMessage("Gemini image generation returned no images.", raise_with=ValueError)
+            msg = "Gemini image generation returned no images."
+            raise ValueError(msg)
         self._value = paths
 
 
@@ -59,7 +61,9 @@ class GeminiImageEngine(Engine):
 
     def id(self) -> str:
         cfg_model = self.config.get("DRAWING_ENGINE_MODEL")
-        if cfg_model and cfg_model.startswith(("gemini-2.5-flash-image", "gemini-3-pro-image-preview")):
+        if cfg_model and cfg_model.startswith(
+            ("gemini-2.5-flash-image", "gemini-3-pro-image-preview")
+        ):
             return "drawing"
         return super().id()
 
@@ -81,7 +85,8 @@ class GeminiImageEngine(Engine):
         operation = kwargs.get("operation")
 
         if operation != "create":
-            UserMessage(f"Unknown operation: {operation}", raise_with=ValueError)
+            msg = f"Unknown operation: {operation}"
+            raise ValueError(msg)
 
         response_modalities = kwargs.get("response_modalities", ["IMAGE"])
         config = kwargs.get("config")

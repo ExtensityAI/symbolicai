@@ -6,26 +6,16 @@ import subprocess
 import sys
 import time
 import urllib.request
-import warnings
+from importlib.metadata import version
 
-from rich.console import Console
-from rich.panel import Panel
-from rich.table import Table
-from rich.tree import Tree
+from symai.backend import settings
+from symai.utils import silence_noisy_loggers
 
-from .backend import settings
-from .utils import UserMessage
+silence_noisy_loggers()
 
-# do not remove - hides the libraries' debug messages
-logging.getLogger("urllib3").setLevel(logging.WARNING)
-logging.getLogger("requests").setLevel(logging.WARNING)
-logging.getLogger("httpx").setLevel(logging.ERROR)
-logging.getLogger("httpcore").setLevel(logging.ERROR)
-logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
-logging.getLogger("huggingface").setLevel(logging.ERROR)
-
-
-warnings.simplefilter("ignore")
+_symai_log = logging.getLogger("symai")
+logger = logging.getLogger(__name__)
+_symai_log.addHandler(logging.NullHandler())
 
 # set the environment variable for the transformers library
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -33,7 +23,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # Create singleton instance
 config_manager = settings.SymAIConfig()
 
-SYMAI_VERSION = "1.18.0"
+SYMAI_VERSION = version("symbolicai")
 __version__ = SYMAI_VERSION
 __root_dir__ = config_manager.config_dir
 
@@ -42,31 +32,6 @@ def _start_symai():
     # Create config directories if they don't exist
     config_manager._env_config_dir.mkdir(parents=True, exist_ok=True)
     config_manager._home_config_dir.mkdir(parents=True, exist_ok=True)
-
-    # CREATE THE SHELL CONFIGURATION FILE IF IT DOES NOT EXIST YET
-    # *==============================================================================================================*
-    _symsh_config_path_ = config_manager.get_config_path("symsh.config.json")
-    if not _symsh_config_path_.exists():
-        config_manager.save_config(
-            "symsh.config.json",
-            {
-                "colors": {
-                    "completion-menu.completion.current": "bg:#323232 #212121",
-                    "completion-menu.completion": "bg:#800080 #212121",
-                    "scrollbar.background": "bg:#222222",
-                    "scrollbar.button": "bg:#776677",
-                    "history-completion": "bg:#212121 #f5f5f5",
-                    "path-completion": "bg:#800080 #f5f5f5",
-                    "file-completion": "bg:#9040b2 #f5f5f5",
-                    "history-completion-selected": "bg:#efefef #b3d7ff",
-                    "path-completion-selected": "bg:#efefef #b3d7ff",
-                    "file-completion-selected": "bg:#efefef #b3d7ff",
-                },
-                "map-nt-cmd": True,
-                "show-splash-screen": True,
-                "plugin_prefix": None,
-            },
-        )
 
     # CREATE A SERVER CONFIGURATION FILE IF IT DOES NOT EXIST YET
     # *==============================================================================================================*
@@ -79,13 +44,13 @@ def _start_symai():
 
     if not _symai_config_path_.exists():
         setup_wizard(_symai_config_path_)
-        UserMessage(
-            f"No configuration file found for the environment. A new configuration file has been created at {_symai_config_path_}. Please configure your environment."
+        logger.warning(
+            "No configuration file found for the environment. A new configuration file has been created at %s. Please configure your environment.",
+            _symai_config_path_,
         )
 
     # Load all configurations
     symai_config = config_manager.load_config("symai.config.json")
-    symsh_config = config_manager.load_config("symsh.config.json")
     symserver_config = config_manager.load_config("symserver.config.json")
 
     # CHECK IF THE USER HAS A NEUROSYMBOLIC API KEY
@@ -100,32 +65,33 @@ def _start_symai():
     ):
         # Try to fallback to the global (home) config if environment is not home
         if config_manager.config_dir != config_manager._home_config_dir:
-            UserMessage(
-                f"You didn't configure your environment ({config_manager.config_dir})! Falling back to the global ({config_manager._home_config_dir}) configuration if it exists."
+            logger.warning(
+                "You didn't configure your environment (%s)! Falling back to the global (%s) configuration if it exists.",
+                config_manager.config_dir,
+                config_manager._home_config_dir,
             )
             # Force loading from home
             symai_config = config_manager.load_config("symai.config.json", fallback_to_home=True)
-            symsh_config = config_manager.load_config("symsh.config.json", fallback_to_home=True)
             symserver_config = config_manager.load_config(
                 "symserver.config.json", fallback_to_home=True
             )
 
         # If still not valid, warn and continue
         if not symai_config.get("NEUROSYMBOLIC_ENGINE_API_KEY"):
-            UserMessage(
+            logger.warning(
                 "The mandatory neuro-symbolic engine is not initialized. Please set NEUROSYMBOLIC_ENGINE_MODEL and NEUROSYMBOLIC_ENGINE_API_KEY."
             )
 
     settings.SYMAI_CONFIG = symai_config
-    settings.SYMSH_CONFIG = symsh_config
     settings.SYMSERVER_CONFIG = symserver_config
-    return symai_config, symsh_config, symserver_config
+    return symai_config, symserver_config
 
 
-from .server.qdrant_server import _QDRANT_SERVER_FLAGS  # noqa: E402
+from symai.server.qdrant_server import _QDRANT_SERVER_FLAGS  # noqa: E402
 
 
 def run_server():
+    logging.basicConfig(level=logging.INFO)
     _symserver_config_ = {}
 
     def _save_symserver_config(config: dict, *, include_home: bool = False) -> None:
@@ -204,7 +170,7 @@ def run_server():
             ]
         )
     ):
-        from .server.qdrant_server import qdrant_server  # noqa
+        from symai.server.qdrant_server import qdrant_server  # noqa
 
         # Optional RAG API companion server (FastAPI/uvicorn) configuration.
         # We parse these args first, then pass the remaining args to the Qdrant wrapper.
@@ -337,9 +303,9 @@ def run_server():
                         raise RuntimeError(msg)
                 time.sleep(0.25)
         except KeyboardInterrupt:
-            UserMessage("Server stopped.", style="success")
-        except Exception as e:
-            UserMessage(f"Error running server: {e}")
+            logger.info("Server stopped.")
+        except Exception:
+            logger.exception("Error running server")
         finally:
             # Best-effort shutdown for companion processes (if used).
             try:
@@ -369,8 +335,8 @@ def run_server():
     elif settings.SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL").startswith(
         "llama"
     ) or settings.SYMAI_CONFIG.get("EMBEDDING_ENGINE_MODEL").startswith("llama"):
-        # Keep optional llama_cpp dependencies lazy.
-        from .server.llama_cpp_server import llama_cpp_server  # noqa
+        # Build the llama.cpp binary command only when this local backend is selected.
+        from symai.server.llama_cpp_server import llama_cpp_server  # noqa
 
         command, args = llama_cpp_server()
         _symserver_config_.update(_args_to_config(args))
@@ -382,16 +348,16 @@ def run_server():
         try:
             subprocess.run(command, check=True)
         except KeyboardInterrupt:
-            UserMessage("Server stopped.", style="success")
-        except Exception as e:
-            UserMessage(f"Error running server: {e}")
+            logger.info("Server stopped.")
+        except Exception:
+            logger.exception("Error running server")
         finally:
             _symserver_config_["online"] = False
             _save_symserver_config(_symserver_config_)
 
     elif settings.SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL").startswith("vllm"):
         # Keep optional vllm dependencies lazy.
-        from .server.vllm_server import vllm_server  # noqa
+        from symai.server.vllm_server import vllm_server  # noqa
 
         command, args = vllm_server()
         # NOTE: _args_to_config handles bare boolean flags (e.g. --enable-auto-tool-choice,
@@ -405,16 +371,16 @@ def run_server():
         try:
             subprocess.run(command, check=True)
         except KeyboardInterrupt:
-            UserMessage("Server stopped.", style="success")
-        except Exception as e:
-            UserMessage(f"Error running server: {e}")
+            logger.info("Server stopped.")
+        except Exception:
+            logger.exception("Error running server")
         finally:
             _symserver_config_["online"] = False
             _save_symserver_config(_symserver_config_)
 
     elif settings.SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL").startswith("huggingface"):
         # HuggingFace server stack is optional; import only when requested.
-        from .server.huggingface_server import huggingface_server  # noqa
+        from symai.server.huggingface_server import huggingface_server  # noqa
 
         command, args = huggingface_server()
         _symserver_config_.update(vars(args))
@@ -425,16 +391,16 @@ def run_server():
         try:
             command(host=args.host, port=args.port)
         except KeyboardInterrupt:
-            UserMessage("Server stopped.", style="success")
-        except Exception as e:
-            UserMessage(f"Error running server: {e}")
+            logger.info("Server stopped.")
+        except Exception:
+            logger.exception("Error running server")
         finally:
             _symserver_config_["online"] = False
             _save_symserver_config(_symserver_config_)
 
     elif lean4_requested:
         # Lean4 server - check FORMAL_ENGINE and start container + FastAPI
-        from .server.lean4_server import lean4_server  # noqa
+        from symai.server.lean4_server import lean4_server  # noqa
 
         command, args = lean4_server()
         _symserver_config_.update(_args_to_config(args))
@@ -453,9 +419,9 @@ def run_server():
         try:
             subprocess.run(command, check=True)
         except KeyboardInterrupt:
-            UserMessage("Server stopped.", style="success")
-        except Exception as e:
-            UserMessage(f"Error running server: {e}")
+            logger.info("Server stopped.")
+        except Exception:
+            logger.exception("Error running server")
         finally:
             _symserver_config_["online"] = False
             _save_symserver_config(_symserver_config_)
@@ -467,13 +433,13 @@ def run_server():
             "  - Qdrant (indexing/RAG):         set INDEXING_ENGINE=qdrant in symai.config.json, "
             "or pass any qdrant_server flag (e.g. symserver --docker-detach)\n"
             "  - llama.cpp (neuro-symbolic):    set NEUROSYMBOLIC_ENGINE_MODEL=llamacpp or "
-            "EMBEDDING_ENGINE_MODEL=llamacpp in symai.config.json\n"
+            "EMBEDDING_ENGINE_MODEL=llamacpp, then pass --cpp-server-path to the llama.cpp binary\n"
             "  - vLLM (neuro-symbolic):         set NEUROSYMBOLIC_ENGINE_MODEL=vllm in symai.config.json\n"
             "  - HuggingFace (neuro-symbolic):  set NEUROSYMBOLIC_ENGINE_MODEL=huggingface "
             "in symai.config.json\n"
             "  - Lean4 (formal):                symserver --lean4 (requires FORMAL_ENGINE=local)"
         )
-        UserMessage(msg, raise_with=ValueError)
+        raise ValueError(msg)
 
 
 # *==============================================================================================================*
@@ -491,86 +457,51 @@ def format_config_content(config: dict) -> str:
 
 def display_config():
     """Display all configuration paths and their content."""
+    logging.basicConfig(level=logging.WARNING)
+    print(f"SymbolicAI Configuration Inspector v{__version__}\n")
+    print("Configuration Locations")
 
-    console = Console()
-
-    # Create header
-    console.print(
-        Panel.fit(
-            f"[bold cyan]SymbolicAI Configuration Inspector v{__version__}[/bold cyan]",
-            border_style="cyan",
-        )
-    )
-
-    # Create main tree
-    tree = Tree("[bold]Configuration Locations[/bold]")
-
-    # Debug config
-    debug_branch = tree.add("[yellow]Debug Mode Config (CWD)[/yellow]")
+    print("  Debug Mode Config (CWD):")
     debug_config = config_manager._debug_dir / "symai.config.json"
     if debug_config.exists():
         with debug_config.open() as f:
             content = json.load(f)
-        debug_branch.add(f"📄 [green]{debug_config}[/green]\n{format_config_content(content)}")
+        print(f"    📄 {debug_config}\n{format_config_content(content)}")
     else:
-        debug_branch.add("[dim]No debug config found[/dim]")
+        print("    No debug config found")
 
-    # Environment config
-    env_branch = tree.add("[yellow]Environment Config[/yellow]")
     env_configs = {
         "symai.config.json": "⚙️",
-        "symsh.config.json": "🖥️",
         "symserver.config.json": "🌐",
     }
 
-    for config_file, icon in env_configs.items():
-        config_path = config_manager._env_config_dir / config_file
-        if config_path.exists():
-            with config_path.open() as f:
-                content = json.load(f)
-            env_branch.add(f"{icon} [green]{config_path}[/green]\n{format_config_content(content)}")
-        else:
-            env_branch.add(f"[dim]{icon} {config_file} (not found)[/dim]")
+    for label, base_dir in (
+        ("Environment Config", config_manager._env_config_dir),
+        ("Home Directory Config (Global)", config_manager._home_config_dir),
+    ):
+        print(f"  {label}:")
+        for config_file, icon in env_configs.items():
+            config_path = base_dir / config_file
+            if config_path.exists():
+                with config_path.open() as f:
+                    content = json.load(f)
+                print(f"    {icon} {config_path}\n{format_config_content(content)}")
+            else:
+                print(f"    {icon} {config_file} (not found)")
 
-    # Home (global) config
-    home_branch = tree.add("[yellow]Home Directory Config (Global)[/yellow]")
-    for config_file, icon in env_configs.items():
-        config_path = config_manager._home_config_dir / config_file
-        if config_path.exists():
-            with config_path.open() as f:
-                content = json.load(f)
-            home_branch.add(
-                f"{icon} [green]{config_path}[/green]\n{format_config_content(content)}"
-            )
-        else:
-            home_branch.add(f"[dim]{icon} {config_file} (not found)[/dim]")
-
-    # Active configuration summary
-    summary = Table(show_header=True, header_style="bold magenta")
-    summary.add_column("Configuration Type")
-    summary.add_column("Active Path")
-
+    print("\nActive Configuration Summary:")
     active_paths = {
         "Primary Config Dir": config_manager.get_active_config_dir(),
         "symai.config.json": config_manager.get_active_path("symai.config.json"),
-        "symsh.config.json": config_manager.get_active_path("symsh.config.json"),
         "symserver.config.json": config_manager.get_active_path("symserver.config.json"),
     }
-
     for config_type, path in active_paths.items():
-        summary.add_row(config_type, str(path))
+        print(f"  {config_type}: {path}")
 
-    # Print everything
-    console.print(tree)
-    console.print("\n[bold]Active Configuration Summary:[/bold]")
-    console.print(summary)
-
-    # Print help
-    console.print("\n[bold]Legend:[/bold]")
-    console.print("⚙️  symai.config.json (Main SymbolicAI configuration)")
-    console.print("🖥️  symsh.config.json (Shell configuration)")
-    console.print("🌐  symserver.config.json (Server configuration)")
-    console.print("\n[dim]Note: API keys and URIs are truncated for security[/dim]")
+    print("\nLegend:")
+    print("⚙️  symai.config.json (Main SymbolicAI configuration)")
+    print("🌐  symserver.config.json (Server configuration)")
+    print("\nNote: API keys and URIs are truncated for security")
 
 
 # *==============================================================================================================*
@@ -590,7 +521,6 @@ def setup_wizard(_symai_config_path_):
             "EMBEDDING_ENGINE_MODEL": "",
             "DRAWING_ENGINE_API_KEY": "",
             "DRAWING_ENGINE_MODEL": "",
-            "VISION_ENGINE_MODEL": "",
             "SEARCH_ENGINE_API_KEY": "",
             "SEARCH_ENGINE_MODEL": "",
             "OCR_ENGINE_API_KEY": "",
@@ -601,38 +531,29 @@ def setup_wizard(_symai_config_path_):
             "TEXT_TO_SPEECH_ENGINE_MODEL": "",
             "TEXT_TO_SPEECH_ENGINE_VOICE": "",
             "INDEXING_ENGINE_API_KEY": "",
-            "INDEXING_ENGINE_ENVIRONMENT": "",
-            "CAPTION_ENGINE_MODEL": "",
         },
     )
 
 
-_symai_config_, _symsh_config_, _symserver_config_ = _start_symai()
+_symai_config_, _symserver_config_ = _start_symai()
 
-from .backend.base import Engine  # noqa
-from .components import Function, PrimitiveDisabler  # noqa
-from .core import few_shot, zero_shot  # noqa
-from .extended import Conversation  # noqa
-from .functional import EngineRepository  # noqa
-from .imports import Import  # noqa
-from .interfaces import Interface  # noqa
-from .post_processors import PostProcessor  # noqa
-from .pre_processors import PreProcessor  # noqa
-from .prompts import Prompt, PromptRegistry  # noqa
-from .shell import Shell  # noqa
-from .strategy import Strategy  # noqa
-from .symbol import Call, Expression, GlobalSymbolPrimitive, Metadata, Symbol  # noqa
+from symai.backend.base import Engine  # noqa
+from symai.components import Function, Interface, PrimitiveDisabler  # noqa
+from symai.core import few_shot, zero_shot  # noqa
+from symai.functional import EngineRepository  # noqa
+from symai.post_processors import PostProcessor  # noqa
+from symai.pre_processors import PreProcessor  # noqa
+from symai.prompts import Prompt, PromptRegistry  # noqa
+from symai.symbol import Call, Expression, GlobalSymbolPrimitive, Metadata, Symbol  # noqa
 
 __all__ = [
     "SYMAI_VERSION",
     "Call",
-    "Conversation",
     "Engine",
     "EngineRepository",
     "Expression",
     "Function",
     "GlobalSymbolPrimitive",
-    "Import",
     "Interface",
     "Metadata",
     "PostProcessor",
@@ -640,8 +561,6 @@ __all__ = [
     "PrimitiveDisabler",
     "Prompt",
     "PromptRegistry",
-    "Shell",
-    "Strategy",
     "Symbol",
     "__root_dir__",
     "__version__",

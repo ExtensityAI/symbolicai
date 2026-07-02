@@ -22,7 +22,7 @@ SymbolicAI aims to bridge the gap between classical programming (Software 1.0) a
 
 By using SymbolicAI, you can traverse the spectrum between the classical programming realm and the data-driven programming realm, as illustrated in the following figure:
 
-<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img5.png" width="720px">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/artifacts/images/img5.png" width="720px">
 
 We adopt a divide-and-conquer approach, breaking down complex problems into smaller, manageable tasks. We use the expressiveness and flexibility of LLMs to evaluate these sub-problems. By re-combining the results of these operations, we can solve the broader, more complex problem.
 
@@ -33,7 +33,7 @@ In time, and with sufficient data, we can gradually transition from general-purp
 1. **Symbols**: All data objects are treated as symbols, with natural language as the primary interface for interaction.
 2. **Operations**: Contextualized functions that manipulate symbols and return new objects.
 3. **Expressions**: Non-terminal symbols that can be further evaluated, allowing for complex computational graphs.
-4. **Engines**: Various backends (e.g., GPT-3, WolframAlpha, CLIP) that power different types of computations and transformations.
+4. **Engines**: Various backends (e.g., OpenAI, Anthropic, WolframAlpha, OCR, Qdrant, and image generation providers) that power different types of computations and transformations.
 
 ## <img src="https://media.giphy.com/media/mGcNjsfWAjY5AEZNw6/giphy.gif" width="50"> More fun facts!
 
@@ -49,16 +49,16 @@ SymbolicAI is fundamentally inspired by the [`neuro-symbolic programming paradig
 
 **Embedded accelerators for LLMs** will likely be ubiquitous in future computation platforms, including wearables, smartphones, tablets, and notebooks. These devices will incorporate models similar to GPT-3, ChatGPT, OPT, or Bloom.
 
-<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img1.png" width="720px">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/artifacts/images/img1.png" width="720px">
 
 LLMs are expected to perform a wide range of computations, like natural language understanding and decision-making. Additionally, neuro-symbolic computation engines will learn how to tackle unseen tasks and resolve complex problems by querying various data sources for solutions and executing logical statements on top.
 To ensure the content generated aligns with our objectives, it is crucial to develop methods for instructing, steering, and controlling the generative processes of machine learning models. As a result, our approach works to enable active and transparent flow control of these generative processes.
 
-<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img7.png" width="720px">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/artifacts/images/img7.png" width="720px">
 
 The figure above depicts this generative process as shifting the probability mass of an input stream toward an output stream in a contextualized manner. With properly designed conditions and expressions, you can validate and guide the behavior towards a desired outcome or repeat expressions that fail to meet requirements. Our approach consists of defining a set of _fuzzy_ operations to manipulate the data stream and condition LLMs to align with our goals. We regard all data objects – such as strings, letters, integers, and arrays – as symbols and view natural language as the primary interface for interaction. See the following figure:
 
-<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img10.png" width="720px">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/artifacts/images/img10.png" width="720px">
 
 As long as our goals can be expressed through natural language, LLMs can be used for neuro-symbolic computations.
 Consequently, we develop operations that manipulate these symbols to construct new symbols. Each symbol can be interpreted as a statement, and multiple statements can be combined to formulate a logical expression.

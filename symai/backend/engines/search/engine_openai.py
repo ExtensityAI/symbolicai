@@ -4,28 +4,28 @@ from copy import deepcopy
 import httpx
 from openai import OpenAI
 
-from ....symbol import Result
-from ....utils import UserMessage
-from ...base import Engine
-from ...mixin import OPENAI_CHAT_MODELS, OPENAI_REASONING_MODELS
-from ...settings import SYMAI_CONFIG
-from .utils import (
+from symai.backend.base import Engine
+from symai.backend.engines.search.utils import (
     CitationResultMixin,
     insert_citation_markers,
     normalize_domains,
 )
+from symai.backend.mixin import OPENAI_CHAT_MODELS, OPENAI_REASONING_MODELS
+from symai.backend.settings import SYMAI_CONFIG
+from symai.symbol import Result
+from symai.utils import silence_noisy_loggers
 
-logging.getLogger("requests").setLevel(logging.ERROR)
-logging.getLogger("urllib3").setLevel(logging.ERROR)
-logging.getLogger("httpx").setLevel(logging.ERROR)
-logging.getLogger("httpcore").setLevel(logging.ERROR)
+silence_noisy_loggers()
+
+logger = logging.getLogger(__name__)
 
 
 class OpenAISearchResult(CitationResultMixin, Result):
     def __init__(self, value, **kwargs) -> None:
         super().__init__(value, **kwargs)
         if value.get("error"):
-            UserMessage(value["error"], raise_with=ValueError)
+            msg = value["error"]
+            raise ValueError(msg)
         try:
             text, annotations = self._extract_text_and_annotations(value)
             if text is None:
@@ -36,7 +36,8 @@ class OpenAISearchResult(CitationResultMixin, Result):
 
         except Exception as e:
             self._value = None
-            UserMessage(f"Failed to parse response: {e}", raise_with=ValueError)
+            msg = f"Failed to parse response: {e}"
+            raise ValueError(msg) from e
 
     def _extract_text_and_annotations(self, value):
         segments = []
@@ -111,7 +112,8 @@ class GPTXSearchEngine(Engine):
             else:
                 self.client = OpenAI(api_key=self.api_key)
         except Exception as e:
-            UserMessage(f"Failed to initialize OpenAI client: {e}", raise_with=ValueError)
+            msg = f"Failed to initialize OpenAI client: {e}"
+            raise ValueError(msg) from e
 
     def id(self) -> str:
         if (
@@ -166,7 +168,8 @@ class GPTXSearchEngine(Engine):
             res = self.client.responses.create(**payload)
             res = OpenAISearchResult(res.dict())
         except Exception as e:
-            UserMessage(f"Failed to make request: {e}", raise_with=ValueError)
+            msg = f"Failed to make request: {e}"
+            raise ValueError(msg) from e
 
         metadata = {"raw_output": res.raw}
         output = [res]

@@ -8,7 +8,7 @@ import types as _types
 from enum import Enum
 from pathlib import Path
 
-import cv2
+import numpy as np
 from box import Box, BoxList
 from markitdown import PRIORITY_GENERIC_FILE_FORMAT, PRIORITY_SPECIFIC_FILE_FORMAT, MarkItDown
 from markitdown.converters._csv_converter import CsvConverter
@@ -24,9 +24,9 @@ from markitdown.converters._pptx_converter import PptxConverter
 from markitdown.converters._rss_converter import RssConverter
 from markitdown.converters._xlsx_converter import XlsConverter, XlsxConverter
 from markitdown.converters._zip_converter import ZipConverter
+from PIL import Image
 
-from ....utils import UserMessage
-from ...base import Engine
+from symai.backend.base import Engine
 
 logger = logging.getLogger(__name__)
 for _noisy in ("pdfminer", "charset_normalizer", "PIL"):
@@ -65,7 +65,7 @@ class _SymaiVisionClient:
     class _Completions:
         @staticmethod
         def create(*, model, messages):  # noqa: ARG004
-            from ....symbol import Symbol  # noqa: PLC0415
+            from symai.symbol import Symbol  # noqa: PLC0415
 
             # Extract text prompt and image data URI from OpenAI-format vision messages
             prompt, data_uri = "", ""
@@ -181,7 +181,7 @@ class FileEngine(Engine):
         md = MarkItDown(enable_builtins=False)
 
         # Wire SymAI vision adapter for LLM-powered converters (image captions, PPTX)
-        from ...settings import SYMAI_CONFIG  # noqa: PLC0415
+        from symai.backend.settings import SYMAI_CONFIG  # noqa: PLC0415
 
         md._llm_client = _SymaiVisionClient()
         md._llm_model = SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL", "")
@@ -209,14 +209,13 @@ class FileEngine(Engine):
             return md.convert(str(source)).text_content
 
     def _read_image(self, path_obj):
-        """Read image as RGB numpy array via cv2."""
-        img = cv2.imread(str(path_obj))
-        assert img is not None, f"cv2 failed to read image: {path_obj}"
-        return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        """Read image as RGB numpy array via Pillow."""
+        with Image.open(path_obj) as img:
+            return np.asarray(img.convert("RGB"))
 
     # ------------------------------------------------------------------
     # Backend dispatch methods — each returns a text result or raises.
-    # Images (cv2) are handled before dispatch so these never see image exts
+    # Images (Pillow) are handled before dispatch so these never see image exts
     # (except _forward_markitdown, which converts images to EXIF + LLM caption).
     # ------------------------------------------------------------------
 
@@ -230,17 +229,13 @@ class FileEngine(Engine):
             else f"Unsupported file extension '{ext}'. "
             f"Supported: {', '.join(sorted(_ALL_SUPPORTED_EXTS))}"
         )
-        UserMessage(msg, raise_with=ValueError)
-        return None  # unreachable — UserMessage raises when raise_with is set
+        raise ValueError(msg)
 
     def _forward_markitdown(self, ext, path_obj, caption_prompt=None):
         if ext not in _ALL_SUPPORTED_EXTS:
             supported = ", ".join(sorted(_ALL_SUPPORTED_EXTS))
-            UserMessage(
-                f"Extension '{ext}' is not supported by the markitdown backend. "
-                f"Supported: {supported}",
-                raise_with=ValueError,
-            )
+            msg = f"Extension '{ext}' is not supported by the markitdown backend. Supported: {supported}"
+            raise ValueError(msg)
         return self._read_via_markitdown(path_obj, caption_prompt=caption_prompt)
 
     def _forward_auto(self, ext, path_obj, caption_prompt=None):
@@ -268,13 +263,12 @@ class FileEngine(Engine):
         # URLs → markitdown (auto and markitdown); standard errors
         if path.startswith(("http://", "https://")):
             if backend == "standard":
-                UserMessage(
-                    f"URLs require backend='markitdown' or 'auto'. Got backend='{backend}'.",
-                    raise_with=ValueError,
-                )
+                msg = f"URLs require backend='markitdown' or 'auto'. Got backend='{backend}'."
+                raise ValueError(msg)
             rsp = self._read_via_markitdown(path, caption_prompt=caption_prompt)
             if rsp is None:
-                UserMessage(f"Error reading URL - empty result: {path}", raise_with=Exception)
+                msg = f"Error reading URL - empty result: {path}"
+                raise Exception(msg)
             return [rsp], {}
 
         path_obj = Path(path)
@@ -286,13 +280,13 @@ class FileEngine(Engine):
 
         # Audio files are not supported by this engine -- use the Whisper engine instead
         if ext in _AUDIO_EXTS:
-            UserMessage(
+            msg = (
                 f"Audio files ({ext}) are not supported by the file reader. "
-                "Use the speech-to-text engine instead: pip install symbolicai[whisper]",
-                raise_with=ValueError,
+                "Use the speech-to-text engine instead: pip install symbolicai[whisper]"
             )
+            raise ValueError(msg)
 
-        # Images via cv2 unless explicitly markitdown (which returns EXIF + LLM caption)
+        # Images via Pillow unless explicitly markitdown (which returns EXIF + LLM caption)
         if ext in _IMAGE_EXTS and backend != "markitdown":
             return [self._read_image(path_obj)], {}
 
@@ -305,7 +299,8 @@ class FileEngine(Engine):
             rsp = self._forward_auto(ext, path_obj, caption_prompt=caption_prompt)
 
         if rsp is None:
-            UserMessage(f"Error reading file - empty result: {path}", raise_with=Exception)
+            msg = f"Error reading file - empty result: {path}"
+            raise Exception(msg)
 
         # Structured data → dict/list; as_box=True keeps Box/BoxList for dot-access
         parser = _BOX_PARSERS.get(ext)
@@ -319,10 +314,8 @@ class FileEngine(Engine):
         elif as_box:
             if parser is None:
                 supported = ", ".join(sorted(_BOX_PARSERS))
-                UserMessage(
-                    f"as_box is not supported for '{ext}'. Supported: {supported}",
-                    raise_with=ValueError,
-                )
+                msg = f"as_box is not supported for '{ext}'. Supported: {supported}"
+                raise ValueError(msg)
             rsp = parser(rsp)
 
         return [rsp], {}

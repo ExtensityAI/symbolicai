@@ -8,8 +8,8 @@ from typing import Any, ClassVar, Generic, TypeVar
 import numpy as np
 from box import Box
 
-from . import core
-from .ops import SYMBOL_PRIMITIVES
+from symai import core
+from symai.ops import SYMBOL_PRIMITIVES
 
 T = TypeVar("T")
 
@@ -317,6 +317,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
             return value.value
         # Preserve Box/BoxList (dict/list subclasses with dot-access) as-is
         from box import Box, BoxList  # noqa: PLC0415
+
         if isinstance(value, (Box, BoxList)):
             return value
         if isinstance(value, list):
@@ -355,7 +356,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
         callables: list[tuple[str, Callable]] | None = None,
         semantic: bool = False,
         **kwargs,
-    ) -> "Symbol":
+    ):
         """
         Create a new Symbol instance.
 
@@ -1148,25 +1149,6 @@ class Expression(Symbol):
             engines = ["all"]
 
         @core.command(engines=engines, **kwargs)
-        def _func(_):
-            pass
-
-        return Expression(_func(Expression()))
-
-    @staticmethod
-    def register(engines: dict[str, Any], **kwargs) -> "Symbol":
-        """
-        Configure multiple engines.
-
-        Args:
-            engines (Dict[str, Any]): A dictionary containing engine names as keys and their configurations as values.
-            **kwargs: Arbitrary keyword arguments to be used by the core.register decorator.
-
-        Returns:
-            Symbol: An Expression object representing the register result.
-        """
-
-        @core.register(engines=engines, **kwargs)
         def _func(_):
             pass
 

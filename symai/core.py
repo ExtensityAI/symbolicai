@@ -4,21 +4,19 @@ from typing import Any
 
 from box import Box
 
-from . import post_processors as post
-from . import pre_processors as pre
-from . import prompts as prm
-from .functional import EngineRepository
-from .symbol import Expression, Metadata
+from symai import post_processors as post
+from symai import pre_processors as pre
+from symai import prompts as prm
+from symai.functional import EngineRepository
+from symai.symbol import Expression, Metadata
 
 # Module-level singletons used to provide default prompt and processor instances.
-_PREPROCESSOR_EXPAND_FUNCTION = pre.ExpandFunctionPreProcessor()
 _PROMPT_CLEAN_TEXT = prm.CleanText()
 _PROMPT_COMBINE_TEXT = prm.CombineText()
 _PROMPT_COMPARE_VALUES = prm.CompareValues()
 _PROMPT_CONTAINS_VALUE = prm.ContainsValue()
 _PROMPT_ENDS_WITH = prm.EndsWith()
 _PROMPT_EXCEPTION_MAPPING = prm.ExceptionMapping()
-_PROMPT_EXPAND_FUNCTION = prm.ExpandFunction()
 _PROMPT_EXTRACT_PATTERN = prm.ExtractPattern()
 _PROMPT_FILTER = prm.Filter()
 _PROMPT_FOR_EACH = prm.ForEach()
@@ -1597,36 +1595,6 @@ def query(
     )
 
 
-def expand(
-    prompt: str
-    | None = "Write a self-contained function (with all imports) to solve a specific user problem task. Label the function with a name that describes the task.",
-    examples: prm.Prompt | None = _PROMPT_EXPAND_FUNCTION,
-    constraints: list[Callable] | None = None,
-    default: object | None = None,
-    stop: str | list[str] = "",
-    limit: int | None = 1,
-    pre_processors: list[pre.PreProcessor] | None = _PREPROCESSOR_EXPAND_FUNCTION,
-    post_processors: list[post.PostProcessor] | None = None,
-    **decorator_kwargs,
-):
-    """Performs a expand command given a context to generate new prompts."""
-    if post_processors is None:
-        post_processors = [post.StripPostProcessor(), post.ExpandFunctionPostProcessor()]
-    if constraints is None:
-        constraints = []
-    return few_shot(
-        prompt=prompt,
-        examples=examples,
-        constraints=constraints,
-        default=default,
-        stop=stop,
-        limit=limit,
-        pre_processors=pre_processors,
-        post_processors=post_processors,
-        **decorator_kwargs,
-    )
-
-
 def search(
     query: str,
     constraints: list[Callable] | None = None,
@@ -1785,36 +1753,6 @@ def draw(
     return decorator
 
 
-def text_vision(
-    image: str | bytes | None = None,
-    text: list[str] | None = None,
-    pre_processors: list[pre.PreProcessor] | None = None,
-    post_processors: list[post.PostProcessor] | None = None,
-    **decorator_kwargs,
-):
-    """Performs vision-related associative tasks. Currently limited to CLIP model embeddings."""
-
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(instance, *signature_args, **signature_kwargs):
-            # Construct container object for the arguments and kwargs
-            decorator_kwargs["image"] = image
-            decorator_kwargs["text"] = text
-            argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
-            return EngineRepository.query(
-                engine="text_vision",
-                instance=instance,
-                func=func,
-                pre_processors=pre_processors,
-                post_processors=post_processors,
-                argument=argument,
-            )
-
-        return wrapper
-
-    return decorator
-
-
 def ocr(
     image: str,
     pre_processors: list[pre.PreProcessor] | None = None,
@@ -1903,42 +1841,6 @@ def text_to_speech(
     return decorator
 
 
-def output(
-    constraints: list[Callable] | None = None,
-    default: object | None = None,
-    pre_processors: list[pre.PreProcessor] | None = None,
-    post_processors: list[post.PostProcessor] | None = None,
-    **decorator_kwargs,
-):
-    """Offers an output stream for writing results."""
-    if post_processors is None:
-        post_processors = [post.ConsolePostProcessor()]
-    if pre_processors is None:
-        pre_processors = [pre.ConsolePreProcessor()]
-    if constraints is None:
-        constraints = []
-
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(instance, *signature_args, **signature_kwargs):
-            # Construct container object for the arguments and kwargs
-            argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
-            return EngineRepository.query(
-                engine="output",
-                instance=instance,
-                func=func,
-                constraints=constraints,
-                default=default,
-                pre_processors=pre_processors,
-                post_processors=post_processors,
-                argument=argument,
-            )
-
-        return wrapper
-
-    return decorator
-
-
 def scrape(
     url: str,
     constraints: list[Callable] | None = None,
@@ -1962,78 +1864,6 @@ def scrape(
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
             return EngineRepository.query(
                 engine="scrape",
-                instance=instance,
-                func=func,
-                constraints=constraints,
-                default=default,
-                pre_processors=pre_processors,
-                post_processors=post_processors,
-                argument=argument,
-            )
-
-        return wrapper
-
-    return decorator
-
-
-def userinput(
-    constraints: list[Callable] | None = None,
-    default: object | None = None,
-    pre_processors: list[pre.PreProcessor] | None = None,
-    post_processors: list[post.PostProcessor] | None = None,
-    **decorator_kwargs,
-):
-    """Prompts for user input and returns the user response through a decorator."""
-    if post_processors is None:
-        post_processors = [post.StripPostProcessor()]
-    if pre_processors is None:
-        pre_processors = [pre.ConsoleInputPreProcessor()]
-    if constraints is None:
-        constraints = []
-
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(instance, *signature_args, **signature_kwargs):
-            # Construct container object for the arguments and kwargs
-            argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
-            return EngineRepository.query(
-                engine="userinput",
-                instance=instance,
-                func=func,
-                constraints=constraints,
-                default=default,
-                pre_processors=pre_processors,
-                post_processors=post_processors,
-                argument=argument,
-            )
-
-        return wrapper
-
-    return decorator
-
-
-def execute(
-    default: str | None = None,
-    constraints: list[Callable] | None = None,
-    pre_processors: list[pre.PreProcessor] | None = None,
-    post_processors: list[post.PostProcessor] | None = None,
-    **decorator_kwargs,
-):
-    """Executes a given function after applying constraints, pre-processing and post-processing."""
-    if post_processors is None:
-        post_processors = []
-    if pre_processors is None:
-        pre_processors = []
-    if constraints is None:
-        constraints = []
-
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(instance, *signature_args, **signature_kwargs):
-            # Construct container object for the arguments and kwargs
-            argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
-            return EngineRepository.query(
-                engine="execute",
                 instance=instance,
                 func=func,
                 constraints=constraints,
@@ -2107,21 +1937,6 @@ def command(engines: list[str] | None = None, **decorator_kwargs):
     return decorator
 
 
-def register(engines: dict[str, Any]):
-    """Decorates a function to initialize custom engines as backends."""
-
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(instance, **kwargs):
-            return EngineRepository.register(
-                engines=engines, engine_instance=instance, func=func, **kwargs
-            )
-
-        return wrapper
-
-    return decorator
-
-
 def tune(
     operation: str = "create",
     pre_processors: list[pre.PreProcessor] | None = None,
@@ -2138,38 +1953,6 @@ def tune(
             argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
             return EngineRepository.query(
                 engine="finetune",
-                instance=instance,
-                func=func,
-                pre_processors=pre_processors,
-                post_processors=post_processors,
-                argument=argument,
-            )
-
-        return wrapper
-
-    return decorator
-
-
-def caption(
-    image: str,
-    prompt: str,
-    pre_processors: list[pre.PreProcessor] | None = None,
-    post_processors: list[post.PostProcessor] | None = None,
-    **decorator_kwargs,
-):
-    """Caption the content of an image."""
-    if pre_processors is None:
-        pre_processors = [pre.ValuePreProcessor()]
-
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(instance, *signature_args, **signature_kwargs):
-            # Construct container object for the arguments and kwargs
-            decorator_kwargs["image"] = image
-            decorator_kwargs["prompt"] = prompt
-            argument = Argument(signature_args, signature_kwargs, decorator_kwargs)
-            return EngineRepository.query(
-                engine="imagecaptioning",
                 instance=instance,
                 func=func,
                 pre_processors=pre_processors,

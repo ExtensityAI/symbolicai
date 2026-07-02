@@ -1,23 +1,27 @@
 import json
 import logging
+import warnings
 from copy import deepcopy
 from typing import Any
 
 try:
-    from firecrawl import Firecrawl
-    from firecrawl.v2.types import ScrapeOptions
+    with warnings.catch_warnings():
+        # firecrawl's pydantic models emit field-shadow UserWarnings at import; not actionable here
+        warnings.filterwarnings("ignore", category=UserWarning, module=r"firecrawl\..*")
+        from firecrawl import Firecrawl
+        from firecrawl.v2.types import ScrapeOptions
 except ImportError:
     Firecrawl = None
 
-from ....symbol import Result
-from ....utils import UserMessage
-from ...base import Engine
-from ...settings import SYMAI_CONFIG
-from .utils import Citation, CitationResultMixin, normalize_url
+from symai.backend.base import Engine
+from symai.backend.engines.search.utils import Citation, CitationResultMixin, normalize_url
+from symai.backend.settings import SYMAI_CONFIG
+from symai.symbol import Result
+from symai.utils import Extra, missing_dependency, silence_noisy_loggers
 
-logging.getLogger("requests").setLevel(logging.ERROR)
-logging.getLogger("urllib3").setLevel(logging.ERROR)
-logging.getLogger("httpx").setLevel(logging.ERROR)
+silence_noisy_loggers()
+
+logger = logging.getLogger(__name__)
 
 
 class FirecrawlSearchResult(CitationResultMixin, Result):
@@ -34,7 +38,8 @@ class FirecrawlSearchResult(CitationResultMixin, Result):
             self._citations = citations
         except Exception as e:
             self._value = None
-            UserMessage(f"Failed to parse Firecrawl search response: {e}", raise_with=ValueError)
+            msg = f"Failed to parse Firecrawl search response: {e}"
+            raise ValueError(msg) from e
 
     def _build_text_and_citations(self, data: dict[str, Any]) -> tuple[str, list[Citation]]:
         results = []
@@ -114,7 +119,8 @@ class FirecrawlExtractResult(Result):
             self._value = self._extract_content(raw_dict)
         except Exception as e:
             self._value = None
-            UserMessage(f"Failed to parse Firecrawl scrape response: {e}", raise_with=ValueError)
+            msg = f"Failed to parse Firecrawl scrape response: {e}"
+            raise ValueError(msg) from e
 
     def _extract_content(self, data: dict[str, Any]) -> str:
         content = data.get("markdown") or data.get("html") or data.get("raw_html")
@@ -150,22 +156,17 @@ class FirecrawlEngine(Engine):
             return
 
         if Firecrawl is None:
-            UserMessage(
-                "firecrawl SDK is not installed. Install with 'pip install firecrawl-py' "
-                "or add it to your environment.",
-                raise_with=ValueError,
-            )
+            raise missing_dependency(Extra.SEARCH, "firecrawl", package="firecrawl-py")
 
         if not self.api_key:
-            UserMessage(
-                "Firecrawl API key not found. Set SEARCH_ENGINE_API_KEY in config or environment.",
-                raise_with=ValueError,
-            )
+            msg = "Firecrawl API key not found. Set SEARCH_ENGINE_API_KEY in config or environment."
+            raise ValueError(msg)
 
         try:
             self.client = Firecrawl(api_key=self.api_key)
         except Exception as e:
-            UserMessage(f"Failed to initialize Firecrawl client: {e}", raise_with=ValueError)
+            msg = f"Failed to initialize Firecrawl client: {e}"
+            raise ValueError(msg) from e
 
     def id(self) -> str:
         if (
@@ -184,9 +185,8 @@ class FirecrawlEngine(Engine):
 
     def _search(self, query: str, kwargs: dict[str, Any]):
         if not query:
-            UserMessage(
-                "FirecrawlEngine._search requires a non-empty query.", raise_with=ValueError
-            )
+            msg = "FirecrawlEngine._search requires a non-empty query."
+            raise ValueError(msg)
 
         max_chars_per_result = kwargs.get("max_chars_per_result")
 
@@ -226,7 +226,8 @@ class FirecrawlEngine(Engine):
         try:
             result = self.client.search(query, **search_kwargs)
         except Exception as e:
-            UserMessage(f"Failed to call Firecrawl Search API: {e}", raise_with=ValueError)
+            msg = f"Failed to call Firecrawl Search API: {e}"
+            raise ValueError(msg) from e
 
         raw = result.model_dump() if hasattr(result, "model_dump") else result
         return [FirecrawlSearchResult(result, max_chars_per_result=max_chars_per_result)], {
@@ -266,7 +267,8 @@ class FirecrawlEngine(Engine):
         try:
             result = self.client.scrape(normalized_url, **scrape_kwargs)
         except Exception as e:
-            UserMessage(f"Failed to call Firecrawl Scrape API: {e}", raise_with=ValueError)
+            msg = f"Failed to call Firecrawl Scrape API: {e}"
+            raise ValueError(msg) from e
 
         raw = result.model_dump() if hasattr(result, "model_dump") else result
         return [FirecrawlExtractResult(result)], {"raw_output": raw, "final_url": normalized_url}
@@ -283,10 +285,8 @@ class FirecrawlEngine(Engine):
 
         query = str(raw_query or "").strip() if raw_query else ""
         if not query:
-            UserMessage(
-                "FirecrawlEngine.forward requires at least one non-empty query or url.",
-                raise_with=ValueError,
-            )
+            msg = "FirecrawlEngine.forward requires at least one non-empty query or url."
+            raise ValueError(msg)
 
         return self._search(query, kwargs)
 

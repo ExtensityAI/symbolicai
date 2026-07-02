@@ -1,3 +1,0 @@
-global-exclude test_*.py
-include symai/**/*
-exclude **/*.pyc

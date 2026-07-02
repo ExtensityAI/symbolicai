@@ -14,7 +14,7 @@ from symai import Symbol
 
 ## Creating and Manipulating Symbols
 
-Our `Symbolic API` is based on object-oriented and compositional design patterns. The `Symbol` class serves as the base class for all functional operations, and in the context of symbolic programming (fully resolved expressions), we refer to it as a terminal symbol. The Symbol class contains helpful operations that can be interpreted as expressions to manipulate its content and evaluate new Symbols `<class 'symai.expressions.Symbol'>`.
+Our `Symbolic API` is based on object-oriented and compositional design patterns. The `Symbol` class serves as the base class for all functional operations, and in the context of symbolic programming (fully resolved expressions), we refer to it as a terminal symbol. The Symbol class contains helpful operations that can be interpreted as expressions to manipulate its content and evaluate new Symbols `<class 'symai.symbol.Symbol'>`.
 
 ```python
 # Create a Symbol
@@ -43,7 +43,7 @@ Evaluations are resolved in the language domain and by best effort. We showcase 
 
 In the example below, we can observe how operations on word embeddings (colored boxes) are performed. Words are tokenized and mapped to a vector space where semantic operations can be executed using vector arithmetic.
 
-<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/assets/images/img3.png" width="450px">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/artifacts/images/img3.png" width="450px">
 
 Similar to word2vec, we aim to perform contextualized operations on different symbols. However, as opposed to operating in vector space, we work in the natural language domain. This provides us the ability to perform arithmetic on words, sentences, paragraphs, etc., and verify the results in a human-readable format.
 
@@ -89,4 +89,5 @@ res = S1 & S2 # Therefore, it is Sunday.
 ```
 
 ### 🪜 Next Steps
-Now, there are tools like DeepWiki that provide better documentation than we could ever write, and we don’t want to compete with that; we'll correct it where it's plain wrong. Please go read SymbolicAI's DeepWiki [page](https://deepwiki.com/ExtensityAI/symbolicai/). There's a lot of interesting stuff in there. Last but not least, check out our [paper](https://arxiv.org/abs/2402.00854) that describes the framework in detail. If you like watching videos, we have a series of tutorials that you can find [here](https://extensityai.gitbook.io/symbolicai/tutorials/video_tutorials).
+Read SymbolicAI's DeepWiki [page](https://deepwiki.com/ExtensityAI/symbolicai/) for a generated
+code tour, and check out our [paper](https://arxiv.org/abs/2402.00854) for the framework design.

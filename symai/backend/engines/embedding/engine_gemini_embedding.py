@@ -6,12 +6,13 @@ import numpy as np
 from google import genai
 from google.genai.types import Content, EmbedContentConfig, Part
 
-from ....utils import UserMessage
-from ...base import Engine
-from ...mixin.google import GoogleMixin
-from ...settings import SYMAI_CONFIG
+from symai.backend.base import Engine
+from symai.backend.mixin.google import GoogleMixin
+from symai.backend.settings import SYMAI_CONFIG
 
 logging.getLogger("google.generativeai").setLevel(logging.ERROR)
+
+logger = logging.getLogger(__name__)
 
 
 class GeminiEmbeddingEngine(Engine, GoogleMixin):
@@ -23,11 +24,11 @@ class GeminiEmbeddingEngine(Engine, GoogleMixin):
         if self.id() != "embedding":
             return
         if not self.api_key:
-            UserMessage(
+            msg = (
                 "Gemini API key not found. Please set EMBEDDING_ENGINE_API_KEY "
-                "in symai.config.json or pass it to the engine.",
-                raise_with=ValueError,
+                "in symai.config.json or pass it to the engine."
             )
+            raise ValueError(msg)
 
         self.client = genai.Client(api_key=self.api_key)
         self.name = self.__class__.__name__
@@ -55,22 +56,27 @@ class GeminiEmbeddingEngine(Engine, GoogleMixin):
         new_dim = kwargs.get("new_dim")
         task_type = kwargs.get("task_type", "SEMANTIC_SIMILARITY")
 
-        # Convert inputs to Google genai format
-        # Supports: str, bytes, Part, Content
+        # NOTE: The genai SDK merges a list of str/Part into a single Content and
+        # returns one embedding for the whole batch. To embed each item separately,
+        # every item must be wrapped in its own Content.
         converted_inp = []
         for item in inp:
-            if isinstance(item, str): # Text input - pass through
+            if isinstance(item, Content):  # Already a Content (incl. multimodal) - pass through
                 converted_inp.append(item)
-            elif isinstance(item, bytes): # Raw bytes - detect mime type and convert to Part
+            elif isinstance(item, Part):  # Single Part - wrap in a Content
+                converted_inp.append(Content(parts=[item]))
+            elif isinstance(item, str):  # Text input
+                converted_inp.append(Content(parts=[Part.from_text(text=item)]))
+            elif isinstance(item, bytes):  # Raw bytes - detect mime type and wrap in a Content
                 # NOTE: filetype is a lightweight dependency (~50KB) that auto-detects MIME types
                 # from raw bytes. This improves user experience by allowing Symbol(bytes).embed()
                 # without requiring explicit Part construction with mime_type.
                 mime_type = filetype.guess_mime(item) or "application/octet-stream"
-                converted_inp.append(Part.from_bytes(data=item, mime_type=mime_type))
-            elif isinstance(item, (Part, Content)): # Already in Google format - pass through
-                converted_inp.append(item)
-            else: # Fallback: convert to string
-                converted_inp.append(str(item))
+                converted_inp.append(
+                    Content(parts=[Part.from_bytes(data=item, mime_type=mime_type)])
+                )
+            else:  # Fallback: convert to string
+                converted_inp.append(Content(parts=[Part.from_text(text=str(item))]))
 
         inp = converted_inp
 
@@ -89,7 +95,7 @@ class GeminiEmbeddingEngine(Engine, GoogleMixin):
         if output and isinstance(output[0], (list, np.ndarray)):
             self.embedding_dim = len(output[0])
 
-        #NOTE: Confirmed empirically: gemini-embedding-001 returns ||v||=0.585 at dim=768
+        # NOTE: Confirmed empirically: gemini-embedding-001 returns ||v||=0.585 at dim=768
         # (requires client-side L2 normalization); gemini-embedding-2 returns ||v||=1.0 at
         # dim=768 (auto-normalized server-side). Re-normalizing a unit vector is idempotent
         # (v / ||v|| = v when ||v|| = 1), so this is safe for both models.

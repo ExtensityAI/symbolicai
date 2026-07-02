@@ -3,17 +3,16 @@ import tempfile
 import time
 from pathlib import Path
 
-import requests
+import httpx
 
-from ....symbol import Result
-from ....utils import UserMessage
-from ...base import Engine
-from ...settings import SYMAI_CONFIG
+from symai.backend.base import Engine
+from symai.backend.settings import SYMAI_CONFIG
+from symai.symbol import Result
+from symai.utils import silence_noisy_loggers
 
-logging.getLogger("requests").setLevel(logging.ERROR)
-logging.getLogger("urllib").setLevel(logging.ERROR)
-logging.getLogger("httpx").setLevel(logging.ERROR)
-logging.getLogger("httpcore").setLevel(logging.ERROR)
+silence_noisy_loggers()
+
+logger = logging.getLogger(__name__)
 
 
 class FluxResult(Result):
@@ -23,7 +22,7 @@ class FluxResult(Result):
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_file:
             path = tmp_file.name
         url = value.get("result").get("sample")
-        request = requests.get(url, allow_redirects=True)
+        request = httpx.get(url, follow_redirects=True, timeout=None)
         request.raise_for_status()
         with Path(path).open("wb") as f:
             f.write(request.content)
@@ -83,26 +82,30 @@ class DrawingEngine(Engine):
 
         if kwargs.get("operation") == "create":
             try:
-                response = requests.post(
-                    f"https://api.us1.bfl.ai/v1/{self.model}", headers=headers, json=payload
+                response = httpx.post(
+                    f"https://api.us1.bfl.ai/v1/{self.model}",
+                    headers=headers,
+                    json=payload,
+                    timeout=None,
+                    follow_redirects=True,
                 )
                 # fail early on HTTP errors
                 response.raise_for_status()
                 data = response.json()
                 request_id = data.get("id")
                 if not request_id:
-                    UserMessage(
-                        f"Failed to get request ID! Response payload: {data}",
-                        raise_with=Exception,
-                    )
+                    msg = f"Failed to get request ID! Response payload: {data}"
+                    raise Exception(msg)
 
                 while True:
                     time.sleep(5)
 
-                    result = requests.get(
+                    result = httpx.get(
                         "https://api.us1.bfl.ai/v1/get_result",
                         headers=headers,
                         params={"id": request_id},
+                        timeout=None,
+                        follow_redirects=True,
                     )
 
                     result.raise_for_status()
@@ -119,8 +122,8 @@ class DrawingEngine(Engine):
 
             metadata = {}
             return [rsp], metadata
-        UserMessage(f"Unknown operation: {kwargs['operation']}", raise_with=Exception)
-        return [], {}
+        msg = f"Unknown operation: {kwargs['operation']}"
+        raise Exception(msg)
 
     def prepare(self, argument):
         argument.prop.prepared_input = str(argument.prop.processed_input)

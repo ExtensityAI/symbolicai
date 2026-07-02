@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 import importlib
 import inspect
+import logging
 import pkgutil
 import sys
 import traceback
@@ -10,34 +11,30 @@ import warnings
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from loguru import logger
 from pydantic import BaseModel
 
-from .backend import engines
-from .backend.base import ENGINE_UNREGISTERED, Engine
-from .context import CURRENT_ENGINE_VAR
-from .prompts import (
+from symai.backend import engines
+from symai.backend.base import ENGINE_UNREGISTERED, Engine
+from symai.context import CURRENT_ENGINE_VAR
+from symai.prompts import (
     ProbabilisticBooleanModeMedium,
     ProbabilisticBooleanModeStrict,
     ProbabilisticBooleanModeTolerant,
 )
-from .utils import UserMessage
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from types import ModuleType
 
-    from .core import Argument
-    from .post_processors import PostProcessor
-    from .pre_processors import PreProcessor
+    from symai.core import Argument
+    from symai.post_processors import PostProcessor
+    from symai.pre_processors import PreProcessor
 else:
     Callable = Any
     ModuleType = type(importlib)
     PostProcessor = PreProcessor = Any
 
-
-class ConstraintViolationException(Exception):
-    pass
+logger = logging.getLogger(__name__)
 
 
 class ProbabilisticBooleanMode(Enum):
@@ -61,15 +58,15 @@ def _probabilistic_bool(rsp: str, mode=ProbabilisticBooleanMode.TOLERANT) -> boo
     if mode == ProbabilisticBooleanMode.TOLERANT:
         # allow for probabilistic boolean / fault tolerance
         return val in ProbabilisticBooleanModeTolerant
-    UserMessage(f"Invalid mode {mode} for probabilistic boolean!", raise_with=ValueError)
-    return False
+    msg = f"Invalid mode {mode} for probabilistic boolean!"
+    raise ValueError(msg)
 
 
 def _cast_collection_response(rsp: Any, return_constraint: type) -> Any:
     try:
         res = ast.literal_eval(rsp)
     except Exception:
-        logger.warning(f"Failed to cast return type to {return_constraint} for {rsp!s}")
+        logger.warning("Failed to cast return type to %s for %s", return_constraint, rsp)
         warnings.warn(f"Failed to cast return type to {return_constraint}", stacklevel=2)
         res = rsp
     assert res is not None, (
@@ -89,7 +86,8 @@ def _cast_with_fallback(rsp: Any, return_constraint: type) -> Any:
         return return_constraint(rsp)
     except (ValueError, TypeError):
         if return_constraint is int:
-            UserMessage(f"Cannot convert {rsp} to int", raise_with=ConstraintViolationException)
+            msg = f"Cannot convert {rsp} to int"
+            raise ValueError(msg) from None
         warnings.warn(f"Failed to cast {rsp} to {return_constraint}", stacklevel=2)
         return rsp
 
@@ -131,12 +129,6 @@ def _apply_postprocessors(
             rsp = pp(rsp, argument)
     rsp = _cast_return_type(rsp, return_constraint, mode)
 
-    for constraint in argument.prop.constraints:
-        if not constraint(rsp):
-            UserMessage(
-                f"Constraint not satisfied for value {rsp!r} with constraint {constraint}",
-                raise_with=ConstraintViolationException,
-            )
     return rsp, metadata
 
 
@@ -235,68 +227,6 @@ def _execute_query_fallback(func, instance, argument, error=None, stack_trace=No
     raise error from None
 
 
-def _process_query_single(
-    engine,
-    instance,
-    func: Callable,
-    constraints: list[Callable] | None = None,
-    default: object | None = None,
-    limit: int = 1,
-    trials: int = 1,
-    pre_processors: list[PreProcessor] | None = None,
-    post_processors: list[PostProcessor] | None = None,
-    argument=None,
-):
-    if constraints is None:
-        constraints = []
-    if pre_processors and not isinstance(pre_processors, list):
-        pre_processors = [pre_processors]
-    if post_processors and not isinstance(post_processors, list):
-        post_processors = [post_processors]
-
-    argument = _prepare_argument(
-        argument,
-        engine,
-        instance,
-        func,
-        constraints,
-        default,
-        limit,
-        trials,
-        pre_processors,
-        post_processors,
-    )
-
-    preprocessed_input = _apply_preprocessors(argument, instance, pre_processors)
-    argument.prop.processed_input = preprocessed_input
-    engine.prepare(argument)
-
-    result = None
-    metadata = None
-    for _ in range(trials):
-        try:
-            outputs = engine.executor_callback(argument)
-            result, metadata = _apply_postprocessors(
-                outputs, argument.prop.return_constraint, post_processors, argument
-            )
-            break
-        except Exception as e:
-            stack_trace = traceback.format_exc()
-            logger.error(f"Failed to execute query: {e!s}")
-            logger.error(f"Stack trace: {stack_trace}")
-            if _ == trials - 1:
-                result = _execute_query_fallback(
-                    func, instance, argument, error=e, stack_trace=stack_trace
-                )
-                if result is None:
-                    raise e
-
-    limited_result = _limit_number_results(result, argument, argument.prop.return_constraint)
-    if argument.prop.return_metadata:
-        return limited_result, metadata
-    return limited_result
-
-
 def _normalize_processors(
     pre_processors: list[PreProcessor] | PreProcessor | None,
     post_processors: list[PostProcessor] | PostProcessor | None,
@@ -330,8 +260,8 @@ def _run_query_with_retries(
             break
         except Exception as error:
             stack_trace = traceback.format_exc()
-            logger.error(f"Failed to execute query: {error!s}")
-            logger.error(f"Stack trace: {stack_trace}")
+            logger.error("Failed to execute query: %s", error)
+            logger.error("Stack trace: %s", stack_trace)
             if try_cnt < trials:
                 continue
             rsp = _execute_query_fallback(
@@ -416,42 +346,12 @@ class EngineRepository:
         self = EngineRepository()
         # Check if the engine is already registered
         if id in self._engines and not allow_engine_override:
-            UserMessage(
-                f"Engine {id} is already registered. Set allow_engine_override to True to override.",
-                raise_with=ValueError,
+            msg = (
+                f"Engine {id} is already registered. Set allow_engine_override to True to override."
             )
+            raise ValueError(msg)
 
         self._engines[id] = engine_instance
-
-    @staticmethod
-    def register_from_plugin(
-        id: str,
-        plugin: str,
-        selected_engine: str | None = None,
-        allow_engine_override: bool = False,
-        *args,
-        **kwargs,
-    ) -> None:
-        # Lazy import keeps functional -> imports -> symbol -> core -> functional cycle broken.
-        from .imports import Import  # noqa
-
-        types = Import.load_module_class(plugin)
-        # filter out engine class type
-        engines = [t for t in types if issubclass(t, Engine) and t is not Engine]
-        if len(engines) > 1 and selected_engine is None:
-            UserMessage(
-                f"Multiple engines found in plugin {plugin}. Please specify the engine to use.",
-                raise_with=ValueError,
-            )
-        if len(engines) > 1 and selected_engine is not None:
-            engine = [e for e in engines if selected_engine in str(e)]
-            if len(engine) <= 0:
-                UserMessage(
-                    f"No engine named {selected_engine} found in plugin {plugin}.",
-                    raise_with=ValueError,
-                )
-        engine = engines[0](*args, **kwargs)
-        EngineRepository.register(id, engine, allow_engine_override=allow_engine_override)
 
     @staticmethod
     def register_from_package(
@@ -460,7 +360,13 @@ class EngineRepository:
         self = EngineRepository()
         # Iterate over all modules in the given package and import them
         for _, module_name, _ in pkgutil.iter_modules(package.__path__, package.__name__ + "."):
-            module = importlib.import_module(module_name)
+            try:
+                module = importlib.import_module(module_name)
+            except ImportError as e:
+                logger.debug(
+                    "Skipping engine module %s (missing optional dependency): %s", module_name, e
+                )
+                continue
 
             # Check all classes defined in the module
             for attribute_name in dir(module):
@@ -479,10 +385,8 @@ class EngineRepository:
                         # Assume the class has an 'init' static method to initialize it
                         engine_id_func_ = getattr(instance, "id", None)
                         if engine_id_func_ is None:
-                            UserMessage(
-                                f"Engine {instance!s} does not have an id. Please add a method id() to the class.",
-                                raise_with=ValueError,
-                            )
+                            msg = f"Engine {instance!s} does not have an id. Please add a method id() to the class."
+                            raise ValueError(msg)
                         # call engine_() to get the id of the engine
                         id_ = engine_id_func_()
                         # only registered configured engine
@@ -492,7 +396,7 @@ class EngineRepository:
                                 id_, instance, allow_engine_override=allow_engine_override
                             )
                     except Exception as e:
-                        logger.error(f"Failed to register engine {attribute!s}: {e!s}")
+                        logger.error("Failed to register engine %s: %s", attribute, e)
 
     @staticmethod
     def get(engine_name: str, *_args, **_kwargs):
@@ -507,14 +411,13 @@ class EngineRepository:
             subpackage_name = engine_name.replace("-", "_")
             subpackage = importlib.import_module(f"{engines.__package__}.{subpackage_name}", None)
             if subpackage is None:
-                UserMessage(
-                    f"The symbolicai library does not contain the engine named {engine_name}.",
-                    raise_with=ValueError,
-                )
+                msg = f"The symbolicai library does not contain the engine named {engine_name}."
+                raise ValueError(msg)
             self.register_from_package(subpackage)
         engine = self._engines.get(engine_name, None)
         if engine is None:
-            UserMessage(f"No engine named {engine_name} is registered.", raise_with=ValueError)
+            msg = f"No engine named {engine_name} is registered."
+            raise ValueError(msg)
         return engine
 
     @staticmethod
@@ -536,20 +439,17 @@ class EngineRepository:
             if engine:
                 # Call the command function for the engine with provided arguments
                 return engine.command(*args, **kwargs)
-        UserMessage(f"No engine named <{engine_name}> is registered.", raise_with=ValueError)
-        return None
+        msg = f"No engine named <{engine_name}> is registered."
+        raise ValueError(msg)
 
     @staticmethod
     def query(engine: str, *args, **kwargs) -> tuple:
         self = EngineRepository()
         engine = self.get(engine)
         if engine:
-            engine_allows_batching = getattr(engine, "allows_batching", False)
-            if engine_allows_batching:
-                return _process_query_single(engine, *args, **kwargs)
             return _process_query(engine, *args, **kwargs)
-        UserMessage(f"No engine named {engine} is registered.", raise_with=ValueError)
-        return None
+        msg = f"No engine named {engine} is registered."
+        raise ValueError(msg)
 
     @staticmethod
     def bind_property(engine: str, property: str, *_args, **_kwargs):
@@ -558,8 +458,8 @@ class EngineRepository:
         engine = self.get(engine)
         if engine:
             return getattr(engine, property, None)
-        UserMessage(f"No engine named {engine} is registered.", raise_with=ValueError)
-        return None
+        msg = f"No engine named {engine} is registered."
+        raise ValueError(msg)
 
     def get_dynamic_engine_instance(self):
         # 1) Primary: use ContextVar (fast, async-safe)
@@ -572,7 +472,7 @@ class EngineRepository:
 
         # 2) Fallback: walk ONLY current thread frames (legacy behavior)
         # Keeping DynamicEngine import lazy prevents functional importing components before it finishes loading.
-        from .components import DynamicEngine  # noqa
+        from symai.components import DynamicEngine  # noqa
 
         try:
             frame = sys._getframe()
@@ -586,9 +486,8 @@ class EngineRepository:
                     else dict(frame.f_locals)
                 )
             except Exception:
-                UserMessage(
-                    "Unexpected failure copying frame locals while resolving DynamicEngine.",
-                    raise_with=None,
+                logger.warning(
+                    "Unexpected failure copying frame locals while resolving DynamicEngine."
                 )
                 locals_copy = {}
             for value in locals_copy.values():

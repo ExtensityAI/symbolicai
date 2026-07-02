@@ -28,7 +28,7 @@ The engine has three backends:
   plain text, structured data, and images; markitdown for rich formats (PDF,
   DOCX, etc.); tries both for unknown extensions
 - **`standard`** -- reads plain text and structured data via native Python I/O,
-  and images via cv2. Raises an error for rich formats
+  and images via Pillow. Raises an error for rich formats
 - **`markitdown`** -- converts any supported format to Markdown via markitdown
 
 With the default `auto` backend, everything just works:
@@ -78,7 +78,7 @@ print(rows.value[0]["col1"])
 
 ### Images
 
-The standard backend reads images as RGB numpy arrays via cv2:
+The standard backend reads images as RGB numpy arrays via Pillow:
 
 ```python
 # Standard backend → RGB numpy array

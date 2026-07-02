@@ -39,7 +39,7 @@ target-version = "py310"
 # Rules URL: https://docs.astral.sh/ruff/rules
 select = [
   "F","E4","E7","E9",
-  "I","UP","B","SIM","C4","A","ARG","ISC","RET","RSE",
+  "I","TID252","UP","B","SIM","C4","A","ARG","ISC","RET","RSE",
   "G","LOG","TC","PTH","EM","C90",
   "PLE","PLC","PLW",
   "RUF","T10","T20"
@@ -47,7 +47,6 @@ select = [
 ignore = [
   "B028", # no explicit stacklevel; enable if you rely on warnings for users
   "PLW0603", # global statement discouraged; often noisy in legacy code
-  "G004", # logging-f-string
   "A002", # argument-shadowing-builtin
   "C901", # better to handle this manually case by case
 ]
@@ -58,6 +57,18 @@ unfixable = []
 
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[lint.per-file-ignores]
+# Intentional user-facing stdout output (config inspector, contract perf report,
+# Conversation auto_print, solver CLI result, engine time_clock/verbose toggles)
+"symai/__init__.py" = ["T201"]
+"symai/strategy.py" = ["T201"]
+"symai/backend/base.py" = ["T201"]
+"symai/extended/conversation.py" = ["T201"]
+"symai/extended/solver.py" = ["T201"]
 
 [format]
 quote-style = "double"

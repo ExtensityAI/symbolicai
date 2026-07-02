@@ -1,6 +1,6 @@
-from ... import core
-from ...backend.engines.scrape.engine_requests import RequestsResult
-from ...symbol import Expression
+from symai import core
+from symai.backend.engines.scrape.engine_requests import RequestsResult
+from symai.symbol import Expression
 
 
 class naive_scrape(Expression):

@@ -114,7 +114,7 @@ from symai import Symbol
 
 thinking = {"budget_tokens": 4092}
 
-# claude-sonnet-4-0
+# claude-sonnet-4-6
 res, metadata = Symbol("Topic: Disneyland") \
     .query(
       "Write a dystopic take on the topic.",
@@ -126,9 +126,14 @@ print(res)
 print(metadata["thinking"])
 ```
 
-### Claude Adaptive Thinking (Opus 4.6, Runtime)
+### Claude Adaptive Thinking (Runtime)
 
-Anthropic adaptive thinking is available at runtime for `claude-opus-4-6`:
+Anthropic adaptive thinking is available at runtime for:
+
+- `claude-opus-4-8`
+- `claude-opus-4-7`
+- `claude-opus-4-6`
+- `claude-sonnet-4-6`
 
 ```python
 from symai import Symbol
@@ -143,9 +148,10 @@ print(res)
 print(metadata["thinking"])
 ```
 
-If `thinking={"type":"adaptive"}` is used on a non-Opus model alias, SymbolicAI warns via
-`UserMessage` and falls back to manual thinking (`{"type":"enabled","budget_tokens":...}`).
-This is runtime behavior and not a `symai.config.json` key.
+If `thinking={"type":"adaptive"}` is used on an unsupported model alias, SymbolicAI logs a
+warning through the `symai` logger and falls back to manual thinking
+(`{"type":"enabled","budget_tokens":...}`). This is runtime behavior and not a
+`symai.config.json` key.
 
 ### Claude 1M Context (Reasoning Models, Runtime Opt-In)
 
@@ -156,7 +162,10 @@ This is runtime-only and is not configured via `symai.config.json`.
 from symai import Symbol
 
 # Supported aliases in this mode:
+# - claude-opus-4-8
+# - claude-opus-4-7
 # - claude-opus-4-6
+# - claude-sonnet-4-6
 # - claude-sonnet-4-5
 res = Symbol("Analyze this very long corpus...").query(
     "Extract a structured timeline of key events.",
@@ -166,8 +175,8 @@ res = Symbol("Analyze this very long corpus...").query(
 print(res)
 ```
 
-If `long_context_1m=True` is used with an unsupported model alias, SymbolicAI warns via `UserMessage`
-and falls back to the standard 200K context behavior.
+If `long_context_1m=True` is used with an unsupported model alias, SymbolicAI logs a warning
+through the `symai` logger and falls back to the standard 200K context behavior.
 
 ### Gemini (Google)
 
@@ -471,7 +480,7 @@ Vision tokens (e.g. `<<vision:path/to/cat.jpg:>>`) can be passed in prompts on s
 from pathlib import Path
 from symai import Symbol
 
-file = Path("assets/images/cat.jpg")
+file = Path("artifacts/images/cat.jpg")
 res = Symbol(f"<<vision:{file}:>>").query("What is in the image?")
 assert "cat" in res.value.lower()
 ```

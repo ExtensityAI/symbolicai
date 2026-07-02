@@ -1,29 +1,30 @@
 import json
 import logging
 
-import requests
+import httpx
 
-from ....symbol import Result
-from ....utils import UserMessage
-from ...base import Engine
-from ...settings import SYMAI_CONFIG
+from symai.backend.base import Engine
+from symai.backend.settings import SYMAI_CONFIG
+from symai.symbol import Result
+from symai.utils import silence_noisy_loggers
 
-logging.getLogger("requests").setLevel(logging.ERROR)
-logging.getLogger("urllib").setLevel(logging.ERROR)
-logging.getLogger("httpx").setLevel(logging.ERROR)
-logging.getLogger("httpcore").setLevel(logging.ERROR)
+silence_noisy_loggers()
+
+logger = logging.getLogger(__name__)
 
 
 class PerplexitySearchResult(Result):
     def __init__(self, value, **kwargs) -> None:
         super().__init__(value, **kwargs)
         if value.get("error"):
-            UserMessage(value["error"], raise_with=ValueError)
+            msg = value["error"]
+            raise ValueError(msg)
         try:
             self._value = value["choices"][0]["message"]["content"]
         except Exception as e:
             self._value = None
-            UserMessage(f"Failed to parse response: {e}", raise_with=ValueError)
+            msg = f"Failed to parse response: {e}"
+            raise ValueError(msg) from e
 
     def __str__(self) -> str:
         try:
@@ -87,12 +88,17 @@ class PerplexityEngine(Engine):
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
         try:
-            res = requests.post(
-                "https://api.perplexity.ai/chat/completions", json=payload, headers=headers
+            res = httpx.post(
+                "https://api.perplexity.ai/chat/completions",
+                json=payload,
+                headers=headers,
+                timeout=None,
+                follow_redirects=True,
             )
             res = PerplexitySearchResult(res.json())
         except Exception as e:
-            UserMessage(f"Failed to make request: {e}", raise_with=ValueError)
+            msg = f"Failed to make request: {e}"
+            raise ValueError(msg) from e
 
         metadata = {"raw_output": res.raw}
         output = [res]

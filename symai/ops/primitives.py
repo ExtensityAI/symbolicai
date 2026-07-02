@@ -1,5 +1,6 @@
 import ast
 import json
+import logging
 import numbers
 import pickle
 import uuid
@@ -8,15 +9,16 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, Union
 
 import numpy as np
-import torch
 
-from .. import core, core_ext
-from ..prompts import Prompt
-from ..utils import UserMessage
-from .measures import calculate_frechet_distance, calculate_mmd
+from symai import core
+from symai.functional import EngineRepository
+from symai.prompts import Prompt
+from symai.utils import Extra, missing_dependency
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from ..symbol import Expression, Symbol
+    from symai.symbol import Expression, Symbol
 
 
 class Primitive:
@@ -38,12 +40,6 @@ class Primitive:
             self.__disable_none_shortcut__ or Primitive.__disable_none_shortcut__
         )
 
-    @staticmethod
-    def _is_iterable(value):
-        return isinstance(
-            value, (list, tuple, set, dict, bytes, bytearray, range, torch.Tensor, np.ndarray)
-        )
-
 
 class OperatorPrimitives(Primitive):
     __hash__ = None
@@ -53,20 +49,16 @@ class OperatorPrimitives(Primitive):
             other = self._to_type(other)
         # None shortcut
         if not self.__disable_none_shortcut__ and (self.value is None or other.value is None):
-            UserMessage(
-                f"unsupported {self._symbol_type.__class__} value operand type(s) for {op}: '{type(self.value)}' and '{type(other.value)}'",
-                raise_with=TypeError,
-            )
+            msg = f"unsupported {self._symbol_type.__class__} value operand type(s) for {op}: '{type(self.value)}' and '{type(other.value)}'"
+            raise TypeError(msg)
         # try type specific function
         try:
             # try type specific function
             value = func(self, other)
             if value is NotImplemented:
                 operation = "" if op is None else op
-                UserMessage(
-                    f"unsupported {self._symbol_type.__class__} value operand type(s) for {operation}: '{type(self.value)}' and '{type(other.value)}'",
-                    raise_with=TypeError,
-                )
+                msg = f"unsupported {self._symbol_type.__class__} value operand type(s) for {operation}: '{type(self.value)}' and '{type(other.value)}'"
+                raise TypeError(msg)
             return value
         except Exception as ex:
             self._metadata._error = ex
@@ -78,10 +70,8 @@ class OperatorPrimitives(Primitive):
         This function raises an error if the neuro-symbolic engine is disabled.
         """
         if self.__disable_nesy_engine__:
-            UserMessage(
-                f"unsupported {self.__class__} value operand type(s) for {func.__name__}: '{type(self.value)}'",
-                raise_with=TypeError,
-            )
+            msg = f"unsupported {self.__class__} value operand type(s) for {func.__name__}: '{type(self.value)}'"
+            raise TypeError(msg)
 
     def __bool__(self) -> bool:
         """
@@ -920,11 +910,8 @@ class OperatorPrimitives(Primitive):
         ):
             other = self._to_type(other)
             return self._to_type(f"{self.value}{other.value}")
-        UserMessage(
-            f"This method is only supported for string concatenation! Got {type(self.value)} and {type(other)} instead.",
-            raise_with=TypeError,
-        )
-        return None
+        msg = f"This method is only supported for string concatenation! Got {type(self.value)} and {type(other)} instead."
+        raise TypeError(msg)
 
     def __rmatmul__(self, other: Any) -> "Symbol":
         """
@@ -997,11 +984,8 @@ class OperatorPrimitives(Primitive):
         if result is not None:
             return self._to_type(result)
 
-        UserMessage(
-            "Division operation not supported semantically! Might change in the future.",
-            raise_with=NotImplementedError,
-        )
-        return None
+        msg = "Division operation not supported semantically! Might change in the future."
+        raise NotImplementedError(msg)
 
     def __itruediv__(self, other: Any) -> "Symbol":
         """
@@ -1021,11 +1005,8 @@ class OperatorPrimitives(Primitive):
             self._value = result
             return self
 
-        UserMessage(
-            "Division operation not supported semantically! Might change in the future.",
-            raise_with=NotImplementedError,
-        )
-        return None
+        msg = "Division operation not supported semantically! Might change in the future."
+        raise NotImplementedError(msg)
 
     def __floordiv__(self, other: Any) -> "Symbol":
         """
@@ -1044,11 +1025,8 @@ class OperatorPrimitives(Primitive):
         if result is not None:
             return self._to_type(result)
 
-        UserMessage(
-            "Floor division operation not supported semantically! Might change in the future.",
-            raise_with=NotImplementedError,
-        )
-        return None
+        msg = "Floor division operation not supported semantically! Might change in the future."
+        raise NotImplementedError(msg)
 
     def __rfloordiv__(self, other: Any) -> "Symbol":
         """
@@ -1067,11 +1045,8 @@ class OperatorPrimitives(Primitive):
         if result is not None:
             return self._to_type(result)
 
-        UserMessage(
-            "Floor division operation not supported semantically! Might change in the future.",
-            raise_with=NotImplementedError,
-        )
-        return None
+        msg = "Floor division operation not supported semantically! Might change in the future."
+        raise NotImplementedError(msg)
 
     def __ifloordiv__(self, other: Any) -> "Symbol":
         """
@@ -1091,11 +1066,8 @@ class OperatorPrimitives(Primitive):
             self._value = result
             return self
 
-        UserMessage(
-            "Floor division operation not supported semantically! Might change in the future.",
-            raise_with=NotImplementedError,
-        )
-        return None
+        msg = "Floor division operation not supported semantically! Might change in the future."
+        raise NotImplementedError(msg)
 
     def __pow__(self, other: Any) -> "Symbol":
         """
@@ -1114,11 +1086,8 @@ class OperatorPrimitives(Primitive):
         if result is not None:
             return self._to_type(result)
 
-        UserMessage(
-            "Power operation not supported semantically! Might change in the future.",
-            raise_with=NotImplementedError,
-        )
-        return None
+        msg = "Power operation not supported semantically! Might change in the future."
+        raise NotImplementedError(msg)
 
     def __rpow__(self, other: Any) -> "Symbol":
         """
@@ -1137,11 +1106,8 @@ class OperatorPrimitives(Primitive):
         if result is not None:
             return self._to_type(result)
 
-        UserMessage(
-            "Power operation not supported semantically! Might change in the future.",
-            raise_with=NotImplementedError,
-        )
-        return None
+        msg = "Power operation not supported semantically! Might change in the future."
+        raise NotImplementedError(msg)
 
     def __ipow__(self, other: Any) -> "Symbol":
         """
@@ -1161,11 +1127,8 @@ class OperatorPrimitives(Primitive):
             self._value = result
             return self
 
-        UserMessage(
-            "Power operation not supported semantically! Might change in the future.",
-            raise_with=NotImplementedError,
-        )
-        return None
+        msg = "Power operation not supported semantically! Might change in the future."
+        raise NotImplementedError(msg)
 
     def __mod__(self, other: Any) -> "Symbol":
         """
@@ -1184,11 +1147,8 @@ class OperatorPrimitives(Primitive):
         if result is not None:
             return self._to_type(result)
 
-        UserMessage(
-            "Modulo operation not supported semantically! Might change in the future.",
-            raise_with=NotImplementedError,
-        )
-        return None
+        msg = "Modulo operation not supported semantically! Might change in the future."
+        raise NotImplementedError(msg)
 
     def __rmod__(self, other: Any) -> "Symbol":
         """
@@ -1208,7 +1168,6 @@ class OperatorPrimitives(Primitive):
             return self._to_type(result)
 
         msg = "Modulo operation not supported! Might change in the future."
-        UserMessage(msg)
         raise NotImplementedError(msg) from self._metadata._error
 
     def __imod__(self, other: Any) -> "Symbol":
@@ -1229,11 +1188,8 @@ class OperatorPrimitives(Primitive):
             self._value = result
             return self
 
-        UserMessage(
-            "Modulo operation not supported semantically! Might change in the future.",
-            raise_with=NotImplementedError,
-        )
-        return None
+        msg = "Modulo operation not supported semantically! Might change in the future."
+        raise NotImplementedError(msg)
 
     def __mul__(self, other: Any) -> "Symbol":
         """
@@ -1252,11 +1208,8 @@ class OperatorPrimitives(Primitive):
         if result is not None:
             return self._to_type(result)
 
-        UserMessage(
-            "Multiply operation not supported semantically! Might change in the future.",
-            raise_with=NotImplementedError,
-        )
-        return None
+        msg = "Multiply operation not supported semantically! Might change in the future."
+        raise NotImplementedError(msg)
 
     def __rmul__(self, other: Any) -> "Symbol":
         """
@@ -1275,11 +1228,8 @@ class OperatorPrimitives(Primitive):
         if result is not None:
             return self._to_type(result)
 
-        UserMessage(
-            "Multiply operation not supported semantically! Might change in the future.",
-            raise_with=NotImplementedError,
-        )
-        return None
+        msg = "Multiply operation not supported semantically! Might change in the future."
+        raise NotImplementedError(msg)
 
     def __imul__(self, other: Any) -> "Symbol":
         """
@@ -1299,11 +1249,8 @@ class OperatorPrimitives(Primitive):
             self._value = result
             return self
 
-        UserMessage(
-            "Multiply operation not supported semantically! Might change in the future.",
-            raise_with=NotImplementedError,
-        )
-        return None
+        msg = "Multiply operation not supported semantically! Might change in the future."
+        raise NotImplementedError(msg)
 
 
 class CastingPrimitives(Primitive):
@@ -1428,7 +1375,8 @@ class IterationPrimitives(Primitive):
             try:
                 return self.value[key]
             except Exception:
-                UserMessage(f"Key {key} not found in {self.value}", raise_with=Exception)
+                msg = f"Key {key} not found in {self.value}"
+                raise Exception(msg) from None
 
         @core.getitem()
         def _func(_, index: str):
@@ -1451,20 +1399,19 @@ class IterationPrimitives(Primitive):
             KeyError: If the key or index is not found in the Symbol value.
         """
         # Local import avoids ops.primitives -> post_processors -> symbol -> ops circular load.
-        from ..post_processors import ASTPostProcessor  # noqa
+        from symai.post_processors import ASTPostProcessor  # noqa
 
         if not isinstance(self.value, (str, dict, list)):
-            UserMessage(
-                f"Setting item is not supported for {type(self.value)}. Supported types are str, dict, and list.",
-                raise_with=TypeError,
-            )
+            msg = f"Setting item is not supported for {type(self.value)}. Supported types are str, dict, and list."
+            raise TypeError(msg)
 
         if not self.__semantic__:
             try:
                 self.value[key] = value
                 return
             except Exception:
-                UserMessage(f"Key {key} not found in {self.value}", raise_with=Exception)
+                msg = f"Key {key} not found in {self.value}"
+                raise Exception(msg) from None
 
         @core.setitem()
         def _func(_, index: str, value: str):
@@ -1493,20 +1440,19 @@ class IterationPrimitives(Primitive):
             KeyError: If the key or index is not found in the Symbol value.
         """
         # Local import avoids ops.primitives -> post_processors -> symbol -> ops circular load.
-        from ..post_processors import ASTPostProcessor  # noqa
+        from symai.post_processors import ASTPostProcessor  # noqa
 
         if not isinstance(self.value, (str, dict, list)):
-            UserMessage(
-                f"Setting item is not supported for {type(self.value)}. Supported types are str, dict, and list.",
-                raise_with=TypeError,
-            )
+            msg = f"Setting item is not supported for {type(self.value)}. Supported types are str, dict, and list."
+            raise TypeError(msg)
 
         if not self.__semantic__:
             try:
                 del self.value[key]
                 return
             except Exception:
-                UserMessage(f"Key {key} not found in {self.value}", raise_with=Exception)
+                msg = f"Key {key} not found in {self.value}"
+                raise Exception(msg) from None
 
         @core.delitem()
         def _func(_, index: str):
@@ -1551,16 +1497,15 @@ class ValueHandlingPrimitives(Primitive):
         """
         return self.tokenizer().encode(str(self))
 
-    @core_ext.bind(engine="neurosymbolic", property="tokenizer")
     def tokenizer(self) -> Callable:
         """
         The tokenizer method.
-        This method is bound to the 'neurosymbolic' engine using the @decorator.bind() decorator.
+        Returns the tokenizer bound to the 'neurosymbolic' engine.
 
         Returns:
             Callable: The tokenizer.
         """
-        pass
+        return EngineRepository.bind_property(engine="neurosymbolic", property="tokenizer")
 
     @property
     def type(self):
@@ -1903,7 +1848,8 @@ class DataHandlingPrimitives(Primitive):
         try:
             iter(self.value)
         except TypeError:
-            UserMessage("Map can only be applied to iterable objects", raise_with=AssertionError)
+            msg = "Map can only be applied to iterable objects"
+            raise AssertionError(msg) from None
 
         @core.map(instruction=instruction, **kwargs)
         def _func(_):
@@ -2247,39 +2193,6 @@ class ExecutionControlPrimitives(Primitive):
 
         return self._to_type(_func(self))
 
-    def execute(self, **kwargs) -> "Symbol":
-        """
-        Executes the symbol's expression using the @core.execute decorator.
-
-        Args:
-            **kwargs: Additional keyword arguments to pass to the core.execute decorator.
-
-        Returns:
-            Symbol: The result of the executed expression as a Symbol.
-        """
-
-        @core.execute(**kwargs)
-        def _func(_):
-            pass
-
-        return _func(self)
-
-    def fexecute(self, **kwargs) -> "Symbol":
-        """
-        Executes the symbol's expression using the fallback execute method (ftry).
-
-        Args:
-            **kwargs: Additional keyword arguments to pass to the core.execute decorator.
-
-        Returns:
-            Symbol: The result of the executed expression as a Symbol.
-        """
-
-        def _func(sym: "Symbol", **kargs):
-            return sym.execute(**kargs)
-
-        return self.ftry(_func, **kwargs)
-
     def simulate(self, **kwargs) -> "Symbol":
         """
         Uses the @core.simulate decorator, simulates the value of the symbol. Used for hypothesis testing or code simulation.
@@ -2372,15 +2285,14 @@ class ExecutionControlPrimitives(Primitive):
             ValueError: If the Expression object exceeds the maximum allowed tokens.
         """
 
-        @core_ext.bind(engine="neurosymbolic", property="max_context_tokens")
-        def _max_tokens(_):
-            pass
-
-        max_ctxt_tokens = int(_max_tokens(self) * token_ratio)
+        max_context_tokens = EngineRepository.bind_property(
+            engine="neurosymbolic", property="max_context_tokens"
+        )
+        max_ctxt_tokens = int(max_context_tokens * token_ratio)
         prev = expr(self, preview=True, **kwargs)
         prev = str(prev)
 
-        if len(prev) > _max_tokens(self):
+        if len(prev) > max_context_tokens:
             n_splits = (len(prev) // max_ctxt_tokens) + 1
 
             for i in range(n_splits):
@@ -2391,85 +2303,6 @@ class ExecutionControlPrimitives(Primitive):
 
         else:
             yield expr(self, **kwargs)
-
-    def ftry(self, expr: "Expression", retries: int | None = 1, **kwargs) -> "Symbol":
-        # TODO: find a way to pass on the constraints and behavior from the self.expr to the corrected code
-        """
-        Tries to evaluate a Symbol using a given Expression.
-        This method evaluates a Symbol using a given Expression.
-        If it fails, it retries the evaluation a specified number of times.
-
-        Args:
-            expr (Expression): The Expression object to evaluate the Symbol.
-            retries (Optional[int]): The number of retries if the evaluation fails. Defaults to 1.
-            **kwargs: Additional keyword arguments for the given Expression.
-
-        Returns:
-            Symbol: A Symbol object with the evaluated result.
-
-        Raises:
-            Exception: If the evaluation fails after all retries.
-        """
-        prompt = {"out_msg": ""}
-
-        def output_handler(input_):
-            prompt["out_msg"] = input_
-
-        kwargs["output_handler"] = output_handler
-        retry_cnt: int = 0
-        code = self  # original input
-
-        if hasattr(expr, "prompt"):
-            prompt["prompt_instruction"] = expr.prompt
-
-        sym = self  # used for getting passed from one iteration to the next
-        while True:
-            try:
-                sym = expr(sym, **kwargs)  # run the expression
-                retry_cnt = 0
-
-                return sym
-
-            except Exception as e:
-                retry_cnt += 1
-                if retry_cnt > retries:
-                    raise e
-                # analyze the error
-                payload = (
-                    f"[ORIGINAL_USER_PROMPT]\n{prompt['prompt_instruction']}\n\n"
-                    if "prompt_instruction" in prompt
-                    else ""
-                )
-                payload = (
-                    payload
-                    + f"[ORIGINAL_USER_DATA]\n{code}\n\n[ORIGINAL_GENERATED_OUTPUT]\n{prompt['out_msg']}"
-                )
-                probe = sym.analyze(
-                    query="What is the issue in this expression?", payload=payload, exception=e
-                )
-                # attempt to correct the error
-                payload = (
-                    f"[ORIGINAL_USER_PROMPT]\n{prompt['prompt_instruction']}\n\n"
-                    if "prompt_instruction" in prompt
-                    else ""
-                )
-                payload = payload + f"[ANALYSIS]\n{probe}\n\n"
-                context = f"Try to correct the error of the original user request based on the analysis above: \n [GENERATED_OUTPUT]\n{prompt['out_msg']}\n\n"
-                constraints = expr.constraints if hasattr(expr, "constraints") else []
-
-                if hasattr(expr, "post_processor"):
-                    post_processor = expr.post_processor
-                    sym = code.correct(
-                        context=context,
-                        exception=e,
-                        payload=payload,
-                        constraints=constraints,
-                        post_processor=post_processor,
-                    )
-                else:
-                    sym = code.correct(
-                        context=context, exception=e, payload=payload, constraints=constraints
-                    )
 
 
 class DictHandlingPrimitives(Primitive):
@@ -2584,6 +2417,102 @@ class EmbeddingPrimitives(Primitive):
     New functionalities in this mixin might include different types of embedding methods, similarity and distance measures etc.
     """
 
+    @staticmethod
+    def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
+        """Numpy implementation of the Frechet Distance.
+        The Frechet distance between two multivariate Gaussians X_1 ~ N(mu_1, C_1)
+        and X_2 ~ N(mu_2, C_2) is
+                d^2 = ||mu_1 - mu_2||^2 + Tr(C_1 + C_2 - 2*sqrt(C_1*C_2)).
+
+        Stable version by Dougal J. Sutherland.
+
+        Params:
+        -- mu1   : Numpy array containing the activations of a layer of the
+                inception net (like returned by the function 'get_predictions')
+                for generated samples.
+        -- mu2   : The sample mean over activations, precalculated on a
+                representative data set.
+        -- sigma1: The covariance matrix over activations for generated samples.
+        -- sigma2: The covariance matrix over activations, precalculated on a
+                representative data set.
+
+        Returns:
+        --   : The Frechet Distance.
+        """
+
+        try:
+            from scipy import linalg  # noqa: PLC0415
+        except ImportError:
+            raise missing_dependency(Extra.CLUSTER, "scipy") from None
+
+        mu1 = np.atleast_1d(mu1).squeeze()
+        mu2 = np.atleast_1d(mu2).squeeze()
+
+        sigma1 = np.atleast_2d(sigma1)
+        sigma2 = np.atleast_2d(sigma2)
+
+        assert mu1.shape == mu2.shape, "Training and test mean vectors have different lengths"
+        assert sigma1.shape == sigma2.shape, (
+            "Training and test covariances have different dimensions"
+        )
+
+        diff = mu1 - mu2
+
+        covmean = linalg.sqrtm(sigma1.dot(sigma2))
+        if not np.isfinite(covmean).all():
+            msg = (
+                f"fid calculation produces singular product; adding {eps} "
+                "to diagonal of cov estimates"
+            )
+            logger.warning(msg)
+            offset = np.eye(sigma1.shape[0]) * eps
+            covmean = linalg.sqrtm((sigma1 + offset).dot(sigma2 + offset))
+
+        if np.iscomplexobj(covmean):
+            if not np.allclose(np.diagonal(covmean).imag, 0, atol=1e-3):
+                m = np.max(np.abs(covmean.imag))
+                msg = f"Imaginary component {m}"
+                raise ValueError(msg)
+            covmean = covmean.real
+
+        tr_covmean = np.trace(covmean)
+        return diff.dot(diff) + np.trace(sigma1) + np.trace(sigma2) - 2 * tr_covmean
+
+    @staticmethod
+    def calculate_mmd(x, y, kernel="rbf", kernel_mul=2.0, kernel_num=5, fix_sigma=None, eps=1e-9):
+        def gaussian_kernel(source, target, kernel_mul, kernel_num, fix_sigma):
+            n_samples = source.shape[0] + target.shape[0]
+            total = np.concatenate([source, target], axis=0)
+            total0 = np.expand_dims(total, 0)
+            total1 = np.expand_dims(total, 1)
+            l2_distance = np.sum((total0 - total1) ** 2, axis=2)
+
+            bandwidth = fix_sigma or np.sum(l2_distance) / (n_samples**2 - n_samples + eps)
+            bandwidth /= kernel_mul ** (kernel_num // 2)
+            bandwidth_list = [bandwidth * (kernel_mul**i) for i in range(kernel_num)]
+            kernel_val = [
+                np.exp(-l2_distance / (bandwidth_temp + eps)) for bandwidth_temp in bandwidth_list
+            ]
+            return np.sum(kernel_val, axis=0)
+
+        def linear_mmd2(f_of_x, f_of_y):
+            delta = f_of_x.mean(axis=0) - f_of_y.mean(axis=0)
+            return np.dot(delta, delta.T)
+
+        if kernel == "linear":
+            return linear_mmd2(x, y)
+        if kernel == "rbf":
+            batch_size = x.shape[0]
+            kernels = gaussian_kernel(
+                x, y, kernel_mul=kernel_mul, kernel_num=kernel_num, fix_sigma=fix_sigma
+            )
+            xx = np.mean(kernels[:batch_size, :batch_size])
+            yy = np.mean(kernels[batch_size:, batch_size:])
+            xy = np.mean(kernels[:batch_size, batch_size:])
+            yx = np.mean(kernels[batch_size:, :batch_size])
+            return xx + yy - xy - yx
+        return None
+
     def embed(self, **kwargs) -> "Symbol":
         """
         Generates embeddings for the Symbol's value.
@@ -2643,8 +2572,6 @@ class EmbeddingPrimitives(Primitive):
                 else:
                     # convert to numpy array
                     self._metadata.embedding = np.asarray(self.value)
-            elif isinstance(self.value, torch.Tensor):
-                self._metadata.embedding = self.value.detach().cpu().numpy()
             else:
                 # compute the embedding and store as numpy array
                 self._metadata.embedding = np.asarray(self.embed().value)
@@ -2655,13 +2582,12 @@ class EmbeddingPrimitives(Primitive):
 
     def _ensure_numpy_format(self, x, cast=False):
         # if it is a Symbol, get its value
-        if not isinstance(x, (np.ndarray, torch.Tensor, list)):
+        if not isinstance(x, (np.ndarray, list)):
             if not isinstance(
                 x, self._symbol_type
             ):  # @NOTE: enforce Symbol to avoid circular import
                 if not cast:
                     msg = f"Cannot compute similarity with type {type(x)}"
-                    UserMessage(msg)
                     raise TypeError(msg)
                 x = self._symbol_type(x)
             # evaluate the Symbol as an embedding
@@ -2670,9 +2596,6 @@ class EmbeddingPrimitives(Primitive):
         if isinstance(x, (list, tuple)):
             assert len(x) > 0, "Cannot compute similarity with empty list"
             x = np.asarray(x)
-        # if it is a tensor, convert it to numpy
-        elif isinstance(x, torch.Tensor):
-            x = x.detach().cpu().numpy()
         else:
             x = np.asarray(x)
 
@@ -2692,7 +2615,7 @@ class EmbeddingPrimitives(Primitive):
 
     def _is_numeric_sequence(self, operand: Iterable):
         for item in operand:
-            if isinstance(item, (list, tuple, np.ndarray, torch.Tensor, self._symbol_type)):
+            if isinstance(item, (list, tuple, np.ndarray, self._symbol_type)):
                 return False
             if isinstance(item, (numbers.Real, np.generic)):
                 continue
@@ -2747,7 +2670,6 @@ class EmbeddingPrimitives(Primitive):
                 f"Similarity metric {metric} not implemented. Available metrics: "
                 "'cosine', 'angular-cosine', 'product', 'manhattan', 'euclidean', 'minkowski', 'jaccard'"
             )
-            UserMessage(msg)
             raise NotImplementedError(msg)
         return handler
 
@@ -2770,9 +2692,8 @@ class EmbeddingPrimitives(Primitive):
 
         handler = kernel_handlers.get(kernel)
         if handler is None:
-            msg = "Kernel function {kernel} not implemented. Available functions: 'gaussian'"
-            UserMessage(msg.format(kernel=kernel))
-            raise NotImplementedError(msg.format(kernel=kernel))
+            msg = f"Kernel function {kernel} not implemented. Available functions: 'gaussian'"
+            raise NotImplementedError(msg)
         return handler
 
     def _kernel_gaussian(self, lhs, rhs, _eps, kwargs):
@@ -2839,14 +2760,14 @@ class EmbeddingPrimitives(Primitive):
         assert sigma1 is not None and sigma2 is not None, (
             "Frechet distance requires covariance matrices for both inputs"
         )
-        return calculate_frechet_distance(lhs.T, sigma1, rhs.T, sigma2, eps)
+        return self.calculate_frechet_distance(lhs.T, sigma1, rhs.T, sigma2, eps)
 
     def _kernel_mmd(self, lhs, rhs, eps, _kwargs):
-        return calculate_mmd(lhs.T, rhs.T, eps=eps)
+        return self.calculate_mmd(lhs.T, rhs.T, eps=eps)
 
     def similarity(
         self,
-        other: Union["Symbol", list, np.ndarray, torch.Tensor],
+        other: Union["Symbol", list, np.ndarray],
         metric: Literal[
             "cosine", "angular-cosine", "product", "manhattan", "euclidean", "minkowski", "jaccard"
         ] = "cosine",
@@ -2891,7 +2812,7 @@ class EmbeddingPrimitives(Primitive):
 
     def distance(
         self,
-        other: Union["Symbol", list, np.ndarray, torch.Tensor],
+        other: Union["Symbol", list, np.ndarray],
         kernel: Literal[
             "gaussian",
             "rbf",
@@ -2959,18 +2880,15 @@ class EmbeddingPrimitives(Primitive):
             pass
         else:
             msg = f"Expected id to be a string, got {type(self.value)}"
-            UserMessage(msg)
             raise ValueError(msg)
 
         embeds = self.embed(**kwargs).value
         idx = [str(uuid.uuid4()) for _ in range(len(self.value))]
         query = [{"text": str(self.value[i])} for i in range(len(self.value))]
 
-        # convert embeds to list if it is a tensor or numpy array
+        # convert embeds to list if it is a numpy array
         if isinstance(embeds, np.ndarray):
             embeds = embeds.tolist()
-        elif isinstance(embeds, torch.Tensor):
-            embeds = embeds.cpu().numpy().tolist()
 
         return list(zip(idx, embeds, query, strict=False))
 
@@ -2979,41 +2897,6 @@ class IOHandlingPrimitives(Primitive):
     """
     This mixin contains functionalities related to input/output operations.
     """
-
-    def input(self, message: str = "Please add more information", **kwargs) -> "Symbol":
-        """
-        Request user input and return a Symbol containing the user input.
-
-        Args:
-            message (str, optional): The message displayed to request the user input. Defaults to 'Please add more information'.
-            **kwargs: Additional keyword arguments to be passed to the `@core.userinput` decorator.
-
-        Returns:
-            Symbol: The resulting Symbol after receiving the user input.
-
-        Examples:
-        --------
-        >>> from symai import Symbol
-        >>> s = Symbol().input('Please enter your name')
-        >>> [output: 'John']
-
-        >>> s = Symbol('I was born in')
-        >>> s = s.input('Please enter the year of your birth')
-        >>> [output: 'I was born in 1990'] # if Symbol has a <str> value inputs will be concatenated
-
-        # Works identically for the `Expression` class
-        """
-
-        @core.userinput(**kwargs)
-        def _func(_, message) -> str:
-            pass
-
-        res = _func(self, message)
-        condition = self.value is not None and isinstance(self.value, str)
-
-        if hasattr(self, "sym_return_type"):
-            return self.sym_return_type(self.value if condition else "") | res
-        return self._to_type(self.value if condition else "") | self._to_type(res)
 
     def open(self, path: str | None = None, **kwargs) -> "Symbol":
         """
@@ -3040,7 +2923,6 @@ class IOHandlingPrimitives(Primitive):
         path = path if path is not None else self.value
         if path is None:
             msg = "Path is not provided; either provide a path or set the value of the Symbol to the path"
-            UserMessage(msg)
             raise ValueError(msg)
 
         @core.opening(path=path, **kwargs)
@@ -3092,37 +2974,6 @@ class PersistencePrimitives(Primitive):
     Future functionalities in this mixin might include different ways of serialization and deserialization, or more complex expansion techniques etc.
     """
 
-    def expand(self, *args, **kwargs) -> str:
-        """
-        Expand the current Symbol and create a new sub-component.
-        The function writes a self-contained function (with all imports) to solve a specific user problem task.
-        This method uses the `@core.expand` decorator with a maximum token limit of 2048, and allows additional keyword
-        arguments to be passed to the decorator.
-
-        Args:
-            *args: Additional arguments for the `@core.expand` decorator.
-            **kwargs: Additional keyword arguments for the `@core.expand` decorator.
-
-        Returns:
-            Symbol: The name of the newly created sub-component.
-        """
-
-        @core.expand(**kwargs)
-        def _func(_, *args):
-            pass
-
-        _tmp_llm_func = self._to_type(_func(self, *args))
-        func_name = str(_tmp_llm_func.extract("function name"))
-
-        def _llm_func(*args, **kwargs):
-            res = _tmp_llm_func.fexecute(*args, **kwargs)
-
-            return res["locals"][func_name]()
-
-        setattr(self, func_name, _llm_func)
-
-        return func_name
-
     def save(self, path: str, replace: bool | None = False, serialize: bool | None = True) -> None:
         """
         Save the current Symbol to a file.
@@ -3169,31 +3020,6 @@ class PersistencePrimitives(Primitive):
             return pickle.load(f)
 
 
-class OutputHandlingPrimitives(Primitive):
-    """
-    This mixin include functionalities related to outputting symbols. It can be expanded in the future to include different types of output methods or complex output formatting, etc.
-    """
-
-    def output(self, *args, **kwargs) -> "Symbol":
-        """
-        Output the current Symbol to an output handler.
-        This method uses the `@core.output` decorator and allows additional keyword arguments to be passed to the decorator.
-
-        Args:
-            *args: Additional arguments for the `@core.output` decorator.
-            **kwargs: Additional keyword arguments for the `@core.output` decorator.
-
-        Returns:
-            Symbol: The resulting Symbol after the output operation.
-        """
-
-        @core.output(**kwargs)
-        def _func(_, *_func_args, **_func_kwargs):
-            return self.value
-
-        return self._to_type(_func(self, self.value, *args))
-
-
 # @TODO: add tests
 class FineTuningPrimitives(Primitive):
     """
@@ -3219,9 +3045,9 @@ class FineTuningPrimitives(Primitive):
         return self.sym_return_type(_func(self))
 
     @property
-    def data(self) -> torch.Tensor:
+    def data(self) -> np.ndarray:
         """
-        Get the data as a Pytorch tensor.
+        Get the data as a NumPy array.
 
         Returns:
             Any: The data of the symbol.
@@ -3230,25 +3056,17 @@ class FineTuningPrimitives(Primitive):
         if self._metadata.data is None:
             # compute the data and store as numpy array
             self._metadata.data = self.embedding
-        # if the data is a tensor, return it
-        if isinstance(self._metadata.data, torch.Tensor):
-            # return tensor
-            return self._metadata.data
-        # if the data is a numpy array, convert it to tensor
         if isinstance(self._metadata.data, np.ndarray):
-            # convert to tensor
-            self._metadata.data = torch.from_numpy(self._metadata.data)
             return self._metadata.data
-        msg = f"Expected data to be a tensor or numpy array, got {type(self._metadata.data)}"
-        UserMessage(msg)
+        msg = f"Expected data to be a numpy array, got {type(self._metadata.data)}"
         raise TypeError(msg)
 
     @data.setter
-    def data(self, data: torch.Tensor) -> None:
+    def data(self, data: np.ndarray) -> None:
         """
         Set the data of the symbol.
 
         Args:
-            data (torch.Tensor): The data to set.
+            data (np.ndarray): The data to set.
         """
         self._metadata.data = data

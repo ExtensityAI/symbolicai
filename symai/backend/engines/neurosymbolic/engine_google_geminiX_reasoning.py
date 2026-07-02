@@ -5,22 +5,20 @@ import re
 from copy import deepcopy
 from pathlib import Path
 
-import requests
+import httpx
 from google import genai
 from google.genai import types
 
-from ....components import SelfPrompt
-from ....utils import UserMessage, encode_media_frames
-from ...base import Engine
-from ...mixin.google import GoogleMixin
-from ...settings import SYMAI_CONFIG
+from symai.backend.base import Engine
+from symai.backend.mixin.google import GoogleMixin
+from symai.backend.settings import SYMAI_CONFIG
+from symai.components import SelfPrompt
+from symai.utils import encode_media_frames, silence_noisy_loggers
 
-logging.getLogger("google.genai").setLevel(logging.ERROR)
 logging.getLogger("google_genai").propagate = False
-logging.getLogger("requests").setLevel(logging.ERROR)
-logging.getLogger("urllib").setLevel(logging.ERROR)
-logging.getLogger("httpx").setLevel(logging.ERROR)
-logging.getLogger("httpcore").setLevel(logging.ERROR)
+silence_noisy_loggers("google.genai")
+
+logger = logging.getLogger(__name__)
 
 
 class TokenizerWrapper:
@@ -40,9 +38,7 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
         client_timeout: float | None = None,
         client_max_retries: int | None = None,
     ):
-        super().__init__(
-            client_timeout=client_timeout, client_max_retries=client_max_retries
-        )
+        super().__init__(client_timeout=client_timeout, client_max_retries=client_max_retries)
         self.config = deepcopy(SYMAI_CONFIG)
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
         if api_key is not None and model is not None:
@@ -124,11 +120,13 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
             )
             return count_response.total_tokens
         except Exception as e:
-            UserMessage(f"Gemini count_tokens failed: {e}")
-            UserMessage(f"Error counting tokens for Gemini: {e!s}", raise_with=RuntimeError)
+            logger.exception("Gemini count_tokens failed")
+            msg = f"Error counting tokens for Gemini: {e!s}"
+            raise RuntimeError(msg) from e
 
     def compute_remaining_tokens(self, _prompts: list) -> int:
-        UserMessage("Token counting not implemented for Gemini", raise_with=NotImplementedError)
+        msg = "Token counting not implemented for Gemini"
+        raise NotImplementedError(msg)
 
     def _handle_document_content(self, content: str):
         """Handle document content by uploading to Gemini"""
@@ -140,11 +138,11 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
 
             doc_path = matches[0].strip()
             if doc_path.startswith("http"):
-                UserMessage("URL documents not yet supported for Gemini")
+                logger.warning("URL documents not yet supported for Gemini")
                 return None
             return genai.upload_file(doc_path)
-        except Exception as e:
-            UserMessage(f"Failed to process document: {e}")
+        except Exception:
+            logger.exception("Failed to process document")
             return None
 
     def _handle_image_content(self, content: str) -> list[types.Part]:
@@ -154,10 +152,8 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
             try:
                 image_parts.extend(self._create_parts_from_image_source(img_src))
             except Exception as e:
-                UserMessage(
-                    f"Failed to process image source '{img_src}'. Error: {e!s}",
-                    raise_with=ValueError,
-                )
+                msg = f"Failed to process image source '{img_src}'. Error: {e!s}"
+                raise ValueError(msg) from e
         return image_parts
 
     def _extract_image_sources(self, content: str) -> list[str]:
@@ -181,13 +177,15 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
         return [part]
 
     def _create_parts_from_url(self, img_src: str) -> list[types.Part]:
-        response = requests.get(img_src, timeout=10)
+        response = httpx.get(img_src, timeout=10, follow_redirects=True)
         response.raise_for_status()
         image_bytes = response.content
         mime_type = response.headers.get("Content-Type", "application/octet-stream")
         if not mime_type.startswith("image/"):
-            UserMessage(
-                f"URL content type '{mime_type}' does not appear to be an image for: {img_src}. Attempting to use anyway."
+            logger.warning(
+                "URL content type '%s' does not appear to be an image for: %s. Attempting to use anyway.",
+                mime_type,
+                img_src,
             )
         part = genai.types.Part(inline_data=genai.types.Blob(mime_type=mime_type, data=image_bytes))
         return [part]
@@ -196,20 +194,20 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
         temp_path = img_src.replace("frames:", "")
         parts = temp_path.split(":", 1)
         if len(parts) != 2:
-            UserMessage(f"Invalid 'frames:' format: {img_src}")
+            logger.warning("Invalid 'frames:' format: %s", img_src)
             return []
         max_used_frames_str, actual_path = parts
         try:
             max_used_frames = int(max_used_frames_str)
         except ValueError:
-            UserMessage(f"Invalid max_frames number in 'frames:' format: {img_src}")
+            logger.warning("Invalid max_frames number in 'frames:' format: %s", img_src)
             return []
         frame_buffers, ext = encode_media_frames(actual_path)
         mime_type = f"image/{ext.lower()}" if ext else "application/octet-stream"
         if ext and ext.lower() == "jpg":
             mime_type = "image/jpeg"
         if not frame_buffers:
-            UserMessage(f"encode_media_frames returned no frames for: {actual_path}")
+            logger.warning("encode_media_frames returned no frames for: %s", actual_path)
             return []
         step = max(1, len(frame_buffers) // 50)
         indices = list(range(0, len(frame_buffers), step))[:max_used_frames]
@@ -227,7 +225,7 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
     def _create_parts_from_local_path(self, img_src: str) -> list[types.Part]:
         local_file_path = Path(img_src)
         if not local_file_path.is_file():
-            UserMessage(f"Local image file not found: {img_src}")
+            logger.warning("Local image file not found: %s", img_src)
             return []
         image_bytes = local_file_path.read_bytes()
         mime_type, _ = mimetypes.guess_type(local_file_path)
@@ -256,12 +254,12 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
 
             video_path = matches[0].strip()
             if video_path.startswith("http"):
-                UserMessage("URL videos not yet supported for Gemini")
+                logger.warning("URL videos not yet supported for Gemini")
                 return None
             # Upload local video
             return genai.upload_file(video_path)
-        except Exception as e:
-            UserMessage(f"Failed to process video: {e}")
+        except Exception:
+            logger.exception("Failed to process video")
             return None
 
     def _handle_audio_content(self, content: str):
@@ -274,12 +272,12 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
 
             audio_path = matches[0].strip()
             if audio_path.startswith("http"):
-                UserMessage("URL audio not yet supported for Gemini")
+                logger.warning("URL audio not yet supported for Gemini")
                 return None
             # Upload local audio
             return genai.upload_file(audio_path)
-        except Exception as e:
-            UserMessage(f"Failed to process audio: {e}")
+        except Exception:
+            logger.exception("Failed to process audio")
             return None
 
     def _remove_media_patterns(self, text: str) -> str:
@@ -418,18 +416,18 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
     def _handle_generation_error(self, exception: Exception, except_remedy, argument):
         if self.api_key is None or self.api_key == "":
             msg = "Google API key is not set. Please set it in the config file or pass it as an argument to the command method."
-            UserMessage(msg)
+            logger.warning(msg)
             if (
                 self.config["NEUROSYMBOLIC_ENGINE_API_KEY"] is None
                 or self.config["NEUROSYMBOLIC_ENGINE_API_KEY"] == ""
             ):
-                UserMessage(msg, raise_with=ValueError)
+                raise ValueError(msg)
             self.api_key = self.config["NEUROSYMBOLIC_ENGINE_API_KEY"]
             genai.configure(api_key=self.api_key)
         if except_remedy is not None:
             return except_remedy(self, exception, self.client.generate_content, argument)
-        UserMessage(f"Error during generation. Caused by: {exception}", raise_with=ValueError)
-        return None
+        msg = f"Error during generation. Caused by: {exception}"
+        raise ValueError(msg) from None
 
     def _process_function_calls(self, res, metadata):
         hit = False
@@ -439,7 +437,7 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
                 for part in candidate.content.parts:
                     if hasattr(part, "function_call") and part.function_call:
                         if hit:
-                            UserMessage(
+                            logger.warning(
                                 "Multiple function calls detected in the response but only the first one will be processed."
                             )
                             break
@@ -453,10 +451,8 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
 
     def _prepare_raw_input(self, argument):
         if not argument.prop.processed_input:
-            UserMessage(
-                "Need to provide a prompt instruction to the engine if `raw_input` is enabled!",
-                raise_with=ValueError,
-            )
+            msg = "Need to provide a prompt instruction to the engine if `raw_input` is enabled!"
+            raise ValueError(msg)
 
         raw_prompt_data = argument.prop.processed_input
         normalized_prompts = self._normalize_raw_prompt_data(raw_prompt_data)
@@ -474,16 +470,11 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
         if isinstance(raw_prompt_data, list):
             for item in raw_prompt_data:
                 if not isinstance(item, dict):
-                    UserMessage(
-                        f"Invalid item in raw_input list: {item}. Expected dict.",
-                        raise_with=ValueError,
-                    )
+                    msg = f"Invalid item in raw_input list: {item}. Expected dict."
+                    raise ValueError(msg)
             return raw_prompt_data
-        UserMessage(
-            f"Unsupported type for raw_input: {type(raw_prompt_data)}. Expected str, dict, or list of dicts.",
-            raise_with=ValueError,
-        )
-        return []
+        msg = f"Unsupported type for raw_input: {type(raw_prompt_data)}. Expected str, dict, or list of dicts."
+        raise ValueError(msg)
 
     def _separate_system_instruction(self, normalized_prompts):
         system_instruction = None
@@ -492,21 +483,15 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
             role = msg.get("role")
             content = msg.get("content")
             if role is None or content is None:
-                UserMessage(
-                    f"Message in raw_input is missing 'role' or 'content': {msg}",
-                    raise_with=ValueError,
-                )
+                err = f"Message in raw_input is missing 'role' or 'content': {msg}"
+                raise ValueError(err)
             if not isinstance(content, str):
-                UserMessage(
-                    f"Message content for role '{role}' in raw_input must be a string. Found type: {type(content)} for content: {content}",
-                    raise_with=ValueError,
-                )
+                err = f"Message content for role '{role}' in raw_input must be a string. Found type: {type(content)} for content: {content}"
+                raise ValueError(err)
             if role == "system":
                 if system_instruction is not None:
-                    UserMessage(
-                        "Only one system instruction is allowed in raw_input mode!",
-                        raise_with=ValueError,
-                    )
+                    err = "Only one system instruction is allowed in raw_input mode!"
+                    raise ValueError(err)
                 system_instruction = content
             else:
                 non_system_messages.append({"role": role, "content": content})
@@ -591,7 +576,8 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
                 thinking=argument.kwargs.get("thinking", None),
             )
             if res is None:
-                UserMessage("Self-prompting failed!", raise_with=ValueError)
+                msg = "Self-prompting failed!"
+                raise ValueError(msg)
             user_content = res["user"]
             system_content = res["system"]
         return system_content, user_content
@@ -669,8 +655,9 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
             elif isinstance(tool_item, types.FunctionDeclaration):
                 processed_tools.append(types.Tool(function_declarations=[tool_item]))
             else:
-                UserMessage(
-                    f"Ignoring invalid tool format. Expected a callable, google.genai.types.Tool, or google.genai.types.FunctionDeclaration: {tool_item}"
+                logger.warning(
+                    "Ignoring invalid tool format. Expected a callable, google.genai.types.Tool, or google.genai.types.FunctionDeclaration: %s",
+                    tool_item,
                 )
 
         if not processed_tools:

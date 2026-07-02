@@ -1,6 +1,6 @@
-from ... import core
-from ...backend.engines.search.engine_perplexity import PerplexitySearchResult
-from ...symbol import Expression, Symbol
+from symai import core
+from symai.backend.engines.search.engine_perplexity import PerplexitySearchResult
+from symai.symbol import Expression, Symbol
 
 
 class perplexity(Expression):

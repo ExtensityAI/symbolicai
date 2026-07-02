@@ -1,8 +1,3 @@
-from ...utils import UserMessage
-
-SUPPORTED_COMPLETION_MODELS = [
-    "davinci-002",
-]
 SUPPORTED_CHAT_MODELS = [
     "gpt-3.5-turbo",
     "gpt-3.5-turbo-16k",
@@ -39,11 +34,6 @@ SUPPORTED_REASONING_MODELS = [
     "gpt-5.4-nano",
     "gpt-5.5",
     "gpt-5.5-2026-04-23",
-]
-SUPPORTED_EMBEDDING_MODELS = [
-    "text-embedding-ada-002",
-    "text-embedding-3-small",
-    "text-embedding-3-large",
 ]
 SUPPORTED_RESPONSES_MODELS = [
     f"responses:{m}" for m in SUPPORTED_CHAT_MODELS + SUPPORTED_REASONING_MODELS
@@ -128,7 +118,6 @@ class OpenAIMixin:
         ):
             return 1_050_000
         msg = f"Unsupported model: {self.model}"
-        UserMessage(msg)
         raise ValueError(msg)
 
     def api_max_response_tokens(self):
@@ -185,7 +174,6 @@ class OpenAIMixin:
         if self.model == "gpt-5-pro":
             return 272_000
         msg = f"Unsupported model: {self.model}"
-        UserMessage(msg)
         raise ValueError(msg)
 
     def api_embedding_dims(self):
@@ -196,5 +184,4 @@ class OpenAIMixin:
         if self.model == "text-embedding-3-large":
             return 3_072
         msg = f"Unsupported model: {self.model}"
-        UserMessage(msg)
         raise ValueError(msg)

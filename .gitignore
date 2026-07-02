@@ -157,11 +157,10 @@ icon.ico
 icon.icns
 release_**/*
 packages/ExtensityAI/LightRAG-symai
-sympkg
-symsh
 .bash_history
 .conversation_state
 .symai
 .codex
 CLAUDE.md
 /AGENTS.md
+docs/superpowers

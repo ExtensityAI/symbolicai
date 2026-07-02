@@ -1,14 +1,14 @@
 import json
+import logging
+from dataclasses import dataclass
 from enum import Enum
 from functools import lru_cache
 from types import UnionType
 from typing import Any, Literal, Union, get_args, get_origin
 
-from attr import dataclass
 from pydantic import BaseModel, Field, create_model, model_validator
-from pydantic_core import PydanticUndefined
 
-from ..utils import UserMessage
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -45,7 +45,8 @@ class LLMDataModel(BaseModel):
             if cls._is_const_field(field_info):
                 const_value = cls._get_const_value(field_info)
                 if field_name in values and values[field_name] != const_value:
-                    UserMessage(f"{field_name} must be {const_value!r}", raise_with=ValueError)
+                    msg = f"{field_name} must be {const_value!r}"
+                    raise ValueError(msg)
         return values
 
     @staticmethod
@@ -92,8 +93,8 @@ class LLMDataModel(BaseModel):
 
     @staticmethod
     def _has_default_value(field_info) -> bool:
-        """Check if a field has a default value."""
-        return field_info.default != ... and field_info.default != PydanticUndefined
+        """Check if a field has a concrete default value."""
+        return not field_info.is_required() and field_info.default_factory is None
 
     def format_field(
         self, key: str, value: Any, indent: int = 0, visited: set | None = None, depth: int = 0
@@ -733,75 +734,6 @@ class LLMDataModel(BaseModel):
         return LLMDataModel._generate_value_for_type_generic(
             field_type, visited_models, prefer_non_null=False
         )
-
-    @staticmethod
-    def _generate_union_value(field_type: Any, visited_models: set) -> Any:
-        """Generate a value for a Union type."""
-        subtypes = LLMDataModel._get_union_types(field_type, exclude_none=True)
-        if not subtypes:
-            return None
-        return LLMDataModel._generate_value_for_type_generic(
-            subtypes[0], visited_models, prefer_non_null=False
-        )
-
-    @staticmethod
-    def _generate_collection_value(field_type: Any, visited_models: set) -> Any:
-        """Generate a value for a collection type."""
-        origin = get_origin(field_type) or field_type
-
-        if origin is list:
-            return LLMDataModel._generate_list_value(field_type, visited_models)
-        if origin is dict:
-            return LLMDataModel._generate_dict_value(field_type, visited_models)
-        if origin in (set, frozenset):
-            return LLMDataModel._generate_set_value(field_type, visited_models)
-        if origin is tuple:
-            return LLMDataModel._generate_tuple_value(field_type, visited_models)
-
-        return []
-
-    @staticmethod
-    def _generate_list_value(field_type: Any, visited_models: set) -> list:
-        """Generate a value for a list type."""
-        item_type = get_args(field_type)[0] if get_args(field_type) else Any
-
-        if LLMDataModel._is_union_type(item_type):
-            subtypes = LLMDataModel._get_union_types(item_type)
-            return [
-                LLMDataModel._generate_value_for_type_generic(subtype, visited_models, False)
-                for subtype in subtypes[:2]
-            ]
-
-        return [LLMDataModel._generate_value_for_type_generic(item_type, visited_models, False)]
-
-    @staticmethod
-    def _generate_dict_value(field_type: Any, visited_models: set) -> dict:
-        """Generate a value for a dict type."""
-        key_type, value_type = get_args(field_type) if get_args(field_type) else (Any, Any)
-
-        example_key = LLMDataModel._example_key_for_type(key_type, visited_models)
-        return {
-            example_key: LLMDataModel._generate_value_for_type_generic(
-                value_type, visited_models, False
-            )
-        }
-
-    @staticmethod
-    def _generate_set_value(field_type: Any, visited_models: set) -> list:
-        """Generate a value for a set type (returns list for JSON serialization)."""
-        item_type = get_args(field_type)[0] if get_args(field_type) else Any
-        return [LLMDataModel._generate_value_for_type_generic(item_type, visited_models, False)]
-
-    @staticmethod
-    def _generate_tuple_value(field_type: Any, visited_models: set) -> tuple:
-        """Generate a value for a tuple type."""
-        types = get_args(field_type)
-        if types:
-            return tuple(
-                LLMDataModel._generate_value_for_type_generic(t, visited_models, False)
-                for t in types
-            )
-        return ("item1", "item2")
 
     @staticmethod
     def _generate_primitive_value(field_type: Any) -> Any:

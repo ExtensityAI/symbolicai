@@ -1,37 +1,32 @@
+from __future__ import annotations
+
 import asyncio
 import bisect
-import ipaddress
 import itertools
 import logging
 import re
-import socket
 import tempfile
 import uuid
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import urlparse
 
 import numpy as np
-import requests
-import urllib3
-from requests.adapters import HTTPAdapter
 
-from .... import core_ext
-from ....symbol import Result, Symbol
-from ....utils import UserMessage
-from ...base import Engine
-from ...settings import SYMAI_CONFIG, SYMSERVER_CONFIG
-
-MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024
+from symai.backend.base import Engine
+from symai.backend.settings import SYMAI_CONFIG, SYMSERVER_CONFIG
+from symai.symbol import Result, Symbol
+from symai.utils import Extra, missing_dependency
 
 
 def _secure_filename(name: str) -> str:
     name = Path(name or "").name
     name = re.sub(r"[^A-Za-z0-9_.-]+", "_", name).strip("._")
     if not name:
-        UserMessage(f"Invalid filename: {name!r}", raise_with=ValueError)
+        msg = f"Invalid filename: {name!r}"
+        raise ValueError(msg)
     return name
 
 
@@ -60,7 +55,7 @@ except ImportError:
     ScoredPoint = None
 
 try:
-    from ....components import ChonkieChunker, FileReader
+    from symai.components import ChonkieChunker, FileReader
 except ImportError:
     ChonkieChunker = None
     FileReader = None
@@ -72,6 +67,8 @@ except ImportError:
 
 logging.getLogger("qdrant_client").setLevel(logging.ERROR)
 
+logger = logging.getLogger(__name__)
+
 
 def chunks(iterable, batch_size=100):
     """A helper function to break an iterable into chunks of size batch_size."""
@@ -80,46 +77,6 @@ def chunks(iterable, batch_size=100):
     while chunk:
         yield chunk
         chunk = list(itertools.islice(it, batch_size))
-
-
-class PinningHTTPAdapter(HTTPAdapter):
-    """
-    HTTP adapter that pins DNS resolution to a specific validated IP.
-    Prevents DNS rebinding attacks by ensuring the connection uses
-    the same IP that was validated for SSRF protection.
-    """
-
-    def __init__(self, hostname: str, pinned_ip: str, **kwargs):
-        self.hostname = hostname
-        self.pinned_ip = pinned_ip
-        self.assert_hostname = hostname
-        super().__init__(**kwargs)
-
-    def init_poolmanager(self, connections, maxsize, block=False, **pool_kwargs):
-        self.poolmanager = urllib3.PoolManager(
-            num_pools=connections,
-            maxsize=maxsize,
-            block=block,
-            assert_hostname=self.assert_hostname,
-            server_hostname=self.assert_hostname,
-            **pool_kwargs,
-        )
-
-    def send(self, request, stream=False, timeout=None, verify=True, cert=None, proxies=None):
-        # NOTE: Fail closed if the prepared netloc does not literally contain the
-        # validated hostname. Without this, replace() silently no-ops and the
-        # connection target diverges from what was validated (SSRF).
-        parsed = urlparse(request.url)
-        if self.hostname not in parsed.netloc:
-            msg = (
-                f"Pinning failed: validated host {self.hostname!r} not in netloc {parsed.netloc!r}"
-            )
-            raise ValueError(msg)
-        new_netloc = parsed.netloc.replace(self.hostname, self.pinned_ip, 1)
-        request.url = urlunparse(parsed._replace(netloc=new_netloc))
-        return super().send(
-            request, stream=stream, timeout=timeout, verify=verify, cert=cert, proxies=proxies
-        )
 
 
 class QdrantResult(Result):
@@ -224,7 +181,8 @@ class QdrantSearchResult(Result):
     def __init__(self, value: dict[str, Any] | Any, **kwargs) -> None:
         super().__init__(value, **kwargs)
         if isinstance(value, dict) and value.get("error"):
-            UserMessage(value["error"], raise_with=ValueError)
+            msg = value["error"]
+            raise ValueError(msg)
         results = self._coerce_results(value)
         text, citations = self._build_text_and_citations(results)
         self._value = text
@@ -443,10 +401,7 @@ class QdrantIndexEngine(Engine):
         # Check if Qdrant is configured (either via server or direct connection)
         if SYMSERVER_CONFIG.get("online") or self.url:
             if QdrantClient is None:
-                UserMessage(
-                    "Qdrant client is not installed. Please install it with `pip install qdrant-client`.",
-                    raise_with=ImportError,
-                )
+                raise missing_dependency(Extra.QDRANT, "qdrant_client", package="qdrant-client")
             return "index"
         return super().id()  # default to unregistered
 
@@ -461,10 +416,7 @@ class QdrantIndexEngine(Engine):
         """Initialize Qdrant client if not already initialized."""
         if self.client is None:
             if QdrantClient is None:
-                UserMessage(
-                    "Qdrant client is not installed. Please install it with `pip install qdrant-client`.",
-                    raise_with=ImportError,
-                )
+                raise missing_dependency(Extra.QDRANT, "qdrant_client", package="qdrant-client")
 
             client_kwargs = {"url": self.url}
             if self.api_key:
@@ -494,12 +446,6 @@ class QdrantIndexEngine(Engine):
                 vectors_config=VectorParams(size=vector_size, distance=distance),
                 **kwargs,
             )
-
-    def _init_collection(
-        self, collection_name: str, collection_dims: int, collection_metric: Distance
-    ):
-        """Initialize or create Qdrant collection (legacy method, uses _create_collection_sync)."""
-        self._create_collection_sync(collection_name, collection_dims, collection_metric)
 
     def _configure_collection(self, **kwargs):
         collection_name = kwargs.get("index_name", self.index_name)
@@ -548,11 +494,7 @@ class QdrantIndexEngine(Engine):
 
         if tenant_id is not None:
             if models is None:
-                UserMessage(
-                    "Qdrant filter models are not available. "
-                    "Please install `qdrant-client` to use filtering.",
-                    raise_with=ImportError,
-                )
+                raise missing_dependency(Extra.QDRANT, "qdrant_client", package="qdrant-client")
             conditions.append(
                 models.FieldCondition(
                     key="tenant_id",
@@ -575,11 +517,7 @@ class QdrantIndexEngine(Engine):
         # Simple dict → build equality-based must filter
         if isinstance(raw_filter, dict):
             if models is None:
-                UserMessage(
-                    "Qdrant filter models are not available. "
-                    "Please install `qdrant-client` to use filtering.",
-                    raise_with=ImportError,
-                )
+                raise missing_dependency(Extra.QDRANT, "qdrant_client", package="qdrant-client")
 
             for key, value in raw_filter.items():
                 # We keep semantics simple and robust:
@@ -713,13 +651,6 @@ class QdrantIndexEngine(Engine):
         argument.prop.prepared_input = argument.prop.prompt
 
     def _upsert(self, collection_name: str, points: list[PointStruct]):
-        @core_ext.retry(
-            tries=self.tries,
-            delay=self.delay,
-            max_delay=self.max_delay,
-            backoff=self.backoff,
-            jitter=self.jitter,
-        )
         def _func():
             return self.client.upsert(collection_name=collection_name, points=points)
 
@@ -746,13 +677,6 @@ class QdrantIndexEngine(Engine):
         return vector
 
     def _query(self, collection_name: str, query_vector: list[float], top_k: int, **kwargs):
-        @core_ext.retry(
-            tries=self.tries,
-            delay=self.delay,
-            max_delay=self.max_delay,
-            backoff=self.backoff,
-            jitter=self.jitter,
-        )
         def _func():
             qdrant_kwargs = dict(kwargs)
             query_vector_normalized = self._normalize_vector(query_vector)
@@ -849,10 +773,10 @@ class QdrantIndexEngine(Engine):
                         field_name=field_name,
                         field_schema=field_schema,
                     )
-        except Exception as exc:
+        except Exception:
             # Best-effort: index creation is optional for correctness,
             # only required for Qdrant query-planning optimizations.
-            UserMessage(f"Failed to create payload indexes on {collection_name}: {exc}")
+            logger.exception("Failed to create payload indexes on %s", collection_name)
 
     # ==================== Collection Management ====================
 
@@ -1166,11 +1090,7 @@ class QdrantIndexEngine(Engine):
         tenant_id = tenant_id or self.default_tenant_id
 
         if models is None or Filter is None:
-            UserMessage(
-                "Qdrant filter models are not available. "
-                "Please install `qdrant-client` to use filter-based deletion.",
-                raise_with=ImportError,
-            )
+            raise missing_dependency(Extra.QDRANT, "qdrant_client", package="qdrant-client")
 
         built = self._build_query_filter(query_filter, tenant_id=tenant_id)
         if built is None:
@@ -1202,8 +1122,7 @@ class QdrantIndexEngine(Engine):
 
         This uses payload filtering and therefore depends on you having stored stable document
         identifiers in each chunk payload. `chunk_and_upsert()` stores:
-        - `payload["source"]` as the absolute document path for `document_path=...`, or
-        - `payload["source"]` as the URL for `document_url=...`.
+        - `payload["source"]` as the absolute document path for `document_path=...`.
 
         Deletion by tags is supported when tags are stored in payload under `payload["tags"]`.
         For best compatibility, store tags as a list of strings.
@@ -1333,9 +1252,8 @@ class QdrantIndexEngine(Engine):
         """
         Check whether a document exists in the index (i.e., any chunk carries its identifier).
 
-        By default, this matches `payload["source"]`, which `chunk_and_upsert()` sets to:
-        - absolute path for `document_path=...`, or
-        - URL for `document_url=...`.
+        By default, this matches `payload["source"]`, which `chunk_and_upsert()` sets to
+        the absolute path for `document_path=...`.
         """
         return await self.exists(
             collection_name=collection_name,
@@ -1717,132 +1635,11 @@ class QdrantIndexEngine(Engine):
 
     # ==================== Document Operations with Chunking ====================
 
-    def _download_and_read_file(self, file_url: str) -> str:
-        """
-        Download file from URL and read it using FileReader.
-        Uses IP pinning to prevent DNS rebinding attacks.
-
-        Args:
-            file_url: URL to the file to download
-
-        Returns:
-            Text content of the file
-        """
-        if self.reader is None:
-            msg = "FileReader not initialized"
-            raise RuntimeError(msg)
-
-        try:
-            prepared = requests.PreparedRequest()
-            prepared.prepare_url(file_url, None)
-        except (
-            requests.exceptions.MissingSchema,
-            requests.exceptions.InvalidURL,
-            requests.exceptions.URLRequired,
-        ) as exc:
-            UserMessage(f"Invalid URL: {exc}", raise_with=ValueError)
-        canonical_url = prepared.url
-        canonical = urlparse(canonical_url)
-        hostname = canonical.hostname
-        if hostname is None:
-            UserMessage("URL must have a valid hostname", raise_with=ValueError)
-
-        # Resolve DNS once and pin to this IP for the entire request.
-        # This prevents DNS rebinding where an attacker-controlled DNS server
-        # returns a public IP on first check but a private IP on second lookup.
-        try:
-            resolved_ip = socket.getaddrinfo(hostname, None)[0][4][0]
-        except socket.gaierror:
-            UserMessage(f"Could not resolve hostname: {hostname}", raise_with=ValueError)
-
-        # Validate resolved IP is not private/reserved (SSRF protection)
-        ip = ipaddress.ip_address(resolved_ip)
-        CGNAT_NETWORK = ipaddress.ip_network("100.64.0.0/10")
-        if (
-            ip.is_private
-            or ip.is_loopback
-            or ip.is_link_local
-            or ip.is_reserved
-            or ip.is_multicast
-            or ip.is_unspecified
-            or ip in CGNAT_NETWORK
-        ):
-            UserMessage(
-                f"SSRF: Resolved IP {resolved_ip} is not allowed",
-                raise_with=ValueError,
-            )
-
-        # Create session with pinning adapter to force connection to validated IP
-        session = requests.Session()
-        adapter = PinningHTTPAdapter(hostname, resolved_ip)
-        session.mount(f"{canonical.scheme}://", adapter)
-
-        # NOTE: Timeout set to (10s connect, 30s read).
-        # Trade-off: Prevents slowloris attacks and resource exhaustion, but large
-        # PDFs on slow connections may timeout. Adjust if users report issues with
-        # legitimate large documents.
-        try:
-            response = session.get(
-                canonical_url,
-                allow_redirects=False,  # Prevent redirect-based SSRF
-                timeout=(10, 30),  # (connect timeout, read timeout)
-                headers={"Host": hostname},  # For virtual host routing and SNI
-                stream=True,
-            )
-            response.raise_for_status()
-        except requests.exceptions.Timeout:
-            UserMessage("Request timeout downloading file", raise_with=RuntimeError)
-        except requests.exceptions.TooManyRedirects:
-            UserMessage("Redirects not allowed", raise_with=ValueError)
-        except requests.exceptions.RequestException as e:
-            UserMessage(f"Download failed: {e}", raise_with=RuntimeError)
-
-        # Determine file extension from Content-Type header, fall back to URL path
-        content_type = (response.headers.get("Content-Type") or "").split(";")[0].strip()
-        suffix = {
-            "application/pdf": ".pdf",
-            "text/plain": ".txt",
-            "text/html": ".html",
-            "application/msword": ".doc",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
-            "application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
-            "application/epub+zip": ".epub",
-        }.get(content_type) or Path(canonical.path).suffix
-
-        # Write to temp file with streaming size cap
-        tmp_file_name = None
-        try:
-            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
-                tmp_file_name = tmp_file.name
-                total = 0
-                for chunk in response.iter_content(chunk_size=8192):
-                    total += len(chunk)
-                    if total > MAX_DOWNLOAD_BYTES:
-                        UserMessage(
-                            f"Download exceeds maximum allowed size ({MAX_DOWNLOAD_BYTES} bytes)",
-                            raise_with=ValueError,
-                        )
-                    tmp_file.write(chunk)
-                tmp_file.flush()
-
-            # Rich formats (e.g., PDFs) require the markitdown backend.
-            backend = "markitdown" if suffix.lower() == ".pdf" else "standard"
-            content = self.reader(tmp_file_name, backend=backend)
-            return content.value[0] if isinstance(content.value, list) else str(content.value)
-        finally:
-            # Clean up temporary file
-            if tmp_file_name is not None:
-                tmp_path = Path(tmp_file_name)
-                if tmp_path.exists():
-                    tmp_path.unlink()
-
     async def chunk_and_upsert(
         self,
         collection_name: str,
         text: str | Symbol | None = None,
         document_path: str | None = None,
-        document_url: str | None = None,
         chunker_name: str | None = None,
         chunker_kwargs: dict | None = None,
         start_id: int | None = None,
@@ -1857,9 +1654,8 @@ class QdrantIndexEngine(Engine):
 
         Args:
             collection_name: Name of the collection to upsert into
-            text: Text to chunk (string or Symbol). If None, document_path or document_url must be provided.
+            text: Text to chunk (string or Symbol). If None, document_path must be provided.
             document_path: Path to a document file to read using FileReader (PDF, etc.)
-            document_url: URL to a document file to download and read using FileReader
             chunker_name: Name of the chunker to use. If None, uses the instance default chunker_name
             chunker_kwargs: Additional keyword arguments for the chunker
             start_id: Starting ID for the chunks (auto-incremented). If None, uses hash-based IDs
@@ -1876,13 +1672,13 @@ class QdrantIndexEngine(Engine):
         if tenant_id is not None:
             await asyncio.to_thread(self._ensure_payload_indexes, collection_name)
 
-        # Validate input: exactly one of text, document_path, or document_url must be provided
-        input_count = sum(x is not None for x in [text, document_path, document_url])
+        # Validate input: exactly one of text or document_path must be provided
+        input_count = sum(x is not None for x in [text, document_path])
         if input_count == 0:
-            msg = "One of `text`, `document_path`, or `document_url` must be provided"
+            msg = "One of `text` or `document_path` must be provided"
             raise ValueError(msg)
         if input_count > 1:
-            msg = "Only one of `text`, `document_path`, or `document_url` can be provided"
+            msg = "Only one of `text` or `document_path` can be provided"
             raise ValueError(msg)
 
         # Get collection info to determine vector size
@@ -1917,9 +1713,11 @@ class QdrantIndexEngine(Engine):
             safe_name = _secure_filename(document_path)
             resolved = (self.upload_dir / safe_name).resolve()
             if not resolved.is_relative_to(self.upload_dir):
-                UserMessage("Path traversal detected", raise_with=ValueError)
+                msg = "Path traversal detected"
+                raise ValueError(msg)
             if not resolved.exists():
-                UserMessage(f"Document not found: {resolved}", raise_with=FileNotFoundError)
+                msg = f"Document not found: {resolved}"
+                raise FileNotFoundError(msg)
             # Rich formats (e.g., PDFs) require the markitdown backend.
             backend = "markitdown" if resolved.suffix.lower() == ".pdf" else "standard"
             content = self.reader(str(resolved), backend=backend)
@@ -1928,18 +1726,6 @@ class QdrantIndexEngine(Engine):
             if metadata is None:
                 metadata = {}
             metadata["source"] = str(resolved)
-
-        # Handle document_url: download and read file using FileReader
-        elif document_url is not None:
-            if self.reader is None:
-                msg = "FileReader not initialized. Please ensure FileReader is available."
-                raise RuntimeError(msg)
-            text = self._download_and_read_file(document_url)
-            # Add source to metadata if not already present
-            if metadata is None:
-                metadata = {}
-            if "source" not in metadata:
-                metadata["source"] = document_url
 
         # Convert text to Symbol if needed
         text_symbol = Symbol(text) if isinstance(text, str) else text

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import atexit
+import logging
 import os
 import shlex
 import time
@@ -11,9 +12,9 @@ from typing import Any
 import docker
 import docker.errors
 from fastapi import FastAPI, HTTPException
-from loguru import logger
 from pydantic import BaseModel
 
+logger = logging.getLogger(__name__)
 app = FastAPI(title="Lean4 Server", version="1.0.0")
 
 # Container manager singleton
@@ -87,7 +88,7 @@ class ContainerManager:
         try:
             existing = self.docker_client.containers.get(self.CONTAINER_NAME)
             if existing.status == "running":
-                logger.info(f"Reusing existing container '{self.CONTAINER_NAME}'")
+                logger.info("Reusing existing container '%s'", self.CONTAINER_NAME)
                 self.container = existing
                 self.last_used = current_time
                 return self.container
@@ -106,7 +107,7 @@ class ContainerManager:
         try:
             old = self.docker_client.containers.get(self.CONTAINER_NAME)
             old.remove(force=True)
-            logger.info(f"Removed old container '{self.CONTAINER_NAME}'")
+            logger.info("Removed old container '%s'", self.CONTAINER_NAME)
         except docker.errors.NotFound:
             pass  # No old container to remove
 
@@ -115,7 +116,7 @@ class ContainerManager:
             detach=True,
             name=self.CONTAINER_NAME,
         )
-        logger.info(f"Created container '{container.id[:12]}'")
+        logger.info("Created container '%s'", container.id[:12])
 
         # Wait for container to be ready
         time.sleep(1)
@@ -132,10 +133,13 @@ class ContainerManager:
         # Write file and execute lean in a single exec_run call
         escaped = shlex.quote(code)
         result = container.exec_run(
-            ["bash", "-c",
-             f"printf '%s' {escaped} > {remote_path}"
-             f" && {LEAN_PATH} {remote_path} 2>&1"
-             f"; ec=$?; rm -f {remote_path}; exit $ec"],
+            [
+                "bash",
+                "-c",
+                f"printf '%s' {escaped} > {remote_path}"
+                f" && {LEAN_PATH} {remote_path} 2>&1"
+                f"; ec=$?; rm -f {remote_path}; exit $ec",
+            ],
         )
 
         output = result.output.decode() if isinstance(result.output, bytes) else str(result.output)
@@ -148,10 +152,10 @@ class ContainerManager:
         """Kill container and cleanup resources."""
         if self.container:
             try:
-                logger.info(f"Killing container '{self.container.id[:12]}'")
+                logger.info("Killing container '%s'", self.container.id[:12])
                 self.container.remove(force=True)
             except docker.errors.APIError as e:
-                logger.warning(f"Error removing container: {e}")
+                logger.warning("Error removing container: %s", e)
             finally:
                 self.container = None
 
@@ -167,7 +171,7 @@ class ContainerManager:
                 return {"status": "running", "idle_time": idle_time}
             return {"status": self.container.status, "idle_time": None}
         except docker.errors.APIError as e:
-            logger.error(f"Docker API error during health check: {e}")
+            logger.error("Docker API error during health check: %s", e)
             return {"status": "error", "idle_time": None}
 
 

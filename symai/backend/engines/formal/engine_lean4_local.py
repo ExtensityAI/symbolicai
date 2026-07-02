@@ -11,6 +11,7 @@ Or it auto-starts when the engine is first used.
 from __future__ import annotations
 
 import contextlib
+import logging
 import socket
 import subprocess
 import sys
@@ -18,15 +19,16 @@ import time
 from copy import deepcopy
 from typing import TYPE_CHECKING
 
-import requests
+import httpx
 
 if TYPE_CHECKING:
-    from ....core import Argument
+    from symai.core import Argument
 
-from ....symbol import Result
-from ....utils import UserMessage
-from ...base import Engine
-from ...settings import SYMAI_CONFIG, SYMSERVER_CONFIG
+from symai.backend.base import Engine
+from symai.backend.settings import SYMAI_CONFIG, SYMSERVER_CONFIG
+from symai.symbol import Result
+
+logger = logging.getLogger(__name__)
 
 
 class LeanResult(Result):
@@ -83,25 +85,25 @@ class Lean4LocalEngine(Engine):
         if self._is_server_healthy():
             return
 
-        UserMessage("Lean4 Server not running. Starting server...")
+        logger.info("Lean4 Server not running. Starting server...")
         self._start_server()
 
         start_time = time.time()
         while time.time() - start_time < self.SERVER_START_TIMEOUT:
             if self._is_server_healthy():
-                UserMessage("Lean4 Server is ready!")
+                logger.info("Lean4 Server is ready!")
                 return
             time.sleep(0.5)
 
         msg = f"Lean4 Server failed to start within {self.SERVER_START_TIMEOUT}s"
-        UserMessage(msg, raise_with=RuntimeError)
+        raise RuntimeError(msg)
 
     def _is_server_healthy(self) -> bool:
         """Check if Lean4 Server is healthy."""
         try:
-            response = requests.get(f"{self.server_url}/health", timeout=2)
+            response = httpx.get(f"{self.server_url}/health", timeout=2)
             return response.status_code == 200
-        except requests.RequestException:
+        except httpx.HTTPError:
             return False
 
     def _start_server(self) -> None:
@@ -129,21 +131,21 @@ class Lean4LocalEngine(Engine):
             )
         except (OSError, subprocess.SubprocessError) as e:
             msg = f"Failed to start Lean4 Server: {e}"
-            UserMessage(msg, raise_with=RuntimeError)
+            raise RuntimeError(msg) from e
 
-    def _post_check(self, code: str) -> requests.Response:
+    def _post_check(self, code: str) -> httpx.Response:
         """POST to /check, retrying once if the server connection drops."""
         try:
-            response = requests.post(
+            response = httpx.post(
                 f"{self.server_url}/check",
                 json={"code": code},
                 timeout=60,
             )
             response.raise_for_status()
             return response
-        except requests.ConnectionError:
+        except httpx.ConnectError:
             self._ensure_server()
-            response = requests.post(
+            response = httpx.post(
                 f"{self.server_url}/check",
                 json={"code": code},
                 timeout=60,
@@ -172,9 +174,8 @@ class Lean4LocalEngine(Engine):
 
             return [result], metadata
 
-        except requests.RequestException as e:
-            msg = f"Lean4 Server request failed: {e}"
-            UserMessage(msg)
+        except httpx.HTTPError as e:
+            logger.exception("Lean4 Server request failed")
             result = LeanResult({"output": str(e), "status": "error"})
             return [result], {"status": "error", "message": str(e)}
 
@@ -185,8 +186,8 @@ class Lean4LocalEngine(Engine):
     def cleanup(self) -> None:
         """Cleanup server process if we started it."""
         if self.server_process:
-            with contextlib.suppress(requests.RequestException):
-                requests.post(f"{self.server_url}/cleanup", timeout=5)
+            with contextlib.suppress(httpx.HTTPError):
+                httpx.post(f"{self.server_url}/cleanup", timeout=5)
             self.server_process.terminate()
             self.server_process.wait(timeout=5)
             self.server_process = None

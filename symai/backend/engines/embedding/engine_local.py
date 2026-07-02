@@ -1,3 +1,4 @@
+import logging
 from copy import deepcopy
 
 import numpy as np
@@ -7,10 +8,12 @@ try:
 except ImportError:
     SentenceTransformer = None
 
-from ....symbol import Symbol
-from ....utils import UserMessage
-from ...base import Engine
-from ...settings import SYMAI_CONFIG
+from symai.backend.base import Engine
+from symai.backend.settings import SYMAI_CONFIG
+from symai.symbol import Symbol
+from symai.utils import Extra, missing_dependency
+
+logger = logging.getLogger(__name__)
 
 
 class LocalEmbeddingEngine(Engine):
@@ -21,9 +24,8 @@ class LocalEmbeddingEngine(Engine):
         self.config = deepcopy(SYMAI_CONFIG)
         self.model_name = model or self.config.get("EMBEDDING_ENGINE_MODEL") or self.DEFAULT_MODEL
         if SentenceTransformer is None:
-            UserMessage(
-                "sentence-transformers is not installed. Install with: pip install symbolicai[hf]",
-                raise_with=ImportError,
+            raise missing_dependency(
+                Extra.HF, "sentence_transformers", package="sentence-transformers"
             )
         self.model = SentenceTransformer(self.model_name.replace("local:", ""))
         self.embedding_dim = 384  # NOTE: Gets dynamically updated in forward()

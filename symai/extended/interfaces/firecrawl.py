@@ -1,6 +1,9 @@
-from ... import core
-from ...backend.engines.search.engine_firecrawl import FirecrawlExtractResult, FirecrawlSearchResult
-from ...symbol import Expression, Symbol
+from symai import core
+from symai.backend.engines.search.engine_firecrawl import (
+    FirecrawlExtractResult,
+    FirecrawlSearchResult,
+)
+from symai.symbol import Expression, Symbol
 
 
 class firecrawl(Expression):

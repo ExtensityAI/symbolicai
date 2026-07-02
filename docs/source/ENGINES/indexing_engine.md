@@ -1,29 +1,6 @@
 # Indexing Engine
 
-SymbolicAI supports multiple indexing engines for vector search and RAG (Retrieval-Augmented Generation) operations. This document covers both the default naive vector engine and the production-ready Qdrant engine.
-
-## Naive Vector Engine (Default)
-
-By default, text indexing and retrieval is performed with the local naive vector engine using the `Interface` abstraction:
-
-```python
-from symai.interfaces import Interface
-
-db = Interface('naive_vectordb', index_name="my_index")
-db("Hello world", operation="add")
-result = db("Hello", operation="search", top_k=1)
-print(result.value)  # most relevant match
-```
-
-You can also add or search multiple documents at once, and perform save/load/purge operations:
-
-```python
-docs = ["Alpha document", "Beta entry", "Gamma text"]
-db = Interface('naive_vectordb', index_name="my_index")
-db(docs, operation="add")
-db("save", operation="config")
-# Load or purge as needed
-```
+SymbolicAI uses Qdrant for vector search and RAG (Retrieval-Augmented Generation) operations.
 
 ## Qdrant RAG Engine
 
@@ -241,7 +218,7 @@ Note: PDF page provenance is only available when the PDF extraction output prese
 Example:
 
 ```python
-from symai.interfaces import Interface
+from symai import Interface
 from qdrant_client.http import models
 
 # url and api_key are optional; defaults fall back to SYMSERVER_CONFIG / SYMAI_CONFIG.
@@ -334,14 +311,6 @@ async def add_documents():
     )
     # Note: document_path indexing stores the absolute file path in payload["source"]
     # so local_search citations resolve to file:// URIs.
-
-    # Chunk and index from a URL
-    num_chunks = await engine.chunk_and_upsert(
-        collection_name="documents",
-        document_url="https://example.com/document.pdf",
-        metadata={"source": "url"},
-        # include_line_numbers=True,  # default
-    )
 
     # Custom chunker configuration
     num_chunks = await engine.chunk_and_upsert(
@@ -512,7 +481,7 @@ This allows you to easily experiment locally for free, and switch to more powerf
 Install Qdrant support using the package extra (recommended):
 
 ```bash
-pip install symai[qdrant]
+pip install "symbolicai[qdrant]"
 ```
 
 This installs all required dependencies:

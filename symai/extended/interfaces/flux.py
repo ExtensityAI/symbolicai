@@ -1,6 +1,6 @@
-from ... import core
-from ...backend.engines.drawing.engine_bfl import FluxResult
-from ...symbol import Expression
+from symai import core
+from symai.backend.engines.drawing.engine_bfl import FluxResult
+from symai.symbol import Expression
 
 
 class flux(Expression):

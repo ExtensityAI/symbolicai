@@ -1,9 +1,10 @@
 import argparse
+import logging
 import subprocess
 import sys
 from pathlib import Path
 
-from symai.utils import UserMessage
+logger = logging.getLogger(__name__)
 
 
 def vllm_server():
@@ -16,7 +17,7 @@ def vllm_server():
     --gpu-memory-utilization, --enable-auto-tool-choice, --tool-call-parser,
     --served-model-name, ...) is available.
 
-    Two entrypoint models, mirroring `llama_cpp_server.py`:
+    Two entrypoint modes are available:
 
     * Default: use the current environment — `python -m vllm.entrypoints.openai.api_server`
       (`--entrypoint module`) or `vllm serve` (`--entrypoint cli`). Requires vLLM
@@ -55,9 +56,8 @@ def vllm_server():
     if main_args.vllm_python_path:
         python = Path(main_args.vllm_python_path)
         if not python.exists():
-            UserMessage(
-                f"Python interpreter not found at {python}", raise_with=SystemExit
-            )
+            msg = f"Python interpreter not found at {python}"
+            raise SystemExit(msg)
         base = [str(python), "-m", "vllm.entrypoints.openai.api_server"]
     elif main_args.entrypoint == "module":
         base = [sys.executable, "-m", "vllm.entrypoints.openai.api_server"]

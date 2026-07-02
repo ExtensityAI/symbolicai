@@ -105,12 +105,6 @@ class SymAIConfig:
         self._remove_legacy_path_keys(key)
         self._active_paths[key] = config_path
 
-    def migrate_config(self, filename: str, updates: dict) -> None:
-        """Updates existing configuration with new fields."""
-        config = self.load_config(filename)
-        config.update(updates)
-        self.save_config(filename, config)
-
     def get_active_path(self, filename: str | Path) -> Path:
         """Returns the last path used to read or write the given config file."""
         key = self._canonical_key(filename)
@@ -141,6 +135,4 @@ class SymAIConfig:
 
 
 SYMAI_CONFIG = {}
-SYMSH_CONFIG = {}
 SYMSERVER_CONFIG = {}
-HOME_PATH = Path(SymAIConfig().config_dir)

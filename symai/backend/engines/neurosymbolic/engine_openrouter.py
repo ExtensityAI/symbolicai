@@ -4,17 +4,14 @@ from copy import deepcopy
 
 import openai
 
-from ....components import SelfPrompt
-from ....core_ext import retry
-from ....utils import UserMessage
-from ...base import Engine
-from ...settings import SYMAI_CONFIG
+from symai.backend.base import Engine
+from symai.backend.settings import SYMAI_CONFIG
+from symai.components import SelfPrompt
+from symai.utils import silence_noisy_loggers
 
-logging.getLogger("openai").setLevel(logging.ERROR)
-logging.getLogger("requests").setLevel(logging.ERROR)
-logging.getLogger("urllib").setLevel(logging.ERROR)
-logging.getLogger("httpx").setLevel(logging.ERROR)
-logging.getLogger("httpcore").setLevel(logging.ERROR)
+silence_noisy_loggers("openai")
+
+logger = logging.getLogger(__name__)
 
 
 _NON_VERBOSE_OUTPUT = (
@@ -35,9 +32,7 @@ class OpenRouterEngine(Engine):
         client_timeout: float | None = None,
         client_max_retries: int | None = None,
     ):
-        super().__init__(
-            client_timeout=client_timeout, client_max_retries=client_max_retries
-        )
+        super().__init__(client_timeout=client_timeout, client_max_retries=client_max_retries)
         self.config = deepcopy(SYMAI_CONFIG)
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
         if api_key is not None and model is not None:
@@ -62,10 +57,8 @@ class OpenRouterEngine(Engine):
                 )
             )
         except Exception as exc:
-            UserMessage(
-                f"Failed to initialize OpenRouter client. Please check your OpenAI library version. Caused by: {exc}",
-                raise_with=ValueError,
-            )
+            msg = f"Failed to initialize OpenRouter client. Please check your OpenAI library version. Caused by: {exc}"
+            raise ValueError(msg) from exc
 
     def id(self) -> str:
         model_name = self.config.get("NEUROSYMBOLIC_ENGINE_MODEL")
@@ -85,15 +78,12 @@ class OpenRouterEngine(Engine):
     def compute_required_tokens(self, messages):
         if self._last_prompt_tokens is not None and self._last_messages == messages:
             return self._last_prompt_tokens
-        UserMessage(
-            "Token counting not implemented for this engine.", raise_with=NotImplementedError
-        )
-        return 0
+        msg = "Token counting not implemented for this engine."
+        raise NotImplementedError(msg)
 
     def compute_remaining_tokens(self, _prompts: list) -> int:
-        UserMessage(
-            "Token counting not implemented for this engine.", raise_with=NotImplementedError
-        )
+        msg = "Token counting not implemented for this engine."
+        raise NotImplementedError(msg)
 
     def _handle_prefix(self, model_name: str) -> str:
         """Handle prefix for model name."""
@@ -119,8 +109,6 @@ class OpenRouterEngine(Engine):
 
         return thinking_content, cleaned_output
 
-    # cumulative wait time is < 30s
-    @retry(tries=8, delay=0.5, backoff=1.5, max_delay=5, jitter=(0, 0.5))
     def forward(self, argument):
         kwargs = argument.kwargs
         messages = argument.prop.prepared_input
@@ -135,12 +123,12 @@ class OpenRouterEngine(Engine):
                     "OpenRouter API key is not set. Please set it in the config file or "
                     "pass it as an argument to the command method."
                 )
-                UserMessage(msg)
+                logger.warning(msg)
                 if (
                     self.config["NEUROSYMBOLIC_ENGINE_API_KEY"] is None
                     or self.config["NEUROSYMBOLIC_ENGINE_API_KEY"] == ""
                 ):
-                    UserMessage(msg, raise_with=ValueError)
+                    raise ValueError(msg) from exc
                 openai.api_key = self.config["NEUROSYMBOLIC_ENGINE_API_KEY"]
 
             callback = self.client.chat.completions.create
@@ -153,7 +141,8 @@ class OpenRouterEngine(Engine):
             if except_remedy is not None:
                 res = except_remedy(self, exc, callback, argument)
             else:
-                UserMessage(f"Error during generation. Caused by: {exc}", raise_with=ValueError)
+                msg = f"Error during generation. Caused by: {exc}"
+                raise ValueError(msg) from exc
 
         prompt_tokens = getattr(res.usage, "prompt_tokens", None)
         if prompt_tokens is None:
@@ -174,10 +163,8 @@ class OpenRouterEngine(Engine):
 
     def _prepare_raw_input(self, argument):
         if not argument.prop.processed_input:
-            UserMessage(
-                "Need to provide a prompt instruction to the engine if raw_input is enabled.",
-                raise_with=ValueError,
-            )
+            msg = "Need to provide a prompt instruction to the engine if raw_input is enabled."
+            raise ValueError(msg)
         value = argument.prop.processed_input
         if not isinstance(value, list):
             if not isinstance(value, dict):
@@ -252,7 +239,8 @@ class OpenRouterEngine(Engine):
             self_prompter = SelfPrompt()
             res = self_prompter({"user": user_prompt["content"], "system": system})
             if res is None:
-                UserMessage("Self-prompting failed!", raise_with=ValueError)
+                msg = "Self-prompting failed!"
+                raise ValueError(msg)
             return res["system"], {"role": "user", "content": res["user"]}
         return system, user_prompt
 
@@ -269,7 +257,7 @@ class OpenRouterEngine(Engine):
             for tool_call in res.choices[0].message.tool_calls:
                 if hasattr(tool_call, "function") and tool_call.function:
                     if hit:
-                        UserMessage(
+                        logger.warning(
                             "Multiple function calls detected in the response but only the first one will be processed."
                         )
                         break

@@ -23,16 +23,16 @@ SymbolicAI uses multiple engines to process text, speech and images. We also inc
 
 ```bash
 pip install "symbolicai[bitsandbytes]"
+pip install "symbolicai[cluster]"
 pip install "symbolicai[hf]"
 pip install "symbolicai[lean]"
-pip install "symbolicai[llama_cpp]"
 pip install "symbolicai[ocr]"
 pip install "symbolicai[qdrant]"
 pip install "symbolicai[scrape]"
 pip install "symbolicai[search]"
-pip install "symbolicai[serpapi]"
 pip install "symbolicai[services]"
 pip install "symbolicai[solver]"
+pip install "symbolicai[video]"
 pip install "symbolicai[whisper]"
 pip install "symbolicai[wolframalpha]"
 ```
@@ -77,9 +77,8 @@ SymbolicAI now features a configuration management system with priority-based lo
 
 ### Configuration Files
 
-The system manages three main configuration files:
+The system manages two main configuration files:
 - `symai.config.json`: Main SymbolicAI configuration
-- `symsh.config.json`: Shell configuration
 - `symserver.config.json`: Server configuration
 
 ### Viewing Your Configuration
@@ -107,12 +106,10 @@ my_project/              # Debug mode (highest priority)
 
 {python_env}/.symai/     # Environment config (second priority)
 ├── symai.config.json
-├── symsh.config.json
 └── symserver.config.json
 
 ~/.symai/                # Global config (lowest priority)
 ├── symai.config.json
-├── symsh.config.json
 └── symserver.config.json
 ```
 
@@ -148,7 +145,6 @@ Example of a configuration file with all engines enabled:
     "INDEXING_ENGINE_URL": "http://localhost:6333",
     "DRAWING_ENGINE_API_KEY": "<BFL_API_KEY>",
     "DRAWING_ENGINE_MODEL": "flux-pro-1.1",
-    "VISION_ENGINE_MODEL": "openai/clip-vit-base-patch32",
     "OCR_ENGINE_API_KEY": "<OCR_API_KEY>",
     "OCR_ENGINE_MODEL": "mistral-ocr-latest",
     "SPEECH_TO_TEXT_ENGINE_MODEL": "turbo"
@@ -157,7 +153,7 @@ Example of a configuration file with all engines enabled:
 
 With these steps completed, you should be ready to start using SymbolicAI in your projects.
 
-> ❗️**NOTE**❗️By default, the user warnings are enabled. To disable them, export `SYMAI_WARNINGS=0` in your environment variables.
+> ❗️**NOTE**❗️SymbolicAI logs through the standard `logging` module under the `symai` logger and is silent by default. To see its logs, configure logging in your application, e.g. `logging.basicConfig(level=logging.INFO)` or, scoped, `logging.getLogger("symai").setLevel(logging.INFO)`.
 
 ### Running tests
 
@@ -187,5 +183,5 @@ pytest -m mandatory
 Be sure to have your configuration set up correctly before running the tests. You can also run the tests with coverage to see how much of the code is covered by tests:
 
 ```bash
-pytest --cov=symbolicai tests
+pytest --cov=symai tests
 ```

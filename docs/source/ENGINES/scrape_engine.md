@@ -5,7 +5,7 @@
 To access data from the web, we can use the `naive_scrape` interface. The engine underneath is very lightweight and can be used to scrape data from websites. It is based on the `requests` library, as well as `trafilatura` for output formatting, and `bs4` for HTML parsing. `trafilatura` currently supports the following output formats: `json`, `csv`, `html`, `markdown`, `text`, `xml`
 
 ```python
-from symai.interfaces import Interface
+from symai import Interface
 
 scraper = Interface("naive_scrape")
 url = "https://docs.astral.sh/uv/guides/scripts/#next-steps"
@@ -17,7 +17,7 @@ res = scraper(url)
 The Parallel.ai integration routes scrape calls through the official `parallel-web` SDK and can handle PDFs, JavaScript-heavy feeds, and standard HTML pages in the same workflow. Instantiate the Parallel interface and call `.scrape(...)` with the target URL. The engine detects scrape requests automatically whenever a URL is supplied.
 
 ```python
-from symai.extended import Interface
+from symai import Interface
 
 scraper = Interface("parallel")
 article = scraper.scrape(
@@ -49,7 +49,7 @@ Firecrawl.dev specializes in reliable web scraping with automatic handling of Ja
 ### Examples
 
 ```python
-from symai.extended import Interface
+from symai import Interface
 
 scraper = Interface("firecrawl")
 
@@ -91,7 +91,7 @@ Firecrawl supports structured data extraction using JSON schemas. This is useful
 
 ```python
 from pydantic import Field
-from symai.extended import Interface
+from symai import Interface
 from symai.models import LLMDataModel
 
 class MetadataModel(LLMDataModel):

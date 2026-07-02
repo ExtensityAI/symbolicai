@@ -1,16 +1,15 @@
 import logging
 from copy import deepcopy
 
-import requests
+import httpx
 
-from ....utils import UserMessage
-from ...base import Engine
-from ...settings import SYMAI_CONFIG, SYMSERVER_CONFIG
+from symai.backend.base import Engine
+from symai.backend.settings import SYMAI_CONFIG, SYMSERVER_CONFIG
+from symai.utils import silence_noisy_loggers
 
-logging.getLogger("requests").setLevel(logging.ERROR)
-logging.getLogger("urllib").setLevel(logging.ERROR)
-logging.getLogger("httpx").setLevel(logging.ERROR)
-logging.getLogger("httpcore").setLevel(logging.ERROR)
+silence_noisy_loggers()
+
+logger = logging.getLogger(__name__)
 
 
 class HFTokenizer:
@@ -18,18 +17,18 @@ class HFTokenizer:
 
     @staticmethod
     def encode(text: str, add_special_tokens: bool = False) -> list[int]:
-        res = requests.post(
+        res = httpx.post(
             f"{HFTokenizer._server_endpoint}/tokenize",
             json={
                 "input": text,
                 "add_special_tokens": add_special_tokens,
             },
+            timeout=None,
         )
 
         if res.status_code != 200:
-            UserMessage(
-                f"Request failed with status code: {res.status_code}", raise_with=ValueError
-            )
+            msg = f"Request failed with status code: {res.status_code}"
+            raise ValueError(msg)
 
         res = res.json()
 
@@ -37,18 +36,18 @@ class HFTokenizer:
 
     @staticmethod
     def decode(tokens: list[int], skip_special_tokens: bool = True) -> str:
-        res = requests.post(
+        res = httpx.post(
             f"{HFTokenizer._server_endpoint}/detokenize",
             json={
                 "tokens": tokens,
                 "skip_special_tokens": skip_special_tokens,
             },
+            timeout=None,
         )
 
         if res.status_code != 200:
-            UserMessage(
-                f"Request failed with status code: {res.status_code}", raise_with=ValueError
-            )
+            msg = f"Request failed with status code: {res.status_code}"
+            raise ValueError(msg)
 
         res = res.json()
 
@@ -65,10 +64,12 @@ class HFEngine(Engine):
         if self.id() != "neurosymbolic":
             return
         if not SYMSERVER_CONFIG.get("online"):
-            UserMessage(
-                "You are using the huggingface engine, but the server endpoint is not started. Please start the server with `symserver [--args]` or run `symserver --help` to see the available options for this engine.",
-                raise_with=ValueError,
+            msg = (
+                "You are using the huggingface engine, but the server endpoint is not started. "
+                "Please start the server with `symserver [--args]` or run `symserver --help` "
+                "to see the available options for this engine."
             )
+            raise ValueError(msg)
         self.server_endpoint = (
             f"http://{SYMSERVER_CONFIG.get('host')}:{SYMSERVER_CONFIG.get('port')}"
         )
@@ -92,16 +93,12 @@ class HFEngine(Engine):
             self.except_remedy = kwargs["except_remedy"]
 
     def compute_required_tokens(self, _messages) -> int:
-        UserMessage(
-            "Not implemented for HFEngine. Please use the tokenizer directly to compute tokens.",
-            raise_with=NotImplementedError,
-        )
+        msg = "Not implemented for HFEngine. Please use the tokenizer directly to compute tokens."
+        raise NotImplementedError(msg)
 
     def compute_remaining_tokens(self, _prompts: list) -> int:
-        UserMessage(
-            "Not implemented for HFEngine. Please use the tokenizer directly to compute tokens.",
-            raise_with=NotImplementedError,
-        )
+        msg = "Not implemented for HFEngine. Please use the tokenizer directly to compute tokens."
+        raise NotImplementedError(msg)
 
     def forward(self, argument):
         kwargs = argument.kwargs
@@ -122,7 +119,7 @@ class HFEngine(Engine):
         except_remedy = kwargs.get("except_remedy")
 
         try:
-            res = requests.post(
+            res = httpx.post(
                 f"{self.server_endpoint}/chat",
                 json={
                     "messages": prompts,
@@ -139,12 +136,12 @@ class HFEngine(Engine):
                     "num_beam_groups": num_beam_groups,
                     "eos_token_id": eos_token_id,
                 },
+                timeout=None,
             )
 
             if res.status_code != 200:
-                UserMessage(
-                    f"Request failed with status code: {res.status_code}", raise_with=ValueError
-                )
+                msg = f"Request failed with status code: {res.status_code}"
+                raise ValueError(msg)
 
             res = res.json()
 
@@ -152,7 +149,8 @@ class HFEngine(Engine):
             if except_remedy is not None:
                 res = except_remedy(self, e, argument)
             else:
-                UserMessage(f"Error during generation. Caused by: {e}", raise_with=ValueError)
+                msg = f"Error during generation. Caused by: {e}"
+                raise ValueError(msg) from e
 
         metadata = {"raw_output": res}
 
@@ -162,10 +160,8 @@ class HFEngine(Engine):
 
     def _prepare_raw_input(self, argument):
         if not argument.prop.processed_input:
-            UserMessage(
-                "Need to provide a prompt instruction to the engine if raw_input is enabled.",
-                raise_with=ValueError,
-            )
+            msg = "Need to provide a prompt instruction to the engine if raw_input is enabled."
+            raise ValueError(msg)
         value = argument.prop.processed_input
         if not isinstance(value, list):
             if not isinstance(value, dict):

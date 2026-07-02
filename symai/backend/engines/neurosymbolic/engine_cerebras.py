@@ -6,19 +6,15 @@ from copy import deepcopy
 import tiktoken
 from cerebras.cloud.sdk import Cerebras
 
-from ....components import SelfPrompt
-from ....core_ext import retry
-from ....utils import UserMessage
-from ...base import Engine
-from ...mixin.cerebras import CerebrasMixin
-from ...settings import SYMAI_CONFIG
+from symai.backend.base import Engine
+from symai.backend.mixin.cerebras import CerebrasMixin
+from symai.backend.settings import SYMAI_CONFIG
+from symai.components import SelfPrompt
+from symai.utils import silence_noisy_loggers
 
-logging.getLogger("cerebras").setLevel(logging.ERROR)
-logging.getLogger("requests").setLevel(logging.ERROR)
-logging.getLogger("urllib").setLevel(logging.ERROR)
-logging.getLogger("httpx").setLevel(logging.ERROR)
-logging.getLogger("httpcore").setLevel(logging.ERROR)
-logging.getLogger("hpack").setLevel(logging.ERROR)
+silence_noisy_loggers("cerebras", "hpack")
+
+logger = logging.getLogger(__name__)
 
 
 _NON_VERBOSE_OUTPUT = (
@@ -39,9 +35,7 @@ class CerebrasEngine(CerebrasMixin, Engine):
         client_timeout: float | None = None,
         client_max_retries: int | None = None,
     ):
-        super().__init__(
-            client_timeout=client_timeout, client_max_retries=client_max_retries
-        )
+        super().__init__(client_timeout=client_timeout, client_max_retries=client_max_retries)
         self.config = deepcopy(SYMAI_CONFIG)
         # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
         if api_key is not None and model is not None:
@@ -63,10 +57,8 @@ class CerebrasEngine(CerebrasMixin, Engine):
         try:
             self.client = self._build_cerebras_client(self.api_key)
         except Exception as exc:
-            UserMessage(
-                f"Failed to initialize Cerebras client. Please check your Cerebras SDK installation. Caused by: {exc}",
-                raise_with=ValueError,
-            )
+            msg = f"Failed to initialize Cerebras client. Please check your Cerebras SDK installation. Caused by: {exc}"
+            raise ValueError(msg) from exc
 
     def _build_cerebras_client(self, api_key: str | None):
         return Cerebras(**self._build_client_kwargs({"api_key": api_key}))
@@ -84,10 +76,8 @@ class CerebrasEngine(CerebrasMixin, Engine):
             try:
                 self.client = self._build_cerebras_client(self.api_key)
             except Exception as exc:
-                UserMessage(
-                    f"Failed to reinitialize Cerebras client. Caused by: {exc}",
-                    raise_with=ValueError,
-                )
+                msg = f"Failed to reinitialize Cerebras client. Caused by: {exc}"
+                raise ValueError(msg) from exc
         if "NEUROSYMBOLIC_ENGINE_MODEL" in kwargs:
             self.model = kwargs["NEUROSYMBOLIC_ENGINE_MODEL"]
         if "seed" in kwargs:
@@ -164,8 +154,6 @@ class CerebrasEngine(CerebrasMixin, Engine):
 
         return thinking_content, cleaned_outputs
 
-    # cumulative wait time is < 30s
-    @retry(tries=8, delay=0.5, backoff=1.5, max_delay=5, jitter=(0, 0.5))
     def forward(self, argument):
         kwargs = argument.kwargs
         messages = argument.prop.prepared_input
@@ -185,18 +173,16 @@ class CerebrasEngine(CerebrasMixin, Engine):
                 "Cerebras API key is not set. Please set it in the config file or "
                 "pass it as an argument to the command method."
             )
-            UserMessage(msg)
+            logger.warning(msg)
             config_key = self.config.get("NEUROSYMBOLIC_ENGINE_API_KEY")
             if config_key is None or config_key == "":
-                UserMessage(msg, raise_with=ValueError)
+                raise ValueError(msg)
             self.api_key = config_key
             try:
                 self.client = self._build_cerebras_client(self.api_key)
             except Exception as inner_exc:
-                UserMessage(
-                    f"Failed to initialize Cerebras client after missing API key. Caused by: {inner_exc}",
-                    raise_with=ValueError,
-                )
+                msg = f"Failed to initialize Cerebras client after missing API key. Caused by: {inner_exc}"
+                raise ValueError(msg) from inner_exc
 
         callback = self.client.chat.completions.create
         kwargs["model"] = (
@@ -208,8 +194,8 @@ class CerebrasEngine(CerebrasMixin, Engine):
         if except_remedy is not None:
             return except_remedy(self, exc, callback, argument)
 
-        UserMessage(f"Error during generation. Caused by: {exc}", raise_with=ValueError)
-        return None
+        msg = f"Error during generation. Caused by: {exc}"
+        raise ValueError(msg)
 
     def _build_outputs_and_metadata(self, res, payload):
         metadata: dict = {"raw_output": res}
@@ -239,10 +225,8 @@ class CerebrasEngine(CerebrasMixin, Engine):
 
     def _prepare_raw_input(self, argument):
         if not argument.prop.processed_input:
-            UserMessage(
-                "Need to provide a prompt instruction to the engine if raw_input is enabled.",
-                raise_with=ValueError,
-            )
+            msg = "Need to provide a prompt instruction to the engine if raw_input is enabled."
+            raise ValueError(msg)
         value = argument.prop.processed_input
         if not isinstance(value, list):
             if not isinstance(value, dict):
@@ -318,7 +302,8 @@ class CerebrasEngine(CerebrasMixin, Engine):
             self_prompter = SelfPrompt()
             result = self_prompter({"user": user_prompt["content"], "system": system_message})
             if result is None:
-                UserMessage("Self-prompting failed!", raise_with=ValueError)
+                msg = "Self-prompting failed!"
+                raise ValueError(msg)
             return result["system"], {"role": "user", "content": result["user"]}
         return system_message, user_prompt
 
@@ -335,7 +320,7 @@ class CerebrasEngine(CerebrasMixin, Engine):
             for tool_call in res.choices[0].message.tool_calls:
                 if hasattr(tool_call, "function") and tool_call.function:
                     if hit:
-                        UserMessage(
+                        logger.warning(
                             "Multiple function calls detected in the response but only the first one will be processed."
                         )
                         break
@@ -356,18 +341,22 @@ class CerebrasEngine(CerebrasMixin, Engine):
 
         n = kwargs.get("n", 1)
         if n > 1:
-            UserMessage(
+            logger.warning(
                 "If N is supplied, it must be equal to 1. We default to 1 to avoid unexpected batch behavior."
             )
             n = 1
 
         response_format = self._normalize_response_format(kwargs.get("response_format"))
 
+        # NOTE: gpt-oss reasoning models return empty completions when an empty stop ("") is sent,
+        # so treat an empty stop sequence as "no stop".
+        stop = kwargs.get("stop") or None
+
         return {
             "messages": messages,
             "model": self._handle_prefix(kwargs.get("model", self.model)),
             "max_completion_tokens": kwargs.get("max_completion_tokens"),
-            "stop": kwargs.get("stop"),
+            "stop": stop,
             "temperature": kwargs.get("temperature", 1),
             "top_p": kwargs.get("top_p", 1),
             "n": n,

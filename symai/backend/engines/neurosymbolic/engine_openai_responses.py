@@ -7,18 +7,15 @@ import httpx
 import openai
 import tiktoken
 
-from ....components import SelfPrompt
-from ....utils import UserMessage, encode_media_frames
-from ...base import Engine
-from ...mixin.openai import SUPPORTED_REASONING_MODELS, OpenAIMixin
-from ...settings import SYMAI_CONFIG
+from symai.backend.base import Engine
+from symai.backend.mixin.openai import SUPPORTED_REASONING_MODELS, OpenAIMixin
+from symai.backend.settings import SYMAI_CONFIG
+from symai.components import SelfPrompt
+from symai.utils import encode_media_frames, silence_noisy_loggers
 
-logging.getLogger("openai").setLevel(logging.ERROR)
-logging.getLogger("requests").setLevel(logging.ERROR)
-logging.getLogger("urllib").setLevel(logging.ERROR)
-logging.getLogger("httpx").setLevel(logging.ERROR)
-logging.getLogger("httpcore").setLevel(logging.ERROR)
+silence_noisy_loggers("openai")
 
+logger = logging.getLogger(__name__)
 
 _NON_VERBOSE_OUTPUT = (
     "<META_INSTRUCTION/>\n"
@@ -53,9 +50,7 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
         client_timeout: float | None = None,
         client_max_retries: int | None = None,
     ):
-        super().__init__(
-            client_timeout=client_timeout, client_max_retries=client_max_retries
-        )
+        super().__init__(client_timeout=client_timeout, client_max_retries=client_max_retries)
         self.config = deepcopy(SYMAI_CONFIG)
         if api_key is not None and model is not None:
             self.config["NEUROSYMBOLIC_ENGINE_API_KEY"] = api_key
@@ -90,10 +85,8 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
                 max_retries=retries,
             )
         except Exception as e:
-            UserMessage(
-                f"Failed to initialize OpenAI client. Caused by: {e}",
-                raise_with=ValueError,
-            )
+            msg = f"Failed to initialize OpenAI client. Caused by: {e}"
+            raise ValueError(msg) from e
 
     def _strip_prefix(self, model_name: str) -> str:
         return model_name.replace("responses:", "")
@@ -172,20 +165,18 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
                     max_used_frames, img_ = img_.split(":")
                     max_used_frames = int(max_used_frames)
                     if max_used_frames < 1 or max_used_frames > max_frames_spacing:
-                        UserMessage(
-                            f"Invalid max_used_frames value: {max_used_frames}. Expected 1-{max_frames_spacing}",
-                            raise_with=ValueError,
-                        )
+                        msg = f"Invalid max_used_frames value: {max_used_frames}. Expected 1-{max_frames_spacing}"
+                        raise ValueError(msg)
                 buffer, ext = encode_media_frames(img_)
                 if len(buffer) > 1:
-                    step = len(buffer) // max_frames_spacing
+                    step = max(1, len(buffer) // max_frames_spacing)
                     indices = list(range(0, len(buffer), step))[:max_used_frames]
                     for i in indices:
                         image_files.append(f"data:image/{ext};base64,{buffer[i]}")
                 elif len(buffer) == 1:
                     image_files.append(f"data:image/{ext};base64,{buffer[0]}")
                 else:
-                    UserMessage("No frames found or error in encoding frames")
+                    logger.warning("No frames found or error in encoding frames")
         return image_files
 
     def _remove_vision_pattern(self, text: str) -> str:
@@ -276,16 +267,15 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
         key = "developer" if self._is_reasoning_model() else "system"
         res = self_prompter({"user": user_text, key: system})
         if res is None:
-            UserMessage("Self-prompting failed!", raise_with=ValueError)
+            msg = "Self-prompting failed!"
+            raise ValueError(msg)
         new_user_msg = self._create_user_message(res["user"], image_files)
         return res[key], new_user_msg
 
     def _prepare_raw_input(self, argument):
         if not argument.prop.processed_input:
-            UserMessage(
-                "Need to provide a prompt instruction to the engine if raw_input is enabled.",
-                raise_with=ValueError,
-            )
+            msg = "Need to provide a prompt instruction to the engine if raw_input is enabled."
+            raise ValueError(msg)
         value = argument.prop.processed_input
         if not isinstance(value, list):
             if not isinstance(value, dict):
@@ -319,7 +309,7 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
         remaining_tokens = self.compute_remaining_tokens(messages)
 
         if max_tokens is not None:
-            UserMessage(
+            logger.warning(
                 "'max_tokens' is deprecated in favor of 'max_output_tokens' for Responses API."
             )
             if max_tokens > self.max_response_tokens:
@@ -328,9 +318,11 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
                 max_output_tokens = max_tokens
 
         if max_output_tokens is not None and max_output_tokens > self.max_response_tokens:
-            UserMessage(
-                f"Provided 'max_output_tokens' ({max_output_tokens}) exceeds max ({self.max_response_tokens}). "
-                f"Truncating to {remaining_tokens}."
+            logger.warning(
+                "Provided 'max_output_tokens' (%s) exceeds max (%s). Truncating to %s.",
+                max_output_tokens,
+                self.max_response_tokens,
+                remaining_tokens,
             )
             max_output_tokens = remaining_tokens
 
@@ -430,19 +422,20 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
         except Exception as e:
             if openai.api_key is None or openai.api_key == "":
                 msg = "OpenAI API key is not set."
-                UserMessage(msg)
+                logger.warning(msg)
                 if (
                     self.config["NEUROSYMBOLIC_ENGINE_API_KEY"] is None
                     or self.config["NEUROSYMBOLIC_ENGINE_API_KEY"] == ""
                 ):
-                    UserMessage(msg, raise_with=ValueError)
+                    raise ValueError(msg) from e
                 openai.api_key = self.config["NEUROSYMBOLIC_ENGINE_API_KEY"]
 
             callback = self.client.responses.create
             if except_remedy is not None:
                 res = except_remedy(self, e, callback, argument)
             else:
-                UserMessage(f"Error during generation. Caused by: {e}", raise_with=ValueError)
+                err = f"Error during generation. Caused by: {e}"
+                raise ValueError(err) from e
 
         metadata = {"raw_output": res}
         if payload.get("tools"):

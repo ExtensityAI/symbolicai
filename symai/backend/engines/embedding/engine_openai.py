@@ -4,16 +4,14 @@ from copy import deepcopy
 import numpy as np
 import openai
 
-from ....utils import UserMessage
-from ...base import Engine
-from ...mixin.openai import OpenAIMixin
-from ...settings import SYMAI_CONFIG
+from symai.backend.base import Engine
+from symai.backend.mixin.openai import OpenAIMixin
+from symai.backend.settings import SYMAI_CONFIG
+from symai.utils import silence_noisy_loggers
 
-logging.getLogger("openai").setLevel(logging.ERROR)
-logging.getLogger("requests").setLevel(logging.ERROR)
-logging.getLogger("urllib").setLevel(logging.ERROR)
-logging.getLogger("httpx").setLevel(logging.ERROR)
-logging.getLogger("httpcore").setLevel(logging.ERROR)
+silence_noisy_loggers("openai")
+
+logger = logging.getLogger(__name__)
 
 
 class EmbeddingEngine(Engine, OpenAIMixin):
@@ -27,11 +25,11 @@ class EmbeddingEngine(Engine, OpenAIMixin):
         if self.id() != "embedding":
             return  # do not initialize if not embedding; avoids conflict with llama.cpp check in EngineRepository.register_from_package
         if not self.api_key:
-            UserMessage(
+            msg = (
                 "OpenAI API key not found. Please set EMBEDDING_ENGINE_API_KEY "
-                "in symai.config.json or pass it to the engine.",
-                raise_with=ValueError,
+                "in symai.config.json or pass it to the engine."
             )
+            raise ValueError(msg)
         self.client = openai.OpenAI(api_key=self.api_key)
         self.max_tokens = self.api_max_context_tokens()
         self.embedding_dim = self.api_embedding_dims()
@@ -62,18 +60,18 @@ class EmbeddingEngine(Engine, OpenAIMixin):
         # Validate inputs - OpenAI only supports text
         for item in inp:
             if not isinstance(item, str):
-                UserMessage(
+                msg = (
                     f"OpenAI embedding engine only supports text (str) inputs. "
                     f"Received: {type(item).__name__}. "
-                    f"For multimodal embeddings, use a model that supports it (e.g., gemini-embedding-2).",
-                    raise_with=TypeError,
+                    f"For multimodal embeddings, use a model that supports it (e.g., gemini-embedding-2)."
                 )
+                raise TypeError(msg)
 
         try:
             res = self.client.embeddings.create(model=self.model, input=inp)
         except Exception as e:
             if except_remedy is None:
-                UserMessage(str(e), raise_with=type(e))
+                raise
             callback = self.client.embeddings.create
             res = except_remedy(e, inp, callback, self, *args, **kwargs)
 

@@ -4,7 +4,7 @@
 Parallel.ai provides unified search and scrape capabilities through the `parallel-web` SDK. When you invoke `.search(...)` on the Parallel interface, responses are normalized into a `SearchResult` that flattens excerpt text and appends inline citation markers. All URLs are deduplicated and cleaned of tracking parameters, and you can access structured citations via `result.get_citations()`.
 
 ```python
-from symai.extended import Interface
+from symai import Interface
 
 engine = Interface("parallel")
 result = engine.search(
@@ -49,31 +49,11 @@ Enable the engine by installing `parallel-web` and configuring the Parallel cred
 }
 ```
 
-## SerpApi (Google)
-To obtain fact-based content, we can perform search queries via `SerpApi` with a `Google` backend. The following example demonstrates how to search for a query and return the results:
-
-```python
-from symai.interfaces import Interface
-
-search = Interface('serpapi')
-res = search('Birthday of Barack Obama')
-```
-
-Here's a quick example for how to set it up:
-```bash
-{
-    …
-    "SEARCH_ENGINE_API_KEY": "…",
-    "SEARCH_ENGINE_ENGINE": "google",
-    …
-}
-```
-
 ## PerplexityAI
 We can also use PerplexityAI to search for a query and return the results:
 
 ```python
-from symai.interfaces import Interface
+from symai import Interface
 search = Interface("perplexity")
 res = search('What is a quantum computer?', system_message='You are Rick from Rick and Morty. You reply back as Rick would reply to Morty.')
 ```
@@ -93,7 +73,7 @@ Please note that the system_message is optional and can be used to provide conte
 Additionally, we can use OpenAI's search capabilities to answer queries and get citations for the information:
 
 ```python
-from symai.interfaces import Interface
+from symai import Interface
 search = Interface("openai_search")
 res = search('Who is Nicusor Dan?')
 ```
@@ -157,7 +137,7 @@ This engine calls the OpenAI Responses API under the hood. When you target a rea
 You can also use Google's Gemini grounding (via the `google-genai` interactions API with the `google_search` tool) to answer queries with inline citations:
 
 ```python
-from symai.interfaces import Interface
+from symai import Interface
 search = Interface("gemini_search")
 res = search('Who won the UEFA Euro 2024 final and what was the score?')
 ```
@@ -206,7 +186,7 @@ Firecrawl.dev provides web scraping and search capabilities with built-in handli
 ### Comprehensive Search Example
 
 ```python
-from symai.extended import Interface
+from symai import Interface
 
 engine = Interface("firecrawl")
 

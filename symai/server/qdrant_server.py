@@ -1,11 +1,12 @@
 import argparse
+import logging
 import os
 import subprocess
 import sys
 from enum import Enum
 from pathlib import Path
 
-from loguru import logger
+logger = logging.getLogger(__name__)
 
 
 class QdrantConfigFlag(str, Enum):
@@ -15,44 +16,44 @@ class QdrantConfigFlag(str, Enum):
     Iterated with `is not None` to preserve int 0 (e.g. --max-workers 0).
     """
 
-    api_key            = "--api-key"
-    read_only_api_key  = "--read-only-api-key"
-    log_level          = "--log-level"
-    max_workers        = "--max-workers"
+    api_key = "--api-key"
+    read_only_api_key = "--read-only-api-key"
+    log_level = "--log-level"
+    max_workers = "--max-workers"
     max_search_threads = "--max-search-threads"
-    snapshots_path     = "--snapshots-path"
+    snapshots_path = "--snapshots-path"
 
 
 class QdrantTLSFlag(str, Enum):
     """TLS certificate path flags. name == argparse dest; value == CLI flag."""
 
-    tls_cert    = "--tls-cert"
-    tls_key     = "--tls-key"
+    tls_cert = "--tls-cert"
+    tls_key = "--tls-key"
     tls_ca_cert = "--tls-ca-cert"
 
 
 class QdrantDockerFlag(str, Enum):
     """Docker container management flags. name == argparse dest; value == CLI flag."""
 
-    docker_image     = "--docker-image"
+    docker_image = "--docker-image"
     docker_container = "--docker-container-name"
-    docker_detach    = "--docker-detach"
-    docker_remove    = "--docker-remove"
+    docker_detach = "--docker-detach"
+    docker_remove = "--docker-remove"
 
 
 class QdrantStorageFlag(str, Enum):
     """Server storage and execution path flags. name == argparse dest; value == CLI flag."""
 
-    storage_path    = "--storage-path"
+    storage_path = "--storage-path"
     use_env_storage = "--use-env-storage"
-    binary_path     = "--binary-path"
+    binary_path = "--binary-path"
 
 
 class QdrantBoolFlag(str, Enum):
     """Boolean (store_true) flags. name == argparse dest; value == CLI flag."""
 
     disable_telemetry = "--disable-telemetry"
-    enable_tls        = "--enable-tls"
+    enable_tls = "--enable-tls"
 
 
 class QdrantGenericFlag(str, Enum):
@@ -295,7 +296,7 @@ def qdrant_server(argv: list[str] | None = None):
                 logger.error("Error: --binary-path is required when using binary environment")
                 sys.exit(1)
             if not Path(main_args.binary_path).exists():
-                logger.error(f"Error: Binary not found at {main_args.binary_path}")
+                logger.error("Error: Binary not found at %s", main_args.binary_path)
                 sys.exit(1)
             command = [main_args.binary_path, "--help"]
             subprocess.run(command, check=False)
@@ -306,7 +307,7 @@ def qdrant_server(argv: list[str] | None = None):
             logger.error("Error: --binary-path is required when using binary environment")
             sys.exit(1)
         if not Path(main_args.binary_path).exists():
-            logger.error(f"Error: Binary not found at {main_args.binary_path}")
+            logger.error("Error: Binary not found at %s", main_args.binary_path)
             sys.exit(1)
 
         # Build command for binary execution

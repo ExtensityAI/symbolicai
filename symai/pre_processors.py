@@ -1,41 +1,17 @@
 import traceback
 from typing import Any
 
-from .utils import prep_as_str
-
 
 class PreProcessor:
     def __call__(self, argument) -> Any:
         raise NotImplementedError
 
 
-class RawInputPreProcessor(PreProcessor):
-    def __call__(self, argument) -> Any:
-        return f"{argument.prop.prompt!s}"
-
-
-class JsonPreProcessor(PreProcessor):
-    def __call__(self, argument) -> None:
-        assert len(argument.args) == 1
-        self.format = format
-        value = str(argument.args[0])
-        return f"{value} => [JSON_BEGIN]"
-
-
-class FormatPreProcessor(PreProcessor):
-    def __init__(self, format: str) -> None:
-        self.format_str = format
-
-    def __call__(self, argument) -> Any:
-        assert len(argument.args) == 1
-        return argument.args[0].format(**self.format_str)
-
-
 class EqualsPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
         assert len(argument.args) == 1
-        a = prep_as_str(argument.prop.instance)
-        b = prep_as_str(argument.args[0])
+        a = str(argument.prop.instance)
+        b = str(argument.args[0])
         return f"{a} == {b} =>"
 
 
@@ -48,39 +24,34 @@ class InterpretExpressionPreProcessor(PreProcessor):
 class IndexPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
         assert len(argument.args) == 1
-        a = prep_as_str(argument.prop.instance)
-        b = prep_as_str(argument.args[0])
+        a = str(argument.prop.instance)
+        b = str(argument.args[0])
         return f"{a} index {b} =>"
 
 
 class SetIndexPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
         assert len(argument.args) == 2
-        a = prep_as_str(argument.prop.instance)
-        b = prep_as_str(argument.args[0])
-        c = prep_as_str(argument.args[1])
+        a = str(argument.prop.instance)
+        b = str(argument.args[0])
+        c = str(argument.args[1])
         return f"{a} index {b} set {c} =>"
 
 
 class DeleteIndexPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
         assert len(argument.args) == 1
-        a = prep_as_str(argument.prop.instance)
-        b = prep_as_str(argument.args[0])
+        a = str(argument.prop.instance)
+        b = str(argument.args[0])
         return f"{a} remove {b} =>"
-
-
-class PromptPreProcessor(PreProcessor):
-    def __call__(self, argument) -> Any:
-        return f"{argument.prop.prompt} $>"
 
 
 class ComparePreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
         assert len(argument.args) == 1
         comp = argument.prop.operator
-        a = prep_as_str(argument.prop.instance)
-        b = prep_as_str(argument.args[0])
+        a = str(argument.prop.instance)
+        b = str(argument.args[0])
         return f"{a} {comp!s} {b} =>"
 
 
@@ -89,7 +60,7 @@ class RankPreProcessor(PreProcessor):
         assert len(argument.args) >= 1
         order = argument.prop.order
         measure = argument.prop.measure if argument.prop.measure else argument.args[0]
-        list_ = prep_as_str(argument.prop.instance)
+        list_ = str(argument.prop.instance)
         # convert to list if not already a list
         if "|" in list_ and "[" not in list_:
             list_ = [v.strip() for v in list_.split("|") if len(v.strip()) > 0]
@@ -112,59 +83,46 @@ class IncludePreProcessor(PreProcessor):
 class CombinePreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
         assert len(argument.args) == 1
-        a = prep_as_str(argument.prop.instance)
-        b = prep_as_str(argument.args[0])
+        a = str(argument.prop.instance)
+        b = str(argument.args[0])
         return f"{a} + {b} =>"
-
-
-class TemplatePreProcessor(PreProcessor):
-    def __call__(self, argument) -> Any:
-        placeholder = argument.prop.placeholder
-        template = argument.prop.template
-        parts = str(template).split(placeholder)
-        assert len(parts) == 2, (
-            f"Your template must contain exactly one placeholder '{placeholder}' split:"
-            + str(len(parts))
-        )
-        argument.prop.template_suffix = parts[1]
-        return f"----------\n[Template]:\n{parts[0]}"
 
 
 class NegatePreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
-        stmt = prep_as_str(argument.prop.instance)
+        stmt = str(argument.prop.instance)
         return f"{stmt} =>"
 
 
 class ContainsPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
         assert len(argument.args) == 1
-        a = prep_as_str(argument.prop.instance)
-        b = prep_as_str(argument.args[0])
+        a = str(argument.prop.instance)
+        b = str(argument.args[0])
         return f"{b} in {a} =>"
 
 
 class StartsWithPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
         assert len(argument.args) == 1
-        a = prep_as_str(argument.prop.instance)
-        b = prep_as_str(argument.args[0])
+        a = str(argument.prop.instance)
+        b = str(argument.args[0])
         return f"{a} startswith {b} =>"
 
 
 class EndsWithPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
         assert len(argument.args) == 1
-        a = prep_as_str(argument.prop.instance)
-        b = prep_as_str(argument.args[0])
+        a = str(argument.prop.instance)
+        b = str(argument.args[0])
         return f"{a} endswith {b} =>"
 
 
 class IsInstanceOfPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
         assert len(argument.args) == 1
-        a = prep_as_str(argument.prop.instance)
-        b = prep_as_str(argument.args[0])
+        a = str(argument.prop.instance)
+        b = str(argument.args[0])
         return f"{a} isinstanceof {b} =>"
 
 
@@ -174,19 +132,11 @@ class ExtractPatternPreProcessor(PreProcessor):
         return f"from '{argument.prop.instance!s}' extract '{argument.args[0]!s}' =>"
 
 
-class SimpleSymbolicExpressionPreProcessor(PreProcessor):
-    def __call__(self, argument) -> Any:
-        assert len(argument.args) >= 1
-        val = str(argument.args[0])
-        val = val.replace("self", str(argument.prop.instance))
-        return f"expr :{val} =: =>"
-
-
 class LogicExpressionPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
         assert len(argument.args) >= 1
-        a = prep_as_str(argument.prop.instance)
-        b = prep_as_str(argument.args[0])
+        a = str(argument.prop.instance)
+        b = str(argument.args[0])
         operator = argument.prop.operator
         return f"expr :{a}: {operator} :{b}: =>"
 
@@ -227,17 +177,9 @@ class GenerateTextPreProcessor(PreProcessor):
         return f"{argument.prop.instance!s}"
 
 
-class ClusterPreProcessor(PreProcessor):
-    def __call__(self, argument) -> Any:
-        assert isinstance(argument.prop.instance.value, list), (
-            "ClusterPreProcessor can only be applied to a list"
-        )
-        return argument.prop.instance.value
-
-
 class ForEachPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
-        val = prep_as_str(argument.prop.instance)
+        val = str(argument.prop.instance)
         cond = argument.prop.condition
         apply = argument.prop.apply
         return f"{val} foreach '{cond}' apply '{apply}' =>"
@@ -245,14 +187,14 @@ class ForEachPreProcessor(PreProcessor):
 
 class MapPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
-        val = prep_as_str(argument.prop.instance)
+        val = str(argument.prop.instance)
         context = argument.prop.context
         return f"{val} map '{context!s}' =>"
 
 
 class ListPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
-        val = prep_as_str(argument.prop.instance)
+        val = str(argument.prop.instance)
         cond = argument.prop.condition
         return f"{val} list '{cond}' =>"
 
@@ -266,25 +208,9 @@ class QueryPreProcessor(PreProcessor):
 
 class SufficientInformationPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
-        val = prep_as_str(argument.prop.instance)
-        query = prep_as_str(argument.prop.query)
+        val = str(argument.prop.instance)
+        query = str(argument.prop.query)
         return f"query {query} content {val} =>"
-
-
-class ExpandFunctionPreProcessor(PreProcessor):
-    def __call__(self, argument) -> Any:
-        val = prep_as_str(argument.prop.instance)
-        return f"{val} =>\ndef"
-
-
-class ArgsPreProcessor(PreProcessor):
-    def __init__(self, format: str = "") -> None:
-        self.format = format
-
-    def __call__(self, argument) -> Any:
-        args_ = [str(arg) for arg in argument.args]
-        args_ = [str(argument.prop.instance), *args_]
-        return self.format.format(*args_)
 
 
 class ModifyPreProcessor(PreProcessor):
@@ -302,86 +228,9 @@ class FilterPreProcessor(PreProcessor):
 
 class MapExpressionPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
-        val = prep_as_str(argument.prop.instance)
+        val = str(argument.prop.instance)
         instruction = argument.prop.context
         return f"text '{val}' {instruction} =>"
-
-
-class ArgsToInputPreProcessor(PreProcessor):
-    def __init__(self, skip: list[int] | None = None) -> None:
-        super().__init__()
-        skip = [skip] if skip and isinstance(skip, int) else skip
-        self.skip = skip if skip is not None else []
-
-    def __call__(self, argument) -> Any:
-        input_ = ""
-        for i, arg in enumerate(argument.args):
-            if i in self.skip:
-                continue
-            input_ += f"{arg!s}\n"
-        return input_
-
-
-class SelfToInputPreProcessor(PreProcessor):
-    def __init__(self, skip: list[int] | None = None) -> None:
-        super().__init__()
-        skip = [skip] if skip and isinstance(skip, int) else skip
-        self.skip = skip if skip is not None else []
-
-    def __call__(self, argument) -> Any:
-        return f"{argument.prop.instance!s}\n"
-
-
-class DataTemplatePreProcessor(PreProcessor):
-    def __init__(self, skip: list[int] | None = None) -> None:
-        super().__init__()
-        self.skip = skip if skip is not None else []
-
-    def __call__(self, argument) -> Any:
-        input_ = f"[Data]:\n{argument.prop.instance!s}\n"
-        for i, arg in enumerate(argument.args):
-            if i in self.skip:
-                continue
-            input_ += f"{arg!s}\n"
-        return input_
-
-
-class ConsoleInputPreProcessor(PreProcessor):
-    def __init__(self, skip: list[int] | None = None) -> None:
-        super().__init__()
-        skip = [skip] if skip and isinstance(skip, int) else skip
-        self.skip = skip if skip is not None else []
-
-    def __call__(self, argument) -> Any:
-        return f"\n{argument.args[0]!s}\n$> "
-
-
-class ConsolePreProcessor(PreProcessor):
-    def __init__(self, skip: list[int] | None = None) -> None:
-        super().__init__()
-        skip = [skip] if skip and isinstance(skip, int) else skip
-        self.skip = skip if skip is not None else []
-
-    def __call__(self, argument) -> Any:
-        # _func is called as: _func(self, self.value, *method_args, **method_kwargs)
-        # argument.args[0] == symbol value, argument.prop.instance == Symbol object
-        if argument.args:
-            symbol_obj = argument.prop.instance
-            symbol_value = argument.args[0]
-            method_args = argument.args[1:]
-            object_ = f"symbol_value: {symbol_value!r}"
-
-            # kwargs passed at Symbol-construction time (e.g. test_kwarg=…)
-            if symbol_obj._kwargs:
-                object_ += f"\nsymbol_kwargs: {symbol_obj._kwargs}"
-
-            if method_args:
-                object_ += f"\nmethod_args: {method_args}"
-            if argument.kwargs:
-                object_ += f"\nmethod_kwargs: {argument.kwargs}"
-        else:
-            object_ = f"args: {argument.args}\nkwargs: {argument.kwargs}"
-        return object_
 
 
 class LanguagePreProcessor(PreProcessor):
@@ -395,14 +244,14 @@ class TextFormatPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
         format_ = argument.prop.format
         argument.prop.prompt = argument.prop.prompt.format(format_)
-        val = prep_as_str(argument.prop.instance)
+        val = str(argument.prop.instance)
         return f"text {val} format '{format_}' =>"
 
 
 class TranscriptionPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
         modify_ = argument.prop.modify
-        val = prep_as_str(argument.prop.instance)
+        val = str(argument.prop.instance)
         return f"text {val} modify only '{modify_}' =>"
 
 
@@ -434,7 +283,7 @@ class UnwrapListSymbolsPreProcessor(PreProcessor):
         for entry in entries:
             if isinstance(entry, (str, bytes)):
                 res.append(entry)
-            elif hasattr(entry, '__class__') and entry.__class__.__name__ in ('Part', 'Content'):
+            elif hasattr(entry, "__class__") and entry.__class__.__name__ in ("Part", "Content"):
                 # Pass through Google genai types for multimodal embedding
                 res.append(entry)
             else:
@@ -445,7 +294,7 @@ class UnwrapListSymbolsPreProcessor(PreProcessor):
 
 class ExceptionPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
-        ctxt = prep_as_str(argument.prop.instance)
+        ctxt = str(argument.prop.instance)
         ctxt = f"{ctxt}\n" if ctxt and len(ctxt) > 0 else ""
         val = argument.prop.query
         e = argument.prop.exception
@@ -455,7 +304,7 @@ class ExceptionPreProcessor(PreProcessor):
 
 class CorrectionPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
-        ctxt = prep_as_str(argument.prop.instance)
+        ctxt = str(argument.prop.instance)
         ctxt = f"{ctxt}\n" if ctxt and len(ctxt) > 0 else ""
         val = argument.prop.context
         exception = ""

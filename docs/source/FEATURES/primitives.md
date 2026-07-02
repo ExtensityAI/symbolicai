@@ -81,28 +81,23 @@ either syntactic (`Symbol(...).syn` or `Symbol(...)`) or semantic (`Symbol(...).
 | `.convert(format)`        | Query Handling  |           | ✓        | Convert data to specified format (YAML, XML, etc.). |
 | `.transcribe(modify)` | Query Handling |          | ✓        | Transcribe/reword text per instructions. |
 | `.analyze(exception, query?)` | Execution Control |      | ✓        | Analyze code execution and exceptions. |
-| `.execute()`, `.fexecute()` | Execution Control |       | ✓        | Execute code (with fallback). |
 | `.simulate()`             | Execution Control |         | ✓        | Simulate code or process semantically. |
 | `.sufficient(query)`   | Execution Control |         | ✓        | Check if information is sufficient. |
 | `.list(condition)`         | Execution Control |         | ✓        | List items matching criteria. |
 | `.foreach(condition, apply)`| Execution Control |         | ✓        | Apply action to each element. |
 | `.stream(expr, token_ratio)` | Execution Control |      | ✓        | Stream-process large inputs. |
-| `.ftry(expr, retries)`    | Execution Control |         | ✓        | Fault-tolerant execution with retries. |
 | `.dict(context, **kwargs)` | Dict Handling    |         | ✓        | Convert text/list into a dict semantically. |
 | `.template(template, placeholder?)` | Template Styling |    ✓  | | Fill in placeholders in a template string. |
 | `.style(description, libraries?)` | Template Styling |        | ✓ | Style text/code (e.g., syntax highlighting). |
-| `.cluster(**clustering_kwargs?)`              | Data Clustering  |         | ✓        | Cluster data into groups semantically. (uses sklearn's DBSCAN)|
+| `.cluster(**clustering_kwargs?)`              | Data Clustering  |         | ✓        | Cluster data into groups semantically. Uses scikit-learn's HDBSCAN via `symbolicai[cluster]`. |
 | `.embed()`                | Embedding        |         | ✓        | Generate embeddings for text/data. |
 | `.embedding`              | Embedding        |         | ✓        | Retrieve embeddings as a numpy array. |
 | `.similarity(other, metric?, normalize?)` | Embedding    |         | ✓        | Compute similarity between embeddings. |
 | `.distance(other, kernel?)`  | Embedding     |         | ✓        | Compute distance between embeddings. |
 | `.zip()`                  | Embedding        |         | ✓        | Package id, embedding, query into tuples. |
 | `.open(path?)`             | IO Handling      | ✓       |         | Open a file and read its contents. |
-| `.input(message?)`                | IO Handling      | ✓       |         | Read user input interactively. |
 | `.save(path, serialize?, replace?)` | Persistence | ✓ |  | Save a symbol to file (pickle/text). |
 | `.load(path)`             | Persistence      | ✓       |         | Load a symbol from file. |
-| `.expand()`               | Persistence      |         | ✓        | Generate and attach code based on prompt. |
-| `.output()` | Output Handling | ✓    | | Handle/capture output with handler. |
 
 ---
 ## 1. Syntactic **vs.** Semantic Symbols
@@ -886,24 +881,6 @@ except Exception as e:
 # => Detailed analysis of the error context
 ```
 
-### Code Execution (`execute`, `fexecute`)
-
-Execute Python code and return comprehensive results:
-
-```python
-sym_code = Symbol("""
-def run():
-    return 2 + 3
-res = run()
-""")
-executed = sym_code.execute()
-# => {'globals': {...}, 'locals': {...}, 'locals_res': 5}
-
-# Fallback execution
-fexecuted = sym_code.fexecute()
-# => Similar execution with fault tolerance
-```
-
 ### Code Simulation (`simulate`)
 
 The `simulate()` method provides step-by-step execution traces:
@@ -947,17 +924,6 @@ engineers_list = sym_employees.list("employees who are engineers")
 sym_numbers = Symbol([1, 2, 3, 4, 5])
 squared_numbers = sym_numbers.foreach("each number", "square the number")
 # => ['1', '4', '9', '16', '25']
-```
-
-### Fault-Tolerant Execution (`ftry`)
-
-Execute operations with retry logic and error handling:
-
-```python
-sym_test = Symbol("test data")
-# Automatically retries failed operations
-ftry_result = sym_test.ftry(expression, retries=2)
-# => Successful execution after potential retries
 ```
 
 ## 16. Dictionary Handling Operations
@@ -1087,15 +1053,6 @@ opened_from_value = sym_path.open()
 # => Symbol containing file contents
 ```
 
-### User Input (`input`)
-
-Handle interactive user input (requires user interaction):
-
-```python
-sym = Symbol()
-user_input = sym.input() # Prompts for user input
-```
-
 ## 21. Persistence Operations
 
 ### Saving Symbols (`save`)
@@ -1124,40 +1081,4 @@ Load previously saved Symbol data:
 loader_sym = Symbol()
 loaded_sym = loader_sym.load("/path/to/file.pkl")
 # => Restored Symbol with original data
-```
-
-### Dynamic Function Expansion (`expand`)
-
-Generate and attach new functions based on descriptions:
-
-```python
-sym_task = Symbol("Calculate the fibonacci sequence up to 10 numbers")
-func_name = sym_task.expand()
-# => Generated function name, function attached as Symbol attribute
-```
-
-## 22. Output Processing Operations
-
-### Output Handling (`output`)
-
-Process and format Symbol output with custom handlers:
-
-```python
-sym_test = Symbol("Hello, output test!")
-
-# Basic output processing
-result = sym_test.output()
-# => Structured output with processed information
-
-# Custom handler function
-def custom_handler(input_dict):
-   # Process the input dictionary
-    pass
-
-result_with_handler = sym_test.output(handler=custom_handler)
-# => Output processed through custom handler
-
-# With additional arguments
-result_with_args = sym_test.output("arg1", "arg2", custom_param="value")
-# => Output including method arguments and parameters
 ```

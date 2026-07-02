@@ -2,9 +2,9 @@ import logging
 
 from openai import OpenAI
 
-from ....symbol import Result
-from ...base import Engine
-from ...settings import SYMAI_CONFIG
+from symai.backend.base import Engine
+from symai.backend.settings import SYMAI_CONFIG
+from symai.symbol import Result
 
 # suppress openai logging
 logging.getLogger("openai").setLevel(logging.WARNING)

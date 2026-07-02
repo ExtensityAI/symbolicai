@@ -1,71 +1,124 @@
 from __future__ import annotations
 
 import base64
-import inspect
-import os
-import warnings
+import io
+import logging
 from dataclasses import dataclass, field
+from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import cv2
 import httpx
-import numpy as np
 from box import Box
-from PIL import Image
+from PIL import Image, ImageSequence
 
-from .misc.console import ConsoleStyle
+logger = logging.getLogger(__name__)
+
+_NOISY_LOGGERS = (
+    "requests",
+    "urllib",
+    "urllib3",
+    "httpx",
+    "httpcore",
+    "huggingface_hub",
+    "huggingface",
+)
+
+
+def silence_noisy_loggers(*extra_loggers: str) -> None:
+    """Raise chatty third-party HTTP/HF loggers to ERROR.
+
+    Pass extra logger names to also silence library-specific loggers (e.g.
+    "openai"). Call once at import time from modules that make network calls.
+    """
+    # never configure the root logger from library code; only tame named deps
+    for name in (*_NOISY_LOGGERS, *extra_loggers):
+        logging.getLogger(name).setLevel(logging.ERROR)
+
+
+# Mirrors the feature extras in pyproject.toml [project.optional-dependencies], minus the `all`
+# aggregate and `dev` tooling; tests/invariants asserts this stays in bijective sync with pyproject.
+class Extra(StrEnum):
+    """Optional-dependency extras; pass a member as the `extra` argument of `missing_dependency`."""
+
+    BITSANDBYTES = "bitsandbytes"
+    HF = "hf"
+    SCRAPE = "scrape"
+    WOLFRAMALPHA = "wolframalpha"
+    LEAN = "lean"
+    WHISPER = "whisper"
+    VIDEO = "video"
+    SEARCH = "search"
+    OCR = "ocr"
+    SERVICES = "services"
+    SOLVER = "solver"
+    QDRANT = "qdrant"
+    CLUSTER = "cluster"
+
+
+def missing_dependency(extra: Extra, dep: str, *, package: str | None = None) -> ImportError:
+    """Build a standardized ImportError naming the extra that provides a missing optional dependency.
+
+    Use as `raise missing_dependency(...)` from a `None`-sentinel guard or an
+    `except ImportError` block for an optional dependency, so users get a consistent
+    "install symbolicai[<extra>]" hint instead of a bare ModuleNotFoundError. `dep` is the
+    missing import name; pass `package` when the pip distribution name differs
+    (e.g. cv2 -> opencv-python) to also suggest the bare install. Inside an `except` block,
+    chain with `from None` to drop the noisy ModuleNotFoundError traceback.
+    """
+    install = f"`pip install symbolicai[{extra}]`"
+    if package:
+        install += f" (or `pip install {package}`)"
+
+    msg = f"'{dep}' is required for this feature but is not installed. Install it with {install}."
+    return ImportError(msg)
+
 
 if TYPE_CHECKING:
-    from .components import MetadataTracker
+    from symai.components import MetadataTracker
 
 
 def encode_media_frames(file_path):
-    ext = file_path.split(".")[-1]
-    if (
-        ext.lower() == "jpg"
-        or ext.lower() == "jpeg"
-        or ext.lower() == "png"
-        or ext.lower() == "webp"
-    ):
+    ext = file_path.split(".")[-1].lower()
+    if ext == "jpg" or ext == "jpeg" or ext == "png" or ext == "webp":
         if file_path.startswith("http"):
             return encode_image_url(file_path)
         return encode_image_local(file_path)
-    if ext.lower() == "gif":
+    if ext == "gif":
         if file_path.startswith("http"):
             msg = "GIF files from URLs are not supported. Please download the file and try again."
-            UserMessage(msg, raise_with=ValueError)
+            raise ValueError(msg)
 
-        ext = "jpeg"
-        # get frames from gif
-        base64Frames = []
+        base64_frames = []
         with Image.open(file_path) as frames:
-            for frame in range(frames.n_frames):
-                frames.seek(frame)
-                # get the image as bytes in memory (using BytesIO)
-                current_frame = np.array(frames.convert("RGB"))
-                _, buffer = cv2.imencode(".jpg", current_frame)
-                base64Frames.append(base64.b64encode(buffer).decode("utf-8"))
-        return base64Frames, ext
-    if ext.lower() == "mp4" or ext.lower() == "avi" or ext.lower() == "mov":
+            for frame in ImageSequence.Iterator(frames):
+                buffer = io.BytesIO()
+                frame.convert("RGB").save(buffer, format="JPEG")
+                base64_frames.append(base64.b64encode(buffer.getvalue()).decode("utf-8"))
+        return base64_frames, "jpeg"
+    if ext == "mp4" or ext == "avi" or ext == "mov":
         if file_path.startswith("http"):
             msg = "Video files from URLs are not supported. Please download the file and try again."
-            UserMessage(msg, raise_with=ValueError)
+            raise ValueError(msg)
 
-        ext = "jpeg"
+        try:
+            import cv2  # noqa: PLC0415
+        except ImportError:
+            raise missing_dependency(Extra.VIDEO, "cv2", package="opencv-python") from None
+
         video = cv2.VideoCapture(file_path)
-        # get frames from video
-        base64Frames = []
-        while video.isOpened():
-            success, frame = video.read()
-            if not success:
-                break
-            _, buffer = cv2.imencode(".jpg", frame)
-            base64Frames.append(base64.b64encode(buffer).decode("utf-8"))
-        video.release()
-        return base64Frames, ext
+        base64_frames = []
+        try:
+            while video.isOpened():
+                success, frame = video.read()
+                if not success:
+                    break
+                _, buffer = cv2.imencode(".jpg", frame)
+                base64_frames.append(base64.b64encode(buffer).decode("utf-8"))
+        finally:
+            video.release()
+        return base64_frames, "jpeg"
     msg = f"File extension {ext} not supported"
-    UserMessage(msg)
     raise ValueError(msg)
 
 
@@ -100,100 +153,6 @@ def encode_image_url(image_url):
     return [enc_im], ext
 
 
-def ignore_exception(exception=Exception, default=None):
-    """Decorator for ignoring exception from a function
-    e.g.   @ignore_exception(DivideByZero)
-    e.g.2. ignore_exception(DivideByZero)(Divide)(2/0)
-    """
-
-    def dec(function):
-        def _dec(*args, **kwargs):
-            try:
-                return function(*args, **kwargs)
-            except exception:
-                return default
-
-        return _dec
-
-    return dec
-
-
-def prep_as_str(x):
-    return f"'{x!s}'" if ignore_exception()(int)(str(x)) is None else str(x)
-
-
-def deprecated(message):
-    def deprecated_decorator(func):
-        def deprecated_func(*args, **kwargs):
-            warnings.warn(
-                f"{func.__name__} is a deprecated function. {message}",
-                category=DeprecationWarning,
-                stacklevel=2,
-            )
-            warnings.simplefilter("default", DeprecationWarning)
-            return func(*args, **kwargs)
-
-        return deprecated_func
-
-    return deprecated_decorator
-
-
-def toggle_test(enabled: bool = True, default=None):
-    def test_decorator(func):
-        def test_func(*args, **kwargs):
-            if enabled:
-                return func(*args, **kwargs)
-            return default
-
-        return test_func
-
-    return test_decorator
-
-
-class Args:
-    def __init__(self, skip_none: bool = False, **kwargs):
-        # for each key set an attribute
-        for key, value in kwargs.items():
-            if (value is not None or not skip_none) and not key.startswith("_"):
-                setattr(self, key, value)
-
-
-class UserMessage:
-    def __init__(
-        self,
-        message: str,
-        stacklevel: int = 1,
-        style: str = "warn",
-        raise_with: Exception | None = None,
-    ) -> None:
-        if os.environ.get("SYMAI_WARNINGS", "1") == "1":
-            caller = inspect.getframeinfo(inspect.stack()[stacklevel][0])
-            lineno = caller.lineno
-            filename = caller.filename
-            filename = filename[filename.find("symbolicai") :]
-            with ConsoleStyle(style) as console:
-                if style == "warn":
-                    console.print(
-                        f"{filename}:{lineno}: {UserWarning.__name__}: {message}", escape=True
-                    )
-                else:
-                    console.print(f"{message}", escape=True)
-        # Always raise the warning if raise_with is provided
-        if raise_with is not None:
-            raise raise_with(message)
-
-
-# Function to format bytes to a human-readable string
-def format_bytes(bytes):
-    if bytes < 1024:
-        return f"{bytes} bytes"
-    if bytes < 1048576:
-        return f"{bytes / 1024:.2f} KB"
-    if bytes < 1073741824:
-        return f"{bytes / 1048576:.2f} MB"
-    return f"{bytes / 1073741824:.2f} GB"
-
-
 def semassert(condition: bool, message: str = ""):
     """
     Weak assertion for semantic operations that informs about model limitations.
@@ -202,7 +161,7 @@ def semassert(condition: bool, message: str = ""):
     if not condition:
         base_msg = "Assertion failed due to model capability limitations in handling this type of semantic computation"
         full_msg = f"{base_msg}. {message}" if message else base_msg
-        UserMessage(f"⚠️  SEMANTIC ASSERT: {full_msg}")
+        logger.warning("⚠️  SEMANTIC ASSERT: %s", full_msg)
         return False
     return True
 
@@ -260,7 +219,8 @@ class RuntimeInfo:
             try:
                 return RuntimeInfo.from_usage_stats(tracker.usage, total_elapsed_time)
             except Exception as e:
-                UserMessage(f"Failed to parse metadata: {e}", raise_with=ValueError)
+                msg = f"Failed to parse metadata: {e}"
+                raise ValueError(msg) from e
         return RuntimeInfo(0, 0, 0, 0, 0, 0, 0, 0, {})
 
     @staticmethod
