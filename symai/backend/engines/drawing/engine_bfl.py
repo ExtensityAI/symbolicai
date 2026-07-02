@@ -3,7 +3,7 @@ import tempfile
 import time
 from pathlib import Path
 
-import requests
+import httpx
 
 from symai.backend.base import Engine
 from symai.backend.settings import SYMAI_CONFIG
@@ -22,7 +22,7 @@ class FluxResult(Result):
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_file:
             path = tmp_file.name
         url = value.get("result").get("sample")
-        request = requests.get(url, allow_redirects=True)
+        request = httpx.get(url, follow_redirects=True, timeout=None)
         request.raise_for_status()
         with Path(path).open("wb") as f:
             f.write(request.content)
@@ -82,8 +82,12 @@ class DrawingEngine(Engine):
 
         if kwargs.get("operation") == "create":
             try:
-                response = requests.post(
-                    f"https://api.us1.bfl.ai/v1/{self.model}", headers=headers, json=payload
+                response = httpx.post(
+                    f"https://api.us1.bfl.ai/v1/{self.model}",
+                    headers=headers,
+                    json=payload,
+                    timeout=None,
+                    follow_redirects=True,
                 )
                 # fail early on HTTP errors
                 response.raise_for_status()
@@ -96,10 +100,12 @@ class DrawingEngine(Engine):
                 while True:
                     time.sleep(5)
 
-                    result = requests.get(
+                    result = httpx.get(
                         "https://api.us1.bfl.ai/v1/get_result",
                         headers=headers,
                         params={"id": request_id},
+                        timeout=None,
+                        follow_redirects=True,
                     )
 
                     result.raise_for_status()

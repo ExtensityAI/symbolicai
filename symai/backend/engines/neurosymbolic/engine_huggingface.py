@@ -1,7 +1,7 @@
 import logging
 from copy import deepcopy
 
-import requests
+import httpx
 
 from symai.backend.base import Engine
 from symai.backend.settings import SYMAI_CONFIG, SYMSERVER_CONFIG
@@ -17,12 +17,13 @@ class HFTokenizer:
 
     @staticmethod
     def encode(text: str, add_special_tokens: bool = False) -> list[int]:
-        res = requests.post(
+        res = httpx.post(
             f"{HFTokenizer._server_endpoint}/tokenize",
             json={
                 "input": text,
                 "add_special_tokens": add_special_tokens,
             },
+            timeout=None,
         )
 
         if res.status_code != 200:
@@ -35,12 +36,13 @@ class HFTokenizer:
 
     @staticmethod
     def decode(tokens: list[int], skip_special_tokens: bool = True) -> str:
-        res = requests.post(
+        res = httpx.post(
             f"{HFTokenizer._server_endpoint}/detokenize",
             json={
                 "tokens": tokens,
                 "skip_special_tokens": skip_special_tokens,
             },
+            timeout=None,
         )
 
         if res.status_code != 200:
@@ -117,7 +119,7 @@ class HFEngine(Engine):
         except_remedy = kwargs.get("except_remedy")
 
         try:
-            res = requests.post(
+            res = httpx.post(
                 f"{self.server_endpoint}/chat",
                 json={
                     "messages": prompts,
@@ -134,6 +136,7 @@ class HFEngine(Engine):
                     "num_beam_groups": num_beam_groups,
                     "eos_token_id": eos_token_id,
                 },
+                timeout=None,
             )
 
             if res.status_code != 200:
