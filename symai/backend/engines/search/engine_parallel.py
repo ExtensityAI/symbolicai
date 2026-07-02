@@ -14,12 +14,9 @@ from symai.backend.engines.search.utils import (
 )
 from symai.backend.settings import SYMAI_CONFIG
 from symai.symbol import Result
+from symai.utils import silence_noisy_loggers
 
-logging.getLogger("requests").setLevel(logging.ERROR)
-logging.getLogger("urllib3").setLevel(logging.ERROR)
-logging.getLogger("httpx").setLevel(logging.ERROR)
-logging.getLogger("httpcore").setLevel(logging.ERROR)
-logging.getLogger("filelock").setLevel(logging.ERROR)
+silence_noisy_loggers("filelock")
 
 logger = logging.getLogger(__name__)
 

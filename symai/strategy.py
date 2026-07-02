@@ -9,13 +9,12 @@ from typing import Any, ClassVar
 import numpy as np
 from anthropic import transform_schema
 from beartype import beartype
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 
 from symai.backend.settings import SYMAI_CONFIG
 from symai.components import Function
 from symai.context import CURRENT_ENGINE_VAR
 from symai.models import LLMDataModel, build_dynamic_llm_datamodel
-from symai.symbol import Expression
 
 logger = logging.getLogger(__name__)
 
@@ -1119,58 +1118,3 @@ class contract:
         cls.forward = self._build_wrapped_forward(original_forward)
         cls.contract_perf_stats = self._build_contract_perf_stats()
         return cls
-
-
-class BaseStrategy(TypeValidationFunction):
-    def __init__(self, data_model: BaseModel, *_args, **kwargs):
-        super().__init__(
-            retry_params={
-                "tries": 8,
-                "delay": 0.015,
-                "backoff": 1.25,
-                "jitter": 0.0,
-                "max_delay": 0.25,
-                "graceful": False,
-            },
-            **kwargs,
-        )
-        super().register_expected_data_model(data_model, attach_to="output")
-        self.logger = logging.getLogger(__name__)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
-
-    def forward(self, *args, **kwargs):
-        return super().forward(
-            *args,
-            payload=self.payload,
-            template_suffix=self.template,
-            response_format={"type": "json_object"},
-            **kwargs,
-        )
-
-    @property
-    def payload(self):
-        return None
-
-    @property
-    def static_context(self):
-        raise NotImplementedError
-
-    @property
-    def template(self):
-        return "{{fill}}"
-
-
-class Strategy(Expression):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.logger = logging.getLogger(__name__)
-
-    def __new__(cls, module: str, *_args, **_kwargs):
-        cls._module = module
-        cls.module_path = "symai.extended.strategies"
-        return Strategy.load_module_class(cls.module)

@@ -28,6 +28,7 @@ _IMPORT_NAME = {
     "openai-whisper": "whisper",
     "parallel-web": "parallel",
     "pdfminer.six": "pdfminer",
+    "pillow": "PIL",
     "python-box": "box",
     "pyyaml": "yaml",
     "scikit-learn": "sklearn",

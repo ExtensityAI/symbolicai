@@ -10,13 +10,10 @@ from symai.backend.engines.search.utils import CitationResultMixin, insert_citat
 from symai.backend.mixin.google import GoogleMixin
 from symai.backend.settings import SYMAI_CONFIG
 from symai.symbol import Result
+from symai.utils import silence_noisy_loggers
 
-logging.getLogger("google.genai").setLevel(logging.ERROR)
 logging.getLogger("google_genai").propagate = False
-logging.getLogger("requests").setLevel(logging.ERROR)
-logging.getLogger("urllib3").setLevel(logging.ERROR)
-logging.getLogger("httpx").setLevel(logging.ERROR)
-logging.getLogger("httpcore").setLevel(logging.ERROR)
+silence_noisy_loggers("google.genai")
 
 logger = logging.getLogger(__name__)
 

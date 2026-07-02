@@ -20,15 +20,11 @@ from symai.backend.base import Engine
 from symai.backend.mixin.anthropic import AnthropicMixin
 from symai.backend.settings import SYMAI_CONFIG
 from symai.components import SelfPrompt
-from symai.utils import encode_media_frames
+from symai.utils import encode_media_frames, silence_noisy_loggers
 
 logger = logging.getLogger(__name__)
 
-logging.getLogger("anthropic").setLevel(logging.ERROR)
-logging.getLogger("requests").setLevel(logging.ERROR)
-logging.getLogger("urllib").setLevel(logging.ERROR)
-logging.getLogger("httpx").setLevel(logging.ERROR)
-logging.getLogger("httpcore").setLevel(logging.ERROR)
+silence_noisy_loggers("anthropic")
 
 
 class TokenizerWrapper:

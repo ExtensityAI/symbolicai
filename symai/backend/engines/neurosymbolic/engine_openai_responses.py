@@ -11,13 +11,9 @@ from symai.backend.base import Engine
 from symai.backend.mixin.openai import SUPPORTED_REASONING_MODELS, OpenAIMixin
 from symai.backend.settings import SYMAI_CONFIG
 from symai.components import SelfPrompt
-from symai.utils import encode_media_frames
+from symai.utils import encode_media_frames, silence_noisy_loggers
 
-logging.getLogger("openai").setLevel(logging.ERROR)
-logging.getLogger("requests").setLevel(logging.ERROR)
-logging.getLogger("urllib").setLevel(logging.ERROR)
-logging.getLogger("httpx").setLevel(logging.ERROR)
-logging.getLogger("httpcore").setLevel(logging.ERROR)
+silence_noisy_loggers("openai")
 
 logger = logging.getLogger(__name__)
 
