@@ -204,7 +204,6 @@ class ChunkUpsertRequest(BaseModel):
     index_name: str | None = None
     text: str | None = Field(default=None, max_length=10_000_000)
     document_path: str | None = Field(default=None, max_length=4096)
-    document_url: str | None = Field(default=None, max_length=4096)
     metadata: dict[str, Any] | None = None
     chunker_name: str | None = None
     chunker_kwargs: dict[str, Any] | None = None
@@ -214,10 +213,8 @@ class ChunkUpsertRequest(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def _validate_payload(cls, values: Any) -> Any:
-        if isinstance(values, dict) and not any(
-            values.get(k) for k in ("text", "document_path", "document_url")
-        ):
-            msg = "Provide one of text, document_path, or document_url."
+        if isinstance(values, dict) and not any(values.get(k) for k in ("text", "document_path")):
+            msg = "Provide one of text or document_path."
             raise ValueError(msg)
         return values
 
@@ -943,8 +940,6 @@ async def chunk_and_upsert(
         kwargs["text"] = payload.text
     if payload.document_path:
         kwargs["document_path"] = _translate_document_path(payload.document_path)
-    if payload.document_url:
-        kwargs["document_url"] = payload.document_url
     if payload.metadata:
         kwargs["metadata"] = payload.metadata
     if payload.chunker_name:
