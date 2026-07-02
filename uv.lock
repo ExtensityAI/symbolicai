@@ -3664,7 +3664,6 @@ all = [
     { name = "qdrant-client", version = "1.16.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.14'" },
     { name = "qdrant-client", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.14'" },
     { name = "redis" },
-    { name = "requests" },
     { name = "scikit-learn" },
     { name = "sentence-transformers" },
     { name = "sentencepiece" },
@@ -3711,7 +3710,6 @@ qdrant = [
     { name = "chonkie" },
     { name = "qdrant-client", version = "1.16.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.14'" },
     { name = "qdrant-client", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.14'" },
-    { name = "requests" },
     { name = "tokenizers" },
 ]
 scrape = [
@@ -3794,7 +3792,6 @@ requires-dist = [
     { name = "python-box", specifier = ">=7.1.1" },
     { name = "qdrant-client", marker = "extra == 'qdrant'" },
     { name = "redis", marker = "extra == 'services'", specifier = ">=5.0.2" },
-    { name = "requests", marker = "extra == 'qdrant'" },
     { name = "scikit-learn", marker = "extra == 'cluster'", specifier = ">=1.7.0" },
     { name = "sentence-transformers", marker = "extra == 'hf'", specifier = ">=2.5.1" },
     { name = "sentencepiece", marker = "extra == 'hf'", specifier = ">=0.2.0" },
