@@ -4,8 +4,8 @@ import logging
 import tempfile
 from pathlib import Path
 
+import httpx
 import openai
-import requests
 
 from symai.backend.base import Engine
 from symai.backend.settings import SYMAI_CONFIG
@@ -34,7 +34,7 @@ class GPTImageResult(Result):
             with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_file:
                 path = tmp_file.name
             if has_url and item.url is not None:
-                request = requests.get(item.url, allow_redirects=True)
+                request = httpx.get(item.url, follow_redirects=True, timeout=None)
                 request.raise_for_status()
                 with Path(path).open("wb") as f:
                     f.write(request.content)

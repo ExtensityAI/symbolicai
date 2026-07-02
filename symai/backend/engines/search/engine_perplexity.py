@@ -1,7 +1,7 @@
 import json
 import logging
 
-import requests
+import httpx
 
 from symai.backend.base import Engine
 from symai.backend.settings import SYMAI_CONFIG
@@ -88,8 +88,12 @@ class PerplexityEngine(Engine):
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
         try:
-            res = requests.post(
-                "https://api.perplexity.ai/chat/completions", json=payload, headers=headers
+            res = httpx.post(
+                "https://api.perplexity.ai/chat/completions",
+                json=payload,
+                headers=headers,
+                timeout=None,
+                follow_redirects=True,
             )
             res = PerplexitySearchResult(res.json())
         except Exception as e:

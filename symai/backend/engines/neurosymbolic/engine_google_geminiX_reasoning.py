@@ -5,7 +5,7 @@ import re
 from copy import deepcopy
 from pathlib import Path
 
-import requests
+import httpx
 from google import genai
 from google.genai import types
 
@@ -177,7 +177,7 @@ class GeminiXReasoningEngine(Engine, GoogleMixin):
         return [part]
 
     def _create_parts_from_url(self, img_src: str) -> list[types.Part]:
-        response = requests.get(img_src, timeout=10)
+        response = httpx.get(img_src, timeout=10, follow_redirects=True)
         response.raise_for_status()
         image_bytes = response.content
         mime_type = response.headers.get("Content-Type", "application/octet-stream")

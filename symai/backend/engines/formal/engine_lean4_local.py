@@ -19,7 +19,7 @@ import time
 from copy import deepcopy
 from typing import TYPE_CHECKING
 
-import requests
+import httpx
 
 if TYPE_CHECKING:
     from symai.core import Argument
@@ -101,9 +101,9 @@ class Lean4LocalEngine(Engine):
     def _is_server_healthy(self) -> bool:
         """Check if Lean4 Server is healthy."""
         try:
-            response = requests.get(f"{self.server_url}/health", timeout=2)
+            response = httpx.get(f"{self.server_url}/health", timeout=2)
             return response.status_code == 200
-        except requests.RequestException:
+        except httpx.HTTPError:
             return False
 
     def _start_server(self) -> None:
@@ -133,19 +133,19 @@ class Lean4LocalEngine(Engine):
             msg = f"Failed to start Lean4 Server: {e}"
             raise RuntimeError(msg) from e
 
-    def _post_check(self, code: str) -> requests.Response:
+    def _post_check(self, code: str) -> httpx.Response:
         """POST to /check, retrying once if the server connection drops."""
         try:
-            response = requests.post(
+            response = httpx.post(
                 f"{self.server_url}/check",
                 json={"code": code},
                 timeout=60,
             )
             response.raise_for_status()
             return response
-        except requests.ConnectionError:
+        except httpx.ConnectError:
             self._ensure_server()
-            response = requests.post(
+            response = httpx.post(
                 f"{self.server_url}/check",
                 json={"code": code},
                 timeout=60,
@@ -174,7 +174,7 @@ class Lean4LocalEngine(Engine):
 
             return [result], metadata
 
-        except requests.RequestException as e:
+        except httpx.HTTPError as e:
             logger.exception("Lean4 Server request failed")
             result = LeanResult({"output": str(e), "status": "error"})
             return [result], {"status": "error", "message": str(e)}
@@ -186,8 +186,8 @@ class Lean4LocalEngine(Engine):
     def cleanup(self) -> None:
         """Cleanup server process if we started it."""
         if self.server_process:
-            with contextlib.suppress(requests.RequestException):
-                requests.post(f"{self.server_url}/cleanup", timeout=5)
+            with contextlib.suppress(httpx.HTTPError):
+                httpx.post(f"{self.server_url}/cleanup", timeout=5)
             self.server_process.terminate()
             self.server_process.wait(timeout=5)
             self.server_process = None
