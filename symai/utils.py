@@ -14,6 +14,28 @@ from PIL import Image, ImageSequence
 
 logger = logging.getLogger(__name__)
 
+_NOISY_LOGGERS = (
+    "requests",
+    "urllib",
+    "urllib3",
+    "httpx",
+    "httpcore",
+    "huggingface_hub",
+    "huggingface",
+)
+
+
+def silence_noisy_loggers(*extra_loggers: str) -> None:
+    """Raise chatty third-party HTTP/HF loggers to ERROR.
+
+    Pass extra logger names to also silence library-specific loggers (e.g.
+    "openai"). Call once at import time from modules that make network calls.
+    """
+    # never configure the root logger from library code; only tame named deps
+    for name in (*_NOISY_LOGGERS, *extra_loggers):
+        logging.getLogger(name).setLevel(logging.ERROR)
+
+
 if TYPE_CHECKING:
     from symai.components import MetadataTracker
 

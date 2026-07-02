@@ -7,12 +7,9 @@ import openai
 from symai.backend.base import Engine
 from symai.backend.mixin.openai import OpenAIMixin
 from symai.backend.settings import SYMAI_CONFIG
+from symai.utils import silence_noisy_loggers
 
-logging.getLogger("openai").setLevel(logging.ERROR)
-logging.getLogger("requests").setLevel(logging.ERROR)
-logging.getLogger("urllib").setLevel(logging.ERROR)
-logging.getLogger("httpx").setLevel(logging.ERROR)
-logging.getLogger("httpcore").setLevel(logging.ERROR)
+silence_noisy_loggers("openai")
 
 logger = logging.getLogger(__name__)
 

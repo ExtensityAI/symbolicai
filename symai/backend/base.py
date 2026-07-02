@@ -33,6 +33,30 @@ class Engine(ABC):
             base[max_retries_key] = self.client_max_retries
         return base
 
+    def _validate_retry_params(self, retry_params):
+        if not isinstance(retry_params, dict):
+            msg = "retry_params must be a dictionary"
+            raise ValueError(msg)
+
+        keys = ["tries", "delay", "max_delay", "backoff", "jitter", "graceful"]
+        if not all(key in retry_params for key in keys):
+            msg = f"Available keys: {keys}"
+            raise ValueError(msg)
+
+        return retry_params
+
+    def _validate_timeout_params(self, timeout_params):
+        if not isinstance(timeout_params, dict):
+            msg = "timeout_params must be a dictionary"
+            raise ValueError(msg)
+
+        keys = ["read", "connect"]
+        if not all(key in timeout_params for key in keys):
+            msg = f"Available keys: {keys}"
+            raise ValueError(msg)
+
+        return timeout_params
+
     def __call__(self, argument: Any) -> tuple[list[str], dict]:
         log = {"Input": {"self": self, "args": argument.args, **argument.kwargs}}
         start_time = time.time()

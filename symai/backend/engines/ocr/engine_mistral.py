@@ -10,10 +10,11 @@ except ImportError:
 from symai.backend.base import Engine
 from symai.backend.settings import SYMAI_CONFIG
 from symai.symbol import Result
+from symai.utils import silence_noisy_loggers
 
 logger = logging.getLogger(__name__)
 # silence httpx debug noise from mistralai SDK
-logging.getLogger("httpx").setLevel(logging.ERROR)
+silence_noisy_loggers()
 
 
 class MistralOCRResult(Result):

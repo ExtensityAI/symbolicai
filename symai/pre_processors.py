@@ -7,15 +7,6 @@ class PreProcessor:
         raise NotImplementedError
 
 
-class FormatPreProcessor(PreProcessor):
-    def __init__(self, format: str) -> None:
-        self.format_str = format
-
-    def __call__(self, argument) -> Any:
-        assert len(argument.args) == 1
-        return argument.args[0].format(**self.format_str)
-
-
 class EqualsPreProcessor(PreProcessor):
     def __call__(self, argument) -> Any:
         assert len(argument.args) == 1

@@ -9,14 +9,9 @@ import urllib.request
 from importlib.metadata import version
 
 from symai.backend import settings
+from symai.utils import silence_noisy_loggers
 
-# do not remove - hides the libraries' debug messages
-logging.getLogger("urllib3").setLevel(logging.WARNING)
-logging.getLogger("requests").setLevel(logging.WARNING)
-logging.getLogger("httpx").setLevel(logging.ERROR)
-logging.getLogger("httpcore").setLevel(logging.ERROR)
-logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
-logging.getLogger("huggingface").setLevel(logging.ERROR)
+silence_noisy_loggers()
 
 _symai_log = logging.getLogger("symai")
 logger = logging.getLogger(__name__)
@@ -549,7 +544,6 @@ from symai.functional import EngineRepository  # noqa
 from symai.post_processors import PostProcessor  # noqa
 from symai.pre_processors import PreProcessor  # noqa
 from symai.prompts import Prompt, PromptRegistry  # noqa
-from symai.strategy import Strategy  # noqa
 from symai.symbol import Call, Expression, GlobalSymbolPrimitive, Metadata, Symbol  # noqa
 
 __all__ = [
@@ -567,7 +561,6 @@ __all__ = [
     "PrimitiveDisabler",
     "Prompt",
     "PromptRegistry",
-    "Strategy",
     "Symbol",
     "__root_dir__",
     "__version__",

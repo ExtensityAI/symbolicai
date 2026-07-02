@@ -6,11 +6,9 @@ import httpx
 from symai.backend.async_bridge import run_async
 from symai.backend.base import Engine
 from symai.backend.settings import SYMAI_CONFIG, SYMSERVER_CONFIG
+from symai.utils import silence_noisy_loggers
 
-logging.getLogger("requests").setLevel(logging.ERROR)
-logging.getLogger("urllib").setLevel(logging.ERROR)
-logging.getLogger("httpx").setLevel(logging.ERROR)
-logging.getLogger("httpcore").setLevel(logging.ERROR)
+silence_noisy_loggers()
 
 logger = logging.getLogger(__name__)
 
@@ -56,25 +54,6 @@ class LlamaCppEmbeddingEngine(Engine):
         super().command(*args, **kwargs)
         if "EMBEDDING_ENGINE_MODEL" in kwargs:
             self.model = kwargs["EMBEDDING_ENGINE_MODEL"]
-
-    def _validate_timeout_params(self, timeout_params):
-        if not isinstance(timeout_params, dict):
-            msg = "timeout_params must be a dictionary"
-            raise ValueError(msg)
-        assert all(key in timeout_params for key in ["read", "connect"]), (
-            "Available keys: ['read', 'connect']"
-        )
-        return timeout_params
-
-    def _validate_retry_params(self, retry_params):
-        if not isinstance(retry_params, dict):
-            msg = "retry_params must be a dictionary"
-            raise ValueError(msg)
-        assert all(
-            key in retry_params
-            for key in ["tries", "delay", "max_delay", "backoff", "jitter", "graceful"]
-        ), "Available keys: ['tries', 'delay', 'max_delay', 'backoff', 'jitter', 'graceful']"
-        return retry_params
 
     async def _arequest(self, text: str, embd_normalize: str) -> dict:
         """Makes an async HTTP request to the llama.cpp server."""
