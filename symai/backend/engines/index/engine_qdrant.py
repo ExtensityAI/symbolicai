@@ -18,6 +18,7 @@ import numpy as np
 from symai.backend.base import Engine
 from symai.backend.settings import SYMAI_CONFIG, SYMSERVER_CONFIG
 from symai.symbol import Result, Symbol
+from symai.utils import Extra, missing_dependency
 
 
 def _secure_filename(name: str) -> str:
@@ -400,8 +401,7 @@ class QdrantIndexEngine(Engine):
         # Check if Qdrant is configured (either via server or direct connection)
         if SYMSERVER_CONFIG.get("online") or self.url:
             if QdrantClient is None:
-                msg = "Qdrant client is not installed. Please install it with `pip install qdrant-client`."
-                raise ImportError(msg)
+                raise missing_dependency(Extra.QDRANT, "qdrant_client", package="qdrant-client")
             return "index"
         return super().id()  # default to unregistered
 
@@ -416,8 +416,7 @@ class QdrantIndexEngine(Engine):
         """Initialize Qdrant client if not already initialized."""
         if self.client is None:
             if QdrantClient is None:
-                msg = "Qdrant client is not installed. Please install it with `pip install qdrant-client`."
-                raise ImportError(msg)
+                raise missing_dependency(Extra.QDRANT, "qdrant_client", package="qdrant-client")
 
             client_kwargs = {"url": self.url}
             if self.api_key:
@@ -495,8 +494,7 @@ class QdrantIndexEngine(Engine):
 
         if tenant_id is not None:
             if models is None:
-                msg = "Qdrant filter models are not available. Please install `qdrant-client` to use filtering."
-                raise ImportError(msg)
+                raise missing_dependency(Extra.QDRANT, "qdrant_client", package="qdrant-client")
             conditions.append(
                 models.FieldCondition(
                     key="tenant_id",
@@ -519,8 +517,7 @@ class QdrantIndexEngine(Engine):
         # Simple dict → build equality-based must filter
         if isinstance(raw_filter, dict):
             if models is None:
-                msg = "Qdrant filter models are not available. Please install `qdrant-client` to use filtering."
-                raise ImportError(msg)
+                raise missing_dependency(Extra.QDRANT, "qdrant_client", package="qdrant-client")
 
             for key, value in raw_filter.items():
                 # We keep semantics simple and robust:
@@ -1093,8 +1090,7 @@ class QdrantIndexEngine(Engine):
         tenant_id = tenant_id or self.default_tenant_id
 
         if models is None or Filter is None:
-            msg = "Qdrant filter models are not available. Please install `qdrant-client` to use filter-based deletion."
-            raise ImportError(msg)
+            raise missing_dependency(Extra.QDRANT, "qdrant_client", package="qdrant-client")
 
         built = self._build_query_filter(query_filter, tenant_id=tenant_id)
         if built is None:

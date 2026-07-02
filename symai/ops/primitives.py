@@ -13,6 +13,7 @@ import numpy as np
 from symai import core
 from symai.functional import EngineRepository
 from symai.prompts import Prompt
+from symai.utils import Extra, missing_dependency
 
 logger = logging.getLogger(__name__)
 
@@ -2441,9 +2442,8 @@ class EmbeddingPrimitives(Primitive):
 
         try:
             from scipy import linalg  # noqa: PLC0415
-        except ImportError as e:
-            msg = "The 'frechet' distance kernel requires scipy; install `symbolicai[cluster]`."
-            raise ImportError(msg) from e
+        except ImportError:
+            raise missing_dependency(Extra.CLUSTER, "scipy") from None
 
         mu1 = np.atleast_1d(mu1).squeeze()
         mu2 = np.atleast_1d(mu2).squeeze()

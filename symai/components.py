@@ -22,6 +22,7 @@ from symai.post_processors import PostProcessor
 from symai.pre_processors import PreProcessor
 from symai.prompts import Prompt
 from symai.symbol import Expression, Symbol
+from symai.utils import Extra, missing_dependency
 
 logger = logging.getLogger(__name__)
 
@@ -927,8 +928,7 @@ class ChonkieChunker(Expression):
         self, data: Symbol, chunker_name: str | None = "RecursiveChunker", **chunker_kwargs
     ) -> Symbol:
         if not _is_chonkie_available():
-            msg = "chonkie library is not installed. Please install it with `pip install chonkie tokenizers`."
-            raise ImportError(msg)
+            raise missing_dependency(Extra.QDRANT, "chonkie")
         chunker = self._resolve_chunker(chunker_name, **chunker_kwargs)
         chunks = [ChonkieChunker.clean_text(chunk.text) for chunk in chunker(data.value)]
         return self._to_symbol(chunks)
@@ -939,8 +939,7 @@ class ChonkieChunker(Expression):
             chonkie_modules = _lazy_import_chonkie()
             Tokenizer = chonkie_modules.get("Tokenizer")
             if Tokenizer is None:
-                msg = "Tokenizers library is not installed. Please install it with `pip install tokenizers`."
-                raise ImportError(msg)
+                raise missing_dependency(Extra.QDRANT, "tokenizers")
             self._tokenizer_instance = Tokenizer.from_pretrained(self.tokenizer_name)
         return self._tokenizer_instance
 
