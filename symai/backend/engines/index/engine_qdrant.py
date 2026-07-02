@@ -2,29 +2,22 @@ from __future__ import annotations
 
 import asyncio
 import bisect
-import ipaddress
 import itertools
 import logging
 import re
-import socket
 import tempfile
 import uuid
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import urlparse
 
 import numpy as np
-import requests
-import urllib3
-from requests.adapters import HTTPAdapter
 
 from symai.backend.base import Engine
 from symai.backend.settings import SYMAI_CONFIG, SYMSERVER_CONFIG
 from symai.symbol import Result, Symbol
-
-MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024
 
 
 def _secure_filename(name: str) -> str:
@@ -83,46 +76,6 @@ def chunks(iterable, batch_size=100):
     while chunk:
         yield chunk
         chunk = list(itertools.islice(it, batch_size))
-
-
-class PinningHTTPAdapter(HTTPAdapter):
-    """
-    HTTP adapter that pins DNS resolution to a specific validated IP.
-    Prevents DNS rebinding attacks by ensuring the connection uses
-    the same IP that was validated for SSRF protection.
-    """
-
-    def __init__(self, hostname: str, pinned_ip: str, **kwargs):
-        self.hostname = hostname
-        self.pinned_ip = pinned_ip
-        self.assert_hostname = hostname
-        super().__init__(**kwargs)
-
-    def init_poolmanager(self, connections, maxsize, block=False, **pool_kwargs):
-        self.poolmanager = urllib3.PoolManager(
-            num_pools=connections,
-            maxsize=maxsize,
-            block=block,
-            assert_hostname=self.assert_hostname,
-            server_hostname=self.assert_hostname,
-            **pool_kwargs,
-        )
-
-    def send(self, request, stream=False, timeout=None, verify=True, cert=None, proxies=None):
-        # NOTE: Fail closed if the prepared netloc does not literally contain the
-        # validated hostname. Without this, replace() silently no-ops and the
-        # connection target diverges from what was validated (SSRF).
-        parsed = urlparse(request.url)
-        if self.hostname not in parsed.netloc:
-            msg = (
-                f"Pinning failed: validated host {self.hostname!r} not in netloc {parsed.netloc!r}"
-            )
-            raise ValueError(msg)
-        new_netloc = parsed.netloc.replace(self.hostname, self.pinned_ip, 1)
-        request.url = urlunparse(parsed._replace(netloc=new_netloc))
-        return super().send(
-            request, stream=stream, timeout=timeout, verify=verify, cert=cert, proxies=proxies
-        )
 
 
 class QdrantResult(Result):
@@ -1173,8 +1126,7 @@ class QdrantIndexEngine(Engine):
 
         This uses payload filtering and therefore depends on you having stored stable document
         identifiers in each chunk payload. `chunk_and_upsert()` stores:
-        - `payload["source"]` as the absolute document path for `document_path=...`, or
-        - `payload["source"]` as the URL for `document_url=...`.
+        - `payload["source"]` as the absolute document path for `document_path=...`.
 
         Deletion by tags is supported when tags are stored in payload under `payload["tags"]`.
         For best compatibility, store tags as a list of strings.
@@ -1304,9 +1256,8 @@ class QdrantIndexEngine(Engine):
         """
         Check whether a document exists in the index (i.e., any chunk carries its identifier).
 
-        By default, this matches `payload["source"]`, which `chunk_and_upsert()` sets to:
-        - absolute path for `document_path=...`, or
-        - URL for `document_url=...`.
+        By default, this matches `payload["source"]`, which `chunk_and_upsert()` sets to
+        the absolute path for `document_path=...`.
         """
         return await self.exists(
             collection_name=collection_name,
@@ -1688,134 +1639,11 @@ class QdrantIndexEngine(Engine):
 
     # ==================== Document Operations with Chunking ====================
 
-    def _download_and_read_file(self, file_url: str) -> str:
-        """
-        Download file from URL and read it using FileReader.
-        Uses IP pinning to prevent DNS rebinding attacks.
-
-        Args:
-            file_url: URL to the file to download
-
-        Returns:
-            Text content of the file
-        """
-        if self.reader is None:
-            msg = "FileReader not initialized"
-            raise RuntimeError(msg)
-
-        try:
-            prepared = requests.PreparedRequest()
-            prepared.prepare_url(file_url, None)
-        except (
-            requests.exceptions.MissingSchema,
-            requests.exceptions.InvalidURL,
-            requests.exceptions.URLRequired,
-        ) as exc:
-            msg = f"Invalid URL: {exc}"
-            raise ValueError(msg) from exc
-        canonical_url = prepared.url
-        canonical = urlparse(canonical_url)
-        hostname = canonical.hostname
-        if hostname is None:
-            msg = "URL must have a valid hostname"
-            raise ValueError(msg)
-
-        # Resolve DNS once and pin to this IP for the entire request.
-        # This prevents DNS rebinding where an attacker-controlled DNS server
-        # returns a public IP on first check but a private IP on second lookup.
-        try:
-            resolved_ip = socket.getaddrinfo(hostname, None)[0][4][0]
-        except socket.gaierror as exc:
-            msg = f"Could not resolve hostname: {hostname}"
-            raise ValueError(msg) from exc
-
-        # Validate resolved IP is not private/reserved (SSRF protection)
-        ip = ipaddress.ip_address(resolved_ip)
-        CGNAT_NETWORK = ipaddress.ip_network("100.64.0.0/10")
-        if (
-            ip.is_private
-            or ip.is_loopback
-            or ip.is_link_local
-            or ip.is_reserved
-            or ip.is_multicast
-            or ip.is_unspecified
-            or ip in CGNAT_NETWORK
-        ):
-            msg = f"SSRF: Resolved IP {resolved_ip} is not allowed"
-            raise ValueError(msg)
-
-        # Create session with pinning adapter to force connection to validated IP
-        session = requests.Session()
-        adapter = PinningHTTPAdapter(hostname, resolved_ip)
-        session.mount(f"{canonical.scheme}://", adapter)
-
-        # NOTE: Timeout set to (10s connect, 30s read).
-        # Trade-off: Prevents slowloris attacks and resource exhaustion, but large
-        # PDFs on slow connections may timeout. Adjust if users report issues with
-        # legitimate large documents.
-        try:
-            response = session.get(
-                canonical_url,
-                allow_redirects=False,  # Prevent redirect-based SSRF
-                timeout=(10, 30),  # (connect timeout, read timeout)
-                headers={"Host": hostname},  # For virtual host routing and SNI
-                stream=True,
-            )
-            response.raise_for_status()
-        except requests.exceptions.Timeout as exc:
-            msg = "Request timeout downloading file"
-            raise RuntimeError(msg) from exc
-        except requests.exceptions.TooManyRedirects as exc:
-            msg = "Redirects not allowed"
-            raise ValueError(msg) from exc
-        except requests.exceptions.RequestException as exc:
-            msg = f"Download failed: {exc}"
-            raise RuntimeError(msg) from exc
-
-        # Determine file extension from Content-Type header, fall back to URL path
-        content_type = (response.headers.get("Content-Type") or "").split(";")[0].strip()
-        suffix = {
-            "application/pdf": ".pdf",
-            "text/plain": ".txt",
-            "text/html": ".html",
-            "application/msword": ".doc",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
-            "application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
-            "application/epub+zip": ".epub",
-        }.get(content_type) or Path(canonical.path).suffix
-
-        # Write to temp file with streaming size cap
-        tmp_file_name = None
-        try:
-            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
-                tmp_file_name = tmp_file.name
-                total = 0
-                for chunk in response.iter_content(chunk_size=8192):
-                    total += len(chunk)
-                    if total > MAX_DOWNLOAD_BYTES:
-                        msg = f"Download exceeds maximum allowed size ({MAX_DOWNLOAD_BYTES} bytes)"
-                        raise ValueError(msg)
-                    tmp_file.write(chunk)
-                tmp_file.flush()
-
-            # Rich formats (e.g., PDFs) require the markitdown backend.
-            backend = "markitdown" if suffix.lower() == ".pdf" else "standard"
-            content = self.reader(tmp_file_name, backend=backend)
-            return content.value[0] if isinstance(content.value, list) else str(content.value)
-        finally:
-            # Clean up temporary file
-            if tmp_file_name is not None:
-                tmp_path = Path(tmp_file_name)
-                if tmp_path.exists():
-                    tmp_path.unlink()
-
     async def chunk_and_upsert(
         self,
         collection_name: str,
         text: str | Symbol | None = None,
         document_path: str | None = None,
-        document_url: str | None = None,
         chunker_name: str | None = None,
         chunker_kwargs: dict | None = None,
         start_id: int | None = None,
@@ -1830,9 +1658,8 @@ class QdrantIndexEngine(Engine):
 
         Args:
             collection_name: Name of the collection to upsert into
-            text: Text to chunk (string or Symbol). If None, document_path or document_url must be provided.
+            text: Text to chunk (string or Symbol). If None, document_path must be provided.
             document_path: Path to a document file to read using FileReader (PDF, etc.)
-            document_url: URL to a document file to download and read using FileReader
             chunker_name: Name of the chunker to use. If None, uses the instance default chunker_name
             chunker_kwargs: Additional keyword arguments for the chunker
             start_id: Starting ID for the chunks (auto-incremented). If None, uses hash-based IDs
@@ -1849,13 +1676,13 @@ class QdrantIndexEngine(Engine):
         if tenant_id is not None:
             await asyncio.to_thread(self._ensure_payload_indexes, collection_name)
 
-        # Validate input: exactly one of text, document_path, or document_url must be provided
-        input_count = sum(x is not None for x in [text, document_path, document_url])
+        # Validate input: exactly one of text or document_path must be provided
+        input_count = sum(x is not None for x in [text, document_path])
         if input_count == 0:
-            msg = "One of `text`, `document_path`, or `document_url` must be provided"
+            msg = "One of `text` or `document_path` must be provided"
             raise ValueError(msg)
         if input_count > 1:
-            msg = "Only one of `text`, `document_path`, or `document_url` can be provided"
+            msg = "Only one of `text` or `document_path` can be provided"
             raise ValueError(msg)
 
         # Get collection info to determine vector size
@@ -1903,18 +1730,6 @@ class QdrantIndexEngine(Engine):
             if metadata is None:
                 metadata = {}
             metadata["source"] = str(resolved)
-
-        # Handle document_url: download and read file using FileReader
-        elif document_url is not None:
-            if self.reader is None:
-                msg = "FileReader not initialized. Please ensure FileReader is available."
-                raise RuntimeError(msg)
-            text = self._download_and_read_file(document_url)
-            # Add source to metadata if not already present
-            if metadata is None:
-                metadata = {}
-            if "source" not in metadata:
-                metadata["source"] = document_url
 
         # Convert text to Symbol if needed
         text_symbol = Symbol(text) if isinstance(text, str) else text

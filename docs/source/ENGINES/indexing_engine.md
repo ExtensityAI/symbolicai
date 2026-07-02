@@ -312,14 +312,6 @@ async def add_documents():
     # Note: document_path indexing stores the absolute file path in payload["source"]
     # so local_search citations resolve to file:// URIs.
 
-    # Chunk and index from a URL
-    num_chunks = await engine.chunk_and_upsert(
-        collection_name="documents",
-        document_url="https://example.com/document.pdf",
-        metadata={"source": "url"},
-        # include_line_numbers=True,  # default
-    )
-
     # Custom chunker configuration
     num_chunks = await engine.chunk_and_upsert(
         collection_name="documents",
