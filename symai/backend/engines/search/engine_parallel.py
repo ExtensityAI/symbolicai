@@ -14,7 +14,7 @@ from symai.backend.engines.search.utils import (
 )
 from symai.backend.settings import SYMAI_CONFIG
 from symai.symbol import Result
-from symai.utils import silence_noisy_loggers
+from symai.utils import Extra, missing_dependency, silence_noisy_loggers
 
 silence_noisy_loggers("filelock")
 
@@ -172,11 +172,7 @@ class ParallelEngine(Engine):
             return
 
         if Parallel is None:
-            msg = (
-                "parallel-web SDK is not installed. Install with 'pip install parallel-web' "
-                "or add it to your environment."
-            )
-            raise ValueError(msg)
+            raise missing_dependency(Extra.SEARCH, "parallel", package="parallel-web")
         try:
             self.client = Parallel(api_key=self.api_key)
         except Exception as e:

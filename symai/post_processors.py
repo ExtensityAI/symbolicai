@@ -5,6 +5,8 @@ from typing import Any
 
 import numpy as np
 
+from symai.utils import Extra, missing_dependency
+
 
 class PostProcessor:
     def __call__(self, response, argument) -> Any:
@@ -32,9 +34,8 @@ class ClusterPostProcessor(PostProcessor):
 
         try:
             from sklearn.cluster import HDBSCAN  # noqa: PLC0415
-        except ImportError as e:
-            msg = "Symbol.cluster() requires scikit-learn; install `symbolicai[cluster]`."
-            raise ImportError(msg) from e
+        except ImportError:
+            raise missing_dependency(Extra.CLUSTER, "sklearn", package="scikit-learn") from None
 
         clustering = HDBSCAN(**self.clustering_kwargs).fit(response)
         ids = np.unique(clustering.labels_)

@@ -4,14 +4,14 @@ from copy import deepcopy
 from symai.backend.base import Engine
 from symai.backend.settings import SYMAI_CONFIG
 from symai.symbol import Result
+from symai.utils import Extra, missing_dependency
 
 logger = logging.getLogger(__name__)
 
 try:
     import wolframalpha as wa
 except ImportError:
-    msg = "WolframAlpha is not installed. Please install it with `pip install symbolicai[wolframalpha]`"
-    raise ImportError(msg) from None
+    raise missing_dependency(Extra.WOLFRAMALPHA, "wolframalpha") from None
 
 
 class WolframResult(Result):

@@ -8,6 +8,7 @@ from typing import ClassVar
 from symai.backend.base import Engine
 from symai.backend.settings import SYMAI_CONFIG
 from symai.symbol import Result
+from symai.utils import Extra, missing_dependency
 
 logger = logging.getLogger(__name__)
 
@@ -55,8 +56,7 @@ class AxiomEngine(Engine):
             return
 
         if AxleClient is None:
-            msg = "axle is not installed. Install with `pip install symbolicai[lean]`"
-            raise ImportError(msg)
+            raise missing_dependency(Extra.LEAN, "axle", package="axiom-axle")
         self.client = AxleClient(api_key=self.api_key)
 
     def id(self) -> str:

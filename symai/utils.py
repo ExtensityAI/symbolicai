@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import base64
-import importlib
 import io
 import logging
 from dataclasses import dataclass, field
+from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -36,6 +36,44 @@ def silence_noisy_loggers(*extra_loggers: str) -> None:
         logging.getLogger(name).setLevel(logging.ERROR)
 
 
+# Mirrors the feature extras in pyproject.toml [project.optional-dependencies], minus the `all`
+# aggregate and `dev` tooling; tests/invariants asserts this stays in bijective sync with pyproject.
+class Extra(StrEnum):
+    """Optional-dependency extras; pass a member as the `extra` argument of `missing_dependency`."""
+
+    BITSANDBYTES = "bitsandbytes"
+    HF = "hf"
+    SCRAPE = "scrape"
+    WOLFRAMALPHA = "wolframalpha"
+    LEAN = "lean"
+    WHISPER = "whisper"
+    VIDEO = "video"
+    SEARCH = "search"
+    OCR = "ocr"
+    SERVICES = "services"
+    SOLVER = "solver"
+    QDRANT = "qdrant"
+    CLUSTER = "cluster"
+
+
+def missing_dependency(extra: Extra, dep: str, *, package: str | None = None) -> ImportError:
+    """Build a standardized ImportError naming the extra that provides a missing optional dependency.
+
+    Use as `raise missing_dependency(...)` from a `None`-sentinel guard or an
+    `except ImportError` block for an optional dependency, so users get a consistent
+    "install symbolicai[<extra>]" hint instead of a bare ModuleNotFoundError. `dep` is the
+    missing import name; pass `package` when the pip distribution name differs
+    (e.g. cv2 -> opencv-python) to also suggest the bare install. Inside an `except` block,
+    chain with `from None` to drop the noisy ModuleNotFoundError traceback.
+    """
+    install = f"`pip install symbolicai[{extra}]`"
+    if package:
+        install += f" (or `pip install {package}`)"
+
+    msg = f"'{dep}' is required for this feature but is not installed. Install it with {install}."
+    return ImportError(msg)
+
+
 if TYPE_CHECKING:
     from symai.components import MetadataTracker
 
@@ -64,13 +102,9 @@ def encode_media_frames(file_path):
             raise ValueError(msg)
 
         try:
-            cv2 = importlib.import_module("cv2")
-        except ImportError as exc:
-            msg = (
-                "Video frame extraction for mp4/avi/mov requires the optional OpenCV "
-                "dependency. Install it with `symbolicai[video]`."
-            )
-            raise ImportError(msg) from exc
+            import cv2  # noqa: PLC0415
+        except ImportError:
+            raise missing_dependency(Extra.VIDEO, "cv2", package="opencv-python") from None
 
         video = cv2.VideoCapture(file_path)
         base64_frames = []

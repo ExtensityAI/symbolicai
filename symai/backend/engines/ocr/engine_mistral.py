@@ -10,7 +10,7 @@ except ImportError:
 from symai.backend.base import Engine
 from symai.backend.settings import SYMAI_CONFIG
 from symai.symbol import Result
-from symai.utils import silence_noisy_loggers
+from symai.utils import Extra, missing_dependency, silence_noisy_loggers
 
 logger = logging.getLogger(__name__)
 # silence httpx debug noise from mistralai SDK
@@ -59,11 +59,7 @@ class MistralOCREngine(Engine):
             return
 
         if Mistral is None:
-            msg = (
-                "mistralai SDK is not installed. "
-                "Install with 'pip install symbolicai[ocr]' or 'pip install mistralai'."
-            )
-            raise ImportError(msg)
+            raise missing_dependency(Extra.OCR, "mistralai", package="mistralai")
 
         self.client = Mistral(api_key=self.api_key)
 

@@ -9,6 +9,7 @@ import torch
 from symai.backend.base import Engine
 from symai.backend.settings import SYMAI_CONFIG
 from symai.symbol import Expression, Result
+from symai.utils import Extra, missing_dependency
 
 logger = logging.getLogger(__name__)
 
@@ -135,8 +136,7 @@ class WhisperEngine(Engine):
     def id(self) -> str:
         if self.config["SPEECH_TO_TEXT_ENGINE_MODEL"]:
             if whisper is None:
-                msg = "Whisper is not installed. Please install it with `pip install symbolicai[whisper]`"
-                raise ImportError(msg)
+                raise missing_dependency(Extra.WHISPER, "whisper", package="openai-whisper")
             return "speech-to-text"
         return super().id()  # default to unregistered
 
@@ -146,7 +146,9 @@ class WhisperEngine(Engine):
             self.model_id = kwargs["SPEECH_TO_TEXT_ENGINE_MODEL"]
 
     def forward(self, argument):
-        assert whisper is not None, "Whisper is not installed. Please install it first."
+        if whisper is None:
+            raise missing_dependency(Extra.WHISPER, "whisper", package="openai-whisper")
+
         kwargs = argument.kwargs
         (_, audio) = argument.prop.prepared_input
         prompt = argument.prop.prompt

@@ -22,6 +22,7 @@ from pdfminer.high_level import extract_text
 
 from symai.backend.base import Engine
 from symai.symbol import Result
+from symai.utils import Extra, missing_dependency
 
 logging.getLogger("pdfminer").setLevel(logging.WARNING)
 logging.getLogger("trafilatura").setLevel(logging.WARNING)
@@ -312,9 +313,8 @@ class RequestsEngine(Engine):
             from playwright.sync_api import sync_playwright  # noqa
 
             logging.getLogger("playwright").setLevel(logging.WARNING)
-        except ImportError as exc:
-            msg = "Playwright is not installed. Install symbolicai[scrape] with Playwright extras to enable render_js."
-            raise RuntimeError(msg) from exc
+        except ImportError:
+            raise missing_dependency(Extra.SCRAPE, "playwright") from None
 
         timeout_seconds = timeout if timeout is not None else self.timeout
         timeout_ms = max(int(timeout_seconds * 1000), 0)

@@ -17,7 +17,7 @@ from symai.backend.base import Engine
 from symai.backend.engines.search.utils import Citation, CitationResultMixin, normalize_url
 from symai.backend.settings import SYMAI_CONFIG
 from symai.symbol import Result
-from symai.utils import silence_noisy_loggers
+from symai.utils import Extra, missing_dependency, silence_noisy_loggers
 
 silence_noisy_loggers()
 
@@ -156,11 +156,7 @@ class FirecrawlEngine(Engine):
             return
 
         if Firecrawl is None:
-            msg = (
-                "firecrawl SDK is not installed. Install with 'pip install firecrawl-py' "
-                "or add it to your environment."
-            )
-            raise ValueError(msg)
+            raise missing_dependency(Extra.SEARCH, "firecrawl", package="firecrawl-py")
 
         if not self.api_key:
             msg = "Firecrawl API key not found. Set SEARCH_ENGINE_API_KEY in config or environment."
