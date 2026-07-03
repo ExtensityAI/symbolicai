@@ -1,3 +1,8 @@
+# Anthropic-only prompt-caching marker. Anthropic engines consume it when
+# ``cache_control`` is active; other engines do not assign semantics to it.
+CACHE_BREAKPOINT = "symai:cache_breakpoint"
+
+
 # https://docs.anthropic.com/en/docs/about-claude/models
 SUPPORTED_CHAT_MODELS = [
     "claude-3-5-sonnet-latest",
@@ -46,12 +51,84 @@ ADAPTIVE_THINKING_MODELS = {
 }
 
 
+def split_cache_breakpoints(text: str) -> list[str]:
+    """Split Anthropic cache breakpoint markers into ordered text segments."""
+    if not text:
+        return [text]
+    return text.split(CACHE_BREAKPOINT)
+
+
+def strip_cache_breakpoints(text: str) -> str:
+    """Remove Anthropic cache breakpoint markers from text."""
+    if not text:
+        return text
+    return text.replace(CACHE_BREAKPOINT, "")
+
+
 class AnthropicMixin:
     def resolve_cache_control(self, cache_control=None):
         selected = CACHE_CONTROL_1H if cache_control is None else cache_control
         if selected is False:
             return None
         return selected
+
+    def apply_cache_breakpoints_to_messages(self, messages, payload):
+        """Apply Anthropic cache breakpoint markers embedded in user-message text.
+
+        When ``payload['extra_body']['cache_control']`` is present, split marked text
+        into ordered content blocks, put ``cache_control`` on every block except the
+        last, and drop the top-level auto-cache form because block-level breakpoints
+        supersede it. When the marker is present but Anthropic caching is disabled,
+        remove it because it is Anthropic-engine control syntax, not user prompt text.
+        """
+        cache_control = (payload.get("extra_body") or {}).get("cache_control")
+        enabled = cache_control is not None
+        did_split = False
+        new_messages = []
+        for message in messages:
+            images, text = self._extract_message_text(message.get("content"))
+            if text is None or CACHE_BREAKPOINT not in text:
+                new_messages.append(message)
+                continue
+            if enabled:
+                segments = split_cache_breakpoints(text)
+                blocks = []
+                for index, segment in enumerate(segments):
+                    block = {"type": "text", "text": segment}
+                    if index < len(segments) - 1:
+                        block["cache_control"] = dict(cache_control)
+                    blocks.append(block)
+                new_messages.append({**message, "content": [*images, *blocks]})
+                did_split = True
+            else:
+                stripped = strip_cache_breakpoints(text)
+                content = stripped if not images else [*images, {"type": "text", "text": stripped}]
+                new_messages.append({**message, "content": content})
+        if did_split and "extra_body" in payload:
+            payload = {key: value for key, value in payload.items() if key != "extra_body"}
+        return new_messages, payload
+
+    @staticmethod
+    def _extract_message_text(content):
+        """Return ``(non_text_blocks, joined_text)`` for Anthropic message content.
+
+        ``joined_text`` is ``None`` when there is no text content to inspect.
+        """
+        if isinstance(content, str):
+            return [], content
+        if isinstance(content, list):
+            images = [
+                block
+                for block in content
+                if not (isinstance(block, dict) and block.get("type") == "text")
+            ]
+            texts = [
+                block.get("text", "")
+                for block in content
+                if isinstance(block, dict) and block.get("type") == "text"
+            ]
+            return images, "".join(texts)
+        return [], None
 
     def supports_adaptive_thinking(self, model: str) -> bool:
         return model in ADAPTIVE_THINKING_MODELS
