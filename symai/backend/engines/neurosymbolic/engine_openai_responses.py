@@ -355,6 +355,11 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
         if kwargs.get("response_format"):
             payload["text"] = {"format": kwargs["response_format"]}
 
+        if kwargs.get("prompt_cache_key") is not None:
+            payload["prompt_cache_key"] = kwargs["prompt_cache_key"]
+        if kwargs.get("prompt_cache_retention") is not None:
+            payload["prompt_cache_retention"] = kwargs["prompt_cache_retention"]
+
         return payload
 
     def _convert_tools(self, tools: list) -> list:
