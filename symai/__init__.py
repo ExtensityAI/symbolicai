@@ -58,7 +58,6 @@ def _start_symai():
     if not (
         symai_config["NEUROSYMBOLIC_ENGINE_MODEL"].lower().startswith("llama")
         or symai_config["NEUROSYMBOLIC_ENGINE_MODEL"].lower().startswith("vllm")
-        or symai_config["NEUROSYMBOLIC_ENGINE_MODEL"].lower().startswith("huggingface")
     ) and (
         symai_config["NEUROSYMBOLIC_ENGINE_API_KEY"] is None
         or len(symai_config["NEUROSYMBOLIC_ENGINE_API_KEY"]) == 0
@@ -378,26 +377,6 @@ def run_server():
             _symserver_config_["online"] = False
             _save_symserver_config(_symserver_config_)
 
-    elif settings.SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL").startswith("huggingface"):
-        # HuggingFace server stack is optional; import only when requested.
-        from symai.server.huggingface_server import huggingface_server  # noqa
-
-        command, args = huggingface_server()
-        _symserver_config_.update(vars(args))
-        _symserver_config_["online"] = True
-
-        _save_symserver_config(_symserver_config_)
-
-        try:
-            command(host=args.host, port=args.port)
-        except KeyboardInterrupt:
-            logger.info("Server stopped.")
-        except Exception:
-            logger.exception("Error running server")
-        finally:
-            _symserver_config_["online"] = False
-            _save_symserver_config(_symserver_config_)
-
     elif lean4_requested:
         # Lean4 server - check FORMAL_ENGINE and start container + FastAPI
         from symai.server.lean4_server import lean4_server  # noqa
@@ -435,8 +414,6 @@ def run_server():
             "  - llama.cpp (neuro-symbolic):    set NEUROSYMBOLIC_ENGINE_MODEL=llamacpp or "
             "EMBEDDING_ENGINE_MODEL=llamacpp, then pass --cpp-server-path to the llama.cpp binary\n"
             "  - vLLM (neuro-symbolic):         set NEUROSYMBOLIC_ENGINE_MODEL=vllm in symai.config.json\n"
-            "  - HuggingFace (neuro-symbolic):  set NEUROSYMBOLIC_ENGINE_MODEL=huggingface "
-            "in symai.config.json\n"
             "  - Lean4 (formal):                symserver --lean4 (requires FORMAL_ENGINE=local)"
         )
         raise ValueError(msg)

@@ -124,6 +124,45 @@ class Engine(ABC):
 
         return Preview(argument), {}
 
+    def supported_request_kwargs(self) -> set[str]:
+        return set()
+
+    def ignored_request_kwargs(self) -> set[str]:
+        from symai.core import Argument  # noqa: PLC0415
+
+        return set(Argument.default_property_values())
+
+    def collect_request_kwargs(
+        self,
+        argument: Any,
+        supported_request_kwargs: set[str] | frozenset[str] | None = None,
+    ) -> dict[str, Any]:
+        supported = (
+            set(supported_request_kwargs)
+            if supported_request_kwargs is not None
+            else self.supported_request_kwargs()
+        )
+        if argument.kwargs.get("strict_request_kwargs", False):
+            allowed = supported | self.ignored_request_kwargs()
+            unsupported = sorted(set(argument.kwargs) - allowed)
+            if unsupported:
+                msg = f"Unsupported request kwargs for {self.__class__.__name__}: {unsupported}"
+                raise ValueError(msg)
+
+        return {key: argument.kwargs[key] for key in supported if key in argument.kwargs}
+
+    def build_request(self, argument: Any) -> Any:
+        msg = f'Method "build_request" not implemented for {self.__class__.__name__}.'
+        raise NotImplementedError(msg)
+
+    def call_request(self, request: Any) -> Any:
+        msg = f'Method "call_request" not implemented for {self.__class__.__name__}.'
+        raise NotImplementedError(msg)
+
+    def parse_response(self, response: Any) -> tuple[list[str], dict[str, Any]]:
+        msg = f'Method "parse_response" not implemented for {self.__class__.__name__}.'
+        raise NotImplementedError(msg)
+
     @abstractmethod
     def forward(self, *args: Any, **kwds: Any) -> list[str]:
         raise NotADirectoryError

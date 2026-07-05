@@ -3,14 +3,12 @@ from symai.backend.engines.neurosymbolic.engine_anthropic_claudeX_reasoning impo
     ClaudeXReasoningEngine,
 )
 from symai.backend.engines.neurosymbolic.engine_cerebras import CerebrasEngine
-from symai.backend.engines.neurosymbolic.engine_deepseekX_reasoning import DeepSeekXReasoningEngine
+from symai.backend.engines.neurosymbolic.engine_deepseekX import DeepSeekXReasoningEngine
 from symai.backend.engines.neurosymbolic.engine_google_geminiX_reasoning import (
     GeminiXReasoningEngine,
 )
 from symai.backend.engines.neurosymbolic.engine_groq import GroqEngine
-from symai.backend.engines.neurosymbolic.engine_openai_gptX_chat import GPTXChatEngine
-from symai.backend.engines.neurosymbolic.engine_openai_gptX_reasoning import GPTXReasoningEngine
-from symai.backend.engines.neurosymbolic.engine_openai_responses import OpenAIResponsesEngine
+from symai.backend.engines.neurosymbolic.engine_openai_gptX import OpenAIResponsesEngine
 from symai.backend.engines.neurosymbolic.engine_openrouter import OpenRouterEngine
 from symai.backend.mixin import (
     ANTHROPIC_CHAT_MODELS,
@@ -20,11 +18,8 @@ from symai.backend.mixin import (
     DEEPSEEK_REASONING_MODELS,
     GOOGLE_CHAT_MODELS,
     GOOGLE_REASONING_MODELS,
-    GROQ_CHAT_MODELS,
     GROQ_REASONING_MODELS,
-    OPENAI_CHAT_MODELS,
-    OPENAI_REASONING_MODELS,
-    OPENAI_RESPONSES_MODELS,
+    OPENAI_MODELS,
     OPENROUTER_CHAT_MODELS,
     OPENROUTER_REASONING_MODELS,
 )
@@ -38,10 +33,7 @@ ENGINE_MAPPING = {
     **dict.fromkeys(DEEPSEEK_REASONING_MODELS, DeepSeekXReasoningEngine),
     **dict.fromkeys(GOOGLE_CHAT_MODELS, GeminiXReasoningEngine),
     **dict.fromkeys(GOOGLE_REASONING_MODELS, GeminiXReasoningEngine),
-    **dict.fromkeys(OPENAI_CHAT_MODELS, GPTXChatEngine),
-    **dict.fromkeys(OPENAI_REASONING_MODELS, GPTXReasoningEngine),
-    **dict.fromkeys(OPENAI_RESPONSES_MODELS, OpenAIResponsesEngine),
-    **dict.fromkeys(GROQ_CHAT_MODELS, GroqEngine),
+    **dict.fromkeys(OPENAI_MODELS, OpenAIResponsesEngine),
     **dict.fromkeys(GROQ_REASONING_MODELS, GroqEngine),
     **dict.fromkeys(OPENROUTER_CHAT_MODELS, OpenRouterEngine),
     **dict.fromkeys(OPENROUTER_REASONING_MODELS, OpenRouterEngine),
@@ -56,18 +48,13 @@ __all__ = [
     "ENGINE_MAPPING",
     "GOOGLE_CHAT_MODELS",
     "GOOGLE_REASONING_MODELS",
-    "GROQ_CHAT_MODELS",
     "GROQ_REASONING_MODELS",
-    "OPENAI_CHAT_MODELS",
-    "OPENAI_REASONING_MODELS",
-    "OPENAI_RESPONSES_MODELS",
+    "OPENAI_MODELS",
     "OPENROUTER_CHAT_MODELS",
     "OPENROUTER_REASONING_MODELS",
     "ClaudeXChatEngine",
     "ClaudeXReasoningEngine",
     "DeepSeekXReasoningEngine",
-    "GPTXChatEngine",
-    "GPTXReasoningEngine",
     "GeminiXReasoningEngine",
     "GroqEngine",
     "OpenAIResponsesEngine",

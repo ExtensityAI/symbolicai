@@ -18,7 +18,7 @@ def _get_api_key():
     )
 
 
-@pytest.mark.parametrize("model", ["gpt-4.1-mini", "gpt-5-nano"])
+@pytest.mark.parametrize("model", ["gpt-4.1-mini", "o3"])
 def test_openai_search_citations_and_formatting_live(model):
     api_key = _get_api_key()
     if not api_key:
@@ -48,7 +48,7 @@ def test_openai_search_citations_and_formatting_live(model):
         assert "utm_" not in c.url
 
         # Slice should match the marker format; allow small whitespace variance before newline
-        slice_text = res.value[c.start:c.end]
+        slice_text = res.value[c.start : c.end]
         assert slice_text.startswith(f"[{c.id}] (")
         assert slice_text.endswith(")\n")
         # Optional stronger check including title
@@ -58,7 +58,7 @@ def test_openai_search_citations_and_formatting_live(model):
     assert re.search(r"\[\d+\] \([^)]+\)\n", res.value)
 
 
-@pytest.mark.parametrize("model", ["gpt-4.1", "gpt-5-nano"])
+@pytest.mark.parametrize("model", ["gpt-4.1", "o3"])
 def test_openai_search_domain_filtering(model):
     api_key = _get_api_key()
     if not api_key:
@@ -67,16 +67,16 @@ def test_openai_search_domain_filtering(model):
     engine = GPTXSearchEngine(api_key=api_key, model=model)
     EngineRepository.register("search", engine, allow_engine_override=True)
 
-    domains =  [
-        "tomshardware.com",            # ok
-        "https://www.arstechnica.com", # ok, but the internal processing should yield the root domain
-        "tomshardware"                 # not ok
+    domains = [
+        "tomshardware.com",  # ok
+        "https://www.arstechnica.com",  # ok, but the internal processing should yield the root domain
+        "tomshardware",  # not ok
     ]
 
     query = "what is the best gpu"
     search = openai_search()
     res = search(query, model=model, allowed_domains=domains)
 
-    allowed_netlocs = { "www.tomshardware.com", "www.arstechnica.com" }
-    citation_netlocs = { urlparse(c.url).netloc for c in res.get_citations() }
+    allowed_netlocs = {"www.tomshardware.com", "www.arstechnica.com"}
+    citation_netlocs = {urlparse(c.url).netloc for c in res.get_citations()}
     assert allowed_netlocs & citation_netlocs, "No citations from allowed domains found"
