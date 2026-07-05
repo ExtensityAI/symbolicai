@@ -52,6 +52,36 @@ class Argument(Expression):
     _default_parse_system_instructions = False
     _default_preview_value = False
 
+    @classmethod
+    def default_property_values(cls) -> dict[str, Any]:
+        return {
+            # used for previewing the input (also for operators)
+            "preview": cls._default_preview_value,
+            "raw_input": False,
+            "raw_output": False,
+            "return_metadata": False,
+            "logging": False,
+            "verbose": False,
+            "self_prompt": False,
+            "truncation_percentage": None,
+            "truncation_type": "tail",
+            "response_format": None,
+            "log_level": None,
+            "time_clock": None,
+            "payload": None,
+            "processed_input": None,
+            "template_suffix": None,
+            "input_handler": None,
+            "output_handler": None,
+            "suppress_verbose_output": cls._default_suppress_verbose_output,
+            "parse_system_instructions": cls._default_parse_system_instructions,
+            "prompt": None,
+            "examples": None,
+            "context": None,
+            "except_remedy": None,
+            "strict_request_kwargs": False,
+        }
+
     def __init__(self, args, signature_kwargs, decorator_kwargs, **kwargs):
         super().__init__(**kwargs)
         self.args = args  # there is only signature args
@@ -70,30 +100,7 @@ class Argument(Expression):
 
     def _apply_default_properties(self):
         # Set default values if not specified for backend processing
-        # Reserved keywords
-        default_properties = {
-            # used for previewing the input (also for operators)
-            "preview": Argument._default_preview_value,
-            "raw_input": False,
-            "raw_output": False,
-            "return_metadata": False,
-            "logging": False,
-            "verbose": False,
-            "self_prompt": False,
-            "truncation_percentage": None,
-            "truncation_type": "tail",
-            "response_format": None,
-            "log_level": None,
-            "time_clock": None,
-            "payload": None,
-            "processed_input": None,
-            "template_suffix": None,
-            "input_handler": None,
-            "output_handler": None,
-            "suppress_verbose_output": Argument._default_suppress_verbose_output,
-            "parse_system_instructions": Argument._default_parse_system_instructions,
-        }
-        for key, default_value in default_properties.items():
+        for key, default_value in self.default_property_values().items():
             if key not in self.kwargs:
                 setattr(self.prop, key, default_value)
 

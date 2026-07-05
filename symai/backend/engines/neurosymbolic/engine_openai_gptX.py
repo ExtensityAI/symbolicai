@@ -8,7 +8,13 @@ import openai
 import tiktoken
 
 from symai.backend.base import Engine
-from symai.backend.mixin.openai import SUPPORTED_REASONING_MODELS, OpenAIMixin
+from symai.backend.mixin.openai import (
+    SUPPORTED_OPENAI_MODELS,
+    OpenAIMixin,
+    OpenAIResponsesCreateCallOptions,
+    OpenAIResponsesCreatePayload,
+    OpenAIResponsesCreateRequest,
+)
 from symai.backend.settings import SYMAI_CONFIG
 from symai.components import SelfPrompt
 from symai.utils import encode_media_frames, silence_noisy_loggers
@@ -27,12 +33,12 @@ _NON_VERBOSE_OUTPUT = (
 
 
 class ResponsesTokenizer:
-    def __init__(self, model: str):
+    def __init__(self, model: str, tokenizer_name: str):
         self._model = model
         try:
             self._tiktoken = tiktoken.encoding_for_model(model)
         except Exception:
-            self._tiktoken = tiktoken.get_encoding("o200k_base")
+            self._tiktoken = tiktoken.get_encoding(tokenizer_name)
 
     def encode(self, text: str) -> list[int]:
         return self._tiktoken.encode(text, disallowed_special=())
@@ -58,16 +64,18 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
         if self.id() != "neurosymbolic":
             return
         openai.api_key = self.config["NEUROSYMBOLIC_ENGINE_API_KEY"]
-        self._prefixed_model = self.config["NEUROSYMBOLIC_ENGINE_MODEL"]
-        self.model = self._strip_prefix(self._prefixed_model)
+        self.model = self._strip_prefix(self.config["NEUROSYMBOLIC_ENGINE_MODEL"])
         self.seed = None
         self.name = self.__class__.__name__
-        self.tokenizer = ResponsesTokenizer(model=self.model)
+        self.tokenizer = ResponsesTokenizer(
+            model=self.model,
+            tokenizer_name=self.openai_tokenizer_name(),
+        )
         self.max_context_tokens = self.api_max_context_tokens()
         self.max_response_tokens = self.api_max_response_tokens()
 
         try:
-            # NOTE: Pro/reasoning models (e.g. gpt-5.4-pro) can take minutes to
+            # NOTE: Pro/reasoning models (e.g. o3-pro) can take minutes to
             # respond, causing transient server disconnects under default
             # settings. A longer connect timeout and automatic retries keep
             # these requests resilient. client_timeout / client_max_retries
@@ -89,11 +97,13 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
             raise ValueError(msg) from e
 
     def _strip_prefix(self, model_name: str) -> str:
-        return model_name.replace("responses:", "")
+        if model_name.startswith("openai:"):
+            return model_name.removeprefix("openai:")
+        return model_name
 
     def id(self) -> str:
         model = self.config.get("NEUROSYMBOLIC_ENGINE_MODEL")
-        if model and model.startswith("responses:"):
+        if model and model in SUPPORTED_OPENAI_MODELS:
             return "neurosymbolic"
         return super().id()
 
@@ -102,8 +112,7 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
         if "NEUROSYMBOLIC_ENGINE_API_KEY" in kwargs:
             openai.api_key = kwargs["NEUROSYMBOLIC_ENGINE_API_KEY"]
         if "NEUROSYMBOLIC_ENGINE_MODEL" in kwargs:
-            self._prefixed_model = kwargs["NEUROSYMBOLIC_ENGINE_MODEL"]
-            self.model = self._strip_prefix(self._prefixed_model)
+            self.model = self._strip_prefix(kwargs["NEUROSYMBOLIC_ENGINE_MODEL"])
         if "seed" in kwargs:
             self.seed = kwargs["seed"]
 
@@ -122,7 +131,7 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
                             num_tokens += len(self.tokenizer.encode(v.get("text", "")))
                 if key == "name":
                     num_tokens += tokens_per_name
-        if self._is_reasoning_model():
+        if self.is_openai_reasoning_model():
             num_tokens += 6
         else:
             num_tokens += 3
@@ -132,23 +141,13 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
         val = self.compute_required_tokens(prompts)
         return min(self.max_context_tokens - val, self.max_response_tokens)
 
-    def _is_reasoning_model(self) -> bool:
-        return self.model in SUPPORTED_REASONING_MODELS or self.model in {
-            "gpt-5.2-chat-latest",
-            "gpt-5.1-chat-latest",
-            "gpt-5-pro",
-            "gpt-5.2-pro",
-            "gpt-5.4-pro",
-            "o3-pro",
-        }
-
     def _handle_image_content(self, content: str) -> list[str]:
         def _extract_pattern(text):
             # This regular expression matches <<vision:...:>> patterns to extract embedded image references.
             pattern = r"<<vision:(.*?):>>"
             return re.findall(pattern, text)
 
-        image_files: list[str] = []
+        image_files = []
         if "<<vision:" not in content:
             return image_files
 
@@ -185,7 +184,7 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
         return re.sub(pattern, "", text)
 
     def _build_system_content(self, argument, image_files: list[str]) -> str:
-        sections: list[str] = []
+        sections = []
         sections.extend(self._verbose_section(argument))
         sections.extend(self._response_format_section(argument))
         sections.extend(self._context_sections(argument))
@@ -209,7 +208,7 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
         return []
 
     def _context_sections(self, argument) -> list[str]:
-        sections: list[str] = []
+        sections = []
         static_ctxt, dyn_ctxt = argument.prop.instance.global_context
         if len(static_ctxt) > 0:
             sections.append(f"<STATIC CONTEXT/>\n{static_ctxt}\n\n")
@@ -264,7 +263,7 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
         ):
             return system, user_msg
         self_prompter = SelfPrompt()
-        key = "developer" if self._is_reasoning_model() else "system"
+        key = "developer" if self.is_openai_reasoning_model() else "system"
         res = self_prompter({"user": user_text, key: system})
         if res is None:
             msg = "Self-prompting failed!"
@@ -289,6 +288,9 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
             return
 
         image_files = self._handle_image_content(str(argument.prop.processed_input))
+        if image_files and not self.supports_openai_vision():
+            msg = f"Model {self.model} does not support vision input."
+            raise ValueError(msg)
         system_content = self._build_system_content(argument, image_files)
         user_text = self._build_user_text(argument, image_files)
         user_msg = self._create_user_message(user_text, image_files)
@@ -296,71 +298,66 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
             argument, system_content, user_msg, user_text, image_files
         )
 
-        role = "developer" if self._is_reasoning_model() else "system"
+        role = "developer" if self.is_openai_reasoning_model() else "system"
         argument.prop.prepared_input = [
             {"role": role, "content": system_content},
             user_msg,
         ]
 
-    def _prepare_request_payload(self, messages, argument) -> dict:
-        kwargs = argument.kwargs
-        max_tokens = kwargs.get("max_tokens")
-        max_output_tokens = kwargs.get("max_output_tokens")
-        remaining_tokens = self.compute_remaining_tokens(messages)
+    def build_request(self, argument) -> OpenAIResponsesCreateRequest:
+        request_kwargs = set(OpenAIResponsesCreatePayload.model_fields) | set(
+            OpenAIResponsesCreateCallOptions.model_fields
+        )
+        payload_kwargs = self.collect_request_kwargs(argument, request_kwargs)
+        call_options = {
+            key: payload_kwargs.pop(key)
+            for key in OpenAIResponsesCreateCallOptions.model_fields
+            if key in payload_kwargs
+        }
+        messages = argument.prop.prepared_input
+        payload_kwargs["model"] = payload_kwargs.get("model", self.model)
+        self.openai_model_spec_for(payload_kwargs["model"])
+        payload_kwargs["input"] = messages
 
-        if max_tokens is not None:
-            logger.warning(
-                "'max_tokens' is deprecated in favor of 'max_output_tokens' for Responses API."
-            )
-            if max_tokens > self.max_response_tokens:
-                max_output_tokens = remaining_tokens
+        if self.is_openai_reasoning_model():
+            payload_kwargs.pop("temperature", None)
+            payload_kwargs.pop("top_p", None)
+            if self.is_openai_pro_model():
+                payload_kwargs["reasoning"] = {"effort": "high"}
             else:
-                max_output_tokens = max_tokens
+                payload_kwargs["reasoning"] = payload_kwargs.get("reasoning", {"effort": "medium"})
+
+        tools = payload_kwargs.get("tools")
+        if tools:
+            payload_kwargs["tools"] = self._convert_tools(tools)
+            payload_kwargs["tool_choice"] = payload_kwargs.get("tool_choice", "auto")
+
+        payload = OpenAIResponsesCreatePayload.model_validate(payload_kwargs)
+        remaining_tokens = self.compute_remaining_tokens(messages)
+        max_output_tokens = payload.max_output_tokens
 
         if max_output_tokens is not None and max_output_tokens > self.max_response_tokens:
-            logger.warning(
-                "Provided 'max_output_tokens' (%s) exceeds max (%s). Truncating to %s.",
-                max_output_tokens,
-                self.max_response_tokens,
-                remaining_tokens,
+            warning_message = (
+                f"Provided 'max_output_tokens' ({max_output_tokens}) exceeds max "
+                f"({self.max_response_tokens}). Truncating to {remaining_tokens}."
             )
+            logger.warning(warning_message)
             max_output_tokens = remaining_tokens
 
-        payload: dict = {
-            "model": kwargs.get("model", self.model),
-            "input": messages,
-        }
+        if max_output_tokens != payload.max_output_tokens:
+            payload_kwargs["max_output_tokens"] = max_output_tokens
+            payload = OpenAIResponsesCreatePayload.model_validate(payload_kwargs)
 
-        if max_output_tokens is not None:
-            payload["max_output_tokens"] = max_output_tokens
+        options = None
+        if call_options:
+            options = OpenAIResponsesCreateCallOptions.model_validate(call_options)
 
-        if kwargs.get("temperature") is not None and not self._is_reasoning_model():
-            payload["temperature"] = kwargs["temperature"]
-        if kwargs.get("top_p") is not None and not self._is_reasoning_model():
-            payload["top_p"] = kwargs["top_p"]
-
-        if self._is_reasoning_model():
-            if self.model in {"gpt-5-pro", "gpt-5.2-pro", "gpt-5.4-pro"}:
-                reasoning = {"effort": "high"}
-            else:
-                reasoning = kwargs.get("reasoning", {"effort": "medium"})
-            payload["reasoning"] = reasoning
-
-        tools = kwargs.get("tools")
-        if tools:
-            payload["tools"] = self._convert_tools(tools)
-            tool_choice = kwargs.get("tool_choice", "auto")
-            payload["tool_choice"] = tool_choice
-
-        if kwargs.get("response_format"):
-            payload["text"] = {"format": kwargs["response_format"]}
-
-        if kwargs.get("prompt_cache_key") is not None:
-            payload["prompt_cache_key"] = kwargs["prompt_cache_key"]
-        if kwargs.get("prompt_cache_retention") is not None:
-            payload["prompt_cache_retention"] = kwargs["prompt_cache_retention"]
-
-        return payload
+        return OpenAIResponsesCreateRequest(
+            provider="openai",
+            operation="responses.create",
+            payload=payload,
+            call_options=options,
+        )
 
     def _convert_tools(self, tools: list) -> list:
         converted = []
@@ -381,7 +378,7 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
         return converted
 
     def _extract_output_text(self, response) -> list[str]:
-        outputs: list[str] = []
+        outputs = []
         for output in response.output or []:
             if output.type == "message" and output.content:
                 for content in output.content:
@@ -407,7 +404,7 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
         return metadata
 
     def _extract_thinking(self, response) -> str | None:
-        if not self._is_reasoning_model():
+        if not self.is_openai_reasoning_model():
             return None
         for output in response.output or []:
             if output.type == "reasoning" and hasattr(output, "summary") and output.summary:
@@ -418,12 +415,11 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
 
     def forward(self, argument):
         kwargs = argument.kwargs
-        messages = argument.prop.prepared_input
-        payload = self._prepare_request_payload(messages, argument)
+        request = self.build_request(argument)
         except_remedy = kwargs.get("except_remedy")
 
         try:
-            res = self.client.responses.create(**payload)
+            res = self.call_request(request)
         except Exception as e:
             if openai.api_key is None or openai.api_key == "":
                 msg = "OpenAI API key is not set."
@@ -442,15 +438,20 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
                 err = f"Error during generation. Caused by: {e}"
                 raise ValueError(err) from e
 
-        metadata = {"raw_output": res}
-        if payload.get("tools"):
-            metadata = self._process_function_calls(res, metadata)
+        return self.parse_response(res)
 
-        thinking = self._extract_thinking(res)
+    def call_request(self, request: OpenAIResponsesCreateRequest):
+        return self.client.responses.create(**request.kwargs())
+
+    def parse_response(self, response):
+        metadata = {"raw_output": response}
+        metadata = self._process_function_calls(response, metadata)
+
+        thinking = self._extract_thinking(response)
         if thinking:
             metadata["thinking"] = thinking
 
-        output = self._extract_output_text(res)
+        output = self._extract_output_text(response)
         if not output and "function_call" in metadata:
             output = [""]
         return output, metadata

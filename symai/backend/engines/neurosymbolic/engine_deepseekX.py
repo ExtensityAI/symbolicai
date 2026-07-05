@@ -2,9 +2,15 @@ import logging
 from copy import deepcopy
 
 from openai import OpenAI
+from openai.types.chat import ChatCompletion
 
 from symai.backend.base import Engine
-from symai.backend.mixin.deepseek import DeepSeekMixin
+from symai.backend.mixin.deepseek import (
+    DeepSeekChatCreateCallOptions,
+    DeepSeekChatCreatePayload,
+    DeepSeekChatRequest,
+    DeepSeekMixin,
+)
 from symai.backend.settings import SYMAI_CONFIG
 from symai.components import SelfPrompt
 from symai.utils import silence_noisy_loggers
@@ -79,14 +85,44 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
         msg = 'Method "truncate" not implemented for DeepSeekXReasoningEngine.'
         raise NotImplementedError(msg)
 
+    def build_request(self, argument) -> DeepSeekChatRequest:
+        request_kwargs = set(DeepSeekChatCreatePayload.model_fields) | set(
+            DeepSeekChatCreateCallOptions.model_fields
+        )
+        payload_kwargs = self.collect_request_kwargs(argument, request_kwargs)
+        call_options = {
+            key: payload_kwargs.pop(key)
+            for key in DeepSeekChatCreateCallOptions.model_fields
+            if key in payload_kwargs
+        }
+        payload_kwargs["model"] = payload_kwargs.get("model", self.model)
+        payload_kwargs["messages"] = argument.prop.prepared_input
+        if "max_tokens" not in payload_kwargs:
+            payload_kwargs["max_tokens"] = self.max_response_tokens
+        if "stop" not in payload_kwargs:
+            payload_kwargs["stop"] = "<|endoftext|>"
+        if "seed" not in payload_kwargs and self.seed is not None:
+            payload_kwargs["seed"] = self.seed
+
+        payload = DeepSeekChatCreatePayload.model_validate(payload_kwargs)
+        options = None
+        if call_options:
+            options = DeepSeekChatCreateCallOptions.model_validate(call_options)
+
+        return DeepSeekChatRequest(
+            provider="deepseek",
+            operation="chat.completions.create",
+            payload=payload,
+            call_options=options,
+        )
+
     def forward(self, argument):
         kwargs = argument.kwargs
-        messages = argument.prop.prepared_input
-        payload = self._prepare_request_payload(argument)
+        request = self.build_request(argument)
         except_remedy = kwargs.get("except_remedy")
 
         try:
-            res = self.client.chat.completions.create(messages=messages, **payload)
+            res = self.call_request(request)
 
         except Exception as e:
             if self.api_key is None or self.api_key == "":
@@ -108,9 +144,21 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
                 msg = f"Error during generation. Caused by: {e}"
                 raise ValueError(msg) from e
 
-        reasoning_content = res.choices[0].message.reasoning_content
-        content = res.choices[0].message.content
-        metadata = {"raw_output": res, "thinking": reasoning_content}
+        return self.parse_response(res)
+
+    def call_request(self, request: DeepSeekChatRequest):
+        return self.client.post(
+            "/chat/completions",
+            cast_to=ChatCompletion,
+            body=request.body_with_extra(),
+            options=request.request_options(),
+        )
+
+    def parse_response(self, response):
+        message = response.choices[0].message
+        reasoning_content = getattr(message, "reasoning_content", None)
+        content = message.content
+        metadata = {"raw_output": response, "thinking": reasoning_content}
 
         return [content], metadata
 
@@ -199,18 +247,3 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
             {"role": "system", "content": system},
             user_prompt,
         ]
-
-    def _prepare_request_payload(self, argument):
-        """Prepares the request payload from the argument."""
-        kwargs = argument.kwargs
-        # 16/03/2025
-        # Not Supported Features: Function Call、Json Output、FIM (Beta)
-        # Not Supported Parameters: temperature、top_p、presence_penalty、frequency_penalty、logprobs、top_logprobs
-        return {
-            "model": kwargs.get("model", self.model),
-            "seed": kwargs.get("seed", self.seed),
-            "max_tokens": kwargs.get("max_tokens", self.max_response_tokens),
-            "stop": kwargs.get("stop", "<|endoftext|>"),
-            "n": kwargs.get("n", 1),
-            "logit_bias": kwargs.get("logit_bias"),
-        }

@@ -16,7 +16,7 @@ NEUROSYMBOLIC = SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL")
 CLAUDE_THINKING = {"budget_tokens": 1024}
 GEMINI_THINKING = {"thinking_budget": 1024}
 CLAUDE_MAX_TOKENS = 4092
-IS_RESPONSES_API = NEUROSYMBOLIC.startswith("responses:")
+IS_OPENAI_API = NEUROSYMBOLIC.startswith("openai:")
 
 
 def _compute_required_tokens(*_args, **_kwargs):
@@ -45,7 +45,6 @@ def test_init():
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith("cerebras"), reason="feature not yet implemented")
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith("llama"), reason="feature not yet implemented")
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith("vllm"), reason="vllm vision not wired")
-@pytest.mark.skipif(NEUROSYMBOLIC.startswith("huggingface"), reason="feature not yet implemented")
 @pytest.mark.skipif(
     NEUROSYMBOLIC.startswith("o3-mini"), reason="feature not supported by the model"
 )
@@ -88,10 +87,6 @@ def test_vision():
 )
 @pytest.mark.skipif(
     NEUROSYMBOLIC.startswith("vllm"), reason="vllm tokens computation is not yet implemented"
-)
-@pytest.mark.skipif(
-    NEUROSYMBOLIC.startswith("huggingface"),
-    reason="huggingface tokens computation is not yet implemented",
 )
 @pytest.mark.skipif(
     NEUROSYMBOLIC.startswith("deepseek"),
@@ -140,8 +135,8 @@ def test_tokenizer():
                 "content": "This late pivot means we don't have time to boil the ocean for the client deliverable.",
             },
         ]
-    elif IS_RESPONSES_API:
-        base_model = NEUROSYMBOLIC.replace("responses:", "")
+    elif IS_OPENAI_API:
+        base_model = NEUROSYMBOLIC.replace("openai:", "")
         admin_role = "developer" if base_model in SUPPORTED_REASONING_MODELS else "system"
         messages = [
             {
@@ -207,7 +202,7 @@ def test_tokenizer():
         api_tokens = response.usage_metadata.prompt_token_count
     elif NEUROSYMBOLIC.startswith("claude"):
         api_tokens = response[0].message.usage.input_tokens
-    elif IS_RESPONSES_API:
+    elif IS_OPENAI_API:
         api_tokens = response.usage.input_tokens
     else:
         api_tokens = response.usage.prompt_tokens
@@ -218,14 +213,9 @@ def test_tokenizer():
 
 
 @pytest.mark.mandatory
-@pytest.mark.skipif(NEUROSYMBOLIC.startswith("huggingface"), reason="feature not yet implemented")
 @pytest.mark.skipif(NEUROSYMBOLIC.startswith("o1"), reason="feature not supported by the model")
-@pytest.mark.skipif(
-    NEUROSYMBOLIC == "gpt-5.1-chat-latest" or NEUROSYMBOLIC == "gpt-5-chat-latest",
-    reason="feature not supported by the model with v1/chat/completions",
-)
 def test_tool_usage():
-    if IS_RESPONSES_API:
+    if IS_OPENAI_API:
         tools = [
             {
                 "type": "function",
@@ -410,7 +400,7 @@ def test_raw_output():
             assert len(event_types & expected_types) > 0, (
                 f"Expected streaming events but got: {event_types}"
             )
-    elif IS_RESPONSES_API:
+    elif IS_OPENAI_API:
         S = Expression.prompt("What is the capital of France?", raw_output=True)
         assert isinstance(S.value, Response)
     elif (

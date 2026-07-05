@@ -7,7 +7,13 @@ import tiktoken
 from cerebras.cloud.sdk import Cerebras
 
 from symai.backend.base import Engine
-from symai.backend.mixin.cerebras import CerebrasMixin
+from symai.backend.mixin.cerebras import (
+    SUPPORTED_CEREBRAS_MODELS,
+    CerebrasChatCreateCallOptions,
+    CerebrasChatCreatePayload,
+    CerebrasChatRequest,
+    CerebrasMixin,
+)
 from symai.backend.settings import SYMAI_CONFIG
 from symai.components import SelfPrompt
 from symai.utils import silence_noisy_loggers
@@ -65,7 +71,7 @@ class CerebrasEngine(CerebrasMixin, Engine):
 
     def id(self) -> str:
         model_name = self.config.get("NEUROSYMBOLIC_ENGINE_MODEL")
-        if model_name and model_name.startswith("cerebras"):
+        if model_name and model_name in SUPPORTED_CEREBRAS_MODELS:
             return "neurosymbolic"
         return super().id()
 
@@ -109,7 +115,7 @@ class CerebrasEngine(CerebrasMixin, Engine):
 
     def _handle_prefix(self, model_name: str) -> str:
         """Handle prefix for model name."""
-        return model_name.replace("cerebras:", "")
+        return self.cerebras_strip_prefix(model_name)
 
     @staticmethod
     def _normalize_response_format(response_format: dict | None) -> dict | None:
@@ -156,18 +162,17 @@ class CerebrasEngine(CerebrasMixin, Engine):
 
     def forward(self, argument):
         kwargs = argument.kwargs
-        messages = argument.prop.prepared_input
-        payload = self._prepare_request_payload(messages, argument)
+        request = self.build_request(argument)
         except_remedy = kwargs.get("except_remedy")
 
         try:
-            res = self.client.chat.completions.create(**payload)
+            res = self.call_request(request)
         except Exception as exc:  # pragma: no cover - defensive path
-            res = self._handle_forward_exception(exc, argument, kwargs, except_remedy)
+            res = self._handle_forward_exception(exc, argument, kwargs, except_remedy, request)
 
-        return self._build_outputs_and_metadata(res, payload)
+        return self.parse_response(res)
 
-    def _handle_forward_exception(self, exc, argument, kwargs, except_remedy):
+    def _handle_forward_exception(self, exc, argument, kwargs, except_remedy, request):
         if self.api_key is None or self.api_key == "":
             msg = (
                 "Cerebras API key is not set. Please set it in the config file or "
@@ -185,11 +190,7 @@ class CerebrasEngine(CerebrasMixin, Engine):
                 raise ValueError(msg) from inner_exc
 
         callback = self.client.chat.completions.create
-        kwargs["model"] = (
-            self._handle_prefix(kwargs["model"])
-            if "model" in kwargs
-            else self._handle_prefix(self.model)
-        )
+        kwargs["model"] = request.body()["model"]
 
         if except_remedy is not None:
             return except_remedy(self, exc, callback, argument)
@@ -197,15 +198,70 @@ class CerebrasEngine(CerebrasMixin, Engine):
         msg = f"Error during generation. Caused by: {exc}"
         raise ValueError(msg)
 
-    def _build_outputs_and_metadata(self, res, payload):
-        metadata: dict = {"raw_output": res}
-        if payload.get("tools"):
-            metadata = self._process_function_calls(res, metadata)
+    def build_request(self, argument) -> CerebrasChatRequest:
+        request_kwargs = set(CerebrasChatCreatePayload.model_fields) | set(
+            CerebrasChatCreateCallOptions.model_fields
+        )
+        payload_kwargs = self.collect_request_kwargs(argument, request_kwargs)
+        call_options = {
+            key: payload_kwargs.pop(key)
+            for key in CerebrasChatCreateCallOptions.model_fields
+            if key in payload_kwargs
+        }
+
+        model = self.cerebras_strip_prefix(payload_kwargs.get("model", self.model))
+        model_spec = self.cerebras_model_spec_for(model)
+        reasoning_effort = payload_kwargs.get("reasoning_effort")
+        if reasoning_effort is not None and reasoning_effort not in model_spec.reasoning_efforts:
+            msg = (
+                f"Unsupported reasoning_effort for Cerebras model {model}: "
+                f"{reasoning_effort}. Supported values: {list(model_spec.reasoning_efforts)}"
+            )
+            raise ValueError(msg)
+        payload_kwargs["model"] = model
+        payload_kwargs["messages"] = argument.prop.prepared_input
+        if "seed" not in payload_kwargs and self.seed is not None:
+            payload_kwargs["seed"] = self.seed
+        if "stop" in payload_kwargs and not payload_kwargs["stop"]:
+            payload_kwargs["stop"] = None
+        payload_kwargs["temperature"] = payload_kwargs.get("temperature", 1)
+        payload_kwargs["top_p"] = payload_kwargs.get("top_p", 1)
+        payload_kwargs["stream"] = payload_kwargs.get("stream", False)
+        payload_kwargs["response_format"] = self._normalize_response_format(
+            payload_kwargs.get("response_format")
+        )
+
+        n = payload_kwargs.get("n", 1)
+        if n > 1:
+            logger.warning(
+                "If N is supplied, it must be equal to 1. We default to 1 to avoid unexpected batch behavior."
+            )
+            n = 1
+        payload_kwargs["n"] = n
+
+        payload = CerebrasChatCreatePayload.model_validate(payload_kwargs)
+        options = None
+        if call_options:
+            options = CerebrasChatCreateCallOptions.model_validate(call_options)
+
+        return CerebrasChatRequest(
+            provider="cerebras",
+            operation="chat.completions.create",
+            payload=payload,
+            call_options=options,
+        )
+
+    def call_request(self, request: CerebrasChatRequest):
+        return self.client.chat.completions.create(**request.kwargs())
+
+    def parse_response(self, response):
+        metadata: dict = {"raw_output": response}
+        metadata = self._process_function_calls(response, metadata)
 
         outputs: list[str] = []
         thinking_content: str | None = None
 
-        for choice in res.choices:
+        for choice in response.choices:
             message = choice.message
             outputs.append(getattr(message, "content", "") or "")
             if thinking_content is None:
@@ -220,6 +276,9 @@ class CerebrasEngine(CerebrasMixin, Engine):
 
         if thinking_content:
             metadata["thinking"] = thinking_content
+
+        if not outputs and "function_call" in metadata:
+            outputs = [""]
 
         return outputs, metadata
 
@@ -334,36 +393,3 @@ class CerebrasEngine(CerebrasMixin, Engine):
                     }
                     hit = True
         return metadata
-
-    def _prepare_request_payload(self, messages, argument):
-        """Prepares the request payload from the argument."""
-        kwargs = argument.kwargs
-
-        n = kwargs.get("n", 1)
-        if n > 1:
-            logger.warning(
-                "If N is supplied, it must be equal to 1. We default to 1 to avoid unexpected batch behavior."
-            )
-            n = 1
-
-        response_format = self._normalize_response_format(kwargs.get("response_format"))
-
-        # NOTE: gpt-oss reasoning models return empty completions when an empty stop ("") is sent,
-        # so treat an empty stop sequence as "no stop".
-        stop = kwargs.get("stop") or None
-
-        return {
-            "messages": messages,
-            "model": self._handle_prefix(kwargs.get("model", self.model)),
-            "max_completion_tokens": kwargs.get("max_completion_tokens"),
-            "stop": stop,
-            "temperature": kwargs.get("temperature", 1),
-            "top_p": kwargs.get("top_p", 1),
-            "n": n,
-            "tools": kwargs.get("tools"),
-            "parallel_tool_calls": kwargs.get("parallel_tool_calls"),
-            "response_format": response_format,
-            "reasoning_effort": kwargs.get("reasoning_effort"),
-            "disable_reasoning": kwargs.get("disable_reasoning"),
-            "stream": kwargs.get("stream", False),
-        }

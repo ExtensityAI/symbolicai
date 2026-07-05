@@ -6,6 +6,15 @@ from copy import deepcopy
 import openai
 
 from symai.backend.base import Engine
+from symai.backend.mixin.groq import (
+    GROQ_UNSUPPORTED_REQUEST_KWARGS,
+    SUPPORTED_GROQ_MODELS,
+    GroqChatCreateAliases,
+    GroqChatCreateCallOptions,
+    GroqChatCreatePayload,
+    GroqChatRequest,
+    GroqMixin,
+)
 from symai.backend.settings import SYMAI_CONFIG
 from symai.components import SelfPrompt
 from symai.utils import silence_noisy_loggers
@@ -24,7 +33,7 @@ _NON_VERBOSE_OUTPUT = (
 )
 
 
-class GroqEngine(Engine):
+class GroqEngine(Engine, GroqMixin):
     def __init__(
         self,
         api_key: str | None = None,
@@ -47,6 +56,8 @@ class GroqEngine(Engine):
         ]  # Keep the original config name to avoid confusion in downstream tasks
         self.seed = None
         self.name = self.__class__.__name__
+        self.max_context_tokens = self.api_max_context_tokens()
+        self.max_response_tokens = self.api_max_response_tokens()
 
         try:
             self.client = openai.OpenAI(
@@ -62,9 +73,7 @@ class GroqEngine(Engine):
             raise ValueError(msg) from e
 
     def id(self) -> str:
-        if self.config.get("NEUROSYMBOLIC_ENGINE_MODEL") and self.config.get(
-            "NEUROSYMBOLIC_ENGINE_MODEL"
-        ).startswith("groq"):
+        if self.config.get("NEUROSYMBOLIC_ENGINE_MODEL") in SUPPORTED_GROQ_MODELS:
             return "neurosymbolic"
         return super().id()  # default to unregistered
 
@@ -87,7 +96,7 @@ class GroqEngine(Engine):
 
     def _handle_prefix(self, model_name: str) -> str:
         """Handle prefix for model name."""
-        return model_name.replace("groq:", "")
+        return self.groq_strip_prefix(model_name)
 
     def _extract_thinking_content(self, output: list[str]) -> tuple[str | None, list[str]]:
         """Extract thinking content from model output if present and return cleaned output."""
@@ -98,6 +107,7 @@ class GroqEngine(Engine):
         if not content:
             return None, output
 
+        # NOTE: Matches Groq reasoning text wrapped in <think>...</think> tags.
         think_pattern = r"<think>(.*?)</think>"
         match = re.search(think_pattern, content, re.DOTALL)
 
@@ -114,12 +124,11 @@ class GroqEngine(Engine):
 
     def forward(self, argument):
         kwargs = argument.kwargs
-        messages = argument.prop.prepared_input
-        payload = self._prepare_request_payload(messages, argument)
+        request = self.build_request(argument)
         except_remedy = kwargs.get("except_remedy")
 
         try:
-            res = self.client.chat.completions.create(**payload)
+            res = self.call_request(request)
 
         except Exception as e:
             if openai.api_key is None or openai.api_key == "":
@@ -133,11 +142,7 @@ class GroqEngine(Engine):
                 openai.api_key = self.config["NEUROSYMBOLIC_ENGINE_API_KEY"]
 
             callback = self.client.chat.completions.create
-            kwargs["model"] = (
-                self._handle_prefix(kwargs["model"])
-                if "model" in kwargs
-                else self._handle_prefix(self.model)
-            )
+            kwargs["model"] = request.body()["model"]
 
             if except_remedy is not None:
                 res = except_remedy(self, e, callback, argument)
@@ -145,14 +150,109 @@ class GroqEngine(Engine):
                 msg = f"Error during generation. Caused by: {e}"
                 raise ValueError(msg) from e
 
-        metadata = {"raw_output": res}
-        if payload.get("tools"):
-            metadata = self._process_function_calls(res, metadata)
+        return self.parse_response(res)
 
-        output = [r.message.content for r in res.choices]
+    def build_request(self, argument) -> GroqChatRequest:
+        request_kwargs = (
+            set(GroqChatCreatePayload.model_fields)
+            | set(GroqChatCreateCallOptions.model_fields)
+            | set(GroqChatCreateAliases.model_fields)
+            | set(GROQ_UNSUPPORTED_REQUEST_KWARGS)
+        )
+        payload_kwargs = self.collect_request_kwargs(argument, request_kwargs)
+        call_options = {
+            key: payload_kwargs.pop(key)
+            for key in GroqChatCreateCallOptions.model_fields
+            if key in payload_kwargs
+        }
+        alias_kwargs = {
+            key: payload_kwargs.pop(key)
+            for key in GroqChatCreateAliases.model_fields
+            if key in payload_kwargs
+        }
+        for key in sorted(GROQ_UNSUPPORTED_REQUEST_KWARGS):
+            if key in payload_kwargs:
+                warning_message = (
+                    f"The parameter {key} is not supported by the Groq API. It will be ignored."
+                )
+                logger.warning(warning_message)
+                payload_kwargs.pop(key)
+
+        aliases = GroqChatCreateAliases.model_validate(alias_kwargs)
+        model = self.groq_strip_prefix(payload_kwargs.get("model", self.model))
+        spec = self.groq_model_spec_for(model)
+
+        payload_kwargs["model"] = model
+        payload_kwargs["messages"] = argument.prop.prepared_input
+        if aliases.max_tokens is not None and "max_completion_tokens" not in payload_kwargs:
+            payload_kwargs["max_completion_tokens"] = aliases.max_tokens
+        if "seed" not in payload_kwargs and self.seed is not None:
+            payload_kwargs["seed"] = self.seed
+        if "stop" in payload_kwargs and not payload_kwargs["stop"]:
+            payload_kwargs["stop"] = None
+        payload_kwargs["temperature"] = payload_kwargs.get("temperature", 1)
+        payload_kwargs["frequency_penalty"] = payload_kwargs.get("frequency_penalty", 0)
+        payload_kwargs["presence_penalty"] = payload_kwargs.get("presence_penalty", 0)
+        payload_kwargs["service_tier"] = payload_kwargs.get("service_tier", "on_demand")
+        payload_kwargs["top_p"] = payload_kwargs.get("top_p", 1)
+
+        n = payload_kwargs.get("n", 1)
+        if n > 1:
+            logger.warning(
+                "If N is supplied, it must be equal to 1. We default to 1 to not crash your program."
+            )
+            n = 1
+        payload_kwargs["n"] = n
+
+        if "reasoning_effort" not in payload_kwargs:
+            payload_kwargs["reasoning_effort"] = spec.default_reasoning_effort
+        if not self.groq_supports_reasoning_effort(payload_kwargs["reasoning_effort"]):
+            msg = (
+                f"Unsupported reasoning_effort for Groq model {model}: "
+                f"{payload_kwargs['reasoning_effort']}"
+            )
+            raise ValueError(msg)
+
+        response_format = payload_kwargs.get("response_format")
+        tools = payload_kwargs.get("tools")
+        tool_choice = payload_kwargs.get("tool_choice", "auto" if tools else "none")
+        if (
+            response_format
+            and isinstance(response_format, dict)
+            and response_format.get("type") == "json_object"
+        ):
+            if tool_choice in (None, "none"):
+                tool_choice = "auto"
+            if tools:
+                tools = None
+        payload_kwargs["tools"] = tools
+        payload_kwargs["tool_choice"] = tool_choice
+
+        payload = GroqChatCreatePayload.model_validate(payload_kwargs)
+        options = None
+        if call_options:
+            options = GroqChatCreateCallOptions.model_validate(call_options)
+
+        return GroqChatRequest(
+            provider="groq",
+            operation="chat.completions.create",
+            payload=payload,
+            call_options=options,
+        )
+
+    def call_request(self, request: GroqChatRequest):
+        return self.client.chat.completions.create(**request.kwargs())
+
+    def parse_response(self, response):
+        metadata = {"raw_output": response}
+        metadata = self._process_function_calls(response, metadata)
+
+        output = [choice.message.content or "" for choice in response.choices]
         thinking, output = self._extract_thinking_content(output)
         if thinking:
             metadata["thinking"] = thinking
+        if not output and "function_call" in metadata:
+            output = [""]
 
         return output, metadata
 
@@ -193,7 +293,7 @@ class GroqEngine(Engine):
             )
 
     def _build_system_message(self, argument) -> str:
-        system: str = ""
+        system = ""
         if argument.prop.suppress_verbose_output:
             system += _NON_VERBOSE_OUTPUT
         if system:
@@ -266,71 +366,3 @@ class GroqEngine(Engine):
                     }
                     hit = True
         return metadata
-
-    def _prepare_request_payload(self, messages, argument):
-        """Prepares the request payload from the argument."""
-        kwargs = argument.kwargs
-
-        for param in [
-            "logprobs",
-            "logit_bias",
-            "top_logprobs",
-            "search_settings",
-            "stream",
-            "stream_options",
-        ]:
-            if param in kwargs:
-                logger.warning(
-                    "The parameter %s is not supported by the Groq API. It will be ignored.", param
-                )
-                del kwargs[param]
-
-        n = kwargs.get("n", 1)
-        if n > 1:
-            logger.warning(
-                "If N is supplied, it must be equal to 1. We default to 1 to not crash your program."
-            )
-            n = 1
-
-        # Handle Groq JSON-mode quirk: JSON Object Mode internally uses a constrainer tool.
-        response_format = kwargs.get("response_format")
-        tool_choice = kwargs.get("tool_choice", "auto" if kwargs.get("tools") else "none")
-        tools = kwargs.get("tools")
-        if (
-            response_format
-            and isinstance(response_format, dict)
-            and response_format.get("type") == "json_object"
-        ):
-            if tool_choice in (None, "none"):
-                tool_choice = "auto"
-            if tools:
-                tools = None
-
-        # NOTE: gpt-oss reasoning models return empty completions when an empty stop ("") is sent,
-        # so treat an empty stop sequence as "no stop".
-        stop = kwargs.get("stop") or None
-
-        payload = {
-            "messages": messages,
-            "model": self._handle_prefix(kwargs.get("model", self.model)),
-            "seed": kwargs.get("seed", self.seed),
-            "max_completion_tokens": kwargs.get("max_completion_tokens"),
-            "stop": stop,
-            "temperature": kwargs.get("temperature", 1),  # Default temperature for gpt-oss-120b
-            "frequency_penalty": kwargs.get("frequency_penalty", 0),
-            "presence_penalty": kwargs.get("presence_penalty", 0),
-            "reasoning_effort": kwargs.get("reasoning_effort"),
-            "service_tier": kwargs.get("service_tier", "on_demand"),
-            "top_p": kwargs.get("top_p", 1),
-            "n": n,
-            "tools": tools,
-            "tool_choice": tool_choice,
-            "response_format": response_format,
-        }
-
-        if not self._handle_prefix(self.model).startswith("qwen") or not self._handle_prefix(
-            self.model
-        ).startswith("openai"):
-            del payload["reasoning_effort"]
-
-        return payload
