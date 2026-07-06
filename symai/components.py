@@ -1,5 +1,4 @@
 import inspect
-import json
 import logging
 import sys
 from collections import defaultdict
@@ -262,49 +261,11 @@ class PrimitiveDisabler(Expression):
 
 
 class SelfPrompt(Expression):
-    _default_retry_tries = 20
-    _default_retry_delay = 0.5
-    _default_retry_max_delay = -1
-    _default_retry_backoff = 1
-    _default_retry_jitter = 0
-    _default_retry_graceful = True
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     def forward(self, existing_prompt: dict[str, str], **kwargs) -> dict[str, str]:
-        """
-        Generate new system and user prompts based on the existing prompt.
-
-        :param existing_prompt: A dictionary containing the existing prompt in the format:
-                                {'user': '...', 'system': '...'}
-        :return: A dictionary containing the new prompts in the same format:
-                 {'user': '...', 'system': '...'}
-        """
-
-        @core.zero_shot(
-            prompt=(
-                "Based on the following prompt, generate a new system (or developer) prompt and a new user prompt. "
-                "The new system or developer prompt should set up a specialized agent tailored for the user's request. "
-                "If examples are provided, use them to guide the agent's behavior. "
-                "The new user prompt should contain the user's requirements. "
-                "Check if the input contains a 'system' or 'developer' key and use the same key in your output. "
-                "Only output the new prompts in JSON format as shown:\n\n"
-                '{"system": "<new system prompt>", "user": "<new user prompt>"}\n\n'
-                "OR\n\n"
-                '{"developer": "<new developer prompt>", "user": "<new user prompt>"}\n\n'
-                "Maintain the same key structure as in the input prompt. Do not include any additional text."
-            ),
-            response_format={"type": "json_object"},
-            post_processors=[
-                lambda res, _: json.loads(res),
-            ],
-            **kwargs,
-        )
-        def _func(self, sym: Symbol):
-            pass
-
-        return _func(self, self._to_symbol(existing_prompt))
+        return Engine.self_prompt(existing_prompt, **kwargs)
 
 
 class MetadataTracker(Expression):
@@ -313,6 +274,7 @@ class MetadataTracker(Expression):
         self._trace = False
         self._original_trace = None
         self._metadata = {}
+        self._engines_by_metadata_id = {}
         self._metadata_id = 0
 
     def __str__(self, value=None):
@@ -334,6 +296,7 @@ class MetadataTracker(Expression):
         with cls._lock:
             instance = super().__new__(cls)
             instance._metadata = {}
+            instance._engines_by_metadata_id = {}
             instance._metadata_id = 0
             return instance
 
@@ -364,9 +327,30 @@ class MetadataTracker(Expression):
             # getattr fallback: not all Engine subclasses set self.model (e.g. FileEngine)
             model_name = getattr(frame.f_locals["self"], "model", None)
             self._metadata[(self._metadata_id, engine_name, model_name)] = metadata
+            self._engines_by_metadata_id[self._metadata_id] = frame.f_locals["self"]
             self._metadata_id += 1
 
         return self._trace_calls
+
+    def _accumulate_usage_record(self, token_details, engine_name, model_name, record):
+        details = token_details[(engine_name, model_name)]
+        details["usage"]["prompt_tokens"] += record.prompt_tokens
+        details["usage"]["completion_tokens"] += record.completion_tokens
+        details["usage"]["total_tokens"] += record.total_tokens
+        details["usage"]["total_calls"] += record.total_calls
+
+        for key, value in record.prompt_breakdown.items():
+            details["prompt_breakdown"][key] += value
+        for key, value in record.completion_breakdown.items():
+            details["completion_breakdown"][key] += value
+
+        details["prompt_breakdown"]["cached_tokens"] += 0
+        details["completion_breakdown"]["reasoning_tokens"] += 0
+
+        if record.extras:
+            extras = details.setdefault("extras", {})
+            for key, value in record.extras.items():
+                extras[key] = extras.get(key, 0) + value
 
     def _accumulate_completion_token_details(self):
         """Parses the return object and accumulates completion token details per token type"""
@@ -378,8 +362,20 @@ class MetadataTracker(Expression):
 
         # Note on try/except:
         # The unpacking shouldn't fail; if it fails, it's likely the API response format has changed and we need to know that ASAP
-        for (_, engine_name, model_name), metadata in self._metadata.items():
+        for (metadata_id, engine_name, model_name), metadata in self._metadata.items():
             try:
+                engine = self._engines_by_metadata_id.get(metadata_id)
+                if engine is not None:
+                    usage_record = engine.usage_record_from_metadata(metadata)
+                    if usage_record is not None:
+                        self._accumulate_usage_record(
+                            token_details,
+                            engine_name,
+                            model_name,
+                            usage_record,
+                        )
+                        continue
+
                 if engine_name == "GroqEngine":
                     usage = metadata["raw_output"].usage
                     token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += (
@@ -536,16 +532,6 @@ class MetadataTracker(Expression):
                     token_details[(engine_name, model_name)]["prompt_breakdown"][
                         "cached_tokens"
                     ] += cache_read
-                    # Track reasoning/thinking tokens for ClaudeXReasoningEngine
-                    if engine_name == "ClaudeXReasoningEngine":
-                        thinking_output = metadata.get("thinking", "")
-                        # Store thinking content if available
-                        if thinking_output:
-                            if "thinking_content" not in token_details[(engine_name, model_name)]:
-                                token_details[(engine_name, model_name)]["thinking_content"] = []
-                            token_details[(engine_name, model_name)]["thinking_content"].append(
-                                thinking_output
-                            )
                     # Note: Anthropic doesn't break down reasoning tokens separately in usage,
                     # but extended thinking is included in output_tokens
                     token_details[(engine_name, model_name)]["completion_breakdown"][
@@ -573,46 +559,6 @@ class MetadataTracker(Expression):
                     token_details[(engine_name, model_name)]["completion_breakdown"][
                         "reasoning_tokens"
                     ] += thoughts_token_count
-                    # Track thinking content if available
-                    thinking_output = metadata.get("thinking", "")
-                    if thinking_output:
-                        if "thinking_content" not in token_details[(engine_name, model_name)]:
-                            token_details[(engine_name, model_name)]["thinking_content"] = []
-                        token_details[(engine_name, model_name)]["thinking_content"].append(
-                            thinking_output
-                        )
-                elif engine_name == "DeepSeekXReasoningEngine":
-                    usage = metadata["raw_output"].usage
-                    token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += (
-                        usage.completion_tokens
-                    )
-                    token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += (
-                        usage.prompt_tokens
-                    )
-                    token_details[(engine_name, model_name)]["usage"]["total_tokens"] += (
-                        usage.total_tokens
-                    )
-                    token_details[(engine_name, model_name)]["usage"]["total_calls"] += 1
-                    # Track thinking content if available
-                    thinking_output = metadata.get("thinking", "")
-                    if thinking_output:
-                        if "thinking_content" not in token_details[(engine_name, model_name)]:
-                            token_details[(engine_name, model_name)]["thinking_content"] = []
-                        token_details[(engine_name, model_name)]["thinking_content"].append(
-                            thinking_output
-                        )
-                    # Note: DeepSeek reasoning tokens might be in completion_tokens_details
-                    reasoning_tokens = 0
-                    if (
-                        hasattr(usage, "completion_tokens_details")
-                        and usage.completion_tokens_details
-                    ):
-                        reasoning_tokens = (
-                            getattr(usage.completion_tokens_details, "reasoning_tokens", 0) or 0
-                        )
-                    token_details[(engine_name, model_name)]["completion_breakdown"][
-                        "reasoning_tokens"
-                    ] += reasoning_tokens
                 elif engine_name == "MistralOCREngine":
                     # Mistral OCR uses page-based billing, not token-based
                     raw_output = metadata.get("raw_output")
