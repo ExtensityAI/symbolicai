@@ -1,23 +1,54 @@
-import logging
-from copy import deepcopy
+from __future__ import annotations
 
-from openai import OpenAI
-from openai.types.chat import ChatCompletion
+import json
+from copy import deepcopy
+from typing import Any
 
 from symai.backend.base import Engine
+from symai.backend.engines.neurosymbolic.prompts import render_chat_system_prompt
 from symai.backend.mixin.deepseek import (
-    DeepSeekChatCreateCallOptions,
-    DeepSeekChatCreatePayload,
-    DeepSeekChatRequest,
+    SUPPORTED_MODELS,
     DeepSeekMixin,
+    DeepSeekOptions,
+    DeepSeekPayload,
+    DeepSeekRequest,
+    DeepSeekResponse,
 )
 from symai.backend.settings import SYMAI_CONFIG
-from symai.components import SelfPrompt
-from symai.utils import silence_noisy_loggers
+from symai.backend.streaming import EngineStreamAccumulator, EngineStreamDelta
+from symai.backend.transport import (
+    DEFAULT_RETRIES,
+    SSEEvent,
+    execute_engine_api_request,
+    execute_engine_api_stream_events,
+)
+from symai.backend.usage import EngineUsageRecord
 
-silence_noisy_loggers("openai")
+DEEPSEEK_CHAT_COMPLETIONS_URL = "https://api.deepseek.com/chat/completions"
 
-logger = logging.getLogger(__name__)
+
+class DeepSeekStreamAdapter:
+    def process_event(self, event: SSEEvent) -> EngineStreamDelta:
+        if event.data == "[DONE]":
+            return EngineStreamDelta(done=True, raw=event)
+        if not event.data:
+            return EngineStreamDelta(raw=event)
+
+        chunk = json.loads(event.data)
+        usage = chunk["usage"] if chunk.get("usage") else None
+        choices = chunk.get("choices") or []
+        if not choices:
+            return EngineStreamDelta(usage=usage, raw=chunk)
+
+        choice = choices[0]
+        delta = choice.get("delta") or {}
+        return EngineStreamDelta(
+            text=delta.get("content") or "",
+            thinking=delta.get("reasoning_content") or "",
+            usage=usage,
+            finish_reason=choice.get("finish_reason"),
+            raw=chunk,
+        )
 
 
 class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
@@ -30,201 +61,140 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
         client_max_retries: int | None = None,
     ):
         super().__init__(client_timeout=client_timeout, client_max_retries=client_max_retries)
+        self.name = self.__class__.__name__
         self.config = deepcopy(SYMAI_CONFIG)
-        # In case we use EngineRepository.register to inject the api_key and model => dynamically change the engine at runtime
-        if api_key is not None and model is not None:
+        if api_key is not None:
             self.config["NEUROSYMBOLIC_ENGINE_API_KEY"] = api_key
+        if model is not None:
             self.config["NEUROSYMBOLIC_ENGINE_MODEL"] = model
-        if self.id() != "neurosymbolic":
-            return  # do not initialize if not neurosymbolic; avoids conflict with llama.cpp check in EngineRepository.register_from_package
         self.api_key = self.config["NEUROSYMBOLIC_ENGINE_API_KEY"]
         self.model = self.config["NEUROSYMBOLIC_ENGINE_MODEL"]
-        self.name = self.__class__.__name__
+        if self.id() != "neurosymbolic":
+            return
         self.tokenizer = None
         self.max_context_tokens = self.api_max_context_tokens()
-        self.max_response_tokens = self.api_max_response_tokens()
-        self.seed = None
-
-        try:
-            self.client = OpenAI(
-                **self._build_client_kwargs(
-                    {"api_key": self.api_key, "base_url": "https://api.deepseek.com"}
-                )
-            )
-        except Exception as e:
-            msg = f"Failed to initialize the DeepSeek client. Please check your library version. Caused by: {e}"
-            raise RuntimeError(msg) from e
+        self.transport_client = None
 
     def id(self) -> str:
-        if self.config.get("NEUROSYMBOLIC_ENGINE_MODEL") and self.config.get(
-            "NEUROSYMBOLIC_ENGINE_MODEL"
-        ).startswith("deepseek"):
+        if self.model in SUPPORTED_MODELS and self.api_key:
             return "neurosymbolic"
         return super().id()  # default to unregistered
 
-    def command(self, *args, **kwargs):
-        super().command(*args, **kwargs)
-        if "NEUROSYMBOLIC_ENGINE_API_KEY" in kwargs:
-            self.api_key = kwargs["NEUROSYMBOLIC_ENGINE_API_KEY"]
-        if "NEUROSYMBOLIC_ENGINE_MODEL" in kwargs:
-            self.model = kwargs["NEUROSYMBOLIC_ENGINE_MODEL"]
-        if "seed" in kwargs:
-            self.seed = kwargs["seed"]
-
-    def compute_required_tokens(self, _messages):
+    def compute_required_tokens(self, _messages: list[dict[str, Any]]) -> int:
         msg = 'Method "compute_required_tokens" not implemented for DeepSeekXReasoningEngine.'
         raise NotImplementedError(msg)
 
-    def compute_remaining_tokens(self, _prompts: list) -> int:
+    def compute_remaining_tokens(self, _prompts: list[dict[str, Any]]) -> int:
         msg = 'Method "compute_remaining_tokens" not implemented for DeepSeekXReasoningEngine.'
         raise NotImplementedError(msg)
 
-    def truncate(
-        self, _prompts: list[dict], _truncation_percentage: float | None, _truncation_type: str
-    ) -> list[dict]:
-        msg = 'Method "truncate" not implemented for DeepSeekXReasoningEngine.'
-        raise NotImplementedError(msg)
-
-    def build_request(self, argument) -> DeepSeekChatRequest:
-        request_kwargs = set(DeepSeekChatCreatePayload.model_fields) | set(
-            DeepSeekChatCreateCallOptions.model_fields
+    def build_request(self, argument) -> DeepSeekRequest:
+        allowed_request_kwargs = set(DeepSeekPayload.model_fields).union(
+            DeepSeekOptions.model_fields
         )
-        payload_kwargs = self.collect_request_kwargs(argument, request_kwargs)
-        call_options = {
+        payload_kwargs = self.collect_request_kwargs(argument, allowed_request_kwargs)
+        option_kwargs = {
             key: payload_kwargs.pop(key)
-            for key in DeepSeekChatCreateCallOptions.model_fields
+            for key in DeepSeekOptions.model_fields
             if key in payload_kwargs
         }
         payload_kwargs["model"] = payload_kwargs.get("model", self.model)
+        self.deepseek_model_spec_for(payload_kwargs["model"])
         payload_kwargs["messages"] = argument.prop.prepared_input
-        if "max_tokens" not in payload_kwargs:
-            payload_kwargs["max_tokens"] = self.max_response_tokens
         if "stop" not in payload_kwargs:
             payload_kwargs["stop"] = "<|endoftext|>"
-        if "seed" not in payload_kwargs and self.seed is not None:
-            payload_kwargs["seed"] = self.seed
+        if payload_kwargs.get("stream"):
+            # NOTE: usage is required on DeepSeekResponse (MetadataTracker reads it), and
+            # streams only carry usage in the final chunk when include_usage is set.
+            payload_kwargs.setdefault("stream_options", {"include_usage": True})
 
-        payload = DeepSeekChatCreatePayload.model_validate(payload_kwargs)
-        options = None
-        if call_options:
-            options = DeepSeekChatCreateCallOptions.model_validate(call_options)
+        payload = DeepSeekPayload.model_validate(payload_kwargs)
+        options = DeepSeekOptions.model_validate(option_kwargs)
+        request_options = options.model_dump(exclude_none=True)
 
-        return DeepSeekChatRequest(
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        headers.update(request_options.get("extra_headers", {}))
+
+        return DeepSeekRequest(
             provider="deepseek",
             operation="chat.completions.create",
             payload=payload,
             call_options=options,
+            method="POST",
+            url=DEEPSEEK_CHAT_COMPLETIONS_URL,
+            headers=headers,
+            params=request_options.get("extra_query"),
+            timeout=request_options.get("timeout", self.client_timeout),
+            extra_body=request_options.get("extra_body"),
         )
 
     def forward(self, argument):
-        kwargs = argument.kwargs
+        if self.id() != "neurosymbolic":
+            msg = (
+                "DeepSeek engine is not configured. Please set a supported "
+                "NEUROSYMBOLIC_ENGINE_MODEL and NEUROSYMBOLIC_ENGINE_API_KEY."
+            )
+            raise ValueError(msg)
+
         request = self.build_request(argument)
-        except_remedy = kwargs.get("except_remedy")
+        response = self.call_request(request)
+        return self.parse_response(response)
 
-        try:
-            res = self.call_request(request)
-
-        except Exception as e:
-            if self.api_key is None or self.api_key == "":
-                msg = "DeepSeek API key is not set. Please set it in the config file or pass it as an argument to the command method."
-                logger.warning(msg)
-                if (
-                    self.config["NEUROSYMBOLIC_ENGINE_API_KEY"] is None
-                    or self.config["NEUROSYMBOLIC_ENGINE_API_KEY"] == ""
-                ):
-                    raise ValueError(msg) from e
-                self.api_key = self.config["NEUROSYMBOLIC_ENGINE_API_KEY"]
-
-            callback = self.client.chat.completions.create
-            kwargs["model"] = kwargs.get("model", self.model)
-
-            if except_remedy is not None:
-                res = except_remedy(self, e, callback, argument)
-            else:
-                msg = f"Error during generation. Caused by: {e}"
-                raise ValueError(msg) from e
-
-        return self.parse_response(res)
-
-    def call_request(self, request: DeepSeekChatRequest):
-        return self.client.post(
-            "/chat/completions",
-            cast_to=ChatCompletion,
-            body=request.body_with_extra(),
-            options=request.request_options(),
+    def call_request(self, request: DeepSeekRequest):
+        max_retries = (
+            self.client_max_retries if self.client_max_retries is not None else DEFAULT_RETRIES
         )
+        if request.payload.stream:
+            return self._collect_stream_response(request, max_retries)
+        response = execute_engine_api_request(
+            request,
+            client=self.transport_client,
+            max_retries=max_retries,
+        )
+        return DeepSeekResponse.model_validate(response.json())
 
-    def parse_response(self, response):
-        message = response.choices[0].message
-        reasoning_content = getattr(message, "reasoning_content", None)
-        content = message.content
+    def parse_response(self, response: DeepSeekResponse):
+        message = response.choices[0]["message"]
+        reasoning_content = message.get("reasoning_content")
+        content = message["content"] or ""
         metadata = {"raw_output": response, "thinking": reasoning_content}
 
         return [content], metadata
 
-    def _prepare_raw_input(self, argument):
-        if not argument.prop.processed_input:
-            msg = "A prompt instruction is required for DeepSeekXReasoningEngine when raw_input is enabled."
-            raise ValueError(msg)
-        value = argument.prop.processed_input
-        # convert to dict if not already
-        if not isinstance(value, list):
-            if not isinstance(value, dict):
-                value = {"role": "user", "content": str(value)}
-            value = [value]
-        return value
+    def usage_record_from_metadata(self, metadata: dict) -> EngineUsageRecord:
+        usage = metadata["raw_output"].usage
+        completion_details = usage.get("completion_tokens_details") or {}
 
-    def _build_system_prompt(self, argument):
-        _non_verbose_output = """<META_INSTRUCTION/>\nYou do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use indentation, etc. Never add meta instructions information to your output!\n\n"""
-        system: str = ""
-        prop = argument.prop
+        return EngineUsageRecord(
+            prompt_tokens=usage["prompt_tokens"],
+            completion_tokens=usage["completion_tokens"],
+            total_tokens=usage["total_tokens"],
+            completion_breakdown={
+                "reasoning_tokens": completion_details.get("reasoning_tokens") or 0,
+            },
+        )
 
-        if prop.suppress_verbose_output:
-            system += _non_verbose_output
-        system = f"{system}\n" if system and len(system) > 0 else ""
+    def prepare(self, argument):
+        if argument.prop.raw_input:
+            argument.prop.prepared_input = self._prepare_raw_input(argument)
+            return
 
-        if prop.response_format:
-            _rsp_fmt = prop.response_format
-            if not (_rsp_fmt.get("type") is not None):
-                msg = 'Response format type is required! Expected format `{"type": "json_object"}` or other supported types.'
-                raise AssertionError(msg)
-            system += _non_verbose_output
-            system += f"<RESPONSE_FORMAT/>\n{_rsp_fmt['type']}\n\n"
+        system = render_chat_system_prompt(argument)
+        user_prompt = self._build_user_prompt(argument)
+        system, user_prompt = self._apply_self_prompt(argument, system, user_prompt)
 
-        ref = prop.instance
-        static_ctxt, dyn_ctxt = ref.global_context
-        if len(static_ctxt) > 0:
-            system += f"<STATIC CONTEXT/>\n{static_ctxt}\n\n"
-
-        if len(dyn_ctxt) > 0:
-            system += f"<DYNAMIC CONTEXT/>\n{dyn_ctxt}\n\n"
-
-        payload = prop.payload
-        if prop.payload:
-            system += f"<ADDITIONAL CONTEXT/>\n{payload!s}\n\n"
-
-        examples: list[str] = prop.examples
-        if examples and len(examples) > 0:
-            system += f"<EXAMPLES/>\n{examples!s}\n\n"
-
-        if prop.prompt is not None and len(prop.prompt) > 0:
-            val = str(prop.prompt)
-            system += f"<INSTRUCTION/>\n{val}\n\n"
-
-        if prop.template_suffix:
-            system += f" You will only generate content for the placeholder `{prop.template_suffix!s}` following the instructions and the provided context information.\n\n"
-
-        return system
-
-    def _build_user_prompt(self, argument):
-        return {"role": "user", "content": f"{argument.prop.processed_input!s}"}
+        argument.prop.prepared_input = [
+            {"role": "system", "content": system},
+            user_prompt,
+        ]
 
     def _apply_self_prompt(self, argument, system, user_prompt):
         prop = argument.prop
         if prop.instance._kwargs.get("self_prompt", False) or prop.self_prompt:
-            self_prompter = SelfPrompt()
-
-            res = self_prompter({"user": user_prompt["content"], "system": system})
+            res = self.self_prompt({"user": user_prompt["content"], "system": system})
             if res is None:
                 msg = "Self-prompting failed for DeepSeekXReasoningEngine."
                 raise ValueError(msg)
@@ -234,16 +204,47 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
 
         return system, user_prompt
 
-    def prepare(self, argument):
-        if argument.prop.raw_input:
-            argument.prop.prepared_input = self._prepare_raw_input(argument)
-            return
+    def _collect_stream_response(self, request: DeepSeekRequest, max_retries: int):
+        adapter = DeepSeekStreamAdapter()
+        accumulator = EngineStreamAccumulator()
 
-        system = self._build_system_prompt(argument)
-        user_prompt = self._build_user_prompt(argument)
-        system, user_prompt = self._apply_self_prompt(argument, system, user_prompt)
+        for event in execute_engine_api_stream_events(
+            request,
+            client=self.transport_client,
+            max_retries=max_retries,
+        ):
+            delta = adapter.process_event(event)
+            accumulator.add(delta)
+            if accumulator.done:
+                break
 
-        argument.prop.prepared_input = [
-            {"role": "system", "content": system},
-            user_prompt,
-        ]
+        message = {"role": "assistant", "content": accumulator.text}
+        if accumulator.thinking:
+            message["reasoning_content"] = accumulator.thinking
+
+        return DeepSeekResponse.model_validate(
+            {
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": message,
+                        "finish_reason": accumulator.finish_reason,
+                    }
+                ],
+                "usage": accumulator.usage,
+            }
+        )
+
+    def _prepare_raw_input(self, argument):
+        value = argument.prop.processed_input
+        if not value:
+            msg = "A prompt instruction is required for DeepSeekXReasoningEngine when raw_input is enabled."
+            raise ValueError(msg)
+        if isinstance(value, list):
+            return value
+        if isinstance(value, dict):
+            return [value]
+        return [{"role": "user", "content": str(value)}]
+
+    def _build_user_prompt(self, argument):
+        return {"role": "user", "content": f"{argument.prop.processed_input!s}"}

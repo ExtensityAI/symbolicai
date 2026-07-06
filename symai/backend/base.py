@@ -1,7 +1,11 @@
+import json
 import logging
 import time
 from abc import ABC, abstractmethod
+from types import SimpleNamespace
 from typing import Any
+
+from symai.backend.usage import EngineUsageRecord
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +131,9 @@ class Engine(ABC):
     def supported_request_kwargs(self) -> set[str]:
         return set()
 
+    def usage_record_from_metadata(self, _metadata: dict) -> EngineUsageRecord | None:
+        return None
+
     def ignored_request_kwargs(self) -> set[str]:
         from symai.core import Argument  # noqa: PLC0415
 
@@ -150,6 +157,31 @@ class Engine(ABC):
                 raise ValueError(msg)
 
         return {key: argument.kwargs[key] for key in supported if key in argument.kwargs}
+
+    @classmethod
+    def self_prompt(cls, existing_prompt: dict[str, str], **kwargs) -> dict[str, str]:
+        from symai import core  # noqa: PLC0415
+        from symai.backend.engines.neurosymbolic.prompts import (  # noqa: PLC0415
+            prompt_registry,
+        )
+
+        messages = [
+            {"role": "system", "content": prompt_registry.render("chat.self_prompt")},
+            {"role": "user", "content": json.dumps(existing_prompt, ensure_ascii=False)},
+        ]
+
+        @core.zero_shot(
+            raw_input=True,
+            processed_input=messages,
+            response_format={"type": "json_object"},
+            post_processors=[lambda response, _: json.loads(response)],
+            **kwargs,
+        )
+        def generate_prompt(_instance):
+            pass
+
+        instance = SimpleNamespace(global_context=("", ""), _kwargs={})
+        return generate_prompt(instance)
 
     def build_request(self, argument: Any) -> Any:
         msg = f'Method "build_request" not implemented for {self.__class__.__name__}.'

@@ -6,6 +6,7 @@ _thread: threading.Thread | None = None
 _lock = threading.Lock()
 
 
+#@TODO: rework this when reaching llama.cpp refactor
 def run_async(coro):
     """Run a coroutine on a persistent background event loop and return its result.
 

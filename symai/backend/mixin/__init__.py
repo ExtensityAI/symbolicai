@@ -2,7 +2,7 @@ from symai.backend.mixin.anthropic import SUPPORTED_CHAT_MODELS as ANTHROPIC_CHA
 from symai.backend.mixin.anthropic import SUPPORTED_REASONING_MODELS as ANTHROPIC_REASONING_MODELS
 from symai.backend.mixin.cerebras import SUPPORTED_CHAT_MODELS as CEREBRAS_CHAT_MODELS
 from symai.backend.mixin.cerebras import SUPPORTED_REASONING_MODELS as CEREBRAS_REASONING_MODELS
-from symai.backend.mixin.deepseek import SUPPORTED_REASONING_MODELS as DEEPSEEK_REASONING_MODELS
+from symai.backend.mixin.deepseek import SUPPORTED_MODELS as DEEPSEEK_MODELS
 from symai.backend.mixin.google import SUPPORTED_CHAT_MODELS as GOOGLE_CHAT_MODELS
 from symai.backend.mixin.google import SUPPORTED_REASONING_MODELS as GOOGLE_REASONING_MODELS
 from symai.backend.mixin.groq import SUPPORTED_REASONING_MODELS as GROQ_REASONING_MODELS
@@ -17,7 +17,7 @@ __all__ = [
     "ANTHROPIC_REASONING_MODELS",
     "CEREBRAS_CHAT_MODELS",
     "CEREBRAS_REASONING_MODELS",
-    "DEEPSEEK_REASONING_MODELS",
+    "DEEPSEEK_MODELS",
     "GOOGLE_CHAT_MODELS",
     "GOOGLE_REASONING_MODELS",
     "GROQ_REASONING_MODELS",

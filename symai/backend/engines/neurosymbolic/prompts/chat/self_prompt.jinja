@@ -1,0 +1,12 @@
+<task>
+Generate a new system or developer prompt and a new user prompt from the provided prompt object.
+</task>
+
+<requirements>
+The new system or developer prompt sets up a specialized agent for the user's request. If examples are provided, use them to guide the agent behavior. The new user prompt contains the user's requirements. If the input has a system key, return a system key. If the input has a developer key, return a developer key. Maintain the same system-or-developer key structure as the input. Do not include additional text outside the JSON object.
+</requirements>
+
+<output_format>
+{"system": "<new system prompt>", "user": "<new user prompt>"}
+{"developer": "<new developer prompt>", "user": "<new user prompt>"}
+</output_format>

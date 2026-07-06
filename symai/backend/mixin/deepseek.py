@@ -3,16 +3,43 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from pydantic import Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from symai.backend.request import EngineRequestPayload
+from symai.backend.request import EngineAPIRequest, EngineRequestPayload
 
 # https://api-docs.deepseek.com/quick_start/pricing
-SUPPORTED_REASONING_MODELS = ["deepseek-reasoner", "deepseek-v4-flash", "deepseek-v4-pro"]
+
+
+@dataclass(frozen=True)
+class DeepSeekModelSpec:
+    context_tokens: int
+    response_tokens: int
+    reasoning: bool
+    vision: bool
+
+
+DEEPSEEK_MODEL_SPECS = {
+    "deepseek-v4-flash": DeepSeekModelSpec(
+        context_tokens=1_000_000,
+        response_tokens=384_000,
+        reasoning=True,
+        vision=False,
+    ),
+    "deepseek-v4-pro": DeepSeekModelSpec(
+        context_tokens=1_000_000,
+        response_tokens=384_000,
+        reasoning=True,
+        vision=False,
+    ),
+}
+
+SUPPORTED_MODELS = list(DEEPSEEK_MODEL_SPECS)
 
 
 class DeepSeekMessage(EngineRequestPayload):
     role: Literal["system", "user", "assistant", "tool"]
+    # NOTE: DeepSeek returns content=null on assistant tool-call messages, so null must
+    # round-trip when replaying conversations. exclude_none omits it from the wire body.
     content: str | None = None
     name: str | None = None
     prefix: bool | None = None
@@ -21,7 +48,7 @@ class DeepSeekMessage(EngineRequestPayload):
     tool_calls: list[dict[str, Any]] | None = None
 
 
-class DeepSeekChatCreatePayload(EngineRequestPayload):
+class DeepSeekPayload(EngineRequestPayload):
     messages: list[DeepSeekMessage]
     model: str
     thinking: dict[Literal["type"], Literal["enabled", "disabled"]] | None = Field(
@@ -57,63 +84,49 @@ class DeepSeekChatCreatePayload(EngineRequestPayload):
     presence_penalty: float | int | None = None
 
 
-class DeepSeekChatCreateCallOptions(EngineRequestPayload):
+class DeepSeekOptions(EngineRequestPayload):
     extra_headers: dict[str, str] | None = None
     extra_query: dict[str, Any] | None = None
     extra_body: dict[str, Any] | None = None
     timeout: float | None = None
 
 
-@dataclass(frozen=True)
-class DeepSeekChatRequest:
-    provider: str
-    operation: str
-    payload: DeepSeekChatCreatePayload
-    call_options: DeepSeekChatCreateCallOptions | None = None
+DeepSeekRequest = EngineAPIRequest[
+    DeepSeekPayload,
+    DeepSeekOptions,
+]
 
-    def body(self) -> dict[str, Any]:
-        return self.payload.model_dump(exclude_none=True)
 
-    def kwargs(self) -> dict[str, Any]:
-        values = self.body()
-        if self.call_options is not None:
-            values.update(self.call_options.model_dump(exclude_none=True))
-        return values
+class DeepSeekResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore", frozen=True)
+    choices: list[dict[str, Any]] = Field(min_length=1)
+    # NOTE: MetadataTracker reads raw_output.usage for token accounting; the API always
+    # returns it (streaming requests force stream_options.include_usage).
+    usage: dict[str, Any]
 
-    def body_with_extra(self) -> dict[str, Any]:
-        body = self.body()
-        if self.call_options is None:
-            return body
-        extra_body = self.call_options.model_dump(exclude_none=True).get("extra_body")
-        if extra_body is None:
-            return body
-        return {**extra_body, **body}
-
-    def request_options(self) -> dict[str, Any]:
-        if self.call_options is None:
-            return {}
-        options = self.call_options.model_dump(exclude_none=True)
-        values = {}
-        if "extra_headers" in options:
-            values["headers"] = options["extra_headers"]
-        if "extra_query" in options:
-            values["params"] = options["extra_query"]
-        if "timeout" in options:
-            values["timeout"] = options["timeout"]
-        return values
+    @model_validator(mode="after")
+    def require_message_content(self):
+        for choice in self.choices:
+            message = choice.get("message")
+            if not isinstance(message, dict):
+                msg = "DeepSeek response choice.message is required."
+                raise ValueError(msg)
+            if "content" not in message:
+                msg = "DeepSeek response choice.message.content is required."
+                raise ValueError(msg)
+        return self
 
 
 class DeepSeekMixin:
-    def api_max_context_tokens(self):
-        if self.model in ("deepseek-v4-flash", "deepseek-v4-pro"):
-            return 1_000_000
-        if self.model == "deepseek-reasoner":
-            return 64_000
-        return None
+    def deepseek_model_spec_for(self, model: str) -> DeepSeekModelSpec:
+        try:
+            return DEEPSEEK_MODEL_SPECS[model]
+        except KeyError as e:
+            msg = f"Unsupported DeepSeek model: {model}"
+            raise ValueError(msg) from e
 
-    def api_max_response_tokens(self):
-        if self.model in ("deepseek-v4-flash", "deepseek-v4-pro"):
-            return 384_000
-        if self.model == "deepseek-reasoner":
-            return 64_000
-        return None
+    def deepseek_model_spec(self) -> DeepSeekModelSpec:
+        return self.deepseek_model_spec_for(self.model)
+
+    def api_max_context_tokens(self) -> int:
+        return self.deepseek_model_spec().context_tokens
