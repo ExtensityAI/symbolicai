@@ -56,9 +56,13 @@ class ChatRequest(BaseModel):
         if self.reasoning_effort is None:
             return self
 
-        permitted = CEREBRAS_MODEL_SPECS[self.model].reasoning_efforts
+        spec = CEREBRAS_MODEL_SPECS[self.model]
 
-        if self.reasoning_effort not in permitted:
+        if spec.reasoning is None:
+            msg = f"model {self.model!r} does not support reasoning"
+            raise ValueError(msg)
+
+        if self.reasoning_effort not in spec.reasoning.efforts:
             msg = (
                 f"model {self.model!r} does not support reasoning_effort={self.reasoning_effort!r}"
             )

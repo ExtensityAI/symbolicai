@@ -16,35 +16,42 @@ class ReasoningEffort(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
+class ReasoningSpec:
+    efforts: tuple[ReasoningEffort, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class CerebrasModelSpec:
     context_tokens: int
     response_tokens: int
-    reasoning: bool
-    reasoning_efforts: tuple[ReasoningEffort, ...]
+    reasoning: ReasoningSpec | None
 
 
 CEREBRAS_MODEL_SPECS: dict[CerebrasModel, CerebrasModelSpec] = {
     CerebrasModel.GPT_OSS_120B: CerebrasModelSpec(
         context_tokens=131_072,
         response_tokens=40_000,
-        reasoning=True,
-        reasoning_efforts=(ReasoningEffort.LOW, ReasoningEffort.MEDIUM, ReasoningEffort.HIGH),
+        reasoning=ReasoningSpec(
+            efforts=(ReasoningEffort.LOW, ReasoningEffort.MEDIUM, ReasoningEffort.HIGH)
+        ),
     ),
     CerebrasModel.GEMMA_4_31B: CerebrasModelSpec(
         context_tokens=131_072,
         response_tokens=40_000,
-        reasoning=True,
-        reasoning_efforts=(ReasoningEffort.LOW, ReasoningEffort.MEDIUM, ReasoningEffort.HIGH),
+        reasoning=ReasoningSpec(
+            efforts=(ReasoningEffort.LOW, ReasoningEffort.MEDIUM, ReasoningEffort.HIGH)
+        ),
     ),
     CerebrasModel.ZAI_GLM_4_7: CerebrasModelSpec(
         context_tokens=131_072,
         response_tokens=40_000,
-        reasoning=True,
-        reasoning_efforts=(
-            ReasoningEffort.NONE,
-            ReasoningEffort.LOW,
-            ReasoningEffort.MEDIUM,
-            ReasoningEffort.HIGH,
+        reasoning=ReasoningSpec(
+            efforts=(
+                ReasoningEffort.NONE,
+                ReasoningEffort.LOW,
+                ReasoningEffort.MEDIUM,
+                ReasoningEffort.HIGH,
+            )
         ),
     ),
 }

@@ -6,6 +6,7 @@ from symai.backend.providers.cerebras.spec import (
     CEREBRAS_MODEL_SPECS,
     CerebrasModel,
     ReasoningEffort,
+    ReasoningSpec,
 )
 
 
@@ -62,15 +63,17 @@ def test_every_model_has_a_spec():
     ],
 )
 def test_reasoning_efforts_match_source(model, efforts):
-    assert CEREBRAS_MODEL_SPECS[model].reasoning_efforts == efforts
+    reasoning = CEREBRAS_MODEL_SPECS[model].reasoning
+
+    assert reasoning is not None
+    assert reasoning.efforts == efforts
 
 
 @pytest.mark.parametrize("model", list(CerebrasModel))
-def test_spec_token_budgets_and_reasoning_flag(model):
+def test_spec_token_budgets(model):
     spec = CEREBRAS_MODEL_SPECS[model]
     assert spec.context_tokens == 131072
     assert spec.response_tokens == 40000
-    assert spec.reasoning is True
 
 
 def test_spec_is_frozen():
@@ -78,3 +81,10 @@ def test_spec_is_frozen():
 
     with pytest.raises(dataclasses.FrozenInstanceError):
         spec.context_tokens = 1
+
+
+def test_reasoning_spec_is_frozen():
+    reasoning = ReasoningSpec(efforts=(ReasoningEffort.LOW,))
+
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        reasoning.efforts = (ReasoningEffort.HIGH,)
