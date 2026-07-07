@@ -46,28 +46,25 @@ class CerebrasClient:
         base_url: str = "https://api.cerebras.ai/v1",
         timeout: float = 60.0,
         max_retries: int = 2,
-        http_client: httpx.Client | None = None,
+        transport: httpx.BaseTransport | None = None,
     ) -> None:
         self._api_key = api_key
         self._base_url = base_url
-        self._owns_client = http_client is None
 
-        if http_client is not None:
-            self._http_client = http_client
-        else:
-            # `max_retries` covers connection-level/transport retries only (e.g. connect
-            # failures). Retrying on non-2xx status codes with backoff is a policy concern
-            # deferred to the future adapter layer.
-            transport = httpx.HTTPTransport(retries=max_retries)
-            self._http_client = httpx.Client(timeout=timeout, transport=transport)
+        # `max_retries` configures the default transport's connection-level retries only
+        # (e.g. connect failures); it is superseded when a custom `transport` is injected.
+        # Retrying on non-2xx status codes with backoff is a policy concern deferred to
+        # the future adapter layer.
+        self._http_client = httpx.Client(
+            timeout=timeout,
+            transport=transport
+            if transport is not None
+            else httpx.HTTPTransport(retries=max_retries),
+        )
 
     def close(self) -> None:
-        """Close the underlying `httpx.Client`, but only if this client created it.
-
-        An injected `http_client` is owned by the caller and is left open.
-        """
-        if self._owns_client:
-            self._http_client.close()
+        """Close the underlying `httpx.Client`, which this client always owns."""
+        self._http_client.close()
 
     def __enter__(self) -> "CerebrasClient":
         return self
