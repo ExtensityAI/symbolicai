@@ -7,6 +7,7 @@ from symai.backend.providers.cerebras.client import CerebrasClient, extract_thin
 from symai.backend.providers.cerebras.errors import (
     CerebrasAPIError,
     CerebrasAuthError,
+    CerebrasConnectionError,
     CerebrasRateLimitError,
     CerebrasResponseError,
 )
@@ -165,3 +166,37 @@ def test_error_invalid_json_response_raises_cerebras_response_error():
         client.create(_chat_request())
 
     assert exc_info.value.body == body_text
+
+
+def test_connection_error_raises_cerebras_connection_error():
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("connection refused", request=request)
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    client = CerebrasClient(api_key="test-key", http_client=http_client)
+
+    with pytest.raises(CerebrasConnectionError):
+        client.create(_chat_request())
+
+
+# --- client lifecycle -----------------------------------------------------------
+
+
+def test_owned_http_client_is_closed_on_context_exit():
+    with CerebrasClient(api_key="test-key") as client:
+        underlying = client._http_client
+        assert underlying.is_closed is False
+
+    assert underlying.is_closed is True
+
+
+def test_injected_http_client_is_not_closed_by_close():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=_completion_json(), request=request)
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    client = CerebrasClient(api_key="test-key", http_client=http_client)
+
+    client.close()
+
+    assert http_client.is_closed is False

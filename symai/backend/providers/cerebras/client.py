@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from symai.backend.providers.cerebras.errors import (
     CerebrasAPIError,
     CerebrasAuthError,
+    CerebrasConnectionError,
     CerebrasRateLimitError,
     CerebrasResponseError,
 )
@@ -49,6 +50,7 @@ class CerebrasClient:
     ) -> None:
         self._api_key = api_key
         self._base_url = base_url
+        self._owns_client = http_client is None
 
         if http_client is not None:
             self._http_client = http_client
@@ -59,21 +61,42 @@ class CerebrasClient:
             transport = httpx.HTTPTransport(retries=max_retries)
             self._http_client = httpx.Client(timeout=timeout, transport=transport)
 
+    def close(self) -> None:
+        """Close the underlying `httpx.Client`, but only if this client created it.
+
+        An injected `http_client` is owned by the caller and is left open.
+        """
+        if self._owns_client:
+            self._http_client.close()
+
+    def __enter__(self) -> "CerebrasClient":
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        self.close()
+
     def create(self, request: ChatRequest) -> ChatResponse:
         """POST a chat completion request and return the typed response.
 
         Raises:
+            CerebrasConnectionError: the request never reached a response (connect
+                failure, DNS, TLS, or timeout).
             CerebrasAuthError: the API rejected the request as unauthenticated (401).
             CerebrasRateLimitError: the API rate-limited the request (429).
             CerebrasAPIError: any other non-2xx response.
             CerebrasResponseError: the 2xx body failed to decode as JSON or schema validation.
         """
         body = request.model_dump(mode="json", by_alias=True, exclude_none=True)
-        response = self._http_client.post(
-            f"{self._base_url}{CHAT_COMPLETIONS_PATH}",
-            json=body,
-            headers={"Authorization": f"Bearer {self._api_key}"},
-        )
+
+        try:
+            response = self._http_client.post(
+                f"{self._base_url}{CHAT_COMPLETIONS_PATH}",
+                json=body,
+                headers={"Authorization": f"Bearer {self._api_key}"},
+            )
+        except httpx.HTTPError as e:
+            msg = f"Cerebras request failed: {e}"
+            raise CerebrasConnectionError(msg) from e
 
         if response.status_code == httpx.codes.UNAUTHORIZED:
             msg = f"Cerebras API rejected credentials: {response.text}"

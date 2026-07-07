@@ -1,3 +1,6 @@
+import pytest
+from pydantic import ValidationError
+
 from symai.backend.providers.cerebras.response import ChatResponse, Usage
 
 
@@ -175,3 +178,11 @@ def test_extra_top_level_and_choice_keys_are_ignored():
     assert "logprobs" not in response.choices[0].model_dump()
     assert "id" not in response.model_dump()
     assert "model" not in response.model_dump()
+
+
+# --- Required-field validation ---------------------------------------------------
+
+
+def test_missing_usage_raises_validation_error():
+    with pytest.raises(ValidationError):
+        ChatResponse.model_validate({"choices": [_choice_dict()]})

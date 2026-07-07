@@ -33,3 +33,10 @@ class CerebrasResponseError(CerebrasError):
     def __init__(self, message: str, *, body: str) -> None:
         self.body = body
         super().__init__(message)
+
+
+class CerebrasConnectionError(CerebrasError):
+    """Raised when the request never reaches a response: connect failure, DNS, TLS, or timeout.
+
+    Wraps the underlying `httpx.HTTPError` so no raw `httpx` exception escapes `create`.
+    """
