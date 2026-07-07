@@ -12,6 +12,8 @@ from symai.backend.providers.cerebras.errors import (
 from symai.backend.providers.cerebras.request import ChatRequest
 from symai.backend.providers.cerebras.response import ChatResponse
 
+CHAT_COMPLETIONS_PATH = "/chat/completions"
+
 _THINK_BLOCK = re.compile(r"<think>(.*?)</think>", re.DOTALL)
 
 
@@ -64,11 +66,11 @@ class CerebrasClient:
             CerebrasAuthError: the API rejected the request as unauthenticated (401).
             CerebrasRateLimitError: the API rate-limited the request (429).
             CerebrasAPIError: any other non-2xx response.
-            CerebrasResponseError: the 2xx body failed schema validation.
+            CerebrasResponseError: the 2xx body failed to decode as JSON or schema validation.
         """
         body = request.model_dump(mode="json", by_alias=True, exclude_none=True)
         response = self._http_client.post(
-            f"{self._base_url}/chat/completions",
+            f"{self._base_url}{CHAT_COMPLETIONS_PATH}",
             json=body,
             headers={"Authorization": f"Bearer {self._api_key}"},
         )
@@ -85,7 +87,8 @@ class CerebrasClient:
             raise CerebrasAPIError(response.status_code, response.text)
 
         try:
-            return ChatResponse.model_validate(response.json())
-        except ValidationError as e:
-            msg = f"Cerebras response failed schema validation: {e}"
-            raise CerebrasResponseError(msg) from e
+            payload = response.json()
+            return ChatResponse.model_validate(payload)
+        except (ValueError, ValidationError) as e:
+            msg = f"Cerebras response failed to decode or validate: {e}"
+            raise CerebrasResponseError(msg, body=response.text) from e

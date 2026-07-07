@@ -24,4 +24,12 @@ class CerebrasAPIError(CerebrasError):
 
 
 class CerebrasResponseError(CerebrasError):
-    """Raised when a 2xx response body fails to validate against `ChatResponse`."""
+    """Raised when a 2xx response body fails to decode as JSON or validate against `ChatResponse`.
+
+    Carries the raw response `body` so callers can inspect the failure without
+    re-parsing the underlying HTTP response.
+    """
+
+    def __init__(self, message: str, *, body: str) -> None:
+        self.body = body
+        super().__init__(message)

@@ -148,7 +148,20 @@ def test_error_500_raises_cerebras_api_error_with_status_and_body():
 def test_error_malformed_response_raises_cerebras_response_error():
     payload = _completion_json()
     del payload["usage"]
-    client = _client_with_response(200, json=payload)
+    body_text = json.dumps(payload)
+    client = _client_with_response(200, content=body_text)
 
-    with pytest.raises(CerebrasResponseError):
+    with pytest.raises(CerebrasResponseError) as exc_info:
         client.create(_chat_request())
+
+    assert exc_info.value.body == body_text
+
+
+def test_error_invalid_json_response_raises_cerebras_response_error():
+    body_text = "not json at all"
+    client = _client_with_response(200, content=body_text)
+
+    with pytest.raises(CerebrasResponseError) as exc_info:
+        client.create(_chat_request())
+
+    assert exc_info.value.body == body_text
