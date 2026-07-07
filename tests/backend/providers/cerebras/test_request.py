@@ -164,6 +164,23 @@ def test_json_schema_spec_dump_by_alias_re_emits_schema_key():
     assert "json_schema_body" not in dumped
 
 
+def test_json_schema_spec_still_frozen_with_populate_by_name():
+    spec = JsonSchemaSpec(name="X", json_schema_body={"type": "object"})
+
+    with pytest.raises(ValidationError):
+        spec.name = "Y"
+
+
+def test_json_schema_spec_still_forbids_unknown_fields_with_populate_by_name():
+    with pytest.raises(ValidationError):
+        JsonSchemaSpec(name="X", json_schema_body={"type": "object"}, foo=1)
+
+
+def test_json_schema_spec_still_strict_with_populate_by_name():
+    with pytest.raises(ValidationError):
+        JsonSchemaSpec(name="X", json_schema_body={"type": "object"}, strict="yes")
+
+
 # --- CerebrasResponseFormat discriminant -----------------------------------------
 
 
@@ -221,3 +238,21 @@ def test_full_chat_request_wire_body():
     }
     assert isinstance(dumped["model"], str)
     assert isinstance(dumped["reasoning_effort"], str)
+
+
+# --- Optional omission (exclude_none) ----------------------------------------------
+
+
+def test_partial_chat_request_omits_unset_optionals():
+    request = ChatRequest(
+        messages=(_message(),),
+        model=CerebrasModel.GPT_OSS_120B,
+        temperature=0.5,
+    )
+
+    dumped = request.model_dump(by_alias=True, exclude_none=True)
+
+    for key in ("seed", "stop", "reasoning_effort", "response_format"):
+        assert key not in dumped
+
+    assert dumped["temperature"] == 0.5

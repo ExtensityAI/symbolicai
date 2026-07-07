@@ -1,5 +1,6 @@
-from dataclasses import dataclass
 from enum import StrEnum
+
+from symai.backend.providers.cerebras.base import StrictModel
 
 
 class CerebrasModel(StrEnum):
@@ -15,15 +16,14 @@ class ReasoningEffort(StrEnum):
     HIGH = "high"
 
 
-@dataclass(frozen=True, slots=True)
-class ReasoningSpec:
+class ReasoningSpec(StrictModel):
     efforts: tuple[ReasoningEffort, ...]
 
 
-@dataclass(frozen=True, slots=True)
-class CerebrasModelSpec:
+class CerebrasModelSpec(StrictModel):
     context_tokens: int
     response_tokens: int
+    # None => non-reasoning model; a ReasoningSpec => reasoning model with its allowed efforts.
     reasoning: ReasoningSpec | None
 
 

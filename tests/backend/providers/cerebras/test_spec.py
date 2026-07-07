@@ -1,6 +1,5 @@
-import dataclasses
-
 import pytest
+from pydantic import ValidationError
 
 from symai.backend.providers.cerebras.spec import (
     CEREBRAS_MODEL_SPECS,
@@ -79,12 +78,12 @@ def test_spec_token_budgets(model):
 def test_spec_is_frozen():
     spec = CEREBRAS_MODEL_SPECS[CerebrasModel.GPT_OSS_120B]
 
-    with pytest.raises(dataclasses.FrozenInstanceError):
+    with pytest.raises(ValidationError):
         spec.context_tokens = 1
 
 
 def test_reasoning_spec_is_frozen():
     reasoning = ReasoningSpec(efforts=(ReasoningEffort.LOW,))
 
-    with pytest.raises(dataclasses.FrozenInstanceError):
+    with pytest.raises(ValidationError):
         reasoning.efforts = (ReasoningEffort.HIGH,)

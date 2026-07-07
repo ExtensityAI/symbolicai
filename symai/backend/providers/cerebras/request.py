@@ -1,8 +1,9 @@
 from enum import StrEnum
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import ConfigDict, Field, model_validator
 
+from symai.backend.providers.cerebras.base import StrictModel
 from symai.backend.providers.cerebras.spec import (
     CEREBRAS_MODEL_SPECS,
     CerebrasModel,
@@ -16,31 +17,25 @@ class Role(StrEnum):
     ASSISTANT = "assistant"
 
 
-class Message(BaseModel):
-    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
-
+class Message(StrictModel):
     role: Role
     content: str
 
 
-class JsonSchemaSpec(BaseModel):
-    model_config = ConfigDict(frozen=True, strict=True, extra="forbid", populate_by_name=True)
+class JsonSchemaSpec(StrictModel):
+    model_config = ConfigDict(populate_by_name=True)
 
     name: str
     json_schema_body: dict[str, Any] = Field(alias="schema")
     strict: bool = True
 
 
-class CerebrasResponseFormat(BaseModel):
-    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
-
+class CerebrasResponseFormat(StrictModel):
     type: Literal["json_schema"]
     json_schema: JsonSchemaSpec
 
 
-class ChatRequest(BaseModel):
-    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
-
+class ChatRequest(StrictModel):
     messages: tuple[Message, ...] = Field(min_length=1)
     model: CerebrasModel
     temperature: float = Field(default=1, ge=0, le=2)
@@ -56,7 +51,11 @@ class ChatRequest(BaseModel):
         if self.reasoning_effort is None:
             return self
 
-        spec = CEREBRAS_MODEL_SPECS[self.model]
+        spec = CEREBRAS_MODEL_SPECS.get(self.model)
+
+        if spec is None:
+            msg = f"model {self.model!r} has no registered spec"
+            raise ValueError(msg)
 
         if spec.reasoning is None:
             msg = f"model {self.model!r} does not support reasoning"
