@@ -1,8 +1,15 @@
 import json
 
 import httpx
+import pytest
 
 from symai.backend.providers.cerebras.client import CerebrasClient, extract_thinking
+from symai.backend.providers.cerebras.errors import (
+    CerebrasAPIError,
+    CerebrasAuthError,
+    CerebrasRateLimitError,
+    CerebrasResponseError,
+)
 from symai.backend.providers.cerebras.request import (
     CerebrasResponseFormat,
     ChatRequest,
@@ -35,6 +42,14 @@ def _completion_json() -> dict:
         ],
         "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
     }
+
+
+def _client_with_response(status_code: int, **response_kwargs) -> CerebrasClient:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(status_code, request=request, **response_kwargs)
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    return CerebrasClient(api_key="test-key", http_client=http_client)
 
 
 # --- extract_thinking ---------------------------------------------------------
@@ -100,3 +115,40 @@ def test_create_success_posts_expected_request_and_parses_response():
     assert isinstance(response, ChatResponse)
     assert response.choices[0].message.content == "hello there"
     assert response.usage.total_tokens == 15
+
+
+# --- status/body -> typed error mapping -----------------------------------------
+
+
+def test_error_401_raises_cerebras_auth_error():
+    client = _client_with_response(401, text="invalid api key")
+
+    with pytest.raises(CerebrasAuthError):
+        client.create(_chat_request())
+
+
+def test_error_429_raises_cerebras_rate_limit_error():
+    client = _client_with_response(429, text="rate limited")
+
+    with pytest.raises(CerebrasRateLimitError):
+        client.create(_chat_request())
+
+
+def test_error_500_raises_cerebras_api_error_with_status_and_body():
+    body_text = "internal server error"
+    client = _client_with_response(500, text=body_text)
+
+    with pytest.raises(CerebrasAPIError) as exc_info:
+        client.create(_chat_request())
+
+    assert exc_info.value.status_code == 500
+    assert exc_info.value.body == body_text
+
+
+def test_error_malformed_response_raises_cerebras_response_error():
+    payload = _completion_json()
+    del payload["usage"]
+    client = _client_with_response(200, json=payload)
+
+    with pytest.raises(CerebrasResponseError):
+        client.create(_chat_request())

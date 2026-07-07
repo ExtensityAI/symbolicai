@@ -1,7 +1,14 @@
 import re
 
 import httpx
+from pydantic import ValidationError
 
+from symai.backend.providers.cerebras.errors import (
+    CerebrasAPIError,
+    CerebrasAuthError,
+    CerebrasRateLimitError,
+    CerebrasResponseError,
+)
 from symai.backend.providers.cerebras.request import ChatRequest
 from symai.backend.providers.cerebras.response import ChatResponse
 
@@ -51,6 +58,14 @@ class CerebrasClient:
             self._http_client = httpx.Client(timeout=timeout, transport=transport)
 
     def create(self, request: ChatRequest) -> ChatResponse:
+        """POST a chat completion request and return the typed response.
+
+        Raises:
+            CerebrasAuthError: the API rejected the request as unauthenticated (401).
+            CerebrasRateLimitError: the API rate-limited the request (429).
+            CerebrasAPIError: any other non-2xx response.
+            CerebrasResponseError: the 2xx body failed schema validation.
+        """
         body = request.model_dump(mode="json", by_alias=True, exclude_none=True)
         response = self._http_client.post(
             f"{self._base_url}/chat/completions",
@@ -58,4 +73,19 @@ class CerebrasClient:
             headers={"Authorization": f"Bearer {self._api_key}"},
         )
 
-        return ChatResponse.model_validate(response.json())
+        if response.status_code == httpx.codes.UNAUTHORIZED:
+            msg = f"Cerebras API rejected credentials: {response.text}"
+            raise CerebrasAuthError(msg)
+
+        if response.status_code == httpx.codes.TOO_MANY_REQUESTS:
+            msg = f"Cerebras API rate limit exceeded: {response.text}"
+            raise CerebrasRateLimitError(msg)
+
+        if not response.is_success:
+            raise CerebrasAPIError(response.status_code, response.text)
+
+        try:
+            return ChatResponse.model_validate(response.json())
+        except ValidationError as e:
+            msg = f"Cerebras response failed schema validation: {e}"
+            raise CerebrasResponseError(msg) from e
