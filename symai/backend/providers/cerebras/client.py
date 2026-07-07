@@ -1,4 +1,5 @@
 import re
+from typing import Self
 
 import httpx
 from pydantic import ValidationError
@@ -14,6 +15,8 @@ from symai.backend.providers.cerebras.request import ChatRequest
 from symai.backend.providers.cerebras.response import ChatResponse
 
 CHAT_COMPLETIONS_PATH = "/chat/completions"
+DEFAULT_TIMEOUT = 60.0
+DEFAULT_RETRIES = 2
 
 _THINK_BLOCK = re.compile(r"<think>(.*?)</think>", re.DOTALL)
 
@@ -44,29 +47,31 @@ class CerebrasClient:
         api_key: str,
         *,
         base_url: str = "https://api.cerebras.ai/v1",
-        timeout: float = 60.0,
-        max_retries: int = 2,
-        transport: httpx.BaseTransport | None = None,
+        http_client: httpx.Client | None = None,
     ) -> None:
         self._api_key = api_key
         self._base_url = base_url
+        self._owns_client = http_client is None
 
-        # `max_retries` configures the default transport's connection-level retries only
-        # (e.g. connect failures); it is superseded when a custom `transport` is injected.
-        # Retrying on non-2xx status codes with backoff is a policy concern deferred to
-        # the future adapter layer.
-        self._http_client = httpx.Client(
-            timeout=timeout,
-            transport=transport
-            if transport is not None
-            else httpx.HTTPTransport(retries=max_retries),
-        )
+        if http_client is None:
+            # `DEFAULT_RETRIES` configures the default transport's connection-level
+            # retries only (e.g. connect failures). Retrying on non-2xx status codes
+            # with backoff is a policy concern deferred to the future adapter layer.
+            self._http_client = httpx.Client(
+                timeout=DEFAULT_TIMEOUT,
+                transport=httpx.HTTPTransport(retries=DEFAULT_RETRIES),
+            )
+        else:
+            self._http_client = http_client
 
     def close(self) -> None:
-        """Close the underlying `httpx.Client`, which this client always owns."""
-        self._http_client.close()
+        """Close the underlying `httpx.Client` only if this client created it; an
+        injected `http_client` is left open for the caller.
+        """
+        if self._owns_client:
+            self._http_client.close()
 
-    def __enter__(self) -> "CerebrasClient":
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *exc_info: object) -> None:

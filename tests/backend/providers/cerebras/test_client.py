@@ -49,7 +49,9 @@ def _client_with_response(status_code: int, **response_kwargs) -> CerebrasClient
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(status_code, request=request, **response_kwargs)
 
-    return CerebrasClient(api_key="test-key", transport=httpx.MockTransport(handler))
+    return CerebrasClient(
+        api_key="test-key", http_client=httpx.Client(transport=httpx.MockTransport(handler))
+    )
 
 
 # --- extract_thinking ---------------------------------------------------------
@@ -100,7 +102,9 @@ def test_create_success_posts_expected_request_and_parses_response():
         captured["body"] = json.loads(request.content.decode("utf-8"))
         return httpx.Response(200, json=_completion_json(), request=request)
 
-    client = CerebrasClient(api_key="test-key", transport=httpx.MockTransport(handler))
+    client = CerebrasClient(
+        api_key="test-key", http_client=httpx.Client(transport=httpx.MockTransport(handler))
+    )
 
     response = client.create(_chat_request())
 
@@ -170,7 +174,9 @@ def test_connection_error_raises_cerebras_connection_error():
     def handler(request: httpx.Request) -> httpx.Response:
         raise httpx.ConnectError("connection refused", request=request)
 
-    client = CerebrasClient(api_key="test-key", transport=httpx.MockTransport(handler))
+    client = CerebrasClient(
+        api_key="test-key", http_client=httpx.Client(transport=httpx.MockTransport(handler))
+    )
 
     with pytest.raises(CerebrasConnectionError):
         client.create(_chat_request())
@@ -184,3 +190,15 @@ def test_owned_http_client_is_closed_on_context_exit():
         assert client._http_client.is_closed is False
 
     assert client._http_client.is_closed is True
+
+
+def test_injected_http_client_is_not_closed_by_close():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=_completion_json(), request=request)
+
+    injected = httpx.Client(transport=httpx.MockTransport(handler))
+
+    with CerebrasClient(api_key="test-key", http_client=injected) as client:
+        assert client._http_client.is_closed is False
+
+    assert injected.is_closed is False
