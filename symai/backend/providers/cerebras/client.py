@@ -1,5 +1,10 @@
 import re
 
+import httpx
+
+from symai.backend.providers.cerebras.request import ChatRequest
+from symai.backend.providers.cerebras.response import ChatResponse
+
 _THINK_BLOCK = re.compile(r"<think>(.*?)</think>", re.DOTALL)
 
 
@@ -19,3 +24,38 @@ def extract_thinking(content: str) -> tuple[str | None, str]:
     thinking = match.group(1).strip()
     cleaned = (content[: match.start()] + content[match.end() :]).strip()
     return thinking or None, cleaned
+
+
+class CerebrasClient:
+    """Thin httpx-backed client for the Cerebras chat completions endpoint."""
+
+    def __init__(
+        self,
+        api_key: str,
+        *,
+        base_url: str = "https://api.cerebras.ai/v1",
+        timeout: float = 60.0,
+        max_retries: int = 2,
+        http_client: httpx.Client | None = None,
+    ) -> None:
+        self._api_key = api_key
+        self._base_url = base_url
+
+        if http_client is not None:
+            self._http_client = http_client
+        else:
+            # `max_retries` covers connection-level/transport retries only (e.g. connect
+            # failures). Retrying on non-2xx status codes with backoff is a policy concern
+            # deferred to the future adapter layer.
+            transport = httpx.HTTPTransport(retries=max_retries)
+            self._http_client = httpx.Client(timeout=timeout, transport=transport)
+
+    def create(self, request: ChatRequest) -> ChatResponse:
+        body = request.model_dump(mode="json", by_alias=True, exclude_none=True)
+        response = self._http_client.post(
+            f"{self._base_url}/chat/completions",
+            json=body,
+            headers={"Authorization": f"Bearer {self._api_key}"},
+        )
+
+        return ChatResponse.model_validate(response.json())
