@@ -1,27 +1,24 @@
-from typing import Any
-
-from pydantic import model_validator
-
 from symai.backend.providers.cerebras.base import TolerantModel
+
+
+class PromptTokensDetails(TolerantModel):
+    cached_tokens: int | None = None
+
+
+class CompletionTokensDetails(TolerantModel):
+    accepted_prediction_tokens: int | None = None
+    rejected_prediction_tokens: int | None = None
+    reasoning_tokens: int | None = None
 
 
 class Usage(TolerantModel):
     prompt_tokens: int
     completion_tokens: int
     total_tokens: int
-    reasoning_tokens: int | None = None
 
-    @model_validator(mode="before")
-    @classmethod
-    def _lift_reasoning_tokens(cls, data: Any) -> Any:
-        if not isinstance(data, dict):
-            return data
-
-        details = data.get("completion_tokens_details")
-        if not isinstance(details, dict) or "reasoning_tokens" not in details:
-            return data
-
-        return {**data, "reasoning_tokens": details["reasoning_tokens"]}
+    image_tokens: int | None = None
+    prompt_tokens_details: PromptTokensDetails | None = None
+    completion_tokens_details: CompletionTokensDetails | None = None
 
 
 class ResponseMessage(TolerantModel):

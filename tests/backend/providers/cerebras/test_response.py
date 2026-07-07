@@ -79,30 +79,81 @@ def test_null_content_parses_as_none():
     assert response.choices[0].message.content is None
 
 
-# --- Usage lift -------------------------------------------------------------------
+# --- Nested usage details --------------------------------------------------------
 
 
-def test_usage_lift_reasoning_tokens_from_nested_details():
+def test_completion_tokens_details_reasoning_tokens_present_populates():
     usage = Usage.model_validate(_usage_dict(completion_tokens_details={"reasoning_tokens": 42}))
 
-    assert usage.reasoning_tokens == 42
+    assert usage.completion_tokens_details.reasoning_tokens == 42
 
 
-def test_usage_without_nested_details_leaves_reasoning_tokens_none():
+def test_completion_tokens_details_absent_is_none():
     usage = Usage.model_validate(_usage_dict())
 
-    assert usage.reasoning_tokens is None
+    assert usage.completion_tokens_details is None
 
 
-def test_usage_lift_via_chat_response_full_parse():
+def test_completion_tokens_details_accepted_and_rejected_prediction_tokens_present_populates():
+    usage = Usage.model_validate(
+        _usage_dict(
+            completion_tokens_details={
+                "accepted_prediction_tokens": 3,
+                "rejected_prediction_tokens": 1,
+            }
+        )
+    )
+
+    assert usage.completion_tokens_details.accepted_prediction_tokens == 3
+    assert usage.completion_tokens_details.rejected_prediction_tokens == 1
+
+
+def test_completion_tokens_details_accepted_and_rejected_prediction_tokens_absent_are_none():
+    usage = Usage.model_validate(_usage_dict(completion_tokens_details={"reasoning_tokens": 42}))
+
+    assert usage.completion_tokens_details.accepted_prediction_tokens is None
+    assert usage.completion_tokens_details.rejected_prediction_tokens is None
+
+
+def test_prompt_tokens_details_cached_tokens_present_populates():
+    usage = Usage.model_validate(_usage_dict(prompt_tokens_details={"cached_tokens": 8}))
+
+    assert usage.prompt_tokens_details.cached_tokens == 8
+
+
+def test_prompt_tokens_details_absent_is_none():
+    usage = Usage.model_validate(_usage_dict())
+
+    assert usage.prompt_tokens_details is None
+
+
+def test_image_tokens_present_populates():
+    usage = Usage.model_validate(_usage_dict(image_tokens=4))
+
+    assert usage.image_tokens == 4
+
+
+def test_image_tokens_absent_is_none():
+    usage = Usage.model_validate(_usage_dict())
+
+    assert usage.image_tokens is None
+
+
+def test_nested_usage_details_round_trip_via_chat_response_full_parse():
     response = ChatResponse.model_validate(
         {
             "choices": [_choice_dict()],
-            "usage": _usage_dict(completion_tokens_details={"reasoning_tokens": 7}),
+            "usage": _usage_dict(
+                completion_tokens_details={"reasoning_tokens": 7},
+                prompt_tokens_details={"cached_tokens": 2},
+                image_tokens=1,
+            ),
         }
     )
 
-    assert response.usage.reasoning_tokens == 7
+    assert response.usage.completion_tokens_details.reasoning_tokens == 7
+    assert response.usage.prompt_tokens_details.cached_tokens == 2
+    assert response.usage.image_tokens == 1
 
 
 # --- Tolerance (extra=ignore) ----------------------------------------------------
