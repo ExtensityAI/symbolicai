@@ -2,13 +2,13 @@ import pytest
 from pydantic import ValidationError
 
 from symai.backend.providers.cerebras.request import (
-    CerebrasResponseFormat,
+    ResponseFormat,
     ChatRequest,
     JsonSchemaSpec,
     Message,
     Role,
 )
-from symai.backend.providers.cerebras.spec import CerebrasModel, ReasoningEffort
+from symai.backend.providers.cerebras.spec import Model, ReasoningEffort
 
 
 def _message() -> Message:
@@ -20,47 +20,47 @@ def _message() -> Message:
 
 def test_temperature_above_upper_bound_raises():
     with pytest.raises(ValidationError):
-        ChatRequest(messages=(_message(),), model=CerebrasModel.GPT_OSS_120B, temperature=2.1)
+        ChatRequest(messages=(_message(),), model=Model.GPT_OSS_120B, temperature=2.1)
 
 
 def test_temperature_below_lower_bound_raises():
     with pytest.raises(ValidationError):
-        ChatRequest(messages=(_message(),), model=CerebrasModel.GPT_OSS_120B, temperature=-0.1)
+        ChatRequest(messages=(_message(),), model=Model.GPT_OSS_120B, temperature=-0.1)
 
 
 def test_temperature_within_bounds_succeeds():
-    request = ChatRequest(messages=(_message(),), model=CerebrasModel.GPT_OSS_120B, temperature=1.5)
+    request = ChatRequest(messages=(_message(),), model=Model.GPT_OSS_120B, temperature=1.5)
 
     assert request.temperature == 1.5
 
 
 def test_top_p_above_upper_bound_raises():
     with pytest.raises(ValidationError):
-        ChatRequest(messages=(_message(),), model=CerebrasModel.GPT_OSS_120B, top_p=1.1)
+        ChatRequest(messages=(_message(),), model=Model.GPT_OSS_120B, top_p=1.1)
 
 
 def test_top_p_below_lower_bound_raises():
     with pytest.raises(ValidationError):
-        ChatRequest(messages=(_message(),), model=CerebrasModel.GPT_OSS_120B, top_p=-0.1)
+        ChatRequest(messages=(_message(),), model=Model.GPT_OSS_120B, top_p=-0.1)
 
 
 def test_max_completion_tokens_zero_raises():
     with pytest.raises(ValidationError):
         ChatRequest(
-            messages=(_message(),), model=CerebrasModel.GPT_OSS_120B, max_completion_tokens=0
+            messages=(_message(),), model=Model.GPT_OSS_120B, max_completion_tokens=0
         )
 
 
 def test_max_completion_tokens_negative_raises():
     with pytest.raises(ValidationError):
         ChatRequest(
-            messages=(_message(),), model=CerebrasModel.GPT_OSS_120B, max_completion_tokens=-5
+            messages=(_message(),), model=Model.GPT_OSS_120B, max_completion_tokens=-5
         )
 
 
 def test_max_completion_tokens_none_succeeds():
     request = ChatRequest(
-        messages=(_message(),), model=CerebrasModel.GPT_OSS_120B, max_completion_tokens=None
+        messages=(_message(),), model=Model.GPT_OSS_120B, max_completion_tokens=None
     )
 
     assert request.max_completion_tokens is None
@@ -71,7 +71,7 @@ def test_max_completion_tokens_none_succeeds():
 
 def test_empty_messages_raises():
     with pytest.raises(ValidationError):
-        ChatRequest(messages=(), model=CerebrasModel.GPT_OSS_120B)
+        ChatRequest(messages=(), model=Model.GPT_OSS_120B)
 
 
 # --- Strict + forbid ----------------------------------------------------------
@@ -79,19 +79,19 @@ def test_empty_messages_raises():
 
 def test_temperature_string_raises_without_coercion():
     with pytest.raises(ValidationError):
-        ChatRequest(messages=(_message(),), model=CerebrasModel.GPT_OSS_120B, temperature="hot")
+        ChatRequest(messages=(_message(),), model=Model.GPT_OSS_120B, temperature="hot")
 
 
 def test_unknown_field_raises():
     with pytest.raises(ValidationError):
-        ChatRequest(messages=(_message(),), model=CerebrasModel.GPT_OSS_120B, foo=1)
+        ChatRequest(messages=(_message(),), model=Model.GPT_OSS_120B, foo=1)
 
 
 # --- Defaults -------------------------------------------------------------------
 
 
 def test_minimal_chat_request_defaults():
-    request = ChatRequest(messages=(_message(),), model=CerebrasModel.GPT_OSS_120B)
+    request = ChatRequest(messages=(_message(),), model=Model.GPT_OSS_120B)
 
     assert request.temperature == 1
     assert request.top_p == 1
@@ -108,7 +108,7 @@ def test_minimal_chat_request_defaults():
 def test_reasoning_effort_high_on_gpt_oss_succeeds():
     request = ChatRequest(
         messages=(_message(),),
-        model=CerebrasModel.GPT_OSS_120B,
+        model=Model.GPT_OSS_120B,
         reasoning_effort=ReasoningEffort.HIGH,
     )
 
@@ -119,7 +119,7 @@ def test_reasoning_effort_none_on_gpt_oss_raises():
     with pytest.raises(ValidationError):
         ChatRequest(
             messages=(_message(),),
-            model=CerebrasModel.GPT_OSS_120B,
+            model=Model.GPT_OSS_120B,
             reasoning_effort=ReasoningEffort.NONE,
         )
 
@@ -127,7 +127,7 @@ def test_reasoning_effort_none_on_gpt_oss_raises():
 def test_reasoning_effort_none_on_zai_glm_succeeds():
     request = ChatRequest(
         messages=(_message(),),
-        model=CerebrasModel.ZAI_GLM_4_7,
+        model=Model.ZAI_GLM_4_7,
         reasoning_effort=ReasoningEffort.NONE,
     )
 
@@ -188,7 +188,7 @@ def test_response_format_rejects_json_object_type():
     schema_spec = JsonSchemaSpec(name="X", json_schema_body={"type": "object"})
 
     with pytest.raises(ValidationError):
-        CerebrasResponseFormat(type="json_object", json_schema=schema_spec)
+        ResponseFormat(type="json_object", json_schema=schema_spec)
 
 
 # --- Full wire body ---------------------------------------------------------------
@@ -196,10 +196,10 @@ def test_response_format_rejects_json_object_type():
 
 def test_full_chat_request_wire_body():
     schema_spec = JsonSchemaSpec(name="Answer", json_schema_body={"type": "object"}, strict=True)
-    response_format = CerebrasResponseFormat(type="json_schema", json_schema=schema_spec)
+    response_format = ResponseFormat(type="json_schema", json_schema=schema_spec)
     request = ChatRequest(
         messages=(Message(role=Role.SYSTEM, content="sys"), Message(role=Role.USER, content="hi")),
-        model=CerebrasModel.ZAI_GLM_4_7,
+        model=Model.ZAI_GLM_4_7,
         temperature=0.5,
         top_p=0.9,
         max_completion_tokens=100,
@@ -246,7 +246,7 @@ def test_full_chat_request_wire_body():
 def test_partial_chat_request_omits_unset_optionals():
     request = ChatRequest(
         messages=(_message(),),
-        model=CerebrasModel.GPT_OSS_120B,
+        model=Model.GPT_OSS_120B,
         temperature=0.5,
     )
 

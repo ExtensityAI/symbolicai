@@ -3,12 +3,12 @@ from typing import Any, Literal
 
 from pydantic import ConfigDict, Field, model_validator
 
-from symai.backend.providers.cerebras.base import StrictModel
 from symai.backend.providers.cerebras.spec import (
-    CEREBRAS_MODEL_SPECS,
-    CerebrasModel,
+    MODEL_SPECS,
+    Model,
     ReasoningEffort,
 )
+from symai.backend.providers.models import StrictModel
 
 
 class Role(StrEnum):
@@ -30,28 +30,28 @@ class JsonSchemaSpec(StrictModel):
     strict: bool = True
 
 
-class CerebrasResponseFormat(StrictModel):
+class ResponseFormat(StrictModel):
     type: Literal["json_schema"]
     json_schema: JsonSchemaSpec
 
 
 class ChatRequest(StrictModel):
     messages: tuple[Message, ...] = Field(min_length=1)
-    model: CerebrasModel
-    temperature: float = Field(default=1, ge=0, le=2)
-    top_p: float = Field(default=1, ge=0, le=1)
+    model: Model
+    temperature: float = Field(default=1.0, ge=0, le=2)
+    top_p: float = Field(default=1.0, ge=0, le=1)
     max_completion_tokens: int | None = Field(default=None, gt=0)
     seed: int | None = None
     stop: tuple[str, ...] | None = None
     reasoning_effort: ReasoningEffort | None = None
-    response_format: CerebrasResponseFormat | None = None
+    response_format: ResponseFormat | None = None
 
     @model_validator(mode="after")
     def _check_reasoning_effort_supported(self):
         if self.reasoning_effort is None:
             return self
 
-        spec = CEREBRAS_MODEL_SPECS.get(self.model)
+        spec = MODEL_SPECS.get(self.model)
 
         if spec is None:
             msg = f"model {self.model!r} has no registered spec"

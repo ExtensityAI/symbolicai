@@ -1,4 +1,4 @@
-from symai.backend.providers.cerebras.base import TolerantModel
+from symai.backend.providers.models import TolerantModel
 
 
 class PromptTokensDetails(TolerantModel):

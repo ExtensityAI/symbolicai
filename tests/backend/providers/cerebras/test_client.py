@@ -3,31 +3,31 @@ import json
 import httpx
 import pytest
 
-from symai.backend.providers.cerebras.client import CerebrasClient, extract_thinking
+from symai.backend.providers.cerebras.client import Client, extract_thinking
 from symai.backend.providers.cerebras.errors import (
-    CerebrasAPIError,
-    CerebrasAuthError,
-    CerebrasConnectionError,
-    CerebrasRateLimitError,
-    CerebrasResponseError,
+    APIError,
+    AuthError,
+    ConnectionError,
+    RateLimitError,
+    ResponseError,
 )
 from symai.backend.providers.cerebras.request import (
-    CerebrasResponseFormat,
+    ResponseFormat,
     ChatRequest,
     JsonSchemaSpec,
     Message,
     Role,
 )
 from symai.backend.providers.cerebras.response import ChatResponse
-from symai.backend.providers.cerebras.spec import CerebrasModel
+from symai.backend.providers.cerebras.spec import Model
 
 
 def _chat_request() -> ChatRequest:
     schema_spec = JsonSchemaSpec(name="Answer", json_schema_body={"type": "object"})
-    response_format = CerebrasResponseFormat(type="json_schema", json_schema=schema_spec)
+    response_format = ResponseFormat(type="json_schema", json_schema=schema_spec)
     return ChatRequest(
         messages=(Message(role=Role.USER, content="hi"),),
-        model=CerebrasModel.GPT_OSS_120B,
+        model=Model.GPT_OSS_120B,
         response_format=response_format,
     )
 
@@ -45,11 +45,11 @@ def _completion_json() -> dict:
     }
 
 
-def _client_with_response(status_code: int, **response_kwargs) -> CerebrasClient:
+def _client_with_response(status_code: int, **response_kwargs) -> Client:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(status_code, request=request, **response_kwargs)
 
-    return CerebrasClient(
+    return Client(
         api_key="test-key", http_client=httpx.Client(transport=httpx.MockTransport(handler))
     )
 
@@ -102,7 +102,7 @@ def test_create_success_posts_expected_request_and_parses_response():
         captured["body"] = json.loads(request.content.decode("utf-8"))
         return httpx.Response(200, json=_completion_json(), request=request)
 
-    client = CerebrasClient(
+    client = Client(
         api_key="test-key", http_client=httpx.Client(transport=httpx.MockTransport(handler))
     )
 
@@ -126,14 +126,14 @@ def test_create_success_posts_expected_request_and_parses_response():
 def test_error_401_raises_cerebras_auth_error():
     client = _client_with_response(401, text="invalid api key")
 
-    with pytest.raises(CerebrasAuthError):
+    with pytest.raises(AuthError):
         client.create(_chat_request())
 
 
 def test_error_429_raises_cerebras_rate_limit_error():
     client = _client_with_response(429, text="rate limited")
 
-    with pytest.raises(CerebrasRateLimitError):
+    with pytest.raises(RateLimitError):
         client.create(_chat_request())
 
 
@@ -141,7 +141,7 @@ def test_error_500_raises_cerebras_api_error_with_status_and_body():
     body_text = "internal server error"
     client = _client_with_response(500, text=body_text)
 
-    with pytest.raises(CerebrasAPIError) as exc_info:
+    with pytest.raises(APIError) as exc_info:
         client.create(_chat_request())
 
     assert exc_info.value.status_code == 500
@@ -154,7 +154,7 @@ def test_error_malformed_response_raises_cerebras_response_error():
     body_text = json.dumps(payload)
     client = _client_with_response(200, content=body_text)
 
-    with pytest.raises(CerebrasResponseError) as exc_info:
+    with pytest.raises(ResponseError) as exc_info:
         client.create(_chat_request())
 
     assert exc_info.value.body == body_text
@@ -164,7 +164,7 @@ def test_error_invalid_json_response_raises_cerebras_response_error():
     body_text = "not json at all"
     client = _client_with_response(200, content=body_text)
 
-    with pytest.raises(CerebrasResponseError) as exc_info:
+    with pytest.raises(ResponseError) as exc_info:
         client.create(_chat_request())
 
     assert exc_info.value.body == body_text
@@ -174,11 +174,11 @@ def test_connection_error_raises_cerebras_connection_error():
     def handler(request: httpx.Request) -> httpx.Response:
         raise httpx.ConnectError("connection refused", request=request)
 
-    client = CerebrasClient(
+    client = Client(
         api_key="test-key", http_client=httpx.Client(transport=httpx.MockTransport(handler))
     )
 
-    with pytest.raises(CerebrasConnectionError):
+    with pytest.raises(ConnectionError):
         client.create(_chat_request())
 
 
@@ -186,7 +186,7 @@ def test_connection_error_raises_cerebras_connection_error():
 
 
 def test_owned_http_client_is_closed_on_context_exit():
-    with CerebrasClient(api_key="test-key") as client:
+    with Client(api_key="test-key") as client:
         assert client._http_client.is_closed is False
 
     assert client._http_client.is_closed is True
@@ -198,7 +198,7 @@ def test_injected_http_client_is_not_closed_by_close():
 
     injected = httpx.Client(transport=httpx.MockTransport(handler))
 
-    with CerebrasClient(api_key="test-key", http_client=injected) as client:
+    with Client(api_key="test-key", http_client=injected) as client:
         assert client._http_client.is_closed is False
 
     assert injected.is_closed is False
