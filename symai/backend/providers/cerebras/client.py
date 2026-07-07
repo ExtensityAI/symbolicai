@@ -1,19 +1,12 @@
-# symai/backend/providers/cerebras/client.py
-
-from __future__ import annotations
-
-from typing import TYPE_CHECKING, Self
+from types import TracebackType
+from typing import Self
 
 import httpx
 from pydantic import ValidationError
 
 from symai.backend.providers.cerebras import errors
+from symai.backend.providers.cerebras.request import ChatRequest
 from symai.backend.providers.cerebras.response import ChatResponse
-
-if TYPE_CHECKING:
-    from types import TracebackType
-
-    from symai.backend.providers.cerebras.request import ChatRequest
 
 CHAT_COMPLETIONS_PATH = "/chat/completions"
 DEFAULT_BASE_URL = "https://api.cerebras.ai/v1"
