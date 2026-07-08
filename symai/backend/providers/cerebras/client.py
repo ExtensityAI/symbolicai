@@ -23,8 +23,6 @@ class Client:
         *,
         base_url: str = DEFAULT_BASE_URL,
         http_client: httpx.Client | None = None,
-        timeout: float | httpx.Timeout = DEFAULT_TIMEOUT,
-        retries: int = DEFAULT_RETRIES,
     ) -> None:
 
         if not api_key:
@@ -37,8 +35,8 @@ class Client:
 
         if http_client is None:
             self._http_client = httpx.Client(
-                timeout=timeout,
-                transport=httpx.HTTPTransport(retries=retries),
+                timeout=DEFAULT_TIMEOUT,
+                transport=httpx.HTTPTransport(retries=DEFAULT_RETRIES),
             )
         else:
             self._http_client = http_client

@@ -181,7 +181,7 @@ def test_json_schema_spec_still_strict_with_populate_by_name():
         JsonSchemaSpec(name="X", json_schema_body={"type": "object"}, strict="yes")
 
 
-# --- CerebrasResponseFormat discriminant -----------------------------------------
+# --- ResponseFormat discriminant -----------------------------------------
 
 
 def test_response_format_rejects_json_object_type():
