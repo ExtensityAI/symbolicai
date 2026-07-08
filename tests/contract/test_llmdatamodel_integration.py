@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -460,7 +460,7 @@ def test_data_migration_scenario():
         first_name=name_parts[0],
         last_name=name_parts[1] if len(name_parts) > 1 else "",
         email=v1_data.email,
-        created_at=datetime.utcnow().isoformat()
+        created_at=datetime.now(UTC).isoformat()
     )
 
     assert v2_data.first_name == "John"

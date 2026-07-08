@@ -409,7 +409,7 @@ def test_examples_render_even_without_description():
 
     # Also verify single example formatting (no description)
     class WithSingleExample(LLMDataModel):
-        value: int = Field(example=42)  # no description, single example
+        value: int = Field(json_schema_extra={"example": 42})  # no description, single example
 
     instr_single = WithSingleExample.instruct_llm()
     assert '  - "value": ' in instr_single and "No definition provided." in instr_single

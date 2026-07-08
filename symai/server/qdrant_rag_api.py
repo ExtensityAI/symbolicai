@@ -84,7 +84,7 @@ if not SETTINGS.rag_api_token and os.getenv("RAG_ALLOW_NO_TOKEN") != "1":
 
 class VectorPoint(BaseModel):
     id: int | str | uuid.UUID
-    vector: list[float] = Field(..., min_items=1)
+    vector: list[float] = Field(..., min_length=1)
     payload: dict[str, Any] | None = None
 
     @field_validator("id", mode="before")
@@ -145,7 +145,7 @@ class PointsUpsertRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     index_name: str | None = Field(default=None, description="Qdrant collection name.")
-    points: list[VectorPoint] = Field(..., min_items=1, max_items=10_000)
+    points: list[VectorPoint] = Field(..., min_length=1, max_length=10_000)
 
 
 class SearchRequest(BaseModel):
@@ -251,7 +251,7 @@ class RetrieveRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     index_name: str | None = None
-    ids: list[int | str | uuid.UUID] = Field(..., min_items=1)
+    ids: list[int | str | uuid.UUID] = Field(..., min_length=1)
     with_payload: bool = True
     with_vectors: bool = False
 
@@ -268,7 +268,7 @@ class DeletePointsRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     index_name: str | None = None
-    ids: list[int | str | uuid.UUID] = Field(..., min_items=1)
+    ids: list[int | str | uuid.UUID] = Field(..., min_length=1)
 
     @field_validator("ids", mode="before")
     @classmethod

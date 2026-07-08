@@ -93,7 +93,7 @@ class IntermediateAnalysisResult(LLMDataModel):
     verbose=True,
     remedy_retry_params=dict(tries=2, delay=0.1, max_delay=0.5, jitter=0.1, backoff=1.5, graceful=False),
 )
-class TestTripletExtractor(Expression):
+class TripletExtractor(Expression):
     """Test implementation of a TripletExtractor-like class with an act method"""
 
     def __init__(self, name: str = "test_extractor", threshold: float = 0.7, *args, **kwargs):
@@ -262,7 +262,7 @@ def test_triplet_extractor_basic():
         OntologyClass(name="Data")
     ])
 
-    extractor = TestTripletExtractor(threshold=0.7)
+    extractor = TripletExtractor(threshold=0.7)
 
     # First call with simple text
     input_data = TripletExtractorInput(
@@ -292,7 +292,7 @@ def test_triplet_extractor_state_persistence():
         OntologyClass(name="Data")
     ])
 
-    extractor = TestTripletExtractor(threshold=0.7)
+    extractor = TripletExtractor(threshold=0.7)
     input_data1 = TripletExtractorInput(
         text="Machine Learning models process data.",
         ontology=ontology
@@ -325,7 +325,7 @@ def test_triplet_extractor_with_multiple_texts():
         OntologyClass(name="Learning")
     ])
 
-    extractor = TestTripletExtractor(threshold=0.6)  # Lower threshold for test
+    extractor = TripletExtractor(threshold=0.6)  # Lower threshold for test
     texts = [
         "Neural Networks are models that process data.",
         "Machine Learning algorithms improve with more data.",
@@ -355,7 +355,7 @@ def test_triplet_extractor_with_multiple_texts():
 def test_act_transformation():
     """Test that act transforms input to a different type that's used by the LLM"""
     ontology = SimpleOntology(classes=[OntologyClass(name="ML")])
-    extractor = TestTripletExtractor()
+    extractor = TripletExtractor()
 
     act_method = extractor.act
 
