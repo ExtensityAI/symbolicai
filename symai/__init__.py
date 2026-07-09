@@ -618,13 +618,7 @@ from .imports import Import  # noqa
 from .interfaces import Interface  # noqa
 from .post_processors import PostProcessor  # noqa
 from .pre_processors import PreProcessor  # noqa
-from .prompts import (  # noqa
-    CACHE_BREAKPOINT,
-    Prompt,
-    PromptRegistry,
-    split_cache_breakpoints,
-    strip_cache_breakpoints,
-)
+from .prompts import Prompt, PromptRegistry  # noqa
 from .shell import Shell  # noqa
 from .strategy import Strategy  # noqa
 from .symbol import Call, Expression, GlobalSymbolPrimitive, Metadata, Symbol  # noqa
@@ -644,11 +638,8 @@ __all__ = [
     "PostProcessor",
     "PreProcessor",
     "PrimitiveDisabler",
-    "CACHE_BREAKPOINT",
     "Prompt",
     "PromptRegistry",
-    "split_cache_breakpoints",
-    "strip_cache_breakpoints",
     "Shell",
     "Strategy",
     "Symbol",

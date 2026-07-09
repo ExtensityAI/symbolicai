@@ -10,7 +10,11 @@ import tiktoken
 from ....components import SelfPrompt
 from ....utils import UserMessage, encode_media_frames
 from ...base import Engine
-from ...mixin.openai import SUPPORTED_REASONING_MODELS, OpenAIMixin
+from ...mixin.openai import (
+    SUPPORTED_REASONING_MODELS,
+    SUPPORTED_RESPONSES_REASONING_MODELS,
+    OpenAIMixin,
+)
 from ...settings import SYMAI_CONFIG
 
 logging.getLogger("openai").setLevel(logging.ERROR)
@@ -53,9 +57,7 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
         client_timeout: float | None = None,
         client_max_retries: int | None = None,
     ):
-        super().__init__(
-            client_timeout=client_timeout, client_max_retries=client_max_retries
-        )
+        super().__init__(client_timeout=client_timeout, client_max_retries=client_max_retries)
         self.config = deepcopy(SYMAI_CONFIG)
         if api_key is not None and model is not None:
             self.config["NEUROSYMBOLIC_ENGINE_API_KEY"] = api_key
@@ -140,14 +142,19 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
         return min(self.max_context_tokens - val, self.max_response_tokens)
 
     def _is_reasoning_model(self) -> bool:
-        return self.model in SUPPORTED_REASONING_MODELS or self.model in {
-            "gpt-5.2-chat-latest",
-            "gpt-5.1-chat-latest",
-            "gpt-5-pro",
-            "gpt-5.2-pro",
-            "gpt-5.4-pro",
-            "o3-pro",
-        }
+        return (
+            self.model in SUPPORTED_REASONING_MODELS
+            or self.model in SUPPORTED_RESPONSES_REASONING_MODELS
+            or self.model
+            in {
+                "gpt-5.2-chat-latest",
+                "gpt-5.1-chat-latest",
+                "gpt-5-pro",
+                "gpt-5.2-pro",
+                "gpt-5.4-pro",
+                "o3-pro",
+            }
+        )
 
     def _handle_image_content(self, content: str) -> list[str]:
         def _extract_pattern(text):
@@ -254,11 +261,7 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
         return []
 
     def _build_user_text(self, argument, image_files: list[str]) -> str:
-        from ....prompts import strip_cache_breakpoints
-
-        # This engine does not honor manual cache breakpoints yet; strip the symai
-        # CACHE_BREAKPOINT marker so the reserved token can never leak into a request.
-        suffix = strip_cache_breakpoints(str(argument.prop.processed_input))
+        suffix = str(argument.prop.processed_input)
         if len(image_files) > 0:
             suffix = self._remove_vision_pattern(suffix)
         return suffix
@@ -311,10 +314,12 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
         )
 
         role = "developer" if self._is_reasoning_model() else "system"
-        argument.prop.prepared_input = [
+        messages = [
             {"role": role, "content": system_content},
             user_msg,
         ]
+        model = argument.kwargs.get("model", self.model)
+        argument.prop.prepared_input = self.apply_cache_breakpoints_to_messages(messages, model)
 
     def _prepare_request_payload(self, messages, argument) -> dict:
         kwargs = argument.kwargs
@@ -345,6 +350,23 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
 
         if max_output_tokens is not None:
             payload["max_output_tokens"] = max_output_tokens
+        if kwargs.get("prompt_cache_key") is not None:
+            payload["prompt_cache_key"] = kwargs["prompt_cache_key"]
+        if kwargs.get("prompt_cache_retention") is not None:
+            payload["prompt_cache_retention"] = kwargs["prompt_cache_retention"]
+        # TODO: Remove this extra_body fallback after the OpenAI SDK exposes
+        # prompt_cache_options in Responses.create.
+        extra_body = kwargs.get("extra_body")
+        if kwargs.get("prompt_cache_options") is not None:
+            if payload["model"] not in SUPPORTED_RESPONSES_REASONING_MODELS:
+                msg = f"Explicit OpenAI cache options are not supported by {payload['model']}."
+                raise ValueError(msg)
+            extra_body = {
+                **(extra_body or {}),
+                "prompt_cache_options": kwargs["prompt_cache_options"],
+            }
+        if extra_body is not None:
+            payload["extra_body"] = extra_body
 
         if kwargs.get("temperature") is not None and not self._is_reasoning_model():
             payload["temperature"] = kwargs["temperature"]

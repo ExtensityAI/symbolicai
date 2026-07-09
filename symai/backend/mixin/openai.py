@@ -1,5 +1,37 @@
 from ...utils import UserMessage
 
+CACHE_BREAKPOINT = "symai:cache_breakpoint"
+
+
+def split_cache_breakpoints(text: str) -> list[str]:
+    """Split OpenAI cache breakpoint markers into ordered text segments."""
+    if not text:
+        return [text]
+    return text.split(CACHE_BREAKPOINT)
+
+
+def build_cache_breakpoint_blocks(text: str) -> list[dict]:
+    segments = split_cache_breakpoints(text)
+    breakpoint_count = len(segments) - 1
+    if breakpoint_count > 4:
+        msg = "OpenAI supports at most four cache breakpoint writes per request."
+        raise ValueError(msg)
+    if any(segment == "" for segment in segments[:-1]):
+        msg = "OpenAI cache breakpoints must follow non-empty text segments."
+        raise ValueError(msg)
+
+    blocks = []
+    for index, segment in enumerate(segments):
+        if segment == "":
+            continue
+        block = {"type": "input_text", "text": segment}
+        if index < breakpoint_count:
+            # TODO: Use the SDK breakpoint type once input content params expose it.
+            block["prompt_cache_breakpoint"] = {"mode": "explicit"}
+        blocks.append(block)
+    return blocks
+
+
 SUPPORTED_COMPLETION_MODELS = [
     "davinci-002",
 ]
@@ -40,17 +72,63 @@ SUPPORTED_REASONING_MODELS = [
     "gpt-5.5",
     "gpt-5.5-2026-04-23",
 ]
+SUPPORTED_RESPONSES_REASONING_MODELS = [
+    "gpt-5.6-sol",
+    "gpt-5.6-terra",
+    "gpt-5.6-luna",
+]
 SUPPORTED_EMBEDDING_MODELS = [
     "text-embedding-ada-002",
     "text-embedding-3-small",
     "text-embedding-3-large",
 ]
-SUPPORTED_RESPONSES_MODELS = [
-    f"responses:{m}" for m in SUPPORTED_CHAT_MODELS + SUPPORTED_REASONING_MODELS
-] + ["responses:gpt-5-pro", "responses:o3-pro", "responses:gpt-5.2-pro", "responses:gpt-5.4-pro"]
+SUPPORTED_RESPONSES_MODELS = (
+    [f"responses:{m}" for m in SUPPORTED_CHAT_MODELS + SUPPORTED_REASONING_MODELS]
+    + [f"responses:{m}" for m in SUPPORTED_RESPONSES_REASONING_MODELS]
+    + [
+        "responses:gpt-5-pro",
+        "responses:o3-pro",
+        "responses:gpt-5.2-pro",
+        "responses:gpt-5.4-pro",
+    ]
+)
 
 
 class OpenAIMixin:
+    def apply_cache_breakpoints_to_messages(self, messages: list[dict], model: str) -> list[dict]:
+        prepared_messages = []
+        breakpoint_count = 0
+        for message in messages:
+            content = message["content"]
+            if isinstance(content, str):
+                if CACHE_BREAKPOINT in content:
+                    breakpoint_count += content.count(CACHE_BREAKPOINT)
+                    if breakpoint_count > 4:
+                        msg = "OpenAI supports at most four cache breakpoint writes per request."
+                        raise ValueError(msg)
+                    if model not in SUPPORTED_RESPONSES_REASONING_MODELS:
+                        msg = f"Explicit OpenAI cache breakpoints are not supported by {model}."
+                        raise ValueError(msg)
+                    content = build_cache_breakpoint_blocks(content)
+                prepared_messages.append({**message, "content": content})
+                continue
+
+            blocks = []
+            for block in content:
+                if block["type"] == "input_text" and CACHE_BREAKPOINT in block["text"]:
+                    breakpoint_count += block["text"].count(CACHE_BREAKPOINT)
+                    if breakpoint_count > 4:
+                        msg = "OpenAI supports at most four cache breakpoint writes per request."
+                        raise ValueError(msg)
+                    if model not in SUPPORTED_RESPONSES_REASONING_MODELS:
+                        msg = f"Explicit OpenAI cache breakpoints are not supported by {model}."
+                        raise ValueError(msg)
+                    blocks.extend(build_cache_breakpoint_blocks(block["text"]))
+                else:
+                    blocks.append(block)
+            prepared_messages.append({**message, "content": blocks})
+        return prepared_messages
+
     def api_max_context_tokens(self):
         if (
             self.model == "text-curie-001"
@@ -125,6 +203,9 @@ class OpenAIMixin:
             or self.model == "gpt-5.4-pro"
             or self.model == "gpt-5.5"
             or self.model == "gpt-5.5-2026-04-23"
+            or self.model == "gpt-5.6-sol"
+            or self.model == "gpt-5.6-terra"
+            or self.model == "gpt-5.6-luna"
         ):
             return 1_050_000
         msg = f"Unsupported model: {self.model}"
@@ -180,6 +261,9 @@ class OpenAIMixin:
             or self.model == "gpt-5.4-nano"
             or self.model == "gpt-5.5"
             or self.model == "gpt-5.5-2026-04-23"
+            or self.model == "gpt-5.6-sol"
+            or self.model == "gpt-5.6-terra"
+            or self.model == "gpt-5.6-luna"
         ):
             return 128_000
         if self.model == "gpt-5-pro":

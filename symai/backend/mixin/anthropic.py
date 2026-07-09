@@ -1,3 +1,8 @@
+# Anthropic engines translate the shared opaque cache marker into ``cache_control``
+# content blocks.
+CACHE_BREAKPOINT = "symai:cache_breakpoint"
+
+
 # https://docs.anthropic.com/en/docs/about-claude/models
 SUPPORTED_CHAT_MODELS = [
     "claude-3-5-sonnet-latest",
@@ -46,6 +51,20 @@ ADAPTIVE_THINKING_MODELS = {
 }
 
 
+def split_cache_breakpoints(text: str) -> list[str]:
+    """Split Anthropic cache breakpoint markers into ordered text segments."""
+    if not text:
+        return [text]
+    return text.split(CACHE_BREAKPOINT)
+
+
+def strip_cache_breakpoints(text: str) -> str:
+    """Remove Anthropic cache breakpoint markers from text."""
+    if not text:
+        return text
+    return text.replace(CACHE_BREAKPOINT, "")
+
+
 class AnthropicMixin:
     def resolve_cache_control(self, cache_control=None):
         selected = CACHE_CONTROL_1H if cache_control is None else cache_control
@@ -54,21 +73,14 @@ class AnthropicMixin:
         return selected
 
     def apply_cache_breakpoints_to_messages(self, messages, payload):
-        """Honor symai ``CACHE_BREAKPOINT`` markers embedded in user-message text.
+        """Apply Anthropic cache breakpoint markers embedded in user-message text.
 
-        When a resolved ``cache_control`` is present (``payload['extra_body']
-        ['cache_control']``) and a message's text contains the marker, split that text
-        into ordered content blocks, put the ``cache_control`` on every block except the
-        last, and drop the top-level ``extra_body`` auto-cache form (block-level
-        breakpoints supersede it). When caching is disabled or no marker is present, the
-        marker is stripped (a no-op when absent). Returns ``(messages, payload)`.
+        When ``payload['extra_body']['cache_control']`` is present, split marked text
+        into ordered content blocks, put ``cache_control`` on every block except the
+        last, and drop the top-level auto-cache form because block-level breakpoints
+        supersede it. When the marker is present but Anthropic caching is disabled,
+        remove it because it is Anthropic-engine control syntax, not user prompt text.
         """
-        from ...prompts import (
-            CACHE_BREAKPOINT,
-            split_cache_breakpoints,
-            strip_cache_breakpoints,
-        )
-
         cache_control = (payload.get("extra_body") or {}).get("cache_control")
         enabled = cache_control is not None
         did_split = False
