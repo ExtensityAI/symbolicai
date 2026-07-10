@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from symai.backend.providers.models import StrictModel
+from symai.backend.integrations.base import StrictModel
 
 
 class Model(StrEnum):

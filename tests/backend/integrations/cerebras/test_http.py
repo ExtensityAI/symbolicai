@@ -3,23 +3,23 @@ import json
 import httpx
 import pytest
 
-from symai.backend.providers.cerebras.client import Client
-from symai.backend.providers.cerebras.errors import (
+from symai.backend.integrations.cerebras.client.http import Client
+from symai.backend.integrations.cerebras.client.errors import (
     APIError,
     AuthError,
     RateLimitError,
     ResponseError,
     TransportError,
 )
-from symai.backend.providers.cerebras.request import (
+from symai.backend.integrations.cerebras.client.chat import (
     ChatRequest,
+    ChatResponse,
     JsonSchemaSpec,
     Message,
     ResponseFormat,
     Role,
 )
-from symai.backend.providers.cerebras.response import ChatResponse
-from symai.backend.providers.cerebras.spec import Model
+from symai.backend.integrations.cerebras.client.spec import Model
 
 
 def _chat_request() -> ChatRequest:
@@ -145,6 +145,50 @@ def test_connection_failure_raises_transport_error():
 
     with pytest.raises(TransportError):
         client.create(_chat_request())
+
+
+# --- API-instruction headers ------------------------------------------------------
+
+
+def test_error_surfaces_request_id_header():
+    client = _client_with_response(500, text="boom", headers={"x-request-id": "req-abc"})
+
+    with pytest.raises(APIError) as exc_info:
+        client.create(_chat_request())
+
+    assert exc_info.value.request_id == "req-abc"
+
+
+def test_rate_limit_surfaces_retry_after_seconds():
+    client = _client_with_response(
+        429, text="slow", headers={"retry-after": "3", "x-request-id": "req-xyz"}
+    )
+
+    with pytest.raises(RateLimitError) as exc_info:
+        client.create(_chat_request())
+
+    assert exc_info.value.retry_after == 3.0
+    assert exc_info.value.request_id == "req-xyz"
+
+
+def test_rate_limit_without_retry_after_header_is_none():
+    client = _client_with_response(429, text="slow")
+
+    with pytest.raises(RateLimitError) as exc_info:
+        client.create(_chat_request())
+
+    assert exc_info.value.retry_after is None
+
+
+def test_retry_after_http_date_yields_none_rather_than_a_guess():
+    client = _client_with_response(
+        429, text="slow", headers={"retry-after": "Wed, 21 Oct 2026 07:28:00 GMT"}
+    )
+
+    with pytest.raises(RateLimitError) as exc_info:
+        client.create(_chat_request())
+
+    assert exc_info.value.retry_after is None
 
 
 # --- client lifecycle -----------------------------------------------------------

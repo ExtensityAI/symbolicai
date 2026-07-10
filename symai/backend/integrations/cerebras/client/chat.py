@@ -3,12 +3,12 @@ from typing import Any, Literal
 
 from pydantic import ConfigDict, Field, model_validator
 
-from symai.backend.providers.cerebras.spec import (
+from symai.backend.integrations.base import StrictModel, TolerantModel
+from symai.backend.integrations.cerebras.client.spec import (
     MODEL_SPECS,
     Model,
     ReasoningEffort,
 )
-from symai.backend.providers.models import StrictModel
 
 
 class Role(StrEnum):
@@ -68,3 +68,40 @@ class ChatRequest(StrictModel):
             raise ValueError(msg)
 
         return self
+
+
+class PromptTokensDetails(TolerantModel):
+    cached_tokens: int | None = None
+
+
+class CompletionTokensDetails(TolerantModel):
+    accepted_prediction_tokens: int | None = None
+    rejected_prediction_tokens: int | None = None
+    reasoning_tokens: int | None = None
+
+
+class Usage(TolerantModel):
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+
+    image_tokens: int | None = None
+    prompt_tokens_details: PromptTokensDetails | None = None
+    completion_tokens_details: CompletionTokensDetails | None = None
+
+
+class ResponseMessage(TolerantModel):
+    role: str
+    content: str | None = None
+    reasoning: str | None = None
+
+
+class Choice(TolerantModel):
+    index: int
+    message: ResponseMessage
+    finish_reason: str | None = None
+
+
+class ChatResponse(TolerantModel):
+    choices: tuple[Choice, ...]
+    usage: Usage
