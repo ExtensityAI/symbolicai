@@ -8,31 +8,49 @@ from symai.backend.integrations.base import StrictModel, TolerantModel
 PATH = "/chat/completions"
 
 
-class Role(StrEnum):
-    SYSTEM = "system"
-    USER = "user"
-    ASSISTANT = "assistant"
+class TextContentPart(StrictModel):
+    type: Literal["text"]
+    text: str
 
 
-class Message(StrictModel):
-    role: Role
-    content: str
+class ImageURL(StrictModel):
+    url: str
 
 
-class JsonSchemaSpec(StrictModel):
-    model_config = ConfigDict(validate_by_alias=True, validate_by_name=True)
-
-    name: str
-    json_schema_body: JsonValue = Field(
-        validation_alias=AliasChoices("json_schema_body", "schema"),
-        serialization_alias="schema",
-    )
-    strict: bool = False
+class ImageContentPart(StrictModel):
+    type: Literal["image_url"]
+    image_url: ImageURL
 
 
-class ResponseFormat(StrictModel):
-    type: Literal["json_schema"]
-    json_schema: JsonSchemaSpec
+class SystemMessage(StrictModel):
+    role: Literal["system"]
+    content: str | tuple[TextContentPart, ...]
+    name: str | None = None
+
+
+class DeveloperMessage(StrictModel):
+    role: Literal["developer"]
+    content: str | tuple[TextContentPart, ...]
+    name: str | None = None
+
+
+class UserMessage(StrictModel):
+    role: Literal["user"]
+    content: str | tuple[TextContentPart | ImageContentPart, ...]
+    name: str | None = None
+
+
+class AssistantMessage(StrictModel):
+    role: Literal["assistant"]
+    content: str | tuple[TextContentPart, ...] | None = None
+    reasoning: str | None = None
+    name: str | None = None
+
+
+Message = Annotated[
+    SystemMessage | DeveloperMessage | UserMessage | AssistantMessage,
+    Field(discriminator="role"),
+]
 
 
 class ReasoningEffort(StrEnum):
@@ -42,16 +60,89 @@ class ReasoningEffort(StrEnum):
     HIGH = "high"
 
 
+class ReasoningFormat(StrEnum):
+    NONE = "none"
+    PARSED = "parsed"
+    RAW = "raw"
+    HIDDEN = "hidden"
+
+
+class ServiceTier(StrEnum):
+    AUTO = "auto"
+    DEFAULT = "default"
+    FLEX = "flex"
+    PRIORITY = "priority"
+
+
+class Prediction(StrictModel):
+    type: Literal["content"]
+    content: str | tuple[TextContentPart, ...]
+
+
+class TextResponseFormat(StrictModel):
+    type: Literal["text"]
+
+
+class JsonObjectResponseFormat(StrictModel):
+    type: Literal["json_object"]
+
+
+class JsonSchemaSpec(StrictModel):
+    model_config = ConfigDict(validate_by_alias=True, validate_by_name=True)
+
+    name: str
+    description: str | None = None
+    json_schema_body: JsonValue | None = Field(
+        default=None,
+        validation_alias=AliasChoices("json_schema_body", "schema"),
+        serialization_alias="schema",
+    )
+    strict: bool = False
+
+
+class JsonSchemaResponseFormat(StrictModel):
+    type: Literal["json_schema"]
+    json_schema: JsonSchemaSpec
+
+
+ResponseFormat = Annotated[
+    TextResponseFormat | JsonObjectResponseFormat | JsonSchemaResponseFormat,
+    Field(discriminator="type"),
+]
+
+
+_LogitBiasValue = Annotated[
+    float,
+    Field(ge=-100, le=100, allow_inf_nan=False),
+]
+_PositiveCompletionTokens = Annotated[int, Field(gt=0)]
+_StopSequence = Annotated[tuple[str, ...], Field(max_length=4)]
+
+
 class ChatRequest(StrictModel):
+    model_config = ConfigDict(extra="allow")
+    __pydantic_extra__: dict[str, JsonValue] = Field(init=False)
+
     messages: tuple[Message, ...] = Field(min_length=1)
     model: str
-    temperature: float = Field(default=1.0, ge=0, le=2)
-    top_p: float = Field(default=1.0, ge=0, le=1)
-    max_completion_tokens: int | None = Field(default=None, gt=0)
-    seed: int | None = None
-    stop: str | Annotated[tuple[str, ...], Field(max_length=4)] | None = None
+    clear_thinking: bool | None = None
+    frequency_penalty: float | None = Field(default=None, ge=-2, le=2)
+    logit_bias: dict[str, _LogitBiasValue] | None = None
+    logprobs: bool | None = None
+    max_completion_tokens: Literal[-1] | _PositiveCompletionTokens | None = None
+    prediction: Prediction | None = None
+    presence_penalty: float | None = Field(default=None, ge=-2, le=2)
+    prompt_cache_key: str | None = Field(default=None, max_length=1_024)
     reasoning_effort: ReasoningEffort | None = None
+    reasoning_format: ReasoningFormat | None = None
     response_format: ResponseFormat | None = None
+    seed: int | None = None
+    service_tier: ServiceTier | None = None
+    stop: str | _StopSequence | None = None
+    temperature: float | None = Field(default=None, ge=0, le=2)
+    top_logprobs: int | None = Field(default=None, ge=0, le=20)
+    top_p: float | None = Field(default=None, ge=0, le=1)
+    user: str | None = None
 
 
 class PromptTokensDetails(TolerantModel):
