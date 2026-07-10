@@ -57,9 +57,7 @@ def test_max_completion_tokens_negative_raises():
 
 
 def test_max_completion_tokens_none_succeeds():
-    request = ChatRequest(
-        messages=(_message(),), model="gpt-oss-120b", max_completion_tokens=None
-    )
+    request = ChatRequest(messages=(_message(),), model="gpt-oss-120b", max_completion_tokens=None)
 
     assert request.max_completion_tokens is None
 
@@ -77,12 +75,14 @@ def test_empty_messages_raises():
 
 def test_temperature_string_raises_without_coercion():
     with pytest.raises(ValidationError):
-        ChatRequest(messages=(_message(),), model="gpt-oss-120b", temperature="hot")
+        ChatRequest.model_validate(
+            {"messages": (_message(),), "model": "gpt-oss-120b", "temperature": "1.5"}
+        )
 
 
 def test_unknown_field_raises():
     with pytest.raises(ValidationError):
-        ChatRequest(messages=(_message(),), model="gpt-oss-120b", foo=1)
+        ChatRequest.model_validate({"messages": (_message(),), "model": "gpt-oss-120b", "foo": 1})
 
 
 # --- Defaults -------------------------------------------------------------------
@@ -126,16 +126,16 @@ def test_unsupported_model_reasoning_combination_is_not_rejected_locally():
 def test_scalar_stop_serializes_as_string():
     request = ChatRequest(messages=(_message(),), model="custom-model", stop="STOP")
 
-    assert request.model_dump()["stop"] == "STOP"
+    assert request.model_dump(mode="json")["stop"] == "STOP"
 
 
 @pytest.mark.parametrize("stop", [(), ("one",), ("one", "two", "three", "four")])
-def test_stop_sequence_with_at_most_four_items_serializes_as_tuple(
+def test_stop_sequence_with_at_most_four_items_serializes_as_json_array(
     stop: tuple[str, ...],
 ):
     request = ChatRequest(messages=(_message(),), model="custom-model", stop=stop)
 
-    assert request.model_dump()["stop"] == stop
+    assert request.model_dump(mode="json")["stop"] == list(stop)
 
 
 def test_stop_sequence_with_more_than_four_items_raises():
@@ -186,17 +186,21 @@ def test_json_schema_spec_still_frozen_with_populate_by_name():
 
 def test_json_schema_spec_still_forbids_unknown_fields_with_populate_by_name():
     with pytest.raises(ValidationError):
-        JsonSchemaSpec(name="X", json_schema_body={"type": "object"}, foo=1)
+        JsonSchemaSpec.model_validate(
+            {"name": "X", "json_schema_body": {"type": "object"}, "foo": 1}
+        )
 
 
 def test_json_schema_spec_still_strict_with_populate_by_name():
     with pytest.raises(ValidationError):
-        JsonSchemaSpec(name="X", json_schema_body={"type": "object"}, strict="yes")
+        JsonSchemaSpec.model_validate(
+            {"name": "X", "json_schema_body": {"type": "object"}, "strict": "yes"}
+        )
 
 
 def test_json_schema_spec_rejects_non_json_values():
     with pytest.raises(ValidationError):
-        JsonSchemaSpec(name="X", json_schema_body={"default": object()})
+        JsonSchemaSpec.model_validate({"name": "X", "json_schema_body": {"default": object()}})
 
 
 # --- ResponseFormat discriminant -----------------------------------------
@@ -206,7 +210,7 @@ def test_response_format_rejects_json_object_type():
     schema_spec = JsonSchemaSpec(name="X", json_schema_body={"type": "object"})
 
     with pytest.raises(ValidationError):
-        ResponseFormat(type="json_object", json_schema=schema_spec)
+        ResponseFormat.model_validate({"type": "json_object", "json_schema": schema_spec})
 
 
 # --- Full wire body ---------------------------------------------------------------
@@ -360,6 +364,7 @@ def test_null_content_parses_as_none():
 def test_completion_tokens_details_reasoning_tokens_present_populates():
     usage = Usage.model_validate(_usage_dict(completion_tokens_details={"reasoning_tokens": 42}))
 
+    assert usage.completion_tokens_details is not None
     assert usage.completion_tokens_details.reasoning_tokens == 42
 
 
@@ -379,6 +384,7 @@ def test_completion_tokens_details_accepted_and_rejected_prediction_tokens_prese
         )
     )
 
+    assert usage.completion_tokens_details is not None
     assert usage.completion_tokens_details.accepted_prediction_tokens == 3
     assert usage.completion_tokens_details.rejected_prediction_tokens == 1
 
@@ -386,6 +392,7 @@ def test_completion_tokens_details_accepted_and_rejected_prediction_tokens_prese
 def test_completion_tokens_details_accepted_and_rejected_prediction_tokens_absent_are_none():
     usage = Usage.model_validate(_usage_dict(completion_tokens_details={"reasoning_tokens": 42}))
 
+    assert usage.completion_tokens_details is not None
     assert usage.completion_tokens_details.accepted_prediction_tokens is None
     assert usage.completion_tokens_details.rejected_prediction_tokens is None
 
@@ -393,6 +400,7 @@ def test_completion_tokens_details_accepted_and_rejected_prediction_tokens_absen
 def test_prompt_tokens_details_cached_tokens_present_populates():
     usage = Usage.model_validate(_usage_dict(prompt_tokens_details={"cached_tokens": 8}))
 
+    assert usage.prompt_tokens_details is not None
     assert usage.prompt_tokens_details.cached_tokens == 8
 
 
@@ -426,6 +434,8 @@ def test_nested_usage_details_round_trip_via_chat_response_full_parse():
         }
     )
 
+    assert response.usage.completion_tokens_details is not None
+    assert response.usage.prompt_tokens_details is not None
     assert response.usage.completion_tokens_details.reasoning_tokens == 7
     assert response.usage.prompt_tokens_details.cached_tokens == 2
     assert response.usage.image_tokens == 1
@@ -459,6 +469,7 @@ def test_extra_top_level_and_nested_response_fields_are_preserved():
     assert response.choices[0].model_extra == {"logprobs": None}
     assert response.choices[0].message.model_extra == {"refusal": None}
     assert response.usage.model_extra == {"service_tier": "default"}
+    assert response.usage.completion_tokens_details is not None
     assert response.usage.completion_tokens_details.model_extra == {"provider_counter": 8}
 
     dumped = response.model_dump()

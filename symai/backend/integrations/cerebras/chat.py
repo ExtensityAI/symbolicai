@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import Annotated, Literal
 
-from pydantic import ConfigDict, Field, JsonValue
+from pydantic import AliasChoices, ConfigDict, Field, JsonValue
 
 from symai.backend.integrations.base import StrictModel, TolerantModel
 
@@ -20,10 +20,13 @@ class Message(StrictModel):
 
 
 class JsonSchemaSpec(StrictModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(validate_by_alias=True, validate_by_name=True)
 
     name: str
-    json_schema_body: JsonValue = Field(alias="schema")
+    json_schema_body: JsonValue = Field(
+        validation_alias=AliasChoices("json_schema_body", "schema"),
+        serialization_alias="schema",
+    )
     strict: bool = False
 
 

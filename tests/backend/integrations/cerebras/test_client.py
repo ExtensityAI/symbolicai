@@ -65,6 +65,7 @@ def test_empty_api_key_is_rejected():
     with pytest.raises(ValueError, match="api_key"):
         Client(api_key="", http_client=httpx.Client())
 
+
 def test_nonempty_api_key_is_preserved_exactly():
     captured = {}
 
@@ -217,6 +218,7 @@ def test_retry_after_http_date_yields_none_rather_than_a_guess():
 
     assert exc_info.value.retry_after is None
 
+
 @pytest.mark.parametrize(
     "value",
     ["-1", "nan", "inf", "-inf", "not-a-number"],
@@ -254,19 +256,19 @@ def test_client_never_closes_the_httpx_client_it_does_not_own():
 
 
 @pytest.mark.parametrize(
-    ("status_code", "response_kwargs", "error_type"),
+    ("status_code", "body", "error_type"),
     [
-        (500, {"text": "server error"}, APIError),
-        (200, {"text": "not json"}, ResponseError),
+        (500, "server error", APIError),
+        (200, "not json", ResponseError),
     ],
 )
 def test_client_remains_open_after_response_failures(
     status_code: int,
-    response_kwargs: dict[str, str],
+    body: str,
     error_type: type[Exception],
 ):
     def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(status_code, request=request, **response_kwargs)
+        return httpx.Response(status_code, request=request, text=body)
 
     injected = httpx.Client(transport=httpx.MockTransport(handler))
 

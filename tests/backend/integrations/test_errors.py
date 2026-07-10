@@ -2,7 +2,7 @@ import pytest
 
 from symai.backend.integrations import errors as integration_errors
 from symai.backend.integrations import http_errors
-from symai.backend.integrations.cerebras.client import errors as cerebras_errors
+from symai.backend.integrations.cerebras import errors as cerebras_errors
 
 
 def test_universal_lattice_is_free_of_http_semantics():
@@ -44,11 +44,14 @@ def test_shared_except_catches_the_integration_specific_error():
     with pytest.raises(http_errors.APIError):
         raise cerebras_errors.RateLimitError(429, "slow down")
 
+    transport_message = "boom"
+    response_message = "bad"
+
     with pytest.raises(integration_errors.IntegrationError):
-        raise cerebras_errors.TransportError("boom")
+        raise cerebras_errors.TransportError(transport_message)
 
     with pytest.raises(integration_errors.ResponseError):
-        raise cerebras_errors.ResponseError("bad", body="{}")
+        raise cerebras_errors.ResponseError(response_message, body="{}")
 
 
 def test_errors_carry_integration_tag_and_payload():
