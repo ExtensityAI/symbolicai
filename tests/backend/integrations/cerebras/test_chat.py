@@ -6,11 +6,11 @@ from symai.backend.integrations.cerebras.chat import (
     ChatResponse,
     JsonSchemaSpec,
     Message,
+    ReasoningEffort,
     ResponseFormat,
     Role,
     Usage,
 )
-from symai.backend.integrations.cerebras.models import Model, ReasoningEffort
 
 
 def _message() -> Message:
@@ -22,43 +22,43 @@ def _message() -> Message:
 
 def test_temperature_above_upper_bound_raises():
     with pytest.raises(ValidationError):
-        ChatRequest(messages=(_message(),), model=Model.GPT_OSS_120B, temperature=2.1)
+        ChatRequest(messages=(_message(),), model="gpt-oss-120b", temperature=2.1)
 
 
 def test_temperature_below_lower_bound_raises():
     with pytest.raises(ValidationError):
-        ChatRequest(messages=(_message(),), model=Model.GPT_OSS_120B, temperature=-0.1)
+        ChatRequest(messages=(_message(),), model="gpt-oss-120b", temperature=-0.1)
 
 
 def test_temperature_within_bounds_succeeds():
-    request = ChatRequest(messages=(_message(),), model=Model.GPT_OSS_120B, temperature=1.5)
+    request = ChatRequest(messages=(_message(),), model="gpt-oss-120b", temperature=1.5)
 
     assert request.temperature == 1.5
 
 
 def test_top_p_above_upper_bound_raises():
     with pytest.raises(ValidationError):
-        ChatRequest(messages=(_message(),), model=Model.GPT_OSS_120B, top_p=1.1)
+        ChatRequest(messages=(_message(),), model="gpt-oss-120b", top_p=1.1)
 
 
 def test_top_p_below_lower_bound_raises():
     with pytest.raises(ValidationError):
-        ChatRequest(messages=(_message(),), model=Model.GPT_OSS_120B, top_p=-0.1)
+        ChatRequest(messages=(_message(),), model="gpt-oss-120b", top_p=-0.1)
 
 
 def test_max_completion_tokens_zero_raises():
     with pytest.raises(ValidationError):
-        ChatRequest(messages=(_message(),), model=Model.GPT_OSS_120B, max_completion_tokens=0)
+        ChatRequest(messages=(_message(),), model="gpt-oss-120b", max_completion_tokens=0)
 
 
 def test_max_completion_tokens_negative_raises():
     with pytest.raises(ValidationError):
-        ChatRequest(messages=(_message(),), model=Model.GPT_OSS_120B, max_completion_tokens=-5)
+        ChatRequest(messages=(_message(),), model="gpt-oss-120b", max_completion_tokens=-5)
 
 
 def test_max_completion_tokens_none_succeeds():
     request = ChatRequest(
-        messages=(_message(),), model=Model.GPT_OSS_120B, max_completion_tokens=None
+        messages=(_message(),), model="gpt-oss-120b", max_completion_tokens=None
     )
 
     assert request.max_completion_tokens is None
@@ -69,7 +69,7 @@ def test_max_completion_tokens_none_succeeds():
 
 def test_empty_messages_raises():
     with pytest.raises(ValidationError):
-        ChatRequest(messages=(), model=Model.GPT_OSS_120B)
+        ChatRequest(messages=(), model="gpt-oss-120b")
 
 
 # --- Strict + forbid ----------------------------------------------------------
@@ -77,19 +77,19 @@ def test_empty_messages_raises():
 
 def test_temperature_string_raises_without_coercion():
     with pytest.raises(ValidationError):
-        ChatRequest(messages=(_message(),), model=Model.GPT_OSS_120B, temperature="hot")
+        ChatRequest(messages=(_message(),), model="gpt-oss-120b", temperature="hot")
 
 
 def test_unknown_field_raises():
     with pytest.raises(ValidationError):
-        ChatRequest(messages=(_message(),), model=Model.GPT_OSS_120B, foo=1)
+        ChatRequest(messages=(_message(),), model="gpt-oss-120b", foo=1)
 
 
 # --- Defaults -------------------------------------------------------------------
 
 
 def test_minimal_chat_request_defaults():
-    request = ChatRequest(messages=(_message(),), model=Model.GPT_OSS_120B)
+    request = ChatRequest(messages=(_message(),), model="gpt-oss-120b")
 
     assert request.temperature == 1
     assert request.top_p == 1
@@ -100,36 +100,51 @@ def test_minimal_chat_request_defaults():
     assert request.response_format is None
 
 
-# --- Reasoning-effort/model cross-check ------------------------------------------
+# --- Open model IDs and server-owned reasoning capabilities -----------------------
 
 
-def test_reasoning_effort_high_on_gpt_oss_succeeds():
+def test_arbitrary_model_id_serializes_unchanged():
+    model = "dedicated/acme-deployment-2026-07-10"
+    request = ChatRequest(messages=(_message(),), model=model)
+
+    assert request.model_dump()["model"] == model
+
+
+def test_unsupported_model_reasoning_combination_is_not_rejected_locally():
     request = ChatRequest(
         messages=(_message(),),
-        model=Model.GPT_OSS_120B,
-        reasoning_effort=ReasoningEffort.HIGH,
-    )
-
-    assert request.reasoning_effort == ReasoningEffort.HIGH
-
-
-def test_reasoning_effort_none_on_gpt_oss_raises():
-    with pytest.raises(ValidationError):
-        ChatRequest(
-            messages=(_message(),),
-            model=Model.GPT_OSS_120B,
-            reasoning_effort=ReasoningEffort.NONE,
-        )
-
-
-def test_reasoning_effort_none_on_zai_glm_succeeds():
-    request = ChatRequest(
-        messages=(_message(),),
-        model=Model.ZAI_GLM_4_7,
+        model="gpt-oss-120b",
         reasoning_effort=ReasoningEffort.NONE,
     )
 
     assert request.reasoning_effort == ReasoningEffort.NONE
+
+
+# --- Stop ------------------------------------------------------------------------
+
+
+def test_scalar_stop_serializes_as_string():
+    request = ChatRequest(messages=(_message(),), model="custom-model", stop="STOP")
+
+    assert request.model_dump()["stop"] == "STOP"
+
+
+@pytest.mark.parametrize("stop", [(), ("one",), ("one", "two", "three", "four")])
+def test_stop_sequence_with_at_most_four_items_serializes_as_tuple(
+    stop: tuple[str, ...],
+):
+    request = ChatRequest(messages=(_message(),), model="custom-model", stop=stop)
+
+    assert request.model_dump()["stop"] == stop
+
+
+def test_stop_sequence_with_more_than_four_items_raises():
+    with pytest.raises(ValidationError):
+        ChatRequest(
+            messages=(_message(),),
+            model="custom-model",
+            stop=("one", "two", "three", "four", "five"),
+        )
 
 
 # --- JsonSchemaSpec alias --------------------------------------------------------
@@ -148,10 +163,10 @@ def test_json_schema_spec_missing_name_raises():
         JsonSchemaSpec.model_validate({"schema": {"type": "object"}})
 
 
-def test_json_schema_spec_strict_defaults_to_true():
+def test_json_schema_spec_strict_defaults_to_false():
     spec = JsonSchemaSpec.model_validate({"name": "X", "schema": {"type": "object"}})
 
-    assert spec.strict is True
+    assert spec.strict is False
 
 
 def test_json_schema_spec_dump_by_alias_re_emits_schema_key():
@@ -179,6 +194,11 @@ def test_json_schema_spec_still_strict_with_populate_by_name():
         JsonSchemaSpec(name="X", json_schema_body={"type": "object"}, strict="yes")
 
 
+def test_json_schema_spec_rejects_non_json_values():
+    with pytest.raises(ValidationError):
+        JsonSchemaSpec(name="X", json_schema_body={"default": object()})
+
+
 # --- ResponseFormat discriminant -----------------------------------------
 
 
@@ -197,7 +217,7 @@ def test_full_chat_request_wire_body():
     response_format = ResponseFormat(type="json_schema", json_schema=schema_spec)
     request = ChatRequest(
         messages=(Message(role=Role.SYSTEM, content="sys"), Message(role=Role.USER, content="hi")),
-        model=Model.ZAI_GLM_4_7,
+        model="zai-glm-4.7",
         temperature=0.5,
         top_p=0.9,
         max_completion_tokens=100,
@@ -244,7 +264,7 @@ def test_full_chat_request_wire_body():
 def test_partial_chat_request_omits_unset_optionals():
     request = ChatRequest(
         messages=(_message(),),
-        model=Model.GPT_OSS_120B,
+        model="gpt-oss-120b",
         temperature=0.5,
     )
 
@@ -411,25 +431,42 @@ def test_nested_usage_details_round_trip_via_chat_response_full_parse():
     assert response.usage.image_tokens == 1
 
 
-# --- Tolerance (extra=ignore) ----------------------------------------------------
+# --- Tolerance (extra=allow) -----------------------------------------------------
 
 
-def test_extra_top_level_and_choice_keys_are_ignored():
+def test_extra_top_level_and_nested_response_fields_are_preserved():
     response = ChatResponse.model_validate(
         {
             "id": "chatcmpl-123",
             "model": "gpt-oss-120b",
-            "created": 1700000000,
-            "object": "chat.completion",
-            "choices": [_choice_dict(logprobs=None)],
-            "usage": _usage_dict(),
+            "choices": [
+                _choice_dict(
+                    logprobs=None,
+                    message={"role": "assistant", "content": "hello", "refusal": None},
+                )
+            ],
+            "usage": _usage_dict(
+                service_tier="default",
+                completion_tokens_details={
+                    "reasoning_tokens": 7,
+                    "provider_counter": 8,
+                },
+            ),
         }
     )
 
-    assert response.model_dump().keys() == {"choices", "usage"}
-    assert "logprobs" not in response.choices[0].model_dump()
-    assert "id" not in response.model_dump()
-    assert "model" not in response.model_dump()
+    assert response.model_extra == {"id": "chatcmpl-123", "model": "gpt-oss-120b"}
+    assert response.choices[0].model_extra == {"logprobs": None}
+    assert response.choices[0].message.model_extra == {"refusal": None}
+    assert response.usage.model_extra == {"service_tier": "default"}
+    assert response.usage.completion_tokens_details.model_extra == {"provider_counter": 8}
+
+    dumped = response.model_dump()
+    assert dumped["id"] == "chatcmpl-123"
+    assert dumped["choices"][0]["logprobs"] is None
+    assert dumped["choices"][0]["message"]["refusal"] is None
+    assert dumped["usage"]["service_tier"] == "default"
+    assert dumped["usage"]["completion_tokens_details"]["provider_counter"] == 8
 
 
 # --- Required-field validation ---------------------------------------------------

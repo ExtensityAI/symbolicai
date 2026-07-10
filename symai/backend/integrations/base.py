@@ -6,4 +6,4 @@ class StrictModel(BaseModel):
 
 
 class TolerantModel(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="ignore")
+    model_config = ConfigDict(frozen=True, extra="allow")

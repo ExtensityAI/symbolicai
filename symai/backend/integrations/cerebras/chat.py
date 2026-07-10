@@ -1,14 +1,9 @@
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Annotated, Literal
 
-from pydantic import ConfigDict, Field, model_validator
+from pydantic import ConfigDict, Field, JsonValue
 
 from symai.backend.integrations.base import StrictModel, TolerantModel
-from symai.backend.integrations.cerebras.models import (
-    MODEL_SPECS,
-    Model,
-    ReasoningEffort,
-)
 
 PATH = "/chat/completions"
 
@@ -28,8 +23,8 @@ class JsonSchemaSpec(StrictModel):
     model_config = ConfigDict(populate_by_name=True)
 
     name: str
-    json_schema_body: dict[str, Any] = Field(alias="schema")
-    strict: bool = True
+    json_schema_body: JsonValue = Field(alias="schema")
+    strict: bool = False
 
 
 class ResponseFormat(StrictModel):
@@ -37,39 +32,23 @@ class ResponseFormat(StrictModel):
     json_schema: JsonSchemaSpec
 
 
+class ReasoningEffort(StrEnum):
+    NONE = "none"
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
 class ChatRequest(StrictModel):
     messages: tuple[Message, ...] = Field(min_length=1)
-    model: Model
+    model: str
     temperature: float = Field(default=1.0, ge=0, le=2)
     top_p: float = Field(default=1.0, ge=0, le=1)
     max_completion_tokens: int | None = Field(default=None, gt=0)
     seed: int | None = None
-    stop: tuple[str, ...] | None = None
+    stop: str | Annotated[tuple[str, ...], Field(max_length=4)] | None = None
     reasoning_effort: ReasoningEffort | None = None
     response_format: ResponseFormat | None = None
-
-    @model_validator(mode="after")
-    def _check_reasoning_effort_supported(self):
-        if self.reasoning_effort is None:
-            return self
-
-        spec = MODEL_SPECS.get(self.model)
-
-        if spec is None:
-            msg = f"model {self.model!r} has no registered spec"
-            raise ValueError(msg)
-
-        if spec.reasoning is None:
-            msg = f"model {self.model!r} does not support reasoning"
-            raise ValueError(msg)
-
-        if self.reasoning_effort not in spec.reasoning.efforts:
-            msg = (
-                f"model {self.model!r} does not support reasoning_effort={self.reasoning_effort!r}"
-            )
-            raise ValueError(msg)
-
-        return self
 
 
 class PromptTokensDetails(TolerantModel):
