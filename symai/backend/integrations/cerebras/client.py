@@ -10,7 +10,6 @@ REQUEST_ID_HEADER = "x-request-id"
 RETRY_AFTER_HEADER = "retry-after"
 
 
-
 def _retry_after(response: httpx.Response) -> float | None:
     """The API's own retry instruction, in seconds, when it sends one.
 
