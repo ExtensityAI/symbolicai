@@ -108,15 +108,27 @@ def test_transport_error_defaults_to_no_metadata():
     assert error.metadata is None
 
 
+def test_transport_error_rejects_response_metadata():
+    with pytest.raises(TypeError):
+        cerebras_errors.TransportError(
+            "network failure",
+            metadata=_metadata(),  # pyright: ignore[reportCallIssue]
+        )
+
+
 def test_error_compatibility_properties_are_read_only():
     error = cerebras_errors.RateLimitError(
         _metadata(status_code=429, retry_after=1.0),
         "slow",
     )
 
+    status_code_field = "status_code"
+    request_id_field = "request_id"
+    retry_after_field = "retry_after"
+
     with pytest.raises(AttributeError):
-        setattr(error, "status_code", 500)
+        setattr(error, status_code_field, 500)
     with pytest.raises(AttributeError):
-        setattr(error, "request_id", "other")
+        setattr(error, request_id_field, "other")
     with pytest.raises(AttributeError):
-        setattr(error, "retry_after", 3.0)
+        setattr(error, retry_after_field, 3.0)

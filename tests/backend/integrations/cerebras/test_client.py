@@ -1,4 +1,5 @@
 import json
+from collections.abc import Callable
 
 import httpx
 import pytest
@@ -7,10 +8,8 @@ from pydantic import ValidationError
 from symai.backend.integrations.cerebras.chat import (
     ChatRequest,
     ChatResponse,
-    JsonSchemaSpec,
-    Message,
-    ResponseFormat,
-    Role,
+    ReasoningFormat,
+    UserMessage,
 )
 from symai.backend.integrations.cerebras.client import Client
 from symai.backend.integrations.cerebras.errors import (
@@ -20,45 +19,54 @@ from symai.backend.integrations.cerebras.errors import (
     ResponseError,
     TransportError,
 )
+from symai.backend.integrations.cerebras.response import Response
+
+RATE_LIMIT_HEADERS = {
+    "x-ratelimit-limit-requests-day": "100",
+    "x-ratelimit-limit-tokens-minute": "1000",
+    "x-ratelimit-remaining-requests-day": "99",
+    "x-ratelimit-remaining-tokens-minute": "900",
+    "x-ratelimit-reset-requests-day": "30.5",
+    "x-ratelimit-reset-tokens-minute": "5.5",
+}
 
 
 def _chat_request() -> ChatRequest:
-    schema_spec = JsonSchemaSpec(name="Answer", json_schema_body={"type": "object"})
-    response_format = ResponseFormat(type="json_schema", json_schema=schema_spec)
     return ChatRequest(
-        messages=(Message(role=Role.USER, content="hi"),),
         model="gpt-oss-120b",
-        response_format=response_format,
+        messages=(UserMessage(role="user", content="hi"),),
+        reasoning_format=ReasoningFormat.PARSED,
     )
 
 
-def _completion_json() -> dict:
+def _completion_json() -> dict[str, object]:
     return {
+        "id": "chatcmpl-123",
         "choices": [
             {
                 "index": 0,
-                "message": {"role": "assistant", "content": "hello there"},
+                "message": {
+                    "role": "assistant",
+                    "content": "hello there",
+                    "reasoning": "thinking",
+                },
                 "finish_reason": "stop",
             }
         ],
-        "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
+        "model": "gpt-oss-120b",
+        "usage": {
+            "prompt_tokens": 10,
+            "completion_tokens": 5,
+            "total_tokens": 15,
+        },
     }
 
 
-def _client(handler) -> Client:
+def _client(handler: Callable[[httpx.Request], httpx.Response]) -> Client:
     return Client(
-        api_key="test-key", http_client=httpx.Client(transport=httpx.MockTransport(handler))
+        api_key="test-key",
+        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
     )
-
-
-def _client_with_response(status_code: int, **response_kwargs) -> Client:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(status_code, request=request, **response_kwargs)
-
-    return _client(handler)
-
-
-# --- construction ---------------------------------------------------------------
 
 
 def test_empty_api_key_is_rejected():
@@ -67,103 +75,257 @@ def test_empty_api_key_is_rejected():
 
 
 def test_nonempty_api_key_is_preserved_exactly():
-    captured = {}
+    captured: dict[str, object] = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
         captured["authorization"] = request.headers["authorization"]
         return httpx.Response(200, json=_completion_json(), request=request)
 
     injected = httpx.Client(transport=httpx.MockTransport(handler))
-
     Client(api_key=" test-key ", http_client=injected).chat(_chat_request())
 
     assert captured["authorization"] == "Bearer  test-key "
 
 
-# --- chat() happy path ----------------------------------------------------------
-
-
-def test_chat_posts_to_the_completions_path_and_parses_the_response():
-    captured = {}
+def test_chat_posts_exact_body_and_returns_complete_metadata():
+    captured: dict[str, object] = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
         captured["method"] = request.method
         captured["url"] = str(request.url)
         captured["authorization"] = request.headers["authorization"]
-        captured["body"] = json.loads(request.content.decode("utf-8"))
-        return httpx.Response(200, json=_completion_json(), request=request)
-
-    response = _client(handler).chat(_chat_request())
-
-    assert captured["method"] == "POST"
-    assert captured["url"] == "https://api.cerebras.ai/v1/chat/completions"
-    assert captured["authorization"] == "Bearer test-key"
-    assert captured["body"] == {
-        "messages": [{"role": "user", "content": "hi"}],
-        "model": "gpt-oss-120b",
-        "temperature": 1.0,
-        "top_p": 1.0,
-        "response_format": {
-            "type": "json_schema",
-            "json_schema": {
-                "name": "Answer",
-                "schema": {"type": "object"},
-                "strict": False,
+        captured["body"] = json.loads(request.content)
+        return httpx.Response(
+            201,
+            json=_completion_json(),
+            headers={
+                "x-request-id": "req-1",
+                "retry-after": "2.5",
+                **RATE_LIMIT_HEADERS,
             },
+            request=request,
+        )
+
+    result = _client(handler).chat(_chat_request())
+
+    assert captured == {
+        "method": "POST",
+        "url": "https://api.cerebras.ai/v1/chat/completions",
+        "authorization": "Bearer test-key",
+        "body": {
+            "messages": [{"role": "user", "content": "hi"}],
+            "model": "gpt-oss-120b",
+            "reasoning_format": "parsed",
         },
     }
-
-    assert isinstance(response, ChatResponse)
-    assert response.choices[0].message.content == "hello there"
-    assert response.usage.total_tokens == 15
-
-
-# --- status/body -> typed error mapping -----------------------------------------
-
-
-def test_error_401_raises_auth_error():
-    with pytest.raises(AuthError):
-        _client_with_response(401, text="invalid api key").chat(_chat_request())
-
-
-def test_error_429_raises_rate_limit_error():
-    with pytest.raises(RateLimitError):
-        _client_with_response(429, text="rate limited").chat(_chat_request())
+    assert isinstance(result, Response)
+    assert isinstance(result.data, ChatResponse)
+    assert result.data.id == "chatcmpl-123"
+    assert result.metadata.status_code == 201
+    assert result.metadata.request_id == "req-1"
+    assert result.metadata.retry_after == 2.5
+    assert result.metadata.rate_limit.limit_requests_day == 100
+    assert result.metadata.rate_limit.limit_tokens_minute == 1000
+    assert result.metadata.rate_limit.remaining_requests_day == 99
+    assert result.metadata.rate_limit.remaining_tokens_minute == 900
+    assert result.metadata.rate_limit.reset_requests_day == 30.5
+    assert result.metadata.rate_limit.reset_tokens_minute == 5.5
 
 
-def test_error_500_raises_api_error_with_status_and_body():
-    body_text = "internal server error"
+def test_missing_optional_metadata_is_none():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=_completion_json(), request=request)
+
+    metadata = _client(handler).chat(_chat_request()).metadata
+
+    assert metadata.request_id is None
+    assert metadata.retry_after is None
+    assert metadata.rate_limit.limit_requests_day is None
+    assert metadata.rate_limit.reset_tokens_minute is None
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["", "invalid", "-1", "nan", "inf", "-inf", "1_0"],
+)
+def test_invalid_numeric_metadata_becomes_none(value: str):
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json=_completion_json(),
+            headers={
+                "retry-after": value,
+                "x-ratelimit-limit-requests-day": value,
+                "x-ratelimit-reset-tokens-minute": value,
+            },
+            request=request,
+        )
+
+    metadata = _client(handler).chat(_chat_request()).metadata
+
+    assert metadata.retry_after is None
+    assert metadata.rate_limit.limit_requests_day is None
+    assert metadata.rate_limit.reset_tokens_minute is None
+
+
+def test_zero_retry_after_is_preserved():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            429,
+            text="slow",
+            headers={"retry-after": "0"},
+            request=request,
+        )
+
+    with pytest.raises(RateLimitError) as exc_info:
+        _client(handler).chat(_chat_request())
+
+    assert exc_info.value.retry_after == 0.0
+
+
+def test_retry_after_http_date_is_not_guessed():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            429,
+            text="slow",
+            headers={"retry-after": "Wed, 21 Oct 2026 07:28:00 GMT"},
+            request=request,
+        )
+
+    with pytest.raises(RateLimitError) as exc_info:
+        _client(handler).chat(_chat_request())
+
+    assert exc_info.value.retry_after is None
+
+
+@pytest.mark.parametrize(
+    ("status_code", "error_type"),
+    [(401, AuthError), (429, RateLimitError), (500, APIError)],
+)
+def test_http_statuses_map_to_typed_errors(
+    status_code: int,
+    error_type: type[APIError],
+):
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(status_code, text="failure", request=request)
+
+    with pytest.raises(error_type):
+        _client(handler).chat(_chat_request())
+
+
+def test_http_error_retains_complete_metadata_and_exact_body():
+    body = "server error"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            500,
+            text=body,
+            headers={"x-request-id": "req-500", **RATE_LIMIT_HEADERS},
+            request=request,
+        )
 
     with pytest.raises(APIError) as exc_info:
-        _client_with_response(500, text=body_text).chat(_chat_request())
+        _client(handler).chat(_chat_request())
 
-    assert exc_info.value.status_code == 500
-    assert exc_info.value.body == body_text
+    error = exc_info.value
+    assert error.body == body
+    assert error.status_code == 500
+    assert error.request_id == "req-500"
+    assert error.metadata.rate_limit.remaining_tokens_minute == 900
 
 
-def test_error_malformed_response_raises_response_error():
-    payload = _completion_json()
-    del payload["usage"]
-    body_text = json.dumps(payload)
+def test_invalid_json_retains_exact_decode_cause(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    body = "not json"
+    decode_error = json.JSONDecodeError("invalid", body, 0)
+
+    def fail_json(**_kwargs: object) -> object:
+        raise decode_error
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        response = httpx.Response(
+            200,
+            text=body,
+            headers={"x-request-id": "req-json"},
+            request=request,
+        )
+        monkeypatch.setattr(response, "json", fail_json)
+        return response
 
     with pytest.raises(ResponseError) as exc_info:
-        _client_with_response(200, content=body_text).chat(_chat_request())
+        _client(handler).chat(_chat_request())
 
-    assert exc_info.value.body == body_text
-    assert isinstance(exc_info.value.__cause__, ValidationError)
+    error = exc_info.value
+    assert error.body == body
+    assert error.metadata.request_id == "req-json"
+    assert error.__cause__ is decode_error
 
 
-def test_error_invalid_json_response_raises_response_error():
-    body_text = "not json at all"
+def test_invalid_json_encoding_retains_exact_decode_cause(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    body = "invalid encoding"
+    decode_error = UnicodeDecodeError("utf-8", b"\xff", 0, 1, body)
+
+    def fail_json(**_kwargs: object) -> object:
+        raise decode_error
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        response = httpx.Response(200, text=body, request=request)
+        monkeypatch.setattr(response, "json", fail_json)
+        return response
 
     with pytest.raises(ResponseError) as exc_info:
-        _client_with_response(200, content=body_text).chat(_chat_request())
+        _client(handler).chat(_chat_request())
 
-    assert exc_info.value.body == body_text
-    assert isinstance(exc_info.value.__cause__, json.JSONDecodeError)
+    assert exc_info.value.__cause__ is decode_error
 
 
-def test_connection_failure_raises_transport_error_with_exact_cause():
+def test_schema_invalid_success_retains_exact_validation_cause(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    with pytest.raises(ValidationError) as source:
+        ChatResponse.model_validate([])
+    validation_error = source.value
+
+    def fail_validation(_payload: object) -> ChatResponse:
+        raise validation_error
+
+    monkeypatch.setattr(ChatResponse, "model_validate", fail_validation)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={},
+            headers={"x-request-id": "req-schema"},
+            request=request,
+        )
+
+    with pytest.raises(ResponseError) as exc_info:
+        _client(handler).chat(_chat_request())
+
+    assert exc_info.value.metadata.request_id == "req-schema"
+    assert exc_info.value.__cause__ is validation_error
+
+
+def test_empty_success_body_is_a_response_error_with_metadata():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            204,
+            headers={"x-request-id": "req-empty"},
+            request=request,
+        )
+
+    with pytest.raises(ResponseError) as exc_info:
+        _client(handler).chat(_chat_request())
+
+    assert exc_info.value.metadata.status_code == 204
+    assert exc_info.value.metadata.request_id == "req-empty"
+    assert exc_info.value.body == ""
+
+
+def test_transport_failure_retains_exact_cause_and_no_metadata():
     message = "connection refused"
     transport_error = httpx.ConnectError(message)
 
@@ -175,118 +337,53 @@ def test_connection_failure_raises_transport_error_with_exact_cause():
         _client(handler).chat(_chat_request())
 
     assert exc_info.value.__cause__ is transport_error
-
-
-# --- API-instruction headers ------------------------------------------------------
-
-
-def test_error_surfaces_request_id_header():
-    client = _client_with_response(500, text="boom", headers={"x-request-id": "req-abc"})
-
-    with pytest.raises(APIError) as exc_info:
-        client.chat(_chat_request())
-
-    assert exc_info.value.request_id == "req-abc"
-
-
-def test_rate_limit_surfaces_retry_after_seconds():
-    client = _client_with_response(
-        429, text="slow", headers={"retry-after": "3", "x-request-id": "req-xyz"}
-    )
-
-    with pytest.raises(RateLimitError) as exc_info:
-        client.chat(_chat_request())
-
-    assert exc_info.value.retry_after == 3.0
-    assert exc_info.value.request_id == "req-xyz"
-
-
-def test_rate_limit_without_retry_after_header_is_none():
-    with pytest.raises(RateLimitError) as exc_info:
-        _client_with_response(429, text="slow").chat(_chat_request())
-
-    assert exc_info.value.retry_after is None
-
-
-def test_retry_after_http_date_yields_none_rather_than_a_guess():
-    client = _client_with_response(
-        429, text="slow", headers={"retry-after": "Wed, 21 Oct 2026 07:28:00 GMT"}
-    )
-
-    with pytest.raises(RateLimitError) as exc_info:
-        client.chat(_chat_request())
-
-    assert exc_info.value.retry_after is None
+    assert exc_info.value.metadata is None
 
 
 @pytest.mark.parametrize(
-    "value",
-    ["-1", "nan", "inf", "-inf", "not-a-number"],
-)
-def test_invalid_retry_after_seconds_yield_none(value: str):
-    client = _client_with_response(429, text="slow", headers={"retry-after": value})
-
-    with pytest.raises(RateLimitError) as exc_info:
-        client.chat(_chat_request())
-
-    assert exc_info.value.retry_after is None
-
-
-def test_zero_retry_after_seconds_is_preserved():
-    client = _client_with_response(429, text="slow", headers={"retry-after": "0"})
-
-    with pytest.raises(RateLimitError) as exc_info:
-        client.chat(_chat_request())
-
-    assert exc_info.value.retry_after == 0.0
-
-
-# --- transport ownership ----------------------------------------------------------
-
-
-def test_client_never_closes_the_httpx_client_it_does_not_own():
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json=_completion_json(), request=request)
-
-    injected = httpx.Client(transport=httpx.MockTransport(handler))
-
-    Client(api_key="test-key", http_client=injected).chat(_chat_request())
-
-    assert injected.is_closed is False
-
-
-@pytest.mark.parametrize(
-    ("status_code", "body", "error_type"),
+    ("case", "error_type"),
     [
-        (500, "server error", APIError),
-        (200, "not json", ResponseError),
+        ("success", None),
+        ("auth", AuthError),
+        ("rate_limit", RateLimitError),
+        ("api", APIError),
+        ("invalid_json", ResponseError),
+        ("invalid_schema", ResponseError),
+        ("transport", TransportError),
     ],
 )
-def test_client_remains_open_after_response_failures(
-    status_code: int,
-    body: str,
-    error_type: type[Exception],
+def test_client_remains_open_and_never_retries(
+    case: str,
+    error_type: type[Exception] | None,
 ):
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(status_code, request=request, text=body)
-
-    injected = httpx.Client(transport=httpx.MockTransport(handler))
-
-    with pytest.raises(error_type):
-        Client(api_key="test-key", http_client=injected).chat(_chat_request())
-
-    assert injected.is_closed is False
-
-
-def test_client_remains_open_after_transport_failure():
-    message = "connection refused"
+    attempts = 0
 
     def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        if case == "success":
+            return httpx.Response(200, json=_completion_json(), request=request)
+        if case == "auth":
+            return httpx.Response(401, text="auth", request=request)
+        if case == "rate_limit":
+            return httpx.Response(429, text="slow", request=request)
+        if case == "api":
+            return httpx.Response(500, text="server", request=request)
+        if case == "invalid_json":
+            return httpx.Response(200, text="not json", request=request)
+        if case == "invalid_schema":
+            return httpx.Response(200, json=[], request=request)
+        message = "connection refused"
         raise httpx.ConnectError(message, request=request)
 
     injected = httpx.Client(transport=httpx.MockTransport(handler))
+    client = Client(api_key="test-key", http_client=injected)
 
-    with pytest.raises(TransportError):
-        Client(api_key="test-key", http_client=injected).chat(_chat_request())
+    if error_type is None:
+        client.chat(_chat_request())
+    else:
+        with pytest.raises(error_type):
+            client.chat(_chat_request())
 
+    assert attempts == 1
     assert injected.is_closed is False

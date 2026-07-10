@@ -65,11 +65,6 @@ class ResponseError(integration_errors.ResponseError, Error):
 class TransportError(integration_errors.TransportError, Error):
     """Raised when the request fails before a valid HTTP response is received."""
 
-    def __init__(
-        self,
-        message: str,
-        *,
-        metadata: ResponseMetadata | None = None,
-    ) -> None:
-        self.metadata = metadata
+    def __init__(self, message: str) -> None:
+        self.metadata: None = None
         super().__init__(message)

@@ -132,9 +132,7 @@ def test_complete_declared_request_serializes_with_aliases():
     assert dumped["top_logprobs"] == 20
     assert dumped["top_p"] == 1
     assert dumped["user"] == "user-1"
-    assert dumped["response_format"]["json_schema"]["schema"] == {
-        "type": "object"
-    }
+    assert dumped["response_format"]["json_schema"]["schema"] == {"type": "object"}
     assert "json_schema_body" not in dumped["response_format"]["json_schema"]
 
 
@@ -150,26 +148,21 @@ def test_complete_declared_request_serializes_with_aliases():
     ],
 )
 def test_response_format_variants_round_trip(
-    response_format: (
-        TextResponseFormat
-        | JsonObjectResponseFormat
-        | JsonSchemaResponseFormat
-    ),
+    response_format: (TextResponseFormat | JsonObjectResponseFormat | JsonSchemaResponseFormat),
 ):
     request = ChatRequest(
         model="gpt-oss-120b",
         messages=(_user_message(),),
         response_format=response_format,
     )
-    assert request.model_dump(mode="json", by_alias=True)["response_format"][
-        "type"
-    ] == response_format.type
+    assert (
+        request.model_dump(mode="json", by_alias=True)["response_format"]["type"]
+        == response_format.type
+    )
 
 
 def test_json_schema_defaults_and_aliases():
-    from_wire = JsonSchemaSpec.model_validate(
-        {"name": "Answer", "schema": {"type": "object"}}
-    )
+    from_wire = JsonSchemaSpec.model_validate({"name": "Answer", "schema": {"type": "object"}})
     from_python = JsonSchemaSpec(
         name="Answer",
         json_schema_body={"type": "object"},
@@ -196,8 +189,9 @@ def test_json_schema_model_remains_strict_frozen_and_extra_forbidden():
         JsonSchemaSpec.model_validate({"name": "Answer", "strict": "yes"})
     with pytest.raises(ValidationError):
         JsonSchemaSpec.model_validate({"name": "Answer", "future": True})
+    field = "name"
     with pytest.raises(ValidationError):
-        setattr(spec, "name", "Other")
+        setattr(spec, field, "Other")
 
 
 def test_unset_request_options_are_omitted():
@@ -331,6 +325,24 @@ def test_non_json_unknown_request_extra_is_rejected():
         )
 
 
+@pytest.mark.parametrize("value", [math.nan, math.inf, -math.inf, {"nested": [math.nan]}])
+def test_nonfinite_unknown_request_extra_is_rejected(value):
+    with pytest.raises(ValidationError):
+        ChatRequest.model_validate(
+            {
+                "model": "gpt-oss-120b",
+                "messages": (_user_message(),),
+                "future_option": value,
+            }
+        )
+
+
+@pytest.mark.parametrize("value", [math.nan, math.inf, -math.inf, {"nested": [math.nan]}])
+def test_nonfinite_json_schema_value_is_rejected(value):
+    with pytest.raises(ValidationError):
+        JsonSchemaSpec(name="Answer", json_schema_body=value)
+
+
 @pytest.mark.parametrize("value", [math.nan, math.inf, -math.inf, -100.1, 100.1])
 def test_invalid_logit_bias_is_rejected(value: float):
     with pytest.raises(ValidationError):
@@ -371,8 +383,10 @@ def test_full_completion_parses_expected_fields():
     assert isinstance(response.choices, tuple)
     assert len(response.choices) == 1
     choice = response.choices[0]
+    assert choice.message is not None
     assert choice.message.content == "hello"
     assert choice.finish_reason == "stop"
+    assert response.usage is not None
     assert response.usage.prompt_tokens == 10
     assert response.usage.completion_tokens == 5
     assert response.usage.total_tokens == 15
@@ -391,6 +405,8 @@ def test_reasoning_field_present_populates():
         }
     )
 
+    assert response.choices is not None
+    assert response.choices[0].message is not None
     assert response.choices[0].message.reasoning == "because"
 
 
@@ -402,6 +418,8 @@ def test_reasoning_field_absent_is_none():
         }
     )
 
+    assert response.choices is not None
+    assert response.choices[0].message is not None
     assert response.choices[0].message.reasoning is None
 
 
@@ -416,6 +434,8 @@ def test_null_content_parses_as_none():
         }
     )
 
+    assert response.choices is not None
+    assert response.choices[0].message is not None
     assert response.choices[0].message.content is None
 
 
@@ -495,6 +515,7 @@ def test_nested_usage_details_round_trip_via_chat_response_full_parse():
         }
     )
 
+    assert response.usage is not None
     assert response.usage.completion_tokens_details is not None
     assert response.usage.prompt_tokens_details is not None
     assert response.usage.completion_tokens_details.reasoning_tokens == 7
@@ -513,12 +534,8 @@ def test_complete_non_tool_response_fields_parse():
                 {
                     "finish_reason": "stop",
                     "index": 0,
-                    "logprobs": {
-                        "content": [{"token": "A", "logprob": -0.1}]
-                    },
-                    "reasoning_logprobs": {
-                        "content": [{"token": "Think", "logprob": -0.2}]
-                    },
+                    "logprobs": {"content": [{"token": "A", "logprob": -0.1}]},
+                    "reasoning_logprobs": {"content": [{"token": "Think", "logprob": -0.2}]},
                     "message": {
                         "role": "assistant",
                         "content": "answer",
@@ -621,9 +638,7 @@ def test_unknown_response_fields_survive_at_every_modeled_level():
     assert response.usage is not None
     assert response.usage.model_extra == {"future_usage": 4}
     assert response.usage.completion_tokens_details is not None
-    assert response.usage.completion_tokens_details.model_extra == {
-        "future_detail": 5
-    }
+    assert response.usage.completion_tokens_details.model_extra == {"future_detail": 5}
     assert response.time_info is not None
     assert response.time_info.model_extra == {"future_time": 6}
 
