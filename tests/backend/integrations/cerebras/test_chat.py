@@ -502,48 +502,132 @@ def test_nested_usage_details_round_trip_via_chat_response_full_parse():
     assert response.usage.image_tokens == 1
 
 
-# --- Tolerance (extra=allow) -----------------------------------------------------
+# --- Complete tolerant response contract -----------------------------------------
 
 
-def test_extra_top_level_and_nested_response_fields_are_preserved():
+def test_complete_non_tool_response_fields_parse():
     response = ChatResponse.model_validate(
         {
             "id": "chatcmpl-123",
-            "model": "gpt-oss-120b",
             "choices": [
-                _choice_dict(
-                    logprobs=None,
-                    message={"role": "assistant", "content": "hello", "refusal": None},
-                )
+                {
+                    "finish_reason": "stop",
+                    "index": 0,
+                    "logprobs": {
+                        "content": [{"token": "A", "logprob": -0.1}]
+                    },
+                    "reasoning_logprobs": {
+                        "content": [{"token": "Think", "logprob": -0.2}]
+                    },
+                    "message": {
+                        "role": "assistant",
+                        "content": "answer",
+                        "reasoning": "reasoning",
+                    },
+                }
             ],
-            "usage": _usage_dict(
-                service_tier="default",
-                completion_tokens_details={
-                    "reasoning_tokens": 7,
-                    "provider_counter": 8,
+            "created": 1_700_000_000,
+            "model": "gpt-oss-120b",
+            "object": "chat.completion",
+            "system_fingerprint": "fp-123",
+            "service_tier": "auto",
+            "service_tier_used": "priority",
+            "usage": {
+                "prompt_tokens": 10,
+                "completion_tokens": 5,
+                "total_tokens": 15,
+                "image_tokens": 2,
+                "prompt_tokens_details": {"cached_tokens": 3},
+                "completion_tokens_details": {
+                    "accepted_prediction_tokens": 4,
+                    "rejected_prediction_tokens": 1,
+                    "reasoning_tokens": 2,
                 },
-            ),
+            },
+            "time_info": {
+                "queue_time": 0.1,
+                "prompt_time": 0.2,
+                "completion_time": 0.3,
+                "total_time": 0.6,
+                "created": 1_700_000_000.5,
+            },
         }
     )
 
-    assert response.model_extra == {"id": "chatcmpl-123", "model": "gpt-oss-120b"}
-    assert response.choices[0].model_extra == {"logprobs": None}
-    assert response.choices[0].message.model_extra == {"refusal": None}
-    assert response.usage.model_extra == {"service_tier": "default"}
+    assert response.id == "chatcmpl-123"
+    assert response.choices is not None
+    assert response.choices[0].reasoning_logprobs is not None
+    assert response.choices[0].message is not None
+    assert response.choices[0].message.reasoning == "reasoning"
+    assert response.usage is not None
     assert response.usage.completion_tokens_details is not None
-    assert response.usage.completion_tokens_details.model_extra == {"provider_counter": 8}
-
-    dumped = response.model_dump()
-    assert dumped["id"] == "chatcmpl-123"
-    assert dumped["choices"][0]["logprobs"] is None
-    assert dumped["choices"][0]["message"]["refusal"] is None
-    assert dumped["usage"]["service_tier"] == "default"
-    assert dumped["usage"]["completion_tokens_details"]["provider_counter"] == 8
+    assert response.usage.completion_tokens_details.reasoning_tokens == 2
+    assert response.time_info is not None
+    assert response.time_info.total_time == 0.6
 
 
-# --- Required-field validation ---------------------------------------------------
+def test_documented_response_fields_may_all_be_absent():
+    response = ChatResponse.model_validate({})
+
+    assert response.id is None
+    assert response.choices is None
+    assert response.usage is None
+    assert response.time_info is None
 
 
-def test_missing_usage_raises_validation_error():
+def test_partially_populated_nested_response_objects_parse():
+    response = ChatResponse.model_validate(
+        {
+            "choices": [{"message": {}}],
+            "usage": {
+                "prompt_tokens_details": {},
+                "completion_tokens_details": {},
+            },
+            "time_info": {},
+        }
+    )
+
+    assert response.choices is not None
+    assert response.choices[0].index is None
+    assert response.choices[0].message is not None
+    assert response.choices[0].message.content is None
+    assert response.usage is not None
+    assert response.usage.total_tokens is None
+
+
+def test_unknown_response_fields_survive_at_every_modeled_level():
+    response = ChatResponse.model_validate(
+        {
+            "future_top": 1,
+            "choices": [
+                {
+                    "future_choice": 2,
+                    "message": {"future_message": 3},
+                }
+            ],
+            "usage": {
+                "future_usage": 4,
+                "completion_tokens_details": {"future_detail": 5},
+            },
+            "time_info": {"future_time": 6},
+        }
+    )
+
+    assert response.model_extra == {"future_top": 1}
+    assert response.choices is not None
+    assert response.choices[0].model_extra == {"future_choice": 2}
+    assert response.choices[0].message is not None
+    assert response.choices[0].message.model_extra == {"future_message": 3}
+    assert response.usage is not None
+    assert response.usage.model_extra == {"future_usage": 4}
+    assert response.usage.completion_tokens_details is not None
+    assert response.usage.completion_tokens_details.model_extra == {
+        "future_detail": 5
+    }
+    assert response.time_info is not None
+    assert response.time_info.model_extra == {"future_time": 6}
+
+
+def test_non_object_chat_response_fails():
     with pytest.raises(ValidationError):
-        ChatResponse.model_validate({"choices": [_choice_dict()]})
+        ChatResponse.model_validate([])

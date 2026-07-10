@@ -156,27 +156,44 @@ class CompletionTokensDetails(TolerantModel):
 
 
 class Usage(TolerantModel):
-    prompt_tokens: int
-    completion_tokens: int
-    total_tokens: int
-
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    total_tokens: int | None = None
     image_tokens: int | None = None
     prompt_tokens_details: PromptTokensDetails | None = None
     completion_tokens_details: CompletionTokensDetails | None = None
 
 
+class TimeInfo(TolerantModel):
+    queue_time: float | None = None
+    prompt_time: float | None = None
+    completion_time: float | None = None
+    total_time: float | None = None
+    created: float | None = None
+
+
 class ResponseMessage(TolerantModel):
-    role: str
+    role: str | None = None
     content: str | None = None
     reasoning: str | None = None
 
 
 class Choice(TolerantModel):
-    index: int
-    message: ResponseMessage
     finish_reason: str | None = None
+    index: int | None = None
+    message: ResponseMessage | None = None
+    logprobs: dict[str, JsonValue] | None = None
+    reasoning_logprobs: dict[str, JsonValue] | None = None
 
 
 class ChatResponse(TolerantModel):
-    choices: tuple[Choice, ...]
-    usage: Usage
+    id: str | None = None
+    choices: tuple[Choice, ...] | None = None
+    created: int | None = None
+    model: str | None = None
+    object: str | None = None
+    system_fingerprint: str | None = None
+    service_tier: str | None = None
+    service_tier_used: str | None = None
+    usage: Usage | None = None
+    time_info: TimeInfo | None = None
