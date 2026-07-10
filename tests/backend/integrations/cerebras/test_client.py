@@ -2,6 +2,7 @@ import json
 
 import httpx
 import pytest
+from pydantic import ValidationError
 
 from symai.backend.integrations.cerebras.chat import (
     ChatRequest,
@@ -19,7 +20,6 @@ from symai.backend.integrations.cerebras.errors import (
     ResponseError,
     TransportError,
 )
-from symai.backend.integrations.cerebras.models import Model
 
 
 def _chat_request() -> ChatRequest:
@@ -27,7 +27,7 @@ def _chat_request() -> ChatRequest:
     response_format = ResponseFormat(type="json_schema", json_schema=schema_spec)
     return ChatRequest(
         messages=(Message(role=Role.USER, content="hi"),),
-        model=Model.GPT_OSS_120B,
+        model="gpt-oss-120b",
         response_format=response_format,
     )
 
@@ -65,6 +65,19 @@ def test_empty_api_key_is_rejected():
     with pytest.raises(ValueError, match="api_key"):
         Client(api_key="", http_client=httpx.Client())
 
+def test_nonempty_api_key_is_preserved_exactly():
+    captured = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["authorization"] = request.headers["authorization"]
+        return httpx.Response(200, json=_completion_json(), request=request)
+
+    injected = httpx.Client(transport=httpx.MockTransport(handler))
+
+    Client(api_key=" test-key ", http_client=injected).chat(_chat_request())
+
+    assert captured["authorization"] == "Bearer  test-key "
+
 
 # --- chat() happy path ----------------------------------------------------------
 
@@ -84,9 +97,20 @@ def test_chat_posts_to_the_completions_path_and_parses_the_response():
     assert captured["method"] == "POST"
     assert captured["url"] == "https://api.cerebras.ai/v1/chat/completions"
     assert captured["authorization"] == "Bearer test-key"
-    assert captured["body"]["model"] == Model.GPT_OSS_120B
-    assert captured["body"]["messages"] == [{"role": "user", "content": "hi"}]
-    assert captured["body"]["response_format"]["json_schema"]["schema"] == {"type": "object"}
+    assert captured["body"] == {
+        "messages": [{"role": "user", "content": "hi"}],
+        "model": "gpt-oss-120b",
+        "temperature": 1.0,
+        "top_p": 1.0,
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "Answer",
+                "schema": {"type": "object"},
+                "strict": False,
+            },
+        },
+    }
 
     assert isinstance(response, ChatResponse)
     assert response.choices[0].message.content == "hello there"
@@ -125,6 +149,7 @@ def test_error_malformed_response_raises_response_error():
         _client_with_response(200, content=body_text).chat(_chat_request())
 
     assert exc_info.value.body == body_text
+    assert isinstance(exc_info.value.__cause__, ValidationError)
 
 
 def test_error_invalid_json_response_raises_response_error():
@@ -134,14 +159,21 @@ def test_error_invalid_json_response_raises_response_error():
         _client_with_response(200, content=body_text).chat(_chat_request())
 
     assert exc_info.value.body == body_text
+    assert isinstance(exc_info.value.__cause__, json.JSONDecodeError)
 
 
-def test_connection_failure_raises_transport_error():
+def test_connection_failure_raises_transport_error_with_exact_cause():
+    message = "connection refused"
+    transport_error = httpx.ConnectError(message)
+
     def handler(request: httpx.Request) -> httpx.Response:
-        raise httpx.ConnectError("connection refused", request=request)
+        transport_error.request = request
+        raise transport_error
 
-    with pytest.raises(TransportError):
+    with pytest.raises(TransportError) as exc_info:
         _client(handler).chat(_chat_request())
+
+    assert exc_info.value.__cause__ is transport_error
 
 
 # --- API-instruction headers ------------------------------------------------------
@@ -185,6 +217,27 @@ def test_retry_after_http_date_yields_none_rather_than_a_guess():
 
     assert exc_info.value.retry_after is None
 
+@pytest.mark.parametrize(
+    "value",
+    ["-1", "nan", "inf", "-inf", "not-a-number"],
+)
+def test_invalid_retry_after_seconds_yield_none(value: str):
+    client = _client_with_response(429, text="slow", headers={"retry-after": value})
+
+    with pytest.raises(RateLimitError) as exc_info:
+        client.chat(_chat_request())
+
+    assert exc_info.value.retry_after is None
+
+
+def test_zero_retry_after_seconds_is_preserved():
+    client = _client_with_response(429, text="slow", headers={"retry-after": "0"})
+
+    with pytest.raises(RateLimitError) as exc_info:
+        client.chat(_chat_request())
+
+    assert exc_info.value.retry_after == 0.0
+
 
 # --- transport ownership ----------------------------------------------------------
 
@@ -196,5 +249,42 @@ def test_client_never_closes_the_httpx_client_it_does_not_own():
     injected = httpx.Client(transport=httpx.MockTransport(handler))
 
     Client(api_key="test-key", http_client=injected).chat(_chat_request())
+
+    assert injected.is_closed is False
+
+
+@pytest.mark.parametrize(
+    ("status_code", "response_kwargs", "error_type"),
+    [
+        (500, {"text": "server error"}, APIError),
+        (200, {"text": "not json"}, ResponseError),
+    ],
+)
+def test_client_remains_open_after_response_failures(
+    status_code: int,
+    response_kwargs: dict[str, str],
+    error_type: type[Exception],
+):
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(status_code, request=request, **response_kwargs)
+
+    injected = httpx.Client(transport=httpx.MockTransport(handler))
+
+    with pytest.raises(error_type):
+        Client(api_key="test-key", http_client=injected).chat(_chat_request())
+
+    assert injected.is_closed is False
+
+
+def test_client_remains_open_after_transport_failure():
+    message = "connection refused"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError(message, request=request)
+
+    injected = httpx.Client(transport=httpx.MockTransport(handler))
+
+    with pytest.raises(TransportError):
+        Client(api_key="test-key", http_client=injected).chat(_chat_request())
 
     assert injected.is_closed is False

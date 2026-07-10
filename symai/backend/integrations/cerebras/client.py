@@ -1,7 +1,7 @@
-from typing import TypeVar
+from math import isfinite
 
 import httpx
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 
 from symai.backend.integrations.cerebras import chat, errors
 
@@ -9,7 +9,6 @@ BASE_URL = "https://api.cerebras.ai/v1"
 REQUEST_ID_HEADER = "x-request-id"
 RETRY_AFTER_HEADER = "retry-after"
 
-T = TypeVar("T", bound=BaseModel)
 
 
 def _retry_after(response: httpx.Response) -> float | None:
@@ -26,12 +25,14 @@ def _retry_after(response: httpx.Response) -> float | None:
         return None
 
     try:
-        return float(raw)
+        retry_after = float(raw)
     except ValueError:
         return None
 
+    return retry_after if isfinite(retry_after) and retry_after >= 0 else None
 
-def _request_body(request: BaseModel) -> dict[str, object]:
+
+def _request_body(request: chat.ChatRequest) -> dict[str, object]:
     return request.model_dump(mode="json", by_alias=True, exclude_none=True)
 
 
@@ -59,7 +60,7 @@ def _raise_for_status(response: httpx.Response) -> None:
         raise errors.APIError(response.status_code, response.text, request_id=request_id)
 
 
-def _validate(response: httpx.Response, response_type: type[T]) -> T:
+def _validate(response: httpx.Response) -> chat.ChatResponse:
     try:
         payload = response.json()
     except ValueError as exc:
@@ -67,7 +68,7 @@ def _validate(response: httpx.Response, response_type: type[T]) -> T:
         raise errors.ResponseError(msg, body=response.text) from exc
 
     try:
-        return response_type.model_validate(payload)
+        return chat.ChatResponse.model_validate(payload)
     except ValidationError as exc:
         msg = "Cerebras API returned a response that did not match the expected schema"
         raise errors.ResponseError(msg, body=response.text) from exc
@@ -87,10 +88,9 @@ class Client:
             msg = "api_key must not be empty"
             raise ValueError(msg)
 
-        self._api_key = api_key
         self._http_client = http_client
         self._headers = {
-            "Authorization": f"Bearer {self._api_key}",
+            "Authorization": f"Bearer {api_key}",
             "Accept": "application/json",
         }
 
@@ -98,26 +98,17 @@ class Client:
         """Request a chat completion.
 
         Raises:
-            The typed errors documented on `_post`.
-        """
-
-        return self._post(chat.PATH, request, chat.ChatResponse)
-
-    def _post(self, path: str, request: BaseModel, response_type: type[T]) -> T:
-        """POST `request` to `path` and validate the reply into `response_type`.
-
-        Raises:
-            errors.TransportError: the request failed before a valid HTTP response
+            errors.TransportError: The request failed before a valid HTTP response
                 was received.
-            errors.AuthError: the API rejected the request as unauthenticated.
-            errors.RateLimitError: the API rate-limited the request.
-            errors.APIError: the API returned another non-2xx response.
-            errors.ResponseError: the 2xx response body failed to decode or validate.
+            errors.AuthError: The API rejected the request as unauthenticated.
+            errors.RateLimitError: The API rate-limited the request.
+            errors.APIError: The API returned another non-2xx response.
+            errors.ResponseError: The 2xx response body failed to decode or validate.
         """
 
         try:
             response = self._http_client.post(
-                f"{BASE_URL}{path}",
+                f"{BASE_URL}{chat.PATH}",
                 json=_request_body(request),
                 headers=self._headers,
             )
@@ -127,4 +118,4 @@ class Client:
 
         _raise_for_status(response)
 
-        return _validate(response, response_type)
+        return _validate(response)
