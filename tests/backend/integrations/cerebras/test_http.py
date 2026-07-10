@@ -191,23 +191,16 @@ def test_retry_after_http_date_yields_none_rather_than_a_guess():
     assert exc_info.value.retry_after is None
 
 
-# --- client lifecycle -----------------------------------------------------------
+# --- transport ownership ----------------------------------------------------------
 
 
-def test_owned_http_client_is_closed_on_context_exit():
-    with Client(api_key="test-key") as client:
-        assert client._http_client.is_closed is False
-
-    assert client._http_client.is_closed is True
-
-
-def test_injected_http_client_is_not_closed_by_close():
+def test_client_never_closes_the_transport_it_does_not_own():
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=_completion_json(), request=request)
 
     injected = httpx.Client(transport=httpx.MockTransport(handler))
+    client = Client(api_key="test-key", http_client=injected)
 
-    with Client(api_key="test-key", http_client=injected) as client:
-        assert client._http_client.is_closed is False
+    client.create(_chat_request())
 
     assert injected.is_closed is False

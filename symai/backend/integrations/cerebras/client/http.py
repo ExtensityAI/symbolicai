@@ -1,6 +1,3 @@
-from types import TracebackType
-from typing import Self
-
 import httpx
 from pydantic import ValidationError
 
@@ -8,9 +5,7 @@ from symai.backend.integrations.cerebras.client import errors
 from symai.backend.integrations.cerebras.client.chat import ChatRequest, ChatResponse
 
 CHAT_COMPLETIONS_PATH = "/chat/completions"
-DEFAULT_BASE_URL = "https://api.cerebras.ai/v1"
-DEFAULT_TIMEOUT = 60.0
-DEFAULT_RETRIES = 2
+BASE_URL = "https://api.cerebras.ai/v1"
 REQUEST_ID_HEADER = "x-request-id"
 RETRY_AFTER_HEADER = "retry-after"
 
@@ -39,53 +34,25 @@ def _request_body(request: ChatRequest) -> dict[str, object]:
 
 
 class Client:
-    """Thin httpx-backed client for the Cerebras chat completions endpoint."""
+    """Thin httpx-backed client for the Cerebras chat completions endpoint.
 
-    def __init__(
-        self,
-        api_key: str,
-        *,
-        base_url: str = DEFAULT_BASE_URL,
-        http_client: httpx.Client | None = None,
-    ) -> None:
+    The caller supplies and owns the `httpx.Client`. This class never closes it, and
+    every transport policy — timeout, connection retries, proxies, limits — is the
+    caller's to set. Note that httpx defaults to a 5 second timeout, far too short
+    for chat completions, so set one explicitly.
+    """
 
+    def __init__(self, api_key: str, *, http_client: httpx.Client) -> None:
         if not api_key:
             msg = "api_key must not be empty"
             raise ValueError(msg)
 
         self._api_key = api_key
-        self._base_url = base_url.rstrip("/")
-        self._owns_client = http_client is None
-
-        if http_client is None:
-            self._http_client = httpx.Client(
-                timeout=DEFAULT_TIMEOUT,
-                transport=httpx.HTTPTransport(retries=DEFAULT_RETRIES),
-            )
-        else:
-            self._http_client = http_client
-
+        self._http_client = http_client
         self._headers = {
             "Authorization": f"Bearer {self._api_key}",
             "Accept": "application/json",
         }
-
-    def close(self) -> None:
-        """Close the underlying `httpx.Client` if this client owns it."""
-
-        if self._owns_client:
-            self._http_client.close()
-
-    def __enter__(self) -> Self:
-        return self
-
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc: BaseException | None,
-        traceback: TracebackType | None,
-    ) -> None:
-        self.close()
 
     def create(self, request: ChatRequest) -> ChatResponse:
         """POST a chat completion request and return the typed response.
@@ -101,7 +68,7 @@ class Client:
 
         try:
             response = self._http_client.post(
-                f"{self._base_url}{CHAT_COMPLETIONS_PATH}",
+                f"{BASE_URL}{CHAT_COMPLETIONS_PATH}",
                 json=_request_body(request),
                 headers=self._headers,
             )
