@@ -3,11 +3,27 @@ import pytest
 from symai.backend.integrations import errors as integration_errors
 from symai.backend.integrations import http_errors
 from symai.backend.integrations.cerebras import errors as cerebras_errors
+from symai.backend.integrations.cerebras.response import (
+    RateLimitState,
+    ResponseMetadata,
+)
+
+
+def _metadata(
+    *,
+    status_code: int = 500,
+    request_id: str | None = "req-1",
+    retry_after: float | None = None,
+) -> ResponseMetadata:
+    return ResponseMetadata(
+        status_code=status_code,
+        request_id=request_id,
+        retry_after=retry_after,
+        rate_limit=RateLimitState(),
+    )
 
 
 def test_universal_lattice_is_free_of_http_semantics():
-    # A non-HTTP integration (a local Lean4 binding, a subprocess tool) imports only the
-    # universal module, and must not inherit status codes, auth, or rate limiting.
     assert not hasattr(integration_errors, "APIError")
     assert not hasattr(integration_errors, "AuthError")
     assert not hasattr(integration_errors, "RateLimitError")
@@ -29,8 +45,6 @@ def test_cerebras_errors_subclass_both_shared_lattices():
 
 
 def test_auth_and_rate_limit_are_also_api_errors_at_both_levels():
-    # The multiple-inheritance lattice keeps auth/rate-limit catchable as an APIError,
-    # at both the shared and the integration-specific level.
     assert issubclass(cerebras_errors.AuthError, cerebras_errors.APIError)
     assert issubclass(cerebras_errors.RateLimitError, cerebras_errors.APIError)
     assert issubclass(cerebras_errors.AuthError, http_errors.APIError)
@@ -39,10 +53,10 @@ def test_auth_and_rate_limit_are_also_api_errors_at_both_levels():
 
 def test_shared_except_catches_the_integration_specific_error():
     with pytest.raises(http_errors.AuthError):
-        raise cerebras_errors.AuthError(401, "nope")
+        raise cerebras_errors.AuthError(_metadata(status_code=401), "nope")
 
     with pytest.raises(http_errors.APIError):
-        raise cerebras_errors.RateLimitError(429, "slow down")
+        raise cerebras_errors.RateLimitError(_metadata(status_code=429), "slow down")
 
     transport_message = "boom"
     response_message = "bad"
@@ -51,30 +65,58 @@ def test_shared_except_catches_the_integration_specific_error():
         raise cerebras_errors.TransportError(transport_message)
 
     with pytest.raises(integration_errors.ResponseError):
-        raise cerebras_errors.ResponseError(response_message, body="{}")
+        raise cerebras_errors.ResponseError(
+            response_message,
+            metadata=_metadata(status_code=200),
+            body="{}",
+        )
 
 
-def test_errors_carry_integration_tag_and_payload():
-    assert cerebras_errors.Error.integration == "cerebras"
+def test_api_error_properties_delegate_to_metadata():
+    metadata = _metadata(status_code=500, request_id="req-1")
+    error = cerebras_errors.APIError(metadata, "server error")
 
-    api = cerebras_errors.APIError(500, "server error", request_id="req-1")
-    assert api.integration == "cerebras"
-    assert api.status_code == 500
-    assert api.body == "server error"
-    assert api.request_id == "req-1"
-
-    resp = cerebras_errors.ResponseError("bad body", body="{not json}")
-    assert resp.body == "{not json}"
+    assert error.integration == "cerebras"
+    assert error.metadata is metadata
+    assert error.status_code == 500
+    assert error.request_id == "req-1"
+    assert error.body == "server error"
 
 
-def test_rate_limit_error_surfaces_the_apis_retry_instruction():
-    err = cerebras_errors.RateLimitError(429, "slow", request_id="req-2", retry_after=2.5)
+def test_rate_limit_retry_after_delegates_to_metadata():
+    metadata = _metadata(status_code=429, retry_after=2.5)
+    error = cerebras_errors.RateLimitError(metadata, "slow")
 
-    assert err.retry_after == 2.5
-    assert err.request_id == "req-2"
-    assert err.status_code == 429
+    assert error.retry_after == 2.5
+    assert error.status_code == 429
 
 
-def test_request_id_and_retry_after_default_to_none():
-    assert cerebras_errors.APIError(500, "boom").request_id is None
-    assert cerebras_errors.RateLimitError(429, "slow").retry_after is None
+def test_response_error_retains_metadata_and_body():
+    metadata = _metadata(status_code=200)
+    error = cerebras_errors.ResponseError(
+        "bad response",
+        metadata=metadata,
+        body="{bad json}",
+    )
+
+    assert error.metadata is metadata
+    assert error.body == "{bad json}"
+
+
+def test_transport_error_defaults_to_no_metadata():
+    error = cerebras_errors.TransportError("network failure")
+    assert error.metadata is None
+
+
+def test_error_compatibility_properties_are_read_only():
+    error = cerebras_errors.RateLimitError(
+        _metadata(status_code=429, retry_after=1.0),
+        "slow",
+    )
+
+    with pytest.raises(AttributeError):
+        setattr(error, "status_code", 500)
+    with pytest.raises(AttributeError):
+        setattr(error, "request_id", "other")
+    with pytest.raises(AttributeError):
+        setattr(error, "retry_after", 3.0)
