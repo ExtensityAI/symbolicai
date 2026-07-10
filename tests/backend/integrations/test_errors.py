@@ -1,8 +1,8 @@
 import pytest
 
 from symai.backend.integrations import errors as integration_errors
+from symai.backend.integrations import http_errors
 from symai.backend.integrations.cerebras.client import errors as cerebras_errors
-from symai.backend.integrations.http import errors as http_errors
 
 
 def test_universal_lattice_is_free_of_http_semantics():

@@ -1,5 +1,5 @@
 from symai.backend.integrations import errors as integration_errors
-from symai.backend.integrations.http import errors as http_errors
+from symai.backend.integrations import http_errors
 
 
 class Error(integration_errors.IntegrationError):

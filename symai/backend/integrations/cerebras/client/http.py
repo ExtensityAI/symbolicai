@@ -15,6 +15,29 @@ REQUEST_ID_HEADER = "x-request-id"
 RETRY_AFTER_HEADER = "retry-after"
 
 
+def _retry_after(response: httpx.Response) -> float | None:
+    """The API's own retry instruction, in seconds, when it sends one.
+
+    Only the delta-seconds form of `Retry-After` is understood; an HTTP-date value
+    yields None rather than a guess. The client surfaces the instruction and never
+    acts on it, because retrying is the caller's policy.
+    """
+
+    raw = response.headers.get(RETRY_AFTER_HEADER)
+
+    if raw is None:
+        return None
+
+    try:
+        return float(raw)
+    except ValueError:
+        return None
+
+
+def _request_body(request: ChatRequest) -> dict[str, object]:
+    return request.model_dump(mode="json", by_alias=True, exclude_none=True)
+
+
 class Client:
     """Thin httpx-backed client for the Cerebras chat completions endpoint."""
 
@@ -79,7 +102,7 @@ class Client:
         try:
             response = self._http_client.post(
                 f"{self._base_url}{CHAT_COMPLETIONS_PATH}",
-                json=self._request_body(request),
+                json=_request_body(request),
                 headers=self._headers,
             )
         except httpx.RequestError as exc:
@@ -102,7 +125,7 @@ class Client:
                 response.text,
                 "Cerebras API rate limit exceeded",
                 request_id=request_id,
-                retry_after=self._retry_after(response),
+                retry_after=_retry_after(response),
             )
 
         if not response.is_success:
@@ -125,30 +148,3 @@ class Client:
                 msg,
                 body=response.text,
             ) from exc
-
-    @staticmethod
-    def _retry_after(response: httpx.Response) -> float | None:
-        """The API's own retry instruction, in seconds, when it sends one.
-
-        Only the delta-seconds form of `Retry-After` is understood; an HTTP-date
-        value yields None rather than a guess. The client surfaces the instruction
-        and never acts on it, because retrying is the caller's policy.
-        """
-
-        raw = response.headers.get(RETRY_AFTER_HEADER)
-
-        if raw is None:
-            return None
-
-        try:
-            return float(raw)
-        except ValueError:
-            return None
-
-    @staticmethod
-    def _request_body(request: ChatRequest) -> dict[str, object]:
-        return request.model_dump(
-            mode="json",
-            by_alias=True,
-            exclude_none=True,
-        )
