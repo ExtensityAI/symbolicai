@@ -4,12 +4,11 @@ from typing import Any, Literal
 from pydantic import ConfigDict, Field, model_validator
 
 from symai.backend.integrations.base import StrictModel, TolerantModel
-from symai.backend.integrations.cerebras.client.models import (
+from symai.backend.integrations.cerebras.models import (
     MODEL_SPECS,
     Model,
     ReasoningEffort,
 )
-from symai.backend.integrations.cerebras.client.transport import Transport
 
 PATH = "/chat/completions"
 
@@ -108,13 +107,3 @@ class Choice(TolerantModel):
 class ChatResponse(TolerantModel):
     choices: tuple[Choice, ...]
     usage: Usage
-
-
-def create(transport: Transport, request: ChatRequest) -> ChatResponse:
-    """Request a chat completion.
-
-    Raises:
-        The typed errors documented on `Transport.post`.
-    """
-
-    return transport.post(PATH, request, ChatResponse)

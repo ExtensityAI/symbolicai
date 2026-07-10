@@ -3,7 +3,7 @@ from typing import TypeVar
 import httpx
 from pydantic import BaseModel, ValidationError
 
-from symai.backend.integrations.cerebras.client import errors
+from symai.backend.integrations.cerebras import chat, errors
 
 BASE_URL = "https://api.cerebras.ai/v1"
 REQUEST_ID_HEADER = "x-request-id"
@@ -16,7 +16,7 @@ def _retry_after(response: httpx.Response) -> float | None:
     """The API's own retry instruction, in seconds, when it sends one.
 
     Only the delta-seconds form of `Retry-After` is understood; an HTTP-date value
-    yields None rather than a guess. The transport surfaces the instruction and never
+    yields None rather than a guess. The client surfaces the instruction and never
     acts on it, because retrying is the caller's policy.
     """
 
@@ -73,13 +73,8 @@ def _validate(response: httpx.Response, response_type: type[T]) -> T:
         raise errors.ResponseError(msg, body=response.text) from exc
 
 
-class Transport:
-    """The connection to the Cerebras API, shared by every endpoint.
-
-    Holds what is true of the API rather than of any one endpoint: the base URL, the
-    Bearer scheme, which status codes carry which meaning, and how a reply becomes a
-    validated model. An endpoint module supplies only a path and a pair of types, so
-    no endpoint can forget to map a 401 or a 429.
+class Client:
+    """The Cerebras API: one method per endpoint.
 
     The caller supplies and owns the `httpx.Client`. This class never closes it, and
     every transport policy — timeout, connection retries, proxies, limits — is the
@@ -99,7 +94,16 @@ class Transport:
             "Accept": "application/json",
         }
 
-    def post(self, path: str, request: BaseModel, response_type: type[T]) -> T:
+    def chat(self, request: chat.ChatRequest) -> chat.ChatResponse:
+        """Request a chat completion.
+
+        Raises:
+            The typed errors documented on `_post`.
+        """
+
+        return self._post(chat.PATH, request, chat.ChatResponse)
+
+    def _post(self, path: str, request: BaseModel, response_type: type[T]) -> T:
         """POST `request` to `path` and validate the reply into `response_type`.
 
         Raises:
