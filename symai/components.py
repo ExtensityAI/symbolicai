@@ -1301,6 +1301,12 @@ class MetadataTracker(Expression):
                     token_details[(engine_name, model_name)]["prompt_breakdown"][
                         "cached_tokens"
                     ] += usage.input_tokens_details.cached_tokens
+                    # gpt-5.6 explicit prompt caching reports cache-write tokens (billed at
+                    # 1.25x input). The field is optional/absent on older models and on
+                    # pre-5.6 responses, so default to 0.
+                    token_details[(engine_name, model_name)]["prompt_breakdown"][
+                        "cache_write_tokens"
+                    ] += getattr(usage.input_tokens_details, "cache_write_tokens", 0) or 0
                     token_details[(engine_name, model_name)]["completion_breakdown"][
                         "reasoning_tokens"
                     ] += usage.output_tokens_details.reasoning_tokens
