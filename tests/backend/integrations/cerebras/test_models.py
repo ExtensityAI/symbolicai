@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from symai.backend.integrations.cerebras.client.spec import (
+from symai.backend.integrations.cerebras.client.models import (
     MODEL_SPECS,
     Model,
     ReasoningEffort,

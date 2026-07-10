@@ -1,3 +1,6 @@
+import json
+
+import httpx
 import pytest
 from pydantic import ValidationError
 
@@ -9,8 +12,10 @@ from symai.backend.integrations.cerebras.client.chat import (
     ResponseFormat,
     Role,
     Usage,
+    create,
 )
-from symai.backend.integrations.cerebras.client.spec import Model, ReasoningEffort
+from symai.backend.integrations.cerebras.client.models import Model, ReasoningEffort
+from symai.backend.integrations.cerebras.client.transport import Transport
 
 
 def _message() -> Message:
@@ -438,3 +443,49 @@ def test_extra_top_level_and_choice_keys_are_ignored():
 def test_missing_usage_raises_validation_error():
     with pytest.raises(ValidationError):
         ChatResponse.model_validate({"choices": [_choice_dict()]})
+
+
+# --- create() --------------------------------------------------------------------
+
+
+def _completion_json() -> dict:
+    return {
+        "choices": [
+            {
+                "index": 0,
+                "message": {"role": "assistant", "content": "hello there"},
+                "finish_reason": "stop",
+            }
+        ],
+        "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
+    }
+
+
+def test_create_posts_to_the_completions_path_and_parses_the_response():
+    captured = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["url"] = str(request.url)
+        captured["body"] = json.loads(request.content.decode("utf-8"))
+        return httpx.Response(200, json=_completion_json(), request=request)
+
+    transport = Transport(
+        api_key="test-key", http_client=httpx.Client(transport=httpx.MockTransport(handler))
+    )
+    schema_spec = JsonSchemaSpec(name="Answer", json_schema_body={"type": "object"})
+    request = ChatRequest(
+        messages=(_message(),),
+        model=Model.GPT_OSS_120B,
+        response_format=ResponseFormat(type="json_schema", json_schema=schema_spec),
+    )
+
+    response = create(transport, request)
+
+    assert captured["url"].endswith("/chat/completions")
+    assert captured["body"]["model"] == Model.GPT_OSS_120B
+    assert captured["body"]["messages"] == [{"role": "user", "content": "hello"}]
+    assert captured["body"]["response_format"]["json_schema"]["schema"] == {"type": "object"}
+
+    assert isinstance(response, ChatResponse)
+    assert response.choices[0].message.content == "hello there"
+    assert response.usage.total_tokens == 15
