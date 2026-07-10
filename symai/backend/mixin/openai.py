@@ -1,13 +1,5 @@
+from ...prompts import CACHE_BREAKPOINT, split_cache_breakpoints, strip_cache_breakpoints
 from ...utils import UserMessage
-
-CACHE_BREAKPOINT = "symai:cache_breakpoint"
-
-
-def split_cache_breakpoints(text: str) -> list[str]:
-    """Split OpenAI cache breakpoint markers into ordered text segments."""
-    if not text:
-        return [text]
-    return text.split(CACHE_BREAKPOINT)
 
 
 def build_cache_breakpoint_blocks(text: str) -> list[dict]:
@@ -96,34 +88,37 @@ SUPPORTED_RESPONSES_MODELS = (
 
 class OpenAIMixin:
     def apply_cache_breakpoints_to_messages(self, messages: list[dict], model: str) -> list[dict]:
+        supported = model in SUPPORTED_RESPONSES_REASONING_MODELS
         prepared_messages = []
         breakpoint_count = 0
         for message in messages:
             content = message["content"]
             if isinstance(content, str):
                 if CACHE_BREAKPOINT in content:
-                    breakpoint_count += content.count(CACHE_BREAKPOINT)
-                    if breakpoint_count > 4:
-                        msg = "OpenAI supports at most four cache breakpoint writes per request."
-                        raise ValueError(msg)
-                    if model not in SUPPORTED_RESPONSES_REASONING_MODELS:
-                        msg = f"Explicit OpenAI cache breakpoints are not supported by {model}."
-                        raise ValueError(msg)
-                    content = build_cache_breakpoint_blocks(content)
+                    if not supported:
+                        # This model cannot honor explicit breakpoints; strip the reserved
+                        # control token so it never leaks into the request.
+                        content = strip_cache_breakpoints(content)
+                    else:
+                        breakpoint_count += content.count(CACHE_BREAKPOINT)
+                        if breakpoint_count > 4:
+                            msg = "OpenAI supports at most four cache breakpoint writes per request."
+                            raise ValueError(msg)
+                        content = build_cache_breakpoint_blocks(content)
                 prepared_messages.append({**message, "content": content})
                 continue
 
             blocks = []
             for block in content:
                 if block["type"] == "input_text" and CACHE_BREAKPOINT in block["text"]:
-                    breakpoint_count += block["text"].count(CACHE_BREAKPOINT)
-                    if breakpoint_count > 4:
-                        msg = "OpenAI supports at most four cache breakpoint writes per request."
-                        raise ValueError(msg)
-                    if model not in SUPPORTED_RESPONSES_REASONING_MODELS:
-                        msg = f"Explicit OpenAI cache breakpoints are not supported by {model}."
-                        raise ValueError(msg)
-                    blocks.extend(build_cache_breakpoint_blocks(block["text"]))
+                    if not supported:
+                        blocks.append({**block, "text": strip_cache_breakpoints(block["text"])})
+                    else:
+                        breakpoint_count += block["text"].count(CACHE_BREAKPOINT)
+                        if breakpoint_count > 4:
+                            msg = "OpenAI supports at most four cache breakpoint writes per request."
+                            raise ValueError(msg)
+                        blocks.extend(build_cache_breakpoint_blocks(block["text"]))
                 else:
                     blocks.append(block)
             prepared_messages.append({**message, "content": blocks})

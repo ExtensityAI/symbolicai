@@ -1,6 +1,6 @@
 # Anthropic engines translate the shared opaque cache marker into ``cache_control``
 # content blocks.
-CACHE_BREAKPOINT = "symai:cache_breakpoint"
+from ...prompts import CACHE_BREAKPOINT, split_cache_breakpoints, strip_cache_breakpoints
 
 
 # https://docs.anthropic.com/en/docs/about-claude/models
@@ -49,20 +49,6 @@ ADAPTIVE_THINKING_MODELS = {
     "claude-opus-4-6",
     "claude-sonnet-4-6",
 }
-
-
-def split_cache_breakpoints(text: str) -> list[str]:
-    """Split Anthropic cache breakpoint markers into ordered text segments."""
-    if not text:
-        return [text]
-    return text.split(CACHE_BREAKPOINT)
-
-
-def strip_cache_breakpoints(text: str) -> str:
-    """Remove Anthropic cache breakpoint markers from text."""
-    if not text:
-        return text
-    return text.replace(CACHE_BREAKPOINT, "")
 
 
 class AnthropicMixin:
