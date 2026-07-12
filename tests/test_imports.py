@@ -20,7 +20,6 @@ _PYPROJECT = Path(__file__).resolve().parent.parent / "pyproject.toml"
 # Only entries where the default heuristic (lowercase, hyphens to underscores) fails.
 _IMPORT_NAME = {
     "beautifulsoup4": "bs4",
-    "cerebras-cloud-sdk": "cerebras.cloud.sdk",
     "firecrawl-py": "firecrawl",
     "gitpython": "git",
     "google-genai": "google.genai",

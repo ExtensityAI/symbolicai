@@ -1,27 +1,25 @@
-import json
-import logging
 import re
 from copy import deepcopy
 
+import httpx
 import tiktoken
-from cerebras.cloud.sdk import Cerebras
+from pydantic import TypeAdapter
 
 from symai.backend.base import Engine
-from symai.backend.mixin.cerebras import (
-    SUPPORTED_CEREBRAS_MODELS,
-    CerebrasChatCreateCallOptions,
-    CerebrasChatCreatePayload,
-    CerebrasChatRequest,
-    CerebrasMixin,
+from symai.backend.integrations.cerebras.chat import (
+    ChatRequest,
+    ChatResponse,
+    Message,
+    ReasoningEffort,
+    ReasoningFormat,
+    ResponseFormat,
+    ServiceTier,
 )
+from symai.backend.integrations.cerebras.client import Client as CerebrasClient
+from symai.backend.integrations.cerebras.response import Response
+from symai.backend.mixin.cerebras import SUPPORTED_CEREBRAS_MODELS, CerebrasMixin
 from symai.backend.settings import SYMAI_CONFIG
 from symai.components import SelfPrompt
-from symai.utils import silence_noisy_loggers
-
-silence_noisy_loggers("cerebras", "hpack")
-
-logger = logging.getLogger(__name__)
-
 
 _NON_VERBOSE_OUTPUT = (
     "<META_INSTRUCTION/>\n"
@@ -40,6 +38,7 @@ class CerebrasEngine(CerebrasMixin, Engine):
         *,
         client_timeout: float | None = None,
         client_max_retries: int | None = None,
+        http_client: httpx.Client | None = None,
     ):
         super().__init__(client_timeout=client_timeout, client_max_retries=client_max_retries)
         self.config = deepcopy(SYMAI_CONFIG)
@@ -60,14 +59,7 @@ class CerebrasEngine(CerebrasMixin, Engine):
         self.max_context_tokens = self.api_max_context_tokens()
         self.max_response_tokens = self.api_max_response_tokens()
 
-        try:
-            self.client = self._build_cerebras_client(self.api_key)
-        except Exception as exc:
-            msg = f"Failed to initialize Cerebras client. Please check your Cerebras SDK installation. Caused by: {exc}"
-            raise ValueError(msg) from exc
-
-    def _build_cerebras_client(self, api_key: str | None):
-        return Cerebras(**self._build_client_kwargs({"api_key": api_key}))
+        self.http_client = http_client
 
     def id(self) -> str:
         model_name = self.config.get("NEUROSYMBOLIC_ENGINE_MODEL")
@@ -79,11 +71,6 @@ class CerebrasEngine(CerebrasMixin, Engine):
         super().command(*args, **kwargs)
         if "NEUROSYMBOLIC_ENGINE_API_KEY" in kwargs:
             self.api_key = kwargs["NEUROSYMBOLIC_ENGINE_API_KEY"]
-            try:
-                self.client = self._build_cerebras_client(self.api_key)
-            except Exception as exc:
-                msg = f"Failed to reinitialize Cerebras client. Caused by: {exc}"
-                raise ValueError(msg) from exc
         if "NEUROSYMBOLIC_ENGINE_MODEL" in kwargs:
             self.model = kwargs["NEUROSYMBOLIC_ENGINE_MODEL"]
         if "seed" in kwargs:
@@ -160,126 +147,108 @@ class CerebrasEngine(CerebrasMixin, Engine):
 
         return thinking_content, cleaned_outputs
 
-    def forward(self, argument):
-        kwargs = argument.kwargs
-        request = self.build_request(argument)
-        except_remedy = kwargs.get("except_remedy")
-
-        try:
-            res = self.call_request(request)
-        except Exception as exc:  # pragma: no cover - defensive path
-            res = self._handle_forward_exception(exc, argument, kwargs, except_remedy, request)
-
-        return self.parse_response(res)
-
-    def _handle_forward_exception(self, exc, argument, kwargs, except_remedy, request):
-        if self.api_key is None or self.api_key == "":
+    def forward(self, argument):  # pyright: ignore[reportIncompatibleMethodOverride]
+        if not self.api_key:
             msg = (
                 "Cerebras API key is not set. Please set it in the config file or "
-                "pass it as an argument to the command method."
+                "pass it when constructing the engine."
             )
-            logger.warning(msg)
-            config_key = self.config.get("NEUROSYMBOLIC_ENGINE_API_KEY")
-            if config_key is None or config_key == "":
-                raise ValueError(msg)
-            self.api_key = config_key
-            try:
-                self.client = self._build_cerebras_client(self.api_key)
-            except Exception as inner_exc:
-                msg = f"Failed to initialize Cerebras client after missing API key. Caused by: {inner_exc}"
-                raise ValueError(msg) from inner_exc
+            raise ValueError(msg)
 
-        callback = self.client.chat.completions.create
-        kwargs["model"] = request.body()["model"]
+        request = self.build_request(argument)
+        response = self.call_request(request)
+        return self.parse_response(response)
 
-        if except_remedy is not None:
-            return except_remedy(self, exc, callback, argument)
+    def build_request(self, argument) -> ChatRequest:
+        unsupported = {"stream", "stream_options", "tools", "tool_choice"} & set(argument.kwargs)
+        if unsupported:
+            msg = (
+                "Cerebras integration does not support these request options: "
+                f"{sorted(unsupported)}"
+            )
+            raise ValueError(msg)
 
-        msg = f"Error during generation. Caused by: {exc}"
-        raise ValueError(msg)
+        request_kwargs = set(ChatRequest.model_fields) - {"messages"}
+        payload = self.collect_request_kwargs(argument, request_kwargs | {"max_tokens"})
+        if "max_completion_tokens" not in payload and "max_tokens" in payload:
+            payload["max_completion_tokens"] = payload.pop("max_tokens")
 
-    def build_request(self, argument) -> CerebrasChatRequest:
-        request_kwargs = set(CerebrasChatCreatePayload.model_fields) | set(
-            CerebrasChatCreateCallOptions.model_fields
-        )
-        payload_kwargs = self.collect_request_kwargs(argument, request_kwargs)
-        call_options = {
-            key: payload_kwargs.pop(key)
-            for key in CerebrasChatCreateCallOptions.model_fields
-            if key in payload_kwargs
-        }
-
-        model = self.cerebras_strip_prefix(payload_kwargs.get("model", self.model))
+        model = self.cerebras_strip_prefix(payload.get("model", self.model))
         model_spec = self.cerebras_model_spec_for(model)
-        reasoning_effort = payload_kwargs.get("reasoning_effort")
+        reasoning_effort = payload.get("reasoning_effort")
         if reasoning_effort is not None and reasoning_effort not in model_spec.reasoning_efforts:
             msg = (
                 f"Unsupported reasoning_effort for Cerebras model {model}: "
                 f"{reasoning_effort}. Supported values: {list(model_spec.reasoning_efforts)}"
             )
             raise ValueError(msg)
-        payload_kwargs["model"] = model
-        payload_kwargs["messages"] = argument.prop.prepared_input
-        if "seed" not in payload_kwargs and self.seed is not None:
-            payload_kwargs["seed"] = self.seed
-        if "stop" in payload_kwargs and not payload_kwargs["stop"]:
-            payload_kwargs["stop"] = None
-        payload_kwargs["temperature"] = payload_kwargs.get("temperature", 1)
-        payload_kwargs["top_p"] = payload_kwargs.get("top_p", 1)
-        payload_kwargs["stream"] = payload_kwargs.get("stream", False)
-        payload_kwargs["response_format"] = self._normalize_response_format(
-            payload_kwargs.get("response_format")
-        )
 
-        n = payload_kwargs.get("n", 1)
-        if n > 1:
-            logger.warning(
-                "If N is supplied, it must be equal to 1. We default to 1 to avoid unexpected batch behavior."
+        payload["model"] = model
+        payload["messages"] = tuple(
+            TypeAdapter(Message).validate_python(message, strict=False)
+            for message in argument.prop.prepared_input
+        )
+        if "seed" not in payload and self.seed is not None:
+            payload["seed"] = self.seed
+        if "stop" in payload and not payload["stop"]:
+            payload["stop"] = None
+        if isinstance(reasoning_effort, str):
+            payload["reasoning_effort"] = ReasoningEffort(reasoning_effort)
+        if isinstance(payload.get("reasoning_format"), str):
+            payload["reasoning_format"] = ReasoningFormat(payload["reasoning_format"])
+        if isinstance(payload.get("service_tier"), str):
+            payload["service_tier"] = ServiceTier(payload["service_tier"])
+
+        response_format = self._normalize_response_format(payload.get("response_format"))
+        if isinstance(response_format, dict):
+            response_format = TypeAdapter(ResponseFormat).validate_python(
+                response_format,
+                strict=False,
             )
-            n = 1
-        payload_kwargs["n"] = n
+        payload["response_format"] = response_format
+        return ChatRequest.model_validate(payload)
 
-        payload = CerebrasChatCreatePayload.model_validate(payload_kwargs)
-        options = None
-        if call_options:
-            options = CerebrasChatCreateCallOptions.model_validate(call_options)
+    def call_request(self, request: ChatRequest) -> Response[ChatResponse]:
+        if self.http_client is not None:
+            return CerebrasClient(
+                api_key=self.api_key,
+                http_client=self.http_client,
+            ).chat(request)
 
-        return CerebrasChatRequest(
-            provider="cerebras",
-            operation="chat.completions.create",
-            payload=payload,
-            call_options=options,
-        )
+        with httpx.Client(timeout=self.client_timeout) as http_client:
+            return CerebrasClient(
+                api_key=self.api_key,
+                http_client=http_client,
+            ).chat(request)
 
-    def call_request(self, request: CerebrasChatRequest):
-        return self.client.chat.completions.create(**request.kwargs())
-
-    def parse_response(self, response):
-        metadata: dict = {"raw_output": response}
-        metadata = self._process_function_calls(response, metadata)
+    def parse_response(self, response: Response[ChatResponse]):
+        raw_output = response.data
+        if not raw_output.choices:
+            msg = "Cerebras response did not contain any choices"
+            raise ValueError(msg)
 
         outputs: list[str] = []
         thinking_content: str | None = None
-
-        for choice in response.choices:
+        for choice in raw_output.choices:
             message = choice.message
-            outputs.append(getattr(message, "content", "") or "")
-            if thinking_content is None:
-                reasoning = getattr(message, "reasoning", None)
-                if reasoning:
-                    thinking_content = reasoning
+            if message is None:
+                outputs.append("")
+                continue
+            outputs.append(message.content or "")
+            if thinking_content is None and message.reasoning:
+                thinking_content = message.reasoning
 
         if thinking_content is None:
             thinking_content, outputs = self._extract_thinking_content(outputs)
         else:
             _, outputs = self._extract_thinking_content(outputs)
 
+        metadata: dict = {
+            "raw_output": raw_output,
+            "response": response,
+        }
         if thinking_content:
             metadata["thinking"] = thinking_content
-
-        if not outputs and "function_call" in metadata:
-            outputs = [""]
-
         return outputs, metadata
 
     def _prepare_raw_input(self, argument):
@@ -365,31 +334,3 @@ class CerebrasEngine(CerebrasMixin, Engine):
                 raise ValueError(msg)
             return result["system"], {"role": "user", "content": result["user"]}
         return system_message, user_prompt
-
-    def _process_function_calls(self, res, metadata):
-        hit = False
-        if (
-            hasattr(res, "choices")
-            and res.choices
-            and hasattr(res.choices[0], "message")
-            and res.choices[0].message
-            and hasattr(res.choices[0].message, "tool_calls")
-            and res.choices[0].message.tool_calls
-        ):
-            for tool_call in res.choices[0].message.tool_calls:
-                if hasattr(tool_call, "function") and tool_call.function:
-                    if hit:
-                        logger.warning(
-                            "Multiple function calls detected in the response but only the first one will be processed."
-                        )
-                        break
-                    try:
-                        args_dict = json.loads(tool_call.function.arguments)
-                    except json.JSONDecodeError:
-                        args_dict = {}
-                    metadata["function_call"] = {
-                        "name": tool_call.function.name,
-                        "arguments": args_dict,
-                    }
-                    hit = True
-        return metadata

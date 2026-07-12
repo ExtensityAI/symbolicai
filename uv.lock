@@ -323,23 +323,6 @@ wheels = [
 ]
 
 [[package]]
-name = "cerebras-cloud-sdk"
-version = "1.67.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "anyio" },
-    { name = "distro" },
-    { name = "httpx", extra = ["http2"] },
-    { name = "pydantic" },
-    { name = "sniffio" },
-    { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/92/12/c201f07582068141e88f9a523ab02fdc97de58f2f7c0df775c6c52b9d8dd/cerebras_cloud_sdk-1.67.0.tar.gz", hash = "sha256:3aed6f86c6c7a83ee9d4cfb08a2acea089cebf2af5b8aed116ef79995a4f4813", size = 131536, upload-time = "2026-01-29T23:31:27.306Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/7a/5e/36a364f3d1bab4073454b75e7c91dc7ec6879b960063d1a9c929f1c7ea71/cerebras_cloud_sdk-1.67.0-py3-none-any.whl", hash = "sha256:658b79ca2e9c16f75cc6b4e5d523ee014c9e54a88bd39f88905c28ecb33daae1", size = 97807, upload-time = "2026-01-29T23:31:25.77Z" },
-]
-
-[[package]]
 name = "certifi"
 version = "2026.6.17"
 source = { registry = "https://pypi.org/simple" }
@@ -3627,7 +3610,6 @@ source = { editable = "." }
 dependencies = [
     { name = "anthropic" },
     { name = "beartype" },
-    { name = "cerebras-cloud-sdk" },
     { name = "filetype" },
     { name = "google-genai" },
     { name = "httpx" },
@@ -3762,7 +3744,6 @@ requires-dist = [
     { name = "beartype", specifier = ">=0.18.2" },
     { name = "beautifulsoup4", marker = "extra == 'scrape'", specifier = ">=4.12.3" },
     { name = "bitsandbytes", marker = "extra == 'bitsandbytes'", specifier = ">=0.43.1" },
-    { name = "cerebras-cloud-sdk", specifier = ">=1.59.0" },
     { name = "chonkie", marker = "extra == 'qdrant'", specifier = ">=0.4.1" },
     { name = "datasets", marker = "extra == 'hf'", specifier = ">=3.0.1" },
     { name = "docker", marker = "extra == 'lean'", specifier = ">=7.0.0" },
