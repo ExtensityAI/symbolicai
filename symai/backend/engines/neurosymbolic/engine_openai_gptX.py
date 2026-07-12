@@ -4,22 +4,19 @@ import re
 from copy import deepcopy
 
 import httpx
-import openai
 import tiktoken
 
 from symai.backend.base import Engine
-from symai.backend.mixin.openai import (
-    SUPPORTED_OPENAI_MODELS,
-    OpenAIMixin,
-    OpenAIResponsesCreateCallOptions,
-    OpenAIResponsesCreatePayload,
-    OpenAIResponsesCreateRequest,
+from symai.backend.integrations.openai.client import Client as OpenAIClient
+from symai.backend.integrations.openai.response import Response
+from symai.backend.integrations.openai.responses import (
+    ResponsesRequest,
+    ResponsesResponse,
 )
+from symai.backend.mixin.openai import SUPPORTED_OPENAI_MODELS, OpenAIMixin
 from symai.backend.settings import SYMAI_CONFIG
 from symai.components import SelfPrompt
-from symai.utils import encode_media_frames, silence_noisy_loggers
-
-silence_noisy_loggers("openai")
+from symai.utils import encode_media_frames
 
 logger = logging.getLogger(__name__)
 
@@ -55,15 +52,17 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
         *,
         client_timeout: float | None = None,
         client_max_retries: int | None = None,
+        http_client: httpx.Client | None = None,
     ):
         super().__init__(client_timeout=client_timeout, client_max_retries=client_max_retries)
         self.config = deepcopy(SYMAI_CONFIG)
-        if api_key is not None and model is not None:
+        if api_key is not None:
             self.config["NEUROSYMBOLIC_ENGINE_API_KEY"] = api_key
+        if model is not None:
             self.config["NEUROSYMBOLIC_ENGINE_MODEL"] = model
         if self.id() != "neurosymbolic":
             return
-        openai.api_key = self.config["NEUROSYMBOLIC_ENGINE_API_KEY"]
+        self.api_key = self.config["NEUROSYMBOLIC_ENGINE_API_KEY"]
         self.model = self._strip_prefix(self.config["NEUROSYMBOLIC_ENGINE_MODEL"])
         self.seed = None
         self.name = self.__class__.__name__
@@ -73,28 +72,7 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
         )
         self.max_context_tokens = self.api_max_context_tokens()
         self.max_response_tokens = self.api_max_response_tokens()
-
-        try:
-            # NOTE: Pro/reasoning models (e.g. o3-pro) can take minutes to
-            # respond, causing transient server disconnects under default
-            # settings. A longer connect timeout and automatic retries keep
-            # these requests resilient. client_timeout / client_max_retries
-            # let callers override when they want socket-level timeouts to
-            # actually terminate (and not be silently swallowed by the SDK's
-            # default internal retry loop).
-            if self.client_timeout is not None:
-                timeout_arg = httpx.Timeout(self.client_timeout, connect=10.0)
-            else:
-                timeout_arg = httpx.Timeout(600.0, connect=10.0)
-            retries = self.client_max_retries if self.client_max_retries is not None else 3
-            self.client = openai.Client(
-                api_key=openai.api_key,
-                timeout=timeout_arg,
-                max_retries=retries,
-            )
-        except Exception as e:
-            msg = f"Failed to initialize OpenAI client. Caused by: {e}"
-            raise ValueError(msg) from e
+        self.http_client = http_client
 
     def _strip_prefix(self, model_name: str) -> str:
         if model_name.startswith("openai:"):
@@ -110,7 +88,7 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
     def command(self, *args, **kwargs):
         super().command(*args, **kwargs)
         if "NEUROSYMBOLIC_ENGINE_API_KEY" in kwargs:
-            openai.api_key = kwargs["NEUROSYMBOLIC_ENGINE_API_KEY"]
+            self.api_key = kwargs["NEUROSYMBOLIC_ENGINE_API_KEY"]
         if "NEUROSYMBOLIC_ENGINE_MODEL" in kwargs:
             self.model = self._strip_prefix(kwargs["NEUROSYMBOLIC_ENGINE_MODEL"])
         if "seed" in kwargs:
@@ -304,60 +282,46 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
             user_msg,
         ]
 
-    def build_request(self, argument) -> OpenAIResponsesCreateRequest:
-        request_kwargs = set(OpenAIResponsesCreatePayload.model_fields) | set(
-            OpenAIResponsesCreateCallOptions.model_fields
-        )
-        payload_kwargs = self.collect_request_kwargs(argument, request_kwargs)
-        call_options = {
-            key: payload_kwargs.pop(key)
-            for key in OpenAIResponsesCreateCallOptions.model_fields
-            if key in payload_kwargs
-        }
+    def build_request(self, argument) -> ResponsesRequest:
+        if argument.kwargs.get("stream"):
+            msg = "OpenAI integration does not support streaming responses"
+            raise ValueError(msg)
+
+        request_kwargs = set(ResponsesRequest.model_fields) - {"input"}
+        payload = self.collect_request_kwargs(argument, request_kwargs)
         messages = argument.prop.prepared_input
-        payload_kwargs["model"] = payload_kwargs.get("model", self.model)
-        self.openai_model_spec_for(payload_kwargs["model"])
-        payload_kwargs["input"] = messages
+        payload["model"] = payload.get("model", self.model)
+        self.openai_model_spec_for(payload["model"])
+        payload["input"] = tuple(messages)
 
         if self.is_openai_reasoning_model():
-            payload_kwargs.pop("temperature", None)
-            payload_kwargs.pop("top_p", None)
+            payload.pop("temperature", None)
+            payload.pop("top_p", None)
             if self.is_openai_pro_model():
-                payload_kwargs["reasoning"] = {"effort": "high"}
+                payload["reasoning"] = {"effort": "high"}
             else:
-                payload_kwargs["reasoning"] = payload_kwargs.get("reasoning", {"effort": "medium"})
+                payload["reasoning"] = payload.get("reasoning", {"effort": "medium"})
 
-        tools = payload_kwargs.get("tools")
+        tools = payload.get("tools")
         if tools:
-            payload_kwargs["tools"] = self._convert_tools(tools)
-            payload_kwargs["tool_choice"] = payload_kwargs.get("tool_choice", "auto")
+            payload["tools"] = tuple(self._convert_tools(tools))
+            payload["tool_choice"] = payload.get("tool_choice", "auto")
+        if isinstance(payload.get("include"), list):
+            payload["include"] = tuple(payload["include"])
+        if isinstance(payload.get("context_management"), list):
+            payload["context_management"] = tuple(payload["context_management"])
 
-        payload = OpenAIResponsesCreatePayload.model_validate(payload_kwargs)
+        request = ResponsesRequest.model_validate(payload)
         remaining_tokens = self.compute_remaining_tokens(messages)
-        max_output_tokens = payload.max_output_tokens
-
+        max_output_tokens = request.max_output_tokens
         if max_output_tokens is not None and max_output_tokens > self.max_response_tokens:
             warning_message = (
                 f"Provided 'max_output_tokens' ({max_output_tokens}) exceeds max "
                 f"({self.max_response_tokens}). Truncating to {remaining_tokens}."
             )
             logger.warning(warning_message)
-            max_output_tokens = remaining_tokens
-
-        if max_output_tokens != payload.max_output_tokens:
-            payload_kwargs["max_output_tokens"] = max_output_tokens
-            payload = OpenAIResponsesCreatePayload.model_validate(payload_kwargs)
-
-        options = None
-        if call_options:
-            options = OpenAIResponsesCreateCallOptions.model_validate(call_options)
-
-        return OpenAIResponsesCreateRequest(
-            provider="openai",
-            operation="responses.create",
-            payload=payload,
-            call_options=options,
-        )
+            request = request.model_copy(update={"max_output_tokens": remaining_tokens})
+        return request
 
     def _convert_tools(self, tools: list) -> list:
         converted = []
@@ -377,81 +341,80 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
                 converted.append(tool)
         return converted
 
-    def _extract_output_text(self, response) -> list[str]:
+    def _extract_output_text(self, response: ResponsesResponse) -> list[str]:
         outputs = []
-        for output in response.output or []:
-            if output.type == "message" and output.content:
-                for content in output.content:
-                    if hasattr(content, "text"):
-                        outputs.append(content.text)
-        if not outputs and hasattr(response, "output_text") and response.output_text:
+        for output in response.output:
+            if output.type == "message":
+                outputs.extend(content.text for content in output.content if content.text)
+        if not outputs and response.output_text:
             outputs.append(response.output_text)
         return outputs
 
-    def _process_function_calls(self, response, metadata: dict) -> dict:
-        for output in response.output or []:
-            if output.type == "function_call":
-                try:
-                    args_dict = json.loads(output.arguments)
-                except json.JSONDecodeError:
-                    args_dict = {}
-                metadata["function_call"] = {
-                    "name": output.name,
-                    "arguments": args_dict,
-                    "call_id": output.call_id,
-                }
-                break
+    def _process_function_calls(
+        self,
+        response: ResponsesResponse,
+        metadata: dict,
+    ) -> dict:
+        for output in response.output:
+            if output.type != "function_call":
+                continue
+            try:
+                args_dict = json.loads(output.arguments or "{}")
+            except json.JSONDecodeError:
+                args_dict = {}
+            metadata["function_call"] = {
+                "name": output.name,
+                "arguments": args_dict,
+                "call_id": output.call_id,
+            }
+            break
         return metadata
 
-    def _extract_thinking(self, response) -> str | None:
+    def _extract_thinking(self, response: ResponsesResponse) -> str | None:
         if not self.is_openai_reasoning_model():
             return None
-        for output in response.output or []:
-            if output.type == "reasoning" and hasattr(output, "summary") and output.summary:
-                texts = [s.text for s in output.summary if hasattr(s, "text") and s.text]
+        for output in response.output:
+            if output.type == "reasoning":
+                texts = [summary.text for summary in output.summary if summary.text]
                 if texts:
                     return "\n".join(texts)
         return None
 
-    def forward(self, argument):
-        kwargs = argument.kwargs
+    def forward(self, argument):  # pyright: ignore[reportIncompatibleMethodOverride]
+        if not self.api_key:
+            msg = "OpenAI API key is not set."
+            raise ValueError(msg)
         request = self.build_request(argument)
-        except_remedy = kwargs.get("except_remedy")
+        response = self.call_request(request)
+        return self.parse_response(response)
 
-        try:
-            res = self.call_request(request)
-        except Exception as e:
-            if openai.api_key is None or openai.api_key == "":
-                msg = "OpenAI API key is not set."
-                logger.warning(msg)
-                if (
-                    self.config["NEUROSYMBOLIC_ENGINE_API_KEY"] is None
-                    or self.config["NEUROSYMBOLIC_ENGINE_API_KEY"] == ""
-                ):
-                    raise ValueError(msg) from e
-                openai.api_key = self.config["NEUROSYMBOLIC_ENGINE_API_KEY"]
+    def call_request(self, request: ResponsesRequest) -> Response[ResponsesResponse]:
+        if self.http_client is not None:
+            return OpenAIClient(
+                api_key=self.api_key,
+                http_client=self.http_client,
+            ).responses(request)
 
-            callback = self.client.responses.create
-            if except_remedy is not None:
-                res = except_remedy(self, e, callback, argument)
-            else:
-                err = f"Error during generation. Caused by: {e}"
-                raise ValueError(err) from e
+        timeout = self.client_timeout if self.client_timeout is not None else 600.0
+        with httpx.Client(timeout=httpx.Timeout(timeout, connect=10.0)) as http_client:
+            return OpenAIClient(
+                api_key=self.api_key,
+                http_client=http_client,
+            ).responses(request)
 
-        return self.parse_response(res)
+    def parse_response(self, response: Response[ResponsesResponse]):
+        raw_output = response.data
+        metadata = {
+            "raw_output": raw_output,
+            "response": response,
+        }
+        metadata = self._process_function_calls(raw_output, metadata)
 
-    def call_request(self, request: OpenAIResponsesCreateRequest):
-        return self.client.responses.create(**request.kwargs())
-
-    def parse_response(self, response):
-        metadata = {"raw_output": response}
-        metadata = self._process_function_calls(response, metadata)
-
-        thinking = self._extract_thinking(response)
+        thinking = self._extract_thinking(raw_output)
         if thinking:
             metadata["thinking"] = thinking
 
-        output = self._extract_output_text(response)
+        output = self._extract_output_text(raw_output)
         if not output and "function_call" in metadata:
             output = [""]
         return output, metadata

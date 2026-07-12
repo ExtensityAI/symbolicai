@@ -1,11 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal
-
-from pydantic import Field
-
-from symai.backend.request import EngineAPIRequest, EngineRequestPayload
 
 
 @dataclass(frozen=True)
@@ -79,56 +74,9 @@ SUPPORTED_REASONING_MODELS = [model for model, spec in OPENAI_MODEL_SPECS.items(
 SUPPORTED_OPENAI_MODELS = [f"openai:{model}" for model in OPENAI_MODEL_SPECS]
 
 
-class OpenAIResponsesCreatePayload(EngineRequestPayload):
-    background: bool | None = None
-    context_management: list[dict[str, Any]] | None = None
-    conversation: str | dict[str, Any] | None = None
-    include: list[str] | None = None
-    input: str | list[dict[str, Any]]
-    instructions: str | None = None
-    max_output_tokens: int | None = Field(default=None, gt=0)
-    max_tool_calls: int | None = Field(default=None, gt=0)
-    metadata: dict[str, str] | None = None
-    model: str
-    moderation: dict[str, Any] | None = None
-    parallel_tool_calls: bool | None = None
-    previous_response_id: str | None = None
-    prompt_cache_key: str | None = None
-    prompt_cache_retention: Literal["in_memory", "24h"] | None = None
-    reasoning: dict[str, Any] | None = None
-    safety_identifier: str | None = None
-    service_tier: Literal["auto", "default", "flex", "scale", "priority"] | None = None
-    store: bool | None = None
-    stream: bool | None = None
-    stream_options: dict[Literal["include_obfuscation"], bool] | None = Field(
-        default=None,
-        min_length=1,
-        max_length=1,
-    )
-    temperature: float | int | None = Field(default=None, ge=0, le=2)
-    text: dict[str, Any] | None = None
-    tool_choice: Literal["none", "auto", "required"] | dict[str, Any] | None = None
-    tools: list[dict[str, Any]] | None = None
-    top_logprobs: int | None = Field(default=None, ge=0, le=20)
-    top_p: float | int | None = Field(default=None, ge=0, le=1)
-    truncation: Literal["auto", "disabled"] | None = None
-    user: str | None = None
-
-
-class OpenAIResponsesCreateCallOptions(EngineRequestPayload):
-    extra_headers: dict[str, str] | None = None
-    extra_query: dict[str, Any] | None = None
-    extra_body: dict[str, Any] | None = None
-    timeout: float | None = None
-
-
-OpenAIResponsesCreateRequest = EngineAPIRequest[
-    OpenAIResponsesCreatePayload,
-    OpenAIResponsesCreateCallOptions,
-]
-
-
 class OpenAIMixin:
+    model: str
+
     def openai_model_spec_for(self, model: str) -> OpenAIModelSpec:
         try:
             return OPENAI_MODEL_SPECS[model]
@@ -156,6 +104,12 @@ class OpenAIMixin:
 
     def api_max_response_tokens(self):
         return self.openai_model_spec().response_tokens
+
+    def api_embedding_context_tokens(self) -> int:
+        if self.model.startswith("text-embedding"):
+            return 8_191
+        msg = f"Unsupported model: {self.model}"
+        raise ValueError(msg)
 
     def api_embedding_dims(self):
         if self.model == "text-embedding-ada-002":

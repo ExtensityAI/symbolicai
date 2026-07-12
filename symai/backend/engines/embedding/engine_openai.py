@@ -1,37 +1,44 @@
 import logging
 from copy import deepcopy
 
+import httpx
 import numpy as np
-import openai
 
 from symai.backend.base import Engine
+from symai.backend.integrations.openai.client import Client as OpenAIClient
+from symai.backend.integrations.openai.embeddings import EmbeddingRequest, EmbeddingResponse
+from symai.backend.integrations.openai.response import Response
 from symai.backend.mixin.openai import OpenAIMixin
 from symai.backend.settings import SYMAI_CONFIG
-from symai.utils import silence_noisy_loggers
-
-silence_noisy_loggers("openai")
 
 logger = logging.getLogger(__name__)
 
 
 class EmbeddingEngine(Engine, OpenAIMixin):
-    def __init__(self, api_key: str | None = None, model: str | None = None):
-        super().__init__()
-        logger = logging.getLogger("openai")
-        logger.setLevel(logging.WARNING)
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model: str | None = None,
+        *,
+        client_timeout: float | None = None,
+        http_client: httpx.Client | None = None,
+    ):
+        super().__init__(client_timeout=client_timeout)
         self.config = deepcopy(SYMAI_CONFIG)
-        self.api_key = api_key or self.config.get("EMBEDDING_ENGINE_API_KEY")
-        self.model = model or self.config.get("EMBEDDING_ENGINE_MODEL")
+        configured_api_key = api_key or self.config.get("EMBEDDING_ENGINE_API_KEY")
+        configured_model = model or self.config.get("EMBEDDING_ENGINE_MODEL")
+        self.api_key = configured_api_key if isinstance(configured_api_key, str) else ""
+        self.model = configured_model if isinstance(configured_model, str) else ""
         if self.id() != "embedding":
-            return  # do not initialize if not embedding; avoids conflict with llama.cpp check in EngineRepository.register_from_package
+            return
         if not self.api_key:
             msg = (
                 "OpenAI API key not found. Please set EMBEDDING_ENGINE_API_KEY "
                 "in symai.config.json or pass it to the engine."
             )
             raise ValueError(msg)
-        self.client = openai.OpenAI(api_key=self.api_key)
-        self.max_tokens = self.api_max_context_tokens()
+        self.http_client = http_client
+        self.max_tokens = self.api_embedding_context_tokens()
         self.embedding_dim = self.api_embedding_dims()
         self.name = self.__class__.__name__
 
@@ -44,53 +51,61 @@ class EmbeddingEngine(Engine, OpenAIMixin):
         super().command(*args, **kwargs)
         if "EMBEDDING_ENGINE_API_KEY" in kwargs:
             self.api_key = kwargs["EMBEDDING_ENGINE_API_KEY"]
-            self.client = openai.OpenAI(api_key=self.api_key)
         if "EMBEDDING_ENGINE_MODEL" in kwargs:
             self.model = kwargs["EMBEDDING_ENGINE_MODEL"]
 
-    def forward(self, argument):
+    def forward(self, argument):  # pyright: ignore[reportIncompatibleMethodOverride]
         prepared_input = argument.prop.prepared_input
-        args = argument.args
-        kwargs = argument.kwargs
-
         inp = prepared_input if isinstance(prepared_input, list) else [prepared_input]
-        except_remedy = kwargs.get("except_remedy")
-        new_dim = kwargs.get("new_dim")
+        new_dim = argument.kwargs.get("new_dim")
 
-        # Validate inputs - OpenAI only supports text
         for item in inp:
             if not isinstance(item, str):
                 msg = (
-                    f"OpenAI embedding engine only supports text (str) inputs. "
+                    "OpenAI embedding engine only supports text (str) inputs. "
                     f"Received: {type(item).__name__}. "
-                    f"For multimodal embeddings, use a model that supports it (e.g., gemini-embedding-2)."
+                    "For multimodal embeddings, use a model that supports it."
                 )
                 raise TypeError(msg)
 
-        try:
-            res = self.client.embeddings.create(model=self.model, input=inp)
-        except Exception as e:
-            if except_remedy is None:
-                raise
-            callback = self.client.embeddings.create
-            res = except_remedy(e, inp, callback, self, *args, **kwargs)
-
+        request = EmbeddingRequest(input=tuple(inp), model=self.model)
+        response = self.call_request(request)
+        raw_output = response.data
+        embeddings = []
+        for item in raw_output.data:
+            if isinstance(item.embedding, str):
+                msg = "OpenAI returned a base64 embedding when float encoding was requested."
+                raise ValueError(msg)
+            embeddings.append(item.embedding)
         if new_dim:
-            mn = min(
-                new_dim, self.embedding_dim
-            )  # @NOTE: new_dim should be less than or equal to the original embedding dim
-            output = [self._normalize_l2(r.embedding[:mn]) for r in res.data]
+            dimension = min(new_dim, self.embedding_dim)
+            output = [self._normalize_l2(embedding[:dimension]) for embedding in embeddings]
         else:
-            output = [r.embedding for r in res.data]
+            output = [list(embedding) for embedding in embeddings]
 
-        metadata = {"raw_output": res}
-
+        metadata = {
+            "raw_output": raw_output,
+            "response": response,
+        }
         return [output], metadata
 
+    def call_request(self, request: EmbeddingRequest) -> Response[EmbeddingResponse]:
+        if self.http_client is not None:
+            return OpenAIClient(
+                api_key=self.api_key,
+                http_client=self.http_client,
+            ).embeddings(request)
+
+        with httpx.Client(timeout=self.client_timeout) as http_client:
+            return OpenAIClient(
+                api_key=self.api_key,
+                http_client=http_client,
+            ).embeddings(request)
+
     def prepare(self, argument):
-        assert not argument.prop.processed_input, (
-            "EmbeddingEngine does not support processed_input."
-        )
+        if argument.prop.processed_input:
+            msg = "EmbeddingEngine does not support processed_input."
+            raise ValueError(msg)
         argument.prop.prepared_input = argument.prop.entries
 
     def _normalize_l2(self, x):
