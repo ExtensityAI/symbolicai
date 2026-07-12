@@ -12,7 +12,7 @@ import re
 from pathlib import Path
 
 import pytest
-import toml
+from tomllib import loads
 
 _PYPROJECT = Path(__file__).resolve().parent.parent / "pyproject.toml"
 
@@ -56,7 +56,7 @@ def _parse_pkg(dep: str) -> str | None:
 
 def _load_deps():
     """Read pyproject.toml and return (mandatory, {group: [modules]})."""
-    project = toml.load(_PYPROJECT)["project"]
+    project = loads(_PYPROJECT.read_text())["project"]
     mandatory = [n for d in project["dependencies"] if (n := _parse_pkg(d)) is not None]
     optional = {}
     for group, deps in project.get("optional-dependencies", {}).items():
