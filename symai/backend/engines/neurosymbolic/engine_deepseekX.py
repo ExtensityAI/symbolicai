@@ -1,54 +1,20 @@
 from __future__ import annotations
 
-import json
 from copy import deepcopy
 from typing import Any
 
+import httpx
+
 from symai.backend.base import Engine
 from symai.backend.engines.neurosymbolic.prompts import render_chat_system_prompt
-from symai.backend.mixin.deepseek import (
-    SUPPORTED_MODELS,
-    DeepSeekMixin,
-    DeepSeekOptions,
-    DeepSeekPayload,
-    DeepSeekRequest,
-    DeepSeekResponse,
-)
+from symai.backend.integrations.deepseek.chat import ChatRequest, ChatResponse, Thinking
+from symai.backend.integrations.deepseek.client import Client as DeepSeekClient
+from symai.backend.integrations.deepseek.response import Response  # noqa: TC001
+from symai.backend.mixin.deepseek import SUPPORTED_MODELS, DeepSeekMixin
 from symai.backend.settings import SYMAI_CONFIG
-from symai.backend.streaming import EngineStreamAccumulator, EngineStreamDelta
-from symai.backend.transport import (
-    DEFAULT_RETRIES,
-    SSEEvent,
-    execute_engine_api_request,
-    execute_engine_api_stream_events,
-)
 from symai.backend.usage import EngineUsageRecord
 
 DEEPSEEK_CHAT_COMPLETIONS_URL = "https://api.deepseek.com/chat/completions"
-
-
-class DeepSeekStreamAdapter:
-    def process_event(self, event: SSEEvent) -> EngineStreamDelta:
-        if event.data == "[DONE]":
-            return EngineStreamDelta(done=True, raw=event)
-        if not event.data:
-            return EngineStreamDelta(raw=event)
-
-        chunk = json.loads(event.data)
-        usage = chunk["usage"] if chunk.get("usage") else None
-        choices = chunk.get("choices") or []
-        if not choices:
-            return EngineStreamDelta(usage=usage, raw=chunk)
-
-        choice = choices[0]
-        delta = choice.get("delta") or {}
-        return EngineStreamDelta(
-            text=delta.get("content") or "",
-            thinking=delta.get("reasoning_content") or "",
-            usage=usage,
-            finish_reason=choice.get("finish_reason"),
-            raw=chunk,
-        )
 
 
 class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
@@ -59,6 +25,7 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
         *,
         client_timeout: float | None = None,
         client_max_retries: int | None = None,
+        http_client: httpx.Client | None = None,
     ):
         super().__init__(client_timeout=client_timeout, client_max_retries=client_max_retries)
         self.name = self.__class__.__name__
@@ -73,7 +40,7 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
             return
         self.tokenizer = None
         self.max_context_tokens = self.api_max_context_tokens()
-        self.transport_client = None
+        self.http_client = http_client
 
     def id(self) -> str:
         if self.model in SUPPORTED_MODELS and self.api_key:
@@ -88,50 +55,25 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
         msg = 'Method "compute_remaining_tokens" not implemented for DeepSeekXReasoningEngine.'
         raise NotImplementedError(msg)
 
-    def build_request(self, argument) -> DeepSeekRequest:
-        allowed_request_kwargs = set(DeepSeekPayload.model_fields).union(
-            DeepSeekOptions.model_fields
-        )
-        payload_kwargs = self.collect_request_kwargs(argument, allowed_request_kwargs)
-        option_kwargs = {
-            key: payload_kwargs.pop(key)
-            for key in DeepSeekOptions.model_fields
-            if key in payload_kwargs
-        }
-        payload_kwargs["model"] = payload_kwargs.get("model", self.model)
-        self.deepseek_model_spec_for(payload_kwargs["model"])
-        payload_kwargs["messages"] = argument.prop.prepared_input
-        if "stop" not in payload_kwargs:
-            payload_kwargs["stop"] = "<|endoftext|>"
-        if payload_kwargs.get("stream"):
-            # NOTE: usage is required on DeepSeekResponse (MetadataTracker reads it), and
-            # streams only carry usage in the final chunk when include_usage is set.
-            payload_kwargs.setdefault("stream_options", {"include_usage": True})
+    def build_request(self, argument) -> ChatRequest:
+        unsupported = {"stream", "stream_options", "tools", "tool_choice"} & set(argument.kwargs)
+        if unsupported:
+            msg = (
+                "DeepSeek integration does not support these request options: "
+                f"{sorted(unsupported)}"
+            )
+            raise ValueError(msg)
 
-        payload = DeepSeekPayload.model_validate(payload_kwargs)
-        options = DeepSeekOptions.model_validate(option_kwargs)
-        request_options = options.model_dump(exclude_none=True)
+        request_kwargs = set(ChatRequest.model_fields) - {"messages"}
+        payload = self.collect_request_kwargs(argument, request_kwargs)
+        if isinstance(payload.get("thinking"), dict):
+            payload["thinking"] = Thinking.model_validate(payload["thinking"], strict=False)
+        payload["model"] = payload.get("model", self.model)
+        self.deepseek_model_spec_for(payload["model"])
+        payload["messages"] = tuple(argument.prop.prepared_input)
+        return ChatRequest.model_validate(payload)
 
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-        }
-        headers.update(request_options.get("extra_headers", {}))
-
-        return DeepSeekRequest(
-            provider="deepseek",
-            operation="chat.completions.create",
-            payload=payload,
-            call_options=options,
-            method="POST",
-            url=DEEPSEEK_CHAT_COMPLETIONS_URL,
-            headers=headers,
-            params=request_options.get("extra_query"),
-            timeout=request_options.get("timeout", self.client_timeout),
-            extra_body=request_options.get("extra_body"),
-        )
-
-    def forward(self, argument):
+    def forward(self, argument):  # pyright: ignore[reportIncompatibleMethodOverride]
         if self.id() != "neurosymbolic":
             msg = (
                 "DeepSeek engine is not configured. Please set a supported "
@@ -143,38 +85,44 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
         response = self.call_request(request)
         return self.parse_response(response)
 
-    def call_request(self, request: DeepSeekRequest):
-        max_retries = (
-            self.client_max_retries if self.client_max_retries is not None else DEFAULT_RETRIES
-        )
-        if request.payload.stream:
-            return self._collect_stream_response(request, max_retries)
-        response = execute_engine_api_request(
-            request,
-            client=self.transport_client,
-            max_retries=max_retries,
-        )
-        return DeepSeekResponse.model_validate(response.json())
+    def call_request(self, request: ChatRequest) -> Response[ChatResponse]:
+        if self.http_client is not None:
+            return DeepSeekClient(
+                api_key=self.api_key,
+                http_client=self.http_client,
+            ).chat(request)
 
-    def parse_response(self, response: DeepSeekResponse):
-        message = response.choices[0]["message"]
-        reasoning_content = message.get("reasoning_content")
-        content = message["content"] or ""
-        metadata = {"raw_output": response, "thinking": reasoning_content}
+        with httpx.Client(timeout=self.client_timeout) as http_client:
+            return DeepSeekClient(
+                api_key=self.api_key,
+                http_client=http_client,
+            ).chat(request)
+
+    def parse_response(self, response: Response[ChatResponse]):
+        raw_output = response.data
+        choice = raw_output.choices[0]
+        reasoning_content = choice.message.reasoning_content
+        content = choice.message.content or ""
+        metadata = {
+            "raw_output": raw_output,
+            "response": response,
+            "thinking": reasoning_content,
+        }
 
         return [content], metadata
 
     def usage_record_from_metadata(self, metadata: dict) -> EngineUsageRecord:
         usage = metadata["raw_output"].usage
-        completion_details = usage.get("completion_tokens_details") or {}
+        completion_details = usage.completion_tokens_details
+        reasoning_tokens = (
+            completion_details.reasoning_tokens if completion_details is not None else 0
+        )
 
         return EngineUsageRecord(
-            prompt_tokens=usage["prompt_tokens"],
-            completion_tokens=usage["completion_tokens"],
-            total_tokens=usage["total_tokens"],
-            completion_breakdown={
-                "reasoning_tokens": completion_details.get("reasoning_tokens") or 0,
-            },
+            prompt_tokens=usage.prompt_tokens,
+            completion_tokens=usage.completion_tokens,
+            total_tokens=usage.total_tokens,
+            completion_breakdown={"reasoning_tokens": reasoning_tokens or 0},
         )
 
     def prepare(self, argument):
@@ -203,37 +151,6 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
             system = res["system"]
 
         return system, user_prompt
-
-    def _collect_stream_response(self, request: DeepSeekRequest, max_retries: int):
-        adapter = DeepSeekStreamAdapter()
-        accumulator = EngineStreamAccumulator()
-
-        for event in execute_engine_api_stream_events(
-            request,
-            client=self.transport_client,
-            max_retries=max_retries,
-        ):
-            delta = adapter.process_event(event)
-            accumulator.add(delta)
-            if accumulator.done:
-                break
-
-        message = {"role": "assistant", "content": accumulator.text}
-        if accumulator.thinking:
-            message["reasoning_content"] = accumulator.thinking
-
-        return DeepSeekResponse.model_validate(
-            {
-                "choices": [
-                    {
-                        "index": 0,
-                        "message": message,
-                        "finish_reason": accumulator.finish_reason,
-                    }
-                ],
-                "usage": accumulator.usage,
-            }
-        )
 
     def _prepare_raw_input(self, argument):
         value = argument.prop.processed_input
