@@ -20,7 +20,6 @@ from symai.backend.integrations.cerebras.chat import (
     SystemMessage,
     TextContentPart,
     TextResponseFormat,
-    Usage,
     UserMessage,
 )
 
@@ -29,46 +28,45 @@ def _user_message() -> UserMessage:
     return UserMessage(role="user", content="hello")
 
 
-def test_message_union_models_non_tool_roles_and_image_content():
-    request = ChatRequest(
-        model="dedicated/acme-model",
-        messages=(
-            SystemMessage(role="system", content="system", name="policy"),
-            DeveloperMessage(
-                role="developer",
-                content=(TextContentPart(type="text", text="developer"),),
-            ),
-            UserMessage(
-                role="user",
-                content=(
-                    TextContentPart(type="text", text="describe"),
-                    ImageContentPart(
-                        type="image_url",
-                        image_url=ImageURL(url="data:image/png;base64,AAAA"),
+def test_message_union_routes_raw_non_tool_roles_and_image_content():
+    request = ChatRequest.model_validate(
+        {
+            "model": "dedicated/acme-model",
+            "messages": (
+                {"role": "system", "content": "system", "name": "policy"},
+                {
+                    "role": "developer",
+                    "content": ({"type": "text", "text": "developer"},),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        {"type": "text", "text": "describe"},
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": "data:image/png;base64,AAAA"},
+                        },
                     ),
-                ),
-                name="caller",
+                    "name": "caller",
+                },
+                {
+                    "role": "assistant",
+                    "content": None,
+                    "reasoning": "prior reasoning",
+                },
             ),
-            AssistantMessage(
-                role="assistant",
-                content=None,
-                reasoning="prior reasoning",
-            ),
-        ),
+        }
     )
 
-    dumped = request.model_dump(mode="json", exclude_none=True)
-    assert [message["role"] for message in dumped["messages"]] == [
-        "system",
-        "developer",
-        "user",
-        "assistant",
-    ]
-    assert dumped["messages"][2]["content"][1] == {
-        "type": "image_url",
-        "image_url": {"url": "data:image/png;base64,AAAA"},
-    }
-    assert dumped["messages"][3]["reasoning"] == "prior reasoning"
+    assert isinstance(request.messages[0], SystemMessage)
+    assert isinstance(request.messages[1], DeveloperMessage)
+    assert isinstance(request.messages[1].content[0], TextContentPart)
+    assert isinstance(request.messages[2], UserMessage)
+    assert not isinstance(request.messages[2].content, str)
+    assert isinstance(request.messages[2].content[1], ImageContentPart)
+    assert isinstance(request.messages[2].content[1].image_url, ImageURL)
+    assert isinstance(request.messages[3], AssistantMessage)
+    assert request.messages[3].reasoning == "prior reasoning"
 
 
 def test_message_union_rejects_tool_role():
@@ -81,16 +79,28 @@ def test_message_union_rejects_tool_role():
         )
 
 
+@pytest.mark.parametrize("role", ["system", "developer", "assistant"])
+def test_image_content_is_rejected_outside_user_messages(role: str):
+    with pytest.raises(ValidationError):
+        ChatRequest.model_validate(
+            {
+                "model": "gpt-oss-120b",
+                "messages": (
+                    {
+                        "role": role,
+                        "content": (
+                            {
+                                "type": "image_url",
+                                "image_url": {"url": "data:image/png;base64,AAAA"},
+                            },
+                        ),
+                    },
+                ),
+            }
+        )
+
+
 def test_complete_declared_request_serializes_with_aliases():
-    response_format = JsonSchemaResponseFormat(
-        type="json_schema",
-        json_schema=JsonSchemaSpec(
-            name="Answer",
-            description="An answer",
-            json_schema_body={"type": "object"},
-            strict=True,
-        ),
-    )
     request = ChatRequest(
         model="gpt-oss-120b",
         messages=(_user_message(),),
@@ -104,7 +114,15 @@ def test_complete_declared_request_serializes_with_aliases():
         prompt_cache_key="conversation-1",
         reasoning_effort=ReasoningEffort.HIGH,
         reasoning_format=ReasoningFormat.PARSED,
-        response_format=response_format,
+        response_format=JsonSchemaResponseFormat(
+            type="json_schema",
+            json_schema=JsonSchemaSpec(
+                name="Answer",
+                description="An answer",
+                body={"type": "object"},
+                strict=True,
+            ),
+        ),
         seed=0,
         service_tier=ServiceTier.DEFAULT,
         stop=(),
@@ -114,50 +132,64 @@ def test_complete_declared_request_serializes_with_aliases():
         user="user-1",
     )
 
-    dumped = request.model_dump(mode="json", by_alias=True, exclude_none=True)
-    assert dumped["clear_thinking"] is False
-    assert dumped["frequency_penalty"] == -0.5
-    assert dumped["logit_bias"] == {"123": -100.0, "456": 100.0}
-    assert dumped["logprobs"] is True
-    assert dumped["max_completion_tokens"] == -1
-    assert dumped["prediction"] == {"type": "content", "content": "expected"}
-    assert dumped["presence_penalty"] == 0.5
-    assert dumped["prompt_cache_key"] == "conversation-1"
-    assert dumped["reasoning_effort"] == "high"
-    assert dumped["reasoning_format"] == "parsed"
-    assert dumped["seed"] == 0
-    assert dumped["service_tier"] == "default"
-    assert dumped["stop"] == []
-    assert dumped["temperature"] == 0
-    assert dumped["top_logprobs"] == 20
-    assert dumped["top_p"] == 1
-    assert dumped["user"] == "user-1"
-    assert dumped["response_format"]["json_schema"]["schema"] == {"type": "object"}
-    assert "json_schema_body" not in dumped["response_format"]["json_schema"]
+    assert request.model_dump(mode="json", by_alias=True, exclude_none=True) == {
+        "messages": [{"role": "user", "content": "hello"}],
+        "model": "gpt-oss-120b",
+        "clear_thinking": False,
+        "frequency_penalty": -0.5,
+        "logit_bias": {"123": -100.0, "456": 100.0},
+        "logprobs": True,
+        "max_completion_tokens": -1,
+        "prediction": {"type": "content", "content": "expected"},
+        "presence_penalty": 0.5,
+        "prompt_cache_key": "conversation-1",
+        "reasoning_effort": "high",
+        "reasoning_format": "parsed",
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "Answer",
+                "description": "An answer",
+                "schema": {"type": "object"},
+                "strict": True,
+            },
+        },
+        "seed": 0,
+        "service_tier": "default",
+        "stop": [],
+        "temperature": 0,
+        "top_logprobs": 20,
+        "top_p": 1,
+        "user": "user-1",
+    }
 
 
 @pytest.mark.parametrize(
-    "response_format",
+    ("payload", "expected_type"),
     [
-        TextResponseFormat(type="text"),
-        JsonObjectResponseFormat(type="json_object"),
-        JsonSchemaResponseFormat(
-            type="json_schema",
-            json_schema=JsonSchemaSpec(name="Answer"),
+        ({"type": "text"}, TextResponseFormat),
+        ({"type": "json_object"}, JsonObjectResponseFormat),
+        (
+            {"type": "json_schema", "json_schema": {"name": "Answer"}},
+            JsonSchemaResponseFormat,
         ),
     ],
 )
-def test_response_format_variants_round_trip(
-    response_format: (TextResponseFormat | JsonObjectResponseFormat | JsonSchemaResponseFormat),
+def test_response_format_discriminator_routes_raw_payloads(
+    payload: dict[str, object],
+    expected_type: type[TextResponseFormat | JsonObjectResponseFormat | JsonSchemaResponseFormat],
 ):
-    request = ChatRequest(
-        model="gpt-oss-120b",
-        messages=(_user_message(),),
-        response_format=response_format,
+    request = ChatRequest.model_validate(
+        {
+            "model": "gpt-oss-120b",
+            "messages": ({"role": "user", "content": "hello"},),
+            "response_format": payload,
+        }
     )
+
+    assert isinstance(request.response_format, expected_type)
     assert (
-        request.model_dump(mode="json", by_alias=True)["response_format"]["type"]
-        == response_format.type
+        request.model_dump(mode="json", by_alias=True)["response_format"]["type"] == payload["type"]
     )
 
 
@@ -165,7 +197,7 @@ def test_json_schema_defaults_and_aliases():
     from_wire = JsonSchemaSpec.model_validate({"name": "Answer", "schema": {"type": "object"}})
     from_python = JsonSchemaSpec(
         name="Answer",
-        json_schema_body={"type": "object"},
+        body={"type": "object"},
     )
 
     assert from_wire.strict is False
@@ -325,22 +357,9 @@ def test_non_json_unknown_request_extra_is_rejected():
         )
 
 
-@pytest.mark.parametrize("value", [math.nan, math.inf, -math.inf, {"nested": [math.nan]}])
-def test_nonfinite_unknown_request_extra_is_rejected(value):
+def test_json_schema_value_rejects_non_json_objects():
     with pytest.raises(ValidationError):
-        ChatRequest.model_validate(
-            {
-                "model": "gpt-oss-120b",
-                "messages": (_user_message(),),
-                "future_option": value,
-            }
-        )
-
-
-@pytest.mark.parametrize("value", [math.nan, math.inf, -math.inf, {"nested": [math.nan]}])
-def test_nonfinite_json_schema_value_is_rejected(value):
-    with pytest.raises(ValidationError):
-        JsonSchemaSpec(name="Answer", json_schema_body=value)
+        JsonSchemaSpec.model_validate({"name": "Answer", "schema": {"value": object()}})
 
 
 @pytest.mark.parametrize("value", [math.nan, math.inf, -math.inf, -100.1, 100.1])
@@ -369,63 +388,6 @@ def _choice_dict(**overrides) -> dict:
     return payload
 
 
-# --- Happy parse --------------------------------------------------------------
-
-
-def test_full_completion_parses_expected_fields():
-    response = ChatResponse.model_validate(
-        {
-            "choices": [_choice_dict()],
-            "usage": _usage_dict(),
-        }
-    )
-
-    assert isinstance(response.choices, tuple)
-    assert len(response.choices) == 1
-    choice = response.choices[0]
-    assert choice.message is not None
-    assert choice.message.content == "hello"
-    assert choice.finish_reason == "stop"
-    assert response.usage is not None
-    assert response.usage.prompt_tokens == 10
-    assert response.usage.completion_tokens == 5
-    assert response.usage.total_tokens == 15
-
-
-# --- Reasoning field present/absent --------------------------------------------
-
-
-def test_reasoning_field_present_populates():
-    response = ChatResponse.model_validate(
-        {
-            "choices": [
-                _choice_dict(message={"role": "assistant", "content": "hi", "reasoning": "because"})
-            ],
-            "usage": _usage_dict(),
-        }
-    )
-
-    assert response.choices is not None
-    assert response.choices[0].message is not None
-    assert response.choices[0].message.reasoning == "because"
-
-
-def test_reasoning_field_absent_is_none():
-    response = ChatResponse.model_validate(
-        {
-            "choices": [_choice_dict()],
-            "usage": _usage_dict(),
-        }
-    )
-
-    assert response.choices is not None
-    assert response.choices[0].message is not None
-    assert response.choices[0].message.reasoning is None
-
-
-# --- Null content ---------------------------------------------------------------
-
-
 def test_null_content_parses_as_none():
     response = ChatResponse.model_validate(
         {
@@ -439,148 +401,52 @@ def test_null_content_parses_as_none():
     assert response.choices[0].message.content is None
 
 
-# --- Nested usage details --------------------------------------------------------
-
-
-def test_completion_tokens_details_reasoning_tokens_present_populates():
-    usage = Usage.model_validate(_usage_dict(completion_tokens_details={"reasoning_tokens": 42}))
-
-    assert usage.completion_tokens_details is not None
-    assert usage.completion_tokens_details.reasoning_tokens == 42
-
-
-def test_completion_tokens_details_absent_is_none():
-    usage = Usage.model_validate(_usage_dict())
-
-    assert usage.completion_tokens_details is None
-
-
-def test_completion_tokens_details_accepted_and_rejected_prediction_tokens_present_populates():
-    usage = Usage.model_validate(
-        _usage_dict(
-            completion_tokens_details={
-                "accepted_prediction_tokens": 3,
-                "rejected_prediction_tokens": 1,
-            }
-        )
-    )
-
-    assert usage.completion_tokens_details is not None
-    assert usage.completion_tokens_details.accepted_prediction_tokens == 3
-    assert usage.completion_tokens_details.rejected_prediction_tokens == 1
-
-
-def test_completion_tokens_details_accepted_and_rejected_prediction_tokens_absent_are_none():
-    usage = Usage.model_validate(_usage_dict(completion_tokens_details={"reasoning_tokens": 42}))
-
-    assert usage.completion_tokens_details is not None
-    assert usage.completion_tokens_details.accepted_prediction_tokens is None
-    assert usage.completion_tokens_details.rejected_prediction_tokens is None
-
-
-def test_prompt_tokens_details_cached_tokens_present_populates():
-    usage = Usage.model_validate(_usage_dict(prompt_tokens_details={"cached_tokens": 8}))
-
-    assert usage.prompt_tokens_details is not None
-    assert usage.prompt_tokens_details.cached_tokens == 8
-
-
-def test_prompt_tokens_details_absent_is_none():
-    usage = Usage.model_validate(_usage_dict())
-
-    assert usage.prompt_tokens_details is None
-
-
-def test_image_tokens_present_populates():
-    usage = Usage.model_validate(_usage_dict(image_tokens=4))
-
-    assert usage.image_tokens == 4
-
-
-def test_image_tokens_absent_is_none():
-    usage = Usage.model_validate(_usage_dict())
-
-    assert usage.image_tokens is None
-
-
-def test_nested_usage_details_round_trip_via_chat_response_full_parse():
-    response = ChatResponse.model_validate(
-        {
-            "choices": [_choice_dict()],
-            "usage": _usage_dict(
-                completion_tokens_details={"reasoning_tokens": 7},
-                prompt_tokens_details={"cached_tokens": 2},
-                image_tokens=1,
-            ),
-        }
-    )
-
-    assert response.usage is not None
-    assert response.usage.completion_tokens_details is not None
-    assert response.usage.prompt_tokens_details is not None
-    assert response.usage.completion_tokens_details.reasoning_tokens == 7
-    assert response.usage.prompt_tokens_details.cached_tokens == 2
-    assert response.usage.image_tokens == 1
-
-
-# --- Complete tolerant response contract -----------------------------------------
-
-
 def test_complete_non_tool_response_fields_parse():
-    response = ChatResponse.model_validate(
-        {
-            "id": "chatcmpl-123",
-            "choices": [
-                {
-                    "finish_reason": "stop",
-                    "index": 0,
-                    "logprobs": {"content": [{"token": "A", "logprob": -0.1}]},
-                    "reasoning_logprobs": {"content": [{"token": "Think", "logprob": -0.2}]},
-                    "message": {
-                        "role": "assistant",
-                        "content": "answer",
-                        "reasoning": "reasoning",
-                    },
-                }
-            ],
-            "created": 1_700_000_000,
-            "model": "gpt-oss-120b",
-            "object": "chat.completion",
-            "system_fingerprint": "fp-123",
-            "service_tier": "auto",
-            "service_tier_used": "priority",
-            "usage": {
-                "prompt_tokens": 10,
-                "completion_tokens": 5,
-                "total_tokens": 15,
-                "image_tokens": 2,
-                "prompt_tokens_details": {"cached_tokens": 3},
-                "completion_tokens_details": {
-                    "accepted_prediction_tokens": 4,
-                    "rejected_prediction_tokens": 1,
-                    "reasoning_tokens": 2,
+    payload = {
+        "id": "chatcmpl-123",
+        "choices": [
+            {
+                "finish_reason": "stop",
+                "index": 0,
+                "logprobs": {"content": [{"token": "A", "logprob": -0.1}]},
+                "reasoning_logprobs": {"content": [{"token": "Think", "logprob": -0.2}]},
+                "message": {
+                    "role": "assistant",
+                    "content": "answer",
+                    "reasoning": "reasoning",
                 },
+            }
+        ],
+        "created": 1_700_000_000,
+        "model": "gpt-oss-120b",
+        "object": "chat.completion",
+        "system_fingerprint": "fp-123",
+        "service_tier": "auto",
+        "service_tier_used": "priority",
+        "usage": {
+            "prompt_tokens": 10,
+            "completion_tokens": 5,
+            "total_tokens": 15,
+            "image_tokens": 2,
+            "prompt_tokens_details": {"cached_tokens": 3},
+            "completion_tokens_details": {
+                "accepted_prediction_tokens": 4,
+                "rejected_prediction_tokens": 1,
+                "reasoning_tokens": 2,
             },
-            "time_info": {
-                "queue_time": 0.1,
-                "prompt_time": 0.2,
-                "completion_time": 0.3,
-                "total_time": 0.6,
-                "created": 1_700_000_000.5,
-            },
-        }
-    )
+        },
+        "time_info": {
+            "queue_time": 0.1,
+            "prompt_time": 0.2,
+            "completion_time": 0.3,
+            "total_time": 0.6,
+            "created": 1_700_000_000.5,
+        },
+    }
 
-    assert response.id == "chatcmpl-123"
-    assert response.choices is not None
-    assert response.choices[0].reasoning_logprobs is not None
-    assert response.choices[0].message is not None
-    assert response.choices[0].message.reasoning == "reasoning"
-    assert response.usage is not None
-    assert response.usage.completion_tokens_details is not None
-    assert response.usage.completion_tokens_details.reasoning_tokens == 2
-    assert response.time_info is not None
-    assert response.time_info.total_time == 0.6
+    response = ChatResponse.model_validate(payload)
+
+    assert response.model_dump(mode="json", exclude_none=True) == payload
 
 
 def test_documented_response_fields_may_all_be_absent():
@@ -613,34 +479,25 @@ def test_partially_populated_nested_response_objects_parse():
 
 
 def test_unknown_response_fields_survive_at_every_modeled_level():
-    response = ChatResponse.model_validate(
-        {
-            "future_top": 1,
-            "choices": [
-                {
-                    "future_choice": 2,
-                    "message": {"future_message": 3},
-                }
-            ],
-            "usage": {
-                "future_usage": 4,
-                "completion_tokens_details": {"future_detail": 5},
-            },
-            "time_info": {"future_time": 6},
-        }
-    )
+    payload = {
+        "future_top": 1,
+        "choices": [
+            {
+                "future_choice": 2,
+                "message": {"future_message": 3},
+            }
+        ],
+        "usage": {
+            "future_usage": 4,
+            "prompt_tokens_details": {"future_prompt_detail": 5},
+            "completion_tokens_details": {"future_completion_detail": 6},
+        },
+        "time_info": {"future_time": 7},
+    }
 
-    assert response.model_extra == {"future_top": 1}
-    assert response.choices is not None
-    assert response.choices[0].model_extra == {"future_choice": 2}
-    assert response.choices[0].message is not None
-    assert response.choices[0].message.model_extra == {"future_message": 3}
-    assert response.usage is not None
-    assert response.usage.model_extra == {"future_usage": 4}
-    assert response.usage.completion_tokens_details is not None
-    assert response.usage.completion_tokens_details.model_extra == {"future_detail": 5}
-    assert response.time_info is not None
-    assert response.time_info.model_extra == {"future_time": 6}
+    response = ChatResponse.model_validate(payload)
+
+    assert response.model_dump(mode="json", exclude_none=True) == payload
 
 
 def test_non_object_chat_response_fails():

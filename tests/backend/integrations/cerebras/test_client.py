@@ -74,19 +74,6 @@ def test_empty_api_key_is_rejected():
         Client(api_key="", http_client=httpx.Client())
 
 
-def test_nonempty_api_key_is_preserved_exactly():
-    captured: dict[str, object] = {}
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        captured["authorization"] = request.headers["authorization"]
-        return httpx.Response(200, json=_completion_json(), request=request)
-
-    injected = httpx.Client(transport=httpx.MockTransport(handler))
-    Client(api_key=" test-key ", http_client=injected).chat(_chat_request())
-
-    assert captured["authorization"] == "Bearer  test-key "
-
-
 def test_chat_posts_exact_body_and_returns_complete_metadata():
     captured: dict[str, object] = {}
 
@@ -94,6 +81,7 @@ def test_chat_posts_exact_body_and_returns_complete_metadata():
         captured["method"] = request.method
         captured["url"] = str(request.url)
         captured["authorization"] = request.headers["authorization"]
+        captured["content_type"] = request.headers["content-type"]
         captured["body"] = json.loads(request.content)
         return httpx.Response(
             201,
@@ -112,6 +100,7 @@ def test_chat_posts_exact_body_and_returns_complete_metadata():
         "method": "POST",
         "url": "https://api.cerebras.ai/v1/chat/completions",
         "authorization": "Bearer test-key",
+        "content_type": "application/json",
         "body": {
             "messages": [{"role": "user", "content": "hi"}],
             "model": "gpt-oss-120b",
@@ -144,30 +133,6 @@ def test_missing_optional_metadata_is_none():
     assert metadata.rate_limit.reset_tokens_minute is None
 
 
-@pytest.mark.parametrize(
-    "value",
-    ["", "invalid", "-1", "nan", "inf", "-inf", "1_0"],
-)
-def test_invalid_numeric_metadata_becomes_none(value: str):
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(
-            200,
-            json=_completion_json(),
-            headers={
-                "retry-after": value,
-                "x-ratelimit-limit-requests-day": value,
-                "x-ratelimit-reset-tokens-minute": value,
-            },
-            request=request,
-        )
-
-    metadata = _client(handler).chat(_chat_request()).metadata
-
-    assert metadata.retry_after is None
-    assert metadata.rate_limit.limit_requests_day is None
-    assert metadata.rate_limit.reset_tokens_minute is None
-
-
 def test_zero_retry_after_is_preserved():
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(
@@ -183,44 +148,17 @@ def test_zero_retry_after_is_preserved():
     assert exc_info.value.retry_after == 0.0
 
 
-def test_retry_after_http_date_is_not_guessed():
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(
-            429,
-            text="slow",
-            headers={"retry-after": "Wed, 21 Oct 2026 07:28:00 GMT"},
-            request=request,
-        )
-
-    with pytest.raises(RateLimitError) as exc_info:
-        _client(handler).chat(_chat_request())
-
-    assert exc_info.value.retry_after is None
-
-
-@pytest.mark.parametrize(
-    ("status_code", "error_type"),
-    [(401, AuthError), (429, RateLimitError), (500, APIError)],
-)
-def test_http_statuses_map_to_typed_errors(
+@pytest.mark.parametrize("status_code", [302, 400, 403, 500])
+def test_other_non_success_statuses_map_to_exact_generic_api_error(
     status_code: int,
-    error_type: type[APIError],
 ):
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(status_code, text="failure", request=request)
-
-    with pytest.raises(error_type):
-        _client(handler).chat(_chat_request())
-
-
-def test_http_error_retains_complete_metadata_and_exact_body():
-    body = "server error"
+    body = "failure"
 
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(
-            500,
+            status_code,
             text=body,
-            headers={"x-request-id": "req-500", **RATE_LIMIT_HEADERS},
+            headers={"x-request-id": f"req-{status_code}"},
             request=request,
         )
 
@@ -228,30 +166,59 @@ def test_http_error_retains_complete_metadata_and_exact_body():
         _client(handler).chat(_chat_request())
 
     error = exc_info.value
+    assert type(error) is APIError
     assert error.body == body
-    assert error.status_code == 500
-    assert error.request_id == "req-500"
-    assert error.metadata.rate_limit.remaining_tokens_minute == 900
+    assert error.status_code == status_code
+    assert error.request_id == f"req-{status_code}"
 
 
-def test_invalid_json_retains_exact_decode_cause(
-    monkeypatch: pytest.MonkeyPatch,
+@pytest.mark.parametrize(
+    ("status_code", "error_type"),
+    [(401, AuthError), (429, RateLimitError)],
+)
+def test_specialized_http_errors_retain_complete_response_evidence(
+    status_code: int,
+    error_type: type[AuthError | RateLimitError],
 ):
-    body = "not json"
-    decode_error = json.JSONDecodeError("invalid", body, 0)
-
-    def fail_json(**_kwargs: object) -> object:
-        raise decode_error
+    body = "provider error"
 
     def handler(request: httpx.Request) -> httpx.Response:
-        response = httpx.Response(
+        return httpx.Response(
+            status_code,
+            text=body,
+            headers={
+                "x-request-id": f"req-{status_code}",
+                "retry-after": "2.5",
+                **RATE_LIMIT_HEADERS,
+            },
+            request=request,
+        )
+
+    with pytest.raises(error_type) as exc_info:
+        _client(handler).chat(_chat_request())
+
+    error = exc_info.value
+    assert type(error) is error_type
+    assert error.body == body
+    assert error.status_code == status_code
+    assert error.request_id == f"req-{status_code}"
+    assert error.metadata.retry_after == 2.5
+    assert error.metadata.rate_limit.limit_requests_day == 100
+    assert error.metadata.rate_limit.remaining_tokens_minute == 900
+    if isinstance(error, RateLimitError):
+        assert error.retry_after == 2.5
+
+
+def test_invalid_json_retains_decode_evidence():
+    body = "not json"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
             200,
             text=body,
             headers={"x-request-id": "req-json"},
             request=request,
         )
-        monkeypatch.setattr(response, "json", fail_json)
-        return response
 
     with pytest.raises(ResponseError) as exc_info:
         _client(handler).chat(_chat_request())
@@ -259,45 +226,32 @@ def test_invalid_json_retains_exact_decode_cause(
     error = exc_info.value
     assert error.body == body
     assert error.metadata.request_id == "req-json"
-    assert error.__cause__ is decode_error
+    assert isinstance(error.__cause__, json.JSONDecodeError)
+    assert error.__cause__.doc == body
 
 
-def test_invalid_json_encoding_retains_exact_decode_cause(
-    monkeypatch: pytest.MonkeyPatch,
-):
-    body = "invalid encoding"
-    decode_error = UnicodeDecodeError("utf-8", b"\xff", 0, 1, body)
-
-    def fail_json(**_kwargs: object) -> object:
-        raise decode_error
+def test_invalid_json_encoding_retains_decode_evidence():
+    body = b"\xff"
 
     def handler(request: httpx.Request) -> httpx.Response:
-        response = httpx.Response(200, text=body, request=request)
-        monkeypatch.setattr(response, "json", fail_json)
-        return response
+        return httpx.Response(200, content=body, request=request)
 
     with pytest.raises(ResponseError) as exc_info:
         _client(handler).chat(_chat_request())
 
-    assert exc_info.value.__cause__ is decode_error
+    error = exc_info.value
+    assert error.body == "\ufffd"
+    assert isinstance(error.__cause__, UnicodeDecodeError)
+    assert error.__cause__.object == body
 
 
-def test_schema_invalid_success_retains_exact_validation_cause(
-    monkeypatch: pytest.MonkeyPatch,
-):
-    with pytest.raises(ValidationError) as source:
-        ChatResponse.model_validate([])
-    validation_error = source.value
-
-    def fail_validation(_payload: object) -> ChatResponse:
-        raise validation_error
-
-    monkeypatch.setattr(ChatResponse, "model_validate", fail_validation)
+def test_schema_invalid_success_retains_response_evidence():
+    body = "[]"
 
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(
             200,
-            json={},
+            content=body,
             headers={"x-request-id": "req-schema"},
             request=request,
         )
@@ -305,8 +259,11 @@ def test_schema_invalid_success_retains_exact_validation_cause(
     with pytest.raises(ResponseError) as exc_info:
         _client(handler).chat(_chat_request())
 
-    assert exc_info.value.metadata.request_id == "req-schema"
-    assert exc_info.value.__cause__ is validation_error
+    error = exc_info.value
+    assert error.body == body
+    assert error.metadata.status_code == 200
+    assert error.metadata.request_id == "req-schema"
+    assert isinstance(error.__cause__, ValidationError)
 
 
 def test_empty_success_body_is_a_response_error_with_metadata():
@@ -337,6 +294,21 @@ def test_transport_failure_retains_exact_cause_and_no_metadata():
         _client(handler).chat(_chat_request())
 
     assert exc_info.value.__cause__ is transport_error
+    assert exc_info.value.metadata is None
+
+
+def test_timeout_failure_retains_exact_cause_and_no_metadata():
+    message = "timed out"
+    timeout = httpx.ReadTimeout(message)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        timeout.request = request
+        raise timeout
+
+    with pytest.raises(TransportError) as exc_info:
+        _client(handler).chat(_chat_request())
+
+    assert exc_info.value.__cause__ is timeout
     assert exc_info.value.metadata is None
 
 

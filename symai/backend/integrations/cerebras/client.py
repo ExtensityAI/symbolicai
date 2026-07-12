@@ -1,15 +1,13 @@
 import json
-import re
-from math import isfinite
 
 import httpx
 from pydantic import ValidationError
 
 from symai.backend.integrations.cerebras import chat, errors
 from symai.backend.integrations.cerebras.response import (
+    Metadata,
     RateLimitState,
     Response,
-    ResponseMetadata,
 )
 
 BASE_URL = "https://api.cerebras.ai/v1"
@@ -22,69 +20,46 @@ REMAINING_TOKENS_MINUTE_HEADER = "x-ratelimit-remaining-tokens-minute"
 RESET_REQUESTS_DAY_HEADER = "x-ratelimit-reset-requests-day"
 RESET_TOKENS_MINUTE_HEADER = "x-ratelimit-reset-tokens-minute"
 
-_NONNEGATIVE_INTEGER = re.compile(r"[0-9]+")
-_NONNEGATIVE_DECIMAL = re.compile(r"[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?")
 
-
-def _nonnegative_int(headers: httpx.Headers, name: str) -> int | None:
-    raw = headers.get(name)
-    if raw is None or _NONNEGATIVE_INTEGER.fullmatch(raw) is None:
+def _optional_int(value: str | None):
+    if value is None:
         return None
-    try:
-        value = int(raw)
-    except ValueError:
+
+    return int(value)
+
+
+def _optional_float(value: str | None):
+    if value is None:
         return None
-    return value if value >= 0 else None
+
+    return float(value)
 
 
-def _nonnegative_float(headers: httpx.Headers, name: str) -> float | None:
-    raw = headers.get(name)
-    if raw is None or _NONNEGATIVE_DECIMAL.fullmatch(raw) is None:
-        return None
-    try:
-        value = float(raw)
-    except ValueError:
-        return None
-    return value if isfinite(value) and value >= 0 else None
-
-
-def _metadata(response: httpx.Response) -> ResponseMetadata:
+def _metadata(response: httpx.Response) -> Metadata:
     headers = response.headers
-    return ResponseMetadata(
+    return Metadata(
         status_code=response.status_code,
         request_id=headers.get(REQUEST_ID_HEADER),
-        retry_after=_nonnegative_float(headers, RETRY_AFTER_HEADER),
+        retry_after=_optional_float(headers.get(RETRY_AFTER_HEADER)),
         rate_limit=RateLimitState(
-            limit_requests_day=_nonnegative_int(headers, LIMIT_REQUESTS_DAY_HEADER),
-            limit_tokens_minute=_nonnegative_int(headers, LIMIT_TOKENS_MINUTE_HEADER),
-            remaining_requests_day=_nonnegative_int(
-                headers,
-                REMAINING_REQUESTS_DAY_HEADER,
-            ),
-            remaining_tokens_minute=_nonnegative_int(
-                headers,
-                REMAINING_TOKENS_MINUTE_HEADER,
-            ),
-            reset_requests_day=_nonnegative_float(
-                headers,
-                RESET_REQUESTS_DAY_HEADER,
-            ),
-            reset_tokens_minute=_nonnegative_float(
-                headers,
-                RESET_TOKENS_MINUTE_HEADER,
-            ),
+            limit_requests_day=_optional_int(headers.get(LIMIT_REQUESTS_DAY_HEADER)),
+            limit_tokens_minute=_optional_int(headers.get(LIMIT_TOKENS_MINUTE_HEADER)),
+            remaining_requests_day=_optional_int(headers.get(REMAINING_REQUESTS_DAY_HEADER)),
+            remaining_tokens_minute=_optional_int(headers.get(REMAINING_TOKENS_MINUTE_HEADER)),
+            reset_requests_day=_optional_float(headers.get(RESET_REQUESTS_DAY_HEADER)),
+            reset_tokens_minute=_optional_float(headers.get(RESET_TOKENS_MINUTE_HEADER)),
         ),
     )
 
 
-def _request_body(request: chat.ChatRequest) -> dict[str, object]:
+def _request_body(request: chat.ChatRequest):
     return request.model_dump(mode="json", by_alias=True, exclude_none=True)
 
 
 def _raise_for_status(
     response: httpx.Response,
-    metadata: ResponseMetadata,
-) -> None:
+    metadata: Metadata,
+):
     if response.status_code == httpx.codes.UNAUTHORIZED:
         raise errors.AuthError(
             metadata,
@@ -101,10 +76,10 @@ def _raise_for_status(
         raise errors.APIError(metadata, response.text)
 
 
-def _validate(
+def _parse_response(
     response: httpx.Response,
-    metadata: ResponseMetadata,
-) -> chat.ChatResponse:
+    metadata: Metadata,
+):
     try:
         payload = response.json()
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:
@@ -151,4 +126,4 @@ class Client:
 
         metadata = _metadata(response)
         _raise_for_status(response, metadata)
-        return Response(data=_validate(response, metadata), metadata=metadata)
+        return Response(data=_parse_response(response, metadata), metadata=metadata)

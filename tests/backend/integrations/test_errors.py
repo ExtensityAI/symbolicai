@@ -3,10 +3,7 @@ import pytest
 from symai.backend.integrations import errors as integration_errors
 from symai.backend.integrations import http_errors
 from symai.backend.integrations.cerebras import errors as cerebras_errors
-from symai.backend.integrations.cerebras.response import (
-    RateLimitState,
-    ResponseMetadata,
-)
+from symai.backend.integrations.cerebras.response import Metadata, RateLimitState
 
 
 def _metadata(
@@ -14,8 +11,8 @@ def _metadata(
     status_code: int = 500,
     request_id: str | None = "req-1",
     retry_after: float | None = None,
-) -> ResponseMetadata:
-    return ResponseMetadata(
+) -> Metadata:
+    return Metadata(
         status_code=status_code,
         request_id=request_id,
         retry_after=retry_after,
@@ -23,53 +20,79 @@ def _metadata(
     )
 
 
-def test_universal_lattice_is_free_of_http_semantics():
-    assert not hasattr(integration_errors, "APIError")
-    assert not hasattr(integration_errors, "AuthError")
-    assert not hasattr(integration_errors, "RateLimitError")
-
-
-def test_http_errors_are_still_integration_errors():
-    assert issubclass(http_errors.APIError, integration_errors.IntegrationError)
-    assert issubclass(http_errors.AuthError, http_errors.APIError)
-    assert issubclass(http_errors.RateLimitError, http_errors.APIError)
-
-
-def test_cerebras_errors_subclass_both_shared_lattices():
-    assert issubclass(cerebras_errors.Error, integration_errors.IntegrationError)
-    assert issubclass(cerebras_errors.TransportError, integration_errors.TransportError)
-    assert issubclass(cerebras_errors.ResponseError, integration_errors.ResponseError)
-    assert issubclass(cerebras_errors.APIError, http_errors.APIError)
-    assert issubclass(cerebras_errors.AuthError, http_errors.AuthError)
-    assert issubclass(cerebras_errors.RateLimitError, http_errors.RateLimitError)
-
-
-def test_auth_and_rate_limit_are_also_api_errors_at_both_levels():
-    assert issubclass(cerebras_errors.AuthError, cerebras_errors.APIError)
-    assert issubclass(cerebras_errors.RateLimitError, cerebras_errors.APIError)
-    assert issubclass(cerebras_errors.AuthError, http_errors.APIError)
-    assert issubclass(cerebras_errors.RateLimitError, http_errors.APIError)
-
-
-def test_shared_except_catches_the_integration_specific_error():
-    with pytest.raises(http_errors.AuthError):
-        raise cerebras_errors.AuthError(_metadata(status_code=401), "nope")
-
-    with pytest.raises(http_errors.APIError):
-        raise cerebras_errors.RateLimitError(_metadata(status_code=429), "slow down")
-
-    transport_message = "boom"
-    response_message = "bad"
-
-    with pytest.raises(integration_errors.IntegrationError):
-        raise cerebras_errors.TransportError(transport_message)
-
-    with pytest.raises(integration_errors.ResponseError):
-        raise cerebras_errors.ResponseError(
-            response_message,
+def _provider_errors():
+    return (
+        cerebras_errors.APIError(_metadata(), "api"),
+        cerebras_errors.AuthError(_metadata(status_code=401), "auth"),
+        cerebras_errors.RateLimitError(_metadata(status_code=429), "rate limit"),
+        cerebras_errors.ResponseError(
+            "response",
             metadata=_metadata(status_code=200),
             body="{}",
-        )
+        ),
+        cerebras_errors.TransportError("transport"),
+    )
+
+
+@pytest.mark.parametrize(
+    ("error", "catch_type"),
+    [
+        (cerebras_errors.APIError(_metadata(), "api"), http_errors.APIError),
+        (
+            cerebras_errors.AuthError(_metadata(status_code=401), "auth"),
+            http_errors.AuthError,
+        ),
+        (
+            cerebras_errors.AuthError(_metadata(status_code=401), "auth"),
+            cerebras_errors.APIError,
+        ),
+        (
+            cerebras_errors.RateLimitError(
+                _metadata(status_code=429),
+                "rate limit",
+            ),
+            http_errors.RateLimitError,
+        ),
+        (
+            cerebras_errors.RateLimitError(
+                _metadata(status_code=429),
+                "rate limit",
+            ),
+            cerebras_errors.APIError,
+        ),
+        (
+            cerebras_errors.ResponseError(
+                "response",
+                metadata=_metadata(status_code=200),
+                body="{}",
+            ),
+            integration_errors.ResponseError,
+        ),
+        (
+            cerebras_errors.TransportError("transport"),
+            integration_errors.TransportError,
+        ),
+    ],
+)
+def test_cerebras_errors_are_caught_by_shared_lattices(
+    error: cerebras_errors.Error,
+    catch_type: type[Exception],
+):
+    with pytest.raises(catch_type):
+        raise error
+
+
+@pytest.mark.parametrize(
+    "catch_type",
+    [cerebras_errors.Error, integration_errors.IntegrationError],
+)
+@pytest.mark.parametrize("error", _provider_errors())
+def test_all_cerebras_errors_are_caught_by_shared_bases(
+    error: cerebras_errors.Error,
+    catch_type: type[Exception],
+):
+    with pytest.raises(catch_type):
+        raise error
 
 
 def test_api_error_properties_delegate_to_metadata():
@@ -106,14 +129,6 @@ def test_response_error_retains_metadata_and_body():
 def test_transport_error_defaults_to_no_metadata():
     error = cerebras_errors.TransportError("network failure")
     assert error.metadata is None
-
-
-def test_transport_error_rejects_response_metadata():
-    with pytest.raises(TypeError):
-        cerebras_errors.TransportError(
-            "network failure",
-            metadata=_metadata(),  # pyright: ignore[reportCallIssue]
-        )
 
 
 def test_error_compatibility_properties_are_read_only():

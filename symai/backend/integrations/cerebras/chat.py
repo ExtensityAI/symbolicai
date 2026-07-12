@@ -1,28 +1,11 @@
 from enum import StrEnum
-from math import isfinite
 from typing import Annotated, Literal
 
-from pydantic import AfterValidator, AliasChoices, ConfigDict, Field, JsonValue
+from pydantic import ConfigDict, Field, JsonValue
 
 from symai.backend.integrations.base import StrictModel, TolerantModel
 
 PATH = "/chat/completions"
-
-
-def _require_finite_json(value: JsonValue) -> JsonValue:
-    if isinstance(value, float) and not isfinite(value):
-        message = "JSON numbers must be finite"
-        raise ValueError(message)
-    if isinstance(value, list):
-        for item in value:
-            _require_finite_json(item)
-    elif isinstance(value, dict):
-        for item in value.values():
-            _require_finite_json(item)
-    return value
-
-
-_FiniteJsonValue = Annotated[JsonValue, AfterValidator(_require_finite_json)]
 
 
 class TextContentPart(StrictModel):
@@ -105,15 +88,12 @@ class JsonObjectResponseFormat(StrictModel):
 
 
 class JsonSchemaSpec(StrictModel):
-    model_config = ConfigDict(validate_by_alias=True, validate_by_name=True)
+    model_config = ConfigDict(validate_by_name=True, serialize_by_alias=True)
 
     name: str
     description: str | None = None
-    json_schema_body: _FiniteJsonValue | None = Field(
-        default=None,
-        validation_alias=AliasChoices("json_schema_body", "schema"),
-        serialization_alias="schema",
-    )
+    body: Annotated[JsonValue | None, Field(alias="schema")] = None
+    """The JSON Schema that the model's response must satisfy."""
     strict: bool = False
 
 
@@ -138,7 +118,7 @@ _StopSequence = Annotated[tuple[str, ...], Field(max_length=4)]
 
 class ChatRequest(StrictModel):
     model_config = ConfigDict(extra="allow")
-    __pydantic_extra__: dict[str, _FiniteJsonValue] = Field(  # pyright: ignore[reportIncompatibleVariableOverride]
+    __pydantic_extra__: dict[str, JsonValue] = Field(  # pyright: ignore[reportIncompatibleVariableOverride]
         init=False
     )
 

@@ -15,7 +15,7 @@ class RateLimitState:
 
 
 @dataclass(frozen=True, slots=True)
-class ResponseMetadata:
+class Metadata:
     status_code: int
     request_id: str | None
     retry_after: float | None
@@ -25,4 +25,4 @@ class ResponseMetadata:
 @dataclass(frozen=True, slots=True)
 class Response(Generic[T]):
     data: T
-    metadata: ResponseMetadata
+    metadata: Metadata
