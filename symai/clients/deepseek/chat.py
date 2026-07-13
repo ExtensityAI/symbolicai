@@ -8,7 +8,7 @@ from symai.clients._models import ModelId, StrictModel, TolerantModel
 
 PATH = "/chat/completions"
 
-ChatModel = Literal["deepseek-v4-flash", "deepseek-v4-pro"]
+Model = Literal["deepseek-v4-flash", "deepseek-v4-pro"]
 
 
 class ReasoningEffort(StrEnum):
@@ -22,7 +22,7 @@ class ReasoningSpec:
 
 
 @dataclass(frozen=True, slots=True)
-class ChatModelSpec:
+class ModelSpec:
     context_tokens: int
     response_tokens: int
     reasoning: ReasoningSpec | None
@@ -30,9 +30,9 @@ class ChatModelSpec:
 
 
 _REASONING = ReasoningSpec(tuple(ReasoningEffort))
-MODEL_SPECS: dict[ChatModel, ChatModelSpec] = {
-    "deepseek-v4-flash": ChatModelSpec(1_000_000, 384_000, _REASONING, False),
-    "deepseek-v4-pro": ChatModelSpec(1_000_000, 384_000, _REASONING, False),
+MODEL_SPECS: dict[Model, ModelSpec] = {
+    "deepseek-v4-flash": ModelSpec(1_000_000, 384_000, _REASONING, False),
+    "deepseek-v4-pro": ModelSpec(1_000_000, 384_000, _REASONING, False),
 }
 
 
@@ -89,7 +89,7 @@ _UserID = Annotated[str, Field(max_length=512, pattern=r"^[a-zA-Z0-9_-]+$")]
 
 class CreateChatCompletionRequest(StrictModel):
     messages: tuple[Message, ...] = Field(min_length=1)
-    model: ChatModel | ModelId
+    model: Model | ModelId
     thinking: Thinking | None = None
     reasoning_effort: ReasoningEffort | None = None
     max_tokens: int | None = Field(default=None, gt=0)

@@ -67,7 +67,7 @@ def _create_openai_language_model(
     client = openai.Client(api_key=api_key, http_client=http_client)
     return openai_language_engine.LanguageModelEngine(
         client=client,
-        model=cast("openai.responses.ResponseModel", model),
+        model=cast("openai.responses.Model", model),
     )
 
 
@@ -79,7 +79,7 @@ def _create_openai_embedding(
     client = openai.Client(api_key=api_key, http_client=http_client)
     return openai_embedding_engine.EmbeddingEngine(
         client=client,
-        model=cast("openai.embeddings.EmbeddingModel", model),
+        model=cast("openai.embeddings.Model", model),
     )
 
 
@@ -91,7 +91,7 @@ def _create_cerebras_language_model(
     client = cerebras.Client(api_key=api_key, http_client=http_client)
     return cerebras_engine.LanguageModelEngine(
         client=client,
-        model=cast("cerebras.chat.ChatModel", model),
+        model=cast("cerebras.chat.Model", model),
     )
 
 
@@ -103,7 +103,7 @@ def _create_deepseek_language_model(
     client = deepseek.Client(api_key=api_key, http_client=http_client)
     return deepseek_engine.LanguageModelEngine(
         client=client,
-        model=cast("deepseek.chat.ChatModel", model),
+        model=cast("deepseek.chat.Model", model),
     )
 
 

@@ -8,7 +8,7 @@ from symai.clients._models import ModelId, StrictModel, TolerantModel
 PATH = "/embeddings"
 
 
-EmbeddingModel = Literal[
+Model = Literal[
     "text-embedding-ada-002",
     "text-embedding-3-small",
     "text-embedding-3-large",
@@ -16,21 +16,21 @@ EmbeddingModel = Literal[
 
 
 @dataclass(frozen=True, slots=True)
-class EmbeddingModelSpec:
+class ModelSpec:
     context_tokens: int
     dimensions: int
 
 
-MODEL_SPECS: dict[EmbeddingModel, EmbeddingModelSpec] = {
-    "text-embedding-ada-002": EmbeddingModelSpec(8_191, 1_536),
-    "text-embedding-3-small": EmbeddingModelSpec(8_191, 1_536),
-    "text-embedding-3-large": EmbeddingModelSpec(8_191, 3_072),
+MODEL_SPECS: dict[Model, ModelSpec] = {
+    "text-embedding-ada-002": ModelSpec(8_191, 1_536),
+    "text-embedding-3-small": ModelSpec(8_191, 1_536),
+    "text-embedding-3-large": ModelSpec(8_191, 3_072),
 }
 
 
 class CreateEmbeddingRequest(StrictModel):
     input: str | tuple[str, ...]
-    model: EmbeddingModel | ModelId
+    model: Model | ModelId
     dimensions: int | None = Field(default=None, gt=0)
     encoding_format: Literal["float", "base64"] | None = None
     user: str | None = None

@@ -5,12 +5,9 @@ from pydantic import TypeAdapter
 
 from symai.backend.base import Engine
 from symai.backend.usage import EngineUsageRecord
-from symai.clients.cerebras.chat import (
-    MODEL_SPECS as CHAT_MODEL_SPECS,
-)
+from symai.clients.cerebras import chat as chat_api
 from symai.clients.cerebras.chat import (
     ChatCompletion,
-    ChatModel,
     CreateChatCompletionRequest,
     Message,
     ReasoningEffort,
@@ -34,10 +31,10 @@ class LanguageModelEngine(Engine):
     provider = "cerebras"
     capability = "language_model"
 
-    def __init__(self, *, client: CerebrasClient, model: ChatModel):
+    def __init__(self, *, client: CerebrasClient, model: chat_api.Model):
         super().__init__()
         try:
-            self.model_spec = CHAT_MODEL_SPECS[model]
+            self.model_spec = chat_api.MODEL_SPECS[model]
         except KeyError as e:
             msg = f"Unsupported model: {model}"
             raise ValueError(msg) from e

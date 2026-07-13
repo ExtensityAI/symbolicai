@@ -6,10 +6,8 @@ from pydantic import TypeAdapter
 
 from symai.backend.base import Engine
 from symai.backend.usage import EngineUsageRecord
+from symai.clients.openai import responses as responses_api
 from symai.clients.openai.client import Client as OpenAIClient
-from symai.clients.openai.responses import (
-    MODEL_SPECS as RESPONSE_MODEL_SPECS,
-)
 from symai.clients.openai.responses import (
     ContextCompaction,
     Conversation,
@@ -23,7 +21,6 @@ from symai.clients.openai.responses import (
     ReasoningConfig,
     ReasoningEffort,
     Response,
-    ResponseModel,
     ResponseStatus,
     ServiceTier,
     TextConfig,
@@ -35,7 +32,7 @@ from symai.utils import encode_media_frames
 logger = logging.getLogger(__name__)
 
 
-_HIGH_REASONING_EFFORT_MODELS: frozenset[ResponseModel] = frozenset(
+_HIGH_REASONING_EFFORT_MODELS: frozenset[responses_api.Model] = frozenset(
     {"gpt-5.5-pro", "gpt-5.4-pro", "o3-pro"}
 )
 _TOKENIZER = "o200k_base"
@@ -68,10 +65,10 @@ class LanguageModelEngine(Engine):
     provider = "openai"
     capability = "language_model"
 
-    def __init__(self, *, client: OpenAIClient, model: ResponseModel):
+    def __init__(self, *, client: OpenAIClient, model: responses_api.Model):
         super().__init__()
         try:
-            self.model_spec = RESPONSE_MODEL_SPECS[model]
+            self.model_spec = responses_api.MODEL_SPECS[model]
         except KeyError as e:
             msg = f"Unsupported model: {model}"
             raise ValueError(msg) from e

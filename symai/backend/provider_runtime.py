@@ -128,25 +128,25 @@ def create_provider_engine_handle(
             client = OpenAIClient(api_key=api_key, http_client=http_client)
             engine = EmbeddingEngine(
                 client=client,
-                model=cast("openai_embeddings.EmbeddingModel", known_model),
+                model=cast("openai_embeddings.Model", known_model),
             )
         elif provider == "openai":
             client = OpenAIClient(api_key=api_key, http_client=http_client)
             engine = OpenAILanguageModelEngine(
                 client=client,
-                model=cast("openai_responses.ResponseModel", known_model),
+                model=cast("openai_responses.Model", known_model),
             )
         elif provider == "cerebras":
             client = CerebrasClient(api_key=api_key, http_client=http_client)
             engine = CerebrasLanguageModelEngine(
                 client=client,
-                model=cast("cerebras_chat.ChatModel", known_model),
+                model=cast("cerebras_chat.Model", known_model),
             )
         else:
             client = DeepSeekClient(api_key=api_key, http_client=http_client)
             engine = DeepSeekLanguageModelEngine(
                 client=client,
-                model=cast("deepseek_chat.ChatModel", known_model),
+                model=cast("deepseek_chat.Model", known_model),
             )
     except BaseException:
         http_client.close()

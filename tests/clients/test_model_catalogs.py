@@ -1,3 +1,5 @@
+from typing import get_args
+
 import pytest
 from pydantic import ValidationError
 
@@ -5,6 +7,22 @@ from symai.clients.cerebras import chat as cerebras_chat
 from symai.clients.deepseek import chat as deepseek_chat
 from symai.clients.openai import embeddings as openai_embeddings
 from symai.clients.openai import responses as openai_responses
+
+
+@pytest.mark.parametrize(
+    ("endpoint", "old_name_prefix"),
+    [
+        (openai_responses, "Response"),
+        (openai_embeddings, "Embedding"),
+        (cerebras_chat, "Chat"),
+        (deepseek_chat, "Chat"),
+    ],
+)
+def test_endpoint_model_contracts_use_endpoint_namespace(endpoint, old_name_prefix):
+    assert set(get_args(endpoint.Model)) == set(endpoint.MODEL_SPECS)
+    assert all(isinstance(spec, endpoint.ModelSpec) for spec in endpoint.MODEL_SPECS.values())
+    assert not hasattr(endpoint, f"{old_name_prefix}Model")
+    assert not hasattr(endpoint, f"{old_name_prefix}ModelSpec")
 
 
 def test_endpoint_packages_own_model_catalogs():

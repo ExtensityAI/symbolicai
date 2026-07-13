@@ -8,7 +8,7 @@ from symai.clients._models import ModelId, StrictModel, TolerantModel
 
 PATH = "/responses"
 
-ResponseModel = Literal[
+Model = Literal[
     "gpt-5.5",
     "gpt-5.5-pro",
     "gpt-5.4",
@@ -53,7 +53,7 @@ class ReasoningSpec:
 
 
 @dataclass(frozen=True, slots=True)
-class ResponseModelSpec:
+class ModelSpec:
     context_tokens: int
     response_tokens: int
     reasoning: ReasoningSpec | None
@@ -61,17 +61,17 @@ class ResponseModelSpec:
 
 
 _REASONING = ReasoningSpec(tuple(ReasoningEffort))
-MODEL_SPECS: dict[ResponseModel, ResponseModelSpec] = {
-    "gpt-5.5": ResponseModelSpec(1_050_000, 128_000, reasoning=_REASONING),
-    "gpt-5.5-pro": ResponseModelSpec(1_050_000, 128_000, reasoning=_REASONING),
-    "gpt-5.4": ResponseModelSpec(1_050_000, 128_000, reasoning=_REASONING),
-    "gpt-5.4-pro": ResponseModelSpec(1_050_000, 128_000, reasoning=_REASONING),
-    "gpt-5.4-mini": ResponseModelSpec(400_000, 128_000, reasoning=_REASONING),
-    "gpt-5.4-nano": ResponseModelSpec(400_000, 128_000, reasoning=_REASONING),
-    "o3-pro": ResponseModelSpec(200_000, 100_000, reasoning=_REASONING),
-    "o3": ResponseModelSpec(200_000, 100_000, reasoning=_REASONING),
-    "gpt-4.1": ResponseModelSpec(1_047_576, 32_768, reasoning=None),
-    "gpt-4.1-mini": ResponseModelSpec(1_047_576, 32_768, reasoning=None),
+MODEL_SPECS: dict[Model, ModelSpec] = {
+    "gpt-5.5": ModelSpec(1_050_000, 128_000, reasoning=_REASONING),
+    "gpt-5.5-pro": ModelSpec(1_050_000, 128_000, reasoning=_REASONING),
+    "gpt-5.4": ModelSpec(1_050_000, 128_000, reasoning=_REASONING),
+    "gpt-5.4-pro": ModelSpec(1_050_000, 128_000, reasoning=_REASONING),
+    "gpt-5.4-mini": ModelSpec(400_000, 128_000, reasoning=_REASONING),
+    "gpt-5.4-nano": ModelSpec(400_000, 128_000, reasoning=_REASONING),
+    "o3-pro": ModelSpec(200_000, 100_000, reasoning=_REASONING),
+    "o3": ModelSpec(200_000, 100_000, reasoning=_REASONING),
+    "gpt-4.1": ModelSpec(1_047_576, 32_768, reasoning=None),
+    "gpt-4.1-mini": ModelSpec(1_047_576, 32_768, reasoning=None),
 }
 
 
@@ -225,7 +225,7 @@ Include = Literal[
 
 class CreateResponseRequest(StrictModel):
     input: str | tuple[InputMessage, ...]
-    model: ResponseModel | ModelId
+    model: Model | ModelId
     background: bool | None = None
     context_management: tuple[ContextCompaction, ...] | None = None
     conversation: str | Conversation | None = None

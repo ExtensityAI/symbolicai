@@ -8,7 +8,7 @@ from symai.clients._models import ModelId, StrictModel, TolerantModel
 
 PATH = "/chat/completions"
 
-ChatModel = Literal["gpt-oss-120b", "gemma-4-31b", "zai-glm-4.7"]
+Model = Literal["gpt-oss-120b", "gemma-4-31b", "zai-glm-4.7"]
 
 
 class TextContentPart(StrictModel):
@@ -69,14 +69,14 @@ class ReasoningSpec:
 
 
 @dataclass(frozen=True, slots=True)
-class ChatModelSpec:
+class ModelSpec:
     context_tokens: int
     response_tokens: int
     reasoning: ReasoningSpec | None
 
 
-MODEL_SPECS: dict[ChatModel, ChatModelSpec] = {
-    "gpt-oss-120b": ChatModelSpec(
+MODEL_SPECS: dict[Model, ModelSpec] = {
+    "gpt-oss-120b": ModelSpec(
         131_072,
         40_000,
         reasoning=ReasoningSpec(
@@ -87,7 +87,7 @@ MODEL_SPECS: dict[ChatModel, ChatModelSpec] = {
             )
         ),
     ),
-    "gemma-4-31b": ChatModelSpec(
+    "gemma-4-31b": ModelSpec(
         131_072,
         40_000,
         reasoning=ReasoningSpec(
@@ -98,7 +98,7 @@ MODEL_SPECS: dict[ChatModel, ChatModelSpec] = {
             )
         ),
     ),
-    "zai-glm-4.7": ChatModelSpec(
+    "zai-glm-4.7": ModelSpec(
         131_072,
         40_000,
         reasoning=ReasoningSpec(
@@ -176,7 +176,7 @@ class CreateChatCompletionRequest(StrictModel):
     )
 
     messages: tuple[Message, ...] = Field(min_length=1)
-    model: ChatModel | ModelId
+    model: Model | ModelId
     clear_thinking: bool | None = None
     frequency_penalty: float | None = Field(default=None, ge=-2, le=2)
     logit_bias: dict[str, _LogitBiasValue] | None = None

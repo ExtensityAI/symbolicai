@@ -2,14 +2,11 @@ import numpy as np
 
 from symai.backend.base import Engine
 from symai.backend.usage import EngineUsageRecord
+from symai.clients.openai import embeddings as embeddings_api
 from symai.clients.openai.client import Client as OpenAIClient
-from symai.clients.openai.embeddings import (
-    MODEL_SPECS as EMBEDDING_MODEL_SPECS,
-)
 from symai.clients.openai.embeddings import (
     CreateEmbeddingRequest,
     EmbeddingList,
-    EmbeddingModel,
 )
 from symai.clients.openai.transport import APIResponse
 
@@ -18,10 +15,10 @@ class EmbeddingEngine(Engine):
     provider = "openai"
     capability = "embedding"
 
-    def __init__(self, *, client: OpenAIClient, model: EmbeddingModel):
+    def __init__(self, *, client: OpenAIClient, model: embeddings_api.Model):
         super().__init__()
         try:
-            self.model_spec = EMBEDDING_MODEL_SPECS[model]
+            self.model_spec = embeddings_api.MODEL_SPECS[model]
         except KeyError as e:
             msg = f"Unsupported model: {model}"
             raise ValueError(msg) from e

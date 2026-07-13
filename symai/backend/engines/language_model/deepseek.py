@@ -3,12 +3,9 @@ from typing import Any
 from symai.backend.base import Engine
 from symai.backend.chat_prompts import render_chat_system_prompt
 from symai.backend.usage import EngineUsageRecord
-from symai.clients.deepseek.chat import (
-    MODEL_SPECS as CHAT_MODEL_SPECS,
-)
+from symai.clients.deepseek import chat as chat_api
 from symai.clients.deepseek.chat import (
     ChatCompletion,
-    ChatModel,
     CreateChatCompletionRequest,
     ReasoningEffort,
     Thinking,
@@ -21,10 +18,10 @@ class LanguageModelEngine(Engine):
     provider = "deepseek"
     capability = "language_model"
 
-    def __init__(self, *, client: DeepSeekClient, model: ChatModel):
+    def __init__(self, *, client: DeepSeekClient, model: chat_api.Model):
         super().__init__()
         try:
-            self.model_spec = CHAT_MODEL_SPECS[model]
+            self.model_spec = chat_api.MODEL_SPECS[model]
         except KeyError as e:
             msg = f"Unsupported model: {model}"
             raise ValueError(msg) from e
