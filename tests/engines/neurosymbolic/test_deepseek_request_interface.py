@@ -5,12 +5,12 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
-from symai.backend.engines.neurosymbolic.engine_deepseekX import (
+from symai.backend.chat_prompts import prompt_registry
+from symai.backend.integrations.deepseek.chat import ChatCompletion
+from symai.backend.integrations.deepseek.engines.neurosymbolic import (
     DEEPSEEK_CHAT_COMPLETIONS_URL,
-    DeepSeekXReasoningEngine,
+    DeepSeekEngine,
 )
-from symai.backend.engines.neurosymbolic.prompts import prompt_registry
-from symai.backend.integrations.deepseek.chat import ChatResponse
 from symai.backend.integrations.deepseek.errors import ResponseError
 from symai.backend.mixin.deepseek import DEEPSEEK_MODEL_SPECS, SUPPORTED_MODELS
 from symai.backend.settings import SYMAI_CONFIG
@@ -22,7 +22,7 @@ DUMMY_KEY = "sk-test-not-a-real-key"
 
 
 def make_engine(model="deepseek-v4-flash", **kwargs):
-    return DeepSeekXReasoningEngine(api_key=DUMMY_KEY, model=model, **kwargs)
+    return DeepSeekEngine(api_key=DUMMY_KEY, model=model, **kwargs)
 
 
 def make_prepared_argument(kwargs=None, messages=None):
@@ -66,7 +66,7 @@ def test_deepseek_supported_models_track_capabilities():
 
 
 def test_deepseek_id_requires_supported_model_and_api_key():
-    engine = DeepSeekXReasoningEngine(api_key="", model="deepseek-v4-flash")
+    engine = DeepSeekEngine(api_key="", model="deepseek-v4-flash")
 
     assert engine.id() != "neurosymbolic"
     with pytest.raises(ValueError, match="DeepSeek engine is not configured"):
@@ -259,7 +259,7 @@ def test_deepseek_forward_uses_http_transport_and_typed_response():
     assert captured["body"]["messages"] == argument.prop.prepared_input
     assert output == ["2"]
     assert metadata["thinking"] == "Add one and one."
-    assert isinstance(metadata["raw_output"], ChatResponse)
+    assert isinstance(metadata["raw_output"], ChatCompletion)
 
 
 def test_deepseek_call_request_fails_fast_when_response_shape_drops_content():
@@ -305,7 +305,7 @@ def test_deepseek_metadata_tracker_accumulates_usage():
             engine.forward(make_prepared_argument(kwargs={"max_tokens": 16}))
         usage = tracker.usage
 
-    details = usage[("DeepSeekXReasoningEngine", "deepseek-v4-flash")]
+    details = usage[("DeepSeekEngine", "deepseek-v4-flash")]
     assert details["usage"]["prompt_tokens"] == 20
     assert details["usage"]["completion_tokens"] == 10
     assert details["usage"]["total_tokens"] == 30
@@ -324,7 +324,7 @@ def test_deepseek_live_smoke(engine_api_mode, model):
     if not api_key:
         pytest.skip("symai.config.json NEUROSYMBOLIC_ENGINE_API_KEY is required")
 
-    engine = DeepSeekXReasoningEngine(
+    engine = DeepSeekEngine(
         api_key=api_key,
         model=model,
         client_timeout=30.0,
@@ -342,4 +342,4 @@ def test_deepseek_live_smoke(engine_api_mode, model):
     output, metadata = engine.forward(argument)
 
     assert isinstance(output[0], str)
-    assert isinstance(metadata["raw_output"], ChatResponse)
+    assert isinstance(metadata["raw_output"], ChatCompletion)

@@ -3,18 +3,25 @@ from copy import deepcopy
 
 import httpx
 import numpy as np
+from pydantic import TypeAdapter
 
 from symai.backend.base import Engine
 from symai.backend.integrations.openai.client import Client as OpenAIClient
-from symai.backend.integrations.openai.embeddings import EmbeddingRequest, EmbeddingResponse
-from symai.backend.integrations.openai.response import Response
+from symai.backend.integrations.openai.embeddings import (
+    CreateEmbeddingRequest,
+    EmbeddingList,
+    EmbeddingModel,
+)
+from symai.backend.integrations.openai.transport import APIResponse
 from symai.backend.mixin.openai import OpenAIMixin
 from symai.backend.settings import SYMAI_CONFIG
 
 logger = logging.getLogger(__name__)
 
+EMBEDDING_MODEL_ADAPTER = TypeAdapter(EmbeddingModel)
 
-class EmbeddingEngine(Engine, OpenAIMixin):
+
+class OpenAIEmbeddingEngine(Engine, OpenAIMixin):
     def __init__(
         self,
         api_key: str | None = None,
@@ -68,7 +75,10 @@ class EmbeddingEngine(Engine, OpenAIMixin):
                 )
                 raise TypeError(msg)
 
-        request = EmbeddingRequest(input=tuple(inp), model=self.model)
+        request = CreateEmbeddingRequest(
+            input=tuple(inp),
+            model=EMBEDDING_MODEL_ADAPTER.validate_python(self.model),
+        )
         response = self.call_request(request)
         raw_output = response.data
         embeddings = []
@@ -89,22 +99,22 @@ class EmbeddingEngine(Engine, OpenAIMixin):
         }
         return [output], metadata
 
-    def call_request(self, request: EmbeddingRequest) -> Response[EmbeddingResponse]:
+    def call_request(self, request: CreateEmbeddingRequest) -> APIResponse[EmbeddingList]:
         if self.http_client is not None:
             return OpenAIClient(
                 api_key=self.api_key,
                 http_client=self.http_client,
-            ).embeddings(request)
+            ).create_embeddings(request)
 
         with httpx.Client(timeout=self.client_timeout) as http_client:
             return OpenAIClient(
                 api_key=self.api_key,
                 http_client=http_client,
-            ).embeddings(request)
+            ).create_embeddings(request)
 
     def prepare(self, argument):
         if argument.prop.processed_input:
-            msg = "EmbeddingEngine does not support processed_input."
+            msg = "OpenAIEmbeddingEngine does not support processed_input."
             raise ValueError(msg)
         argument.prop.prepared_input = argument.prop.entries
 

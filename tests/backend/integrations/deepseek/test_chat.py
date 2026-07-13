@@ -3,8 +3,8 @@ from pydantic import ValidationError
 
 from symai.backend.integrations.deepseek.chat import (
     AssistantMessage,
-    ChatRequest,
-    ChatResponse,
+    ChatCompletion,
+    CreateChatCompletionRequest,
     JsonObjectResponseFormat,
     SystemMessage,
     Thinking,
@@ -14,7 +14,7 @@ from symai.backend.integrations.deepseek.chat import (
 
 
 def test_chat_request_serializes_supported_non_streaming_surface():
-    request = ChatRequest(
+    request = CreateChatCompletionRequest(
         messages=(
             SystemMessage(role="system", content="Answer concisely"),
             UserMessage(role="user", content="Why?", name="caller"),
@@ -54,7 +54,7 @@ def test_chat_request_serializes_supported_non_streaming_surface():
 
 
 def test_chat_request_accepts_new_model_ids_without_client_release():
-    request = ChatRequest(
+    request = CreateChatCompletionRequest(
         messages=(UserMessage(role="user", content="hello"),),
         model="deepseek-future-model",
     )
@@ -94,7 +94,7 @@ def test_chat_request_rejects_values_outside_documented_bounds(field, value):
     }
 
     with pytest.raises(ValidationError):
-        ChatRequest(**payload)
+        CreateChatCompletionRequest(**payload)
 
 
 def test_chat_request_rejects_streaming_tools_and_unknown_fields():
@@ -106,11 +106,11 @@ def test_chat_request_rejects_streaming_tools_and_unknown_fields():
     }
 
     with pytest.raises(ValidationError):
-        ChatRequest(**payload)
+        CreateChatCompletionRequest(**payload)
 
 
 def test_chat_response_models_reasoning_cache_usage_and_logprobs():
-    response = ChatResponse.model_validate(
+    response = ChatCompletion.model_validate(
         {
             "id": "response-id",
             "choices": [

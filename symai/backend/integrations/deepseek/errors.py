@@ -1,6 +1,6 @@
 from symai.backend.integrations import errors as integration_errors
 from symai.backend.integrations import http_errors
-from symai.backend.integrations.deepseek.response import Metadata
+from symai.backend.integrations.deepseek.transport import ResponseMetadata
 
 
 class Error(integration_errors.IntegrationError):
@@ -14,7 +14,7 @@ class APIError(http_errors.APIError, Error):
 
     def __init__(
         self,
-        metadata: Metadata,
+        metadata: ResponseMetadata,
         body: str,
         message: str | None = None,
     ) -> None:
@@ -50,7 +50,7 @@ class ResponseError(integration_errors.ResponseError, Error):
         self,
         message: str,
         *,
-        metadata: Metadata,
+        metadata: ResponseMetadata,
         body: str,
     ) -> None:
         self.metadata = metadata

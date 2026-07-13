@@ -1,11 +1,11 @@
-from dataclasses import dataclass
 from typing import Generic, TypeVar
+
+from symai.backend.integrations.base import StrictModel
 
 T = TypeVar("T")
 
 
-@dataclass(frozen=True, slots=True)
-class RateLimitState:
+class RateLimitState(StrictModel):
     limit_requests_day: int | None = None
     limit_tokens_minute: int | None = None
     remaining_requests_day: int | None = None
@@ -14,15 +14,13 @@ class RateLimitState:
     reset_tokens_minute: float | None = None
 
 
-@dataclass(frozen=True, slots=True)
-class Metadata:
+class ResponseMetadata(StrictModel):
     status_code: int
     request_id: str | None
     retry_after: float | None
     rate_limit: RateLimitState
 
 
-@dataclass(frozen=True, slots=True)
-class Response(Generic[T]):
+class APIResponse(StrictModel, Generic[T]):
     data: T
-    metadata: Metadata
+    metadata: ResponseMetadata

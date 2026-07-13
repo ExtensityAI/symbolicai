@@ -3,7 +3,7 @@ import pytest
 from symai.backend.integrations import errors as integration_errors
 from symai.backend.integrations import http_errors
 from symai.backend.integrations.cerebras import errors as cerebras_errors
-from symai.backend.integrations.cerebras.response import Metadata, RateLimitState
+from symai.backend.integrations.cerebras.transport import RateLimitState, ResponseMetadata
 
 
 def _metadata(
@@ -11,8 +11,8 @@ def _metadata(
     status_code: int = 500,
     request_id: str | None = "req-1",
     retry_after: float | None = None,
-) -> Metadata:
-    return Metadata(
+) -> ResponseMetadata:
+    return ResponseMetadata(
         status_code=status_code,
         request_id=request_id,
         retry_after=retry_after,

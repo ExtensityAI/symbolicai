@@ -36,6 +36,15 @@ else:
 
 logger = logging.getLogger(__name__)
 
+_INTEGRATION_ENGINE_MODULES = {
+    "embedding": ("symai.backend.integrations.openai.engines.embedding",),
+    "neurosymbolic": (
+        "symai.backend.integrations.cerebras.engines.neurosymbolic",
+        "symai.backend.integrations.deepseek.engines.neurosymbolic",
+        "symai.backend.integrations.openai.engines.neurosymbolic",
+    ),
+}
+
 
 class ProbabilisticBooleanMode(Enum):
     STRICT = 0
@@ -354,49 +363,64 @@ class EngineRepository:
         self._engines[id] = engine_instance
 
     @staticmethod
-    def register_from_package(
-        package: ModuleType, allow_engine_override: bool = False, *args, **kwargs
+    def _register_from_module(
+        module: ModuleType,
+        allow_engine_override: bool,
+        *args,
+        **kwargs,
     ) -> None:
         self = EngineRepository()
-        # Iterate over all modules in the given package and import them
-        for _, module_name, _ in pkgutil.iter_modules(package.__path__, package.__name__ + "."):
+        for attribute_name in dir(module):
+            attribute = getattr(module, attribute_name)
+            if (
+                not inspect.isclass(attribute)
+                or not issubclass(attribute, Engine)
+                or attribute is Engine
+                or attribute.__module__ != module.__name__
+            ):
+                continue
+            try:
+                instance = attribute(*args, **kwargs)
+                engine_id_func = getattr(instance, "id", None)
+                if engine_id_func is None:
+                    msg = f"Engine {instance!s} does not have an id. Please add a method id()."
+                    raise ValueError(msg)
+                engine_id = engine_id_func()
+                if engine_id != ENGINE_UNREGISTERED:
+                    self.register(
+                        engine_id,
+                        instance,
+                        allow_engine_override=allow_engine_override,
+                    )
+            except Exception as e:
+                logger.error("Failed to register engine %s: %s", attribute, e)
+
+    @staticmethod
+    def register_from_package(
+        package: ModuleType,
+        allow_engine_override: bool = False,
+        *args,
+        **kwargs,
+    ) -> None:
+        for _, module_name, _ in pkgutil.iter_modules(
+            package.__path__,
+            package.__name__ + ".",
+        ):
             try:
                 module = importlib.import_module(module_name)
             except ImportError as e:
                 logger.debug(
-                    "Skipping engine module %s (missing optional dependency): %s", module_name, e
+                    "Skipping engine module %s (missing optional dependency): %s",
+                    module_name,
+                    e,
                 )
                 continue
-
-            # Check all classes defined in the module
-            for attribute_name in dir(module):
-                attribute = getattr(module, attribute_name)
-
-                # Register class if it is a subclass of Engine (but not Engine itself)
-                if (
-                    inspect.isclass(attribute)
-                    and issubclass(attribute, Engine)
-                    and attribute is not Engine
-                ):
-                    try:
-                        instance = attribute(
-                            *args, **kwargs
-                        )  # Create an instance of the engine class
-                        # Assume the class has an 'init' static method to initialize it
-                        engine_id_func_ = getattr(instance, "id", None)
-                        if engine_id_func_ is None:
-                            msg = f"Engine {instance!s} does not have an id. Please add a method id() to the class."
-                            raise ValueError(msg)
-                        # call engine_() to get the id of the engine
-                        id_ = engine_id_func_()
-                        # only registered configured engine
-                        if id_ != ENGINE_UNREGISTERED:
-                            # register new engine
-                            self.register(
-                                id_, instance, allow_engine_override=allow_engine_override
-                            )
-                    except Exception as e:
-                        logger.error("Failed to register engine %s: %s", attribute, e)
+            EngineRepository._register_from_module(
+                module,
+                allow_engine_override,
+                *args,
+                **kwargs,
+            )
 
     @staticmethod
     def get(engine_name: str, *_args, **_kwargs):
@@ -414,6 +438,17 @@ class EngineRepository:
                 msg = f"The symbolicai library does not contain the engine named {engine_name}."
                 raise ValueError(msg)
             self.register_from_package(subpackage)
+            for module_name in _INTEGRATION_ENGINE_MODULES.get(engine_name, ()):
+                try:
+                    module = importlib.import_module(module_name)
+                except ImportError as e:
+                    logger.debug(
+                        "Skipping integration engine module %s: %s",
+                        module_name,
+                        e,
+                    )
+                    continue
+                self._register_from_module(module, False)
         engine = self._engines.get(engine_name, None)
         if engine is None:
             msg = f"No engine named {engine_name} is registered."

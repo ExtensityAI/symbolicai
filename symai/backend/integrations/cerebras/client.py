@@ -4,10 +4,10 @@ import httpx
 from pydantic import ValidationError
 
 from symai.backend.integrations.cerebras import chat, errors
-from symai.backend.integrations.cerebras.response import (
-    Metadata,
+from symai.backend.integrations.cerebras.transport import (
+    APIResponse,
     RateLimitState,
-    Response,
+    ResponseMetadata,
 )
 
 BASE_URL = "https://api.cerebras.ai/v1"
@@ -35,9 +35,9 @@ def _optional_float(value: str | None):
     return float(value)
 
 
-def _metadata(response: httpx.Response) -> Metadata:
+def _metadata(response: httpx.Response) -> ResponseMetadata:
     headers = response.headers
-    return Metadata(
+    return ResponseMetadata(
         status_code=response.status_code,
         request_id=headers.get(REQUEST_ID_HEADER),
         retry_after=_optional_float(headers.get(RETRY_AFTER_HEADER)),
@@ -52,13 +52,13 @@ def _metadata(response: httpx.Response) -> Metadata:
     )
 
 
-def _request_body(request: chat.ChatRequest):
+def _request_body(request: chat.CreateChatCompletionRequest):
     return request.model_dump(mode="json", by_alias=True, exclude_none=True)
 
 
 def _raise_for_status(
     response: httpx.Response,
-    metadata: Metadata,
+    metadata: ResponseMetadata,
 ):
     if response.status_code == httpx.codes.UNAUTHORIZED:
         raise errors.AuthError(
@@ -78,7 +78,7 @@ def _raise_for_status(
 
 def _parse_response(
     response: httpx.Response,
-    metadata: Metadata,
+    metadata: ResponseMetadata,
 ):
     try:
         payload = response.json()
@@ -91,7 +91,7 @@ def _parse_response(
         ) from exc
 
     try:
-        return chat.ChatResponse.model_validate(payload)
+        return chat.ChatCompletion.model_validate(payload)
     except ValidationError as exc:
         message = "Cerebras response did not match the expected schema"
         raise errors.ResponseError(
@@ -111,7 +111,10 @@ class Client:
         self._http_client = http_client
         self._headers = {"authorization": f"Bearer {api_key}"}
 
-    def chat(self, request: chat.ChatRequest) -> Response[chat.ChatResponse]:
+    def create_chat_completion(
+        self,
+        request: chat.CreateChatCompletionRequest,
+    ) -> APIResponse[chat.ChatCompletion]:
         """Execute one non-streaming chat completion request."""
 
         try:
@@ -126,4 +129,4 @@ class Client:
 
         metadata = _metadata(response)
         _raise_for_status(response, metadata)
-        return Response(data=_parse_response(response, metadata), metadata=metadata)
+        return APIResponse(data=_parse_response(response, metadata), metadata=metadata)

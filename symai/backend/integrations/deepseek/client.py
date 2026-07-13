@@ -4,7 +4,7 @@ import httpx
 from pydantic import ValidationError
 
 from symai.backend.integrations.deepseek import chat, errors
-from symai.backend.integrations.deepseek.response import Metadata, Response
+from symai.backend.integrations.deepseek.transport import APIResponse, ResponseMetadata
 
 BASE_URL = "https://api.deepseek.com"
 REQUEST_ID_HEADER = "x-request-id"
@@ -21,19 +21,19 @@ def _optional_float(value: str | None):
         return None
 
 
-def _metadata(response: httpx.Response) -> Metadata:
-    return Metadata(
+def _metadata(response: httpx.Response) -> ResponseMetadata:
+    return ResponseMetadata(
         status_code=response.status_code,
         request_id=response.headers.get(REQUEST_ID_HEADER),
         retry_after=_optional_float(response.headers.get(RETRY_AFTER_HEADER)),
     )
 
 
-def _request_body(request: chat.ChatRequest):
+def _request_body(request: chat.CreateChatCompletionRequest):
     return request.model_dump(mode="json", exclude_none=True)
 
 
-def _raise_for_status(response: httpx.Response, metadata: Metadata):
+def _raise_for_status(response: httpx.Response, metadata: ResponseMetadata):
     if response.status_code == httpx.codes.UNAUTHORIZED:
         raise errors.AuthError(
             metadata,
@@ -50,7 +50,7 @@ def _raise_for_status(response: httpx.Response, metadata: Metadata):
         raise errors.APIError(metadata, response.text)
 
 
-def _parse_response(response: httpx.Response, metadata: Metadata):
+def _parse_response(response: httpx.Response, metadata: ResponseMetadata):
     try:
         payload = response.json()
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:
@@ -62,7 +62,7 @@ def _parse_response(response: httpx.Response, metadata: Metadata):
         ) from exc
 
     try:
-        return chat.ChatResponse.model_validate(payload)
+        return chat.ChatCompletion.model_validate(payload)
     except ValidationError as exc:
         message = "DeepSeek response did not match the expected schema"
         raise errors.ResponseError(
@@ -82,7 +82,10 @@ class Client:
         self._http_client = http_client
         self._headers = {"authorization": f"Bearer {api_key}"}
 
-    def chat(self, request: chat.ChatRequest) -> Response[chat.ChatResponse]:
+    def create_chat_completion(
+        self,
+        request: chat.CreateChatCompletionRequest,
+    ) -> APIResponse[chat.ChatCompletion]:
         """Execute one non-streaming chat completion request."""
 
         try:
@@ -97,4 +100,4 @@ class Client:
 
         metadata = _metadata(response)
         _raise_for_status(response, metadata)
-        return Response(data=_parse_response(response, metadata), metadata=metadata)
+        return APIResponse(data=_parse_response(response, metadata), metadata=metadata)

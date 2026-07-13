@@ -3,8 +3,8 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
-from symai.backend.engines.neurosymbolic.engine_cerebras import CerebrasEngine
-from symai.backend.integrations.cerebras.chat import ChatResponse
+from symai.backend.integrations.cerebras.chat import ChatCompletion
+from symai.backend.integrations.cerebras.engines.neurosymbolic import CerebrasEngine
 
 DUMMY_KEY = "sk-test-not-a-real-key"
 
@@ -57,7 +57,7 @@ def test_engine_executes_through_standalone_cerebras_client():
 
     assert output == ["answer"]
     assert metadata["thinking"] == "thought"
-    assert isinstance(metadata["raw_output"], ChatResponse)
+    assert isinstance(metadata["raw_output"], ChatCompletion)
     assert metadata["response"].metadata.request_id == "request-id"
 
 

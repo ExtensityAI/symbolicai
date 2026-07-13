@@ -6,8 +6,8 @@ import pytest
 from pydantic import ValidationError
 
 from symai.backend.integrations.cerebras.chat import (
-    ChatRequest,
-    ChatResponse,
+    ChatCompletion,
+    CreateChatCompletionRequest,
     ReasoningFormat,
     UserMessage,
 )
@@ -19,7 +19,7 @@ from symai.backend.integrations.cerebras.errors import (
     ResponseError,
     TransportError,
 )
-from symai.backend.integrations.cerebras.response import Response
+from symai.backend.integrations.cerebras.transport import APIResponse
 
 RATE_LIMIT_HEADERS = {
     "x-ratelimit-limit-requests-day": "100",
@@ -31,8 +31,8 @@ RATE_LIMIT_HEADERS = {
 }
 
 
-def _chat_request() -> ChatRequest:
-    return ChatRequest(
+def _chat_request() -> CreateChatCompletionRequest:
+    return CreateChatCompletionRequest(
         model="gpt-oss-120b",
         messages=(UserMessage(role="user", content="hi"),),
         reasoning_format=ReasoningFormat.PARSED,
@@ -94,7 +94,7 @@ def test_chat_posts_exact_body_and_returns_complete_metadata():
             request=request,
         )
 
-    result = _client(handler).chat(_chat_request())
+    result = _client(handler).create_chat_completion(_chat_request())
 
     assert captured == {
         "method": "POST",
@@ -107,8 +107,8 @@ def test_chat_posts_exact_body_and_returns_complete_metadata():
             "reasoning_format": "parsed",
         },
     }
-    assert isinstance(result, Response)
-    assert isinstance(result.data, ChatResponse)
+    assert isinstance(result, APIResponse)
+    assert isinstance(result.data, ChatCompletion)
     assert result.data.id == "chatcmpl-123"
     assert result.metadata.status_code == 201
     assert result.metadata.request_id == "req-1"
@@ -125,7 +125,7 @@ def test_missing_optional_metadata_is_none():
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=_completion_json(), request=request)
 
-    metadata = _client(handler).chat(_chat_request()).metadata
+    metadata = _client(handler).create_chat_completion(_chat_request()).metadata
 
     assert metadata.request_id is None
     assert metadata.retry_after is None
@@ -143,7 +143,7 @@ def test_zero_retry_after_is_preserved():
         )
 
     with pytest.raises(RateLimitError) as exc_info:
-        _client(handler).chat(_chat_request())
+        _client(handler).create_chat_completion(_chat_request())
 
     assert exc_info.value.retry_after == 0.0
 
@@ -163,7 +163,7 @@ def test_other_non_success_statuses_map_to_exact_generic_api_error(
         )
 
     with pytest.raises(APIError) as exc_info:
-        _client(handler).chat(_chat_request())
+        _client(handler).create_chat_completion(_chat_request())
 
     error = exc_info.value
     assert type(error) is APIError
@@ -195,7 +195,7 @@ def test_specialized_http_errors_retain_complete_response_evidence(
         )
 
     with pytest.raises(error_type) as exc_info:
-        _client(handler).chat(_chat_request())
+        _client(handler).create_chat_completion(_chat_request())
 
     error = exc_info.value
     assert type(error) is error_type
@@ -221,7 +221,7 @@ def test_invalid_json_retains_decode_evidence():
         )
 
     with pytest.raises(ResponseError) as exc_info:
-        _client(handler).chat(_chat_request())
+        _client(handler).create_chat_completion(_chat_request())
 
     error = exc_info.value
     assert error.body == body
@@ -237,7 +237,7 @@ def test_invalid_json_encoding_retains_decode_evidence():
         return httpx.Response(200, content=body, request=request)
 
     with pytest.raises(ResponseError) as exc_info:
-        _client(handler).chat(_chat_request())
+        _client(handler).create_chat_completion(_chat_request())
 
     error = exc_info.value
     assert error.body == "\ufffd"
@@ -257,7 +257,7 @@ def test_schema_invalid_success_retains_response_evidence():
         )
 
     with pytest.raises(ResponseError) as exc_info:
-        _client(handler).chat(_chat_request())
+        _client(handler).create_chat_completion(_chat_request())
 
     error = exc_info.value
     assert error.body == body
@@ -275,7 +275,7 @@ def test_empty_success_body_is_a_response_error_with_metadata():
         )
 
     with pytest.raises(ResponseError) as exc_info:
-        _client(handler).chat(_chat_request())
+        _client(handler).create_chat_completion(_chat_request())
 
     assert exc_info.value.metadata.status_code == 204
     assert exc_info.value.metadata.request_id == "req-empty"
@@ -291,7 +291,7 @@ def test_transport_failure_retains_exact_cause_and_no_metadata():
         raise transport_error
 
     with pytest.raises(TransportError) as exc_info:
-        _client(handler).chat(_chat_request())
+        _client(handler).create_chat_completion(_chat_request())
 
     assert exc_info.value.__cause__ is transport_error
     assert exc_info.value.metadata is None
@@ -306,7 +306,7 @@ def test_timeout_failure_retains_exact_cause_and_no_metadata():
         raise timeout
 
     with pytest.raises(TransportError) as exc_info:
-        _client(handler).chat(_chat_request())
+        _client(handler).create_chat_completion(_chat_request())
 
     assert exc_info.value.__cause__ is timeout
     assert exc_info.value.metadata is None
@@ -352,10 +352,10 @@ def test_client_remains_open_and_never_retries(
     client = Client(api_key="test-key", http_client=injected)
 
     if error_type is None:
-        client.chat(_chat_request())
+        client.create_chat_completion(_chat_request())
     else:
         with pytest.raises(error_type):
-            client.chat(_chat_request())
+            client.create_chat_completion(_chat_request())
 
     assert attempts == 1
     assert injected.is_closed is False

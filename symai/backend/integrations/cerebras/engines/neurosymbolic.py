@@ -7,8 +7,8 @@ from pydantic import TypeAdapter
 
 from symai.backend.base import Engine
 from symai.backend.integrations.cerebras.chat import (
-    ChatRequest,
-    ChatResponse,
+    ChatCompletion,
+    CreateChatCompletionRequest,
     Message,
     ReasoningEffort,
     ReasoningFormat,
@@ -16,7 +16,7 @@ from symai.backend.integrations.cerebras.chat import (
     ServiceTier,
 )
 from symai.backend.integrations.cerebras.client import Client as CerebrasClient
-from symai.backend.integrations.cerebras.response import Response
+from symai.backend.integrations.cerebras.transport import APIResponse
 from symai.backend.mixin.cerebras import SUPPORTED_CEREBRAS_MODELS, CerebrasMixin
 from symai.backend.settings import SYMAI_CONFIG
 from symai.components import SelfPrompt
@@ -159,7 +159,7 @@ class CerebrasEngine(CerebrasMixin, Engine):
         response = self.call_request(request)
         return self.parse_response(response)
 
-    def build_request(self, argument) -> ChatRequest:
+    def build_request(self, argument) -> CreateChatCompletionRequest:
         unsupported = {"stream", "stream_options", "tools", "tool_choice"} & set(argument.kwargs)
         if unsupported:
             msg = (
@@ -168,7 +168,7 @@ class CerebrasEngine(CerebrasMixin, Engine):
             )
             raise ValueError(msg)
 
-        request_kwargs = set(ChatRequest.model_fields) - {"messages"}
+        request_kwargs = set(CreateChatCompletionRequest.model_fields) - {"messages"}
         payload = self.collect_request_kwargs(argument, request_kwargs | {"max_tokens"})
         if "max_completion_tokens" not in payload and "max_tokens" in payload:
             payload["max_completion_tokens"] = payload.pop("max_tokens")
@@ -206,22 +206,22 @@ class CerebrasEngine(CerebrasMixin, Engine):
                 strict=False,
             )
         payload["response_format"] = response_format
-        return ChatRequest.model_validate(payload)
+        return CreateChatCompletionRequest.model_validate(payload)
 
-    def call_request(self, request: ChatRequest) -> Response[ChatResponse]:
+    def call_request(self, request: CreateChatCompletionRequest) -> APIResponse[ChatCompletion]:
         if self.http_client is not None:
             return CerebrasClient(
                 api_key=self.api_key,
                 http_client=self.http_client,
-            ).chat(request)
+            ).create_chat_completion(request)
 
         with httpx.Client(timeout=self.client_timeout) as http_client:
             return CerebrasClient(
                 api_key=self.api_key,
                 http_client=http_client,
-            ).chat(request)
+            ).create_chat_completion(request)
 
-    def parse_response(self, response: Response[ChatResponse]):
+    def parse_response(self, response: APIResponse[ChatCompletion]):
         raw_output = response.data
         if not raw_output.choices:
             msg = "Cerebras response did not contain any choices"

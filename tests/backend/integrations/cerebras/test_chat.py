@@ -5,8 +5,8 @@ from pydantic import ValidationError
 
 from symai.backend.integrations.cerebras.chat import (
     AssistantMessage,
-    ChatRequest,
-    ChatResponse,
+    ChatCompletion,
+    CreateChatCompletionRequest,
     DeveloperMessage,
     ImageContentPart,
     ImageURL,
@@ -29,7 +29,7 @@ def _user_message() -> UserMessage:
 
 
 def test_message_union_routes_raw_non_tool_roles_and_image_content():
-    request = ChatRequest.model_validate(
+    request = CreateChatCompletionRequest.model_validate(
         {
             "model": "dedicated/acme-model",
             "messages": (
@@ -71,7 +71,7 @@ def test_message_union_routes_raw_non_tool_roles_and_image_content():
 
 def test_message_union_rejects_tool_role():
     with pytest.raises(ValidationError):
-        ChatRequest.model_validate(
+        CreateChatCompletionRequest.model_validate(
             {
                 "model": "gpt-oss-120b",
                 "messages": ({"role": "tool", "content": "result"},),
@@ -82,7 +82,7 @@ def test_message_union_rejects_tool_role():
 @pytest.mark.parametrize("role", ["system", "developer", "assistant"])
 def test_image_content_is_rejected_outside_user_messages(role: str):
     with pytest.raises(ValidationError):
-        ChatRequest.model_validate(
+        CreateChatCompletionRequest.model_validate(
             {
                 "model": "gpt-oss-120b",
                 "messages": (
@@ -101,7 +101,7 @@ def test_image_content_is_rejected_outside_user_messages(role: str):
 
 
 def test_complete_declared_request_serializes_with_aliases():
-    request = ChatRequest(
+    request = CreateChatCompletionRequest(
         model="gpt-oss-120b",
         messages=(_user_message(),),
         clear_thinking=False,
@@ -179,7 +179,7 @@ def test_response_format_discriminator_routes_raw_payloads(
     payload: dict[str, object],
     expected_type: type[TextResponseFormat | JsonObjectResponseFormat | JsonSchemaResponseFormat],
 ):
-    request = ChatRequest.model_validate(
+    request = CreateChatCompletionRequest.model_validate(
         {
             "model": "gpt-oss-120b",
             "messages": ({"role": "user", "content": "hello"},),
@@ -227,7 +227,7 @@ def test_json_schema_model_remains_strict_frozen_and_extra_forbidden():
 
 
 def test_unset_request_options_are_omitted():
-    request = ChatRequest(model="gpt-oss-120b", messages=(_user_message(),))
+    request = CreateChatCompletionRequest(model="gpt-oss-120b", messages=(_user_message(),))
     dumped = request.model_dump(mode="json", exclude_none=True)
 
     assert dumped == {
@@ -240,7 +240,7 @@ def test_unset_request_options_are_omitted():
 def test_max_completion_tokens_accepts_positive_and_documented_sentinel(
     value: int,
 ):
-    request = ChatRequest(
+    request = CreateChatCompletionRequest(
         model="gpt-oss-120b",
         messages=(_user_message(),),
         max_completion_tokens=value,
@@ -251,7 +251,7 @@ def test_max_completion_tokens_accepts_positive_and_documented_sentinel(
 @pytest.mark.parametrize("value", [0, -2])
 def test_max_completion_tokens_rejects_other_nonpositive_values(value: int):
     with pytest.raises(ValidationError):
-        ChatRequest(
+        CreateChatCompletionRequest(
             model="gpt-oss-120b",
             messages=(_user_message(),),
             max_completion_tokens=value,
@@ -263,7 +263,7 @@ def test_max_completion_tokens_rejects_other_nonpositive_values(value: int):
     ["END", (), ("A",), ("A", "B", "C", "D")],
 )
 def test_stop_forms_serialize(stop: str | tuple[str, ...]):
-    request = ChatRequest(
+    request = CreateChatCompletionRequest(
         model="gpt-oss-120b",
         messages=(_user_message(),),
         stop=stop,
@@ -274,7 +274,7 @@ def test_stop_forms_serialize(stop: str | tuple[str, ...]):
 
 def test_five_stop_sequences_are_rejected():
     with pytest.raises(ValidationError):
-        ChatRequest(
+        CreateChatCompletionRequest(
             model="gpt-oss-120b",
             messages=(_user_message(),),
             stop=("A", "B", "C", "D", "E"),
@@ -299,7 +299,7 @@ def test_five_stop_sequences_are_rejected():
 )
 def test_request_field_bounds_are_enforced(field: str, value: object):
     with pytest.raises(ValidationError):
-        ChatRequest.model_validate(
+        CreateChatCompletionRequest.model_validate(
             {
                 "model": "gpt-oss-120b",
                 "messages": (_user_message(),),
@@ -310,12 +310,12 @@ def test_request_field_bounds_are_enforced(field: str, value: object):
 
 def test_messages_must_not_be_empty():
     with pytest.raises(ValidationError):
-        ChatRequest(messages=(), model="gpt-oss-120b")
+        CreateChatCompletionRequest(messages=(), model="gpt-oss-120b")
 
 
 def test_known_fields_remain_strict():
     with pytest.raises(ValidationError):
-        ChatRequest.model_validate(
+        CreateChatCompletionRequest.model_validate(
             {
                 "model": "gpt-oss-120b",
                 "messages": (_user_message(),),
@@ -325,7 +325,7 @@ def test_known_fields_remain_strict():
 
 
 def test_arbitrary_model_id_and_reasoning_combination_are_accepted():
-    request = ChatRequest(
+    request = CreateChatCompletionRequest(
         model="dedicated/acme-deployment",
         messages=(_user_message(),),
         reasoning_effort=ReasoningEffort.NONE,
@@ -336,7 +336,7 @@ def test_arbitrary_model_id_and_reasoning_combination_are_accepted():
 
 
 def test_json_compatible_unknown_request_extra_is_preserved():
-    request = ChatRequest.model_validate(
+    request = CreateChatCompletionRequest.model_validate(
         {
             "model": "gpt-oss-120b",
             "messages": (_user_message(),),
@@ -348,7 +348,7 @@ def test_json_compatible_unknown_request_extra_is_preserved():
 
 def test_non_json_unknown_request_extra_is_rejected():
     with pytest.raises(ValidationError):
-        ChatRequest.model_validate(
+        CreateChatCompletionRequest.model_validate(
             {
                 "model": "gpt-oss-120b",
                 "messages": (_user_message(),),
@@ -365,7 +365,7 @@ def test_json_schema_value_rejects_non_json_objects():
 @pytest.mark.parametrize("value", [math.nan, math.inf, -math.inf, -100.1, 100.1])
 def test_invalid_logit_bias_is_rejected(value: float):
     with pytest.raises(ValidationError):
-        ChatRequest(
+        CreateChatCompletionRequest(
             model="gpt-oss-120b",
             messages=(_user_message(),),
             logit_bias={"123": value},
@@ -389,7 +389,7 @@ def _choice_dict(**overrides) -> dict:
 
 
 def test_null_content_parses_as_none():
-    response = ChatResponse.model_validate(
+    response = ChatCompletion.model_validate(
         {
             "choices": [_choice_dict(message={"role": "assistant", "content": None})],
             "usage": _usage_dict(),
@@ -444,13 +444,13 @@ def test_complete_non_tool_response_fields_parse():
         },
     }
 
-    response = ChatResponse.model_validate(payload)
+    response = ChatCompletion.model_validate(payload)
 
     assert response.model_dump(mode="json", exclude_none=True) == payload
 
 
 def test_documented_response_fields_may_all_be_absent():
-    response = ChatResponse.model_validate({})
+    response = ChatCompletion.model_validate({})
 
     assert response.id is None
     assert response.choices is None
@@ -459,7 +459,7 @@ def test_documented_response_fields_may_all_be_absent():
 
 
 def test_partially_populated_nested_response_objects_parse():
-    response = ChatResponse.model_validate(
+    response = ChatCompletion.model_validate(
         {
             "choices": [{"message": {}}],
             "usage": {
@@ -495,11 +495,11 @@ def test_unknown_response_fields_survive_at_every_modeled_level():
         "time_info": {"future_time": 7},
     }
 
-    response = ChatResponse.model_validate(payload)
+    response = ChatCompletion.model_validate(payload)
 
     assert response.model_dump(mode="json", exclude_none=True) == payload
 
 
 def test_non_object_chat_response_fails():
     with pytest.raises(ValidationError):
-        ChatResponse.model_validate([])
+        ChatCompletion.model_validate([])

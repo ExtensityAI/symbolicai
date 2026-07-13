@@ -59,7 +59,7 @@ _StopSequences = Annotated[tuple[str, ...], Field(max_length=16)]
 _UserID = Annotated[str, Field(max_length=512, pattern=r"^[a-zA-Z0-9_-]+$")]
 
 
-class ChatRequest(StrictModel):
+class CreateChatCompletionRequest(StrictModel):
     messages: tuple[Message, ...] = Field(min_length=1)
     model: str
     thinking: Thinking | None = None
@@ -115,7 +115,7 @@ class Usage(TolerantModel):
     completion_tokens_details: CompletionTokensDetails | None = None
 
 
-class ChatResponse(TolerantModel):
+class ChatCompletion(TolerantModel):
     id: str
     choices: tuple[Choice, ...]
     created: int

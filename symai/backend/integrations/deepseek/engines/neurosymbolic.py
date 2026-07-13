@@ -6,10 +6,14 @@ from typing import Any
 import httpx
 
 from symai.backend.base import Engine
-from symai.backend.engines.neurosymbolic.prompts import render_chat_system_prompt
-from symai.backend.integrations.deepseek.chat import ChatRequest, ChatResponse, Thinking
+from symai.backend.chat_prompts import render_chat_system_prompt
+from symai.backend.integrations.deepseek.chat import (
+    ChatCompletion,
+    CreateChatCompletionRequest,
+    Thinking,
+)
 from symai.backend.integrations.deepseek.client import Client as DeepSeekClient
-from symai.backend.integrations.deepseek.response import Response  # noqa: TC001
+from symai.backend.integrations.deepseek.transport import APIResponse  # noqa: TC001
 from symai.backend.mixin.deepseek import SUPPORTED_MODELS, DeepSeekMixin
 from symai.backend.settings import SYMAI_CONFIG
 from symai.backend.usage import EngineUsageRecord
@@ -17,7 +21,7 @@ from symai.backend.usage import EngineUsageRecord
 DEEPSEEK_CHAT_COMPLETIONS_URL = "https://api.deepseek.com/chat/completions"
 
 
-class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
+class DeepSeekEngine(Engine, DeepSeekMixin):
     def __init__(
         self,
         api_key: str | None = None,
@@ -48,14 +52,14 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
         return super().id()  # default to unregistered
 
     def compute_required_tokens(self, _messages: list[dict[str, Any]]) -> int:
-        msg = 'Method "compute_required_tokens" not implemented for DeepSeekXReasoningEngine.'
+        msg = 'Method "compute_required_tokens" not implemented for DeepSeekEngine.'
         raise NotImplementedError(msg)
 
     def compute_remaining_tokens(self, _prompts: list[dict[str, Any]]) -> int:
-        msg = 'Method "compute_remaining_tokens" not implemented for DeepSeekXReasoningEngine.'
+        msg = 'Method "compute_remaining_tokens" not implemented for DeepSeekEngine.'
         raise NotImplementedError(msg)
 
-    def build_request(self, argument) -> ChatRequest:
+    def build_request(self, argument) -> CreateChatCompletionRequest:
         unsupported = {"stream", "stream_options", "tools", "tool_choice"} & set(argument.kwargs)
         if unsupported:
             msg = (
@@ -64,14 +68,14 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
             )
             raise ValueError(msg)
 
-        request_kwargs = set(ChatRequest.model_fields) - {"messages"}
+        request_kwargs = set(CreateChatCompletionRequest.model_fields) - {"messages"}
         payload = self.collect_request_kwargs(argument, request_kwargs)
         if isinstance(payload.get("thinking"), dict):
             payload["thinking"] = Thinking.model_validate(payload["thinking"], strict=False)
         payload["model"] = payload.get("model", self.model)
         self.deepseek_model_spec_for(payload["model"])
         payload["messages"] = tuple(argument.prop.prepared_input)
-        return ChatRequest.model_validate(payload)
+        return CreateChatCompletionRequest.model_validate(payload)
 
     def forward(self, argument):  # pyright: ignore[reportIncompatibleMethodOverride]
         if self.id() != "neurosymbolic":
@@ -85,20 +89,20 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
         response = self.call_request(request)
         return self.parse_response(response)
 
-    def call_request(self, request: ChatRequest) -> Response[ChatResponse]:
+    def call_request(self, request: CreateChatCompletionRequest) -> APIResponse[ChatCompletion]:
         if self.http_client is not None:
             return DeepSeekClient(
                 api_key=self.api_key,
                 http_client=self.http_client,
-            ).chat(request)
+            ).create_chat_completion(request)
 
         with httpx.Client(timeout=self.client_timeout) as http_client:
             return DeepSeekClient(
                 api_key=self.api_key,
                 http_client=http_client,
-            ).chat(request)
+            ).create_chat_completion(request)
 
-    def parse_response(self, response: Response[ChatResponse]):
+    def parse_response(self, response: APIResponse[ChatCompletion]):
         raw_output = response.data
         choice = raw_output.choices[0]
         reasoning_content = choice.message.reasoning_content
@@ -144,7 +148,7 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
         if prop.instance._kwargs.get("self_prompt", False) or prop.self_prompt:
             res = self.self_prompt({"user": user_prompt["content"], "system": system})
             if res is None:
-                msg = "Self-prompting failed for DeepSeekXReasoningEngine."
+                msg = "Self-prompting failed for DeepSeekEngine."
                 raise ValueError(msg)
 
             user_prompt = {"role": "user", "content": res["user"]}
@@ -155,7 +159,7 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
     def _prepare_raw_input(self, argument):
         value = argument.prop.processed_input
         if not value:
-            msg = "A prompt instruction is required for DeepSeekXReasoningEngine when raw_input is enabled."
+            msg = "A prompt instruction is required for DeepSeekEngine when raw_input is enabled."
             raise ValueError(msg)
         if isinstance(value, list):
             return value

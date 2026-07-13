@@ -1,18 +1,31 @@
-import json
 import logging
 import re
 from copy import deepcopy
 
 import httpx
 import tiktoken
+from pydantic import TypeAdapter
 
 from symai.backend.base import Engine
 from symai.backend.integrations.openai.client import Client as OpenAIClient
-from symai.backend.integrations.openai.response import Response
 from symai.backend.integrations.openai.responses import (
-    ResponsesRequest,
-    ResponsesResponse,
+    ContextCompaction,
+    Conversation,
+    CreateResponseRequest,
+    InputMessage,
+    ModerationConfig,
+    OutputMessage,
+    OutputText,
+    PromptCacheOptions,
+    PromptReference,
+    ReasoningConfig,
+    Response,
+    ResponseStatus,
+    ServiceTier,
+    TextConfig,
+    Truncation,
 )
+from symai.backend.integrations.openai.transport import APIResponse
 from symai.backend.mixin.openai import SUPPORTED_OPENAI_MODELS, OpenAIMixin
 from symai.backend.settings import SYMAI_CONFIG
 from symai.components import SelfPrompt
@@ -282,37 +295,79 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
             user_msg,
         ]
 
-    def build_request(self, argument) -> ResponsesRequest:
-        if argument.kwargs.get("stream"):
-            msg = "OpenAI integration does not support streaming responses"
+    def build_request(self, argument) -> CreateResponseRequest:
+        unsupported = {
+            "stream",
+            "stream_options",
+            "tools",
+            "tool_choice",
+            "max_tool_calls",
+            "parallel_tool_calls",
+        } & set(argument.kwargs)
+        if unsupported:
+            msg = (
+                "OpenAI Responses integration does not support tool calling or streaming: "
+                f"{sorted(unsupported)}"
+            )
             raise ValueError(msg)
 
-        request_kwargs = set(ResponsesRequest.model_fields) - {"input"}
+        if argument.kwargs.get("background") is True:
+            msg = "OpenAIResponsesEngine does not support background execution."
+            raise ValueError(msg)
+
+        request_kwargs = set(CreateResponseRequest.model_fields) - {"input"}
         payload = self.collect_request_kwargs(argument, request_kwargs)
-        messages = argument.prop.prepared_input
-        payload["model"] = payload.get("model", self.model)
-        self.openai_model_spec_for(payload["model"])
-        payload["input"] = tuple(messages)
+        model = payload.get("model", self.model)
+        self.openai_model_spec_for(model)
+        payload["model"] = model
+        payload["input"] = tuple(
+            TypeAdapter(InputMessage).validate_python(message, strict=False)
+            for message in argument.prop.prepared_input
+        )
 
         if self.is_openai_reasoning_model():
             payload.pop("temperature", None)
             payload.pop("top_p", None)
-            if self.is_openai_pro_model():
-                payload["reasoning"] = {"effort": "high"}
-            else:
-                payload["reasoning"] = payload.get("reasoning", {"effort": "medium"})
+            default_effort = "high" if self.is_openai_pro_model() else "medium"
+            payload["reasoning"] = payload.get(
+                "reasoning",
+                {"effort": default_effort},
+            )
 
-        tools = payload.get("tools")
-        if tools:
-            payload["tools"] = tuple(self._convert_tools(tools))
-            payload["tool_choice"] = payload.get("tool_choice", "auto")
+        converters = {
+            "conversation": Conversation,
+            "moderation": ModerationConfig,
+            "prompt": PromptReference,
+            "prompt_cache_options": PromptCacheOptions,
+            "reasoning": ReasoningConfig,
+            "text": TextConfig,
+        }
+        for field_name, model_type in converters.items():
+            if isinstance(payload.get(field_name), dict):
+                payload[field_name] = model_type.model_validate(
+                    payload[field_name],
+                    strict=False,
+                )
+
+        if isinstance(payload.get("context_management"), list):
+            payload["context_management"] = tuple(
+                ContextCompaction.model_validate(item, strict=False)
+                for item in payload["context_management"]
+            )
         if isinstance(payload.get("include"), list):
             payload["include"] = tuple(payload["include"])
-        if isinstance(payload.get("context_management"), list):
-            payload["context_management"] = tuple(payload["context_management"])
+        if isinstance(payload.get("instructions"), list):
+            payload["instructions"] = tuple(
+                TypeAdapter(InputMessage).validate_python(item, strict=False)
+                for item in payload["instructions"]
+            )
+        if isinstance(payload.get("service_tier"), str):
+            payload["service_tier"] = ServiceTier(payload["service_tier"])
+        if isinstance(payload.get("truncation"), str):
+            payload["truncation"] = Truncation(payload["truncation"])
 
-        request = ResponsesRequest.model_validate(payload)
-        remaining_tokens = self.compute_remaining_tokens(messages)
+        request = CreateResponseRequest.model_validate(payload)
+        remaining_tokens = self.compute_remaining_tokens(argument.prop.prepared_input)
         max_output_tokens = request.max_output_tokens
         if max_output_tokens is not None and max_output_tokens > self.max_response_tokens:
             warning_message = (
@@ -323,59 +378,22 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
             request = request.model_copy(update={"max_output_tokens": remaining_tokens})
         return request
 
-    def _convert_tools(self, tools: list) -> list:
-        converted = []
-        for tool in tools:
-            if tool.get("type") == "function":
-                converted.append(
-                    {
-                        "type": "function",
-                        "name": tool.get("name") or tool.get("function", {}).get("name"),
-                        "description": tool.get("description")
-                        or tool.get("function", {}).get("description"),
-                        "parameters": tool.get("parameters")
-                        or tool.get("function", {}).get("parameters"),
-                    }
-                )
-            else:
-                converted.append(tool)
-        return converted
-
-    def _extract_output_text(self, response: ResponsesResponse) -> list[str]:
+    def _extract_output_text(self, response: Response) -> list[str]:
         outputs = []
         for output in response.output:
-            if output.type == "message":
-                outputs.extend(content.text for content in output.content if content.text)
-        if not outputs and response.output_text:
-            outputs.append(response.output_text)
+            if not isinstance(output, OutputMessage):
+                continue
+            outputs.extend(
+                content.text for content in output.content if isinstance(content, OutputText)
+            )
         return outputs
 
-    def _process_function_calls(
-        self,
-        response: ResponsesResponse,
-        metadata: dict,
-    ) -> dict:
-        for output in response.output:
-            if output.type != "function_call":
-                continue
-            try:
-                args_dict = json.loads(output.arguments or "{}")
-            except json.JSONDecodeError:
-                args_dict = {}
-            metadata["function_call"] = {
-                "name": output.name,
-                "arguments": args_dict,
-                "call_id": output.call_id,
-            }
-            break
-        return metadata
-
-    def _extract_thinking(self, response: ResponsesResponse) -> str | None:
+    def _extract_thinking(self, response: Response) -> str | None:
         if not self.is_openai_reasoning_model():
             return None
         for output in response.output:
             if output.type == "reasoning":
-                texts = [summary.text for summary in output.summary if summary.text]
+                texts = [summary.text for summary in output.summary]
                 if texts:
                     return "\n".join(texts)
         return None
@@ -388,33 +406,37 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
         response = self.call_request(request)
         return self.parse_response(response)
 
-    def call_request(self, request: ResponsesRequest) -> Response[ResponsesResponse]:
+    def call_request(self, request: CreateResponseRequest) -> APIResponse[Response]:
         if self.http_client is not None:
             return OpenAIClient(
                 api_key=self.api_key,
                 http_client=self.http_client,
-            ).responses(request)
+            ).create_response(request)
 
         timeout = self.client_timeout if self.client_timeout is not None else 600.0
         with httpx.Client(timeout=httpx.Timeout(timeout, connect=10.0)) as http_client:
             return OpenAIClient(
                 api_key=self.api_key,
                 http_client=http_client,
-            ).responses(request)
+            ).create_response(request)
 
-    def parse_response(self, response: Response[ResponsesResponse]):
+    def parse_response(self, response: APIResponse[Response]):
         raw_output = response.data
+        if raw_output.status is not ResponseStatus.COMPLETED:
+            detail = f": {raw_output.error.message}" if raw_output.error else ""
+            msg = (
+                "OpenAIResponsesEngine requires a completed response; "
+                f"received status {raw_output.status.value!r}{detail}"
+            )
+            raise ValueError(msg)
+
         metadata = {
             "raw_output": raw_output,
             "response": response,
         }
-        metadata = self._process_function_calls(raw_output, metadata)
 
         thinking = self._extract_thinking(raw_output)
         if thinking:
             metadata["thinking"] = thinking
 
-        output = self._extract_output_text(raw_output)
-        if not output and "function_call" in metadata:
-            output = [""]
-        return output, metadata
+        return self._extract_output_text(raw_output), metadata

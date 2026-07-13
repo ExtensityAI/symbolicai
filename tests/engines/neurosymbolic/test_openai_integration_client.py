@@ -1,9 +1,10 @@
 from types import SimpleNamespace
 
 import httpx
+import pytest
 
-from symai.backend.engines.neurosymbolic.engine_openai_gptX import OpenAIResponsesEngine
-from symai.backend.integrations.openai.responses import ResponsesResponse
+from symai.backend.integrations.openai.engines.neurosymbolic import OpenAIResponsesEngine
+from symai.backend.integrations.openai.responses import Response
 
 DUMMY_KEY = "sk-test-not-a-real-key"
 
@@ -17,7 +18,7 @@ def _argument(**kwargs):
     )
 
 
-def test_engine_executes_through_standalone_openai_client():
+def test_engine_executes_through_comprehensive_responses_client():
     def handler(request: httpx.Request):
         return httpx.Response(
             200,
@@ -25,24 +26,44 @@ def test_engine_executes_through_standalone_openai_client():
             json={
                 "id": "response-id",
                 "object": "response",
+                "created_at": 1.5,
+                "status": "completed",
+                "background": False,
+                "error": None,
+                "incomplete_details": None,
+                "instructions": None,
+                "max_output_tokens": 16,
                 "model": "gpt-5.4",
                 "output": [
                     {
+                        "id": "reasoning-id",
                         "type": "reasoning",
+                        "status": "completed",
                         "summary": [{"type": "summary_text", "text": "thought"}],
                     },
                     {
+                        "id": "message-id",
                         "type": "message",
-                        "content": [{"type": "output_text", "text": "answer"}],
-                    },
-                    {
-                        "type": "function_call",
-                        "name": "lookup",
-                        "arguments": '{"query":"x"}',
-                        "call_id": "call-1",
+                        "role": "assistant",
+                        "status": "completed",
+                        "content": [
+                            {
+                                "type": "output_text",
+                                "text": "answer",
+                                "annotations": [],
+                                "logprobs": [],
+                            }
+                        ],
                     },
                 ],
-                "usage": {"input_tokens": 1, "output_tokens": 2, "total_tokens": 3},
+                "store": True,
+                "truncation": "disabled",
+                "usage": {
+                    "input_tokens": 1,
+                    "output_tokens": 2,
+                    "total_tokens": 3,
+                },
+                "metadata": {},
             },
             request=request,
         )
@@ -57,10 +78,55 @@ def test_engine_executes_through_standalone_openai_client():
 
     assert output == ["answer"]
     assert metadata["thinking"] == "thought"
-    assert metadata["function_call"] == {
-        "name": "lookup",
-        "arguments": {"query": "x"},
-        "call_id": "call-1",
-    }
-    assert isinstance(metadata["raw_output"], ResponsesResponse)
+    assert "function_call" not in metadata
+    assert isinstance(metadata["raw_output"], Response)
     assert metadata["response"].metadata.request_id == "request-id"
+
+
+def test_engine_rejects_background_requests():
+    engine = OpenAIResponsesEngine(
+        api_key=DUMMY_KEY,
+        model="openai:gpt-5.4",
+    )
+
+    with pytest.raises(ValueError, match="background"):
+        engine.build_request(_argument(background=True))
+
+
+@pytest.mark.parametrize("status", ["queued", "in_progress", "failed"])
+def test_engine_rejects_non_completed_responses(status):
+    def handler(request: httpx.Request):
+        return httpx.Response(
+            200,
+            json={
+                "id": "response-id",
+                "object": "response",
+                "created_at": 1.5,
+                "status": status,
+                "background": status != "failed",
+                "error": (
+                    {"code": "server_error", "message": "generation failed"}
+                    if status == "failed"
+                    else None
+                ),
+                "incomplete_details": None,
+                "instructions": None,
+                "max_output_tokens": 16,
+                "model": "gpt-5.4",
+                "output": [],
+                "store": True,
+                "truncation": "disabled",
+                "usage": None,
+                "metadata": {},
+            },
+            request=request,
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
+        engine = OpenAIResponsesEngine(
+            api_key=DUMMY_KEY,
+            model="openai:gpt-5.4",
+            http_client=http_client,
+        )
+        with pytest.raises(ValueError, match=status):
+            engine.forward(_argument())

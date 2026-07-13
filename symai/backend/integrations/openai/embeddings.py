@@ -7,9 +7,16 @@ from symai.backend.integrations.base import StrictModel, TolerantModel
 PATH = "/embeddings"
 
 
-class EmbeddingRequest(StrictModel):
+EmbeddingModel = Literal[
+    "text-embedding-ada-002",
+    "text-embedding-3-small",
+    "text-embedding-3-large",
+]
+
+
+class CreateEmbeddingRequest(StrictModel):
     input: str | tuple[str, ...]
-    model: str
+    model: EmbeddingModel
     dimensions: int | None = Field(default=None, gt=0)
     encoding_format: Literal["float", "base64"] | None = None
     user: str | None = None
@@ -26,8 +33,8 @@ class Usage(TolerantModel):
     total_tokens: int
 
 
-class EmbeddingResponse(TolerantModel):
+class EmbeddingList(TolerantModel):
     object: str | None = None
     data: tuple[EmbeddingData, ...]
-    model: str | None = None
+    model: EmbeddingModel
     usage: Usage

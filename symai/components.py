@@ -409,7 +409,7 @@ class MetadataTracker(Expression):
                         "reasoning_tokens"
                     ] += 0
                     self._track_parallel_usage_items(token_details, engine_name, metadata)
-                elif engine_name == "EmbeddingEngine":
+                elif engine_name == "OpenAIEmbeddingEngine":
                     usage = metadata["raw_output"].usage
                     token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += (
                         usage.prompt_tokens

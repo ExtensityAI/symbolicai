@@ -2,14 +2,14 @@ from symai.backend.engines.neurosymbolic.engine_anthropic_claudeX_chat import Cl
 from symai.backend.engines.neurosymbolic.engine_anthropic_claudeX_reasoning import (
     ClaudeXReasoningEngine,
 )
-from symai.backend.engines.neurosymbolic.engine_cerebras import CerebrasEngine
-from symai.backend.engines.neurosymbolic.engine_deepseekX import DeepSeekXReasoningEngine
 from symai.backend.engines.neurosymbolic.engine_google_geminiX_reasoning import (
     GeminiXReasoningEngine,
 )
 from symai.backend.engines.neurosymbolic.engine_groq import GroqEngine
-from symai.backend.engines.neurosymbolic.engine_openai_gptX import OpenAIResponsesEngine
 from symai.backend.engines.neurosymbolic.engine_openrouter import OpenRouterEngine
+from symai.backend.integrations.cerebras.engines.neurosymbolic import CerebrasEngine
+from symai.backend.integrations.deepseek.engines.neurosymbolic import DeepSeekEngine
+from symai.backend.integrations.openai.engines.neurosymbolic import OpenAIResponsesEngine
 from symai.backend.mixin import (
     ANTHROPIC_CHAT_MODELS,
     ANTHROPIC_REASONING_MODELS,
@@ -30,7 +30,7 @@ ENGINE_MAPPING = {
     **dict.fromkeys(ANTHROPIC_REASONING_MODELS, ClaudeXReasoningEngine),
     **dict.fromkeys(CEREBRAS_CHAT_MODELS, CerebrasEngine),
     **dict.fromkeys(CEREBRAS_REASONING_MODELS, CerebrasEngine),
-    **dict.fromkeys(DEEPSEEK_MODELS, DeepSeekXReasoningEngine),
+    **dict.fromkeys(DEEPSEEK_MODELS, DeepSeekEngine),
     **dict.fromkeys(GOOGLE_CHAT_MODELS, GeminiXReasoningEngine),
     **dict.fromkeys(GOOGLE_REASONING_MODELS, GeminiXReasoningEngine),
     **dict.fromkeys(OPENAI_MODELS, OpenAIResponsesEngine),
@@ -54,7 +54,7 @@ __all__ = [
     "OPENROUTER_REASONING_MODELS",
     "ClaudeXChatEngine",
     "ClaudeXReasoningEngine",
-    "DeepSeekXReasoningEngine",
+    "DeepSeekEngine",
     "GeminiXReasoningEngine",
     "GroqEngine",
     "OpenAIResponsesEngine",

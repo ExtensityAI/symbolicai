@@ -1,6 +1,6 @@
 from symai.backend.integrations import errors as integration_errors
 from symai.backend.integrations import http_errors
-from symai.backend.integrations.openai.response import Metadata
+from symai.backend.integrations.openai.transport import ResponseMetadata
 
 
 class Error(integration_errors.IntegrationError):
@@ -10,7 +10,7 @@ class Error(integration_errors.IntegrationError):
 
 
 class APIError(http_errors.APIError, Error):
-    def __init__(self, metadata: Metadata, body: str, message: str | None = None) -> None:
+    def __init__(self, metadata: ResponseMetadata, body: str, message: str | None = None) -> None:
         self.metadata = metadata
         self.body = body
         super().__init__(message or f"OpenAI API error {metadata.status_code}")
@@ -35,7 +35,7 @@ class RateLimitError(APIError, http_errors.RateLimitError):
 
 
 class ResponseError(integration_errors.ResponseError, Error):
-    def __init__(self, message: str, *, metadata: Metadata, body: str) -> None:
+    def __init__(self, message: str, *, metadata: ResponseMetadata, body: str) -> None:
         self.metadata = metadata
         self.body = body
         super().__init__(message)

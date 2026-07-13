@@ -116,7 +116,7 @@ _PositiveCompletionTokens = Annotated[int, Field(gt=0)]
 _StopSequence = Annotated[tuple[str, ...], Field(max_length=4)]
 
 
-class ChatRequest(StrictModel):
+class CreateChatCompletionRequest(StrictModel):
     model_config = ConfigDict(extra="allow")
     __pydantic_extra__: dict[str, JsonValue] = Field(  # pyright: ignore[reportIncompatibleVariableOverride]
         init=False
@@ -185,7 +185,7 @@ class Choice(TolerantModel):
     reasoning_logprobs: dict[str, JsonValue] | None = None
 
 
-class ChatResponse(TolerantModel):
+class ChatCompletion(TolerantModel):
     id: str | None = None
     choices: tuple[Choice, ...] | None = None
     created: int | None = None

@@ -1,7 +1,8 @@
 import httpx
 import pytest
+from pydantic import BaseModel
 
-from symai.backend.integrations.deepseek.chat import ChatRequest, UserMessage
+from symai.backend.integrations.deepseek.chat import CreateChatCompletionRequest, UserMessage
 from symai.backend.integrations.deepseek.client import Client
 from symai.backend.integrations.deepseek.errors import (
     APIError,
@@ -13,7 +14,7 @@ from symai.backend.integrations.deepseek.errors import (
 
 
 def _request():
-    return ChatRequest(
+    return CreateChatCompletionRequest(
         messages=(UserMessage(role="user", content="hello"),),
         model="deepseek-v4-flash",
     )
@@ -52,11 +53,15 @@ def test_chat_posts_authenticated_request_and_returns_metadata():
         )
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
-        response = Client(api_key="test-key", http_client=http_client).chat(_request())
+        response = Client(api_key="test-key", http_client=http_client).create_chat_completion(
+            _request()
+        )
 
     assert response.data.choices[0].message.content == "hi"
     assert response.metadata.status_code == 200
     assert response.metadata.request_id == "request-id"
+    assert isinstance(response, BaseModel)
+    assert isinstance(response.metadata, BaseModel)
 
 
 @pytest.mark.parametrize(
@@ -75,7 +80,7 @@ def test_chat_maps_http_failures(status, error_type):
         httpx.Client(transport=httpx.MockTransport(handler)) as http_client,
         pytest.raises(error_type) as raised,
     ):
-        Client(api_key="test-key", http_client=http_client).chat(_request())
+        Client(api_key="test-key", http_client=http_client).create_chat_completion(_request())
 
     assert raised.value.status_code == status
     assert raised.value.request_id == "request-id"
@@ -96,7 +101,7 @@ def test_chat_maps_invalid_success_responses(body, content_type):
         httpx.Client(transport=httpx.MockTransport(handler)) as http_client,
         pytest.raises(ResponseError) as raised,
     ):
-        Client(api_key="test-key", http_client=http_client).chat(_request())
+        Client(api_key="test-key", http_client=http_client).create_chat_completion(_request())
 
     assert raised.value.metadata.status_code == 200
     assert raised.value.body == body
@@ -111,7 +116,7 @@ def test_chat_maps_transport_failures():
         httpx.Client(transport=httpx.MockTransport(handler)) as http_client,
         pytest.raises(TransportError) as raised,
     ):
-        Client(api_key="test-key", http_client=http_client).chat(_request())
+        Client(api_key="test-key", http_client=http_client).create_chat_completion(_request())
 
     assert raised.value.__cause__.__class__ is httpx.ConnectError
     assert raised.value.metadata is None

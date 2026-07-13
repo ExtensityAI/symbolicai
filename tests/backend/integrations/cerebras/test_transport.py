@@ -1,32 +1,33 @@
-from dataclasses import FrozenInstanceError
-
 import pytest
+from pydantic import BaseModel, ValidationError
 
-from symai.backend.integrations.cerebras.chat import ChatResponse
-from symai.backend.integrations.cerebras.response import (
-    Metadata,
+from symai.backend.integrations.cerebras.chat import ChatCompletion
+from symai.backend.integrations.cerebras.transport import (
+    APIResponse,
     RateLimitState,
-    Response,
+    ResponseMetadata,
 )
 
 
 def test_response_carries_exact_data_and_metadata_objects():
-    data = ChatResponse()
-    metadata = Metadata(
+    data = ChatCompletion()
+    metadata = ResponseMetadata(
         status_code=200,
         request_id="req-1",
         retry_after=2.5,
         rate_limit=RateLimitState(),
     )
 
-    response = Response(data=data, metadata=metadata)
+    response = APIResponse(data=data, metadata=metadata)
 
     assert response.data is data
+    assert isinstance(response, BaseModel)
+    assert isinstance(metadata, BaseModel)
     assert response.metadata is metadata
 
 
 def test_response_values_are_immutable():
-    metadata = Metadata(
+    metadata = ResponseMetadata(
         status_code=200,
         request_id=None,
         retry_after=None,
@@ -34,5 +35,5 @@ def test_response_values_are_immutable():
     )
 
     field = "status_code"
-    with pytest.raises(FrozenInstanceError):
+    with pytest.raises(ValidationError):
         setattr(metadata, field, 201)
