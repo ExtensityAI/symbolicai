@@ -5,6 +5,7 @@ from urllib.parse import quote
 import httpx
 from pydantic import BaseModel, ValidationError
 
+from symai.clients._headers import parse_optional_float
 from symai.clients.openai import embeddings, errors
 from symai.clients.openai import responses as responses_api
 from symai.clients.openai.transport import APIResponse, ResponseMetadata
@@ -16,21 +17,11 @@ RETRY_AFTER_HEADER = "retry-after"
 T = TypeVar("T", bound=BaseModel)
 
 
-def _optional_float(value: str | None):
-    if value is None:
-        return None
-
-    try:
-        return float(value)
-    except ValueError:
-        return None
-
-
-def _metadata(response: httpx.Response) -> ResponseMetadata:
+def _extract_response_metadata(response: httpx.Response) -> ResponseMetadata:
     return ResponseMetadata(
         status_code=response.status_code,
         request_id=response.headers.get(REQUEST_ID_HEADER),
-        retry_after=_optional_float(response.headers.get(RETRY_AFTER_HEADER)),
+        retry_after=parse_optional_float(response.headers.get(RETRY_AFTER_HEADER)),
     )
 
 
@@ -97,7 +88,7 @@ class Client:
             message = "OpenAI request failed before receiving a valid response"
             raise errors.TransportError(message) from exc
 
-        metadata = _metadata(http_response)
+        metadata = _extract_response_metadata(http_response)
         _raise_for_status(http_response, metadata)
         return APIResponse(
             data=_parse_response(http_response, metadata, model),

@@ -1,3 +1,5 @@
+"""Typed HTTP response envelopes returned by the DeepSeek client."""
+
 from typing import Generic, TypeVar
 
 from symai.clients._models import StrictModel

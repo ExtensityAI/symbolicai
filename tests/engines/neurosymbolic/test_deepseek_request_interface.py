@@ -6,19 +6,14 @@ import pytest
 from pydantic import ValidationError
 
 from symai.backend.chat_prompts import prompt_registry
-from symai.backend.engines.language_model.deepseek import (
-    DEEPSEEK_CHAT_COMPLETIONS_URL,
-    MODEL_SPECS,
-    SUPPORTED_MODELS,
-    LanguageModelEngine,
-)
+from symai.backend.engines.language_model.deepseek import LanguageModelEngine
 from symai.backend.settings import SYMAI_CONFIG
-from symai.clients.deepseek.chat import ChatCompletion
+from symai.clients.deepseek.chat import MODEL_SPECS, ChatCompletion
 from symai.clients.deepseek.client import Client
 from symai.clients.deepseek.errors import ResponseError
 from symai.components import MetadataTracker
+from symai.context import CURRENT_ENGINE_VAR
 from symai.core import Argument
-from symai.functional import EngineRepository
 
 DUMMY_KEY = "sk-test-not-a-real-key"
 
@@ -70,9 +65,10 @@ def deepseek_response_json(content="2", reasoning_content="Add one and one."):
     }
 
 
-def test_deepseek_supported_models_track_capabilities():
+def test_deepseek_supported_models_track_client_capabilities():
+    assert tuple(MODEL_SPECS) == ("deepseek-v4-flash", "deepseek-v4-pro")
     for spec in MODEL_SPECS.values():
-        assert spec.reasoning is True
+        assert spec.reasoning is not None
         assert spec.vision is False
 
 
@@ -151,18 +147,13 @@ def test_engine_self_prompt_sends_prompt_object_as_raw_json():
             request=request,
         )
 
-    repository = EngineRepository()
-    previous_engine = repository._engines.get("neurosymbolic")
-    try:
-        with httpx.Client(transport=httpx.MockTransport(handler)) as client:
-            engine = make_engine(client)
-            EngineRepository.register("neurosymbolic", engine, allow_engine_override=True)
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        engine = make_engine(client)
+        token = CURRENT_ENGINE_VAR.set(engine)
+        try:
             result = engine.self_prompt({"system": "old system", "user": "old user"})
-    finally:
-        if previous_engine is not None:
-            EngineRepository.register("neurosymbolic", previous_engine, allow_engine_override=True)
-        else:
-            repository._engines.pop("neurosymbolic", None)
+        finally:
+            CURRENT_ENGINE_VAR.reset(token)
 
     messages = captured["body"]["messages"]
     assert result == {"system": "new system prompt", "user": "new user prompt"}
@@ -253,7 +244,6 @@ def test_deepseek_forward_uses_http_transport_and_typed_response():
 
     assert [message["role"] for message in argument.prop.prepared_input] == ["system", "user"]
     assert captured["method"] == "POST"
-    assert captured["url"] == DEEPSEEK_CHAT_COMPLETIONS_URL
     assert captured["authorization"] == f"Bearer {DUMMY_KEY}"
     assert captured["body"]["model"] == "deepseek-v4-flash"
     assert captured["body"]["max_tokens"] == 16
@@ -313,7 +303,7 @@ def test_deepseek_metadata_tracker_accumulates_usage():
 
 
 @pytest.mark.engine_live
-@pytest.mark.parametrize("model", SUPPORTED_MODELS)
+@pytest.mark.parametrize("model", MODEL_SPECS)
 def test_deepseek_live_smoke(engine_api_mode, model):
     if engine_api_mode != "live":
         pytest.skip("use --engine-api=live to run live engine API requests")

@@ -82,11 +82,11 @@ def test_chat_maps_http_failures(status, error_type):
     ):
         Client(api_key="test-key", http_client=http_client).create_chat_completion(_request())
 
-    assert raised.value.status_code == status
-    assert raised.value.request_id == "request-id"
+    assert raised.value.metadata.status_code == status
+    assert raised.value.metadata.request_id == "request-id"
     assert raised.value.body == "failure body"
     if status == 429:
-        assert raised.value.retry_after == 2.5
+        assert raised.value.metadata.retry_after == 2.5
 
 
 @pytest.mark.parametrize(

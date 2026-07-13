@@ -145,7 +145,7 @@ def test_zero_retry_after_is_preserved():
     with pytest.raises(RateLimitError) as exc_info:
         _client(handler).create_chat_completion(_chat_request())
 
-    assert exc_info.value.retry_after == 0.0
+    assert exc_info.value.metadata.retry_after == 0.0
 
 
 @pytest.mark.parametrize("status_code", [302, 400, 403, 500])
@@ -168,8 +168,8 @@ def test_other_non_success_statuses_map_to_exact_generic_api_error(
     error = exc_info.value
     assert type(error) is APIError
     assert error.body == body
-    assert error.status_code == status_code
-    assert error.request_id == f"req-{status_code}"
+    assert error.metadata.status_code == status_code
+    assert error.metadata.request_id == f"req-{status_code}"
 
 
 @pytest.mark.parametrize(
@@ -200,13 +200,11 @@ def test_specialized_http_errors_retain_complete_response_evidence(
     error = exc_info.value
     assert type(error) is error_type
     assert error.body == body
-    assert error.status_code == status_code
-    assert error.request_id == f"req-{status_code}"
+    assert error.metadata.status_code == status_code
+    assert error.metadata.request_id == f"req-{status_code}"
     assert error.metadata.retry_after == 2.5
     assert error.metadata.rate_limit.limit_requests_day == 100
     assert error.metadata.rate_limit.remaining_tokens_minute == 900
-    if isinstance(error, RateLimitError):
-        assert error.retry_after == 2.5
 
 
 def test_invalid_json_retains_decode_evidence():

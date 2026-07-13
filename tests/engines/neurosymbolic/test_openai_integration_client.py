@@ -87,6 +87,15 @@ def test_engine_executes_through_comprehensive_responses_client():
     assert metadata["response"].metadata.request_id == "request-id"
 
 
+@pytest.mark.parametrize("unsupported", [{"stream": True}, {"tools": []}])
+def test_engine_rejects_non_streaming_or_tool_request_options(unsupported):
+    with httpx.Client() as http_client:
+        engine = _engine(http_client)
+
+    with pytest.raises(ValueError, match="does not support tool calling or streaming"):
+        engine.build_request(_argument(**unsupported))
+
+
 def test_engine_rejects_background_requests():
     with httpx.Client() as http_client:
         engine = _engine(http_client)

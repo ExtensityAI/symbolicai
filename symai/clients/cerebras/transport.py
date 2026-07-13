@@ -1,3 +1,5 @@
+"""Typed HTTP response envelopes and rate-limit metadata returned by Cerebras."""
+
 from typing import Generic, TypeVar
 
 from symai.clients._models import StrictModel

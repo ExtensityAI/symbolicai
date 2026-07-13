@@ -273,7 +273,7 @@ Example of a configuration file with all engines enabled:
     "FORMAL_ENGINE_API_KEY": "<AXIOM_API_KEY>",
     "FORMAL_ENGINE": "axiom",
     "EMBEDDING_ENGINE_API_KEY": "<OPENAI_API_KEY>",
-    "EMBEDDING_ENGINE_MODEL": "text-embedding-3-small",
+    "EMBEDDING_ENGINE_MODEL": "openai:text-embedding-3-small",
     "SEARCH_ENGINE_API_KEY": "<PARALLEL_API_KEY>",
     "SEARCH_ENGINE_MODEL": "parallel",
     "TEXT_TO_SPEECH_ENGINE_API_KEY": "<OPENAI_API_KEY>",

@@ -1,9 +1,10 @@
+from dataclasses import dataclass
 from enum import StrEnum
 from typing import Annotated, Literal
 
 from pydantic import ConfigDict, Field, JsonValue
 
-from symai.clients._models import StrictModel, TolerantModel
+from symai.clients._models import ModelId, StrictModel, TolerantModel
 
 PATH = "/responses"
 
@@ -44,6 +45,34 @@ class ReasoningEffort(StrEnum):
     HIGH = "high"
     XHIGH = "xhigh"
     MAX = "max"
+
+
+@dataclass(frozen=True, slots=True)
+class ReasoningSpec:
+    efforts: tuple[ReasoningEffort, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ResponseModelSpec:
+    context_tokens: int
+    response_tokens: int
+    reasoning: ReasoningSpec | None
+    vision: bool = True
+
+
+_REASONING = ReasoningSpec(tuple(ReasoningEffort))
+MODEL_SPECS: dict[ResponseModel, ResponseModelSpec] = {
+    "gpt-5.5": ResponseModelSpec(1_050_000, 128_000, reasoning=_REASONING),
+    "gpt-5.5-pro": ResponseModelSpec(1_050_000, 128_000, reasoning=_REASONING),
+    "gpt-5.4": ResponseModelSpec(1_050_000, 128_000, reasoning=_REASONING),
+    "gpt-5.4-pro": ResponseModelSpec(1_050_000, 128_000, reasoning=_REASONING),
+    "gpt-5.4-mini": ResponseModelSpec(400_000, 128_000, reasoning=_REASONING),
+    "gpt-5.4-nano": ResponseModelSpec(400_000, 128_000, reasoning=_REASONING),
+    "o3-pro": ResponseModelSpec(200_000, 100_000, reasoning=_REASONING),
+    "o3": ResponseModelSpec(200_000, 100_000, reasoning=_REASONING),
+    "gpt-4.1": ResponseModelSpec(1_047_576, 32_768, reasoning=None),
+    "gpt-4.1-mini": ResponseModelSpec(1_047_576, 32_768, reasoning=None),
+}
 
 
 class ReasoningSummary(StrEnum):
@@ -196,7 +225,7 @@ Include = Literal[
 
 class CreateResponseRequest(StrictModel):
     input: str | tuple[InputMessage, ...]
-    model: ResponseModel
+    model: ResponseModel | ModelId
     background: bool | None = None
     context_management: tuple[ContextCompaction, ...] | None = None
     conversation: str | Conversation | None = None
@@ -397,7 +426,7 @@ class Response(TolerantModel):
     incomplete_details: IncompleteDetails | None
     instructions: str | tuple[InputMessage, ...] | None
     max_output_tokens: int | None
-    model: ResponseModel
+    model: str
     output: tuple[OutputItem, ...]
     previous_response_id: str | None = None
     prompt: PromptReference | None = None

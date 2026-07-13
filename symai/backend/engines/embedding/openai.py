@@ -1,30 +1,17 @@
-from dataclasses import dataclass
-
 import numpy as np
 
 from symai.backend.base import Engine
 from symai.backend.usage import EngineUsageRecord
 from symai.clients.openai.client import Client as OpenAIClient
 from symai.clients.openai.embeddings import (
+    MODEL_SPECS as EMBEDDING_MODEL_SPECS,
+)
+from symai.clients.openai.embeddings import (
     CreateEmbeddingRequest,
     EmbeddingList,
     EmbeddingModel,
 )
 from symai.clients.openai.transport import APIResponse
-
-
-@dataclass(frozen=True, slots=True)
-class ModelSpec:
-    context_tokens: int
-    dimensions: int
-
-
-MODEL_SPECS: dict[EmbeddingModel, ModelSpec] = {
-    "text-embedding-ada-002": ModelSpec(8_191, 1_536),
-    "text-embedding-3-small": ModelSpec(8_191, 1_536),
-    "text-embedding-3-large": ModelSpec(8_191, 3_072),
-}
-SUPPORTED_MODELS = tuple(MODEL_SPECS)
 
 
 class EmbeddingEngine(Engine):
@@ -34,7 +21,7 @@ class EmbeddingEngine(Engine):
     def __init__(self, *, client: OpenAIClient, model: EmbeddingModel):
         super().__init__()
         try:
-            self.model_spec = MODEL_SPECS[model]
+            self.model_spec = EMBEDDING_MODEL_SPECS[model]
         except KeyError as e:
             msg = f"Unsupported model: {model}"
             raise ValueError(msg) from e
@@ -44,9 +31,6 @@ class EmbeddingEngine(Engine):
         self.max_tokens = self.model_spec.context_tokens
         self.embedding_dim = self.model_spec.dimensions
         self.name = self.__class__.__name__
-
-    def id(self) -> str:
-        return "embedding"
 
     def forward(self, argument):  # pyright: ignore[reportIncompatibleMethodOverride]
         prepared_input = argument.prop.prepared_input

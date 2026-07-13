@@ -1,4 +1,8 @@
-from pydantic import BaseModel, ConfigDict
+from typing import Annotated
+
+from pydantic import BaseModel, ConfigDict, Field
+
+ModelId = Annotated[str, Field(min_length=1)]
 
 
 class StrictModel(BaseModel):

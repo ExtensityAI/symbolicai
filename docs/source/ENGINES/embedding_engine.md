@@ -6,9 +6,9 @@ SymbolicAI supports multiple embedding backends. The engine is selected automati
 
 | Model | Backend | Dimensions | Modalities |
 |-------|---------|------------|------------|
-| `text-embedding-3-small` | OpenAI | 1536 | Text |
-| `text-embedding-3-large` | OpenAI | 3072 | Text |
-| `text-embedding-ada-002` | OpenAI | 1536 | Text |
+| `openai:text-embedding-3-small` | OpenAI | 1536 | Text |
+| `openai:text-embedding-3-large` | OpenAI | 3072 | Text |
+| `openai:text-embedding-ada-002` | OpenAI | 1536 | Text |
 | `gemini-embedding-001` | Google Gemini | 3072 | Text |
 | `gemini-embedding-2` | Google Gemini | 3072 | Text, Image, Video, Audio, Document |
 | `llamacpp` | llama.cpp (local) | Varies | Text |
@@ -24,7 +24,7 @@ Set the embedding engine in your `symai.config.json`:
 }
 ```
 
-For OpenAI models, use your OpenAI API key. For Gemini models, use your Google AI API key (obtain one from [Google AI Studio](https://aistudio.google.com/)).
+For OpenAI models, use the `openai:` prefix and your OpenAI API key. For Gemini models, use your Google AI API key (obtain one from [Google AI Studio](https://aistudio.google.com/)).
 
 ## Usage
 

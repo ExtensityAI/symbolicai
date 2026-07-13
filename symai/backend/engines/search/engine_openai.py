@@ -11,6 +11,7 @@ from symai.backend.engines.search.utils import (
     normalize_domains,
 )
 from symai.backend.settings import SYMAI_CONFIG
+from symai.clients.openai.responses import MODEL_SPECS as OPENAI_MODEL_SPECS
 from symai.symbol import Result
 from symai.utils import silence_noisy_loggers
 
@@ -18,16 +19,11 @@ silence_noisy_loggers()
 
 logger = logging.getLogger(__name__)
 
-OPENAI_CHAT_MODELS = ("gpt-4.1", "gpt-4.1-mini")
-OPENAI_REASONING_MODELS = (
-    "gpt-5.5",
-    "gpt-5.5-pro",
-    "gpt-5.4",
-    "gpt-5.4-pro",
-    "gpt-5.4-mini",
-    "gpt-5.4-nano",
-    "o3-pro",
-    "o3",
+OPENAI_CHAT_MODELS = tuple(
+    model for model, spec in OPENAI_MODEL_SPECS.items() if spec.reasoning is None
+)
+OPENAI_REASONING_MODELS = tuple(
+    model for model, spec in OPENAI_MODEL_SPECS.items() if spec.reasoning is not None
 )
 
 

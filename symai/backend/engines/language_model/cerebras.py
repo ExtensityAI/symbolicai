@@ -1,6 +1,4 @@
 import re
-from dataclasses import dataclass
-from typing import Literal
 
 import tiktoken
 from pydantic import TypeAdapter
@@ -8,7 +6,11 @@ from pydantic import TypeAdapter
 from symai.backend.base import Engine
 from symai.backend.usage import EngineUsageRecord
 from symai.clients.cerebras.chat import (
+    MODEL_SPECS as CHAT_MODEL_SPECS,
+)
+from symai.clients.cerebras.chat import (
     ChatCompletion,
+    ChatModel,
     CreateChatCompletionRequest,
     Message,
     ReasoningEffort,
@@ -18,32 +20,6 @@ from symai.clients.cerebras.chat import (
 )
 from symai.clients.cerebras.client import Client as CerebrasClient
 from symai.clients.cerebras.transport import APIResponse
-from symai.components import SelfPrompt
-
-Model = Literal["gpt-oss-120b", "gemma-4-31b", "zai-glm-4.7"]
-
-
-@dataclass(frozen=True, slots=True)
-class ModelSpec:
-    context_tokens: int
-    response_tokens: int
-    reasoning: bool
-    reasoning_efforts: tuple[str, ...]
-
-
-MODEL_SPECS: dict[Model, ModelSpec] = {
-    "gpt-oss-120b": ModelSpec(131_072, 40_000, True, ("low", "medium", "high")),
-    "gemma-4-31b": ModelSpec(131_072, 40_000, True, ("low", "medium", "high")),
-    "zai-glm-4.7": ModelSpec(
-        131_072,
-        40_000,
-        True,
-        ("none", "low", "medium", "high"),
-    ),
-}
-SUPPORTED_MODELS = tuple(MODEL_SPECS)
-REGISTERED_MODELS = tuple(f"cerebras:{model}" for model in MODEL_SPECS)
-
 
 _NON_VERBOSE_OUTPUT = (
     "<META_INSTRUCTION/>\n"
@@ -58,10 +34,10 @@ class LanguageModelEngine(Engine):
     provider = "cerebras"
     capability = "language_model"
 
-    def __init__(self, *, client: CerebrasClient, model: Model):
+    def __init__(self, *, client: CerebrasClient, model: ChatModel):
         super().__init__()
         try:
-            self.model_spec = MODEL_SPECS[model]
+            self.model_spec = CHAT_MODEL_SPECS[model]
         except KeyError as e:
             msg = f"Unsupported model: {model}"
             raise ValueError(msg) from e
@@ -73,9 +49,6 @@ class LanguageModelEngine(Engine):
         self.tokenizer = tiktoken.get_encoding("o200k_base")
         self.max_context_tokens = self.model_spec.context_tokens
         self.max_response_tokens = self.model_spec.response_tokens
-
-    def id(self) -> str:
-        return "neurosymbolic"
 
     def command(self, *args, **kwargs):
         super().command(*args, **kwargs)
@@ -169,12 +142,14 @@ class LanguageModelEngine(Engine):
             payload["max_completion_tokens"] = payload.pop("max_tokens")
 
         model = self.model
-        model_spec = self.model_spec
+        reasoning = self.model_spec.reasoning
+        supported_efforts = reasoning.efforts if reasoning is not None else ()
         reasoning_effort = payload.get("reasoning_effort")
-        if reasoning_effort is not None and reasoning_effort not in model_spec.reasoning_efforts:
+        if reasoning_effort is not None and reasoning_effort not in supported_efforts:
             msg = (
                 f"Unsupported reasoning_effort for Cerebras model {model}: "
-                f"{reasoning_effort}. Supported values: {list(model_spec.reasoning_efforts)}"
+                f"{reasoning_effort}. Supported values: "
+                f"{[effort.value for effort in supported_efforts]}"
             )
             raise ValueError(msg)
 
@@ -323,8 +298,7 @@ class LanguageModelEngine(Engine):
 
     def _apply_self_prompt_if_needed(self, argument, system_message, user_prompt):
         if argument.prop.instance._kwargs.get("self_prompt", False) or argument.prop.self_prompt:
-            self_prompter = SelfPrompt()
-            result = self_prompter({"user": user_prompt["content"], "system": system_message})
+            result = self.self_prompt({"user": user_prompt["content"], "system": system_message})
             if result is None:
                 msg = "Self-prompting failed!"
                 raise ValueError(msg)

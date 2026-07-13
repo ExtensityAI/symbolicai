@@ -635,22 +635,21 @@ class DynamicEngine(Expression):
         api_key: str,
         _debug: bool = False,
         *,
-        client_timeout: float | None = None,
-        client_max_retries: int | None = None,
+        request_timeout: float | None = None,
+        connect_timeout: float = 10.0,
+        connect_retries: int = 0,
         **_kwargs,
     ):
         super().__init__()
         self.model = model
         self.api_key = api_key
-        # Client-level HTTP settings (real request timeout / retries). Callers pin these
-        # via e.g. components.*.dynamic_engine_name configs; forward them to the
-        # neurosymbolic engine so per-component calls get real hang protection.
-        self.client_timeout = client_timeout
-        self.client_max_retries = client_max_retries
+        self.request_timeout = request_timeout
+        self.connect_timeout = connect_timeout
+        self.connect_retries = connect_retries
         self._entered = False
         self._lock = Lock()
         self.engine_instance = None
-        self._provider_http_client = None
+        self._provider_lease = None
         self._ctx_token = None
 
     def __new__(cls, *_args, **_kwargs):
@@ -683,45 +682,38 @@ class DynamicEngine(Expression):
                     # Fallback: clear the var in this Context to avoid leaking the engine
                     CURRENT_ENGINE_VAR.set(None)
         finally:
-            if self._provider_http_client is not None:
-                self._provider_http_client.close()
-                self._provider_http_client = None
+            if self._provider_lease is not None:
+                self._provider_lease.close()
+                self._provider_lease = None
             self._ctx_token = None
 
     def _create_engine_instance(self):
         """Create an engine instance based on the model name."""
-        # Deferred to avoid components <-> neurosymbolic engine circular imports.
-        from symai.backend.engines.neurosymbolic import ENGINE_MAPPING  # noqa
+        from symai.backend.provider_runtime import (  # noqa: PLC0415
+            ProviderRuntimeOptions,
+            create_provider_engine_lease,
+        )
 
         try:
-            # Check neurosymbolic engines first
-            engine_class = ENGINE_MAPPING.get(self.model)
-            if engine_class is not None and engine_class.__module__.startswith(
-                "symai.backend.engines.language_model."
-            ):
-                from symai.backend.engines.provider import (  # noqa: PLC0415
-                    create_provider_engine,
-                    create_provider_http_client,
-                )
+            options = ProviderRuntimeOptions(
+                request_timeout=self.request_timeout if self.request_timeout is not None else 600.0,
+                connect_timeout=self.connect_timeout,
+                connect_retries=self.connect_retries,
+            )
+            lease = create_provider_engine_lease(
+                capability="language_model",
+                model=self.model,
+                api_key=self.api_key,
+                options=options,
+            )
+            if lease is not None:
+                self._provider_lease = lease
+                return lease.engine
 
-                http_client = create_provider_http_client(
-                    capability="language_model",
-                    model=self.model,
-                    timeout=self.client_timeout,
-                    max_retries=self.client_max_retries,
-                )
-                try:
-                    engine = create_provider_engine(
-                        capability="language_model",
-                        model=self.model,
-                        api_key=self.api_key,
-                        http_client=http_client,
-                    )
-                except Exception:
-                    http_client.close()
-                    raise
-                self._provider_http_client = http_client
-                return engine
+            # Deferred to avoid components <-> neurosymbolic engine circular imports.
+            from symai.backend.engines.neurosymbolic import ENGINE_MAPPING  # noqa: PLC0415
+
+            engine_class = ENGINE_MAPPING.get(self.model)
 
             # Check search engines
             if engine_class is None:
@@ -744,13 +736,9 @@ class DynamicEngine(Expression):
             if engine_class is None:
                 msg = f"Unsupported model '{self.model}'"
                 raise ValueError(msg)
-            # Forward client-level HTTP settings to neurosymbolic engines (all accept
-            # client_timeout / client_max_retries); the search/OCR engines above do not.
             client_kwargs = {}
-            if self.client_timeout is not None:
-                client_kwargs["client_timeout"] = self.client_timeout
-            if self.client_max_retries is not None:
-                client_kwargs["client_max_retries"] = self.client_max_retries
+            if self.request_timeout is not None:
+                client_kwargs["client_timeout"] = self.request_timeout
             return engine_class(api_key=self.api_key, model=self.model, **client_kwargs)
         except Exception as e:
             msg = f"Failed to create engine for model '{self.model}': {e!s}"

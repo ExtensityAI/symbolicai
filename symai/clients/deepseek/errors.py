@@ -1,12 +1,12 @@
-from symai.clients import errors as integration_errors
+from symai.clients import errors as client_errors
 from symai.clients import http_errors
 from symai.clients.deepseek.transport import ResponseMetadata
 
 
-class Error(integration_errors.IntegrationError):
+class Error(client_errors.ClientError):
     """Base class for all typed errors raised by the DeepSeek client."""
 
-    integration = "deepseek"
+    provider = "deepseek"
 
 
 class APIError(http_errors.APIError, Error):
@@ -22,14 +22,6 @@ class APIError(http_errors.APIError, Error):
         self.body = body
         super().__init__(message or f"DeepSeek API error {metadata.status_code}")
 
-    @property
-    def status_code(self) -> int:
-        return self.metadata.status_code
-
-    @property
-    def request_id(self) -> str | None:
-        return self.metadata.request_id
-
 
 class AuthError(APIError, http_errors.AuthError):
     """Raised when the DeepSeek API rejects the request as unauthenticated."""
@@ -38,12 +30,8 @@ class AuthError(APIError, http_errors.AuthError):
 class RateLimitError(APIError, http_errors.RateLimitError):
     """Raised when the DeepSeek API reports that the request was rate limited."""
 
-    @property
-    def retry_after(self) -> float | None:
-        return self.metadata.retry_after
 
-
-class ResponseError(integration_errors.ResponseError, Error):
+class ResponseError(client_errors.ResponseError, Error):
     """Raised when a 2xx response body cannot be decoded or validated."""
 
     def __init__(
@@ -58,7 +46,7 @@ class ResponseError(integration_errors.ResponseError, Error):
         super().__init__(message)
 
 
-class TransportError(integration_errors.TransportError, Error):
+class TransportError(client_errors.TransportError, Error):
     """Raised when the request fails before a valid HTTP response is received."""
 
     def __init__(self, message: str) -> None:

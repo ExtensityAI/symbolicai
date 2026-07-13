@@ -1,47 +1,30 @@
-from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any
 
 from symai.backend.base import Engine
 from symai.backend.chat_prompts import render_chat_system_prompt
 from symai.backend.usage import EngineUsageRecord
 from symai.clients.deepseek.chat import (
+    MODEL_SPECS as CHAT_MODEL_SPECS,
+)
+from symai.clients.deepseek.chat import (
     ChatCompletion,
+    ChatModel,
     CreateChatCompletionRequest,
+    ReasoningEffort,
     Thinking,
 )
 from symai.clients.deepseek.client import Client as DeepSeekClient
 from symai.clients.deepseek.transport import APIResponse
-
-Model = Literal["deepseek-v4-flash", "deepseek-v4-pro"]
-
-
-@dataclass(frozen=True, slots=True)
-class ModelSpec:
-    context_tokens: int
-    response_tokens: int
-    reasoning: bool
-    vision: bool
-
-
-MODEL_SPECS: dict[Model, ModelSpec] = {
-    "deepseek-v4-flash": ModelSpec(1_000_000, 384_000, True, False),
-    "deepseek-v4-pro": ModelSpec(1_000_000, 384_000, True, False),
-}
-SUPPORTED_MODELS = tuple(MODEL_SPECS)
-REGISTERED_MODELS = SUPPORTED_MODELS
-
-
-DEEPSEEK_CHAT_COMPLETIONS_URL = "https://api.deepseek.com/chat/completions"
 
 
 class LanguageModelEngine(Engine):
     provider = "deepseek"
     capability = "language_model"
 
-    def __init__(self, *, client: DeepSeekClient, model: Model):
+    def __init__(self, *, client: DeepSeekClient, model: ChatModel):
         super().__init__()
         try:
-            self.model_spec = MODEL_SPECS[model]
+            self.model_spec = CHAT_MODEL_SPECS[model]
         except KeyError as e:
             msg = f"Unsupported model: {model}"
             raise ValueError(msg) from e
@@ -51,9 +34,6 @@ class LanguageModelEngine(Engine):
         self.name = self.__class__.__name__
         self.tokenizer = None
         self.max_context_tokens = self.model_spec.context_tokens
-
-    def id(self) -> str:
-        return "neurosymbolic"
 
     def compute_required_tokens(self, _messages: list[dict[str, Any]]) -> int:
         msg = 'Method "compute_required_tokens" not implemented for LanguageModelEngine.'
@@ -76,6 +56,8 @@ class LanguageModelEngine(Engine):
         payload = self.collect_request_kwargs(argument, request_kwargs)
         if isinstance(payload.get("thinking"), dict):
             payload["thinking"] = Thinking.model_validate(payload["thinking"], strict=False)
+        if isinstance(payload.get("reasoning_effort"), str):
+            payload["reasoning_effort"] = ReasoningEffort(payload["reasoning_effort"])
         payload["model"] = self.model
         payload["messages"] = tuple(argument.prop.prepared_input)
         return CreateChatCompletionRequest.model_validate(payload)

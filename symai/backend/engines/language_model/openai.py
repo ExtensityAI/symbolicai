@@ -1,6 +1,5 @@
 import logging
 import re
-from dataclasses import dataclass
 
 import tiktoken
 from pydantic import TypeAdapter
@@ -8,6 +7,9 @@ from pydantic import TypeAdapter
 from symai.backend.base import Engine
 from symai.backend.usage import EngineUsageRecord
 from symai.clients.openai.client import Client as OpenAIClient
+from symai.clients.openai.responses import (
+    MODEL_SPECS as RESPONSE_MODEL_SPECS,
+)
 from symai.clients.openai.responses import (
     ContextCompaction,
     Conversation,
@@ -19,6 +21,7 @@ from symai.clients.openai.responses import (
     PromptCacheOptions,
     PromptReference,
     ReasoningConfig,
+    ReasoningEffort,
     Response,
     ResponseModel,
     ResponseStatus,
@@ -27,38 +30,15 @@ from symai.clients.openai.responses import (
     Truncation,
 )
 from symai.clients.openai.transport import APIResponse
-from symai.components import SelfPrompt
 from symai.utils import encode_media_frames
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True, slots=True)
-class ModelSpec:
-    context_tokens: int
-    response_tokens: int
-    reasoning: bool
-    vision: bool = True
-    pro: bool = False
-    tokenizer: str = "o200k_base"
-
-
-MODEL_SPECS: dict[ResponseModel, ModelSpec] = {
-    "gpt-5.5": ModelSpec(1_050_000, 128_000, reasoning=True),
-    "gpt-5.5-pro": ModelSpec(1_050_000, 128_000, reasoning=True, pro=True),
-    "gpt-5.4": ModelSpec(1_050_000, 128_000, reasoning=True),
-    "gpt-5.4-pro": ModelSpec(1_050_000, 128_000, reasoning=True, pro=True),
-    "gpt-5.4-mini": ModelSpec(400_000, 128_000, reasoning=True),
-    "gpt-5.4-nano": ModelSpec(400_000, 128_000, reasoning=True),
-    "o3-pro": ModelSpec(200_000, 100_000, reasoning=True, pro=True),
-    "o3": ModelSpec(200_000, 100_000, reasoning=True),
-    "gpt-4.1": ModelSpec(1_047_576, 32_768, reasoning=False),
-    "gpt-4.1-mini": ModelSpec(1_047_576, 32_768, reasoning=False),
-}
-SUPPORTED_MODELS = tuple(MODEL_SPECS)
-SUPPORTED_CHAT_MODELS = tuple(model for model, spec in MODEL_SPECS.items() if not spec.reasoning)
-SUPPORTED_REASONING_MODELS = tuple(model for model, spec in MODEL_SPECS.items() if spec.reasoning)
-REGISTERED_MODELS = tuple(f"openai:{model}" for model in MODEL_SPECS)
+_HIGH_REASONING_EFFORT_MODELS: frozenset[ResponseModel] = frozenset(
+    {"gpt-5.5-pro", "gpt-5.4-pro", "o3-pro"}
+)
+_TOKENIZER = "o200k_base"
 
 _NON_VERBOSE_OUTPUT = (
     "<META_INSTRUCTION/>\n"
@@ -91,7 +71,7 @@ class LanguageModelEngine(Engine):
     def __init__(self, *, client: OpenAIClient, model: ResponseModel):
         super().__init__()
         try:
-            self.model_spec = MODEL_SPECS[model]
+            self.model_spec = RESPONSE_MODEL_SPECS[model]
         except KeyError as e:
             msg = f"Unsupported model: {model}"
             raise ValueError(msg) from e
@@ -102,13 +82,10 @@ class LanguageModelEngine(Engine):
         self.name = self.__class__.__name__
         self.tokenizer = ResponsesTokenizer(
             model=model,
-            tokenizer_name=self.model_spec.tokenizer,
+            tokenizer_name=_TOKENIZER,
         )
         self.max_context_tokens = self.model_spec.context_tokens
         self.max_response_tokens = self.model_spec.response_tokens
-
-    def id(self) -> str:
-        return "neurosymbolic"
 
     def command(self, *args, **kwargs):
         super().command(*args, **kwargs)
@@ -261,9 +238,8 @@ class LanguageModelEngine(Engine):
             argument.prop.instance._kwargs.get("self_prompt", False) or argument.prop.self_prompt
         ):
             return system, user_msg
-        self_prompter = SelfPrompt()
         key = "developer" if self.model_spec.reasoning else "system"
-        res = self_prompter({"user": user_text, key: system})
+        res = self.self_prompt({"user": user_text, key: system})
         if res is None:
             msg = "Self-prompting failed!"
             raise ValueError(msg)
@@ -334,7 +310,11 @@ class LanguageModelEngine(Engine):
         if self.model_spec.reasoning:
             payload.pop("temperature", None)
             payload.pop("top_p", None)
-            default_effort = "high" if self.model_spec.pro else "medium"
+            default_effort = (
+                ReasoningEffort.HIGH
+                if self.model in _HIGH_REASONING_EFFORT_MODELS
+                else ReasoningEffort.MEDIUM
+            )
             payload["reasoning"] = payload.get(
                 "reasoning",
                 {"effort": default_effort},

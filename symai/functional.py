@@ -17,6 +17,7 @@ from pydantic import BaseModel
 
 from symai.backend import engines, settings
 from symai.backend.base import ENGINE_UNREGISTERED, Engine
+from symai.backend.engine_lease import EngineLease
 from symai.context import CURRENT_ENGINE_VAR
 from symai.prompts import (
     ProbabilisticBooleanModeMedium,
@@ -27,8 +28,6 @@ from symai.prompts import (
 if TYPE_CHECKING:
     from collections.abc import Callable
     from types import ModuleType
-
-    import httpx
 
     from symai.core import Argument
     from symai.post_processors import PostProcessor
@@ -336,9 +335,8 @@ class EngineRepository:
     _instance = None
 
     def __init__(self):
-        if "_engines" not in self.__dict__:  # ensures _engines is only set once
-            self._engines: dict[str, Engine] = {}
-            self._owned_provider_engines: dict[str, tuple[Engine, httpx.Client]] = {}
+        if "_leases" not in self.__dict__:
+            self._leases: dict[str, EngineLease] = {}
             self._lock = RLock()
 
     def __new__(cls, *_args, **_kwargs):
@@ -348,21 +346,36 @@ class EngineRepository:
         return cls._instance
 
     @staticmethod
-    def register(id: str, engine_instance: Engine, allow_engine_override: bool = False) -> None:
+    def register(
+        id: str,
+        engine_instance: Engine | EngineLease,
+        allow_engine_override: bool = False,
+    ) -> None:
         self = EngineRepository()
+        lease = (
+            engine_instance
+            if isinstance(engine_instance, EngineLease)
+            else EngineLease(engine=engine_instance)
+        )
+        previous: EngineLease | None = None
         with self._lock:
-            if id in self._engines and not allow_engine_override:
+            existing = self._leases.get(id)
+            if existing is not None and not allow_engine_override:
                 msg = (
                     f"Engine {id} is already registered. "
                     "Set allow_engine_override to True to override."
                 )
                 raise ValueError(msg)
-
-            owned_engine = self._owned_provider_engines.get(id)
-            if owned_engine is not None and owned_engine[0] is not engine_instance:
-                self._owned_provider_engines.pop(id)
-                owned_engine[1].close()
-            self._engines[id] = engine_instance
+            if (
+                existing is not None
+                and existing.engine is lease.engine
+                and (existing._has_cleanup() or not lease._has_cleanup())
+            ):
+                return
+            previous = existing
+            self._leases[id] = lease
+        if previous is not None:
+            previous.close()
 
     @staticmethod
     def _register_from_module(
@@ -440,43 +453,44 @@ class EngineRepository:
         if not model or not api_key:
             return False
 
-        from symai.backend.engines.provider import (  # noqa: PLC0415
-            create_provider_engine,
-            create_provider_http_client,
+        from symai.backend.provider_runtime import (  # noqa: PLC0415
+            create_provider_engine_lease,
         )
 
-        http_client = create_provider_http_client(capability=capability, model=model)
-        try:
-            engine = create_provider_engine(
-                capability=capability,
-                model=model,
-                api_key=api_key,
-                http_client=http_client,
-            )
-        except ValueError:
-            http_client.close()
+        lease = create_provider_engine_lease(
+            capability=capability,
+            model=model,
+            api_key=api_key,
+        )
+        if lease is None:
             return False
 
         self = EngineRepository()
         with self._lock:
-            if engine_name in self._engines:
-                http_client.close()
-                return True
-            self._engines[engine_name] = engine
-            self._owned_provider_engines[engine_name] = (engine, http_client)
+            if engine_name in self._leases:
+                should_close = True
+            else:
+                self._leases[engine_name] = lease
+                should_close = False
+        if should_close:
+            lease.close()
         return True
 
     @staticmethod
     def close() -> None:
         self = EngineRepository()
         with self._lock:
-            owned_engines = tuple(self._owned_provider_engines.items())
-            self._owned_provider_engines.clear()
-            for engine_name, (engine, _) in owned_engines:
-                if self._engines.get(engine_name) is engine:
-                    self._engines.pop(engine_name)
-        for _, (_, http_client) in owned_engines:
-            http_client.close()
+            leases = tuple(self._leases.values())
+            self._leases.clear()
+        failure: BaseException | None = None
+        for lease in leases:
+            try:
+                lease.close()
+            except BaseException as exc:
+                if failure is None:
+                    failure = exc
+        if failure is not None:
+            raise failure
 
     @staticmethod
     def get(engine_name: str, *_args, **_kwargs):
@@ -486,26 +500,27 @@ class EngineRepository:
         if dynamic_engine is not None and engine_name in ("neurosymbolic", "search"):
             return dynamic_engine
 
-        # Otherwise, fallback to normal lookup:
-        if engine_name not in self._engines and not self._register_configured_provider_engine(
-            engine_name
-        ):
+        with self._lock:
+            lease = self._leases.get(engine_name)
+        if lease is None and not self._register_configured_provider_engine(engine_name):
             subpackage_name = engine_name.replace("-", "_")
             subpackage = importlib.import_module(f"{engines.__package__}.{subpackage_name}", None)
             if subpackage is None:
                 msg = f"The symbolicai library does not contain the engine named {engine_name}."
                 raise ValueError(msg)
             self.register_from_package(subpackage)
-        engine = self._engines.get(engine_name, None)
-        if engine is None:
+        with self._lock:
+            lease = self._leases.get(engine_name)
+        if lease is None:
             msg = f"No engine named {engine_name} is registered."
             raise ValueError(msg)
-        return engine
+        return lease.engine
 
     @staticmethod
-    def list() -> list[str]:
+    def list() -> dict[str, Engine]:
         self = EngineRepository()
-        return dict(self._engines.items())
+        with self._lock:
+            return {name: lease.engine for name, lease in self._leases.items()}
 
     @staticmethod
     def command(engines: list[str], *args, **kwargs) -> Any:
@@ -513,8 +528,9 @@ class EngineRepository:
         if isinstance(engines, str):
             engines = [engines]
         if "all" in engines:
-            # Call the command function for all registered engines with provided arguments
-            return [engine.command(*args, **kwargs) for name, engine in self._engines.items()]
+            with self._lock:
+                registered = tuple(self._leases.values())
+            return [lease.engine.command(*args, **kwargs) for lease in registered]
         # Call the command function for the engine with provided arguments
         for engine_name in engines:
             engine = self.get(engine_name)

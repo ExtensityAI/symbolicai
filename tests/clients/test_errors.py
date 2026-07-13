@@ -1,6 +1,6 @@
 import pytest
 
-from symai.clients import errors as integration_errors
+from symai.clients import errors as client_errors
 from symai.clients import http_errors
 from symai.clients.cerebras import errors as cerebras_errors
 from symai.clients.cerebras.transport import RateLimitState, ResponseMetadata
@@ -66,11 +66,11 @@ def _provider_errors():
                 metadata=_metadata(status_code=200),
                 body="{}",
             ),
-            integration_errors.ResponseError,
+            client_errors.ResponseError,
         ),
         (
             cerebras_errors.TransportError("transport"),
-            integration_errors.TransportError,
+            client_errors.TransportError,
         ),
     ],
 )
@@ -84,7 +84,7 @@ def test_cerebras_errors_are_caught_by_shared_lattices(
 
 @pytest.mark.parametrize(
     "catch_type",
-    [cerebras_errors.Error, integration_errors.IntegrationError],
+    [cerebras_errors.Error, client_errors.ClientError],
 )
 @pytest.mark.parametrize("error", _provider_errors())
 def test_all_cerebras_errors_are_caught_by_shared_bases(
@@ -95,23 +95,23 @@ def test_all_cerebras_errors_are_caught_by_shared_bases(
         raise error
 
 
-def test_api_error_properties_delegate_to_metadata():
+def test_api_error_retains_metadata_and_body():
     metadata = _metadata(status_code=500, request_id="req-1")
     error = cerebras_errors.APIError(metadata, "server error")
 
-    assert error.integration == "cerebras"
+    assert error.provider == "cerebras"
     assert error.metadata is metadata
-    assert error.status_code == 500
-    assert error.request_id == "req-1"
+    assert error.metadata.status_code == 500
+    assert error.metadata.request_id == "req-1"
     assert error.body == "server error"
 
 
-def test_rate_limit_retry_after_delegates_to_metadata():
+def test_rate_limit_error_retains_retry_metadata():
     metadata = _metadata(status_code=429, retry_after=2.5)
     error = cerebras_errors.RateLimitError(metadata, "slow")
 
-    assert error.retry_after == 2.5
-    assert error.status_code == 429
+    assert error.metadata.retry_after == 2.5
+    assert error.metadata.status_code == 429
 
 
 def test_response_error_retains_metadata_and_body():
@@ -129,21 +129,3 @@ def test_response_error_retains_metadata_and_body():
 def test_transport_error_defaults_to_no_metadata():
     error = cerebras_errors.TransportError("network failure")
     assert error.metadata is None
-
-
-def test_error_compatibility_properties_are_read_only():
-    error = cerebras_errors.RateLimitError(
-        _metadata(status_code=429, retry_after=1.0),
-        "slow",
-    )
-
-    status_code_field = "status_code"
-    request_id_field = "request_id"
-    retry_after_field = "retry_after"
-
-    with pytest.raises(AttributeError):
-        setattr(error, status_code_field, 500)
-    with pytest.raises(AttributeError):
-        setattr(error, request_id_field, "other")
-    with pytest.raises(AttributeError):
-        setattr(error, retry_after_field, 3.0)

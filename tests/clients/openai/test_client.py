@@ -3,7 +3,7 @@ import pytest
 from pydantic import BaseModel, ValidationError
 
 from symai.clients.openai.client import Client
-from symai.clients.openai.embeddings import CreateEmbeddingRequest
+from symai.clients.openai.embeddings import CreateEmbeddingRequest, EmbeddingList
 from symai.clients.openai.errors import AuthError, ResponseError
 from symai.clients.openai.responses import (
     CreateResponseRequest,
@@ -13,6 +13,7 @@ from symai.clients.openai.responses import (
     ReasoningConfig,
     ReasoningEffort,
     ReasoningSummary,
+    Response,
     RetrieveResponseParams,
 )
 
@@ -153,15 +154,36 @@ def test_responses_request_rejects_tool_calling_parameters():
         )
 
 
-def test_request_models_reject_unknown_model_ids():
+def test_request_models_accept_nonempty_future_model_ids():
+    response_request = CreateResponseRequest(
+        input="hello",
+        model="future-chat-model",
+    )
+    embedding_request = CreateEmbeddingRequest(
+        input="hello",
+        model="future-embedding-model",
+    )
+
+    assert response_request.model == "future-chat-model"
+    assert embedding_request.model == "future-embedding-model"
     with pytest.raises(ValidationError):
-        CreateResponseRequest.model_validate(
-            {"input": "hello", "model": "future-chat-model"},
-        )
+        CreateResponseRequest(input="hello", model="")
     with pytest.raises(ValidationError):
-        CreateEmbeddingRequest.model_validate(
-            {"input": "hello", "model": "future-embedding-model"},
-        )
+        CreateEmbeddingRequest(input="hello", model="")
+
+
+def test_response_models_accept_future_model_ids():
+    response_payload = _minimal_response_json()
+    response_payload["model"] = "future-response-model"
+    embedding_payload = {
+        "object": "list",
+        "data": [],
+        "model": "future-embedding-model",
+        "usage": {"prompt_tokens": 1, "total_tokens": 1},
+    }
+
+    assert Response.model_validate(response_payload).model == "future-response-model"
+    assert EmbeddingList.model_validate(embedding_payload).model == "future-embedding-model"
 
 
 def test_response_lifecycle_operations_are_typed():

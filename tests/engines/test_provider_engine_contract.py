@@ -1,14 +1,38 @@
+import ast
 import inspect
+from pathlib import Path
 
 import httpx
 import pytest
 
+from symai.backend.base import ENGINE_UNREGISTERED
 from symai.backend.engines.embedding import openai as openai_embedding
 from symai.backend.engines.language_model import cerebras, deepseek, openai
-from symai.backend.engines.provider import create_provider_http_client
+from symai.backend.provider_runtime import ProviderRuntimeOptions, create_provider_http_client
 from symai.clients.cerebras.client import Client as CerebrasClient
 from symai.clients.deepseek.client import Client as DeepSeekClient
 from symai.clients.openai.client import Client as OpenAIClient
+
+
+def test_provider_adapters_do_not_import_application_components():
+    for module in (openai, cerebras, deepseek, openai_embedding):
+        tree = ast.parse(Path(module.__file__).read_text())
+        imports = {
+            node.module
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom) and node.module is not None
+        }
+        imports.update(
+            alias.name
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Import)
+            for alias in node.names
+        )
+
+        assert not any(
+            imported == "symai.components" or imported.startswith("symai.components.")
+            for imported in imports
+        ), module.__name__
 
 
 @pytest.mark.parametrize(
@@ -35,7 +59,7 @@ def test_language_model_engines_require_typed_clients(
     assert engine.model == model
     assert engine.provider == provider
     assert engine.capability == "language_model"
-    assert engine.id() == "neurosymbolic"
+    assert engine.id() == ENGINE_UNREGISTERED
 
 
 def test_embedding_engine_requires_typed_client():
@@ -55,7 +79,7 @@ def test_embedding_engine_requires_typed_client():
     assert engine.model == "text-embedding-3-small"
     assert engine.provider == "openai"
     assert engine.capability == "embedding"
-    assert engine.id() == "embedding"
+    assert engine.id() == ENGINE_UNREGISTERED
 
 
 @pytest.mark.parametrize(
@@ -74,19 +98,7 @@ def test_provider_engines_reject_unknown_models(engine_type, client_type, model)
             engine_type(client=client, model=model)
 
 
-@pytest.mark.parametrize(
-    ("capability", "model", "expected_timeout"),
-    [
-        ("embedding", "text-embedding-3-small", 600.0),
-        ("language_model", "openai:gpt-5.4", 600.0),
-        ("language_model", "cerebras:gpt-oss-120b", None),
-        ("language_model", "deepseek-v4-flash", None),
-    ],
-)
-def test_provider_composition_preserves_request_timeout_defaults(
-    capability,
-    model,
-    expected_timeout,
-):
-    with create_provider_http_client(capability=capability, model=model) as client:
-        assert client.timeout.read == expected_timeout
+def test_provider_composition_uses_uniform_finite_timeout_defaults():
+    with create_provider_http_client(ProviderRuntimeOptions()) as client:
+        assert client.timeout.read == 600.0
+        assert client.timeout.connect == 10.0

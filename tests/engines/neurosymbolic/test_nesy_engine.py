@@ -8,13 +8,16 @@ from openai.types.chat.chat_completion import ChatCompletion
 from openai.types.responses import Response
 
 from symai import EngineRepository, Expression, Symbol
-from symai.backend.engines.language_model.openai import SUPPORTED_REASONING_MODELS
 from symai.backend.settings import SYMAI_CONFIG
+from symai.clients.openai.responses import MODEL_SPECS as OPENAI_MODEL_SPECS
 from symai.components import Function
 
 NEUROSYMBOLIC = SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL")
 CLAUDE_THINKING = {"budget_tokens": 1024}
 GEMINI_THINKING = {"thinking_budget": 1024}
+OPENAI_REASONING_MODELS = tuple(
+    model for model, spec in OPENAI_MODEL_SPECS.items() if spec.reasoning is not None
+)
 CLAUDE_MAX_TOKENS = 4092
 IS_OPENAI_API = NEUROSYMBOLIC.startswith("openai:")
 
@@ -137,7 +140,7 @@ def test_tokenizer():
         ]
     elif IS_OPENAI_API:
         base_model = NEUROSYMBOLIC.replace("openai:", "")
-        admin_role = "developer" if base_model in SUPPORTED_REASONING_MODELS else "system"
+        admin_role = "developer" if base_model in OPENAI_REASONING_MODELS else "system"
         messages = [
             {
                 "role": admin_role,
@@ -159,7 +162,7 @@ def test_tokenizer():
             },
         ]
     else:
-        is_reasoning = NEUROSYMBOLIC in SUPPORTED_REASONING_MODELS
+        is_reasoning = NEUROSYMBOLIC in OPENAI_REASONING_MODELS
         admin_role = (
             "developer"
             if is_reasoning

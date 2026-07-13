@@ -1,11 +1,39 @@
+from dataclasses import dataclass
 from enum import StrEnum
 from typing import Annotated, Literal
 
 from pydantic import Field
 
-from symai.clients._models import StrictModel, TolerantModel
+from symai.clients._models import ModelId, StrictModel, TolerantModel
 
 PATH = "/chat/completions"
+
+ChatModel = Literal["deepseek-v4-flash", "deepseek-v4-pro"]
+
+
+class ReasoningEffort(StrEnum):
+    HIGH = "high"
+    MAX = "max"
+
+
+@dataclass(frozen=True, slots=True)
+class ReasoningSpec:
+    efforts: tuple[ReasoningEffort, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ChatModelSpec:
+    context_tokens: int
+    response_tokens: int
+    reasoning: ReasoningSpec | None
+    vision: bool
+
+
+_REASONING = ReasoningSpec(tuple(ReasoningEffort))
+MODEL_SPECS: dict[ChatModel, ChatModelSpec] = {
+    "deepseek-v4-flash": ChatModelSpec(1_000_000, 384_000, _REASONING, False),
+    "deepseek-v4-pro": ChatModelSpec(1_000_000, 384_000, _REASONING, False),
+}
 
 
 class SystemMessage(StrictModel):
@@ -61,9 +89,9 @@ _UserID = Annotated[str, Field(max_length=512, pattern=r"^[a-zA-Z0-9_-]+$")]
 
 class CreateChatCompletionRequest(StrictModel):
     messages: tuple[Message, ...] = Field(min_length=1)
-    model: str
+    model: ChatModel | ModelId
     thinking: Thinking | None = None
-    reasoning_effort: Literal["high", "max"] | None = None
+    reasoning_effort: ReasoningEffort | None = None
     max_tokens: int | None = Field(default=None, gt=0)
     response_format: ResponseFormat | None = None
     stop: str | _StopSequences | None = None

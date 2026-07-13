@@ -1,16 +1,16 @@
 # Neuro-Symbolic Engine
 
-The **neuro-symbolic** engine is our generic wrapper around large language models (LLMs) that support prompts, function/tool calls, vision tokens, token‐counting/truncation, etc.
-Depending on which backend you configure (OpenAI/GPT, Claude, Gemini, Deepseek, Groq, Cerebras, llama.cpp, HuggingFace, …), a few things must be handled differently:
+The **neuro-symbolic** engine is the application-facing route for large language models. Provider adapters normalize prompts, responses, metadata, and model-specific token budgets behind that route.
+Provider capabilities vary:
 
 * GPT-family (OpenAI) and most backends accept the usual `max_tokens`, `temperature`, etc., out of the box.
-* Claude (Anthropic), Gemini (Google), Deepseek, Cerebras, and Qwen (Groq) can return an internal "thinking trace" when you enable it.
+* Claude (Anthropic), Gemini (Google), DeepSeek, Cerebras, and Qwen (Groq) can return an internal "thinking trace" when you enable it.
 * Local engines (llamacpp, HuggingFace) do *not* yet support token counting, JSON format enforcement, or vision inputs in the same way.
 * Groq engine requires a special format for the `NEUROSYMBOLIC_ENGINE_MODEL` key: `groq:model_id`. E.g., `groq:qwen/qwen3-32b`.
-* Cerebras engine requires a special format for the `NEUROSYMBOLIC_ENGINE_MODEL` key: `cerebras:model_id`. E.g., `cerebras:gpt-oss-120b`.
-* OpenRouter engine requires a special format for the `NEUROSYMBOLIC_ENGINE_MODEL` key: `openrouter:model_id`. E.g., `openrouter:moonshotai/kimi-k2.5`.
-* OpenAI Responses API engine requires the `responses:` prefix: `responses:model_id`. E.g., `responses:gpt-4.1`, `responses:o3-mini`. This uses OpenAI's newer `/v1/responses` endpoint instead of `/v1/chat/completions`.
-* Token‐truncation and streaming are handled automatically but may vary in behavior by engine.
+* Managed OpenAI, Cerebras, and DeepSeek models require provider-qualified identifiers: `openai:model_id`, `cerebras:model_id`, or `deepseek:model_id`.
+* For example: `openai:gpt-5.4`, `cerebras:gpt-oss-120b`, and `deepseek:deepseek-v4-flash`.
+* OpenRouter models use `openrouter:model_id`, such as `openrouter:moonshotai/kimi-k2.5`.
+* Token truncation and streaming support varies by provider; adapters reject request options they do not implement.
 
 > ❗️**NOTE**❗️the most accurate documentation is the _code_, so be sure to check out the tests. Look for the `mandatory` mark since those are the features that were tested and are guaranteed to work.
 
@@ -99,9 +99,9 @@ assert blocks[0].name == "get_stock_price"
 
 ---
 
-## Thinking Trace (Claude, Gemini, Deepseek, Groq, OpenAI Responses)
+## Thinking Trace (Claude, Gemini, DeepSeek, Cerebras, Groq, OpenAI Responses)
 
-Some engines (Anthropic's Claude, Google's Gemini, Deepseek, OpenAI Responses API with reasoning models) can return an internal **thinking trace** that shows how they arrived at an answer. To get it, you must:
+Some engines (Anthropic Claude, Google Gemini, DeepSeek, Cerebras, Groq, and reasoning-capable OpenAI Responses models) can return an internal **thinking trace**. To retrieve it:
 
 1. Pass `return_metadata=True`.
 2. Pass a `thinking=` configuration if required.
@@ -202,16 +202,18 @@ print(res)
 print(metadata["thinking"])
 ```
 
-### Deepseek
+### DeepSeek
 
 ```python
 from symai import Symbol
 
-# deepseek-reasoner
+# Configure NEUROSYMBOLIC_ENGINE_MODEL as deepseek:deepseek-v4-flash
 res, metadata = Symbol("Topic: Disneyland") \
     .query(
       "Write a dystopic take on the topic.",
-      return_metadata=True
+      return_metadata=True,
+      thinking={"type": "enabled"},
+      reasoning_effort="high"
     )
 print(res)
 print(metadata["thinking"])
@@ -241,8 +243,7 @@ res, metadata = Symbol("Topic: Disneyland") \
     .query(
       "Write a dystopic take on the topic.",
       return_metadata=True,
-      reasoning_effort="medium",   # forwarded as Cerebras reasoning_effort
-      disable_reasoning=False      # forwarded as disable_reasoning
+      reasoning_effort="medium"
     )
 print(res)
 print(metadata["thinking"])
@@ -255,18 +256,18 @@ For Cerebras backends, `symai` collects the reasoning trace from either the dedi
 ```python
 from symai import Symbol
 
-# responses:o3-mini or responses:gpt-5
+# Configure NEUROSYMBOLIC_ENGINE_MODEL as openai:gpt-5.4
 res, metadata = Symbol("Topic: Disneyland") \
     .query(
       "Write a dystopic take on the topic.",
       return_metadata=True,
-      reasoning={"effort": "medium"}  # optional: low, medium, or high
+      reasoning={"effort": "medium"}
     )
 print(res)
 print(metadata["thinking"])
 ```
 
-For OpenAI Responses API with reasoning models (e.g., `o3-mini`, `o3`, `o4-mini`, `gpt-5`, `gpt-5.1`), the thinking trace is extracted from the reasoning summary in the response output.
+For reasoning-capable OpenAI Responses models, the thinking trace is extracted from the reasoning summary in the response output. Supported models and reasoning efforts are defined by `symai.clients.openai.responses.MODEL_SPECS`.
 
 ### OpenRouter
 
@@ -342,9 +343,9 @@ print(Symbol(string).tokens)
 For more detailed tracking of API calls, token usage, and estimating costs, you can use the `MetadataTracker` in conjunction with `RuntimeInfo`. This is particularly useful for monitoring multiple calls within a specific code block.
 > ❗️**NOTE**❗️`MetadataTracker` collects raw per-call metadata for any `Engine`, but **token usage extraction** (i.e. `tracker.usage` → `RuntimeInfo`) is currently implemented for:
 >
-> - **OpenAI**: `GPTXChatEngine`, `GPTXReasoningEngine`, `OpenAIResponsesEngine`, `GPTXSearchEngine` (eg. `gpt-5-chat-latest`)
-> - **Claude (Anthropic)**: `ClaudeXChatEngine`, `ClaudeXReasoningEngine` (eg. `claude-sonnet-4-5`)
-> - **Gemini (Google)**: `GeminiXReasoningEngine` (e.g. `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-flash-lite-preview`)
+> - **Managed provider adapters**: OpenAI language models and embeddings, Cerebras language models, and DeepSeek language models
+> - **Search**: `GPTXSearchEngine` and `GeminiSearchEngine`
+> - **Other language-model backends**: Claude and Gemini engines
 >
 > For other engines, `tracker.metadata` will still contain raw outputs, but `tracker.usage` may be empty or partial.
 
