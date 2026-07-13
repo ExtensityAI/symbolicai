@@ -1,8 +1,9 @@
+import json
 from math import inf, nan
 from typing import get_args
 
 import pytest
-from pydantic import TypeAdapter, ValidationError
+from pydantic import SecretStr, TypeAdapter, ValidationError
 
 from symai.runtime.models import (
     AssistantMessage,
@@ -159,12 +160,18 @@ def test_assistant_message_requires_content_or_reasoning():
         AssistantMessage()
 
 
-def test_json_schema_response_format_owns_an_immutable_schema():
-    schema = JsonObject.parse({"type": "object", "properties": {"answer": {"type": "string"}}})
-    response_format = JsonSchemaResponseFormat(name="answer", schema=schema, strict=True)
+def test_json_schema_response_format_uses_non_colliding_public_name():
+    schema_value = {"type": "object", "properties": {"answer": {"type": "string"}}}
+    schema = JsonObject.parse(schema_value)
+    response_format = JsonSchemaResponseFormat(name="answer", json_schema=schema, strict=True)
 
     assert response_format.type == "json_schema"
-    assert response_format.schema.to_builtin()["type"] == "object"
+    assert response_format.json_schema is schema
+    assert callable(JsonSchemaResponseFormat.schema)
+    assert "schema" not in JsonSchemaResponseFormat.model_fields
+    assert response_format.model_dump()["json_schema"] == schema.model_dump()
+    assert "json_schema" in json.loads(response_format.model_dump_json())
+    assert response_format.json_schema.to_builtin() == schema_value
 
 
 @pytest.mark.parametrize(
@@ -336,6 +343,16 @@ def test_runtime_configuration_is_frozen_nonempty_and_redacts_api_keys():
         TransportConfig(request_timeout=inf)
     with pytest.raises(ValidationError):
         TransportConfig(connect_retries=-1)
+
+
+@pytest.mark.parametrize("api_key", ["", SecretStr("")])
+def test_provider_engine_configuration_rejects_empty_api_keys(api_key):
+    with pytest.raises(ValidationError):
+        ProviderEngineConfig(
+            provider=Provider.OPENAI,
+            model="gpt-5.5",
+            api_key=api_key,
+        )
 
 
 def test_model_feature_metadata_is_strict_frozen_and_typed():

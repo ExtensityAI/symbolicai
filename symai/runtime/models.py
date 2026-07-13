@@ -235,13 +235,9 @@ class JsonObjectResponseFormat(FrozenModel):
 class JsonSchemaResponseFormat(FrozenModel):
     type: Literal["json_schema"] = "json_schema"
     name: str = Field(min_length=1)
-    schema_: JsonObject = Field(alias="schema", serialization_alias="schema")
+    json_schema: JsonObject
     description: str | None = None
     strict: bool
-
-    @property
-    def schema(self) -> JsonObject:  # pyright: ignore[reportIncompatibleMethodOverride]
-        return self.schema_
 
 
 ResponseFormat = Annotated[
@@ -393,7 +389,7 @@ class TransportConfig(FrozenModel):
 class ProviderEngineConfig(FrozenModel):
     provider: Provider
     model: str = Field(min_length=1)
-    api_key: SecretStr
+    api_key: SecretStr = Field(min_length=1)
     transport: TransportConfig = TransportConfig()
 
 
