@@ -323,7 +323,14 @@ class MetadataTracker(Expression):
             and arg is not None  # Ensure arg is not None to avoid unpacking error on exceptions
         ):
             _, metadata = arg  # arg contains return value on 'return' event
-            engine_name = frame.f_locals["self"].__class__.__name__
+            engine = frame.f_locals["self"]
+            provider = getattr(engine, "provider", None)
+            capability = getattr(engine, "capability", None)
+            engine_name = (
+                f"{provider}.{capability}"
+                if isinstance(provider, str) and isinstance(capability, str)
+                else engine.__class__.__name__
+            )
             # getattr fallback: not all Engine subclasses set self.model (e.g. FileEngine)
             model_name = getattr(frame.f_locals["self"], "model", None)
             self._metadata[(self._metadata_id, engine_name, model_name)] = metadata
@@ -409,23 +416,7 @@ class MetadataTracker(Expression):
                         "reasoning_tokens"
                     ] += 0
                     self._track_parallel_usage_items(token_details, engine_name, metadata)
-                elif engine_name == "OpenAIEmbeddingEngine":
-                    usage = metadata["raw_output"].usage
-                    token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += (
-                        usage.prompt_tokens
-                    )
-                    token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += 0
-                    token_details[(engine_name, model_name)]["usage"]["total_tokens"] += (
-                        usage.total_tokens
-                    )
-                    token_details[(engine_name, model_name)]["usage"]["total_calls"] += 1
-                    token_details[(engine_name, model_name)]["prompt_breakdown"][
-                        "cached_tokens"
-                    ] += 0
-                    token_details[(engine_name, model_name)]["completion_breakdown"][
-                        "reasoning_tokens"
-                    ] += 0
-                elif engine_name in ("GPTXSearchEngine", "OpenAIResponsesEngine"):
+                elif engine_name == "GPTXSearchEngine":
                     usage = metadata["raw_output"].usage
                     token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += (
                         usage.input_tokens
@@ -474,25 +465,6 @@ class MetadataTracker(Expression):
                     token_details[(engine_name, model_name)]["extras"]["google_search_queries"] += (
                         sum(gtc.count or 0 for gtc in usage.grounding_tool_count or [])
                     )
-                elif engine_name == "CerebrasEngine":
-                    usage = metadata["raw_output"].usage
-                    token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += (
-                        usage.completion_tokens
-                    )
-                    token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += (
-                        usage.prompt_tokens
-                    )
-                    token_details[(engine_name, model_name)]["usage"]["total_tokens"] += (
-                        usage.total_tokens
-                    )
-                    token_details[(engine_name, model_name)]["usage"]["total_calls"] += 1
-                    #!: Backward compatibility for components like `RuntimeInfo`
-                    token_details[(engine_name, model_name)]["prompt_breakdown"][
-                        "cached_tokens"
-                    ] += 0  # Assignment not allowed with defualtdict
-                    token_details[(engine_name, model_name)]["completion_breakdown"][
-                        "reasoning_tokens"
-                    ] += 0
                 elif engine_name in ("ClaudeXChatEngine", "ClaudeXReasoningEngine"):
                     raw_output = metadata["raw_output"]
                     usage = self._extract_claude_usage(raw_output)
@@ -678,6 +650,7 @@ class DynamicEngine(Expression):
         self._entered = False
         self._lock = Lock()
         self.engine_instance = None
+        self._provider_http_client = None
         self._ctx_token = None
 
     def __new__(cls, *_args, **_kwargs):
@@ -710,27 +683,60 @@ class DynamicEngine(Expression):
                     # Fallback: clear the var in this Context to avoid leaking the engine
                     CURRENT_ENGINE_VAR.set(None)
         finally:
+            if self._provider_http_client is not None:
+                self._provider_http_client.close()
+                self._provider_http_client = None
             self._ctx_token = None
 
     def _create_engine_instance(self):
         """Create an engine instance based on the model name."""
         # Deferred to avoid components <-> neurosymbolic engine circular imports.
         from symai.backend.engines.neurosymbolic import ENGINE_MAPPING  # noqa
-        from symai.backend.engines.ocr import OCR_ENGINE_MAPPING  # noqa
-        from symai.backend.engines.search import SEARCH_ENGINE_MAPPING  # noqa
 
         try:
             # Check neurosymbolic engines first
             engine_class = ENGINE_MAPPING.get(self.model)
+            if engine_class is not None and engine_class.__module__.startswith(
+                "symai.backend.engines.language_model."
+            ):
+                from symai.backend.engines.provider import (  # noqa: PLC0415
+                    create_provider_engine,
+                    create_provider_http_client,
+                )
+
+                http_client = create_provider_http_client(
+                    capability="language_model",
+                    model=self.model,
+                    timeout=self.client_timeout,
+                    max_retries=self.client_max_retries,
+                )
+                try:
+                    engine = create_provider_engine(
+                        capability="language_model",
+                        model=self.model,
+                        api_key=self.api_key,
+                        http_client=http_client,
+                    )
+                except Exception:
+                    http_client.close()
+                    raise
+                self._provider_http_client = http_client
+                return engine
 
             # Check search engines
             if engine_class is None:
+                from symai.backend.engines.search import (  # noqa: PLC0415
+                    SEARCH_ENGINE_MAPPING,
+                )
+
                 engine_class = SEARCH_ENGINE_MAPPING.get(self.model)
                 if engine_class is not None:
                     return engine_class(api_key=self.api_key)
 
             # Check OCR engines
             if engine_class is None:
+                from symai.backend.engines.ocr import OCR_ENGINE_MAPPING  # noqa: PLC0415
+
                 engine_class = OCR_ENGINE_MAPPING.get(self.model)
                 if engine_class is not None:
                     return engine_class(api_key=self.api_key, model=self.model)

@@ -3,8 +3,9 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
-from symai.backend.integrations.openai.engines.neurosymbolic import OpenAIResponsesEngine
-from symai.backend.integrations.openai.responses import Response
+from symai.backend.engines.language_model.openai import LanguageModelEngine
+from symai.clients.openai.client import Client
+from symai.clients.openai.responses import Response
 
 DUMMY_KEY = "sk-test-not-a-real-key"
 
@@ -15,6 +16,13 @@ def _argument(**kwargs):
         prop=SimpleNamespace(
             prepared_input=[{"role": "user", "content": "hello"}],
         ),
+    )
+
+
+def _engine(http_client):
+    return LanguageModelEngine(
+        client=Client(api_key=DUMMY_KEY, http_client=http_client),
+        model="gpt-5.4",
     )
 
 
@@ -69,11 +77,7 @@ def test_engine_executes_through_comprehensive_responses_client():
         )
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
-        engine = OpenAIResponsesEngine(
-            api_key=DUMMY_KEY,
-            model="openai:gpt-5.4",
-            http_client=http_client,
-        )
+        engine = _engine(http_client)
         output, metadata = engine.forward(_argument(max_output_tokens=16))
 
     assert output == ["answer"]
@@ -84,10 +88,8 @@ def test_engine_executes_through_comprehensive_responses_client():
 
 
 def test_engine_rejects_background_requests():
-    engine = OpenAIResponsesEngine(
-        api_key=DUMMY_KEY,
-        model="openai:gpt-5.4",
-    )
+    with httpx.Client() as http_client:
+        engine = _engine(http_client)
 
     with pytest.raises(ValueError, match="background"):
         engine.build_request(_argument(background=True))
@@ -123,10 +125,6 @@ def test_engine_rejects_non_completed_responses(status):
         )
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
-        engine = OpenAIResponsesEngine(
-            api_key=DUMMY_KEY,
-            model="openai:gpt-5.4",
-            http_client=http_client,
-        )
+        engine = _engine(http_client)
         with pytest.raises(ValueError, match=status):
             engine.forward(_argument())

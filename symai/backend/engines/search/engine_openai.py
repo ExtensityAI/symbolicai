@@ -10,7 +10,6 @@ from symai.backend.engines.search.utils import (
     insert_citation_markers,
     normalize_domains,
 )
-from symai.backend.mixin import OPENAI_CHAT_MODELS, OPENAI_REASONING_MODELS
 from symai.backend.settings import SYMAI_CONFIG
 from symai.symbol import Result
 from symai.utils import silence_noisy_loggers
@@ -18,6 +17,18 @@ from symai.utils import silence_noisy_loggers
 silence_noisy_loggers()
 
 logger = logging.getLogger(__name__)
+
+OPENAI_CHAT_MODELS = ("gpt-4.1", "gpt-4.1-mini")
+OPENAI_REASONING_MODELS = (
+    "gpt-5.5",
+    "gpt-5.5-pro",
+    "gpt-5.4",
+    "gpt-5.4-pro",
+    "gpt-5.4-mini",
+    "gpt-5.4-nano",
+    "o3-pro",
+    "o3",
+)
 
 
 class OpenAISearchResult(CitationResultMixin, Result):

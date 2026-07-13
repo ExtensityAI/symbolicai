@@ -3,8 +3,9 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
-from symai.backend.integrations.cerebras.chat import ChatCompletion
-from symai.backend.integrations.cerebras.engines.neurosymbolic import CerebrasEngine
+from symai.backend.engines.language_model.cerebras import LanguageModelEngine
+from symai.clients.cerebras.chat import ChatCompletion
+from symai.clients.cerebras.client import Client
 
 DUMMY_KEY = "sk-test-not-a-real-key"
 
@@ -15,6 +16,13 @@ def _argument(**kwargs):
         prop=SimpleNamespace(
             prepared_input=[{"role": "user", "content": "hello"}],
         ),
+    )
+
+
+def _engine(http_client):
+    return LanguageModelEngine(
+        client=Client(api_key=DUMMY_KEY, http_client=http_client),
+        model="gpt-oss-120b",
     )
 
 
@@ -48,11 +56,7 @@ def test_engine_executes_through_standalone_cerebras_client():
         )
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
-        engine = CerebrasEngine(
-            api_key=DUMMY_KEY,
-            model="cerebras:gpt-oss-120b",
-            http_client=http_client,
-        )
+        engine = _engine(http_client)
         output, metadata = engine.forward(_argument(max_completion_tokens=16))
 
     assert output == ["answer"]
@@ -64,10 +68,6 @@ def test_engine_executes_through_standalone_cerebras_client():
 @pytest.mark.parametrize("unsupported", [{"stream": True}, {"tools": []}])
 def test_engine_rejects_features_outside_provider_client_contract(unsupported):
     with httpx.Client() as http_client:
-        engine = CerebrasEngine(
-            api_key=DUMMY_KEY,
-            model="cerebras:gpt-oss-120b",
-            http_client=http_client,
-        )
+        engine = _engine(http_client)
         with pytest.raises(ValueError, match="does not support"):
             engine.build_request(_argument(**unsupported))

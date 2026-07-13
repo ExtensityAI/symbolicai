@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import atexit
 import importlib
 import inspect
 import logging
@@ -9,11 +10,12 @@ import sys
 import traceback
 import warnings
 from enum import Enum
+from threading import RLock
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
-from symai.backend import engines
+from symai.backend import engines, settings
 from symai.backend.base import ENGINE_UNREGISTERED, Engine
 from symai.context import CURRENT_ENGINE_VAR
 from symai.prompts import (
@@ -26,6 +28,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from types import ModuleType
 
+    import httpx
+
     from symai.core import Argument
     from symai.post_processors import PostProcessor
     from symai.pre_processors import PreProcessor
@@ -35,15 +39,6 @@ else:
     PostProcessor = PreProcessor = Any
 
 logger = logging.getLogger(__name__)
-
-_INTEGRATION_ENGINE_MODULES = {
-    "embedding": ("symai.backend.integrations.openai.engines.embedding",),
-    "neurosymbolic": (
-        "symai.backend.integrations.cerebras.engines.neurosymbolic",
-        "symai.backend.integrations.deepseek.engines.neurosymbolic",
-        "symai.backend.integrations.openai.engines.neurosymbolic",
-    ),
-}
 
 
 class ProbabilisticBooleanMode(Enum):
@@ -343,6 +338,8 @@ class EngineRepository:
     def __init__(self):
         if "_engines" not in self.__dict__:  # ensures _engines is only set once
             self._engines: dict[str, Engine] = {}
+            self._owned_provider_engines: dict[str, tuple[Engine, httpx.Client]] = {}
+            self._lock = RLock()
 
     def __new__(cls, *_args, **_kwargs):
         if cls._instance is None:
@@ -353,14 +350,19 @@ class EngineRepository:
     @staticmethod
     def register(id: str, engine_instance: Engine, allow_engine_override: bool = False) -> None:
         self = EngineRepository()
-        # Check if the engine is already registered
-        if id in self._engines and not allow_engine_override:
-            msg = (
-                f"Engine {id} is already registered. Set allow_engine_override to True to override."
-            )
-            raise ValueError(msg)
+        with self._lock:
+            if id in self._engines and not allow_engine_override:
+                msg = (
+                    f"Engine {id} is already registered. "
+                    "Set allow_engine_override to True to override."
+                )
+                raise ValueError(msg)
 
-        self._engines[id] = engine_instance
+            owned_engine = self._owned_provider_engines.get(id)
+            if owned_engine is not None and owned_engine[0] is not engine_instance:
+                self._owned_provider_engines.pop(id)
+                owned_engine[1].close()
+            self._engines[id] = engine_instance
 
     @staticmethod
     def _register_from_module(
@@ -423,6 +425,60 @@ class EngineRepository:
             )
 
     @staticmethod
+    def _register_configured_provider_engine(engine_name: str) -> bool:
+        if engine_name == "neurosymbolic":
+            capability = "language_model"
+            model = settings.SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL", "")
+            api_key = settings.SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_API_KEY", "")
+        elif engine_name == "embedding":
+            capability = "embedding"
+            model = settings.SYMAI_CONFIG.get("EMBEDDING_ENGINE_MODEL", "")
+            api_key = settings.SYMAI_CONFIG.get("EMBEDDING_ENGINE_API_KEY", "")
+        else:
+            return False
+
+        if not model or not api_key:
+            return False
+
+        from symai.backend.engines.provider import (  # noqa: PLC0415
+            create_provider_engine,
+            create_provider_http_client,
+        )
+
+        http_client = create_provider_http_client(capability=capability, model=model)
+        try:
+            engine = create_provider_engine(
+                capability=capability,
+                model=model,
+                api_key=api_key,
+                http_client=http_client,
+            )
+        except ValueError:
+            http_client.close()
+            return False
+
+        self = EngineRepository()
+        with self._lock:
+            if engine_name in self._engines:
+                http_client.close()
+                return True
+            self._engines[engine_name] = engine
+            self._owned_provider_engines[engine_name] = (engine, http_client)
+        return True
+
+    @staticmethod
+    def close() -> None:
+        self = EngineRepository()
+        with self._lock:
+            owned_engines = tuple(self._owned_provider_engines.items())
+            self._owned_provider_engines.clear()
+            for engine_name, (engine, _) in owned_engines:
+                if self._engines.get(engine_name) is engine:
+                    self._engines.pop(engine_name)
+        for _, (_, http_client) in owned_engines:
+            http_client.close()
+
+    @staticmethod
     def get(engine_name: str, *_args, **_kwargs):
         self = EngineRepository()
         # First check if we're in the context manager that dynamically changes models
@@ -431,24 +487,15 @@ class EngineRepository:
             return dynamic_engine
 
         # Otherwise, fallback to normal lookup:
-        if engine_name not in self._engines:
+        if engine_name not in self._engines and not self._register_configured_provider_engine(
+            engine_name
+        ):
             subpackage_name = engine_name.replace("-", "_")
             subpackage = importlib.import_module(f"{engines.__package__}.{subpackage_name}", None)
             if subpackage is None:
                 msg = f"The symbolicai library does not contain the engine named {engine_name}."
                 raise ValueError(msg)
             self.register_from_package(subpackage)
-            for module_name in _INTEGRATION_ENGINE_MODULES.get(engine_name, ()):
-                try:
-                    module = importlib.import_module(module_name)
-                except ImportError as e:
-                    logger.debug(
-                        "Skipping integration engine module %s: %s",
-                        module_name,
-                        e,
-                    )
-                    continue
-                self._register_from_module(module, False)
         engine = self._engines.get(engine_name, None)
         if engine is None:
             msg = f"No engine named {engine_name} is registered."
@@ -530,3 +577,6 @@ class EngineRepository:
                     return value.engine_instance
             frame = frame.f_back
         return None
+
+
+atexit.register(EngineRepository.close)

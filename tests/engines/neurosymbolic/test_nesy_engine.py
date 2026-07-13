@@ -8,7 +8,7 @@ from openai.types.chat.chat_completion import ChatCompletion
 from openai.types.responses import Response
 
 from symai import EngineRepository, Expression, Symbol
-from symai.backend.mixin.openai import SUPPORTED_REASONING_MODELS
+from symai.backend.engines.language_model.openai import SUPPORTED_REASONING_MODELS
 from symai.backend.settings import SYMAI_CONFIG
 from symai.components import Function
 

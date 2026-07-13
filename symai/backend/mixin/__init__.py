@@ -1,29 +1,17 @@
 from symai.backend.mixin.anthropic import SUPPORTED_CHAT_MODELS as ANTHROPIC_CHAT_MODELS
 from symai.backend.mixin.anthropic import SUPPORTED_REASONING_MODELS as ANTHROPIC_REASONING_MODELS
-from symai.backend.mixin.cerebras import SUPPORTED_CHAT_MODELS as CEREBRAS_CHAT_MODELS
-from symai.backend.mixin.cerebras import SUPPORTED_REASONING_MODELS as CEREBRAS_REASONING_MODELS
-from symai.backend.mixin.deepseek import SUPPORTED_MODELS as DEEPSEEK_MODELS
 from symai.backend.mixin.google import SUPPORTED_CHAT_MODELS as GOOGLE_CHAT_MODELS
 from symai.backend.mixin.google import SUPPORTED_REASONING_MODELS as GOOGLE_REASONING_MODELS
 from symai.backend.mixin.groq import SUPPORTED_REASONING_MODELS as GROQ_REASONING_MODELS
-from symai.backend.mixin.openai import SUPPORTED_CHAT_MODELS as OPENAI_CHAT_MODELS
-from symai.backend.mixin.openai import SUPPORTED_OPENAI_MODELS as OPENAI_MODELS
-from symai.backend.mixin.openai import SUPPORTED_REASONING_MODELS as OPENAI_REASONING_MODELS
 from symai.backend.mixin.openrouter import SUPPORTED_CHAT_MODELS as OPENROUTER_CHAT_MODELS
 from symai.backend.mixin.openrouter import SUPPORTED_REASONING_MODELS as OPENROUTER_REASONING_MODELS
 
 __all__ = [
     "ANTHROPIC_CHAT_MODELS",
     "ANTHROPIC_REASONING_MODELS",
-    "CEREBRAS_CHAT_MODELS",
-    "CEREBRAS_REASONING_MODELS",
-    "DEEPSEEK_MODELS",
     "GOOGLE_CHAT_MODELS",
     "GOOGLE_REASONING_MODELS",
     "GROQ_REASONING_MODELS",
-    "OPENAI_CHAT_MODELS",
-    "OPENAI_MODELS",
-    "OPENAI_REASONING_MODELS",
     "OPENROUTER_CHAT_MODELS",
     "OPENROUTER_REASONING_MODELS",
 ]

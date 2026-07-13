@@ -2,8 +2,9 @@ from types import SimpleNamespace
 
 import httpx
 
-from symai.backend.integrations.openai.embeddings import EmbeddingList
-from symai.backend.integrations.openai.engines.embedding import OpenAIEmbeddingEngine
+from symai.backend.engines.embedding.openai import EmbeddingEngine
+from symai.clients.openai.client import Client
+from symai.clients.openai.embeddings import EmbeddingList
 from symai.components import MetadataTracker
 
 DUMMY_KEY = "sk-test-not-a-real-key"
@@ -29,14 +30,13 @@ def test_embedding_engine_executes_through_standalone_openai_client():
         prop=SimpleNamespace(prepared_input=["hello"]),
     )
     with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
-        engine = OpenAIEmbeddingEngine(
-            api_key=DUMMY_KEY,
+        engine = EmbeddingEngine(
+            client=Client(api_key=DUMMY_KEY, http_client=http_client),
             model="text-embedding-3-small",
-            http_client=http_client,
         )
         with MetadataTracker() as tracker:
             output, metadata = engine.forward(argument)
-    usage = tracker.usage[("OpenAIEmbeddingEngine", "text-embedding-3-small")]
+    usage = tracker.usage[("openai.embedding", "text-embedding-3-small")]
     assert usage["usage"] == {
         "prompt_tokens": 1,
         "completion_tokens": 0,

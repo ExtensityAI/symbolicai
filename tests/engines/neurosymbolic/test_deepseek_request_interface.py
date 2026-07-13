@@ -6,14 +6,16 @@ import pytest
 from pydantic import ValidationError
 
 from symai.backend.chat_prompts import prompt_registry
-from symai.backend.integrations.deepseek.chat import ChatCompletion
-from symai.backend.integrations.deepseek.engines.neurosymbolic import (
+from symai.backend.engines.language_model.deepseek import (
     DEEPSEEK_CHAT_COMPLETIONS_URL,
-    DeepSeekEngine,
+    MODEL_SPECS,
+    SUPPORTED_MODELS,
+    LanguageModelEngine,
 )
-from symai.backend.integrations.deepseek.errors import ResponseError
-from symai.backend.mixin.deepseek import DEEPSEEK_MODEL_SPECS, SUPPORTED_MODELS
 from symai.backend.settings import SYMAI_CONFIG
+from symai.clients.deepseek.chat import ChatCompletion
+from symai.clients.deepseek.client import Client
+from symai.clients.deepseek.errors import ResponseError
 from symai.components import MetadataTracker
 from symai.core import Argument
 from symai.functional import EngineRepository
@@ -21,8 +23,17 @@ from symai.functional import EngineRepository
 DUMMY_KEY = "sk-test-not-a-real-key"
 
 
-def make_engine(model="deepseek-v4-flash", **kwargs):
-    return DeepSeekEngine(api_key=DUMMY_KEY, model=model, **kwargs)
+def make_engine(http_client, model="deepseek-v4-flash", api_key=DUMMY_KEY):
+    return LanguageModelEngine(
+        client=Client(api_key=api_key, http_client=http_client),
+        model=model,
+    )
+
+
+@pytest.fixture
+def http_client():
+    with httpx.Client() as client:
+        yield client
 
 
 def make_prepared_argument(kwargs=None, messages=None):
@@ -60,21 +71,13 @@ def deepseek_response_json(content="2", reasoning_content="Add one and one."):
 
 
 def test_deepseek_supported_models_track_capabilities():
-    for spec in DEEPSEEK_MODEL_SPECS.values():
+    for spec in MODEL_SPECS.values():
         assert spec.reasoning is True
         assert spec.vision is False
 
 
-def test_deepseek_id_requires_supported_model_and_api_key():
-    engine = DeepSeekEngine(api_key="", model="deepseek-v4-flash")
-
-    assert engine.id() != "neurosymbolic"
-    with pytest.raises(ValueError, match="DeepSeek engine is not configured"):
-        engine.forward(make_prepared_argument())
-
-
-def test_deepseek_prepare_renders_neurosymbolic_prompt_template():
-    engine = make_engine()
+def test_deepseek_prepare_renders_neurosymbolic_prompt_template(http_client):
+    engine = make_engine(http_client)
     argument = Argument(
         args=("What changed?",),
         signature_kwargs={},
@@ -134,7 +137,6 @@ def test_neurosymbolic_self_prompt_template_uses_plain_output_examples():
 
 
 def test_engine_self_prompt_sends_prompt_object_as_raw_json():
-    engine = make_engine(client_max_retries=0)
     captured = {}
 
     def handler(request):
@@ -153,7 +155,7 @@ def test_engine_self_prompt_sends_prompt_object_as_raw_json():
     previous_engine = repository._engines.get("neurosymbolic")
     try:
         with httpx.Client(transport=httpx.MockTransport(handler)) as client:
-            engine.http_client = client
+            engine = make_engine(client)
             EngineRepository.register("neurosymbolic", engine, allow_engine_override=True)
             result = engine.self_prompt({"system": "old system", "user": "old user"})
     finally:
@@ -171,8 +173,8 @@ def test_engine_self_prompt_sends_prompt_object_as_raw_json():
     assert captured["body"]["response_format"] == {"type": "json_object"}
 
 
-def test_deepseek_build_request_returns_standalone_client_request():
-    engine = make_engine()
+def test_deepseek_build_request_returns_standalone_client_request(http_client):
+    engine = make_engine(http_client)
     argument = make_prepared_argument(
         kwargs={
             "temperature": 0.2,
@@ -193,8 +195,8 @@ def test_deepseek_build_request_returns_standalone_client_request():
     }
 
 
-def test_deepseek_build_request_rejects_tool_messages():
-    engine = make_engine()
+def test_deepseek_build_request_rejects_tool_messages(http_client):
+    engine = make_engine(http_client)
     messages = [
         {"role": "user", "content": "What is 1+1?"},
         {"role": "tool", "tool_call_id": "call_1", "content": "2"},
@@ -207,15 +209,15 @@ def test_deepseek_build_request_rejects_tool_messages():
         engine.build_request(make_prepared_argument(messages=[{"role": "user", "content": 1}]))
 
 
-def test_deepseek_build_request_omits_max_tokens_when_not_provided():
-    engine = make_engine()
+def test_deepseek_build_request_omits_max_tokens_when_not_provided(http_client):
+    engine = make_engine(http_client)
     request = engine.build_request(make_prepared_argument())
 
     assert request.max_tokens is None
 
 
-def test_deepseek_build_request_rejects_bad_provider_kwargs():
-    engine = make_engine()
+def test_deepseek_build_request_rejects_bad_provider_kwargs(http_client):
+    engine = make_engine(http_client)
 
     with pytest.raises(ValidationError):
         engine.build_request(make_prepared_argument(kwargs={"max_tokens": "32"}))
@@ -227,7 +229,6 @@ def test_deepseek_build_request_rejects_bad_provider_kwargs():
 
 
 def test_deepseek_forward_uses_http_transport_and_typed_response():
-    engine = make_engine(client_max_retries=0)
     captured = {}
 
     def handler(request):
@@ -246,7 +247,7 @@ def test_deepseek_forward_uses_http_transport_and_typed_response():
     argument.prop.processed_input = "What is 1+1?"
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as client:
-        engine.http_client = client
+        engine = make_engine(client)
         engine.prepare(argument)
         output, metadata = engine.forward(argument)
 
@@ -263,7 +264,6 @@ def test_deepseek_forward_uses_http_transport_and_typed_response():
 
 
 def test_deepseek_call_request_fails_fast_when_response_shape_drops_content():
-    engine = make_engine(client_max_retries=0)
 
     def handler(request):
         payload = deepseek_response_json()
@@ -271,14 +271,13 @@ def test_deepseek_call_request_fails_fast_when_response_shape_drops_content():
         return httpx.Response(200, json=payload, request=request)
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as client:
-        engine.http_client = client
+        engine = make_engine(client)
         request = engine.build_request(make_prepared_argument(kwargs={"max_tokens": 16}))
         with pytest.raises(ResponseError):
             engine.call_request(request)
 
 
 def test_deepseek_call_request_fails_fast_when_response_drops_usage():
-    engine = make_engine(client_max_retries=0)
 
     def handler(request):
         payload = deepseek_response_json()
@@ -286,26 +285,25 @@ def test_deepseek_call_request_fails_fast_when_response_drops_usage():
         return httpx.Response(200, json=payload, request=request)
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as client:
-        engine.http_client = client
+        engine = make_engine(client)
         request = engine.build_request(make_prepared_argument(kwargs={"max_tokens": 16}))
         with pytest.raises(ResponseError):
             engine.call_request(request)
 
 
 def test_deepseek_metadata_tracker_accumulates_usage():
-    engine = make_engine(client_max_retries=0)
 
     def handler(request):
         return httpx.Response(200, json=deepseek_response_json(), request=request)
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as client:
-        engine.http_client = client
+        engine = make_engine(client)
         with MetadataTracker() as tracker:
             engine.forward(make_prepared_argument(kwargs={"max_tokens": 16}))
             engine.forward(make_prepared_argument(kwargs={"max_tokens": 16}))
         usage = tracker.usage
 
-    details = usage[("DeepSeekEngine", "deepseek-v4-flash")]
+    details = usage[("deepseek.language_model", "deepseek-v4-flash")]
     assert details["usage"]["prompt_tokens"] == 20
     assert details["usage"]["completion_tokens"] == 10
     assert details["usage"]["total_tokens"] == 30
@@ -324,12 +322,6 @@ def test_deepseek_live_smoke(engine_api_mode, model):
     if not api_key:
         pytest.skip("symai.config.json NEUROSYMBOLIC_ENGINE_API_KEY is required")
 
-    engine = DeepSeekEngine(
-        api_key=api_key,
-        model=model,
-        client_timeout=30.0,
-        client_max_retries=0,
-    )
     argument = Argument(
         args=("Reply with exactly: ok",),
         signature_kwargs={"max_tokens": 16},
@@ -338,8 +330,10 @@ def test_deepseek_live_smoke(engine_api_mode, model):
     argument.prop.instance = SimpleNamespace(global_context=("", ""), _kwargs={})
     argument.prop.processed_input = "Reply with exactly: ok"
 
-    engine.prepare(argument)
-    output, metadata = engine.forward(argument)
+    with httpx.Client(timeout=30.0) as client:
+        engine = make_engine(client, model=model, api_key=api_key)
+        engine.prepare(argument)
+        output, metadata = engine.forward(argument)
 
     assert isinstance(output[0], str)
     assert isinstance(metadata["raw_output"], ChatCompletion)

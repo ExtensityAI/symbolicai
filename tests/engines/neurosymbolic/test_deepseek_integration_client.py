@@ -4,8 +4,9 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
-from symai.backend.integrations.deepseek.chat import ChatCompletion
-from symai.backend.integrations.deepseek.engines.neurosymbolic import DeepSeekEngine
+from symai.backend.engines.language_model.deepseek import LanguageModelEngine
+from symai.clients.deepseek.chat import ChatCompletion
+from symai.clients.deepseek.client import Client
 
 DUMMY_KEY = "sk-test-not-a-real-key"
 
@@ -16,6 +17,13 @@ def _argument(**kwargs):
         prop=SimpleNamespace(
             prepared_input=[{"role": "user", "content": "hello"}],
         ),
+    )
+
+
+def _engine(http_client):
+    return LanguageModelEngine(
+        client=Client(api_key=DUMMY_KEY, http_client=http_client),
+        model="deepseek-v4-flash",
     )
 
 
@@ -50,11 +58,7 @@ def test_engine_executes_through_standalone_deepseek_client():
         )
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
-        engine = DeepSeekEngine(
-            api_key=DUMMY_KEY,
-            model="deepseek-v4-flash",
-            http_client=http_client,
-        )
+        engine = _engine(http_client)
         output, metadata = engine.forward(_argument(max_tokens=16))
 
     assert output == ["answer"]
@@ -66,10 +70,6 @@ def test_engine_executes_through_standalone_deepseek_client():
 @pytest.mark.parametrize("unsupported", [{"stream": True}, {"tools": []}])
 def test_engine_rejects_features_outside_provider_client_contract(unsupported):
     with httpx.Client() as http_client:
-        engine = DeepSeekEngine(
-            api_key=DUMMY_KEY,
-            model="deepseek-v4-flash",
-            http_client=http_client,
-        )
+        engine = _engine(http_client)
         with pytest.raises((ValidationError, ValueError)):
             engine.build_request(_argument(**unsupported))
