@@ -4,7 +4,8 @@ import httpx
 from pydantic import ValidationError
 
 from symai.clients._headers import parse_optional_float
-from symai.clients.deepseek import chat, errors
+import symai.clients.deepseek.chat as chat
+import symai.clients.deepseek.errors as errors
 from symai.clients.deepseek.transport import APIResponse, ResponseMetadata
 
 BASE_URL = "https://api.deepseek.com"

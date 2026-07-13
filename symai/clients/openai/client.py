@@ -6,8 +6,9 @@ import httpx
 from pydantic import BaseModel, ValidationError
 
 from symai.clients._headers import parse_optional_float
-from symai.clients.openai import embeddings, errors
-from symai.clients.openai import responses as responses_api
+import symai.clients.openai.embeddings as embeddings
+import symai.clients.openai.errors as errors
+import symai.clients.openai.responses as responses_api
 from symai.clients.openai.transport import APIResponse, ResponseMetadata
 
 BASE_URL = "https://api.openai.com/v1"
