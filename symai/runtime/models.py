@@ -276,6 +276,17 @@ class SamplingConfig(FrozenModel):
     top_logprobs: int | None = Field(default=None, ge=0, le=20)
     logit_bias: tuple[LogitBias, ...] = ()
 
+    @model_validator(mode="after")
+    def validate_unique_logit_bias_tokens(self) -> Self:
+        seen: set[str] = set()
+        for bias in self.logit_bias:
+            if bias.token in seen:
+                msg = "Logit bias tokens must be unique"
+                raise ValueError(msg)
+            seen.add(bias.token)
+
+        return self
+
 
 class LanguageModelRequest(FrozenModel):
     messages: tuple[Message, ...] = Field(min_length=1)
@@ -284,6 +295,17 @@ class LanguageModelRequest(FrozenModel):
     sampling: SamplingConfig = SamplingConfig()
     user: str | None = None
     metadata: tuple[MetadataLabel, ...] = ()
+
+    @model_validator(mode="after")
+    def validate_unique_metadata_keys(self) -> Self:
+        seen: set[str] = set()
+        for label in self.metadata:
+            if label.key in seen:
+                msg = "Metadata label keys must be unique"
+                raise ValueError(msg)
+            seen.add(label.key)
+
+        return self
 
 
 class EmbeddingRequest(FrozenModel):

@@ -227,6 +227,19 @@ def test_logit_bias_rejects_non_finite_or_out_of_range_values(value):
         LogitBias(token="1", value=value)
 
 
+def test_sampling_logit_bias_preserves_order_and_rejects_duplicate_tokens():
+    first = LogitBias(token="42", value=-10.0)
+    second = LogitBias(token="7", value=5.0)
+
+    sampling = SamplingConfig(logit_bias=(first, second))
+
+    assert sampling.logit_bias == (first, second)
+    with pytest.raises(ValidationError):
+        SamplingConfig(
+            logit_bias=(first, LogitBias(token="42", value=20.0)),
+        )
+
+
 def test_requests_are_concrete_frozen_and_raw_payload_free():
     message = UserMessage(content=(TextContent(text="hello"),))
     language_request = LanguageModelRequest(
@@ -247,6 +260,21 @@ def test_requests_are_concrete_frozen_and_raw_payload_free():
         EmbeddingRequest(inputs=())
     with pytest.raises(ValidationError):
         EmbeddingRequest(inputs=("hello",), dimensions=0)
+
+
+def test_language_request_metadata_preserves_order_and_rejects_duplicate_keys():
+    message = UserMessage(content=(TextContent(text="hello"),))
+    first = MetadataLabel(key="trace", value="abc")
+    second = MetadataLabel(key="tenant", value="one")
+
+    request = LanguageModelRequest(messages=(message,), metadata=(first, second))
+
+    assert request.metadata == (first, second)
+    with pytest.raises(ValidationError):
+        LanguageModelRequest(
+            messages=(message,),
+            metadata=(first, MetadataLabel(key="trace", value="duplicate")),
+        )
 
 
 def test_usage_defaults_to_zero_and_rejects_negative_counts():
