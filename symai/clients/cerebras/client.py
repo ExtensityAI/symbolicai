@@ -3,9 +3,9 @@ import json
 import httpx
 from pydantic import ValidationError
 
-from symai.clients._headers import parse_optional_float, parse_optional_int
 import symai.clients.cerebras.chat as chat
 import symai.clients.cerebras.errors as errors
+from symai.clients._headers import parse_optional_float, parse_optional_int
 from symai.clients.cerebras.transport import (
     APIResponse,
     RateLimitState,

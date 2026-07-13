@@ -649,7 +649,7 @@ class DynamicEngine(Expression):
         self._entered = False
         self._lock = Lock()
         self.engine_instance = None
-        self._provider_lease = None
+        self._provider_handle = None
         self._ctx_token = None
 
     def __new__(cls, *_args, **_kwargs):
@@ -682,33 +682,34 @@ class DynamicEngine(Expression):
                     # Fallback: clear the var in this Context to avoid leaking the engine
                     CURRENT_ENGINE_VAR.set(None)
         finally:
-            if self._provider_lease is not None:
-                self._provider_lease.close()
-                self._provider_lease = None
+            if self._provider_handle is not None:
+                self._provider_handle.close()
+                self._provider_handle = None
             self._ctx_token = None
 
     def _create_engine_instance(self):
         """Create an engine instance based on the model name."""
-        from symai.backend.provider_runtime import (  # noqa: PLC0415
-            ProviderRuntimeOptions,
+        from symai.backend.provider_engines import (  # noqa: PLC0415
+            Capability,
+            ProviderTransportOptions,
             create_provider_engine_handle,
         )
 
         try:
-            options = ProviderRuntimeOptions(
+            options = ProviderTransportOptions(
                 request_timeout=self.request_timeout if self.request_timeout is not None else 600.0,
                 connect_timeout=self.connect_timeout,
                 connect_retries=self.connect_retries,
             )
-            lease = create_provider_engine_handle(
-                capability="language_model",
+            handle = create_provider_engine_handle(
+                capability=Capability.LANGUAGE_MODEL,
                 model=self.model,
                 api_key=self.api_key,
                 options=options,
             )
-            if lease is not None:
-                self._provider_lease = lease
-                return lease.engine
+            if handle is not None:
+                self._provider_handle = handle
+                return handle.engine
 
             # Deferred to avoid components <-> neurosymbolic engine circular imports.
             from symai.backend.engines.neurosymbolic import ENGINE_MAPPING  # noqa: PLC0415

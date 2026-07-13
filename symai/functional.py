@@ -439,12 +439,17 @@ class EngineRepository:
 
     @staticmethod
     def _register_configured_provider_engine(engine_name: str) -> bool:
+        from symai.backend.provider_engines import (  # noqa: PLC0415
+            Capability,
+            create_provider_engine_handle,
+        )
+
         if engine_name == "neurosymbolic":
-            capability = "language_model"
+            capability = Capability.LANGUAGE_MODEL
             model = settings.SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL", "")
             api_key = settings.SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_API_KEY", "")
         elif engine_name == "embedding":
-            capability = "embedding"
+            capability = Capability.EMBEDDING
             model = settings.SYMAI_CONFIG.get("EMBEDDING_ENGINE_MODEL", "")
             api_key = settings.SYMAI_CONFIG.get("EMBEDDING_ENGINE_API_KEY", "")
         else:
@@ -453,16 +458,12 @@ class EngineRepository:
         if not model or not api_key:
             return False
 
-        from symai.backend.provider_runtime import (  # noqa: PLC0415
-            create_provider_engine_handle,
-        )
-
-        lease = create_provider_engine_handle(
+        handle = create_provider_engine_handle(
             capability=capability,
             model=model,
             api_key=api_key,
         )
-        if lease is None:
+        if handle is None:
             return False
 
         self = EngineRepository()
@@ -470,22 +471,22 @@ class EngineRepository:
             if engine_name in self._handles:
                 should_close = True
             else:
-                self._handles[engine_name] = lease
+                self._handles[engine_name] = handle
                 should_close = False
         if should_close:
-            lease.close()
+            handle.close()
         return True
 
     @staticmethod
     def close() -> None:
         self = EngineRepository()
         with self._lock:
-            leases = tuple(self._handles.values())
+            handles = tuple(self._handles.values())
             self._handles.clear()
         failure: BaseException | None = None
-        for lease in leases:
+        for handle in handles:
             try:
-                lease.close()
+                handle.close()
             except BaseException as exc:
                 if failure is None:
                     failure = exc
@@ -501,8 +502,8 @@ class EngineRepository:
             return dynamic_engine
 
         with self._lock:
-            lease = self._handles.get(engine_name)
-        if lease is None and not self._register_configured_provider_engine(engine_name):
+            handle = self._handles.get(engine_name)
+        if handle is None and not self._register_configured_provider_engine(engine_name):
             subpackage_name = engine_name.replace("-", "_")
             subpackage = importlib.import_module(f"{engines.__package__}.{subpackage_name}", None)
             if subpackage is None:
@@ -510,17 +511,17 @@ class EngineRepository:
                 raise ValueError(msg)
             self.register_from_package(subpackage)
         with self._lock:
-            lease = self._handles.get(engine_name)
-        if lease is None:
+            handle = self._handles.get(engine_name)
+        if handle is None:
             msg = f"No engine named {engine_name} is registered."
             raise ValueError(msg)
-        return lease.engine
+        return handle.engine
 
     @staticmethod
     def list() -> dict[str, Engine]:
         self = EngineRepository()
         with self._lock:
-            return {name: lease.engine for name, lease in self._handles.items()}
+            return {name: handle.engine for name, handle in self._handles.items()}
 
     @staticmethod
     def command(engines: list[str], *args, **kwargs) -> Any:
@@ -530,7 +531,7 @@ class EngineRepository:
         if "all" in engines:
             with self._lock:
                 registered = tuple(self._handles.values())
-            return [lease.engine.command(*args, **kwargs) for lease in registered]
+            return [handle.engine.command(*args, **kwargs) for handle in registered]
         # Call the command function for the engine with provided arguments
         for engine_name in engines:
             engine = self.get(engine_name)

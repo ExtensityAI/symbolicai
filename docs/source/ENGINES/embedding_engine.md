@@ -26,6 +26,11 @@ Set the embedding engine in your `symai.config.json`:
 
 For OpenAI models, use the `openai:` prefix and your OpenAI API key. For Gemini models, use your Google AI API key (obtain one from [Google AI Studio](https://aistudio.google.com/)).
 
+Managed OpenAI embedding identifiers are validated against SymbolicAI's local
+OpenAI embedding catalog before an HTTP transport is allocated. The configured
+engine's `EngineHandle` owns that transport and closes it on replacement or
+repository shutdown.
+
 ## Usage
 
 ### Text Embeddings

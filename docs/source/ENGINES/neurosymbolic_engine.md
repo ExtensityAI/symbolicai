@@ -12,6 +12,38 @@ Provider capabilities vary:
 * OpenRouter models use `openrouter:model_id`, such as `openrouter:moonshotai/kimi-k2.5`.
 * Token truncation and streaming support varies by provider; adapters reject request options they do not implement.
 
+For these managed provider-qualified models, SymbolicAI validates the model
+against its local provider catalog before opening an HTTP transport. Configured
+engines are composition-owned: an `EngineHandle` closes the transport when the
+repository replaces or shuts down the engine, while `DynamicEngine` closes its
+handle when the context exits.
+
+### Standalone provider clients
+
+The `symai.clients` provider façades expose each provider's endpoint modules and
+typed request/response models. Standalone clients do not own their HTTP
+transport; the caller that creates the transport must close it:
+
+```python
+import httpx
+
+from symai.clients import deepseek
+
+with httpx.Client(timeout=30.0) as http_client:
+    client = deepseek.Client(api_key=api_key, http_client=http_client)
+    request = deepseek.chat.CreateChatCompletionRequest(
+        messages=(
+            deepseek.chat.UserMessage(role="user", content="Hello"),
+        ),
+        model="deepseek-v4-flash",
+    )
+    response = client.create_chat_completion(request)
+```
+
+The configured engine identifier includes the provider prefix
+(`deepseek:deepseek-v4-flash`); the endpoint-scoped request model receives only
+the provider's model ID (`deepseek-v4-flash`).
+
 > ❗️**NOTE**❗️the most accurate documentation is the _code_, so be sure to check out the tests. Look for the `mandatory` mark since those are the features that were tested and are guaranteed to work.
 
 ---

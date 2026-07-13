@@ -31,9 +31,7 @@ from symai.backend.engines.language_model import cerebras, deepseek, openai
         ),
     ],
 )
-def test_create_provider_engine_handle_uses_registered_factory(
-    capability, model, engine_type
-):
+def test_create_provider_engine_handle_uses_registered_factory(capability, model, engine_type):
     handle = provider_engines.create_provider_engine_handle(
         capability=capability,
         model=model,
@@ -63,9 +61,7 @@ def test_invalid_provider_selection_fails_before_transport(monkeypatch, model, m
         allocated = True
         return httpx.Client()
 
-    monkeypatch.setattr(
-        provider_engines, "create_provider_http_client", create_http_client
-    )
+    monkeypatch.setattr(provider_engines, "create_provider_http_client", create_http_client)
 
     with pytest.raises(ValueError, match=message):
         provider_engines.create_provider_engine_handle(
@@ -110,9 +106,7 @@ def test_unsupported_provider_capability_fails_before_transport(monkeypatch):
         ("deepseek:deepseek-v4-flash", "", "api_key must not be empty"),
     ],
 )
-def test_invalid_local_configuration_fails_before_transport(
-    monkeypatch, model, api_key, message
-):
+def test_invalid_local_configuration_fails_before_transport(monkeypatch, model, api_key, message):
     monkeypatch.setattr(
         provider_engines,
         "create_provider_http_client",
@@ -147,9 +141,7 @@ def test_factory_registry_is_typed_complete_and_cataloged():
 
 
 def test_engine_construction_failure_closes_allocated_transport(monkeypatch):
-    http_client = httpx.Client(
-        transport=httpx.MockTransport(lambda _: httpx.Response(200))
-    )
+    http_client = httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200)))
     monkeypatch.setattr(
         provider_engines,
         "create_provider_http_client",
@@ -157,7 +149,8 @@ def test_engine_construction_failure_closes_allocated_transport(monkeypatch):
     )
 
     def fail_construction(**_kwargs):
-        raise RuntimeError("construction failed")
+        msg = "construction failed"
+        raise RuntimeError(msg)
 
     monkeypatch.setattr(
         provider_engines.deepseek_engine,
@@ -193,18 +186,14 @@ def test_provider_transport_options_reject_invalid_transport_bounds(field, value
 
 
 def test_create_provider_engine_handle_owns_transport_with_explicit_options(monkeypatch):
-    http_client = httpx.Client(
-        transport=httpx.MockTransport(lambda _: httpx.Response(200))
-    )
+    http_client = httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200)))
     captured = {}
 
     def create_http_client(options):
         captured["options"] = options
         return http_client
 
-    monkeypatch.setattr(
-        provider_engines, "create_provider_http_client", create_http_client
-    )
+    monkeypatch.setattr(provider_engines, "create_provider_http_client", create_http_client)
     options = provider_engines.ProviderTransportOptions(
         request_timeout=30,
         connect_timeout=2,

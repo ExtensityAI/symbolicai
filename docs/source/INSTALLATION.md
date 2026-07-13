@@ -151,6 +151,14 @@ Example of a configuration file with all engines enabled:
 }
 ```
 
+Managed OpenAI, Cerebras, and DeepSeek engines require provider-qualified model
+identifiers such as `openai:gpt-5.4`, `cerebras:gpt-oss-120b`, or
+`deepseek:deepseek-v4-flash`. SymbolicAI validates these identifiers against its
+local provider catalogs before allocating an HTTP transport. Configured engine
+composition owns the resulting `EngineHandle` and closes it on repository
+replacement or shutdown; `DynamicEngine` closes its handle when its context
+exits.
+
 With these steps completed, you should be ready to start using SymbolicAI in your projects.
 
 > ❗️**NOTE**❗️SymbolicAI logs through the standard `logging` module under the `symai` logger and is silent by default. To see its logs, configure logging in your application, e.g. `logging.basicConfig(level=logging.INFO)` or, scoped, `logging.getLogger("symai").setLevel(logging.INFO)`.

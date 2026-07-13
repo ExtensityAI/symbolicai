@@ -5,7 +5,7 @@ from threading import Barrier
 
 import pytest
 
-from symai.backend import provider_runtime
+from symai.backend import provider_engines
 from symai.backend.base import Engine
 from symai.backend.engine_handle import EngineHandle
 from symai.backend.settings import SYMAI_CONFIG
@@ -168,7 +168,7 @@ def test_concurrent_provider_registration_closes_losing_handle(monkeypatch):
         return handle(engine, lambda: closed.append(engine))
 
     monkeypatch.setattr(
-        provider_runtime,
+        provider_engines,
         "create_provider_engine_handle",
         create_provider_engine_handle,
     )

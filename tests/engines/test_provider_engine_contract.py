@@ -8,7 +8,10 @@ import pytest
 from symai.backend.base import ENGINE_UNREGISTERED
 from symai.backend.engines.embedding import openai as openai_embedding
 from symai.backend.engines.language_model import cerebras, deepseek, openai
-from symai.backend.provider_runtime import ProviderRuntimeOptions, create_provider_http_client
+from symai.backend.provider_engines import (
+    ProviderTransportOptions,
+    create_provider_http_client,
+)
 from symai.clients.cerebras.client import Client as CerebrasClient
 from symai.clients.deepseek.client import Client as DeepSeekClient
 from symai.clients.openai.client import Client as OpenAIClient
@@ -99,6 +102,6 @@ def test_provider_engines_reject_unknown_models(engine_type, client_type, model)
 
 
 def test_provider_composition_uses_uniform_finite_timeout_defaults():
-    with create_provider_http_client(ProviderRuntimeOptions()) as client:
+    with create_provider_http_client(ProviderTransportOptions()) as client:
         assert client.timeout.read == 600.0
         assert client.timeout.connect == 10.0
