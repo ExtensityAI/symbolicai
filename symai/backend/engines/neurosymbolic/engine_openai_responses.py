@@ -56,8 +56,14 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
         *,
         client_timeout: float | None = None,
         client_max_retries: int | None = None,
+        prompt_cache_options: dict | None = None,
     ):
         super().__init__(client_timeout=client_timeout, client_max_retries=client_max_retries)
+        # Per-instance default for OpenAI Responses explicit prompt caching. Applied to
+        # every request that does not pass ``prompt_cache_options`` per-call — this is what
+        # lets callers that drive the engine directly (bypassing per-call kwargs, e.g.
+        # summarize-lib) still get the configured cache mode. None => no default.
+        self.prompt_cache_options = prompt_cache_options
         self.config = deepcopy(SYMAI_CONFIG)
         if api_key is not None and model is not None:
             self.config["NEUROSYMBOLIC_ENGINE_API_KEY"] = api_key
@@ -357,14 +363,22 @@ class OpenAIResponsesEngine(Engine, OpenAIMixin):
         # TODO: Remove this extra_body fallback after the OpenAI SDK exposes
         # prompt_cache_options in Responses.create.
         extra_body = kwargs.get("extra_body")
-        if kwargs.get("prompt_cache_options") is not None:
+        # Per-call kwarg wins; otherwise fall back to the engine's per-instance default.
+        per_call_opts = kwargs.get("prompt_cache_options")
+        cache_opts = per_call_opts if per_call_opts is not None else self.prompt_cache_options
+        if cache_opts is not None:
             if payload["model"] not in SUPPORTED_RESPONSES_REASONING_MODELS:
-                msg = f"Explicit OpenAI cache options are not supported by {payload['model']}."
-                raise ValueError(msg)
-            extra_body = {
-                **(extra_body or {}),
-                "prompt_cache_options": kwargs["prompt_cache_options"],
-            }
+                # Explicit per-call intent on an unsupported model is a caller error; a
+                # per-instance default on an unsupported model is silently skipped (mirrors
+                # how the mixin strips the cache-breakpoint marker rather than raising).
+                if per_call_opts is not None:
+                    msg = f"Explicit OpenAI cache options are not supported by {payload['model']}."
+                    raise ValueError(msg)
+            else:
+                extra_body = {
+                    **(extra_body or {}),
+                    "prompt_cache_options": cache_opts,
+                }
         if extra_body is not None:
             payload["extra_body"] = extra_body
 

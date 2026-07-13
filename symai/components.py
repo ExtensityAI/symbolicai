@@ -1692,6 +1692,7 @@ class DynamicEngine(Expression):
         *,
         client_timeout: float | None = None,
         client_max_retries: int | None = None,
+        prompt_cache_options: dict | None = None,
         **_kwargs,
     ):
         super().__init__()
@@ -1702,6 +1703,10 @@ class DynamicEngine(Expression):
         # neurosymbolic engine so per-component calls get real hang protection.
         self.client_timeout = client_timeout
         self.client_max_retries = client_max_retries
+        # Per-instance default OpenAI Responses cache options (OpenAI-only). Forwarded to
+        # the neurosymbolic engine at creation so every call through this engine — including
+        # external drivers like summarize-lib that bypass per-call kwargs — gets the mode.
+        self.prompt_cache_options = prompt_cache_options
         self._entered = False
         self._lock = Lock()
         self.engine_instance = None
@@ -1771,6 +1776,11 @@ class DynamicEngine(Expression):
                 client_kwargs["client_timeout"] = self.client_timeout
             if self.client_max_retries is not None:
                 client_kwargs["client_max_retries"] = self.client_max_retries
+            # prompt_cache_options is an OpenAI Responses concept — only the responses
+            # engine accepts it; gate on the model prefix so other neurosymbolic engines
+            # (Anthropic, Gemini, ...) never receive an unexpected kwarg.
+            if self.prompt_cache_options is not None and self.model.startswith("responses:"):
+                client_kwargs["prompt_cache_options"] = self.prompt_cache_options
             return engine_class(api_key=self.api_key, model=self.model, **client_kwargs)
         except Exception as e:
             UserMessage(
