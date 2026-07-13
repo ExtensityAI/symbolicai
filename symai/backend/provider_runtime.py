@@ -5,7 +5,7 @@ from typing import Literal, cast
 
 import httpx
 
-from symai.backend.engine_lease import EngineLease
+from symai.backend.engine_handle import EngineHandle
 from symai.backend.engines.embedding.openai import EmbeddingEngine
 from symai.backend.engines.language_model.cerebras import (
     LanguageModelEngine as CerebrasLanguageModelEngine,
@@ -75,13 +75,13 @@ def create_provider_http_client(options: ProviderRuntimeOptions) -> httpx.Client
     return httpx.Client(timeout=timeout, transport=transport)
 
 
-def create_provider_engine_lease(
+def create_provider_engine_handle(
     *,
     capability: Literal["embedding", "language_model"],
     model: str,
     api_key: str,
     options: ProviderRuntimeOptions | None = None,
-) -> EngineLease | None:
+) -> EngineHandle | None:
     provider_model = _parse_provider_model(model)
     if provider_model is None:
         return None
@@ -151,4 +151,4 @@ def create_provider_engine_lease(
     except BaseException:
         http_client.close()
         raise
-    return EngineLease(engine=engine, cleanup=http_client.close)
+    return EngineHandle(engine=engine, cleanup=http_client.close)

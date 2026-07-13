@@ -4,7 +4,7 @@ import pytest
 
 from symai import EngineRepository
 from symai.backend import provider_runtime
-from symai.backend.provider_runtime import create_provider_engine_lease
+from symai.backend.provider_runtime import create_provider_engine_handle
 from symai.backend.settings import SYMAI_CONFIG
 from symai.components import DynamicEngine
 
@@ -73,13 +73,13 @@ def test_dynamic_provider_engine_releases_its_lease_on_exit():
 
 def test_dynamic_provider_engine_uses_explicit_transport_options(monkeypatch):
     captured = {}
-    create_engine_lease = provider_runtime.create_provider_engine_lease
+    create_engine_handle = provider_runtime.create_provider_engine_handle
 
     def capture_options(**kwargs):
         captured["options"] = kwargs["options"]
-        return create_engine_lease(**kwargs)
+        return create_engine_handle(**kwargs)
 
-    monkeypatch.setattr(provider_runtime, "create_provider_engine_lease", capture_options)
+    monkeypatch.setattr(provider_runtime, "create_provider_engine_handle", capture_options)
     dynamic_engine = DynamicEngine(
         "deepseek:deepseek-v4-flash",
         "test-key",
@@ -106,7 +106,7 @@ def test_repository_replacement_closes_previous_provider_lease(monkeypatch):
     )
     monkeypatch.setitem(SYMAI_CONFIG, "NEUROSYMBOLIC_ENGINE_API_KEY", "test-key")
     engine = EngineRepository.get("neurosymbolic")
-    replacement = create_provider_engine_lease(
+    replacement = create_provider_engine_handle(
         capability="language_model",
         model="deepseek:deepseek-v4-flash",
         api_key="replacement-key",

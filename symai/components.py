@@ -691,7 +691,7 @@ class DynamicEngine(Expression):
         """Create an engine instance based on the model name."""
         from symai.backend.provider_runtime import (  # noqa: PLC0415
             ProviderRuntimeOptions,
-            create_provider_engine_lease,
+            create_provider_engine_handle,
         )
 
         try:
@@ -700,7 +700,7 @@ class DynamicEngine(Expression):
                 connect_timeout=self.connect_timeout,
                 connect_retries=self.connect_retries,
             )
-            lease = create_provider_engine_lease(
+            lease = create_provider_engine_handle(
                 capability="language_model",
                 model=self.model,
                 api_key=self.api_key,

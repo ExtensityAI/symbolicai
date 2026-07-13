@@ -13,7 +13,7 @@ from symai.backend.engines.language_model.openai import (
 )
 from symai.backend.provider_runtime import (
     ProviderRuntimeOptions,
-    create_provider_engine_lease,
+    create_provider_engine_handle,
 )
 
 
@@ -26,8 +26,10 @@ from symai.backend.provider_runtime import (
         ("embedding", "openai:text-embedding-3-small", EmbeddingEngine),
     ],
 )
-def test_create_provider_engine_lease_composes_known_provider_model(capability, model, engine_type):
-    lease = create_provider_engine_lease(
+def test_create_provider_engine_handle_composes_known_provider_model(
+    capability, model, engine_type
+):
+    lease = create_provider_engine_handle(
         capability=capability,
         model=model,
         api_key="test-key",
@@ -47,20 +49,20 @@ def test_create_provider_engine_lease_composes_known_provider_model(capability, 
         ("language_model", "gpt-5.4", "must include a provider prefix"),
     ],
 )
-def test_create_provider_engine_lease_rejects_invalid_managed_provider_config(
+def test_create_provider_engine_handle_rejects_invalid_managed_provider_config(
     capability, model, message
 ):
     with pytest.raises(ValueError, match=message):
-        create_provider_engine_lease(
+        create_provider_engine_handle(
             capability=capability,
             model=model,
             api_key="test-key",
         )
 
 
-def test_create_provider_engine_lease_leaves_unmanaged_provider_to_legacy_registry():
+def test_create_provider_engine_handle_leaves_unmanaged_provider_to_legacy_registry():
     assert (
-        create_provider_engine_lease(
+        create_provider_engine_handle(
             capability="language_model",
             model="gemini-3.1-pro",
             api_key="test-key",
@@ -85,7 +87,7 @@ def test_provider_runtime_options_reject_invalid_transport_bounds(field, value):
         ProviderRuntimeOptions(**{field: value})
 
 
-def test_create_provider_engine_lease_owns_transport_with_explicit_options(monkeypatch):
+def test_create_provider_engine_handle_owns_transport_with_explicit_options(monkeypatch):
     http_client = httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200)))
     captured = {}
 
@@ -98,7 +100,7 @@ def test_create_provider_engine_lease_owns_transport_with_explicit_options(monke
     )
     options = ProviderRuntimeOptions(request_timeout=30, connect_timeout=2, connect_retries=1)
 
-    lease = create_provider_engine_lease(
+    lease = create_provider_engine_handle(
         capability="language_model",
         model="deepseek:deepseek-v4-flash",
         api_key="test-key",

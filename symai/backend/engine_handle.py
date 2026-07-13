@@ -4,7 +4,7 @@ from threading import Lock
 from symai.backend.base import Engine
 
 
-class EngineLease:
+class EngineHandle:
     """Engine plus optional resource cleanup owned by its composition root."""
 
     __slots__ = ("_cleanup", "_lock", "engine")
@@ -14,7 +14,8 @@ class EngineLease:
         self._cleanup = cleanup
         self._lock = Lock()
 
-    def _has_cleanup(self) -> bool:
+    @property
+    def owns_resources(self) -> bool:
         with self._lock:
             return self._cleanup is not None
 
