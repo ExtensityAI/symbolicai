@@ -4,6 +4,8 @@ import pytest
 
 from symai.backend.engine_handle import EngineHandle
 from symai.operations import (
+    compare_request,
+    contains_request,
     equals_request,
     include_request,
     map_request,
@@ -24,6 +26,7 @@ from symai.runtime.models import (
     LanguageModelResponse,
     Provider,
     ResponseMetadata,
+    SystemMessage,
     TextContent,
     UserMessage,
 )
@@ -100,6 +103,103 @@ def test_semantic_equality_uses_normalized_request_index_and_metadata() -> None:
     assert result.value is True
     assert metadata is METADATA
     assert engine.requests == [equals_request("one", 1)]
+
+
+def test_symbol_method_request_includes_static_and_dynamic_context() -> None:
+    engine = RecordingLanguageEngine(lambda _request: language_response((0, "summary")))
+    value = Symbol(
+        "long",
+        semantic=True,
+        static_context="Stable facts.",
+        dynamic_context="Current request.",
+    )
+
+    with runtime_for(language=engine):
+        result = value.summarize()
+
+    base = summarize_request("long")
+    base_system = base.messages[0]
+    assert isinstance(base_system, SystemMessage)
+    assert result.value == "summary"
+    assert engine.requests == [
+        base.model_copy(
+            update={
+                "messages": (
+                    SystemMessage(
+                        content=(
+                            TextContent(
+                                text=(
+                                    f"{base_system.content[0].text}\n"
+                                    "<STATIC_CONTEXT/>\nStable facts.\n"
+                                    "<DYNAMIC_CONTEXT/>\nCurrent request."
+                                )
+                            ),
+                        )
+                    ),
+                    *base.messages[1:],
+                )
+            }
+        )
+    ]
+
+
+@pytest.mark.parametrize(
+    ("method", "other", "text", "expected_request"),
+    [
+        ("__contains__", "n", "true", contains_request("one", "n")),
+        ("__eq__", "two", "true", equals_request("one", "two")),
+        ("__gt__", "two", "false", compare_request("one", ">", "two")),
+        ("__lt__", "two", "true", compare_request("one", "<", "two")),
+        ("__le__", "two", "true", compare_request("one", "<=", "two")),
+        ("__ge__", "two", "false", compare_request("one", ">=", "two")),
+    ],
+)
+def test_semantic_comparison_dunders_preserve_type_context_and_request_context(
+    method: str,
+    other: str,
+    text: str,
+    expected_request: LanguageModelRequest,
+) -> None:
+    class ContextSymbol(Symbol):
+        pass
+
+    engine = RecordingLanguageEngine(lambda _request: language_response((0, text)))
+    value = ContextSymbol(
+        "one",
+        semantic=True,
+        static_context="Stable facts.",
+        dynamic_context="Current request.",
+    )
+
+    with runtime_for(language=engine):
+        result = getattr(value, method)(other)
+
+    base_system = expected_request.messages[0]
+    assert isinstance(base_system, SystemMessage)
+    assert isinstance(result, ContextSymbol)
+    assert result.value is (text == "true")
+    assert result.static_context == "Stable facts."
+    assert result.dynamic_context == "Current request."
+    assert engine.requests == [
+        expected_request.model_copy(
+            update={
+                "messages": (
+                    SystemMessage(
+                        content=(
+                            TextContent(
+                                text=(
+                                    f"{base_system.content[0].text}\n"
+                                    "<STATIC_CONTEXT/>\nStable facts.\n"
+                                    "<DYNAMIC_CONTEXT/>\nCurrent request."
+                                )
+                            ),
+                        )
+                    ),
+                    *expected_request.messages[1:],
+                )
+            }
+        )
+    ]
 
 
 def test_engine_backed_symbol_path_requires_active_runtime() -> None:
@@ -196,7 +296,11 @@ def test_embedding_uses_normalized_request_and_provider_index_order() -> None:
     )
 
     with runtime_for(embedding=engine):
-        result, metadata = Symbol(["first", "second"]).embed(
+        result, metadata = Symbol(
+            ["first", "second"],
+            static_context="Do not send to embedding.",
+            dynamic_context="Also do not send.",
+        ).embed(
             dimensions=2,
             user="caller",
             return_metadata=True,

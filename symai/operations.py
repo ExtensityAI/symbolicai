@@ -127,6 +127,40 @@ def language_request(
     )
 
 
+def contextualize_language_request(
+    request: LanguageModelRequest,
+    *,
+    static_context: str = "",
+    dynamic_context: str = "",
+) -> LanguageModelRequest:
+    """Append explicit Symbol contexts while preserving prompts and examples."""
+    sections = []
+    if static_context:
+        sections.append(f"<STATIC_CONTEXT/>\n{static_context}")
+    if dynamic_context:
+        sections.append(f"<DYNAMIC_CONTEXT/>\n{dynamic_context}")
+    if not sections:
+        return request
+
+    context_text = "\n".join(sections)
+    messages = list(request.messages)
+    for index, message in enumerate(messages):
+        if not isinstance(message, SystemMessage):
+            continue
+        content = message.content
+        if len(content) == 1 and isinstance(content[0], TextContent):
+            text = f"{content[0].text}\n{context_text}"
+            messages[index] = message.model_copy(update={"content": (TextContent(text=text),)})
+        else:
+            messages[index] = message.model_copy(
+                update={"content": (*content, TextContent(text=context_text))}
+            )
+        break
+    else:
+        messages.insert(0, SystemMessage(content=(TextContent(text=context_text),)))
+    return request.model_copy(update={"messages": tuple(messages)})
+
+
 def summarize_request(
     text: object,
     *,

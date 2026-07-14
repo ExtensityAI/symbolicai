@@ -263,7 +263,11 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
         super().__init__()
         self._value = None
         # store kwargs for new symbol instance type passing
-        self._kwargs = {"static_context": static_context, **kwargs}
+        self._kwargs = {
+            "static_context": static_context,
+            "dynamic_context": dynamic_context,
+            **kwargs,
+        }
         self._metadata = Metadata()  # use global metadata by default
         self._metadata.symbol_type = type(self)
         self._parent = None

@@ -13,6 +13,7 @@ from symai.operations import (
     combine_request,
     compare_request,
     contains_request,
+    contextualize_language_request,
     convert_request,
     embedding_request,
     endswith_request,
@@ -52,6 +53,7 @@ if TYPE_CHECKING:
 
 
 def _execute_language_value(
+    symbol: "Symbol",
     request: LanguageModelRequest,
     *,
     return_type: type = str,
@@ -60,6 +62,11 @@ def _execute_language_value(
     limit: int | None = 1,
     literal: bool = False,
 ) -> object:
+    request = contextualize_language_request(
+        request,
+        static_context=symbol.static_context,
+        dynamic_context=symbol.dynamic_context,
+    )
     response = current_runtime().execute(request)
     if literal:
         return parse_literal_or_text_output(
@@ -116,6 +123,11 @@ def _execute_symbol(
         raise TypeError(msg)
     limit = requested_limit
 
+    request = contextualize_language_request(
+        request,
+        static_context=symbol.static_context,
+        dynamic_context=symbol.dynamic_context,
+    )
     response = current_runtime().execute(request)
     if literal:
         value = parse_literal_or_text_output(
@@ -232,11 +244,12 @@ class OperatorPrimitives(Primitive):
         self.__throw_error_on_nesy_engine_call(self.__contains__)
 
         value = _execute_language_value(
+            self,
             contains_request(self, other),
             return_type=bool,
             default=False,
         )
-        return bool(value)
+        return self._to_type(value)
 
     def __eq__(self, other: Any) -> bool:
         """
@@ -262,11 +275,12 @@ class OperatorPrimitives(Primitive):
         self.__throw_error_on_nesy_engine_call(self.__eq__)
 
         value = _execute_language_value(
+            self,
             equals_request(self, other),
             return_type=bool,
             default=False,
         )
-        return bool(value)
+        return self._to_type(value)
 
     def __ne__(self, other: Any) -> bool:
         """
@@ -308,11 +322,12 @@ class OperatorPrimitives(Primitive):
         self.__throw_error_on_nesy_engine_call(self.__gt__)
 
         value = _execute_language_value(
+            self,
             compare_request(self, ">", other),
             return_type=bool,
             default=False,
         )
-        return bool(value)
+        return self._to_type(value)
 
     def __lt__(self, other: Any) -> bool:
         """
@@ -334,11 +349,12 @@ class OperatorPrimitives(Primitive):
         self.__throw_error_on_nesy_engine_call(self.__lt__)
 
         value = _execute_language_value(
+            self,
             compare_request(self, "<", other),
             return_type=bool,
             default=False,
         )
-        return bool(value)
+        return self._to_type(value)
 
     def __le__(self, other) -> bool:
         """
@@ -360,11 +376,12 @@ class OperatorPrimitives(Primitive):
         self.__throw_error_on_nesy_engine_call(self.__le__)
 
         value = _execute_language_value(
+            self,
             compare_request(self, "<=", other),
             return_type=bool,
             default=False,
         )
-        return bool(value)
+        return self._to_type(value)
 
     def __ge__(self, other) -> bool:
         """
@@ -386,11 +403,12 @@ class OperatorPrimitives(Primitive):
         self.__throw_error_on_nesy_engine_call(self.__ge__)
 
         value = _execute_language_value(
+            self,
             compare_request(self, ">=", other),
             return_type=bool,
             default=False,
         )
-        return bool(value)
+        return self._to_type(value)
 
     def __neg__(self) -> "Symbol":
         """
@@ -406,7 +424,7 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__neg__)
 
-        value = _execute_language_value(negate_request(self))
+        value = _execute_language_value(self, negate_request(self))
         return self._to_type(value)
 
     def __invert__(self) -> "Symbol":
@@ -427,7 +445,7 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__invert__)
 
-        value = _execute_language_value(invert_request(self))
+        value = _execute_language_value(self, invert_request(self))
         return self._to_type(value)
 
     def __lshift__(self, other: Any) -> "Symbol":
@@ -449,7 +467,7 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__lshift__)
 
-        value = _execute_language_value(include_request(self, other))
+        value = _execute_language_value(self, include_request(self, other))
         return self._to_type(value)
 
     def __rlshift__(self, other: Any) -> "Symbol":
@@ -471,7 +489,7 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__rlshift__)
 
-        value = _execute_language_value(include_request(self, other))
+        value = _execute_language_value(self, include_request(self, other))
         return self._to_type(value)
 
     def __ilshift__(self, other: Any) -> "Symbol":
@@ -494,7 +512,7 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__ilshift__)
 
-        self._value = _execute_language_value(include_request(self, other))
+        self._value = _execute_language_value(self, include_request(self, other))
 
         return self
 
@@ -517,7 +535,7 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__rshift__)
 
-        value = _execute_language_value(include_request(self, other))
+        value = _execute_language_value(self, include_request(self, other))
         return self._to_type(value)
 
     def __rrshift__(self, other: Any) -> "Symbol":
@@ -539,7 +557,7 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__rrshift__)
 
-        value = _execute_language_value(include_request(self, other))
+        value = _execute_language_value(self, include_request(self, other))
         return self._to_type(value)
 
     def __irshift__(self, other: Any) -> "Symbol":
@@ -562,7 +580,7 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__irshift__)
 
-        self._value = _execute_language_value(include_request(self, other))
+        self._value = _execute_language_value(self, include_request(self, other))
 
         return self
 
@@ -586,7 +604,7 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__add__)
 
-        value = _execute_language_value(combine_request(self, other))
+        value = _execute_language_value(self, combine_request(self, other))
         return self._to_type(value)
 
     def __radd__(self, other) -> "Symbol":
@@ -609,7 +627,7 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__radd__)
 
-        value = _execute_language_value(combine_request(other, self))
+        value = _execute_language_value(self, combine_request(other, self))
         return self._to_type(value)
 
     def __iadd__(self, other: Any) -> "Symbol":
@@ -655,7 +673,7 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__sub__)
 
-        value = _execute_language_value(replace_request(self, other, ""))
+        value = _execute_language_value(self, replace_request(self, other, ""))
         return self._to_type(value)
 
     def __rsub__(self, other: Any) -> "Symbol":
@@ -679,7 +697,7 @@ class OperatorPrimitives(Primitive):
         self.__throw_error_on_nesy_engine_call(self.__rsub__)
 
         other = self._to_type(other)
-        value = _execute_language_value(replace_request(other, self, ""))
+        value = _execute_language_value(self, replace_request(other, self, ""))
         return self._to_type(value)
 
     def __isub__(self, other: Any) -> "Symbol":
@@ -725,7 +743,7 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__and__)
 
-        value = _execute_language_value(logic_request(self, "and", other))
+        value = _execute_language_value(self, logic_request(self, "and", other))
         return self._to_type(value)
 
     def __rand__(self, other: Any) -> Any:
@@ -749,7 +767,7 @@ class OperatorPrimitives(Primitive):
         self.__throw_error_on_nesy_engine_call(self.__rand__)
 
         other = self._to_type(other)
-        value = _execute_language_value(logic_request(other, "and", self))
+        value = _execute_language_value(self, logic_request(other, "and", self))
         return self._to_type(value)
 
     def __iand__(self, other: Any) -> Any:
@@ -773,7 +791,7 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__iand__)
 
-        self._value = _execute_language_value(logic_request(self, "and", other))
+        self._value = _execute_language_value(self, logic_request(self, "and", other))
 
         return self
 
@@ -797,7 +815,7 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__or__)
 
-        value = _execute_language_value(logic_request(self, "or", other))
+        value = _execute_language_value(self, logic_request(self, "or", other))
         return self._to_type(value)
 
     def __ror__(self, other: Any) -> "Symbol":
@@ -821,7 +839,7 @@ class OperatorPrimitives(Primitive):
         self.__throw_error_on_nesy_engine_call(self.__ror__)
 
         other = self._to_type(other)
-        value = _execute_language_value(logic_request(other, "or", self))
+        value = _execute_language_value(self, logic_request(other, "or", self))
         return self._to_type(value)
 
     def __ior__(self, other: Any) -> "Symbol":
@@ -846,7 +864,7 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__ior__)
 
-        self._value = _execute_language_value(logic_request(self, "or", other))
+        self._value = _execute_language_value(self, logic_request(self, "or", other))
 
         return self
 
@@ -870,7 +888,7 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__xor__)
 
-        value = _execute_language_value(logic_request(self, "xor", other))
+        value = _execute_language_value(self, logic_request(self, "xor", other))
         return self._to_type(value)
 
     def __rxor__(self, other: Any) -> "Symbol":
@@ -893,7 +911,7 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__rxor__)
 
-        value = _execute_language_value(logic_request(other, "xor", self))
+        value = _execute_language_value(self, logic_request(other, "xor", self))
         return self._to_type(value)
 
     def __ixor__(self, other: Any) -> "Symbol":
@@ -917,7 +935,7 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__ixor__)
 
-        self._value = _execute_language_value(logic_request(self, "xor", other))
+        self._value = _execute_language_value(self, logic_request(self, "xor", other))
 
         return self
 
@@ -1406,7 +1424,7 @@ class IterationPrimitives(Primitive):
                 msg = f"Key {key} not found in {self.value}"
                 raise Exception(msg) from None
 
-        value = _execute_language_value(getitem_request(self, key))
+        value = _execute_language_value(self, getitem_request(self, key))
         return self._to_type(value)
 
     def __setitem__(
@@ -1442,6 +1460,7 @@ class IterationPrimitives(Primitive):
                 raise Exception(msg) from None
 
         self._value = _execute_language_value(
+            self,
             setitem_request(self, key, value),
             output_index=output_index,
             limit=None,
@@ -1473,6 +1492,7 @@ class IterationPrimitives(Primitive):
                 raise Exception(msg) from None
 
         self._value = _execute_language_value(
+            self,
             setitem_request(self, key, None, delete=True),
             output_index=output_index,
             limit=None,
@@ -1588,6 +1608,7 @@ class StringHelperPrimitives(Primitive):
             return self.value.startswith(prefix)
 
         value = _execute_language_value(
+            self,
             startswith_request(self, prefix),
             return_type=bool,
             default=False,
@@ -1611,6 +1632,7 @@ class StringHelperPrimitives(Primitive):
             return self.value.endswith(suffix)
 
         value = _execute_language_value(
+            self,
             endswith_request(self, suffix),
             return_type=bool,
             default=False,
