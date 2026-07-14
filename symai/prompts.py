@@ -1,12 +1,12 @@
 import json
 import logging
+import tomllib
 from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
 import jinja2
-import tomllib
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)

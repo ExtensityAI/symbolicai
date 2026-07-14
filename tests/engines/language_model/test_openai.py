@@ -44,6 +44,7 @@ from symai.runtime.models import (
 def _response_json(
     *,
     status: str = "completed",
+    model: str = "gpt-5.4",
     output: list[dict[str, object]] | None = None,
     reasoning: list[dict[str, object]] | None = None,
 ) -> dict[str, object]:
@@ -78,7 +79,7 @@ def _response_json(
         "incomplete_details": None,
         "instructions": None,
         "max_output_tokens": 512,
-        "model": "gpt-5.4",
+        "model": model,
         "output": response_output,
         "store": False,
         "truncation": "disabled",
@@ -232,7 +233,7 @@ def test_nonreasoning_model_maps_supported_sampling_and_default_text_format() ->
 
     def handler(request: httpx.Request) -> httpx.Response:
         captured_body.update(json.loads(request.read()))
-        return httpx.Response(200, json=_response_json())
+        return httpx.Response(200, json=_response_json(model="gpt-4.1"))
 
     client, http_client = _client(handler)
     try:
@@ -263,7 +264,7 @@ def test_reasoning_model_uses_explicit_default_effort() -> None:
 
     def handler(request: httpx.Request) -> httpx.Response:
         captured_body.update(json.loads(request.read()))
-        return httpx.Response(200, json=_response_json())
+        return httpx.Response(200, json=_response_json(model="gpt-5.4-pro"))
 
     client, http_client = _client(handler)
     try:
@@ -417,6 +418,27 @@ def test_provider_errors_are_normalized_with_chained_cause(
         assert caught.value.metadata.retry_after == provider_error.metadata.retry_after
 
 
+def test_response_model_must_match_requested_model() -> None:
+    def handler(_request: httpx.Request) -> httpx.Response:
+        payload = _response_json()
+        payload["model"] = "gpt-5.4-pro"
+        return httpx.Response(200, json=payload)
+
+    client, http_client = _client(handler)
+    try:
+        with pytest.raises(InvalidResponseError, match="model") as caught:
+            LanguageModelEngine(client=client, model="gpt-5.4").execute(
+                LanguageModelRequest(
+                    messages=(UserMessage(content=(TextContent(text="hello"),)),),
+                )
+            )
+    finally:
+        http_client.close()
+
+    assert caught.value.metadata is not None
+    assert caught.value.metadata.model == "gpt-5.4"
+
+
 def test_refusal_only_output_is_normalized_without_invented_text() -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(
@@ -467,6 +489,30 @@ def test_noncompleted_response_is_invalid(status: str) -> None:
             )
     finally:
         http_client.close()
+
+
+def test_noncompleted_response_does_not_expose_provider_error_text() -> None:
+    provider_message = "distinctive provider-controlled secret"
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        payload = _response_json(status="queued")
+        payload["error"] = {"code": "server_error", "message": provider_message}
+        return httpx.Response(200, json=payload)
+
+    client, http_client = _client(handler)
+    try:
+        with pytest.raises(InvalidResponseError) as caught:
+            LanguageModelEngine(client=client, model="gpt-5.4").execute(
+                LanguageModelRequest(
+                    messages=(UserMessage(content=(TextContent(text="hello"),)),),
+                )
+            )
+    finally:
+        http_client.close()
+
+    assert provider_message not in str(caught.value)
+    assert caught.value.metadata is not None
+    assert caught.value.metadata.model == "gpt-5.4"
 
 
 def test_failed_response_with_usable_output_maps_error_finish_reason() -> None:

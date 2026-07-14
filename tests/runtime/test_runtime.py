@@ -1,4 +1,3 @@
-from builtins import BaseExceptionGroup
 from collections.abc import Callable
 from contextvars import ContextVar, Token
 from threading import Event, Lock, Thread

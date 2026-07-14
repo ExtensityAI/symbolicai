@@ -134,6 +134,27 @@ def test_string_helpers_raise_explicit_type_errors() -> None:
         Symbol(1).startswith("1")
 
 
+@pytest.mark.parametrize(
+    ("symbol", "method_name", "args"),
+    [
+        (Symbol("value"), "startswith", ("v",)),
+        (Symbol("value"), "endswith", ("e",)),
+        (Symbol("value"), "split", ("a",)),
+        (Symbol(("a", "b")), "join", (",",)),
+        (Symbol("value"), "template", ("<{{placeholder}}>",)),
+    ],
+)
+def test_local_string_primitives_reject_unknown_keyword_options(
+    symbol: Symbol,
+    method_name: str,
+    args: tuple[str, ...],
+) -> None:
+    method = getattr(symbol, method_name)
+
+    with pytest.raises(TypeError, match="unexpected keyword argument"):
+        method(*args, provider="openai")
+
+
 def test_empty_embedding_input_raises_value_error() -> None:
     with pytest.raises(ValueError, match="empty"):
         _ = Symbol([]).embedding

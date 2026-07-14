@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from builtins import BaseExceptionGroup
 from contextvars import ContextVar, Token
 from enum import StrEnum
 from threading import Condition, Lock

@@ -280,6 +280,9 @@ class LanguageModelEngine:
     ) -> LanguageModelResponse:
         raw = response.data
         error_metadata = self._execution_metadata(response)
+        if raw.model != self.model:
+            msg = "OpenAI response model did not match the request"
+            raise InvalidResponseError(msg, metadata=error_metadata)
         try:
             metadata = self._response_metadata(response)
         except ValidationError as error:
@@ -359,8 +362,7 @@ class LanguageModelEngine:
             if details is not None and details.reason == "content_filter":
                 return FinishReason.CONTENT_FILTER
 
-        detail = f": {response.error.message}" if response.error is not None else ""
-        msg = f"OpenAI response status was {response.status.value!r}{detail}"
+        msg = f"OpenAI response status was {response.status.value!r}"
         raise InvalidResponseError(msg, metadata=error_metadata)
 
     def _reasoning_text(self, response: responses_api.Response) -> TextContent | None:

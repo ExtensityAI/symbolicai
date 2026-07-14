@@ -117,10 +117,7 @@ def test_model_catalog_exposes_normalized_deepseek_capabilities() -> None:
         "effort",
     )
     assert tuple(value.value for value in engine.model_spec.reasoning_efforts) == (
-        "low",
-        "medium",
         "high",
-        "xhigh",
         "max",
     )
     assert tuple(value.value for value in engine.model_spec.sampling_fields) == (
@@ -477,12 +474,11 @@ def test_inconsistent_or_negative_usage_is_rejected(usage: dict[str, JsonValue])
 @pytest.mark.parametrize(
     ("effort", "wire_effort"),
     [
-        (ReasoningEffort.LOW, "high"),
-        (ReasoningEffort.MEDIUM, "high"),
-        (ReasoningEffort.XHIGH, "max"),
+        (ReasoningEffort.HIGH, "high"),
+        (ReasoningEffort.MAX, "max"),
     ],
 )
-def test_reasoning_effort_compatibility_values_are_canonicalized(
+def test_supported_reasoning_efforts_are_transported_exactly(
     effort: ReasoningEffort,
     wire_effort: str,
 ) -> None:
@@ -504,6 +500,37 @@ def test_reasoning_effort_compatibility_values_are_canonicalized(
         http_client.close()
 
     assert captured_body["reasoning_effort"] == wire_effort
+
+
+@pytest.mark.parametrize(
+    "effort",
+    [ReasoningEffort.LOW, ReasoningEffort.MEDIUM, ReasoningEffort.XHIGH],
+)
+def test_unsupported_reasoning_efforts_fail_before_transport(
+    effort: ReasoningEffort,
+) -> None:
+    calls = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        msg = "client must not be called"
+        raise AssertionError(msg)
+
+    client, http_client = _client(handler)
+    try:
+        engine = LanguageModelEngine(client=client, model="deepseek-v4-flash")
+        with pytest.raises(UnsupportedFeatureError, match=effort.value):
+            engine.execute(
+                LanguageModelRequest(
+                    messages=(UserMessage(content=(TextContent(text="hello"),)),),
+                    reasoning=ReasoningConfig(effort=effort),
+                )
+            )
+    finally:
+        http_client.close()
+
+    assert calls == 0
 
 
 def test_invalid_response_model_is_rejected() -> None:

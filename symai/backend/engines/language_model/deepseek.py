@@ -59,22 +59,6 @@ _DEEPSEEK_REASONING_FIELDS = (
     ReasoningField.ENABLED,
     ReasoningField.EFFORT,
 )
-_DEEPSEEK_REASONING_EFFORTS = (
-    ReasoningEffort.LOW,
-    ReasoningEffort.MEDIUM,
-    ReasoningEffort.HIGH,
-    ReasoningEffort.XHIGH,
-    ReasoningEffort.MAX,
-)
-_REASONING_EFFORT_MAP = MappingProxyType(
-    {
-        ReasoningEffort.LOW: chat_api.ReasoningEffort.HIGH,
-        ReasoningEffort.MEDIUM: chat_api.ReasoningEffort.HIGH,
-        ReasoningEffort.HIGH: chat_api.ReasoningEffort.HIGH,
-        ReasoningEffort.XHIGH: chat_api.ReasoningEffort.MAX,
-        ReasoningEffort.MAX: chat_api.ReasoningEffort.MAX,
-    }
-)
 _DEEPSEEK_SAMPLING_FIELDS = (
     SamplingField.MAX_TOKENS,
     SamplingField.TEMPERATURE,
@@ -88,6 +72,11 @@ _USER_ID_PATTERN = re.compile(r"[A-Za-z0-9_-]+")
 
 def _normalized_model_spec(spec: chat_api.ModelSpec) -> LanguageModelSpec:
     reasoning = spec.reasoning
+    reasoning_efforts = (
+        tuple(ReasoningEffort(effort.value) for effort in reasoning.efforts)
+        if reasoning is not None
+        else ()
+    )
     return LanguageModelSpec(
         context_tokens=spec.context_tokens,
         response_tokens=spec.response_tokens,
@@ -95,7 +84,7 @@ def _normalized_model_spec(spec: chat_api.ModelSpec) -> LanguageModelSpec:
         content_types=(ContentType.TEXT,),
         response_formats=_DEEPSEEK_RESPONSE_FORMATS,
         reasoning_fields=_DEEPSEEK_REASONING_FIELDS if reasoning is not None else (),
-        reasoning_efforts=_DEEPSEEK_REASONING_EFFORTS if reasoning is not None else (),
+        reasoning_efforts=reasoning_efforts,
         sampling_fields=_DEEPSEEK_SAMPLING_FIELDS,
         vision=False,
     )
@@ -183,7 +172,7 @@ class LanguageModelEngine:
                 else None
             ),
             reasoning_effort=(
-                _REASONING_EFFORT_MAP[reasoning.effort]
+                chat_api.ReasoningEffort(reasoning.effort.value)
                 if reasoning is not None and reasoning.effort is not None
                 else None
             ),

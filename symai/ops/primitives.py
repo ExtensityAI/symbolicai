@@ -1509,7 +1509,7 @@ class StringHelperPrimitives(Primitive):
     This mixin contains functions that provide additional help for symbols or their values.
     """
 
-    def split(self, delimiter: str, **_kwargs) -> "Symbol":
+    def split(self, delimiter: str) -> "Symbol":
         """
         Splits the symbol value by a specified delimiter.
 
@@ -1527,7 +1527,7 @@ class StringHelperPrimitives(Primitive):
             raise TypeError(msg)
         return self._to_type([*self.value.split(delimiter)])
 
-    def join(self, delimiter: str = " ", **_kwargs) -> "Symbol":
+    def join(self, delimiter: str = " ") -> "Symbol":
         """
         Joins the symbol value with a specified delimiter.
 
@@ -1545,7 +1545,7 @@ class StringHelperPrimitives(Primitive):
             raise TypeError(msg)
         return self._to_type(delimiter.join(self.value))
 
-    def startswith(self, prefix: str, **_kwargs) -> bool:
+    def startswith(self, prefix: str) -> bool:
         """
         Checks if the symbol value starts with a specified prefix.
 
@@ -1573,7 +1573,7 @@ class StringHelperPrimitives(Primitive):
         )
         return bool(value)
 
-    def endswith(self, suffix: str, **_kwargs) -> bool:
+    def endswith(self, suffix: str) -> bool:
         """
         Checks if the symbol value ends with a specified suffix.
 
@@ -2018,7 +2018,6 @@ class TemplateStylingPrimitives(Primitive):
         self,
         template: str,
         placeholder: str = "{{placeholder}}",
-        **_options: object,
     ) -> "Symbol":
         """Apply a local text template to the Symbol value."""
 
