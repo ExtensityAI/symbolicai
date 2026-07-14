@@ -130,7 +130,8 @@ DELETED_TREES = {
 FORBIDDEN_IMPORT_PREFIXES = tuple(
     f"symai.{path.removesuffix('.py').replace('/', '.')}" for path in DELETED_FILES
 ) + tuple(f"symai.{path.replace('/', '.')}" for path in DELETED_TREES)
-FORBIDDEN_MODULE_PATH_FRAGMENTS = FORBIDDEN_IMPORT_PREFIXES + (
+FORBIDDEN_MODULE_PATH_FRAGMENTS = (
+    *FORBIDDEN_IMPORT_PREFIXES,
     "symai.backend.engines.engine_selenium",
 )
 
@@ -151,7 +152,7 @@ FORBIDDEN_IDENTIFIERS = {
 
 def test_public_api_is_exact_ordered_and_direct() -> None:
     assert symai.__all__ == PUBLIC_NAMES
-    assert PUBLIC_NAMES == sorted(PUBLIC_NAMES)
+    assert sorted(PUBLIC_NAMES) == PUBLIC_NAMES
     for name in PUBLIC_NAMES:
         assert getattr(symai, name) is getattr(DEFINING_MODULE[name], name)
 
@@ -169,7 +170,7 @@ def test_import_symai_is_subprocess_isolated_and_inert(tmp_path: Path) -> None:
     cwd = tmp_path / "cwd"
     home.mkdir()
     cwd.mkdir()
-    script = r'''
+    script = r"""
 import builtins
 import json
 import logging
@@ -203,7 +204,7 @@ result = {
     } or name.startswith("symai.server.")),
 }
 print(json.dumps(result))
-'''
+"""
     env = os.environ.copy()
     env.update({"HOME": str(home), "PYTHONPATH": str(ROOT)})
     result = subprocess.run(
@@ -264,7 +265,10 @@ def test_production_ast_has_no_legacy_graph_references() -> None:
             elif isinstance(node, ast.Constant) and isinstance(node.value, str):
                 if any(fragment in node.value for fragment in FORBIDDEN_MODULE_PATH_FRAGMENTS):
                     violations.append(f"{relative}:{node.lineno}: legacy module path string")
-            elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
-                if node.func.attr in {"iter_modules", "walk_packages"}:
-                    violations.append(f"{relative}:{node.lineno}: reflective package scan")
+            elif (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr in {"iter_modules", "walk_packages"}
+            ):
+                violations.append(f"{relative}:{node.lineno}: reflective package scan")
     assert violations == []
