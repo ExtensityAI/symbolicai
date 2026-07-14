@@ -8,8 +8,9 @@ from typing import Any, ClassVar, Generic, TypeVar
 import numpy as np
 from box import Box
 
-from symai import core
+from symai.operations import language_request, parse_stripped_output
 from symai.ops import SYMBOL_PRIMITIVES
+from symai.runtime.runtime import current_runtime
 
 T = TypeVar("T")
 
@@ -938,7 +939,7 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
         if isinstance(self.value, (list, tuple, np.ndarray)):
             return iter(self.value)
 
-        return self.list("item").value.__iter__()
+        return iter((self.value,))
 
     def __reversed__(self) -> Iterator:
         """
@@ -952,7 +953,6 @@ class Symbol(Generic[T], metaclass=SymbolMeta):
     def __next__(self) -> Any:
         """
         Get the next item in the iterable value of the Symbol.
-        If it is not a list, tuple, or numpy array, the method falls back to using the @core.next() decorator, which retrieves and returns the next item using core functions.
 
         Returns:
             Symbol: The next item in the iterable value of the Symbol.
@@ -1133,27 +1133,6 @@ class Expression(Symbol):
         """
         raise NotImplementedError
 
-    @staticmethod
-    def command(engines: list[str] | None = None, **kwargs) -> "Symbol":
-        """
-        Execute command(s) on engines.
-
-        Args:
-            engines (List[str], optional): The list of engines on which to execute the command(s). Defaults to ['all'].
-            **kwargs: Arbitrary keyword arguments to be used by the core.command decorator.
-
-        Returns:
-            Symbol: An Expression object representing the command execution result.
-        """
-        if engines is None:
-            engines = ["all"]
-
-        @core.command(engines=engines, **kwargs)
-        def _func(_):
-            pass
-
-        return Expression(_func(Expression()))
-
     def copy(self) -> Any:
         """
         Returns a deep copy of the own object.
@@ -1164,23 +1143,46 @@ class Expression(Symbol):
         return copy.deepcopy(self)
 
     @staticmethod
-    def prompt(message: str, **kwargs) -> "Symbol":
+    def prompt(message: str, **kwargs) -> Any:
         """
         General raw input prompt method.
 
         Args:
             message (str): The prompt message for describing the task.
-            **kwargs: Arbitrary keyword arguments to be used by the core.prompt decorator.
 
         Returns:
             Symbol: An Expression object representing the prompt result.
         """
+        output_index = kwargs.pop("output_index", 0)
+        return_metadata = kwargs.pop("return_metadata", False)
+        return_type = kwargs.pop("return_type", str)
+        default = kwargs.pop("default", None)
+        limit = kwargs.pop("limit", 1)
+        forbidden = {"engine", "model", "provider"}.intersection(kwargs)
+        if forbidden:
+            names = ", ".join(sorted(forbidden))
+            msg = (
+                "Provider/model selection belongs to runtime configuration, "
+                f"not per-call kwargs: {names}"
+            )
+            raise TypeError(msg)
+        if kwargs:
+            names = ", ".join(sorted(kwargs))
+            msg = f"Unsupported execution options: {names}"
+            raise TypeError(msg)
 
-        @core.prompt(message=message, **kwargs)
-        def _func(_):
-            pass
-
-        return Expression(_func(None))
+        response = current_runtime().execute(language_request("", message))
+        value = parse_stripped_output(
+            response,
+            return_type,
+            index=output_index,
+            default=default,
+            limit=limit,
+        )
+        result = Expression(value)
+        if return_metadata:
+            return result, response.metadata
+        return result
 
 
 class Result(Expression):

@@ -1,5 +1,4 @@
 import ast
-import json
 import logging
 import numbers
 import pickle
@@ -10,15 +9,133 @@ from typing import TYPE_CHECKING, Any, Literal, Union
 
 import numpy as np
 
-from symai import core
-from symai.functional import EngineRepository
+from symai.operations import (
+    combine_request,
+    compare_request,
+    contains_request,
+    convert_request,
+    embedding_request,
+    endswith_request,
+    equals_request,
+    extract_request,
+    filter_request,
+    getitem_request,
+    include_request,
+    interpret_request,
+    invert_request,
+    isinstanceof_request,
+    logic_request,
+    map_request,
+    modify_request,
+    negate_request,
+    parse_embedding_response,
+    parse_literal_or_text_output,
+    parse_stripped_output,
+    query_request,
+    rank_request,
+    replace_request,
+    setitem_request,
+    startswith_request,
+    style_request,
+    summarize_request,
+    translate_request,
+)
 from symai.prompts import Prompt
+from symai.runtime.models import LanguageModelRequest
+from symai.runtime.runtime import current_runtime
 from symai.utils import Extra, missing_dependency
 
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from symai.symbol import Expression, Symbol
+    from symai.symbol import Symbol
+
+
+def _execute_language_value(
+    request: LanguageModelRequest,
+    *,
+    return_type: type = str,
+    output_index: int = 0,
+    default: object = None,
+    limit: int | None = 1,
+    literal: bool = False,
+) -> object:
+    response = current_runtime().execute(request)
+    if literal:
+        return parse_literal_or_text_output(
+            response,
+            index=output_index,
+            default=default,
+            limit=limit,
+        )
+    return parse_stripped_output(
+        response,
+        return_type,
+        index=output_index,
+        default=default,
+        limit=limit,
+    )
+
+
+def _execute_symbol(
+    symbol: "Symbol",
+    request: LanguageModelRequest,
+    kwargs: dict[str, object],
+    *,
+    return_type: type = str,
+    default: object = None,
+    limit: int | None = 1,
+    literal: bool = False,
+):
+    output_index = kwargs.pop("output_index", 0)
+    return_metadata = kwargs.pop("return_metadata", False)
+    requested_return_type = kwargs.pop("return_type", return_type)
+    default = kwargs.pop("default", default)
+    requested_limit = kwargs.pop("limit", limit)
+    forbidden = {"engine", "model", "provider"}.intersection(kwargs)
+    if forbidden:
+        names = ", ".join(sorted(forbidden))
+        msg = f"Provider/model selection belongs to runtime configuration, not per-call kwargs: {names}"
+        raise TypeError(msg)
+    if kwargs:
+        names = ", ".join(sorted(kwargs))
+        msg = f"Unsupported execution options: {names}"
+        raise TypeError(msg)
+    if not isinstance(output_index, int):
+        msg = "output_index must be an integer"
+        raise TypeError(msg)
+    if not isinstance(return_metadata, bool):
+        msg = "return_metadata must be a boolean"
+        raise TypeError(msg)
+    if not isinstance(requested_return_type, type):
+        msg = "return_type must be a type"
+        raise TypeError(msg)
+    return_type = requested_return_type
+    if requested_limit is not None and not isinstance(requested_limit, int):
+        msg = "limit must be an integer or None"
+        raise TypeError(msg)
+    limit = requested_limit
+
+    response = current_runtime().execute(request)
+    if literal:
+        value = parse_literal_or_text_output(
+            response,
+            index=output_index,
+            default=default,
+            limit=limit,
+        )
+    else:
+        value = parse_stripped_output(
+            response,
+            return_type,
+            index=output_index,
+            default=default,
+            limit=limit,
+        )
+    result = symbol._to_type(value)
+    if return_metadata:
+        return result, response.metadata
+    return result
 
 
 class Primitive:
@@ -114,11 +231,12 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__contains__)
 
-        @core.contains()
-        def _func(_, other) -> bool:
-            pass
-
-        return self._to_type(_func(self, other))
+        value = _execute_language_value(
+            contains_request(self, other),
+            return_type=bool,
+            default=False,
+        )
+        return bool(value)
 
     def __eq__(self, other: Any) -> bool:
         """
@@ -143,11 +261,12 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__eq__)
 
-        @core.equals()
-        def _func(_, other) -> bool:
-            pass
-
-        return self._to_type(_func(self, other))
+        value = _execute_language_value(
+            equals_request(self, other),
+            return_type=bool,
+            default=False,
+        )
+        return bool(value)
 
     def __ne__(self, other: Any) -> bool:
         """
@@ -171,7 +290,6 @@ class OperatorPrimitives(Primitive):
 
     def __gt__(self, other: Any) -> bool:
         """
-        This method checks if a Symbol object is greater than another Symbol using the @core.compare() decorator with the '>' operator.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
 
         Args:
@@ -189,15 +307,15 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__gt__)
 
-        @core.compare(operator=">")
-        def _func(_, other) -> bool:
-            pass
-
-        return self._to_type(_func(self, other))
+        value = _execute_language_value(
+            compare_request(self, ">", other),
+            return_type=bool,
+            default=False,
+        )
+        return bool(value)
 
     def __lt__(self, other: Any) -> bool:
         """
-        This method checks if a Symbol object is less than another Symbol using the @core.compare() decorator with the '<' operator.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
 
         Args:
@@ -215,15 +333,15 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__lt__)
 
-        @core.compare(operator="<")
-        def _func(_, other) -> bool:
-            pass
-
-        return self._to_type(_func(self, other))
+        value = _execute_language_value(
+            compare_request(self, "<", other),
+            return_type=bool,
+            default=False,
+        )
+        return bool(value)
 
     def __le__(self, other) -> bool:
         """
-        This method checks if a Symbol object is less than or equal to another Symbol using the @core.compare() decorator with the '<=' operator.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
 
         Args:
@@ -241,15 +359,15 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__le__)
 
-        @core.compare(operator="<=")
-        def _func(_, other) -> bool:
-            pass
-
-        return self._to_type(_func(self, other))
+        value = _execute_language_value(
+            compare_request(self, "<=", other),
+            return_type=bool,
+            default=False,
+        )
+        return bool(value)
 
     def __ge__(self, other) -> bool:
         """
-        This method checks if a Symbol object is greater than or equal to another Symbol using the @core.compare() decorator with the '>=' operator.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
 
         Args:
@@ -267,16 +385,16 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__ge__)
 
-        @core.compare(operator=">=")
-        def _func(_, other) -> bool:
-            pass
-
-        return self._to_type(_func(self, other))
+        value = _execute_language_value(
+            compare_request(self, ">=", other),
+            return_type=bool,
+            default=False,
+        )
+        return bool(value)
 
     def __neg__(self) -> "Symbol":
         """
         Return the negated value of the Symbol.
-        The method uses the @core.negate decorator to compute the negation of the Symbol value.
 
         Returns:
             Symbol: The negated value of the Symbol.
@@ -288,16 +406,12 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__neg__)
 
-        @core.negate()
-        def _func(_):
-            pass
-
-        return self._to_type(_func(self))
+        value = _execute_language_value(negate_request(self))
+        return self._to_type(value)
 
     def __invert__(self) -> "Symbol":
         """
         Return the inverted value of the Symbol (logical NOT).
-        The method uses the @core.invert decorator to compute the inversion of the Symbol value.
         This allows using the ~ operator for semantic inversion.
 
         Returns:
@@ -313,16 +427,12 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__invert__)
 
-        @core.invert()
-        def _func(_):
-            pass
-
-        return self._to_type(_func(self))
+        value = _execute_language_value(invert_request(self))
+        return self._to_type(value)
 
     def __lshift__(self, other: Any) -> "Symbol":
         """
         Add new information to the Symbol.
-        The method uses the @core.include decorator to incorporate information into the Symbol.
 
         Args:
             information (Any): The information to include in the Symbol.
@@ -339,16 +449,12 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__lshift__)
 
-        @core.include()
-        def _func(_, information: str):
-            pass
-
-        return self._to_type(_func(self, other))
+        value = _execute_language_value(include_request(self, other))
+        return self._to_type(value)
 
     def __rlshift__(self, other: Any) -> "Symbol":
         """
         Add new information to the Symbol.
-        The method uses the @core.include decorator to incorporate information into the Symbol.
 
         Args:
             information (Any): The information to include in the Symbol.
@@ -365,16 +471,12 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__rlshift__)
 
-        @core.include()
-        def _func(_, information: str):
-            pass
-
-        return self._to_type(_func(self, other))
+        value = _execute_language_value(include_request(self, other))
+        return self._to_type(value)
 
     def __ilshift__(self, other: Any) -> "Symbol":
         """
         Add new information to the Symbol.
-        The method uses the @core.include decorator to incorporate information into the Symbol.
 
         Args:
             information (Any): The information to include in the Symbol.
@@ -392,18 +494,13 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__ilshift__)
 
-        @core.include()
-        def _func(_, information: str):
-            pass
-
-        self._value = _func(self, other)
+        self._value = _execute_language_value(include_request(self, other))
 
         return self
 
     def __rshift__(self, other: Any) -> "Symbol":
         """
         Add new information to the Symbol.
-        The method uses the @core.include decorator to incorporate information into the Symbol.
 
         Args:
             information (Any): The information to include in the Symbol.
@@ -420,16 +517,12 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__rshift__)
 
-        @core.include()
-        def _func(_, information: str):
-            pass
-
-        return self._to_type(_func(self, other))
+        value = _execute_language_value(include_request(self, other))
+        return self._to_type(value)
 
     def __rrshift__(self, other: Any) -> "Symbol":
         """
         Add new information to the Symbol.
-        The method uses the @core.include decorator to incorporate information into the Symbol.
 
         Args:
             information (Any): The information to include in the Symbol.
@@ -446,16 +539,12 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__rrshift__)
 
-        @core.include()
-        def _func(_, information: str):
-            pass
-
-        return self._to_type(_func(self, other))
+        value = _execute_language_value(include_request(self, other))
+        return self._to_type(value)
 
     def __irshift__(self, other: Any) -> "Symbol":
         """
         Add new information to the Symbol.
-        The method uses the @core.include decorator to incorporate information into the Symbol.
 
         Args:
             information (Any): The information to include in the Symbol.
@@ -473,11 +562,7 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__irshift__)
 
-        @core.include()
-        def _func(_, information: str):
-            pass
-
-        self._value = _func(self, other)
+        self._value = _execute_language_value(include_request(self, other))
 
         return self
 
@@ -485,7 +570,6 @@ class OperatorPrimitives(Primitive):
         """
         Combine the Symbol with another value.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
-        The method uses the @core.combine decorator to merge the Symbol and the other value.
 
         Args:
             other: The value to combine with the Symbol.
@@ -502,17 +586,13 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__add__)
 
-        @core.combine()
-        def _func(_, a: str, b: str):
-            pass
-
-        return self._to_type(_func(self, other))
+        value = _execute_language_value(combine_request(self, other))
+        return self._to_type(value)
 
     def __radd__(self, other) -> "Symbol":
         """
         Combine another value with the Symbol.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
-        The method uses the @core.combine decorator to merge the other value and the Symbol.
 
         Args:
             other (Any): The value to combine with the Symbol.
@@ -529,11 +609,8 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__radd__)
 
-        @core.combine()
-        def _func(_, a: str, b: str):
-            pass
-
-        return self._to_type(_func(other, self))
+        value = _execute_language_value(combine_request(other, self))
+        return self._to_type(value)
 
     def __iadd__(self, other: Any) -> "Symbol":
         """
@@ -562,7 +639,6 @@ class OperatorPrimitives(Primitive):
         """
         Replace occurrences of a value with another value in the Symbol.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
-        The method uses the @core.replace decorator to replace occurrences of the other value with an empty string in the Symbol.
 
         Args:
             other (Any): The value to replace in the Symbol.
@@ -579,17 +655,13 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__sub__)
 
-        @core.replace()
-        def _func(_, text: str, replace: str, value: str):
-            pass
-
-        return self._to_type(_func(self, other, ""))
+        value = _execute_language_value(replace_request(self, other, ""))
+        return self._to_type(value)
 
     def __rsub__(self, other: Any) -> "Symbol":
         """
         Subtracts the symbol value from another one and removes the substrings that match the symbol value.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
-        Using the core.replace decorator, this function creates a _func method to remove matching substrings.
 
         Args:
             other (Any): The string to subtract the symbol value from.
@@ -606,13 +678,9 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__rsub__)
 
-        @core.replace()
-        def _func(_, text: str, replace: str, value: str):
-            pass
-
         other = self._to_type(other)
-
-        return self._to_type(_func(other, self, ""))
+        value = _execute_language_value(replace_request(other, self, ""))
+        return self._to_type(value)
 
     def __isub__(self, other: Any) -> "Symbol":
         """
@@ -641,7 +709,6 @@ class OperatorPrimitives(Primitive):
         """
         Performs a logical AND operation between the symbol value and another.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
-        Uses the core.logic decorator with operator='and' to create a _func method for the AND operation.
 
         Args:
             other (Any): The string to perform the AND operation with the symbol value.
@@ -658,17 +725,13 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__and__)
 
-        @core.logic(operator="and")
-        def _func(_, a: str, b: str):
-            pass
-
-        return self._to_type(_func(self, other))
+        value = _execute_language_value(logic_request(self, "and", other))
+        return self._to_type(value)
 
     def __rand__(self, other: Any) -> Any:
         """
         Performs a logical AND operation between the symbol value and another.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
-        Uses the core.logic decorator with operator='and' to create a _func method for the AND operation.
 
         Args:
             other (Any): The string to perform the AND operation with the symbol value.
@@ -685,19 +748,14 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__rand__)
 
-        @core.logic(operator="and")
-        def _func(_, a: str, b: str):
-            pass
-
         other = self._to_type(other)
-
-        return self._to_type(_func(other, self))
+        value = _execute_language_value(logic_request(other, "and", self))
+        return self._to_type(value)
 
     def __iand__(self, other: Any) -> Any:
         """
         Performs a logical AND operation between the symbol value and another.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
-        Uses the core.logic decorator with operator='and' to create a _func method for the AND operation.
 
         Args:
             other (Any): The string to perform the AND operation with the symbol value.
@@ -715,11 +773,7 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__iand__)
 
-        @core.logic(operator="and")
-        def _func(_, a: str, b: str):
-            pass
-
-        self._value = _func(self, other)
+        self._value = _execute_language_value(logic_request(self, "and", other))
 
         return self
 
@@ -727,7 +781,6 @@ class OperatorPrimitives(Primitive):
         """
         Performs a logical OR operation between the symbol value and another.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
-        Uses the core.logic decorator with operator='or' to create a _func method for the OR operation.
 
         Args:
             other (Any): The string to perform the OR operation with the symbol value.
@@ -744,11 +797,8 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__or__)
 
-        @core.logic(operator="or")
-        def _func(_, a: str, b: str):
-            pass
-
-        return self._to_type(_func(self, other))
+        value = _execute_language_value(logic_request(self, "or", other))
+        return self._to_type(value)
 
     def __ror__(self, other: Any) -> "Symbol":
         """
@@ -770,13 +820,9 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__ror__)
 
-        @core.logic(operator="or")
-        def _func(a: str, b: str):
-            pass
-
         other = self._to_type(other)
-
-        return self._to_type(_func(other, self))
+        value = _execute_language_value(logic_request(other, "or", self))
+        return self._to_type(value)
 
     def __ior__(self, other: Any) -> "Symbol":
         """
@@ -800,11 +846,7 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__ior__)
 
-        @core.logic(operator="or")
-        def _func(_, a: str, b: str):
-            pass
-
-        self._value = _func(self, other)
+        self._value = _execute_language_value(logic_request(self, "or", other))
 
         return self
 
@@ -812,7 +854,6 @@ class OperatorPrimitives(Primitive):
         """
         Performs a logical XOR operation between the symbol value and another.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
-        Uses the core.logic decorator with operator='xor' to create a _func method for the XOR operation.
 
         Args:
             other (Any): The string to perform the XOR operation with the symbol value.
@@ -829,17 +870,13 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__xor__)
 
-        @core.logic(operator="xor")
-        def _func(_, a: str, b: str):
-            pass
-
-        return self._to_type(_func(self, other))
+        value = _execute_language_value(logic_request(self, "xor", other))
+        return self._to_type(value)
 
     def __rxor__(self, other: Any) -> "Symbol":
         """
         Performs a logical XOR operation between the symbol value and another.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
-        Uses the core.logic decorator with operator='xor' to create a _func method for the XOR operation.
 
         Args:
             other (Any): The string to perform the XOR operation with the symbol value.
@@ -856,17 +893,13 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__rxor__)
 
-        @core.logic(operator="xor")
-        def _func(_, a: str, b: str):
-            pass
-
-        return self._to_type(_func(other, self))
+        value = _execute_language_value(logic_request(other, "xor", self))
+        return self._to_type(value)
 
     def __ixor__(self, other: Any) -> "Symbol":
         """
         Performs a logical XOR operation between the symbol value and another.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
-        Uses the core.logic decorator with operator='xor' to create a _func method for the XOR operation.
 
         Args:
             other (Any): The string to perform the XOR operation with the symbol value.
@@ -884,11 +917,7 @@ class OperatorPrimitives(Primitive):
 
         self.__throw_error_on_nesy_engine_call(self.__ixor__)
 
-        @core.logic(operator="xor")
-        def _func(_, a: str, b: str):
-            pass
-
-        self._value = _func(self, other)
+        self._value = _execute_language_value(logic_request(self, "xor", other))
 
         return self
 
@@ -1360,7 +1389,6 @@ class IterationPrimitives(Primitive):
         Get the item of the Symbol value with the specified key or index.
         If the Symbol value is a list, tuple, or numpy array, the key can be an integer or slice.
         If the Symbol value is a dictionary, the key can be a string or an integer.
-        If the direct item retrieval fails, the method falls back to using the @core.getitem decorator, which retrieves and returns the item using core functions.
 
         Args:
             key (Union[str, int, slice]): The key or index for the item in the Symbol value.
@@ -1378,18 +1406,20 @@ class IterationPrimitives(Primitive):
                 msg = f"Key {key} not found in {self.value}"
                 raise Exception(msg) from None
 
-        @core.getitem()
-        def _func(_, index: str):
-            pass
+        value = _execute_language_value(getitem_request(self, key))
+        return self._to_type(value)
 
-        return self._to_type(_func(self, key))
-
-    def __setitem__(self, key: str | int | slice, value: Any) -> None:
+    def __setitem__(
+        self,
+        key: str | int | slice,
+        value: Any,
+        *,
+        output_index: int = 0,
+    ) -> None:
         """
         Set the item of the Symbol value with the specified key or index to the given value.
         If the Symbol value is a list, the key can be an integer or slice.
         If the Symbol value is a dictionary, the key can be a string or an integer.
-        If the direct item setting fails, the method falls back to using the @core.setitem decorator, which sets the item using core functions.
 
         Args:
             key (Union[str, int, slice]): The key or index for the item in the Symbol value.
@@ -1398,8 +1428,6 @@ class IterationPrimitives(Primitive):
         Raises:
             KeyError: If the key or index is not found in the Symbol value.
         """
-        # Local import avoids ops.primitives -> post_processors -> symbol -> ops circular load.
-        from symai.post_processors import ASTPostProcessor  # noqa
 
         if not isinstance(self.value, (str, dict, list)):
             msg = f"Setting item is not supported for {type(self.value)}. Supported types are str, dict, and list."
@@ -1413,25 +1441,17 @@ class IterationPrimitives(Primitive):
                 msg = f"Key {key} not found in {self.value}"
                 raise Exception(msg) from None
 
-        @core.setitem()
-        def _func(_, index: str, value: str):
-            pass
+        self._value = _execute_language_value(
+            setitem_request(self, key, value),
+            output_index=output_index,
+            limit=None,
+            literal=True,
+        )
 
-        result = _func(self, key, value)
-        try:
-            self._value = ASTPostProcessor()(
-                result
-            )  # The type of the object that the model changed was a list or a dict
-        except Exception:
-            self._value = (
-                result  # It was a string, or something failed (because } wasn't close, etc)
-            )
-
-    def __delitem__(self, key: str | int) -> None:
+    def __delitem__(self, key: str | int, *, output_index: int = 0) -> None:
         """
         Delete the item of the Symbol value with the specified key or index.
         If the Symbol value is a dictionary, the key can be a string or an integer.
-        If the direct item deletion fails, the method falls back to using the @core.delitem decorator, which deletes the item using core functions.
 
         Args:
             key (Union[str, int]): The key for the item in the Symbol value.
@@ -1439,8 +1459,6 @@ class IterationPrimitives(Primitive):
         Raises:
             KeyError: If the key or index is not found in the Symbol value.
         """
-        # Local import avoids ops.primitives -> post_processors -> symbol -> ops circular load.
-        from symai.post_processors import ASTPostProcessor  # noqa
 
         if not isinstance(self.value, (str, dict, list)):
             msg = f"Setting item is not supported for {type(self.value)}. Supported types are str, dict, and list."
@@ -1454,19 +1472,12 @@ class IterationPrimitives(Primitive):
                 msg = f"Key {key} not found in {self.value}"
                 raise Exception(msg) from None
 
-        @core.delitem()
-        def _func(_, index: str):
-            pass
-
-        result = _func(self, key)
-        try:
-            self._value = ASTPostProcessor()(
-                result
-            )  # The type of the object that the model changed was a list or a dict
-        except json.JSONDecodeError:
-            self._value = (
-                result  # It was a string, or something failed (because } wasn't close, etc)
-            )
+        self._value = _execute_language_value(
+            setitem_request(self, key, None, delete=True),
+            output_index=output_index,
+            limit=None,
+            literal=True,
+        )
 
 
 # @TODO: Add tests for this class
@@ -1485,27 +1496,6 @@ class ValueHandlingPrimitives(Primitive):
             int: The size of the container of the Symbol's value.
         """
         return len(self.value)
-
-    @property
-    def tokens(self) -> int:
-        """
-        Tokenize the Symbol's value using the tokenizer method.
-        The tokenizer method is bound to the 'neurosymbolic' engine using the @decorator.bind() decorator.
-
-        Returns:
-            int: The tokenized value of the Symbol.
-        """
-        return self.tokenizer().encode(str(self))
-
-    def tokenizer(self) -> Callable:
-        """
-        The tokenizer method.
-        Returns the tokenizer bound to the 'neurosymbolic' engine.
-
-        Returns:
-            Callable: The tokenizer.
-        """
-        return EngineRepository.bind_property(engine="neurosymbolic", property="tokenizer")
 
     @property
     def type(self):
@@ -1530,7 +1520,6 @@ class ValueHandlingPrimitives(Primitive):
     def index(self, item: str, **kwargs) -> "Symbol":
         """
         Returns the index of a specified item in the symbol value.
-        Uses the core.getitem decorator to create a _func method that finds the index of the item.
 
         Args:
             item (str): The item to find the index of within the symbol value.
@@ -1539,11 +1528,12 @@ class ValueHandlingPrimitives(Primitive):
             Symbol: A new symbol with the index of the specified item.
         """
 
-        @core.getitem(**kwargs)
-        def _func(_, item: str) -> int:
-            pass
-
-        return self._to_type(_func(self, item))
+        return _execute_symbol(
+            self,
+            getitem_request(self, item),
+            kwargs,
+            return_type=int,
+        )
 
 
 class StringHelperPrimitives(Primitive):
@@ -1554,7 +1544,6 @@ class StringHelperPrimitives(Primitive):
     def split(self, delimiter: str, **_kwargs) -> "Symbol":
         """
         Splits the symbol value by a specified delimiter.
-        Uses the core.split decorator to create a _func method that splits the symbol value by the specified delimiter.
 
         Args:
             delimiter (str): The delimiter to split the symbol value by.
@@ -1585,7 +1574,6 @@ class StringHelperPrimitives(Primitive):
     def startswith(self, prefix: str, **_kwargs) -> bool:
         """
         Checks if the symbol value starts with a specified prefix.
-        Uses the core.startswith decorator to create a _func method that checks if the symbol value starts with the specified prefix.
 
         Args:
             prefix (str): The prefix to check if the symbol value starts with.
@@ -1599,16 +1587,16 @@ class StringHelperPrimitives(Primitive):
         if not self.__semantic__:
             return self.value.startswith(prefix)
 
-        @core.startswith()
-        def _func(_, prefix: str) -> bool:
-            pass
-
-        return _func(self, prefix)
+        value = _execute_language_value(
+            startswith_request(self, prefix),
+            return_type=bool,
+            default=False,
+        )
+        return bool(value)
 
     def endswith(self, suffix: str, **_kwargs) -> bool:
         """
         Checks if the symbol value ends with a specified suffix.
-        Uses the core.endswith decorator to create a _func method that checks if the symbol value ends with the specified suffix.
 
         Args:
             suffix (str): The suffix to check if the symbol value ends with.
@@ -1622,11 +1610,12 @@ class StringHelperPrimitives(Primitive):
         if not self.__semantic__:
             return self.value.endswith(suffix)
 
-        @core.endswith()
-        def _func(_, suffix: str) -> bool:
-            pass
-
-        return _func(self, suffix)
+        value = _execute_language_value(
+            endswith_request(self, suffix),
+            return_type=bool,
+            default=False,
+        )
+        return bool(value)
 
 
 class ComparisonPrimitives(Primitive):
@@ -1638,7 +1627,6 @@ class ComparisonPrimitives(Primitive):
     def equals(self, string: str, context: str = "contextually", **kwargs) -> "Symbol":
         """
         Checks if the symbol value is equal to another string.
-        Uses the core.equals decorator to create a _func method that checks for equality in a specific context.
 
         Args:
             string (str): The string to compare with the symbol value.
@@ -1648,47 +1636,58 @@ class ComparisonPrimitives(Primitive):
             Symbol: A new symbol indicating whether the two strings are equal or not.
         """
 
-        @core.equals(context=context, **kwargs)
-        def _func(_, string: str) -> bool:
-            pass
+        return _execute_symbol(
+            self,
+            equals_request(self, string, context=context),
+            kwargs,
+            return_type=bool,
+            default=False,
+        )
 
-        return self._to_type(_func(self, string))
-
-    def contains(self, element: Any, **kwargs) -> bool:
+    def contains(self, element: Any, **kwargs) -> Any:
         """
-        Uses the @core.contains decorator, checks whether the symbol's value contains the element.
 
         Args:
             element (Any): The element to be checked for containment.
-            **kwargs: Additional keyword arguments to pass to the core.contains decorator.
 
         Returns:
             bool: True if the symbol's value contains the element, False otherwise.
         """
 
-        @core.contains(**kwargs)
-        def _func(_, other) -> bool:
-            pass
+        value = _execute_symbol(
+            self,
+            contains_request(self, element),
+            kwargs,
+            return_type=bool,
+            default=False,
+        )
+        if isinstance(value, tuple):
+            result, metadata = value
+            return bool(result.value), metadata
+        return bool(value.value)
 
-        return _func(self, element)
-
-    def isinstanceof(self, query: str, **kwargs) -> bool:
+    def isinstanceof(self, query: str, **kwargs) -> Any:
         """
         Check if the current Symbol is an instance of a specific type.
 
         Args:
             query (str): The type to check if the Symbol is an instance of.
-            **kwargs: Any additional kwargs for @core.isinstanceof() decorator.
 
         Returns:
             bool: True if the current Symbol is an instance of the specified type, otherwise False.
         """
 
-        @core.isinstanceof()
-        def _func(_, query: str, **kwargs) -> bool:
-            pass
-
-        return _func(self, query, **kwargs)
+        value = _execute_symbol(
+            self,
+            isinstanceof_request(self, query),
+            kwargs,
+            return_type=bool,
+            default=False,
+        )
+        if isinstance(value, tuple):
+            result, metadata = value
+            return bool(result.value), metadata
+        return bool(value.value)
 
 
 class ExpressionHandlingPrimitives(Primitive):
@@ -1728,12 +1727,10 @@ class ExpressionHandlingPrimitives(Primitive):
     ) -> "Symbol":
         """
         Evaluates simple symbolic expressions.
-        Uses the core.symbolic decorator to create a _func method that evaluates the given expression.
 
         Args:
             prompt (Optional[str]): The prompt to evaluate. Defaults to the symbol value.
             accumulate (bool): If True, stores results for later retrieval. Defaults to False.
-            **kwargs: Additional keyword arguments for the core.interpret decorator.
 
         Returns:
             Symbol: A new symbol with the result of the expression evaluation.
@@ -1741,18 +1738,24 @@ class ExpressionHandlingPrimitives(Primitive):
         # Propagate original input
         input_value = getattr(self, "_input", self) if hasattr(self, "_input") else self
 
-        @core.interpret(prompt=prompt, **kwargs)
-        def _func(_):
-            pass
-
-        result = _func(self)
-        result = self._to_type(result)
+        execution = _execute_symbol(
+            self,
+            interpret_request(self, prompt=prompt or ""),
+            kwargs,
+        )
+        if isinstance(execution, tuple):
+            result, metadata = execution
+        else:
+            result = execution
+            metadata = None
 
         if accumulate:
             input_value.init_results()
             input_value._accumulated_results.append(result.value)
 
         result._input = input_value
+        if metadata is not None:
+            return result, metadata
         return result
 
 
@@ -1762,25 +1765,9 @@ class DataHandlingPrimitives(Primitive):
     Future implementations in this mixin may include various other cleaning and summarization techniques, error detection/correction in symbols, complex filtering, bulk modifications, or other types of condition-based manipulations on symbols, etc.
     """
 
-    def clean(self, **kwargs) -> "Symbol":
-        """
-        Cleans the symbol value.
-        Uses the core.clean decorator to create a _func method that cleans the symbol value.
-
-        Returns:
-            Symbol: A new symbol with the cleaned value.
-        """
-
-        @core.clean(**kwargs)
-        def _func(_) -> str:
-            pass
-
-        return self._to_type(_func(self))
-
     def summarize(self, context: str | None = None, **kwargs) -> "Symbol":
         """
         Summarizes the symbol value.
-        Uses the core.summarize decorator with an optional context to create a _func method that summarizes the symbol value.
 
         Args:
             context (Optional[str]): The context to be used for summarization. Defaults to None.
@@ -1789,31 +1776,15 @@ class DataHandlingPrimitives(Primitive):
             Symbol: A new symbol with the summarized value.
         """
 
-        @core.summarize(context=context, **kwargs)
-        def _func(_) -> str:
-            pass
-
-        return self._to_type(_func(self))
-
-    def outline(self, **kwargs) -> "Symbol":
-        """
-        Creates an outline of the symbol value.
-        Uses the core.outline decorator to create a _func method that generates an outline of the symbol value.
-
-        Returns:
-            Symbol: A new symbol with the outline of the value.
-        """
-
-        @core.outline(**kwargs)
-        def _func(_) -> str:
-            pass
-
-        return self._to_type(_func(self))
+        return _execute_symbol(
+            self,
+            summarize_request(self, context=context),
+            kwargs,
+        )
 
     def filter(self, criteria: str, include: bool | None = False, **kwargs) -> "Symbol":
         """
         Filters the symbol value based on a specified criteria.
-        Uses the core.filtering decorator with the provided criteria and include flag to create a _func method to filter the symbol value.
 
         Args:
             criteria (str): The criteria to filter the symbol value by.
@@ -1823,11 +1794,11 @@ class DataHandlingPrimitives(Primitive):
             Symbol: A new symbol with the filtered value.
         """
 
-        @core.filtering(criteria=criteria, include=include, **kwargs)
-        def _func(_) -> str:
-            pass
-
-        return self._to_type(_func(self))
+        return _execute_symbol(
+            self,
+            filter_request(self, criteria, include=bool(include)),
+            kwargs,
+        )
 
     def map(self, instruction: str, **kwargs) -> "Symbol":
         """
@@ -1851,16 +1822,16 @@ class DataHandlingPrimitives(Primitive):
             msg = "Map can only be applied to iterable objects"
             raise AssertionError(msg) from None
 
-        @core.map(instruction=instruction, **kwargs)
-        def _func(_):
-            pass
-
-        return self._to_type(_func(self))
+        return _execute_symbol(
+            self,
+            map_request(self, instruction),
+            kwargs,
+            literal=True,
+        )
 
     def modify(self, changes: str, **kwargs) -> "Symbol":
         """
         Modifies the symbol value based on the specified changes.
-        Uses the core.modify decorator with the provided changes to create a _func method to modify the symbol value.
 
         Args:
             changes (str): The changes to apply to the symbol value.
@@ -1869,16 +1840,15 @@ class DataHandlingPrimitives(Primitive):
             Symbol: A new symbol with the modified value.
         """
 
-        @core.modify(changes=changes, **kwargs)
-        def _func(_) -> str:
-            pass
-
-        return self._to_type(_func(self))
+        return _execute_symbol(
+            self,
+            modify_request(self, changes),
+            kwargs,
+        )
 
     def replace(self, old: str, new: str, **kwargs) -> "Symbol":
         """
         Replaces one value in the symbol value with another.
-        Uses the core.replace decorator to create a _func method that replaces the values in the symbol value.
 
         Args:
             old (str): The value to be replaced in the symbol value.
@@ -1888,16 +1858,15 @@ class DataHandlingPrimitives(Primitive):
             Symbol: A new symbol with the replaced value.
         """
 
-        @core.replace(**kwargs)
-        def _func(_, old: str, new: str):
-            pass
-
-        return self._to_type(_func(self, old, new))
+        return _execute_symbol(
+            self,
+            replace_request(self, old, new),
+            kwargs,
+        )
 
     def remove(self, information: str, **kwargs) -> "Symbol":
         """
         Removes a specified piece of information from the symbol value.
-        Uses the core.replace decorator to create a _func method that removes the specified information.
 
         Args:
             information (str): The information to remove from the symbol value.
@@ -1906,16 +1875,15 @@ class DataHandlingPrimitives(Primitive):
             Symbol: A new symbol with the removed information.
         """
 
-        @core.replace(**kwargs)
-        def _func(_, text: str, replace: str, value: str):
-            pass
-
-        return self._to_type(_func(self, information, ""))
+        return _execute_symbol(
+            self,
+            replace_request(self, information, ""),
+            kwargs,
+        )
 
     def include(self, information: str, **kwargs) -> "Symbol":
         """
         Includes a specified piece of information in the symbol value.
-        Uses the core.include decorator to create a _func method that includes the specified information.
 
         Args:
             information (str): The information to include in the symbol value.
@@ -1924,16 +1892,15 @@ class DataHandlingPrimitives(Primitive):
             Symbol: A new symbol with the included information.
         """
 
-        @core.include(**kwargs)
-        def _func(_, information: str):
-            pass
-
-        return self._to_type(_func(self, information))
+        return _execute_symbol(
+            self,
+            include_request(self, information),
+            kwargs,
+        )
 
     def combine(self, information: str, **kwargs) -> "Symbol":
         """
         Combines the current symbol value with another string.
-        Uses the core.combine decorator to create a _func method that combines the symbol value with another string.
 
         Args:
             information (str): The information to combine with the symbol value.
@@ -1942,53 +1909,11 @@ class DataHandlingPrimitives(Primitive):
             Symbol: A new symbol with the combined value.
         """
 
-        @core.combine(**kwargs)
-        def _func(_, a: str, b: str):
-            pass
-
-        return self._to_type(_func(self, information))
-
-
-class UniquenessPrimitives(Primitive):
-    """
-    This mixin includes functions that work with unique aspects of symbol values, like extracting unique information or composing new unique symbols.
-    Future functionalities might include finding duplicate information, defining levels of uniqueness, etc.
-    """
-
-    def unique(self, keys: list[str] | None = None, **kwargs) -> "Symbol":
-        """
-        Extracts unique information from the symbol value, using provided keys.
-        Uses the core.unique decorator with a list of keys to create a _func method that extracts unique data from the symbol value.
-
-        Args:
-            keys (Optional[List[str]]): The list of keys to extract unique data. Defaults to [].
-
-        Returns:
-            Symbol: A new symbol with the unique information.
-        """
-        if keys is None:
-            keys = []
-
-        @core.unique(keys=keys, **kwargs)
-        def _func(_) -> str:
-            pass
-
-        return self._to_type(_func(self))
-
-    def compose(self, **kwargs) -> "Symbol":
-        """
-        Composes a text based on the symbol value.
-        Uses the core.compose decorator to create a _func method that composes a text using the symbol value.
-
-        Returns:
-            Symbol: A new symbol with the composed text.
-        """
-
-        @core.compose(**kwargs)
-        def _func(_) -> str:
-            pass
-
-        return self._to_type(_func(self))
+        return _execute_symbol(
+            self,
+            combine_request(self, information),
+            kwargs,
+        )
 
 
 class PatternMatchingPrimitives(Primitive):
@@ -2002,27 +1927,25 @@ class PatternMatchingPrimitives(Primitive):
     ) -> "Symbol":
         """
         Ranks the symbol value based on a measure and a sort order.
-        Uses the core.rank decorator with the specified measure and order to create a _func method that ranks the symbol value.
 
         Args:
             measure (Optional[str]): The measure to rank the symbol value by. Defaults to 'alphanumeric'.
             order (Optional[str]): The sort order for ranking. Defaults to 'desc'.
-            **kwargs: Additional keyword arguments to pass to the core.rank decorator.
 
         Returns:
             Symbol: A new symbol with the ranked value.
         """
 
-        @core.rank(order=order, **kwargs)
-        def _func(_, measure: str) -> str:
-            pass
-
-        return self._to_type(_func(self, measure))
+        return _execute_symbol(
+            self,
+            rank_request(self, measure, order=order or "desc"),
+            kwargs,
+            literal=True,
+        )
 
     def extract(self, pattern: str, **kwargs) -> "Symbol":
         """
         Extracts data from the symbol value based on a pattern.
-        Uses the core.extract decorator with the specified pattern to create a _func method that extracts data from the symbol value.
 
         Args:
             pattern (str): The pattern to use for data extraction.
@@ -2031,70 +1954,29 @@ class PatternMatchingPrimitives(Primitive):
             Symbol: A new symbol with the extracted data.
         """
 
-        @core.extract(**kwargs)
-        def _func(_, pattern: str) -> str:
-            pass
-
-        return self._to_type(_func(self, pattern))
-
-    def correct(self, context: str, exception: Exception, **kwargs) -> "Symbol":
-        """
-        Corrects the symbol value based on a specified context.
-        Uses the @core.correct decorator, corrects the value of the symbol based on the given context.
-
-        Args:
-            context (str): The context used to correct the value of the symbol.
-            exception (Exception): The exception that occurred during processing, which provides context for the correction.
-            **kwargs: Additional keyword arguments to pass to the core.correct decorator.
-
-        Returns:
-            Symbol: The corrected value as a Symbol.
-        """
-
-        @core.correct(context=context, exception=exception, **kwargs)
-        def _func(_) -> str:
-            pass
-
-        return self._to_type(_func(self))
+        return _execute_symbol(
+            self,
+            extract_request(self, pattern),
+            kwargs,
+        )
 
     def translate(self, language: str | None = "English", **kwargs) -> "Symbol":
         """
         Translates the symbol value to the specified language.
-        Uses the @core.translate decorator to translate the symbol's value to the specified language.
 
         Args:
             language (Optional[str]): The language to translate the value to. Defaults to 'English'.
-            **kwargs: Additional keyword arguments to pass to the core.translate decorator.
 
         Returns:
             Symbol: The translated value as a Symbol.
         """
 
-        @core.translate(language=language, **kwargs)
-        def _func(_) -> str:
-            pass
-
-        return self._to_type(_func(self))
-
-    def choice(self, cases: list[str], default: str, **kwargs) -> "Symbol":
-        """
-        Chooses one of the cases based on the symbol value.
-        Uses the @core.case decorator, selects one of the cases based on the symbol's value.
-
-        Args:
-            cases (List[str]): The list of possible cases.
-            default (str): The default case if none of the cases match the symbol's value.
-            **kwargs: Additional keyword arguments to pass to the core.case decorator.
-
-        Returns:
-            Symbol: The chosen case as a Symbol.
-        """
-
-        @core.case(enum=cases, default=default, **kwargs)
-        def _func(_) -> str:
-            pass
-
-        return self._to_type(_func(self))
+        return _execute_symbol(
+            self,
+            translate_request(self, language or "English"),
+            kwargs,
+            default="Sorry, I do not understand the given language.",
+        )
 
 
 class QueryHandlingPrimitives(Primitive):
@@ -2112,224 +1994,43 @@ class QueryHandlingPrimitives(Primitive):
     ) -> "Symbol":
         """
         Queries the symbol value based on a specified context.
-        Uses the @core.query decorator, queries based on the context, prompt, and examples.
 
         Args:
             context (str): The context used for the query.
             prompt (Optional[str]): The prompt for the query. Defaults to None.
             examples (Optional[List[Prompt]]): The examples for the query. Defaults to None.
-            **kwargs: Additional keyword arguments to pass to the core.query decorator.
 
         Returns:
             Symbol: The result of the query as a Symbol.
         """
 
-        @core.query(context=context, prompt=prompt, examples=examples, **kwargs)
-        def _func(_) -> str:
-            pass
-
-        return self._to_type(_func(self))
+        normalized_examples = tuple(
+            value
+            for example in (examples or ())
+            for value in (example.value if isinstance(example, Prompt) else (str(example),))
+        )
+        return _execute_symbol(
+            self,
+            query_request(self, context, prompt=prompt, examples=normalized_examples),
+            kwargs,
+        )
 
     def convert(self, format: str, **kwargs) -> "Symbol":
         """
         Converts the symbol value to the specified format.
-        Uses the @core.convert decorator, converts the symbol's value to the specified format.
 
         Args:
             format (str): The format to convert the value to.
-            **kwargs: Additional keyword arguments to pass to the core.convert decorator.
 
         Returns:
             Symbol: The converted value as a Symbol.
         """
 
-        @core.convert(format=format, **kwargs)
-        def _func(_) -> str:
-            pass
-
-        return self._to_type(_func(self))
-
-    def transcribe(self, modify: str, **kwargs) -> "Symbol":
-        """
-        Transcribes the symbol value based on a specified modification.
-        Uses the @core.transcribe decorator, modifies the symbol's value based on the modify parameter.
-
-        Args:
-            modify (str): The modification to be applied to the value.
-            **kwargs: Additional keyword arguments to pass to the core.transcribe decorator.
-
-        Returns:
-            Symbol: The modified value as a Symbol.
-        """
-
-        @core.transcribe(modify=modify, **kwargs)
-        def _func(_) -> str:
-            pass
-
-        return self._to_type(_func(self))
-
-
-class ExecutionControlPrimitives(Primitive):
-    """
-    This mixin represents the core methods for dealing with symbol execution.
-    Possible future methods could potentially include async execution, pipeline chaining, execution profiling, improved error handling, version management, embedding more complex execution control structures etc.
-    """
-
-    def analyze(self, exception: Exception, query: str | None = "", **kwargs) -> "Symbol":
-        """Uses the @core.analyze decorator, analyzes an exception and returns a symbol.
-
-        Args:
-            exception (Exception): The exception to be analyzed.
-            query (Optional[str]): An additional query to provide context during analysis. Defaults to ''.
-            **kwargs: Additional keyword arguments to pass to the core.analyze decorator.
-
-        Returns:
-            Symbol: The analyzed result as a Symbol.
-        """
-
-        @core.analyze(exception=exception, query=query, **kwargs)
-        def _func(_) -> str:
-            pass
-
-        return self._to_type(_func(self))
-
-    def simulate(self, **kwargs) -> "Symbol":
-        """
-        Uses the @core.simulate decorator, simulates the value of the symbol. Used for hypothesis testing or code simulation.
-
-        Args:
-            **kwargs: Additional keyword arguments to pass to the core.simulate decorator.
-
-        Returns:
-            Symbol: The simulated value as a Symbol.
-        """
-
-        @core.simulate(**kwargs)
-        def _func(_):
-            pass
-
-        return self._to_type(_func(self))
-
-    def sufficient(self, query: str, **kwargs) -> "Symbol":
-        """
-        Uses the @core.sufficient decorator and checks if the symbol's value is sufficient based on the query.
-
-        Args:
-            query (str): The query to verify if the symbol's value is sufficient.
-            **kwargs: Additional keyword arguments to pass to the core.sufficient decorator.
-
-        Returns:
-            Symbol: The sufficiency result as a Symbol.
-        """
-
-        @core.sufficient(query=query, **kwargs)
-        def _func(_) -> bool:
-            pass
-
-        return self._to_type(_func(self))
-
-    def list(
-        self, condition: str, **kwargs
-    ) -> "Symbol":  # @TODO: can't filter directly handle this case?
-        """
-        Uses the @core.listing decorator and lists elements based on the condition.
-
-        Args:
-            condition (str): The condition to filter the elements in the list.
-            **kwargs: Additional keyword arguments to pass to the core.listing decorator.
-
-        Returns:
-            Symbol: The filtered list as a Symbol.
-        """
-
-        @core.listing(condition=condition, **kwargs)
-        def _func(_) -> list:
-            pass
-
-        return self._to_type(_func(self))
-
-    def foreach(self, condition: str, apply: str, **kwargs) -> "Symbol":
-        """
-        Uses the @core.foreach decorator, iterates through the symbol's value, and applies the provided functionality.
-
-        Args:
-            condition (str): The condition to filter the elements in the list.
-            apply (str): The functionality to be applied to each element in the list.
-            **kwargs: Additional keyword arguments to pass to the core.foreach decorator.
-
-        Returns:
-            Symbol: The result of the iterative application of the function as a Symbol.
-        """
-
-        @core.foreach(condition=condition, apply=apply, **kwargs)
-        def _func(_):
-            pass
-
-        return self._to_type(_func(self))
-
-    def stream(self, expr: "Expression", token_ratio: float | None = 0.6, **kwargs) -> "Symbol":
-        """
-        Streams the Symbol's value through an Expression object.
-        This method divides the Symbol's value into chunks and processes each chunk through the given Expression object.
-        It is useful for processing large strings in smaller parts.
-
-        Args:
-            expr (Expression): The Expression object to evaluate the Symbol's chunks.
-            token_ratio (Optional[float]): The ratio between input-output tokens for calculating max_chars. Defaults to 0.6.
-            **kwargs: Additional keyword arguments for the given Expression.
-
-        Returns:
-            Symbol: A Symbol object containing the evaluated chunks.
-
-        Raises:
-            ValueError: If the Expression object exceeds the maximum allowed tokens.
-        """
-
-        max_context_tokens = EngineRepository.bind_property(
-            engine="neurosymbolic", property="max_context_tokens"
+        return _execute_symbol(
+            self,
+            convert_request(self, format),
+            kwargs,
         )
-        max_ctxt_tokens = int(max_context_tokens * token_ratio)
-        prev = expr(self, preview=True, **kwargs)
-        prev = str(prev)
-
-        if len(prev) > max_context_tokens:
-            n_splits = (len(prev) // max_ctxt_tokens) + 1
-
-            for i in range(n_splits):
-                tokens_sliced = self.tokens[i * max_ctxt_tokens : (i + 1) * max_ctxt_tokens]
-                r = self._to_type(self.tokenizer().decode(tokens_sliced))
-
-                yield expr(r, **kwargs)
-
-        else:
-            yield expr(self, **kwargs)
-
-
-class DictHandlingPrimitives(Primitive):
-    """
-    This mixin hosts functions that deal with dictionary operations on symbol values.
-    It can be extended in the future with more advanced dictionary methods and operations.
-    """
-
-    def dict(self, context: str, **kwargs) -> "Symbol":
-        """
-        Maps related content together under a common abstract topic as a dictionary of the Symbol value.
-        This method uses the @core.dictionary decorator to apply the given context to the Symbol.
-        It is useful for applying additional context to the symbol.
-
-        Args:
-            context (str): The context to apply to the Symbol.
-            **kwargs: Additional keyword arguments for the @core.dictionary decorator.
-
-        Returns:
-            Symbol: A Symbol object with a dictionary applied.
-        """
-
-        @core.dictionary(context=context, **kwargs)
-        def _func(_):
-            pass
-
-        return self._to_type(_func(self))
 
 
 class TemplateStylingPrimitives(Primitive):
@@ -2343,13 +2044,11 @@ class TemplateStylingPrimitives(Primitive):
     ) -> "Symbol":
         """
         Applies a template to the Symbol.
-        This method uses the @core.template decorator to apply the given template and placeholder to the Symbol.
         It is useful for providing structure to the Symbol's value.
 
         Args:
             template (str): The template to apply to the Symbol.
             placeholder (Optional[str]): The placeholder in the template to be replaced with the Symbol's value. Defaults to '{{placeholder}}'.
-            **kwargs: Additional keyword arguments for the @core.template decorator.
 
         Returns:
             Symbol: A Symbol object with a template applied.
@@ -2364,13 +2063,11 @@ class TemplateStylingPrimitives(Primitive):
     def style(self, description: str, libraries: list | None = None, **kwargs) -> "Symbol":
         """
         Applies a style to the Symbol.
-        This method uses the @core.style decorator to apply the given style description, libraries, and placeholder to the Symbol.
         It is useful for providing structure and style to the Symbol's value.
 
         Args:
             description (str): The description of the style to apply.
             libraries (Optional[List]): A list of libraries that may be included in the style. Defaults to an empty list.
-            **kwargs: Additional keyword arguments for the @core.style decorator.
 
         Returns:
             Symbol: A Symbol object with the style applied.
@@ -2378,37 +2075,11 @@ class TemplateStylingPrimitives(Primitive):
         if libraries is None:
             libraries = []
 
-        @core.style(description=description, libraries=libraries, **kwargs)
-        def _func(_):
-            pass
-
-        return self._to_type(_func(self))
-
-
-class DataClusteringPrimitives(Primitive):
-    """
-    This mixin contains functionalities that deal with clustering symbol values or generating embeddings.
-    New functionalities in this mixin might include different types of clustering and embedding methods, dimensionality reduction techniques, etc.
-    """
-
-    def cluster(self, **kwargs) -> "Symbol":
-        """
-        Creates a cluster from the Symbol's value.
-        This method uses the @core.cluster decorator to create a cluster from the Symbol's value.
-        It is useful for grouping values in the Symbol.
-
-        Args:
-            **kwargs: Additional keyword arguments for the @core.cluster decorator.
-
-        Returns:
-            Symbol: A Symbol object with its value clustered.
-        """
-
-        @core.cluster(entries=self.value, **kwargs)
-        def _func(_, error=None, stack_trace=None):
-            pass
-
-        return self._to_type(_func(self))
+        return _execute_symbol(
+            self,
+            style_request(self, description, libraries=libraries),
+            kwargs,
+        )
 
 
 class EmbeddingPrimitives(Primitive):
@@ -2516,7 +2187,6 @@ class EmbeddingPrimitives(Primitive):
     def embed(self, **kwargs) -> "Symbol":
         """
         Generates embeddings for the Symbol's value.
-        This method uses the @core.embed decorator to generate embeddings for the Symbol's value.
         If the value is not a list, it is converted to a list.
 
         Supports multimodal inputs: text (str), images (bytes/Part), and mixed content (Content).
@@ -2526,20 +2196,29 @@ class EmbeddingPrimitives(Primitive):
         library (supports 100+ formats). Users can also pass Part objects for explicit MIME type control.
 
         Args:
-            **kwargs: Additional keyword arguments for the @core.embed decorator.
 
         Returns:
             Symbol: A Symbol object with its value embedded.
         """
-        value = self.value
-        if not isinstance(value, list):
-            value = [value]
-
-        @core.embed(entries=value, **kwargs)
-        def _func(_) -> list:
-            pass
-
-        return self._to_type(_func(self))
+        values = self.value if isinstance(self.value, list) else [self.value]
+        if any(isinstance(value, (bytes, bytearray)) for value in values):
+            msg = "Embedding inputs must be text"
+            raise TypeError(msg)
+        inputs = tuple(str(value) for value in values)
+        dimensions = kwargs.pop("dimensions", None)
+        user = kwargs.pop("user", None)
+        return_metadata = kwargs.pop("return_metadata", False)
+        if kwargs:
+            names = ", ".join(sorted(kwargs))
+            msg = f"Unsupported embedding options: {names}"
+            raise TypeError(msg)
+        response = current_runtime().execute(
+            embedding_request(inputs, dimensions=dimensions, user=user)
+        )
+        result = self._to_type(parse_embedding_response(response))
+        if return_metadata:
+            return result, response.metadata
+        return result
 
     @property
     def embedding(self) -> np.array:
@@ -2785,7 +2464,6 @@ class EmbeddingPrimitives(Primitive):
             metric (Optional[str]): The metric to use for calculating the similarity. Defaults to 'cosine'.
             eps (float): A small value to avoid division by zero.
             normalize (Optional[Callable]): A function to normalize the Symbol's value before calculating the similarity. Defaults to None.
-            **kwargs: Additional keyword arguments for the @core.similarity decorator.
 
         Returns:
             float: The similarity value between the two Symbol objects.
@@ -2893,79 +2571,7 @@ class EmbeddingPrimitives(Primitive):
         return list(zip(idx, embeds, query, strict=False))
 
 
-class IOHandlingPrimitives(Primitive):
-    """
-    This mixin contains functionalities related to input/output operations.
-    """
-
-    def open(self, path: str | None = None, **kwargs) -> "Symbol":
-        """
-        Open a file and store its content in an Expression object as a string.
-
-        Args:
-            path (str): The path to the file that needs to be opened.
-            **kwargs: Arbitrary keyword arguments to be used by the core.opening decorator.
-
-        Returns:
-            Symbol: An Expression object containing the content of the file as a string value.
-
-        Examples:
-        --------
-        >>> from symai import Symbol
-        >>> s = Symbol().open('file.txt')
-
-        >>> s = Symbol('file.txt')
-        >>> s = s.open()
-
-        # Works identically for the `Expression` class
-        """
-
-        path = path if path is not None else self.value
-        if path is None:
-            msg = "Path is not provided; either provide a path or set the value of the Symbol to the path"
-            raise ValueError(msg)
-
-        @core.opening(path=path, **kwargs)
-        def _func(_):
-            pass
-
-        if hasattr(self, "sym_return_type"):
-            return self.sym_return_type(_func(self))
-        return self._to_type(_func(self))
-
-
 # @TODO: add tests
-class IndexingPrimitives(Primitive):
-    """
-    This mixin contains functionalities related to indexing symbols locally.
-    """
-
-    def config(self, path: str, index_name: str, **kwargs) -> "Symbol":
-        """Execute a configuration operation on the index."""
-
-        @core.index(prompt=path, index_name=index_name, operation="config", **kwargs)
-        def _func(_):
-            pass
-
-        return _func(self)
-
-    def add(self, doc: list[str], index_name: str, **kwargs) -> "Symbol":
-        """Add an entry to the existing index."""
-
-        @core.index(prompt=doc, index_name=index_name, operation="add", **kwargs)
-        def _func(_):
-            pass
-
-        return _func(self)
-
-    def get(self, query: list[str], index_name: str, **kwargs) -> "Symbol":
-        """Search the index based on the provided query."""
-
-        @core.index(prompt=query, index_name=index_name, operation="search", **kwargs)
-        def _func(_):
-            pass
-
-        return _func(self)
 
 
 class PersistencePrimitives(Primitive):
@@ -3021,52 +2627,3 @@ class PersistencePrimitives(Primitive):
 
 
 # @TODO: add tests
-class FineTuningPrimitives(Primitive):
-    """
-    This mixin contains functionalities related to fine tuning models.
-    """
-
-    def tune(self, operation: str = "create", **kwargs) -> "Symbol":
-        """
-        Fine tune a base model.
-
-        Args:
-            operation (str, optional): The specific operation to be performed. Defaults to 'create'.
-            **kwargs: Additional keyword arguments to be passed to the `@core.tune` decorator dependent on the used operation.
-
-        Returns:
-            Symbol: The resulting Symbol containing the fine tuned model ID.
-        """
-
-        @core.tune(operation=operation, **kwargs)
-        def _func(_, *args, **kwargs) -> str:
-            pass
-
-        return self.sym_return_type(_func(self))
-
-    @property
-    def data(self) -> np.ndarray:
-        """
-        Get the data as a NumPy array.
-
-        Returns:
-            Any: The data of the symbol.
-        """
-        # if the data is not yet computed, compute it
-        if self._metadata.data is None:
-            # compute the data and store as numpy array
-            self._metadata.data = self.embedding
-        if isinstance(self._metadata.data, np.ndarray):
-            return self._metadata.data
-        msg = f"Expected data to be a numpy array, got {type(self._metadata.data)}"
-        raise TypeError(msg)
-
-    @data.setter
-    def data(self, data: np.ndarray) -> None:
-        """
-        Set the data of the symbol.
-
-        Args:
-            data (np.ndarray): The data to set.
-        """
-        self._metadata.data = data

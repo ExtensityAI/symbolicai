@@ -16,19 +16,11 @@ SYMBOL_PRIMITIVES = [
     _primitives.ComparisonPrimitives,
     _primitives.ExpressionHandlingPrimitives,
     _primitives.DataHandlingPrimitives,
-    _primitives.UniquenessPrimitives,
     _primitives.PatternMatchingPrimitives,
-    _primitives.DictHandlingPrimitives,
     _primitives.QueryHandlingPrimitives,
-    _primitives.ExecutionControlPrimitives,
     _primitives.TemplateStylingPrimitives,
-    _primitives.DataClusteringPrimitives,
     _primitives.EmbeddingPrimitives,
-    _primitives.IndexingPrimitives,
-    _primitives.IOHandlingPrimitives,
     _primitives.PersistencePrimitives,
-    _primitives.FineTuningPrimitives,
 ]
 
-del _name
 del _primitives
