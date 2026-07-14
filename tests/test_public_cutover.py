@@ -179,13 +179,26 @@ import sys
 import warnings
 from pathlib import Path
 
-root = Path.cwd().parent
+checkout_root = Path(sys.argv[1]).resolve()
+sys.path.insert(0, str(checkout_root))
+temporary_root = Path.cwd().parent
 def tree():
-    return sorted(str(path.relative_to(root)) for path in root.rglob("*"))
+    return sorted(str(path.relative_to(temporary_root)) for path in temporary_root.rglob("*"))
+seeded_logger_levels = {
+    "symai": 7,
+    "httpx": 11,
+    "urllib3": 13,
+    "requests": 17,
+}
+for logger_name, level in seeded_logger_levels.items():
+    logging.getLogger(logger_name).setLevel(level)
 before_tree = tree()
 before_env = dict(os.environ)
 before_root = (logging.getLogger().level, tuple(logging.getLogger().handlers))
-before_symai = (logging.getLogger("symai").level, tuple(logging.getLogger("symai").handlers))
+before_loggers = {
+    name: (logging.getLogger(name).level, tuple(logging.getLogger(name).handlers))
+    for name in seeded_logger_levels
+}
 def forbidden_input(*args, **kwargs):
     raise AssertionError("import attempted to prompt")
 builtins.input = forbidden_input
@@ -196,7 +209,11 @@ result = {
     "tree_unchanged": tree() == before_tree,
     "env_unchanged": dict(os.environ) == before_env,
     "root_logger_unchanged": before_root == (logging.getLogger().level, tuple(logging.getLogger().handlers)),
-    "symai_logger_unchanged": before_symai == (logging.getLogger("symai").level, tuple(logging.getLogger("symai").handlers)),
+    "seeded_loggers_unchanged": before_loggers == {
+        name: (logging.getLogger(name).level, tuple(logging.getLogger(name).handlers))
+        for name in seeded_logger_levels
+    },
+    "resolved_symai_file": str(Path(symai.__file__).resolve()),
     "warnings": [str(item.message) for item in caught],
     "forbidden_modules": sorted(name for name in sys.modules if name in {
         "symai.backend.settings", "symai.core", "symai.functional", "symai.server",
@@ -206,9 +223,9 @@ result = {
 print(json.dumps(result))
 """
     env = os.environ.copy()
-    env.update({"HOME": str(home), "PYTHONPATH": str(ROOT)})
+    env["HOME"] = str(home)
     result = subprocess.run(
-        [sys.executable, "-I", "-c", script],
+        [sys.executable, "-I", "-c", script, str(ROOT)],
         cwd=cwd,
         env=env,
         check=True,
@@ -216,11 +233,13 @@ print(json.dumps(result))
         text=True,
     )
     observed = json.loads(result.stdout)
+    resolved_symai_file = Path(observed.pop("resolved_symai_file"))
+    assert resolved_symai_file.is_relative_to(ROOT / "symai")
     assert observed == {
         "env_unchanged": True,
         "forbidden_modules": [],
         "root_logger_unchanged": True,
-        "symai_logger_unchanged": True,
+        "seeded_loggers_unchanged": True,
         "tree_unchanged": True,
         "warnings": [],
     }
@@ -242,10 +261,11 @@ def test_deleted_production_tree_and_adapter_inventory() -> None:
     }
 
 
-def test_production_ast_has_no_legacy_graph_references() -> None:
+def _production_ast_violations(package: Path) -> list[str]:
     violations: list[str] = []
-    for path in PACKAGE.rglob("*.py"):
-        relative = path.relative_to(PACKAGE)
+    for path in package.rglob("*.py"):
+        relative = path.relative_to(package)
+        package_parts = ("symai", *relative.parts[:-1])
         tree = ast.parse(path.read_text(), filename=str(relative))
         for node in ast.walk(tree):
             if isinstance(node, ast.Name) and node.id in FORBIDDEN_IDENTIFIERS:
@@ -259,9 +279,18 @@ def test_production_ast_has_no_legacy_graph_references() -> None:
                 for alias in node.names:
                     if alias.name.startswith(FORBIDDEN_IMPORT_PREFIXES):
                         violations.append(f"{relative}:{node.lineno}: import {alias.name}")
-            elif isinstance(node, ast.ImportFrom) and node.module:
-                if node.module.startswith(FORBIDDEN_IMPORT_PREFIXES):
-                    violations.append(f"{relative}:{node.lineno}: from {node.module}")
+            elif isinstance(node, ast.ImportFrom):
+                if node.level:
+                    ancestor_count = node.level - 1
+                    base_parts = package_parts[: len(package_parts) - ancestor_count]
+                else:
+                    base_parts = ()
+                if node.module:
+                    base_parts = (*base_parts, *node.module.split("."))
+                for alias in node.names:
+                    qualified_name = ".".join((*base_parts, *alias.name.split(".")))
+                    if qualified_name.startswith(FORBIDDEN_IMPORT_PREFIXES):
+                        violations.append(f"{relative}:{node.lineno}: from import {qualified_name}")
             elif isinstance(node, ast.Constant) and isinstance(node.value, str):
                 if any(fragment in node.value for fragment in FORBIDDEN_MODULE_PATH_FRAGMENTS):
                     violations.append(f"{relative}:{node.lineno}: legacy module path string")
@@ -271,4 +300,35 @@ def test_production_ast_has_no_legacy_graph_references() -> None:
                 and node.func.attr in {"iter_modules", "walk_packages"}
             ):
                 violations.append(f"{relative}:{node.lineno}: reflective package scan")
-    assert violations == []
+    return violations
+
+
+def test_production_ast_has_no_legacy_graph_references() -> None:
+    assert _production_ast_violations(PACKAGE) == []
+
+
+def test_ast_guard_reconstructs_qualified_import_from_names(tmp_path: Path) -> None:
+    package = tmp_path / "symai"
+    backend = package / "backend"
+    runtime_package = package / "runtime"
+    backend.mkdir(parents=True)
+    runtime_package.mkdir()
+    (package / "__init__.py").write_text("")
+    (backend / "__init__.py").write_text("")
+    (runtime_package / "__init__.py").write_text("")
+    (package / "top_level.py").write_text(
+        "from symai.backend import settings\n"
+        "from symai import core, functional as legacy_functional\n"
+    )
+    (backend / "relative.py").write_text("from . import settings\nfrom .. import core\n")
+    (runtime_package / "relative.py").write_text("from ..backend import provider_engines\n")
+
+    violations = _production_ast_violations(package)
+
+    for qualified_name in (
+        "symai.backend.settings",
+        "symai.core",
+        "symai.functional",
+        "symai.backend.provider_engines",
+    ):
+        assert any(qualified_name in violation for violation in violations)
