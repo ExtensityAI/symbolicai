@@ -8,16 +8,20 @@ EngineT_co = TypeVar("EngineT_co", covariant=True)
 class EngineHandle(Generic[EngineT_co]):
     """Engine plus optional resource cleanup owned by its composition root."""
 
-    __slots__ = ("_cleanup", "_lock", "engine")
+    __slots__ = ("_cleanup", "_engine", "_lock")
 
     def __init__(
         self,
         engine: EngineT_co,
         cleanup: Callable[[], None] | None = None,
     ) -> None:
-        self.engine = engine
+        self._engine = engine
         self._cleanup = cleanup
         self._lock = Lock()
+
+    @property
+    def engine(self) -> EngineT_co:
+        return self._engine
 
     @property
     def owns_resources(self) -> bool:

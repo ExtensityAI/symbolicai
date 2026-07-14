@@ -20,6 +20,9 @@ def test_engine_handle_accepts_nonlegacy_engine_and_optional_cleanup() -> None:
     assert borrowed.engine is engine
     assert borrowed.owns_resources is False
 
+    with pytest.raises(AttributeError):
+        owned.engine = ArbitraryEngine()  # type: ignore[reportAttributeAccessIssue]
+
     owned.close()
     owned.close()
     borrowed.close()
