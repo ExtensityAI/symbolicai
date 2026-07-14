@@ -1,139 +1,433 @@
-from typing import Any
+import re
+from math import isfinite
+from types import MappingProxyType
+from typing import Never, cast
 
-from symai.backend.base import Engine
-from symai.backend.chat_prompts import render_chat_system_prompt
-from symai.backend.usage import EngineUsageRecord
+from pydantic import ValidationError
+
 from symai.clients.deepseek import chat as chat_api
-from symai.clients.deepseek.chat import (
-    ChatCompletion,
-    CreateChatCompletionRequest,
-    ReasoningEffort,
-    Thinking,
-)
+from symai.clients.deepseek import errors as deepseek_errors
 from symai.clients.deepseek.client import Client as DeepSeekClient
 from symai.clients.deepseek.transport import APIResponse
+from symai.clients.deepseek.transport import ResponseMetadata as DeepSeekResponseMetadata
+from symai.runtime.errors import (
+    AuthenticationError,
+    ErrorMetadata,
+    ExecutionError,
+    InvalidResponseError,
+    RateLimitError,
+    TransportError,
+    UnsupportedFeatureError,
+    UnsupportedModelError,
+)
+from symai.runtime.models import (
+    AssistantOutputMessage,
+    ContentType,
+    DeveloperMessage,
+    FinishReason,
+    ImageContent,
+    JsonObjectResponseFormat,
+    JsonSchemaResponseFormat,
+    LanguageModelOutput,
+    LanguageModelRequest,
+    LanguageModelResponse,
+    LanguageModelSpec,
+    Message,
+    MessageRole,
+    Provider,
+    ReasoningEffort,
+    ReasoningField,
+    ResponseFormatType,
+    ResponseMetadata,
+    SamplingField,
+    SystemMessage,
+    TextContent,
+    TokenUsage,
+    UserMessage,
+)
+
+_DEEPSEEK_MESSAGE_ROLES = (
+    MessageRole.SYSTEM,
+    MessageRole.USER,
+    MessageRole.ASSISTANT,
+)
+_DEEPSEEK_RESPONSE_FORMATS = (
+    ResponseFormatType.TEXT,
+    ResponseFormatType.JSON_OBJECT,
+)
+_DEEPSEEK_REASONING_FIELDS = (
+    ReasoningField.ENABLED,
+    ReasoningField.EFFORT,
+)
+_DEEPSEEK_REASONING_EFFORTS = (
+    ReasoningEffort.LOW,
+    ReasoningEffort.MEDIUM,
+    ReasoningEffort.HIGH,
+    ReasoningEffort.XHIGH,
+    ReasoningEffort.MAX,
+)
+_REASONING_EFFORT_MAP = MappingProxyType(
+    {
+        ReasoningEffort.LOW: chat_api.ReasoningEffort.HIGH,
+        ReasoningEffort.MEDIUM: chat_api.ReasoningEffort.HIGH,
+        ReasoningEffort.HIGH: chat_api.ReasoningEffort.HIGH,
+        ReasoningEffort.XHIGH: chat_api.ReasoningEffort.MAX,
+        ReasoningEffort.MAX: chat_api.ReasoningEffort.MAX,
+    }
+)
+_DEEPSEEK_SAMPLING_FIELDS = (
+    SamplingField.MAX_TOKENS,
+    SamplingField.TEMPERATURE,
+    SamplingField.TOP_P,
+    SamplingField.STOP,
+    SamplingField.LOGPROBS,
+    SamplingField.TOP_LOGPROBS,
+)
+_USER_ID_PATTERN = re.compile(r"[A-Za-z0-9_-]+")
 
 
-class LanguageModelEngine(Engine):
-    provider = "deepseek"
-    capability = "language_model"
+def _normalized_model_spec(spec: chat_api.ModelSpec) -> LanguageModelSpec:
+    reasoning = spec.reasoning
+    return LanguageModelSpec(
+        context_tokens=spec.context_tokens,
+        response_tokens=spec.response_tokens,
+        message_roles=_DEEPSEEK_MESSAGE_ROLES,
+        content_types=(ContentType.TEXT,),
+        response_formats=_DEEPSEEK_RESPONSE_FORMATS,
+        reasoning_fields=_DEEPSEEK_REASONING_FIELDS if reasoning is not None else (),
+        reasoning_efforts=_DEEPSEEK_REASONING_EFFORTS if reasoning is not None else (),
+        sampling_fields=_DEEPSEEK_SAMPLING_FIELDS,
+        vision=False,
+    )
 
-    def __init__(self, *, client: DeepSeekClient, model: chat_api.Model):
-        super().__init__()
+
+MODEL_SPECS = MappingProxyType(
+    {model: _normalized_model_spec(spec) for model, spec in chat_api.MODEL_SPECS.items()}
+)
+
+_FINISH_REASONS = MappingProxyType(
+    {
+        "stop": FinishReason.STOP,
+        "length": FinishReason.LENGTH,
+        "content_filter": FinishReason.CONTENT_FILTER,
+        "insufficient_system_resource": FinishReason.ERROR,
+    }
+)
+
+
+class LanguageModelEngine:
+    provider = Provider.DEEPSEEK
+
+    def __init__(self, *, client: DeepSeekClient, model: str) -> None:
         try:
-            self.model_spec = chat_api.MODEL_SPECS[model]
-        except KeyError as e:
-            msg = f"Unsupported model: {model}"
-            raise ValueError(msg) from e
+            model_spec = MODEL_SPECS[model]
+        except KeyError as error:
+            msg = f"Unsupported DeepSeek language model: {model}"
+            raise UnsupportedModelError(msg) from error
 
-        self.client = client
-        self.model = model
-        self.name = self.__class__.__name__
-        self.tokenizer = None
-        self.max_context_tokens = self.model_spec.context_tokens
+        self._client = client
+        self._model: chat_api.Model = cast("chat_api.Model", model)
+        self._model_spec = model_spec
 
-    def compute_required_tokens(self, _messages: list[dict[str, Any]]) -> int:
-        msg = 'Method "compute_required_tokens" not implemented for LanguageModelEngine.'
-        raise NotImplementedError(msg)
+    @property
+    def model(self) -> chat_api.Model:
+        return self._model
 
-    def compute_remaining_tokens(self, _prompts: list[dict[str, Any]]) -> int:
-        msg = 'Method "compute_remaining_tokens" not implemented for LanguageModelEngine.'
-        raise NotImplementedError(msg)
+    @property
+    def model_spec(self) -> LanguageModelSpec:
+        return self._model_spec
 
-    def build_request(self, argument) -> CreateChatCompletionRequest:
-        unsupported = {"stream", "stream_options", "tools", "tool_choice"} & set(argument.kwargs)
-        if unsupported:
-            msg = (
-                "DeepSeek integration does not support these request options: "
-                f"{sorted(unsupported)}"
-            )
-            raise ValueError(msg)
+    def execute(self, request: LanguageModelRequest) -> LanguageModelResponse:
+        provider_request = self._build_request(request)
+        try:
+            response = self._client.create_chat_completion(provider_request)
+        except deepseek_errors.AuthError as error:
+            metadata = self._error_metadata(error.metadata)
+            msg = "DeepSeek rejected authentication"
+            raise AuthenticationError(msg, metadata=metadata) from error
+        except deepseek_errors.RateLimitError as error:
+            metadata = self._error_metadata(error.metadata)
+            msg = "DeepSeek rate-limited the request"
+            raise RateLimitError(msg, metadata=metadata) from error
+        except deepseek_errors.ResponseError as error:
+            metadata = self._error_metadata(error.metadata)
+            msg = "DeepSeek returned an invalid response"
+            raise InvalidResponseError(msg, metadata=metadata) from error
+        except deepseek_errors.TransportError as error:
+            metadata = ErrorMetadata(provider=self.provider, model=self.model)
+            msg = "DeepSeek transport failed"
+            raise TransportError(msg, metadata=metadata) from error
+        except deepseek_errors.APIError as error:
+            metadata = self._error_metadata(error.metadata)
+            msg = f"DeepSeek API request failed with status {error.metadata.status_code}"
+            raise ExecutionError(msg, metadata=metadata) from error
 
-        request_kwargs = set(CreateChatCompletionRequest.model_fields) - {"messages", "model"}
-        payload = self.collect_request_kwargs(argument, request_kwargs)
-        if isinstance(payload.get("thinking"), dict):
-            payload["thinking"] = Thinking.model_validate(payload["thinking"], strict=False)
-        if isinstance(payload.get("reasoning_effort"), str):
-            payload["reasoning_effort"] = ReasoningEffort(payload["reasoning_effort"])
-        payload["model"] = self.model
-        payload["messages"] = tuple(argument.prop.prepared_input)
-        return CreateChatCompletionRequest.model_validate(payload)
+        return self._parse_response(response)
 
-    def forward(self, argument):  # pyright: ignore[reportIncompatibleMethodOverride]
-        request = self.build_request(argument)
-        response = self.call_request(request)
-        return self.parse_response(response)
-
-    def call_request(self, request: CreateChatCompletionRequest) -> APIResponse[ChatCompletion]:
-        return self.client.create_chat_completion(request)
-
-    def parse_response(self, response: APIResponse[ChatCompletion]):
-        raw_output = response.data
-        choice = raw_output.choices[0]
-        reasoning_content = choice.message.reasoning_content
-        content = choice.message.content or ""
-        metadata = {
-            "raw_output": raw_output,
-            "response": response,
-            "thinking": reasoning_content,
-        }
-
-        return [content], metadata
-
-    def usage_record_from_metadata(self, metadata: dict) -> EngineUsageRecord:
-        usage = metadata["raw_output"].usage
-        completion_details = usage.completion_tokens_details
-        reasoning_tokens = (
-            completion_details.reasoning_tokens if completion_details is not None else 0
+    def _build_request(self, request: LanguageModelRequest) -> chat_api.CreateChatCompletionRequest:
+        self._validate_request(request)
+        reasoning = request.reasoning
+        sampling = request.sampling
+        return chat_api.CreateChatCompletionRequest(
+            messages=tuple(self._message(message) for message in request.messages),
+            model=self.model,
+            thinking=(
+                chat_api.Thinking(
+                    type=(
+                        chat_api.ThinkingType.ENABLED
+                        if reasoning.enabled
+                        else chat_api.ThinkingType.DISABLED
+                    )
+                )
+                if reasoning is not None and reasoning.enabled is not None
+                else None
+            ),
+            reasoning_effort=(
+                _REASONING_EFFORT_MAP[reasoning.effort]
+                if reasoning is not None and reasoning.effort is not None
+                else None
+            ),
+            max_tokens=sampling.max_tokens,
+            response_format=self._response_format(request),
+            stop=sampling.stop or None,
+            temperature=sampling.temperature,
+            top_p=sampling.top_p,
+            logprobs=sampling.logprobs,
+            top_logprobs=sampling.top_logprobs,
+            user_id=request.user,
         )
 
-        return EngineUsageRecord(
+    def _validate_request(self, request: LanguageModelRequest) -> None:
+        if request.metadata:
+            self._unsupported("DeepSeek does not support normalized request metadata")
+        if isinstance(request.response_format, JsonSchemaResponseFormat):
+            self._unsupported("DeepSeek does not support JSON Schema response format")
+        if request.user is not None and (
+            len(request.user) > 512 or _USER_ID_PATTERN.fullmatch(request.user) is None
+        ):
+            self._unsupported(
+                "DeepSeek user identifiers may contain only ASCII letters, digits, underscores, "
+                "and hyphens and must not exceed 512 characters"
+            )
+
+        for message in request.messages:
+            if isinstance(message, DeveloperMessage):
+                self._unsupported("DeepSeek does not support developer messages")
+            if any(isinstance(content, ImageContent) for content in message.content):
+                self._unsupported("DeepSeek does not support image content")
+            if (
+                not isinstance(message, (SystemMessage, UserMessage))
+                and message.reasoning is not None
+            ):
+                self._unsupported(
+                    "DeepSeek does not support normalized assistant reasoning prefixes"
+                )
+
+        reasoning = request.reasoning
+        if reasoning is not None:
+            if reasoning.summary is not None:
+                self._unsupported("DeepSeek reasoning does not support normalized summaries")
+            if reasoning.format is not None:
+                self._unsupported("DeepSeek reasoning does not support normalized formats")
+            if reasoning.clear is not None:
+                self._unsupported("DeepSeek reasoning does not support normalized clear behavior")
+            if (
+                reasoning.effort is not None
+                and reasoning.effort not in self.model_spec.reasoning_efforts
+            ):
+                self._unsupported(
+                    f"DeepSeek model {self.model} does not support reasoning effort "
+                    f"{reasoning.effort.value}"
+                )
+            if reasoning.enabled is False and reasoning.effort is not None:
+                self._unsupported(
+                    "DeepSeek reasoning effort cannot be set when thinking is disabled"
+                )
+
+        sampling = request.sampling
+        unsupported_sampling = (
+            ("seed", sampling.seed),
+            ("frequency_penalty", sampling.frequency_penalty),
+            ("presence_penalty", sampling.presence_penalty),
+        )
+        for field, value in unsupported_sampling:
+            if value is not None:
+                self._unsupported(f"DeepSeek does not support normalized {field}")
+        if sampling.logit_bias:
+            self._unsupported("DeepSeek does not support normalized logit bias")
+        if (request.reasoning is None or request.reasoning.enabled is not False) and (
+            sampling.temperature is not None or sampling.top_p is not None
+        ):
+            self._unsupported(
+                "DeepSeek ignores temperature and top_p unless thinking is explicitly disabled"
+            )
+        if (
+            sampling.max_tokens is not None
+            and sampling.max_tokens > self.model_spec.response_tokens
+        ):
+            self._unsupported(
+                f"DeepSeek model {self.model} supports at most "
+                f"{self.model_spec.response_tokens} output tokens"
+            )
+        if len(sampling.stop) > 16:
+            self._unsupported("DeepSeek supports at most sixteen stop sequences")
+        if sampling.top_logprobs is not None and sampling.logprobs is not True:
+            self._unsupported("DeepSeek top_logprobs requires logprobs to be true")
+
+    @staticmethod
+    def _message(message: Message) -> chat_api.Message:
+        parts: list[str] = []
+        for part in message.content:
+            if isinstance(part, ImageContent):
+                LanguageModelEngine._unsupported("DeepSeek does not support image content")
+            parts.append(part.text)
+        content = "".join(parts)
+        if isinstance(message, SystemMessage):
+            return chat_api.SystemMessage(role="system", content=content)
+        if isinstance(message, UserMessage):
+            return chat_api.UserMessage(role="user", content=content)
+        return chat_api.AssistantMessage(role="assistant", content=content)
+
+    @staticmethod
+    def _response_format(
+        request: LanguageModelRequest,
+    ) -> chat_api.ResponseFormat | None:
+        if isinstance(request.response_format, JsonObjectResponseFormat):
+            return chat_api.JsonObjectResponseFormat(type="json_object")
+        return None
+
+    def _parse_response(
+        self,
+        response: APIResponse[chat_api.ChatCompletion],
+    ) -> LanguageModelResponse:
+        raw = response.data
+        error_metadata = self._error_metadata(response.metadata)
+        if raw.model != self.model:
+            msg = "DeepSeek response model did not match the request"
+            raise InvalidResponseError(msg, metadata=error_metadata)
+        if not raw.choices:
+            msg = "DeepSeek response did not contain choices"
+            raise InvalidResponseError(msg, metadata=error_metadata)
+
+        try:
+            metadata = self._response_metadata(response)
+            seen_indices: set[int] = set()
+            outputs: list[LanguageModelOutput] = []
+            for choice in raw.choices:
+                if choice.index < 0:
+                    msg = "DeepSeek choice index was negative"
+                    raise InvalidResponseError(msg, metadata=error_metadata)
+                if choice.index in seen_indices:
+                    msg = "DeepSeek response contained duplicate choice indices"
+                    raise InvalidResponseError(msg, metadata=error_metadata)
+                seen_indices.add(choice.index)
+                outputs.append(self._output(choice, error_metadata))
+            outputs.sort(key=lambda output: output.index)
+            return LanguageModelResponse(outputs=tuple(outputs), metadata=metadata)
+        except (TypeError, ValidationError) as error:
+            msg = "DeepSeek response could not become a normalized language response"
+            raise InvalidResponseError(msg, metadata=error_metadata) from error
+
+    @staticmethod
+    def _output(
+        choice: chat_api.Choice,
+        error_metadata: ErrorMetadata,
+    ) -> LanguageModelOutput:
+        if choice.message.role != "assistant":
+            msg = "DeepSeek choice message was not an assistant message"
+            raise InvalidResponseError(msg, metadata=error_metadata)
+        finish_reason_value = choice.finish_reason
+        if finish_reason_value not in _FINISH_REASONS:
+            msg = "DeepSeek response contained an unsupported finish reason"
+            raise InvalidResponseError(msg, metadata=error_metadata)
+        return LanguageModelOutput(
+            index=choice.index,
+            message=AssistantOutputMessage(
+                content=(TextContent(text=choice.message.content),)
+                if choice.message.content is not None
+                else (),
+                reasoning=(
+                    TextContent(text=choice.message.reasoning_content)
+                    if choice.message.reasoning_content
+                    else None
+                ),
+            ),
+            finish_reason=_FINISH_REASONS[finish_reason_value],
+        )
+
+    def _response_metadata(
+        self,
+        response: APIResponse[chat_api.ChatCompletion],
+    ) -> ResponseMetadata:
+        raw = response.data
+        return ResponseMetadata(
+            provider=self.provider,
+            model=self.model,
+            status_code=response.metadata.status_code,
+            request_id=response.metadata.request_id,
+            retry_after=self._retry_after(response.metadata.retry_after),
+            response_id=raw.id,
+            created_at=raw.created,
+            system_fingerprint=raw.system_fingerprint,
+            usage=self._usage(raw.usage, response.metadata),
+        )
+
+    def _usage(
+        self,
+        usage: chat_api.Usage,
+        metadata: DeepSeekResponseMetadata,
+    ) -> TokenUsage:
+        error_metadata = self._error_metadata(metadata)
+        if min(usage.prompt_tokens, usage.completion_tokens, usage.total_tokens) < 0:
+            msg = "DeepSeek token usage was negative"
+            raise InvalidResponseError(msg, metadata=error_metadata)
+        if usage.total_tokens != usage.prompt_tokens + usage.completion_tokens:
+            msg = "DeepSeek token usage was inconsistent"
+            raise InvalidResponseError(msg, metadata=error_metadata)
+
+        cache_hit = usage.prompt_cache_hit_tokens
+        cache_miss = usage.prompt_cache_miss_tokens
+        if cache_hit is not None and (cache_hit < 0 or cache_hit > usage.prompt_tokens):
+            msg = "DeepSeek cache token usage was inconsistent"
+            raise InvalidResponseError(msg, metadata=error_metadata)
+        if cache_miss is not None and (cache_miss < 0 or cache_miss > usage.prompt_tokens):
+            msg = "DeepSeek cache token usage was inconsistent"
+            raise InvalidResponseError(msg, metadata=error_metadata)
+        if (
+            cache_hit is not None
+            and cache_miss is not None
+            and cache_hit + cache_miss != usage.prompt_tokens
+        ):
+            msg = "DeepSeek cache token usage was inconsistent"
+            raise InvalidResponseError(msg, metadata=error_metadata)
+
+        completion_details = usage.completion_tokens_details
+        reasoning = completion_details.reasoning_tokens if completion_details is not None else None
+        if reasoning is not None and (reasoning < 0 or reasoning > usage.completion_tokens):
+            msg = "DeepSeek reasoning token usage was inconsistent"
+            raise InvalidResponseError(msg, metadata=error_metadata)
+
+        return TokenUsage(
             prompt_tokens=usage.prompt_tokens,
             completion_tokens=usage.completion_tokens,
             total_tokens=usage.total_tokens,
-            completion_breakdown={"reasoning_tokens": reasoning_tokens or 0},
+            cached_prompt_tokens=cache_hit or 0,
+            cache_miss_prompt_tokens=cache_miss or 0,
+            reasoning_tokens=reasoning or 0,
         )
 
-    def prepare(self, argument):
-        if argument.prop.raw_input:
-            argument.prop.prepared_input = self._prepare_raw_input(argument)
-            return
+    def _error_metadata(self, metadata: DeepSeekResponseMetadata) -> ErrorMetadata:
+        return ErrorMetadata(
+            provider=self.provider,
+            model=self.model,
+            request_id=metadata.request_id,
+            retry_after=self._retry_after(metadata.retry_after),
+        )
 
-        system = render_chat_system_prompt(argument)
-        user_prompt = self._build_user_prompt(argument)
-        system, user_prompt = self._apply_self_prompt(argument, system, user_prompt)
+    @staticmethod
+    def _retry_after(value: float | None) -> float | None:
+        return value if value is not None and value >= 0 and isfinite(value) else None
 
-        argument.prop.prepared_input = [
-            {"role": "system", "content": system},
-            user_prompt,
-        ]
-
-    def _apply_self_prompt(self, argument, system, user_prompt):
-        prop = argument.prop
-        if prop.instance._kwargs.get("self_prompt", False) or prop.self_prompt:
-            res = self.self_prompt({"user": user_prompt["content"], "system": system})
-            if res is None:
-                msg = "Self-prompting failed for the DeepSeek language-model engine."
-                raise ValueError(msg)
-
-            user_prompt = {"role": "user", "content": res["user"]}
-            system = res["system"]
-
-        return system, user_prompt
-
-    def _prepare_raw_input(self, argument):
-        value = argument.prop.processed_input
-        if not value:
-            msg = (
-                "A prompt instruction is required for the DeepSeek language-model engine "
-                "when raw_input is enabled."
-            )
-            raise ValueError(msg)
-        if isinstance(value, list):
-            return value
-        if isinstance(value, dict):
-            return [value]
-        return [{"role": "user", "content": str(value)}]
-
-    def _build_user_prompt(self, argument):
-        return {"role": "user", "content": f"{argument.prop.processed_input!s}"}
+    @staticmethod
+    def _unsupported(message: str) -> Never:
+        raise UnsupportedFeatureError(message)

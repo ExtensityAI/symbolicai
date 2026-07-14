@@ -148,6 +148,6 @@ class ChatCompletion(TolerantModel):
     choices: tuple[Choice, ...]
     created: int
     model: str
-    object: str
+    object: Literal["chat.completion"]
     system_fingerprint: str | None = None
     usage: Usage
