@@ -1,93 +1,111 @@
-# Quick Start Guide
+# Quickstart
 
-This guide will help you get started with SymbolicAI, demonstrating basic usage and key features.
+A SymbolicAI application chooses a provider and unqualified model ID explicitly, builds normalized requests, and owns the runtime lifetime.
 
-**Note**: the most accurate documentation is the _code_, so be sure to check out the tests. Look for the `mandatory` mark since those are the features that were tested and are guaranteed to work.
+## Configure OpenAI
 
-For more detailed information about usage, refer to the materials available [here](https://extensityai.gitbook.io/symbolicai/features/contracts) and [here](https://extensityai.gitbook.io/symbolicai/features/primitives).
-
-To start, import the library by using:
+The application may obtain credentials from any source. This example reads its own environment and passes the value into `ProviderEngineConfig`:
 
 ```python
-from symai import Symbol
+import os
+
+from pydantic import SecretStr
+
+from symai import (
+    LanguageModelRequest,
+    Provider,
+    ProviderEngineConfig,
+    RuntimeConfig,
+    TextContent,
+    UserMessage,
+    create_runtime,
+)
+
+config = RuntimeConfig(
+    language_model=ProviderEngineConfig(
+        provider=Provider.OPENAI,
+        model="gpt-5.4",
+        api_key=SecretStr(os.environ["OPENAI_API_KEY"]),
+    ),
+)
+request = LanguageModelRequest(
+    messages=(UserMessage(content=(TextContent(text="Say hello in German."),)),),
+)
+
+
+def generate() -> str:
+    with create_runtime(config) as runtime:
+        response = runtime.execute(request)
+        return response.outputs[0].text
 ```
 
-## Creating and Manipulating Symbols
+Call `generate()` when the application is ready to make the HTTP request. `runtime.execute` accepts the normalized `LanguageModelRequest` and returns a normalized `LanguageModelResponse`; the text accessor is `response.outputs[0].text`.
 
-Our `Symbolic API` is based on object-oriented and compositional design patterns. The `Symbol` class serves as the base class for all functional operations, and in the context of symbolic programming (fully resolved expressions), we refer to it as a terminal symbol. The Symbol class contains helpful operations that can be interpreted as expressions to manipulate its content and evaluate new Symbols `<class 'symai.symbol.Symbol'>`.
+## Choose another language provider
+
+Only the provider configuration changes. Cerebras and DeepSeek use the same request and response models:
 
 ```python
-# Create a Symbol
-S = Symbol("Welcome to our tutorial.")
-# Translate the Symbol
-print(S.translate('German')) # Output: Willkommen zu unserem Tutorial.
+import os
+
+from pydantic import SecretStr
+
+from symai import Provider, ProviderEngineConfig, RuntimeConfig
+
+cerebras_config = RuntimeConfig(
+    language_model=ProviderEngineConfig(
+        provider=Provider.CEREBRAS,
+        model="gpt-oss-120b",
+        api_key=SecretStr(os.environ["CEREBRAS_API_KEY"]),
+    ),
+)
+deepseek_config = RuntimeConfig(
+    language_model=ProviderEngineConfig(
+        provider=Provider.DEEPSEEK,
+        model="deepseek-v4-flash",
+        api_key=SecretStr(os.environ["DEEPSEEK_API_KEY"]),
+    ),
+)
 ```
 
-### Ranking Objects
+Model IDs are unqualified because the `provider` field already selects the adapter.
 
-Our API can also execute basic data-agnostic operations like `filter`, `rank`, or `extract` patterns. For instance, we can rank a list of numbers:
+## Add OpenAI embeddings
+
+A runtime may own both a language model and an embedding engine. The embedding request is normalized in the same way:
 
 ```python
-# Ranking objects
-import numpy as np
+import os
 
-S = Symbol(np.array([1, 2, 3, 4, 5, 6, 7]))
-print(S.rank(measure='numerical', order='descending')) # Output: ['7', '6', '5', '4', '3', '2', '1']
+from pydantic import SecretStr
+
+from symai import (
+    EmbeddingRequest,
+    Provider,
+    ProviderEngineConfig,
+    RuntimeConfig,
+    create_runtime,
+)
+
+embedding_config = RuntimeConfig(
+    embedding=ProviderEngineConfig(
+        provider=Provider.OPENAI,
+        model="text-embedding-3-small",
+        api_key=SecretStr(os.environ["OPENAI_API_KEY"]),
+    ),
+)
+embedding_request = EmbeddingRequest(
+    inputs=("first", "second"),
+    dimensions=512,
+)
+
+
+def embed() -> tuple[float, ...]:
+    with create_runtime(embedding_config) as runtime:
+        response = runtime.execute(embedding_request)
+        return response.vectors[0].values
 ```
 
-### Evaluating Expressions
+Call `embed()` to execute the request. The runtime closes its owned HTTP transport when the context exits, including when execution raises an exception.
 
-Evaluations are resolved in the language domain and by best effort. We showcase this on the example of [word2vec](https://arxiv.org/abs/1301.3781).
-
-**Word2Vec** generates dense vector representations of words by training a shallow neural network to predict a word based on its neighbors in a text corpus. These resulting vectors are then employed in numerous natural language processing applications, such as sentiment analysis, text classification, and clustering.
-
-In the example below, we can observe how operations on word embeddings (colored boxes) are performed. Words are tokenized and mapped to a vector space where semantic operations can be executed using vector arithmetic.
-
-<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/artifacts/images/img3.png" width="450px">
-
-Similar to word2vec, we aim to perform contextualized operations on different symbols. However, as opposed to operating in vector space, we work in the natural language domain. This provides us the ability to perform arithmetic on words, sentences, paragraphs, etc., and verify the results in a human-readable format.
-
-The following examples display how to evaluate such an expression using a string representation:
-
-```python
-# Word analogy
-S = Symbol('King - Man + Women').interpret()
-print(S)  # Output: Queen
-```
-
-### Dynamic Casting
-
-We can also subtract sentences from one another, where our operations condition the neural computation engine to evaluate the Symbols by their best effort. In the subsequent example, it identifies that the word `enemy` is present in the sentence, so it deletes it and replaces it with the word `friend` (which is added):
-
-```python
-# Sentence manipulation
-S = Symbol('Hello my enemy').sem - 'enemy' + 'friend'
-print(S)  # Output: Hello my friend
-```
-
-Additionally, the API performs dynamic casting when data types are combined with a Symbol object. If an overloaded operation of the Symbol class is employed, the Symbol class can automatically cast the second object to a Symbol. This is a convenient way to perform operations between `Symbol` objects and other data types, such as strings, integers, floats, lists, etc., without cluttering the syntax.
-
-### Probabilistic Programming
-
-In this example, we perform a fuzzy comparison between two numerical objects. The `Symbol` variant is an approximation of `numpy.pi`. Despite the approximation, the fuzzy equals `==` operation still successfully compares the two values and returns `True`.
-
-```python
-# Fuzzy comparison
-# # Fuzzy comparison
-S = Symbol('3.14159...', semantic=True)
-print(S == 'π')  # Output: True
-```
-
-### 🧠 Causal Reasoning
-
-The main goal of our framework is to enable reasoning capabilities on top of the statistical inference of Language Models (LMs). As a result, our `Symbol` objects offers operations to perform deductive reasoning expressions. One such operation involves defining rules that describe the causal relationship between symbols. The following example demonstrates how the `&` operator is overloaded to compute the logical implication of two symbols.
-
-```python
-S1 = Symbol('The horn only sounds on Sundays.', semantic=True)
-S2 = Symbol('I hear the horn.')
-res = S1 & S2 # Therefore, it is Sunday.
-```
-
-### 🪜 Next Steps
-Read SymbolicAI's DeepWiki [page](https://deepwiki.com/ExtensityAI/symbolicai/) for a generated
-code tour, and check out our [paper](https://arxiv.org/abs/2402.00854) for the framework design.
+See [Runtime and Providers](RUNTIME.md) for catalogs and request validation, and [OpenAI Embeddings](EMBEDDINGS.md) for dimension rules.

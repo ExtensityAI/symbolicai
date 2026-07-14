@@ -1,25 +1,7 @@
 # Summary
 
-* [Introduction](INTRODUCTION.md)
-* [Installation](INSTALLATION.md)
-* [Quick Start Guide](QUICKSTART.md)
-
-## Engines
-* [Neuro-Symbolic Engine](ENGINES/neurosymbolic_engine.md)
-* [Custom Engine](ENGINES/custom_engine.md)
-* [Drawing Engine](ENGINES/drawing_engine.md)
-* [Embedding Engine](ENGINES/embedding_engine.md)
-* [File Engine](ENGINES/file_engine.md)
-* [Formal Engine](ENGINES/formal_engine.md)
-* [Indexing Engine](ENGINES/indexing_engine.md)
-* [Local Engine](ENGINES/local_engine.md)
-* [OCR Engine](ENGINES/ocr_engine.md)
-* [Search Engine](ENGINES/search_engine.md)
-* [Speech-to-Text Engine](ENGINES/speech_to_text_engine.md)
-* [Symbolic Engine](ENGINES/symbolic_engine.md)
-* [Scrape Engine](ENGINES/scrape_engine.md)
-
-## Features
-* [Contracts](FEATURES/contracts.md)
-* [Primitives](FEATURES/primitives.md)
-* [Prompt Registry](FEATURES/prompt_registry.md)
+- [Introduction](INTRODUCTION.md)
+- [Installation](INSTALLATION.md)
+- [Quickstart](QUICKSTART.md)
+- [Runtime and Providers](RUNTIME.md)
+- [OpenAI Embeddings](EMBEDDINGS.md)

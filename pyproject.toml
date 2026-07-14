@@ -5,16 +5,6 @@ build-backend = "uv_build"
 [tool.uv]
 package = true
 required-version = ">=0.9.17"
-exclude-newer = "7 days"
-exclude-newer-package = { torch = false } # pytorch index lacks upload timestamps
-
-[[tool.uv.index]]
-name = "pytorch-cpu"
-url = "https://download.pytorch.org/whl/cpu"
-explicit = true
-
-[tool.uv.sources]
-torch = { index = "pytorch-cpu" }
 
 [project]
 name = "symbolicai"
@@ -23,10 +13,10 @@ authors = [
     { name = "Marius-Constantin Dinu", email = "marius@extensity.ai" },
     { name = "Leoveanu-Condrei Claudiu", email = "leo@extensity.ai" },
 ]
-description = "A Neurosymbolic Perspective on Large Language Models"
+description = "Explicit typed runtimes for OpenAI, Cerebras, and DeepSeek language models and OpenAI embeddings"
 readme = "README.md"
 requires-python = ">=3.11"
-keywords = ["probabilistic programming", "machine learning"]
+keywords = ["large language models", "embeddings", "openai", "cerebras", "deepseek"]
 license = "BSD-3-Clause"
 license-files = ["LICENSE"]
 classifiers = [
@@ -35,70 +25,11 @@ classifiers = [
 ]
 dependencies = [
     "numpy>=1.26.4,<=2.1.3",
-    "tqdm>=4.66.3",
-    "openai>=1.60.0",
-    "anthropic>=0.87.0",
-    "google-genai>=1.16.1",
-    "tiktoken>=0.8.0",
-    "pillow>=10.0.0",
-    "beartype>=0.18.2",
     "pydantic>=2.8.2",
     "jinja2>=3.1.0",
-    "markitdown[docx,outlook,pdf,pptx,xls,xlsx]",
-    "filetype>=1.2.0",
     "python-box>=7.1.1",
     "httpx>=0.28.1",
 ]
-
-[project.optional-dependencies]
-bitsandbytes = [
-    "bitsandbytes>=0.43.1",
-] # handle separately because of Apple Silicon
-hf = [
-    "torch<2.10.0", # required by Hugging Face local model extras
-    "transformers>=4.45.2",
-    "accelerate>=0.33.0",
-    "peft>=0.13.1",
-    "datasets>=3.0.1",
-    "trl>=0.11.3",
-    "sentencepiece>=0.2.0",
-    "sentence-transformers>=2.5.1",
-]
-scrape = [
-    "beautifulsoup4>=4.12.3",
-    "trafilatura>=2.0.0",
-    "pdfminer.six",
-    "playwright>=1.45.0",
-    "parallel-web>=1.0.1",
-]
-# NOTE: vllm is a bring-your-own dependency (same pattern as llama.cpp's --cpp-server-path).
-#       Users clone + build vLLM in its own venv and pass --vllm-python-path to symserver.
-#       See docs/source/ENGINES/local_engine.md.
-wolframalpha = ["wolframalpha>=5.0.0"]
-lean = ["docker>=7.0.0", "axiom-axle>=1.0.0"]
-whisper = ["torch<2.10.0", "openai-whisper>=20240930", "numba>=0.62.1", "llvmlite>=0.45.1"]
-video = ["opencv-python>=4.8.1.78"]
-search = ["firecrawl-py>=4.12.0", "parallel-web>=1.0.1", "tldextract>=5.1.0"]
-ocr = ["mistralai>=1.0.0"]
-services = ["fastapi>=0.110.0", "redis>=5.0.2", "uvicorn>=0.27.1"]
-solver = ["z3-solver>=4.12.6.0"]
-qdrant = ["qdrant-client", "chonkie>=0.4.1", "tokenizers"]
-cluster = ["scikit-learn>=1.7.0"]
-all = [
-    "symbolicai[hf]",
-    "symbolicai[wolframalpha]",
-    "symbolicai[whisper]",
-    "symbolicai[video]",
-    "symbolicai[scrape]",
-    "symbolicai[search]",
-    "symbolicai[services]",
-    "symbolicai[solver]",
-    "symbolicai[qdrant]",
-    "symbolicai[lean]",
-    "symbolicai[ocr]",
-    "symbolicai[cluster]",
-]
-dev = ["pytest-asyncio>=1.3.0", "pytest-xdist>=3.6.0"]
 
 [tool.uv.build-backend]
 module-name = "symai"
@@ -121,7 +52,7 @@ source-exclude = [
 ]
 
 [dependency-groups]
-dev = ["ruff>=0.14.4", "pytest>=8.3.1", "pytest-asyncio>=1.3.0", "pytest-xdist>=3.6.0"]
+dev = ["ruff>=0.14.4", "pytest>=8.3.1", "pytest-xdist>=3.6.0"]
 
 [project.urls]
 "Homepage" = "https://extensity.ai"

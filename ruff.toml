@@ -28,12 +28,11 @@ exclude = [
     "site-packages",
     "venv",
     "scripts",
-    "tests"
 ]
 
 line-length = 100
 indent-width = 4
-target-version = "py310"
+target-version = "py311"
 
 [lint]
 # Rules URL: https://docs.astral.sh/ruff/rules
@@ -60,15 +59,6 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [lint.flake8-tidy-imports]
 ban-relative-imports = "all"
-
-[lint.per-file-ignores]
-# Intentional user-facing stdout output (config inspector, contract perf report,
-# Conversation auto_print, solver CLI result, engine time_clock/verbose toggles)
-"symai/__init__.py" = ["T201"]
-"symai/strategy.py" = ["T201"]
-"symai/backend/base.py" = ["T201"]
-"symai/extended/conversation.py" = ["T201"]
-"symai/extended/solver.py" = ["T201"]
 
 [format]
 quote-style = "double"
