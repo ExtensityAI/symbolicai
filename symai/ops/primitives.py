@@ -1,11 +1,10 @@
 import ast
-import logging
 import numbers
 import pickle
 import uuid
 from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, Union
+from typing import TYPE_CHECKING, Any, Literal, Protocol, Self, overload
 
 import numpy as np
 
@@ -42,18 +41,44 @@ from symai.operations import (
     translate_request,
 )
 from symai.prompts import Prompt
-from symai.runtime.models import LanguageModelRequest
+from symai.runtime.models import LanguageModelRequest, ResponseMetadata
 from symai.runtime.runtime import current_runtime
-from symai.utils import Extra, missing_dependency
 
-logger = logging.getLogger(__name__)
+_NATIVE_UNSUPPORTED = object()
 
 if TYPE_CHECKING:
     from symai.symbol import Symbol
 
 
+class Primitive(Protocol):
+    """Fixed provider-neutral operations composed into every Symbol."""
+
+    _embedding: np.ndarray | None
+    _semantic: bool
+    _value: Any
+
+    @property
+    def value(self) -> Any: ...
+
+    @property
+    def static_context(self) -> str: ...
+
+    @property
+    def dynamic_context(self) -> str: ...
+
+    @property
+    def _symbol_type(self) -> type["Symbol"]: ...
+
+    def _to_type(
+        self,
+        value: Any,
+        *,
+        semantic: bool | None = None,
+    ) -> "Symbol": ...
+
+
 def _execute_language_value(
-    symbol: "Symbol",
+    symbol: Primitive,
     request: LanguageModelRequest,
     *,
     return_type: type = str,
@@ -85,7 +110,7 @@ def _execute_language_value(
 
 
 def _execute_symbol(
-    symbol: "Symbol",
+    symbol: Primitive,
     request: LanguageModelRequest,
     kwargs: dict[str, object],
     *,
@@ -93,19 +118,20 @@ def _execute_symbol(
     default: object = None,
     limit: int | None = 1,
     literal: bool = False,
-):
-    output_index = kwargs.pop("output_index", 0)
-    return_metadata = kwargs.pop("return_metadata", False)
-    requested_return_type = kwargs.pop("return_type", return_type)
-    default = kwargs.pop("default", default)
-    requested_limit = kwargs.pop("limit", limit)
-    forbidden = {"engine", "model", "provider"}.intersection(kwargs)
+) -> Any:
+    options = kwargs.copy()
+    output_index = options.pop("output_index", 0)
+    return_metadata = options.pop("return_metadata", False)
+    requested_return_type = options.pop("return_type", return_type)
+    default = options.pop("default", default)
+    requested_limit = options.pop("limit", limit)
+    forbidden = {"engine", "model", "provider"}.intersection(options)
     if forbidden:
         names = ", ".join(sorted(forbidden))
         msg = f"Provider/model selection belongs to runtime configuration, not per-call kwargs: {names}"
         raise TypeError(msg)
-    if kwargs:
-        names = ", ".join(sorted(kwargs))
+    if options:
+        names = ", ".join(sorted(options))
         msg = f"Unsupported execution options: {names}"
         raise TypeError(msg)
     if not isinstance(output_index, int):
@@ -150,57 +176,53 @@ def _execute_symbol(
     return result
 
 
-class Primitive:
-    # DO NOT use by default neuro-symbolic iterations for mixins to avoid unwanted side effects
-    __semantic__ = False
-    # disable the entire NeSy engine access
-    __disable_nesy_engine__ = False
-    # disable None shortcut
-    __disable_none_shortcut__ = False
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # by default, disable shortcut matches and neuro-symbolic iterations
-        self.__semantic__ = self.__semantic__ or Primitive.__semantic__
-        self.__disable_nesy_engine__ = (
-            self.__disable_nesy_engine__ or Primitive.__disable_nesy_engine__
-        )
-        self.__disable_none_shortcut__ = (
-            self.__disable_none_shortcut__ or Primitive.__disable_none_shortcut__
-        )
-
-
 class OperatorPrimitives(Primitive):
-    __hash__ = None
+    __hash__ = object.__hash__
 
-    def __try_type_specific_func(self, other, func, op: str | None = None):
+    def __try_type_specific_func(
+        self,
+        other: Any,
+        function: Callable[[Any, Any], Any],
+        op: str | None = None,
+    ) -> Any:
         if not isinstance(other, self._symbol_type):
             other = self._to_type(other)
-        # None shortcut
-        if not self.__disable_none_shortcut__ and (self.value is None or other.value is None):
-            msg = f"unsupported {self._symbol_type.__class__} value operand type(s) for {op}: '{type(self.value)}' and '{type(other.value)}'"
-            raise TypeError(msg)
-        # try type specific function
-        try:
-            # try type specific function
-            value = func(self, other)
-            if value is NotImplemented:
-                operation = "" if op is None else op
-                msg = f"unsupported {self._symbol_type.__class__} value operand type(s) for {operation}: '{type(self.value)}' and '{type(other.value)}'"
-                raise TypeError(msg)
-            return value
-        except Exception as ex:
-            self._metadata._error = ex
-            pass
-        return None
 
-    def __throw_error_on_nesy_engine_call(self, func):
-        """
-        This function raises an error if the neuro-symbolic engine is disabled.
-        """
-        if self.__disable_nesy_engine__:
-            msg = f"unsupported {self.__class__} value operand type(s) for {func.__name__}: '{type(self.value)}'"
+        semantic_fallback = self._semantic or getattr(other, "_semantic", False)
+        if self.value is None or other.value is None:
+            if semantic_fallback:
+                return _NATIVE_UNSUPPORTED
+            msg = (
+                f"unsupported operand type(s) for {op}: "
+                f"'{type(self.value)}' and '{type(other.value)}'"
+            )
             raise TypeError(msg)
+
+        try:
+            value = function(self, other)
+        except TypeError as error:
+            traceback = error.__traceback__
+            # Python converts bilateral NotImplemented into TypeError in the
+            # operation wrapper; a deeper frame means the operand code failed.
+            while traceback is not None and traceback.tb_next is not None:
+                traceback = traceback.tb_next
+            function_code = getattr(function, "__code__", None)
+            if traceback is None or traceback.tb_frame.f_code is not function_code:
+                raise
+            if semantic_fallback:
+                return _NATIVE_UNSUPPORTED
+            raise
+
+        if value is NotImplemented:
+            if semantic_fallback:
+                return _NATIVE_UNSUPPORTED
+            operation = "" if op is None else op
+            msg = (
+                f"unsupported operand type(s) for {operation}: "
+                f"'{type(self.value)}' and '{type(other.value)}'"
+            )
+            raise TypeError(msg)
+        return value
 
     def __bool__(self) -> bool:
         """
@@ -218,11 +240,6 @@ class OperatorPrimitives(Primitive):
 
         return val
 
-    """
-    This mixin contains functions that perform arithmetic operations on symbols or symbol values.
-    The functions in this mixin are bound to the 'neurosymbolic' engine for evaluation.
-    """
-
     def __contains__(self, other: Any) -> bool:
         """
         Check if a Symbol object is present in another Symbol object.
@@ -238,10 +255,8 @@ class OperatorPrimitives(Primitive):
             other, lambda self, other: other.value in self.value, op="in"
         )
 
-        if not self.__semantic__ and not getattr(other, "__semantic__", False):
-            return result
-
-        self.__throw_error_on_nesy_engine_call(self.__contains__)
+        if result is not _NATIVE_UNSUPPORTED:
+            return bool(result)
 
         value = _execute_language_value(
             self,
@@ -249,7 +264,7 @@ class OperatorPrimitives(Primitive):
             return_type=bool,
             default=False,
         )
-        return self._to_type(value)
+        return bool(value)
 
     def __eq__(self, other: Any) -> bool:
         """
@@ -269,10 +284,8 @@ class OperatorPrimitives(Primitive):
             other, lambda self, other: self.value == other.value, op="=="
         )
 
-        if not self.__semantic__ and not getattr(other, "__semantic__", False):
-            return self._to_type(result)
-
-        self.__throw_error_on_nesy_engine_call(self.__eq__)
+        if result is not _NATIVE_UNSUPPORTED:
+            return bool(result)
 
         value = _execute_language_value(
             self,
@@ -280,7 +293,7 @@ class OperatorPrimitives(Primitive):
             return_type=bool,
             default=False,
         )
-        return self._to_type(value)
+        return bool(value)
 
     def __ne__(self, other: Any) -> bool:
         """
@@ -297,8 +310,8 @@ class OperatorPrimitives(Primitive):
             other, lambda self, other: self.value != other.value, op="!="
         )
 
-        if not self.__semantic__ and not getattr(other, "__semantic__", False):
-            return result
+        if result is not _NATIVE_UNSUPPORTED:
+            return bool(result)
 
         return not self.__eq__(other)
 
@@ -316,10 +329,8 @@ class OperatorPrimitives(Primitive):
             other, lambda self, other: self.value > other.value, op=">"
         )
 
-        if not self.__semantic__ and not getattr(other, "__semantic__", False):
-            return self._to_type(result)
-
-        self.__throw_error_on_nesy_engine_call(self.__gt__)
+        if result is not _NATIVE_UNSUPPORTED:
+            return bool(result)
 
         value = _execute_language_value(
             self,
@@ -327,7 +338,7 @@ class OperatorPrimitives(Primitive):
             return_type=bool,
             default=False,
         )
-        return self._to_type(value)
+        return bool(value)
 
     def __lt__(self, other: Any) -> bool:
         """
@@ -343,10 +354,8 @@ class OperatorPrimitives(Primitive):
             other, lambda self, other: self.value < other.value, op="<"
         )
 
-        if not self.__semantic__ and not getattr(other, "__semantic__", False):
-            return self._to_type(result)
-
-        self.__throw_error_on_nesy_engine_call(self.__lt__)
+        if result is not _NATIVE_UNSUPPORTED:
+            return bool(result)
 
         value = _execute_language_value(
             self,
@@ -354,9 +363,9 @@ class OperatorPrimitives(Primitive):
             return_type=bool,
             default=False,
         )
-        return self._to_type(value)
+        return bool(value)
 
-    def __le__(self, other) -> bool:
+    def __le__(self, other: Any) -> bool:
         """
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
 
@@ -370,10 +379,8 @@ class OperatorPrimitives(Primitive):
             other, lambda self, other: self.value <= other.value, op="<="
         )
 
-        if not self.__semantic__ and not getattr(other, "__semantic__", False):
-            return self._to_type(result)
-
-        self.__throw_error_on_nesy_engine_call(self.__le__)
+        if result is not _NATIVE_UNSUPPORTED:
+            return bool(result)
 
         value = _execute_language_value(
             self,
@@ -381,9 +388,9 @@ class OperatorPrimitives(Primitive):
             return_type=bool,
             default=False,
         )
-        return self._to_type(value)
+        return bool(value)
 
-    def __ge__(self, other) -> bool:
+    def __ge__(self, other: Any) -> bool:
         """
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
 
@@ -397,10 +404,8 @@ class OperatorPrimitives(Primitive):
             other, lambda self, other: self.value >= other.value, op=">="
         )
 
-        if not self.__semantic__ and not getattr(other, "__semantic__", False):
-            return self._to_type(result)
-
-        self.__throw_error_on_nesy_engine_call(self.__ge__)
+        if result is not _NATIVE_UNSUPPORTED:
+            return bool(result)
 
         value = _execute_language_value(
             self,
@@ -408,7 +413,7 @@ class OperatorPrimitives(Primitive):
             return_type=bool,
             default=False,
         )
-        return self._to_type(value)
+        return bool(value)
 
     def __neg__(self) -> "Symbol":
         """
@@ -419,10 +424,8 @@ class OperatorPrimitives(Primitive):
         """
         result = self.__try_type_specific_func(False, lambda self, _: -self.value, op="-")
 
-        if not self.__semantic__:
+        if result is not _NATIVE_UNSUPPORTED:
             return self._to_type(result)
-
-        self.__throw_error_on_nesy_engine_call(self.__neg__)
 
         value = _execute_language_value(self, negate_request(self))
         return self._to_type(value)
@@ -440,10 +443,8 @@ class OperatorPrimitives(Primitive):
 
         result = self.__try_type_specific_func(False, lambda self, _: ~self.value, op="~")
 
-        if not self.__semantic__:
+        if result is not _NATIVE_UNSUPPORTED:
             return self._to_type(result)
-
-        self.__throw_error_on_nesy_engine_call(self.__invert__)
 
         value = _execute_language_value(self, invert_request(self))
         return self._to_type(value)
@@ -462,10 +463,8 @@ class OperatorPrimitives(Primitive):
             other, lambda self, other: self.value << other.value, op="<<"
         )
 
-        if not self.__semantic__ and not getattr(other, "__semantic__", False):
+        if result is not _NATIVE_UNSUPPORTED:
             return self._to_type(result)
-
-        self.__throw_error_on_nesy_engine_call(self.__lshift__)
 
         value = _execute_language_value(self, include_request(self, other))
         return self._to_type(value)
@@ -484,15 +483,13 @@ class OperatorPrimitives(Primitive):
             other, lambda self, other: other.value << self.value, op="<<"
         )
 
-        if not self.__semantic__ and not getattr(other, "__semantic__", False):
+        if result is not _NATIVE_UNSUPPORTED:
             return self._to_type(result)
-
-        self.__throw_error_on_nesy_engine_call(self.__rlshift__)
 
         value = _execute_language_value(self, include_request(self, other))
         return self._to_type(value)
 
-    def __ilshift__(self, other: Any) -> "Symbol":
+    def __ilshift__(self, other: Any) -> Self:
         """
         Add new information to the Symbol.
 
@@ -506,14 +503,11 @@ class OperatorPrimitives(Primitive):
             other, lambda self, other: self.value << other.value, op="<<="
         )
 
-        if not self.__semantic__ and not getattr(other, "__semantic__", False):
+        if result is not _NATIVE_UNSUPPORTED:
             self._value = result
             return self
 
-        self.__throw_error_on_nesy_engine_call(self.__ilshift__)
-
         self._value = _execute_language_value(self, include_request(self, other))
-
         return self
 
     def __rshift__(self, other: Any) -> "Symbol":
@@ -530,10 +524,8 @@ class OperatorPrimitives(Primitive):
             other, lambda self, other: self.value >> other.value, op=">>"
         )
 
-        if not self.__semantic__ and not getattr(other, "__semantic__", False):
+        if result is not _NATIVE_UNSUPPORTED:
             return self._to_type(result)
-
-        self.__throw_error_on_nesy_engine_call(self.__rshift__)
 
         value = _execute_language_value(self, include_request(self, other))
         return self._to_type(value)
@@ -552,15 +544,13 @@ class OperatorPrimitives(Primitive):
             other, lambda self, other: other.value >> self.value, op=">>"
         )
 
-        if not self.__semantic__ and not getattr(other, "__semantic__", False):
+        if result is not _NATIVE_UNSUPPORTED:
             return self._to_type(result)
-
-        self.__throw_error_on_nesy_engine_call(self.__rrshift__)
 
         value = _execute_language_value(self, include_request(self, other))
         return self._to_type(value)
 
-    def __irshift__(self, other: Any) -> "Symbol":
+    def __irshift__(self, other: Any) -> Self:
         """
         Add new information to the Symbol.
 
@@ -574,14 +564,11 @@ class OperatorPrimitives(Primitive):
             other, lambda self, other: self.value >> other.value, op=">>="
         )
 
-        if not self.__semantic__ and not getattr(other, "__semantic__", False):
+        if result is not _NATIVE_UNSUPPORTED:
             self._value = result
             return self
 
-        self.__throw_error_on_nesy_engine_call(self.__irshift__)
-
         self._value = _execute_language_value(self, include_request(self, other))
-
         return self
 
     def __add__(self, other: Any) -> "Symbol":
@@ -599,10 +586,8 @@ class OperatorPrimitives(Primitive):
             other, lambda self, other: self.value + other.value, op="+"
         )
 
-        if not self.__semantic__ and not getattr(other, "__semantic__", False):
+        if result is not _NATIVE_UNSUPPORTED:
             return self._to_type(result)
-
-        self.__throw_error_on_nesy_engine_call(self.__add__)
 
         value = _execute_language_value(self, combine_request(self, other))
         return self._to_type(value)
@@ -622,15 +607,13 @@ class OperatorPrimitives(Primitive):
             other, lambda self, other: other.value + self.value, op="+"
         )
 
-        if not self.__semantic__ and not getattr(other, "__semantic__", False):
+        if result is not _NATIVE_UNSUPPORTED:
             return self._to_type(result)
-
-        self.__throw_error_on_nesy_engine_call(self.__radd__)
 
         value = _execute_language_value(self, combine_request(other, self))
         return self._to_type(value)
 
-    def __iadd__(self, other: Any) -> "Symbol":
+    def __iadd__(self, other: Any) -> Self:
         """
         This method adds another value to the Symbol and updates its value with the result.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
@@ -645,12 +628,12 @@ class OperatorPrimitives(Primitive):
             other, lambda self, other: self.value + other.value, op="+="
         )
 
-        if not self.__semantic__ and not getattr(other, "__semantic__", False):
+        if result is not _NATIVE_UNSUPPORTED:
             self._value = result
             return self
-        other = self._to_type(other)
-        self._value = self.__add__(other)
 
+        value = self.__add__(other)
+        self._value = value.value
         return self
 
     def __sub__(self, other: Any) -> "Symbol":
@@ -668,10 +651,8 @@ class OperatorPrimitives(Primitive):
             other, lambda self, other: self.value - other.value, op="-"
         )
 
-        if not self.__semantic__ and not getattr(other, "__semantic__", False):
+        if result is not _NATIVE_UNSUPPORTED:
             return self._to_type(result)
-
-        self.__throw_error_on_nesy_engine_call(self.__sub__)
 
         value = _execute_language_value(self, replace_request(self, other, ""))
         return self._to_type(value)
@@ -691,16 +672,14 @@ class OperatorPrimitives(Primitive):
             other, lambda self, other: other.value - self.value, op="-"
         )
 
-        if not self.__semantic__ and not getattr(other, "__semantic__", False):
+        if result is not _NATIVE_UNSUPPORTED:
             return self._to_type(result)
-
-        self.__throw_error_on_nesy_engine_call(self.__rsub__)
 
         other = self._to_type(other)
         value = _execute_language_value(self, replace_request(other, self, ""))
         return self._to_type(value)
 
-    def __isub__(self, other: Any) -> "Symbol":
+    def __isub__(self, other: Any) -> Self:
         """
         In-place subtraction of the symbol value by the other symbol value.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
@@ -715,12 +694,12 @@ class OperatorPrimitives(Primitive):
             other, lambda self, other: self.value - other.value, op="-="
         )
 
-        if not self.__semantic__ and not getattr(other, "__semantic__", False):
+        if result is not _NATIVE_UNSUPPORTED:
             self._value = result
             return self
-        val = self.__sub__(other)
-        self._value = val.value
 
+        value = self.__sub__(other)
+        self._value = value.value
         return self
 
     def __and__(self, other: Any) -> Any:
@@ -738,10 +717,8 @@ class OperatorPrimitives(Primitive):
             other, lambda self, other: self.value & other.value, op="&"
         )
 
-        if not self.__semantic__ and not getattr(other, "__semantic__", False):
+        if result is not _NATIVE_UNSUPPORTED:
             return self._to_type(result)
-
-        self.__throw_error_on_nesy_engine_call(self.__and__)
 
         value = _execute_language_value(self, logic_request(self, "and", other))
         return self._to_type(value)
@@ -761,10 +738,8 @@ class OperatorPrimitives(Primitive):
             other, lambda self, other: other.value & self.value, op="&"
         )
 
-        if not self.__semantic__ and not getattr(other, "__semantic__", False):
+        if result is not _NATIVE_UNSUPPORTED:
             return self._to_type(result)
-
-        self.__throw_error_on_nesy_engine_call(self.__rand__)
 
         other = self._to_type(other)
         value = _execute_language_value(self, logic_request(other, "and", self))
@@ -785,14 +760,11 @@ class OperatorPrimitives(Primitive):
             other, lambda self, other: self.value & other.value, op="&="
         )
 
-        if not self.__semantic__ and not getattr(other, "__semantic__", False):
+        if result is not _NATIVE_UNSUPPORTED:
             self._value = result
             return self
 
-        self.__throw_error_on_nesy_engine_call(self.__iand__)
-
         self._value = _execute_language_value(self, logic_request(self, "and", other))
-
         return self
 
     def __or__(self, other: Any) -> Any:
@@ -810,10 +782,8 @@ class OperatorPrimitives(Primitive):
             other, lambda self, other: self.value | other.value, op="|"
         )
 
-        if not self.__semantic__ and not getattr(other, "__semantic__", False):
+        if result is not _NATIVE_UNSUPPORTED:
             return self._to_type(result)
-
-        self.__throw_error_on_nesy_engine_call(self.__or__)
 
         value = _execute_language_value(self, logic_request(self, "or", other))
         return self._to_type(value)
@@ -833,16 +803,14 @@ class OperatorPrimitives(Primitive):
             other, lambda self, other: self.value | other.value, op="|"
         )
 
-        if not self.__semantic__ and not getattr(other, "__semantic__", False):
+        if result is not _NATIVE_UNSUPPORTED:
             return self._to_type(result)
-
-        self.__throw_error_on_nesy_engine_call(self.__ror__)
 
         other = self._to_type(other)
         value = _execute_language_value(self, logic_request(other, "or", self))
         return self._to_type(value)
 
-    def __ior__(self, other: Any) -> "Symbol":
+    def __ior__(self, other: Any) -> Self:
         """
         Performs a logical OR operation between the symbol value and another.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
@@ -857,15 +825,11 @@ class OperatorPrimitives(Primitive):
             other, lambda self, other: self.value | other.value, op="|="
         )
 
-        if not self.__semantic__ and not getattr(other, "__semantic__", False):
+        if result is not _NATIVE_UNSUPPORTED:
             self._value = result
             return self
-        result = self._to_type(str(self) + str(other))
-
-        self.__throw_error_on_nesy_engine_call(self.__ior__)
 
         self._value = _execute_language_value(self, logic_request(self, "or", other))
-
         return self
 
     def __xor__(self, other: Any) -> Any:
@@ -883,10 +847,8 @@ class OperatorPrimitives(Primitive):
             other, lambda self, other: self.value ^ other.value, op="^"
         )
 
-        if not self.__semantic__ and not getattr(other, "__semantic__", False):
+        if result is not _NATIVE_UNSUPPORTED:
             return self._to_type(result)
-
-        self.__throw_error_on_nesy_engine_call(self.__xor__)
 
         value = _execute_language_value(self, logic_request(self, "xor", other))
         return self._to_type(value)
@@ -906,15 +868,13 @@ class OperatorPrimitives(Primitive):
             other, lambda self, other: other.value ^ self.value, op="^"
         )
 
-        if not self.__semantic__ and not getattr(other, "__semantic__", False):
+        if result is not _NATIVE_UNSUPPORTED:
             return self._to_type(result)
-
-        self.__throw_error_on_nesy_engine_call(self.__rxor__)
 
         value = _execute_language_value(self, logic_request(other, "xor", self))
         return self._to_type(value)
 
-    def __ixor__(self, other: Any) -> "Symbol":
+    def __ixor__(self, other: Any) -> Self:
         """
         Performs a logical XOR operation between the symbol value and another.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
@@ -929,14 +889,11 @@ class OperatorPrimitives(Primitive):
             other, lambda self, other: self.value ^ other.value, op="^="
         )
 
-        if not self.__semantic__ and not getattr(other, "__semantic__", False):
+        if result is not _NATIVE_UNSUPPORTED:
             self._value = result
             return self
 
-        self.__throw_error_on_nesy_engine_call(self.__ixor__)
-
         self._value = _execute_language_value(self, logic_request(self, "xor", other))
-
         return self
 
     def __matmul__(self, other: Any) -> "Symbol":
@@ -977,7 +934,7 @@ class OperatorPrimitives(Primitive):
 
         return self._to_type(result)
 
-    def __imatmul__(self, other: Any) -> "Symbol":
+    def __imatmul__(self, other: Any) -> Self:
         """
         This method concatenates the string representation of two Symbol objects and assigns the concatenated result to the value of the current Symbol object.
         By default, if 'other' is not a Symbol, it's casted to a Symbol object.
@@ -1009,7 +966,7 @@ class OperatorPrimitives(Primitive):
         result = self.__try_type_specific_func(
             other, lambda self, other: self.value / other.value, op="/"
         )
-        if result is not None:
+        if result is not _NATIVE_UNSUPPORTED:
             return self._to_type(result)
 
         return self._to_type(str(self).split(str(other)))
@@ -1028,13 +985,13 @@ class OperatorPrimitives(Primitive):
         result = self.__try_type_specific_func(
             other, lambda self, other: other.value / self.value, op="/"
         )
-        if result is not None:
+        if result is not _NATIVE_UNSUPPORTED:
             return self._to_type(result)
 
         msg = "Division operation not supported semantically! Might change in the future."
         raise NotImplementedError(msg)
 
-    def __itruediv__(self, other: Any) -> "Symbol":
+    def __itruediv__(self, other: Any) -> Self:
         """
         Divides the symbol value by another, splitting the symbol value by the other value.
         The string representation of the other value is used to split the symbol value.
@@ -1048,11 +1005,11 @@ class OperatorPrimitives(Primitive):
         result = self.__try_type_specific_func(
             other, lambda self, other: self.value / other.value, op="/="
         )
-        if result is not None:
+        if result is not _NATIVE_UNSUPPORTED:
             self._value = result
             return self
 
-        msg = "Division operation not supported semantically! Might change in the future."
+        msg = "Division operation is unsupported"
         raise NotImplementedError(msg)
 
     def __floordiv__(self, other: Any) -> "Symbol":
@@ -1069,7 +1026,7 @@ class OperatorPrimitives(Primitive):
         result = self.__try_type_specific_func(
             other, lambda self, other: self.value // other.value, op="//"
         )
-        if result is not None:
+        if result is not _NATIVE_UNSUPPORTED:
             return self._to_type(result)
 
         msg = "Floor division operation not supported semantically! Might change in the future."
@@ -1089,13 +1046,13 @@ class OperatorPrimitives(Primitive):
         result = self.__try_type_specific_func(
             other, lambda self, other: other.value // self.value, op="//"
         )
-        if result is not None:
+        if result is not _NATIVE_UNSUPPORTED:
             return self._to_type(result)
 
         msg = "Floor division operation not supported semantically! Might change in the future."
         raise NotImplementedError(msg)
 
-    def __ifloordiv__(self, other: Any) -> "Symbol":
+    def __ifloordiv__(self, other: Any) -> Self:
         """
         Floor divides the symbol value by another, splitting the symbol value by the other value.
         The string representation of the other value is used to split the symbol value.
@@ -1109,11 +1066,11 @@ class OperatorPrimitives(Primitive):
         result = self.__try_type_specific_func(
             other, lambda self, other: self.value // other.value, op="//="
         )
-        if result is not None:
+        if result is not _NATIVE_UNSUPPORTED:
             self._value = result
             return self
 
-        msg = "Floor division operation not supported semantically! Might change in the future."
+        msg = "Floor division operation is unsupported"
         raise NotImplementedError(msg)
 
     def __pow__(self, other: Any) -> "Symbol":
@@ -1130,7 +1087,7 @@ class OperatorPrimitives(Primitive):
         result = self.__try_type_specific_func(
             other, lambda self, other: self.value**other.value, op="**"
         )
-        if result is not None:
+        if result is not _NATIVE_UNSUPPORTED:
             return self._to_type(result)
 
         msg = "Power operation not supported semantically! Might change in the future."
@@ -1150,13 +1107,13 @@ class OperatorPrimitives(Primitive):
         result = self.__try_type_specific_func(
             other, lambda self, other: other.value**self.value, op="**"
         )
-        if result is not None:
+        if result is not _NATIVE_UNSUPPORTED:
             return self._to_type(result)
 
         msg = "Power operation not supported semantically! Might change in the future."
         raise NotImplementedError(msg)
 
-    def __ipow__(self, other: Any) -> "Symbol":
+    def __ipow__(self, other: Any) -> Self:
         """
         Power operation on symbol value by another, splitting the symbol value by the other value.
         The string representation of the other value is used to split the symbol value.
@@ -1170,11 +1127,11 @@ class OperatorPrimitives(Primitive):
         result = self.__try_type_specific_func(
             other, lambda self, other: self.value**other.value, op="**="
         )
-        if result is not None:
+        if result is not _NATIVE_UNSUPPORTED:
             self._value = result
             return self
 
-        msg = "Power operation not supported semantically! Might change in the future."
+        msg = "Power operation is unsupported"
         raise NotImplementedError(msg)
 
     def __mod__(self, other: Any) -> "Symbol":
@@ -1191,7 +1148,7 @@ class OperatorPrimitives(Primitive):
         result = self.__try_type_specific_func(
             other, lambda self, other: self.value % other.value, op="%"
         )
-        if result is not None:
+        if result is not _NATIVE_UNSUPPORTED:
             return self._to_type(result)
 
         msg = "Modulo operation not supported semantically! Might change in the future."
@@ -1211,13 +1168,13 @@ class OperatorPrimitives(Primitive):
         result = self.__try_type_specific_func(
             other, lambda self, other: other.value % self.value, op="%"
         )
-        if result is not None:
+        if result is not _NATIVE_UNSUPPORTED:
             return self._to_type(result)
 
-        msg = "Modulo operation not supported! Might change in the future."
-        raise NotImplementedError(msg) from self._metadata._error
+        msg = "Modulo operation is unsupported"
+        raise NotImplementedError(msg)
 
-    def __imod__(self, other: Any) -> "Symbol":
+    def __imod__(self, other: Any) -> Self:
         """
         Modulo operation on symbol value by another, splitting the symbol value by the other value.
         The string representation of the other value is used to split the symbol value.
@@ -1231,11 +1188,11 @@ class OperatorPrimitives(Primitive):
         result = self.__try_type_specific_func(
             other, lambda self, other: self.value % other.value, op="%="
         )
-        if result is not None:
+        if result is not _NATIVE_UNSUPPORTED:
             self._value = result
             return self
 
-        msg = "Modulo operation not supported semantically! Might change in the future."
+        msg = "Modulo operation is unsupported"
         raise NotImplementedError(msg)
 
     def __mul__(self, other: Any) -> "Symbol":
@@ -1252,7 +1209,7 @@ class OperatorPrimitives(Primitive):
         result = self.__try_type_specific_func(
             other, lambda self, other: self.value * other.value, op="*"
         )
-        if result is not None:
+        if result is not _NATIVE_UNSUPPORTED:
             return self._to_type(result)
 
         msg = "Multiply operation not supported semantically! Might change in the future."
@@ -1272,13 +1229,13 @@ class OperatorPrimitives(Primitive):
         result = self.__try_type_specific_func(
             other, lambda self, other: other.value * self.value, op="*"
         )
-        if result is not None:
+        if result is not _NATIVE_UNSUPPORTED:
             return self._to_type(result)
 
         msg = "Multiply operation not supported semantically! Might change in the future."
         raise NotImplementedError(msg)
 
-    def __imul__(self, other: Any) -> "Symbol":
+    def __imul__(self, other: Any) -> Self:
         """
         Multiply operation on symbol value by another, splitting the symbol value by the other value.
         The string representation of the other value is used to split the symbol value.
@@ -1292,11 +1249,11 @@ class OperatorPrimitives(Primitive):
         result = self.__try_type_specific_func(
             other, lambda self, other: self.value * other.value, op="*="
         )
-        if result is not None:
+        if result is not _NATIVE_UNSUPPORTED:
             self._value = result
             return self
 
-        msg = "Multiply operation not supported semantically! Might change in the future."
+        msg = "Multiply operation is unsupported"
         raise NotImplementedError(msg)
 
 
@@ -1306,21 +1263,18 @@ class CastingPrimitives(Primitive):
     """
 
     @property
-    def syn(self) -> "Symbol":
-        """
-        Return a syntactic (non-semantic) view of this Symbol.
-        """
-        if not getattr(self, "__semantic__", False):
+    def syn(self) -> "Self | Symbol":
+        """Return a native-only view that never invokes an active runtime fallback."""
+
+        if not self._semantic:
             return self
         return self._to_type(self.value, semantic=False)
 
     @property
-    def sem(self) -> "Symbol":
-        """
-        Return a semantic view of this Symbol.
-        (Useful after calling `.syn` in a chain.)
-        """
-        if getattr(self, "__semantic__", False):
+    def sem(self) -> "Self | Symbol":
+        """Return a view that uses the active runtime when a native operation is unsupported."""
+
+        if self._semantic:
             return self
         return self._to_type(self.value, semantic=True)
 
@@ -1397,10 +1351,7 @@ class CastingPrimitives(Primitive):
 # @TODO: We can do much better than asking the model to generate the entire thing. We can come up with a more structured way, e.g.,
 #       using a JSON schema (or contracts) and return only the keys where we need to set/del information.
 class IterationPrimitives(Primitive):
-    """
-    This mixin contains functions that perform iteration operations on symbols or symbol values.
-    The functions in this mixin are bound to the 'neurosymbolic' engine for evaluation.
-    """
+    """Fixed local collection operations with explicit runtime-backed methods."""
 
     def __getitem__(self, key: str | int | slice) -> "Symbol":
         """
@@ -1417,7 +1368,7 @@ class IterationPrimitives(Primitive):
         Raises:
             KeyError: If the key or index is not found in the Symbol value.
         """
-        if not self.__semantic__:
+        if not self._semantic:
             try:
                 return self.value[key]
             except Exception:
@@ -1451,9 +1402,9 @@ class IterationPrimitives(Primitive):
             msg = f"Setting item is not supported for {type(self.value)}. Supported types are str, dict, and list."
             raise TypeError(msg)
 
-        if not self.__semantic__:
+        if not self._semantic:
             try:
-                self.value[key] = value
+                self._value[key] = value
                 return
             except Exception:
                 msg = f"Key {key} not found in {self.value}"
@@ -1483,9 +1434,9 @@ class IterationPrimitives(Primitive):
             msg = f"Setting item is not supported for {type(self.value)}. Supported types are str, dict, and list."
             raise TypeError(msg)
 
-        if not self.__semantic__:
+        if not self._semantic:
             try:
-                del self.value[key]
+                del self._value[key]
                 return
             except Exception:
                 msg = f"Key {key} not found in {self.value}"
@@ -1502,10 +1453,7 @@ class IterationPrimitives(Primitive):
 
 # @TODO: Add tests for this class
 class ValueHandlingPrimitives(Primitive):
-    """
-    This mixin includes functions responsible for handling symbol values - tokenization, type retrieval, value casting, indexing, etc.
-    Future functions might include different methods of processing or manipulating the values of symbols, working with metadata of values, etc.
-    """
+    """Local value inspection plus explicit runtime-backed transformations."""
 
     @property
     def size(self) -> int:
@@ -1571,8 +1519,12 @@ class StringHelperPrimitives(Primitive):
         Returns:
             Symbol: A new symbol with the split value.
         """
-        assert isinstance(delimiter, str), f"delimiter must be a string, got {type(delimiter)}"
-        assert isinstance(self.value, str), f"self.value must be a string, got {type(self.value)}"
+        if not isinstance(delimiter, str):
+            msg = f"delimiter must be a string, got {type(delimiter)}"
+            raise TypeError(msg)
+        if not isinstance(self.value, str):
+            msg = f"value must be a string, got {type(self.value)}"
+            raise TypeError(msg)
         return self._to_type([*self.value.split(delimiter)])
 
     def join(self, delimiter: str = " ", **_kwargs) -> "Symbol":
@@ -1585,10 +1537,12 @@ class StringHelperPrimitives(Primitive):
         Returns:
             Symbol: A new symbol with the joined str value.
         """
-        assert isinstance(delimiter, str), f"delimiter must be a string, got {type(delimiter)}"
-        assert isinstance(self.value, Iterable), (
-            f"value must be an iterable, got {type(self.value)}"
-        )
+        if not isinstance(delimiter, str):
+            msg = f"delimiter must be a string, got {type(delimiter)}"
+            raise TypeError(msg)
+        if not isinstance(self.value, Iterable):
+            msg = f"value must be an iterable, got {type(self.value)}"
+            raise TypeError(msg)
         return self._to_type(delimiter.join(self.value))
 
     def startswith(self, prefix: str, **_kwargs) -> bool:
@@ -1601,10 +1555,14 @@ class StringHelperPrimitives(Primitive):
         Returns:
             bool: True if the symbol value starts with the specified prefix, otherwise False.
         """
-        assert isinstance(prefix, str), f"prefix must be a string, got {type(prefix)}"
-        assert isinstance(self.value, str), f"self.value must be a string, got {type(self.value)}"
+        if not isinstance(prefix, str):
+            msg = f"prefix must be a string, got {type(prefix)}"
+            raise TypeError(msg)
+        if not isinstance(self.value, str):
+            msg = f"value must be a string, got {type(self.value)}"
+            raise TypeError(msg)
 
-        if not self.__semantic__:
+        if not self._semantic:
             return self.value.startswith(prefix)
 
         value = _execute_language_value(
@@ -1625,10 +1583,14 @@ class StringHelperPrimitives(Primitive):
         Returns:
             bool: True if the symbol value ends with the specified suffix, otherwise False.
         """
-        assert isinstance(suffix, str), f"suffix must be a string, got {type(suffix)}"
-        assert isinstance(self.value, str), f"self.value must be a string, got {type(self.value)}"
+        if not isinstance(suffix, str):
+            msg = f"suffix must be a string, got {type(suffix)}"
+            raise TypeError(msg)
+        if not isinstance(self.value, str):
+            msg = f"value must be a string, got {type(self.value)}"
+            raise TypeError(msg)
 
-        if not self.__semantic__:
+        if not self._semantic:
             return self.value.endswith(suffix)
 
         value = _execute_language_value(
@@ -1718,26 +1680,17 @@ class ExpressionHandlingPrimitives(Primitive):
     Future functionalities in this mixin might include operations to manipulate expressions, more complex evaluation techniques, etc.
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def init_results(self) -> None:
+        """Ensure accumulated expression values are initialized."""
 
-    def init_results(self):
-        """Ensures _accumulated_results exists, initializing if needed."""
         if not hasattr(self, "_accumulated_results"):
             self._accumulated_results = []
 
-    def get_results(self) -> list["Symbol"]:
-        """
-        Retrieves accumulated results from previous interpretations.
-
-        Returns:
-            List[Symbol]: List of accumulated results
-        """
+    def get_results(self) -> list[Any]:
         self.init_results()
         return self._accumulated_results
 
-    def clear_results(self):
-        """Clears the accumulated results"""
+    def clear_results(self) -> None:
         self.init_results()
         self._accumulated_results = []
 
@@ -1746,7 +1699,7 @@ class ExpressionHandlingPrimitives(Primitive):
         prompt: str | None = "Evaluate the symbolic expressions and return only the result:\n",
         accumulate: bool = False,
         **kwargs,
-    ) -> "Symbol":
+    ) -> "Symbol | tuple[Symbol, ResponseMetadata]":
         """
         Evaluates simple symbolic expressions.
 
@@ -2062,25 +2015,14 @@ class TemplateStylingPrimitives(Primitive):
     """
 
     def template(
-        that, template: str, placeholder: str | None = "{{placeholder}}", **_kwargs
+        self,
+        template: str,
+        placeholder: str = "{{placeholder}}",
+        **_options: object,
     ) -> "Symbol":
-        """
-        Applies a template to the Symbol.
-        It is useful for providing structure to the Symbol's value.
+        """Apply a local text template to the Symbol value."""
 
-        Args:
-            template (str): The template to apply to the Symbol.
-            placeholder (Optional[str]): The placeholder in the template to be replaced with the Symbol's value. Defaults to '{{placeholder}}'.
-
-        Returns:
-            Symbol: A Symbol object with a template applied.
-        """
-
-        def _func(self):
-            res = template.replace(placeholder, str(self))
-            return that._to_type(res)
-
-        return _func(that)
+        return self._to_type(template.replace(placeholder, str(self)))
 
     def style(self, description: str, libraries: list | None = None, **kwargs) -> "Symbol":
         """
@@ -2105,71 +2047,7 @@ class TemplateStylingPrimitives(Primitive):
 
 
 class EmbeddingPrimitives(Primitive):
-    """
-    This mixin contains functionalities that deal with embedding symbol values.
-    New functionalities in this mixin might include different types of embedding methods, similarity and distance measures etc.
-    """
-
-    @staticmethod
-    def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
-        """Numpy implementation of the Frechet Distance.
-        The Frechet distance between two multivariate Gaussians X_1 ~ N(mu_1, C_1)
-        and X_2 ~ N(mu_2, C_2) is
-                d^2 = ||mu_1 - mu_2||^2 + Tr(C_1 + C_2 - 2*sqrt(C_1*C_2)).
-
-        Stable version by Dougal J. Sutherland.
-
-        Params:
-        -- mu1   : Numpy array containing the activations of a layer of the
-                inception net (like returned by the function 'get_predictions')
-                for generated samples.
-        -- mu2   : The sample mean over activations, precalculated on a
-                representative data set.
-        -- sigma1: The covariance matrix over activations for generated samples.
-        -- sigma2: The covariance matrix over activations, precalculated on a
-                representative data set.
-
-        Returns:
-        --   : The Frechet Distance.
-        """
-
-        try:
-            from scipy import linalg  # noqa: PLC0415
-        except ImportError:
-            raise missing_dependency(Extra.CLUSTER, "scipy") from None
-
-        mu1 = np.atleast_1d(mu1).squeeze()
-        mu2 = np.atleast_1d(mu2).squeeze()
-
-        sigma1 = np.atleast_2d(sigma1)
-        sigma2 = np.atleast_2d(sigma2)
-
-        assert mu1.shape == mu2.shape, "Training and test mean vectors have different lengths"
-        assert sigma1.shape == sigma2.shape, (
-            "Training and test covariances have different dimensions"
-        )
-
-        diff = mu1 - mu2
-
-        covmean = linalg.sqrtm(sigma1.dot(sigma2))
-        if not np.isfinite(covmean).all():
-            msg = (
-                f"fid calculation produces singular product; adding {eps} "
-                "to diagonal of cov estimates"
-            )
-            logger.warning(msg)
-            offset = np.eye(sigma1.shape[0]) * eps
-            covmean = linalg.sqrtm((sigma1 + offset).dot(sigma2 + offset))
-
-        if np.iscomplexobj(covmean):
-            if not np.allclose(np.diagonal(covmean).imag, 0, atol=1e-3):
-                m = np.max(np.abs(covmean.imag))
-                msg = f"Imaginary component {m}"
-                raise ValueError(msg)
-            covmean = covmean.real
-
-        tr_covmean = np.trace(covmean)
-        return diff.dot(diff) + np.trace(sigma1) + np.trace(sigma2) - 2 * tr_covmean
+    """Text embeddings and local numeric similarity operations."""
 
     @staticmethod
     def calculate_mmd(x, y, kernel="rbf", kernel_mul=2.0, kernel_num=5, fix_sigma=None, eps=1e-9):
@@ -2206,36 +2084,49 @@ class EmbeddingPrimitives(Primitive):
             return xx + yy - xy - yx
         return None
 
-    def embed(self, **kwargs) -> "Symbol":
+    @overload
+    def embed(
+        self,
+        *,
+        dimensions: int | None = None,
+        user: str | None = None,
+        return_metadata: Literal[False] = False,
+        **options: object,
+    ) -> "Symbol": ...
+
+    @overload
+    def embed(
+        self,
+        *,
+        dimensions: int | None = None,
+        user: str | None = None,
+        return_metadata: Literal[True],
+        **options: object,
+    ) -> "tuple[Symbol, ResponseMetadata]": ...
+    def embed(
+        self,
+        *,
+        dimensions: int | None = None,
+        user: str | None = None,
+        return_metadata: bool = False,
+        **options: object,
+    ) -> "Symbol | tuple[Symbol, ResponseMetadata]":
+        """Embed one text value or a sequence of text through the active runtime.
+
+        Binary and other non-text inputs are rejected before runtime execution.
         """
-        Generates embeddings for the Symbol's value.
-        If the value is not a list, it is converted to a list.
 
-        Supports multimodal inputs: text (str), images (bytes/Part), and mixed content (Content).
-        Each engine handles unpacking based on its capabilities.
-
-        Note: When passing raw bytes, MIME type detection is handled internally via the filetype
-        library (supports 100+ formats). Users can also pass Part objects for explicit MIME type control.
-
-        Args:
-
-        Returns:
-            Symbol: A Symbol object with its value embedded.
-        """
-        values = self.value if isinstance(self.value, list) else [self.value]
-        if any(isinstance(value, (bytes, bytearray)) for value in values):
-            msg = "Embedding inputs must be text"
+        values = tuple(self.value) if isinstance(self.value, (list, tuple)) else (self.value,)
+        if not values or any(not isinstance(value, str) for value in values):
+            msg = "Embedding inputs must be non-empty text values"
             raise TypeError(msg)
-        inputs = tuple(str(value) for value in values)
-        dimensions = kwargs.pop("dimensions", None)
-        user = kwargs.pop("user", None)
-        return_metadata = kwargs.pop("return_metadata", False)
-        if kwargs:
-            names = ", ".join(sorted(kwargs))
+        if options:
+            names = ", ".join(sorted(options))
             msg = f"Unsupported embedding options: {names}"
             raise TypeError(msg)
+
         response = current_runtime().execute(
-            embedding_request(inputs, dimensions=dimensions, user=user)
+            embedding_request(values, dimensions=dimensions, user=user)
         )
         result = self._to_type(parse_embedding_response(response))
         if return_metadata:
@@ -2243,43 +2134,28 @@ class EmbeddingPrimitives(Primitive):
         return result
 
     @property
-    def embedding(self) -> np.array:
-        """
-        Get the embedding as a numpy array.
+    def embedding(self) -> np.ndarray:
+        """Return the cached numeric representation as a NumPy array."""
 
-        Returns:
-            Any: The embedding of the symbol.
-        """
-        # if the embedding is not yet computed, compute it
-        if self._metadata.embedding is None:
-            if (
-                isinstance(self.value, (list, tuple))
-                and all(isinstance(x, (int, float, bool)) for x in self.value)
-            ) or isinstance(self.value, np.ndarray):
-                if isinstance(self.value, (list, tuple)):
-                    assert len(self.value) > 0, "Cannot compute embedding of empty list"
-                    symbol_type = self._symbol_type
-                    if isinstance(self.value[0], symbol_type):
-                        # convert each element to numpy array
-                        self._metadata.embedding = np.asarray([x.embedding for x in self.value])
-                    elif isinstance(self.value[0], str):
-                        # embed each string
-                        self._metadata.embedding = np.asarray(
-                            [symbol_type(x).embedding for x in self.value]
-                        )
-                    else:
-                        # convert to numpy array
-                        self._metadata.embedding = np.asarray(self.value)
+        if self._embedding is None:
+            if isinstance(self.value, np.ndarray):
+                self._embedding = np.asarray(self.value)
+            elif isinstance(self.value, (list, tuple)):
+                if not self.value:
+                    msg = "Cannot compute embedding of empty list"
+                    raise ValueError(msg)
+                if all(isinstance(value, self._symbol_type) for value in self.value):
+                    self._embedding = np.asarray([value.embedding for value in self.value])
+                elif all(isinstance(value, (int, float, bool, np.number)) for value in self.value):
+                    self._embedding = np.asarray(self.value)
                 else:
-                    # convert to numpy array
-                    self._metadata.embedding = np.asarray(self.value)
+                    self._embedding = np.asarray(self.embed().value)
+            elif isinstance(self.value, (int, float, bool, np.number)):
+                self._embedding = np.asarray(self.value)
             else:
-                # compute the embedding and store as numpy array
-                self._metadata.embedding = np.asarray(self.embed().value)
-        if isinstance(self._metadata.embedding, list):
-            self._metadata.embedding = np.asarray(self._metadata.embedding)
-        # return the embedding
-        return self._metadata.embedding
+                self._embedding = np.asarray(self.embed().value)
+
+        return self._embedding
 
     def _ensure_numpy_format(self, x, cast=False):
         # if it is a Symbol, get its value
@@ -2295,7 +2171,9 @@ class EmbeddingPrimitives(Primitive):
             x = x.embedding
         # if it is a list, convert it to numpy
         if isinstance(x, (list, tuple)):
-            assert len(x) > 0, "Cannot compute similarity with empty list"
+            if not x:
+                msg = "Cannot compute similarity with empty list"
+                raise ValueError(msg)
             x = np.asarray(x)
         else:
             x = np.asarray(x)
@@ -2387,7 +2265,6 @@ class EmbeddingPrimitives(Primitive):
             "inverse-multiquadric": self._kernel_inverse_multiquadric,
             "cosine": self._kernel_cosine,
             "angular-cosine": self._kernel_angular_cosine,
-            "frechet": self._kernel_frechet,
             "mmd": self._kernel_mmd,
         }
 
@@ -2455,20 +2332,12 @@ class EmbeddingPrimitives(Primitive):
         denominator = np.sqrt(np.sum(lhs**2, axis=0)) * np.sqrt(np.sum(rhs**2, axis=0)) + eps
         return c * np.arccos(numerator / denominator) / np.pi
 
-    def _kernel_frechet(self, lhs, rhs, eps, kwargs):
-        sigma1 = kwargs.get("sigma1")
-        sigma2 = kwargs.get("sigma2")
-        assert sigma1 is not None and sigma2 is not None, (
-            "Frechet distance requires covariance matrices for both inputs"
-        )
-        return self.calculate_frechet_distance(lhs.T, sigma1, rhs.T, sigma2, eps)
-
     def _kernel_mmd(self, lhs, rhs, eps, _kwargs):
         return self.calculate_mmd(lhs.T, rhs.T, eps=eps)
 
     def similarity(
         self,
-        other: Union["Symbol", list, np.ndarray],
+        other: "Symbol | list[Any] | np.ndarray",
         metric: Literal[
             "cosine", "angular-cosine", "product", "manhattan", "euclidean", "minkowski", "jaccard"
         ] = "cosine",
@@ -2512,7 +2381,7 @@ class EmbeddingPrimitives(Primitive):
 
     def distance(
         self,
-        other: Union["Symbol", list, np.ndarray],
+        other: "Symbol | list[Any] | np.ndarray",
         kernel: Literal[
             "gaussian",
             "rbf",
@@ -2525,7 +2394,6 @@ class EmbeddingPrimitives(Primitive):
             "inverse-multiquadric",
             "cosine",
             "angular-cosine",
-            "frechet",
             "mmd",
         ] = "gaussian",
         eps: float = 1e-8,
@@ -2560,20 +2428,13 @@ class EmbeddingPrimitives(Primitive):
             val = normalize(val)
         return val
 
-    def zip(self, **kwargs) -> list[tuple[str, list, dict]]:
-        """
-        Zips the Symbol's value with its embeddings and a query containing the value.
-        This method zips the Symbol's value along with its embeddings and a query containing the value.
-
-        Args:
-            **kwargs: Additional keyword arguments for the `embed` method.
-
-        Returns:
-            List[Tuple[str, List, Dict]]: A list of tuples containing a unique ID, the value's embeddings, and a query containing the value.
-
-        Raises:
-            ValueError: If the Symbol's value is not a string or list of strings.
-        """
+    def zip(
+        self,
+        *,
+        dimensions: int | None = None,
+        user: str | None = None,
+    ) -> list[tuple[str, Any, dict[str, str]]]:
+        """Pair text values with embeddings and stable query records."""
         if isinstance(self.value, str):
             self._value = [self.value]
         elif isinstance(self.value, list):
@@ -2582,7 +2443,7 @@ class EmbeddingPrimitives(Primitive):
             msg = f"Expected id to be a string, got {type(self.value)}"
             raise ValueError(msg)
 
-        embeds = self.embed(**kwargs).value
+        embeds = self.embed(dimensions=dimensions, user=user).value
         idx = [str(uuid.uuid4()) for _ in range(len(self.value))]
         query = [{"text": str(self.value[i])} for i in range(len(self.value))]
 

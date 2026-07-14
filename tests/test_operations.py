@@ -482,7 +482,7 @@ def test_embedding_request_uses_immutable_normalized_inputs() -> None:
         ),
     ],
 )
-def test_operation_specific_builders_preserve_visible_legacy_contract(
+def test_operation_specific_builders_preserve_normalized_request_contract(
     normalized_request: object,
     expected: object,
 ) -> None:

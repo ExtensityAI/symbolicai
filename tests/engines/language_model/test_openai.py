@@ -258,7 +258,7 @@ def test_nonreasoning_model_maps_supported_sampling_and_default_text_format() ->
     assert "reasoning" not in captured_body
 
 
-def test_reasoning_model_uses_explicit_legacy_default_effort() -> None:
+def test_reasoning_model_uses_explicit_default_effort() -> None:
     captured_body: dict[str, object] = {}
 
     def handler(request: httpx.Request) -> httpx.Response:

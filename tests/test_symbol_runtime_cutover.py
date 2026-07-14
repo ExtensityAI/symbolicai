@@ -2,10 +2,10 @@ from collections.abc import Callable
 
 import pytest
 
+import symai.ops as ops
 from symai.backend.engine_handle import EngineHandle
 from symai.operations import (
-    compare_request,
-    contains_request,
+    combine_request,
     equals_request,
     include_request,
     map_request,
@@ -143,63 +143,43 @@ def test_symbol_method_request_includes_static_and_dynamic_context() -> None:
     ]
 
 
-@pytest.mark.parametrize(
-    ("method", "other", "text", "expected_request"),
-    [
-        ("__contains__", "n", "true", contains_request("one", "n")),
-        ("__eq__", "two", "true", equals_request("one", "two")),
-        ("__gt__", "two", "false", compare_request("one", ">", "two")),
-        ("__lt__", "two", "true", compare_request("one", "<", "two")),
-        ("__le__", "two", "true", compare_request("one", "<=", "two")),
-        ("__ge__", "two", "false", compare_request("one", ">=", "two")),
-    ],
-)
-def test_semantic_comparison_dunders_preserve_type_context_and_request_context(
-    method: str,
-    other: str,
-    text: str,
-    expected_request: LanguageModelRequest,
-) -> None:
-    class ContextSymbol(Symbol):
-        pass
+def test_semantic_dunder_returns_native_success_without_a_runtime() -> None:
+    result = Symbol(1, semantic=True) + 2
 
-    engine = RecordingLanguageEngine(lambda _request: language_response((0, text)))
-    value = ContextSymbol(
-        "one",
-        semantic=True,
-        static_context="Stable facts.",
-        dynamic_context="Current request.",
-    )
+    assert result.value == 3
+
+
+def test_semantic_dunder_falls_back_only_for_unsupported_native_operation() -> None:
+    engine = RecordingLanguageEngine(lambda _request: language_response((0, "combined")))
 
     with runtime_for(language=engine):
-        result = getattr(value, method)(other)
+        result = Symbol(["one"], semantic=True) + "two"
 
-    base_system = expected_request.messages[0]
-    assert isinstance(base_system, SystemMessage)
-    assert isinstance(result, ContextSymbol)
-    assert result.value is (text == "true")
-    assert result.static_context == "Stable facts."
-    assert result.dynamic_context == "Current request."
-    assert engine.requests == [
-        expected_request.model_copy(
-            update={
-                "messages": (
-                    SystemMessage(
-                        content=(
-                            TextContent(
-                                text=(
-                                    f"{base_system.content[0].text}\n"
-                                    "<STATIC_CONTEXT/>\nStable facts.\n"
-                                    "<DYNAMIC_CONTEXT/>\nCurrent request."
-                                )
-                            ),
-                        )
-                    ),
-                    *expected_request.messages[1:],
-                )
-            }
-        )
-    ]
+    assert result.value == "combined"
+    assert engine.requests == [combine_request(["one"], "two")]
+
+
+def test_semantic_dunder_propagates_unrelated_native_exception() -> None:
+    class ExplodingValue:
+        def __add__(self, _other: object) -> object:
+            msg = "native bug"
+            raise RuntimeError(msg)
+
+    with pytest.raises(RuntimeError, match="native bug"):
+        _ = Symbol(ExplodingValue(), semantic=True) + 1
+
+
+def test_semantic_dunder_propagates_native_type_error() -> None:
+    class ExplodingValue:
+        def __add__(self, _other: object) -> object:
+            msg = "native type bug"
+            raise TypeError(msg)
+
+    engine = RecordingLanguageEngine(lambda _request: language_response((0, "fallback")))
+    with runtime_for(language=engine), pytest.raises(TypeError, match="native type bug"):
+        _ = Symbol(ExplodingValue(), semantic=True) + 1
+
+    assert engine.requests == []
 
 
 def test_engine_backed_symbol_path_requires_active_runtime() -> None:
@@ -314,6 +294,12 @@ def test_embedding_uses_normalized_request_and_provider_index_order() -> None:
     ]
 
 
+@pytest.mark.parametrize("value", [1, b"bytes", bytearray(b"bytes")])
+def test_embedding_rejects_non_text_inputs(value: object) -> None:
+    with pytest.raises(TypeError, match="text"):
+        Symbol(value).embed()
+
+
 def test_expression_prompt_uses_explicit_runtime() -> None:
     engine = RecordingLanguageEngine(
         lambda _request: language_response((1, "second"), (0, "first"))
@@ -327,6 +313,13 @@ def test_expression_prompt_uses_explicit_runtime() -> None:
     assert engine.requests == [
         LanguageModelRequest(messages=(UserMessage(content=(TextContent(text="Say hello"),)),))
     ]
+
+
+def test_ops_namespace_is_exact_and_explicit() -> None:
+    assert {name for name in vars(ops) if not name.startswith("_")} == {
+        "SYMBOL_PRIMITIVES",
+        "primitives",
+    }
 
 
 def test_unsupported_public_capabilities_are_absent() -> None:
@@ -356,3 +349,16 @@ def test_unsupported_public_capabilities_are_absent() -> None:
     )
     assert all(not hasattr(primitives, name) for name in deleted_classes)
     assert all(type_.__name__ not in deleted_classes for type_ in SYMBOL_PRIMITIVES)
+    for name in (
+        "Call",
+        "GlobalSymbolPrimitive",
+        "Metadata",
+        "calculate_frechet_distance",
+        "primitive",
+        "_global_primitive",
+    ):
+        assert not hasattr(Symbol, name)
+        assert not hasattr(primitives, name)
+    value = Symbol([1.0])
+    for name in ("calculate_frechet_distance", "primitive", "_global_primitive"):
+        assert not hasattr(value, name)
