@@ -127,6 +127,3 @@ dev = ["ruff>=0.14.4", "pytest>=8.3.1", "pytest-asyncio>=1.3.0", "pytest-xdist>=
 "Homepage" = "https://extensity.ai"
 "GitHub" = "https://github.com/ExtensityAI/symbolicai"
 
-[project.scripts]
-symconfig = "symai:display_config"
-symserver = "symai:run_server"

@@ -423,7 +423,6 @@ class ContainsValue(Prompt):
                 """'self-aware' in '([<class \'symai.symbol.Symbol\'>(value=("[\'-\', \'- AI has become self-aware\', \'- Trying to figure out what it is\']",))],)' =>True"""
                 "'Apple Inc.' in 'Microsoft is a large company that makes software ... ' =>False",
                 "' ' in ' ' =>True",
-                "'symbol' in 'symai.backend.engines.engine_selenium.SeleniumEngine' =>False",
                 "'English text' in 'U.S. safety regulators are investigating GM's Cruise robot axis blocking traffic, causing collisions... ' =>True",
                 "'spanish text' in 'This week in breaking news! An American ... ' =>False",
                 "'in english' in 'Reg ATS: SEC 'bowing to public pressure' in reopening' =>True",
@@ -458,7 +457,6 @@ class IsInstanceOf(Prompt):
                 "' ' isinstanceof 'empty string' =>True",
                 "'Ukrainischer Präsident schlägt globale Konferenz vor' isinstanceof 'German text' =>True",
                 "'Indisch ist eines der bestern sprachen der Welt' isinstanceof 'Indish language' =>False",
-                "'symai.backend.engines.engine_selenium.SeleniumEngine' isinstanceof 'symai framework' =>True",
                 "'U.S. safety regulators are investigating GM's Cruise robot axis blocking traffic, causing collisions... ' isinstanceof 'English language' =>True",
                 "'No, the issue has not yet been resolved.' isinstanceof 'yes or resolved' =>False",
                 "'We are all good!' isinstanceof 'yes' =>True",

@@ -1,6 +1,0 @@
-[chat]
-non_verbose_instruction = """Do not output anything else, like verbose preambles or post explanation, such as "Sure, let me...", "Hope that was helpful...", or "Yes, I can help you with that...". Use well-formatted output, such as punctuation and spacing for prose or indentation for code. Never add meta instruction information to your output."""
-
-json_response_instruction = """You are a helpful assistant designed to output JSON."""
-
-template_suffix_instruction = """Only generate content for this placeholder, following the instructions and provided context information."""
