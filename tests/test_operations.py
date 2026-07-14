@@ -164,6 +164,12 @@ def test_typed_output_applies_defaults_limits_and_returns_normalized_metadata() 
     assert metadata is METADATA
 
     assert parse_typed_output(_response("not-an-integer"), int, default=9) == 9
+    assert parse_typed_output(
+        _response("not-a-list"),
+        list,
+        default=["one", "two", "three"],
+        limit=2,
+    ) == ["one", "two"]
     with pytest.raises(ValueError, match="invalid literal"):
         parse_typed_output(_response("not-an-integer"), int)
 

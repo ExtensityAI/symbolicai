@@ -515,8 +515,8 @@ def setup_wizard(_symai_config_path_):
 _symai_config_, _symserver_config_ = _start_symai()
 
 from symai.backend.base import Engine  # noqa
-from symai.components import Function, Interface, PrimitiveDisabler  # noqa
 from symai.core import few_shot, zero_shot  # noqa
+from symai.components import Function  # noqa
 from symai.functional import EngineRepository  # noqa
 from symai.post_processors import PostProcessor  # noqa
 from symai.pre_processors import PreProcessor  # noqa
@@ -531,11 +531,9 @@ __all__ = [
     "Expression",
     "Function",
     "GlobalSymbolPrimitive",
-    "Interface",
     "Metadata",
     "PostProcessor",
     "PreProcessor",
-    "PrimitiveDisabler",
     "Prompt",
     "PromptRegistry",
     "Symbol",

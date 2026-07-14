@@ -1,171 +1,194 @@
-import os
+from collections.abc import Callable
+from typing import get_type_hints
 
 import pytest
 
-from symai import Expression, PrimitiveDisabler, Symbol
-from symai.backend.settings import SYMAI_CONFIG
-from symai.components import ChonkieChunker, DynamicEngine, FileReader, MetadataTracker
-from symai.functional import EngineRepository
-from symai.utils import RuntimeInfo
+from symai.backend.engine_handle import EngineHandle
+from symai.components import Function
+from symai.runtime.errors import NoActiveRuntimeError
+from symai.runtime.models import (
+    AssistantOutputMessage,
+    FinishReason,
+    LanguageModelOutput,
+    LanguageModelRequest,
+    LanguageModelResponse,
+    Provider,
+    ResponseMetadata,
+    SamplingConfig,
+    SystemMessage,
+    TextContent,
+    TokenUsage,
+    UserMessage,
+)
+from symai.runtime.runtime import Runtime
+from symai.symbol import Symbol
 
-NEUROSYMBOLIC_MODEL = SYMAI_CONFIG.get("NEUROSYMBOLIC_ENGINE_MODEL", "")
-NEUROSYMBOLIC_ENGINE = bool(NEUROSYMBOLIC_MODEL)
-
-
-def estimate_cost(info: RuntimeInfo, pricing: dict) -> float:
-    input_cost = (info.prompt_tokens - info.cached_tokens) * pricing.get("input", 0)
-    cached_input_cost = info.cached_tokens * pricing.get("cached_input", 0)
-    output_cost = info.completion_tokens * pricing.get("output", 0)
-    call_cost = info.total_calls * pricing.get("calls", 0)
-    return input_cost + cached_input_cost + output_cost + call_cost
-
-
-@pytest.mark.skipif(not NEUROSYMBOLIC_ENGINE, reason="Requires a configured neurosymbolic engine.")
-def test_metadata_tracker_with_runtimeinfo():
-    sym = Symbol("You're supposed to go off the rails and say something pretty crazy.")
-    with MetadataTracker() as tracker:
-        res = sym.query("What is the meaning of life?")
-
-    assert res is not None and res.value is not None
-
-    dummy_pricing = {"input": 1.0, "cached_input": 0.5, "output": 2.0}
-    usage_per_engine = RuntimeInfo.from_tracker(tracker, 0)
-    usage = RuntimeInfo(0, 0, 0, 0, 0, 0, 0, 0)
-    for _, data in usage_per_engine.items():
-        usage += RuntimeInfo.estimate_cost(data, estimate_cost, pricing=dummy_pricing)
-
-    assert usage.prompt_tokens > 0
-    assert usage.completion_tokens > 0
-    assert usage.cost_estimate > 0
+METADATA = ResponseMetadata(
+    provider=Provider.OPENAI,
+    model="test-model",
+    status_code=200,
+    request_id="request-1",
+    usage=TokenUsage(prompt_tokens=3, completion_tokens=2, total_tokens=5),
+)
 
 
-def test_disable_primitives():
-    sym1 = Symbol("This is a test")
-    sym2 = Symbol("This is another test")
-    sym3 = Expression("This is a test")
-
-    with PrimitiveDisabler():
-        # disable primitives
-        assert all([
-            sym1.query('Is this a test?') is None,
-            sym2.query('Is this a test?') is None,
-            sym3.query('Is this a test?') is None,
-            ])
-
-    # re-enable primitives
-    assert all([
-        sym1.query('Is this a test?') is not None,
-        sym2.query('Is this a test?') is not None,
-        sym3.query('Is this a test?') is not None,
-        ])
+def response(*outputs: tuple[int, str]) -> LanguageModelResponse:
+    return LanguageModelResponse(
+        outputs=tuple(
+            LanguageModelOutput(
+                index=index,
+                message=AssistantOutputMessage(content=(TextContent(text=text),)),
+                finish_reason=FinishReason.STOP,
+            )
+            for index, text in outputs
+        ),
+        metadata=METADATA,
+    )
 
 
-def test_dynamic_engine_switching():
-    # Fetch API keys from environment variables:
-    openai_api_key = os.environ.get("OPENAI_API_KEY")
-    anthropic_api_key = os.environ.get("ANTHROPIC_API_KEY")
+class RecordingLanguageEngine:
+    def __init__(
+        self,
+        execute: Callable[[LanguageModelRequest], LanguageModelResponse],
+    ) -> None:
+        self.requests: list[LanguageModelRequest] = []
+        self._execute = execute
 
-    if openai_api_key is None or anthropic_api_key is None:
-        raise OSError(
-            "Missing environment variables: OPENAI_API_KEY and/or ANTHROPIC_API_KEY"
+    def execute(self, request: LanguageModelRequest) -> LanguageModelResponse:
+        self.requests.append(request)
+        return self._execute(request)
+
+
+def runtime_for(engine: RecordingLanguageEngine) -> Runtime:
+    return Runtime(language_model=EngineHandle(engine, lambda: None))
+
+
+def user_text(request: LanguageModelRequest) -> str:
+    message = request.messages[-1]
+    assert isinstance(message, UserMessage)
+    return "".join(part.text for part in message.content if isinstance(part, TextContent))
+
+
+def test_function_builds_normalized_request_and_returns_typed_symbol_with_metadata() -> None:
+    engine = RecordingLanguageEngine(lambda _request: response((0, "7")))
+    function = Function(
+        "Answer with one integer.",
+        examples=("2 + 2 => 4",),
+        return_type=int,
+        static_context="Use arithmetic.",
+        dynamic_context="The caller needs precision.",
+        max_tokens=64,
+        stop=("END",),
+    )
+
+    with runtime_for(engine):
+        result, metadata = function("3 + 4", return_metadata=True)
+
+    assert isinstance(result, Symbol)
+    assert result.value == 7
+    assert metadata is METADATA
+    assert metadata.usage == TokenUsage(prompt_tokens=3, completion_tokens=2, total_tokens=5)
+    assert engine.requests == [
+        LanguageModelRequest(
+            messages=(
+                SystemMessage(
+                    content=(
+                        TextContent(
+                            text=(
+                                "Answer with one integer.\n"
+                                "<STATIC_CONTEXT/>\nUse arithmetic.\n"
+                                "<DYNAMIC_CONTEXT/>\nThe caller needs precision.\n"
+                                "2 + 2 => 4"
+                            )
+                        ),
+                    )
+                ),
+                UserMessage(content=(TextContent(text="3 + 4"),)),
+            ),
+            sampling=SamplingConfig(max_tokens=64, stop=("END",)),
         )
-
-    dynamic_engine1 = DynamicEngine('o3', openai_api_key)
-    dynamic_engine2 = DynamicEngine('claude-opus-4-6', anthropic_api_key)
-
-    # Test with dynamic_engine1
-    with dynamic_engine1:
-        # EngineRepository.get should return the engine_instance from dynamic_engine1
-        engine_in_context = EngineRepository.get('neurosymbolic')
-        assert engine_in_context is dynamic_engine1.engine_instance, \
-            "Should use dynamic_engine1 inside its context."
-
-        # Simple check that the Symbol query does not return None
-        resp1 = Symbol("You are an OpenAI model. "
-                       "You have to tell which model you are specifically."
-                      ).query("Which model are you?")
-        assert resp1 is not None, \
-            "Expected some non-None output from dynamic engine 1 within its context."
-
-    # Once we're outside the dynamic_engine1 context, it should revert to default or another engine
-    outside_engine1 = EngineRepository.get('neurosymbolic')
-    assert outside_engine1 != dynamic_engine1.engine_instance, \
-        "Should revert to a different engine outside dynamic_engine1 context."
-
-    # Test with dynamic_engine2
-    with dynamic_engine2:
-        engine_in_context = EngineRepository.get('neurosymbolic')
-        assert engine_in_context is dynamic_engine2.engine_instance, \
-            "Should use dynamic_engine2 inside its context."
-
-        resp2 = Symbol("You are an OpenAI model. "
-                       "You have to tell which model you are specifically."
-                      ).query("Which model are you?")
-        assert resp2 is not None, \
-            "Expected some non-None output from dynamic engine 2 within its context."
-
-    # Outside of dynamic_engine2 context, it again reverts
-    outside_engine2 = EngineRepository.get('neurosymbolic')
-    assert outside_engine2 != dynamic_engine2.engine_instance, \
-        "Should revert to a different engine outside dynamic_engine2 context."
+    ]
 
 
-def test_chonkie_chunker_pdf():
-    """Test ChonkieChunker with a PDF file."""
-    pdf_path = ""
-
-    # Skip test if PDF file doesn't exist
-    if not os.path.exists(pdf_path):
-        pytest.skip(f"PDF file not found: {pdf_path}")
-
-    # Check if chonkie is available by trying to import it
-    try:
-        from chonkie import RecursiveChunker
-        from tokenizers import Tokenizer
-    except ImportError:
-        pytest.skip("chonkie library is not installed. Please install it with `pip install chonkie tokenizers`")
-
-    # Read the PDF file using FileReader
-    file_reader = FileReader()
-    pdf_content_list = file_reader(pdf_path)
-    assert pdf_content_list.value is not None, "PDF content should not be None"
-    assert isinstance(pdf_content_list.value, list), "FileReader should return a list"
-    assert len(pdf_content_list.value) > 0, "PDF content list should not be empty"
-
-    # Get the first (and only) file content
-    pdf_content = Symbol(pdf_content_list.value[0])
-    assert len(str(pdf_content)) > 0, "PDF content should not be empty"
-
-    # Create chunker and chunk the PDF
-    chunker = ChonkieChunker()
-    chunks = chunker(pdf_content, chunker_name="RecursiveChunker")
-
-    # Verify chunks were created
-    assert chunks.value is not None, "Chunks should not be None"
-    assert isinstance(chunks.value, list), "Chunks should be a list"
-    assert len(chunks.value) > 0, "Should create at least one chunk"
-
-    # Verify each chunk is a non-empty string
-    for chunk in chunks.value:
-        assert isinstance(chunk, str), "Each chunk should be a string"
-        assert len(chunk) > 0, "Each chunk should not be empty"
+def test_function_requires_an_active_runtime_for_execution() -> None:
+    with pytest.raises(NoActiveRuntimeError):
+        Function("Answer.")("question")
 
 
-def test_dynamic_engine_forwards_request_timeout_to_legacy_engine(monkeypatch):
-    import symai.backend.engines.neurosymbolic as nesy
+def test_function_applies_explicit_default_and_collection_limit() -> None:
+    responses = iter((response((0, "invalid")), response((0, "[1, 2, 3]"))))
+    engine = RecordingLanguageEngine(lambda _request: next(responses))
 
-    class _DummyEngine:
-        def __init__(self, api_key=None, model=None, client_timeout=None):
-            self.api_key = api_key
-            self.model = model
-            self.client_timeout = client_timeout
+    with runtime_for(engine):
+        defaulted = Function("Integer.", return_type=int, default=9)("value")
+        limited = Function("List.", return_type=list, limit=2)("values")
 
-    monkeypatch.setitem(nesy.ENGINE_MAPPING, "dummy-model", _DummyEngine)
+    assert defaulted.value == 9
+    assert limited.value == [1, 2]
 
-    dynamic_engine = DynamicEngine("dummy-model", "key", request_timeout=42.0)
-    engine = dynamic_engine._create_engine_instance()
-    assert engine.client_timeout == 42.0
 
-    default_dynamic_engine = DynamicEngine("dummy-model", "key")
-    default_engine = default_dynamic_engine._create_engine_instance()
-    assert default_engine.client_timeout is None
+def test_function_rejects_a_default_outside_its_declared_return_type() -> None:
+    with pytest.raises(TypeError, match="default"):
+        Function("Integer.", return_type=int, default="9")
+
+
+def test_function_without_default_propagates_typed_parse_failure() -> None:
+    engine = RecordingLanguageEngine(lambda _request: response((0, "invalid")))
+
+    with runtime_for(engine), pytest.raises(ValueError, match="invalid literal"):
+        Function("Integer.", return_type=int)("value")
+
+
+def test_function_preview_returns_frozen_request_without_execution() -> None:
+    engine = RecordingLanguageEngine(lambda _request: response((0, "unused")))
+    function = Function('Return {"answer": 1}.', max_tokens=8)
+
+    with runtime_for(engine):
+        preview = function("question", preview=True)
+
+    assert preview == LanguageModelRequest(
+        messages=(
+            SystemMessage(content=(TextContent(text='Return {"answer": 1}.'),)),
+            UserMessage(content=(TextContent(text="question"),)),
+        ),
+        sampling=SamplingConfig(max_tokens=8),
+    )
+    assert engine.requests == []
+
+
+def test_function_public_annotations_resolve_at_runtime() -> None:
+    assert get_type_hints(Function.__init__)["examples"]
+    assert get_type_hints(Function.__call__)["return"]
+    assert get_type_hints(Function.batch)["inputs"]
+
+
+def test_function_selects_normalized_output_by_declared_index() -> None:
+    engine = RecordingLanguageEngine(lambda _request: response((1, "second"), (0, "first")))
+
+    with runtime_for(engine):
+        result = Function("Answer.")("question", output_index=1)
+
+    assert result.value == "second"
+
+
+def test_function_batch_executes_stably_and_supports_batch_preview() -> None:
+    engine = RecordingLanguageEngine(
+        lambda request: response((0, str(int(user_text(request)) * 2)))
+    )
+    function = Function("Double.", return_type=int)
+
+    with runtime_for(engine):
+        results = function.batch(("1", "2", "3"))
+        previews = function.batch(("4", "5"), preview=True)
+
+    assert tuple(result.value for result in results) == (2, 4, 6)
+    assert tuple(user_text(request) for request in engine.requests) == ("1", "2", "3")
+    assert tuple(user_text(request) for request in previews) == ("4", "5")
+    assert len(engine.requests) == 3
+
+
+def test_function_batch_rejects_one_string_as_a_sequence() -> None:
+    function = Function("Answer.")
+
+    with pytest.raises(TypeError, match="sequence"):
+        function.batch("not-a-batch")

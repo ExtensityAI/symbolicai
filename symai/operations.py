@@ -204,9 +204,9 @@ def parse_typed_output(
     try:
         parsed = parse_typed_value(text, return_type)
     except (SyntaxError, TypeError, ValueError):
-        if not isinstance(default, _Missing):
-            return default
-        raise
+        if isinstance(default, _Missing):
+            raise
+        parsed = default
     return limit_value(parsed, limit)
 
 
