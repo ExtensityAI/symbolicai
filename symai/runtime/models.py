@@ -218,6 +218,12 @@ class AssistantMessage(FrozenModel):
         return self
 
 
+class AssistantOutputMessage(FrozenModel):
+    role: Literal["assistant"] = "assistant"
+    content: tuple[TextContent, ...] = ()
+    reasoning: TextContent | None = None
+
+
 Message = Annotated[
     SystemMessage | DeveloperMessage | UserMessage | AssistantMessage,
     Field(discriminator="role"),
@@ -350,9 +356,17 @@ class ResponseMetadata(FrozenModel):
 
 class LanguageModelOutput(FrozenModel):
     index: int = Field(ge=0)
-    message: AssistantMessage
-    refusal: str | None = None
+    message: AssistantOutputMessage
+    refusal: str | None = Field(default=None, min_length=1)
     finish_reason: FinishReason
+
+    @model_validator(mode="after")
+    def validate_content_reasoning_or_refusal(self) -> Self:
+        if not self.message.content and self.message.reasoning is None and self.refusal is None:
+            msg = "Language model outputs require content, reasoning, or refusal"
+            raise ValueError(msg)
+
+        return self
 
     @property
     def text(self) -> str:

@@ -7,6 +7,7 @@ from pydantic import SecretStr, TypeAdapter, ValidationError
 
 from symai.runtime.models import (
     AssistantMessage,
+    AssistantOutputMessage,
     Content,
     ContentType,
     DeveloperMessage,
@@ -298,7 +299,9 @@ def test_usage_defaults_to_zero_and_rejects_negative_counts():
 def test_language_output_text_concatenates_ordered_parts_without_delimiters():
     output = LanguageModelOutput(
         index=0,
-        message=AssistantMessage(content=(TextContent(text="first"), TextContent(text=" second"))),
+        message=AssistantOutputMessage(
+            content=(TextContent(text="first"), TextContent(text=" second"))
+        ),
         finish_reason=FinishReason.STOP,
     )
     metadata = ResponseMetadata(provider=Provider.OPENAI, model="gpt-5.5", status_code=200)
@@ -306,6 +309,25 @@ def test_language_output_text_concatenates_ordered_parts_without_delimiters():
 
     assert output.text == "first second"
     assert response.outputs == (output,)
+
+
+def test_language_output_supports_refusal_without_invented_assistant_text():
+    output = LanguageModelOutput(
+        index=0,
+        message=AssistantOutputMessage(),
+        refusal="I cannot help with that.",
+        finish_reason=FinishReason.STOP,
+    )
+
+    assert output.text == ""
+    assert output.refusal == "I cannot help with that."
+
+    with pytest.raises(ValidationError):
+        LanguageModelOutput(
+            index=0,
+            message=AssistantOutputMessage(),
+            finish_reason=FinishReason.STOP,
+        )
 
 
 def test_embedding_vectors_require_non_negative_indices_and_finite_values():

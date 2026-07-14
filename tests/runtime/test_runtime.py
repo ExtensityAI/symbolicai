@@ -14,7 +14,7 @@ from symai.runtime.errors import (
     UnsupportedCapabilityError,
 )
 from symai.runtime.models import (
-    AssistantMessage,
+    AssistantOutputMessage,
     EmbeddingRequest,
     EmbeddingResponse,
     EmbeddingVector,
@@ -38,7 +38,7 @@ LANGUAGE_RESPONSE = LanguageModelResponse(
     outputs=(
         LanguageModelOutput(
             index=0,
-            message=AssistantMessage(content=(TextContent(text="answer"),)),
+            message=AssistantOutputMessage(content=(TextContent(text="answer"),)),
             finish_reason=FinishReason.STOP,
         ),
     ),
