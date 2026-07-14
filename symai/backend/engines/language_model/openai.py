@@ -1,426 +1,436 @@
-import logging
-import re
+from math import isfinite
+from types import MappingProxyType
+from typing import cast
 
-import tiktoken
-from pydantic import TypeAdapter
+from pydantic import JsonValue, ValidationError
 
-from symai.backend.base import Engine
-from symai.backend.usage import EngineUsageRecord
+from symai.clients.openai import errors as openai_errors
 from symai.clients.openai import responses as responses_api
 from symai.clients.openai.client import Client as OpenAIClient
-from symai.clients.openai.responses import (
-    ContextCompaction,
-    Conversation,
-    CreateResponseRequest,
-    InputMessage,
-    ModerationConfig,
-    OutputMessage,
-    OutputText,
-    PromptCacheOptions,
-    PromptReference,
-    ReasoningConfig,
-    ReasoningEffort,
-    Response,
-    ResponseStatus,
-    ServiceTier,
-    TextConfig,
-    Truncation,
-)
 from symai.clients.openai.transport import APIResponse
-from symai.utils import encode_media_frames
-
-logger = logging.getLogger(__name__)
-
+from symai.clients.openai.transport import ResponseMetadata as OpenAIResponseMetadata
+from symai.runtime.errors import (
+    AuthenticationError,
+    ErrorMetadata,
+    ExecutionError,
+    InvalidResponseError,
+    RateLimitError,
+    TransportError,
+    UnsupportedFeatureError,
+    UnsupportedModelError,
+)
+from symai.runtime.models import (
+    AssistantMessage,
+    AssistantOutputMessage,
+    ContentType,
+    FinishReason,
+    ImageContent,
+    JsonObjectResponseFormat,
+    JsonSchemaResponseFormat,
+    LanguageModelOutput,
+    LanguageModelRequest,
+    LanguageModelResponse,
+    LanguageModelSpec,
+    Message,
+    MessageRole,
+    Provider,
+    ReasoningEffort,
+    ReasoningField,
+    ReasoningSummary,
+    ResponseFormatType,
+    ResponseMetadata,
+    SamplingField,
+    TextContent,
+    TokenUsage,
+    UserMessage,
+)
 
 _HIGH_REASONING_EFFORT_MODELS: frozenset[responses_api.Model] = frozenset(
     {"gpt-5.5-pro", "gpt-5.4-pro", "o3-pro"}
 )
-_TOKENIZER = "o200k_base"
-
-_NON_VERBOSE_OUTPUT = (
-    "<META_INSTRUCTION/>\n"
-    "You do not output anything else, like verbose preambles or post explanation, such as "
-    '"Sure, let me...", "Hope that was helpful...", "Yes, I can help you with that...", etc. '
-    "Consider well formatted output, e.g. for sentences use punctuation, spaces etc. or for code use "
-    "indentation, etc. Never add meta instructions information to your output!\n\n"
+_ALL_MESSAGE_ROLES = tuple(MessageRole)
+_ALL_RESPONSE_FORMATS = tuple(ResponseFormatType)
+_OPENAI_REASONING_FIELDS = (ReasoningField.EFFORT, ReasoningField.SUMMARY)
+_OPENAI_REASONING_SUMMARIES = tuple(ReasoningSummary)
+_OPENAI_BASE_SAMPLING_FIELDS = (SamplingField.MAX_TOKENS, SamplingField.TOP_LOGPROBS)
+_OPENAI_NONREASONING_SAMPLING_FIELDS = (
+    *_OPENAI_BASE_SAMPLING_FIELDS,
+    SamplingField.TEMPERATURE,
+    SamplingField.TOP_P,
 )
 
 
-class ResponsesTokenizer:
-    def __init__(self, model: str, tokenizer_name: str):
-        self._model = model
+def _normalized_model_spec(spec: responses_api.ModelSpec) -> LanguageModelSpec:
+    reasoning = spec.reasoning
+    return LanguageModelSpec(
+        context_tokens=spec.context_tokens,
+        response_tokens=spec.response_tokens,
+        message_roles=_ALL_MESSAGE_ROLES,
+        content_types=(ContentType.TEXT, ContentType.IMAGE) if spec.vision else (ContentType.TEXT,),
+        response_formats=_ALL_RESPONSE_FORMATS,
+        reasoning_fields=_OPENAI_REASONING_FIELDS if reasoning is not None else (),
+        reasoning_efforts=tuple(ReasoningEffort(effort.value) for effort in reasoning.efforts)
+        if reasoning is not None
+        else (),
+        reasoning_summaries=_OPENAI_REASONING_SUMMARIES if reasoning is not None else (),
+        sampling_fields=_OPENAI_BASE_SAMPLING_FIELDS
+        if reasoning is not None
+        else _OPENAI_NONREASONING_SAMPLING_FIELDS,
+        vision=spec.vision,
+    )
+
+
+MODEL_SPECS = MappingProxyType(
+    {model: _normalized_model_spec(spec) for model, spec in responses_api.MODEL_SPECS.items()}
+)
+
+
+class LanguageModelEngine:
+    provider = Provider.OPENAI
+
+    def __init__(self, *, client: OpenAIClient, model: str) -> None:
         try:
-            self._tiktoken = tiktoken.encoding_for_model(model)
-        except Exception:
-            self._tiktoken = tiktoken.get_encoding(tokenizer_name)
+            model_spec = MODEL_SPECS[model]
+        except KeyError as error:
+            msg = f"Unsupported OpenAI language model: {model}"
+            raise UnsupportedModelError(msg) from error
 
-    def encode(self, text: str) -> list[int]:
-        return self._tiktoken.encode(text, disallowed_special=())
+        self._client = client
+        self._model: responses_api.Model = cast("responses_api.Model", model)
+        self._model_spec = model_spec
 
-    def decode(self, tokens: list[int]) -> str:
-        return self._tiktoken.decode(tokens)
+    @property
+    def model(self) -> responses_api.Model:
+        return self._model
 
+    @property
+    def model_spec(self) -> LanguageModelSpec:
+        return self._model_spec
 
-class LanguageModelEngine(Engine):
-    provider = "openai"
-    capability = "language_model"
-
-    def __init__(self, *, client: OpenAIClient, model: responses_api.Model):
-        super().__init__()
+    def execute(self, request: LanguageModelRequest) -> LanguageModelResponse:
+        provider_request = self._build_request(request)
         try:
-            self.model_spec = responses_api.MODEL_SPECS[model]
-        except KeyError as e:
-            msg = f"Unsupported model: {model}"
-            raise ValueError(msg) from e
+            response = self._client.create_response(provider_request)
+        except openai_errors.AuthError as error:
+            metadata = self._error_metadata(error.metadata)
+            msg = "OpenAI rejected authentication"
+            raise AuthenticationError(msg, metadata=metadata) from error
+        except openai_errors.RateLimitError as error:
+            metadata = self._error_metadata(error.metadata)
+            msg = "OpenAI rate-limited the request"
+            raise RateLimitError(msg, metadata=metadata) from error
+        except openai_errors.ResponseError as error:
+            metadata = self._error_metadata(error.metadata)
+            msg = "OpenAI returned an invalid response"
+            raise InvalidResponseError(msg, metadata=metadata) from error
+        except openai_errors.TransportError as error:
+            metadata = ErrorMetadata(provider=self.provider, model=self.model)
+            msg = "OpenAI transport failed"
+            raise TransportError(msg, metadata=metadata) from error
+        except openai_errors.APIError as error:
+            metadata = self._error_metadata(error.metadata)
+            msg = f"OpenAI API request failed with status {error.metadata.status_code}"
+            raise ExecutionError(msg, metadata=metadata) from error
 
-        self.client = client
-        self.model = model
-        self.seed = None
-        self.name = self.__class__.__name__
-        self.tokenizer = ResponsesTokenizer(
-            model=model,
-            tokenizer_name=_TOKENIZER,
-        )
-        self.max_context_tokens = self.model_spec.context_tokens
-        self.max_response_tokens = self.model_spec.response_tokens
+        return self._parse_response(response)
 
-    def command(self, *args, **kwargs):
-        super().command(*args, **kwargs)
-        if "seed" in kwargs:
-            self.seed = kwargs["seed"]
-
-    def compute_required_tokens(self, messages: list[dict]) -> int:
-        tokens_per_message = 3
-        tokens_per_name = 1
-        num_tokens = 0
-        for message in messages:
-            num_tokens += tokens_per_message
-            for key, value in message.items():
-                if isinstance(value, str):
-                    num_tokens += len(self.tokenizer.encode(value))
-                elif isinstance(value, list):
-                    for v in value:
-                        if isinstance(v, dict) and v.get("type") in ("text", "input_text"):
-                            num_tokens += len(self.tokenizer.encode(v.get("text", "")))
-                if key == "name":
-                    num_tokens += tokens_per_name
-        if self.model_spec.reasoning:
-            num_tokens += 6
-        else:
-            num_tokens += 3
-        return num_tokens
-
-    def compute_remaining_tokens(self, prompts: list) -> int:
-        val = self.compute_required_tokens(prompts)
-        return min(self.max_context_tokens - val, self.max_response_tokens)
-
-    def _handle_image_content(self, content: str) -> list[str]:
-        def _extract_pattern(text):
-            # This regular expression matches <<vision:...:>> patterns to extract embedded image references.
-            pattern = r"<<vision:(.*?):>>"
-            return re.findall(pattern, text)
-
-        image_files = []
-        if "<<vision:" not in content:
-            return image_files
-
-        parts = _extract_pattern(content)
-        for p in parts:
-            img_ = p.strip()
-            if img_.startswith("http") or img_.startswith("data:image"):
-                image_files.append(img_)
-            else:
-                max_frames_spacing = 50
-                max_used_frames = 10
-                if img_.startswith("frames:"):
-                    img_ = img_.replace("frames:", "")
-                    max_used_frames, img_ = img_.split(":")
-                    max_used_frames = int(max_used_frames)
-                    if max_used_frames < 1 or max_used_frames > max_frames_spacing:
-                        msg = f"Invalid max_used_frames value: {max_used_frames}. Expected 1-{max_frames_spacing}"
-                        raise ValueError(msg)
-                buffer, ext = encode_media_frames(img_)
-                if len(buffer) > 1:
-                    step = max(1, len(buffer) // max_frames_spacing)
-                    indices = list(range(0, len(buffer), step))[:max_used_frames]
-                    for i in indices:
-                        image_files.append(f"data:image/{ext};base64,{buffer[i]}")
-                elif len(buffer) == 1:
-                    image_files.append(f"data:image/{ext};base64,{buffer[0]}")
-                else:
-                    logger.warning("No frames found or error in encoding frames")
-        return image_files
-
-    def _remove_vision_pattern(self, text: str) -> str:
-        # This regular expression matches <<vision:...:>> patterns to strip them from output text.
-        pattern = r"<<vision:(.*?):>>"
-        return re.sub(pattern, "", text)
-
-    def _build_system_content(self, argument, image_files: list[str]) -> str:
-        sections = []
-        sections.extend(self._verbose_section(argument))
-        sections.extend(self._response_format_section(argument))
-        sections.extend(self._context_sections(argument))
-        sections.extend(self._payload_section(argument))
-        sections.extend(self._examples_section(argument))
-        sections.extend(self._instruction_section(argument, image_files))
-        sections.extend(self._template_suffix_section(argument))
-        return "".join(sections)
-
-    def _verbose_section(self, argument) -> list[str]:
-        if argument.prop.suppress_verbose_output:
-            return [_NON_VERBOSE_OUTPUT]
-        return []
-
-    def _response_format_section(self, argument) -> list[str]:
-        if (
-            argument.prop.response_format
-            and argument.prop.response_format.get("type") == "json_object"
-        ):
-            return ["<RESPONSE_FORMAT/>\nYou are a helpful assistant designed to output JSON.\n\n"]
-        return []
-
-    def _context_sections(self, argument) -> list[str]:
-        sections = []
-        static_ctxt, dyn_ctxt = argument.prop.instance.global_context
-        if len(static_ctxt) > 0:
-            sections.append(f"<STATIC CONTEXT/>\n{static_ctxt}\n\n")
-        if len(dyn_ctxt) > 0:
-            sections.append(f"<DYNAMIC CONTEXT/>\n{dyn_ctxt}\n\n")
-        return sections
-
-    def _payload_section(self, argument) -> list[str]:
-        if argument.prop.payload:
-            return [f"<ADDITIONAL CONTEXT/>\n{argument.prop.payload!s}\n\n"]
-        return []
-
-    def _examples_section(self, argument) -> list[str]:
-        examples = argument.prop.examples
-        if examples and len(examples) > 0:
-            return [f"<EXAMPLES/>\n{examples!s}\n\n"]
-        return []
-
-    def _instruction_section(self, argument, image_files: list[str]) -> list[str]:
-        if argument.prop.prompt is None or len(argument.prop.prompt) == 0:
-            return []
-        val = str(argument.prop.prompt)
-        if len(image_files) > 0:
-            val = self._remove_vision_pattern(val)
-        return [f"<INSTRUCTION/>\n{val}\n\n"]
-
-    def _template_suffix_section(self, argument) -> list[str]:
-        if argument.prop.template_suffix:
-            return [
-                f" You will only generate content for the placeholder `{argument.prop.template_suffix!s}` "
-                "following the instructions and the provided context information.\n\n"
-            ]
-        return []
-
-    def _build_user_text(self, argument, image_files: list[str]) -> str:
-        suffix = str(argument.prop.processed_input)
-        if len(image_files) > 0:
-            suffix = self._remove_vision_pattern(suffix)
-        return suffix
-
-    def _create_user_message(self, user_text: str, image_files: list[str]) -> dict:
-        if image_files:
-            images = [{"type": "input_image", "image_url": f} for f in image_files]
-            return {"role": "user", "content": [*images, {"type": "input_text", "text": user_text}]}
-        return {"role": "user", "content": user_text}
-
-    def _apply_self_prompt_if_needed(
-        self, argument, system: str, user_msg: dict, user_text: str, image_files: list[str]
-    ) -> tuple[str, dict]:
-        if not (
-            argument.prop.instance._kwargs.get("self_prompt", False) or argument.prop.self_prompt
-        ):
-            return system, user_msg
-        key = "developer" if self.model_spec.reasoning else "system"
-        res = self.self_prompt({"user": user_text, key: system})
-        if res is None:
-            msg = "Self-prompting failed!"
-            raise ValueError(msg)
-        new_user_msg = self._create_user_message(res["user"], image_files)
-        return res[key], new_user_msg
-
-    def _prepare_raw_input(self, argument):
-        if not argument.prop.processed_input:
-            msg = "Need to provide a prompt instruction to the engine if raw_input is enabled."
-            raise ValueError(msg)
-        value = argument.prop.processed_input
-        if not isinstance(value, list):
-            if not isinstance(value, dict):
-                value = {"role": "user", "content": str(value)}
-            value = [value]
-        return value
-
-    def prepare(self, argument):
-        if argument.prop.raw_input:
-            argument.prop.prepared_input = self._prepare_raw_input(argument)
-            return
-
-        image_files = self._handle_image_content(str(argument.prop.processed_input))
-        if image_files and not self.model_spec.vision:
-            msg = f"Model {self.model} does not support vision input."
-            raise ValueError(msg)
-        system_content = self._build_system_content(argument, image_files)
-        user_text = self._build_user_text(argument, image_files)
-        user_msg = self._create_user_message(user_text, image_files)
-        system_content, user_msg = self._apply_self_prompt_if_needed(
-            argument, system_content, user_msg, user_text, image_files
+    def _build_request(self, request: LanguageModelRequest) -> responses_api.CreateResponseRequest:
+        self._validate_request(request)
+        return responses_api.CreateResponseRequest(
+            input=tuple(self._input_message(message) for message in request.messages),
+            model=self.model,
+            max_output_tokens=request.sampling.max_tokens,
+            metadata={label.key: label.value for label in request.metadata} or None,
+            reasoning=self._reasoning_config(request),
+            temperature=request.sampling.temperature,
+            text=responses_api.TextConfig(format=self._response_format(request)),
+            top_logprobs=request.sampling.top_logprobs,
+            top_p=request.sampling.top_p,
+            user=request.user,
         )
 
-        role = "developer" if self.model_spec.reasoning else "system"
-        argument.prop.prepared_input = [
-            {"role": role, "content": system_content},
-            user_msg,
-        ]
+    def _validate_request(self, request: LanguageModelRequest) -> None:
+        for message in request.messages:
+            if isinstance(message, AssistantMessage) and message.reasoning is not None:
+                self._unsupported("OpenAI does not accept normalized assistant reasoning input")
+            if isinstance(message, UserMessage):
+                has_image = any(isinstance(content, ImageContent) for content in message.content)
+                if has_image and not self.model_spec.vision:
+                    self._unsupported(f"OpenAI model {self.model} does not support image input")
 
-    def build_request(self, argument) -> CreateResponseRequest:
-        unsupported = {
-            "stream",
-            "stream_options",
-            "tools",
-            "tool_choice",
-            "max_tool_calls",
-            "parallel_tool_calls",
-        } & set(argument.kwargs)
-        if unsupported:
-            msg = (
-                "OpenAI Responses integration does not support tool calling or streaming: "
-                f"{sorted(unsupported)}"
-            )
-            raise ValueError(msg)
-
-        if argument.kwargs.get("background") is True:
-            msg = "LanguageModelEngine does not support background execution."
-            raise ValueError(msg)
-
-        request_kwargs = set(CreateResponseRequest.model_fields) - {"input", "model"}
-        payload = self.collect_request_kwargs(argument, request_kwargs)
-        payload["model"] = self.model
-        payload["input"] = tuple(
-            TypeAdapter(InputMessage).validate_python(message, strict=False)
-            for message in argument.prop.prepared_input
-        )
-
-        if self.model_spec.reasoning:
-            payload.pop("temperature", None)
-            payload.pop("top_p", None)
-            default_effort = (
-                ReasoningEffort.HIGH
-                if self.model in _HIGH_REASONING_EFFORT_MODELS
-                else ReasoningEffort.MEDIUM
-            )
-            payload["reasoning"] = payload.get(
-                "reasoning",
-                {"effort": default_effort},
-            )
-
-        converters = {
-            "conversation": Conversation,
-            "moderation": ModerationConfig,
-            "prompt": PromptReference,
-            "prompt_cache_options": PromptCacheOptions,
-            "reasoning": ReasoningConfig,
-            "text": TextConfig,
-        }
-        for field_name, model_type in converters.items():
-            if isinstance(payload.get(field_name), dict):
-                payload[field_name] = model_type.model_validate(
-                    payload[field_name],
-                    strict=False,
+        reasoning = request.reasoning
+        if not self.model_spec.reasoning_fields:
+            if reasoning is not None:
+                self._unsupported(f"OpenAI model {self.model} does not support reasoning")
+        elif reasoning is not None:
+            if reasoning.enabled is not None:
+                self._unsupported("OpenAI reasoning does not support the normalized enabled field")
+            if reasoning.format is not None:
+                self._unsupported("OpenAI reasoning does not support normalized reasoning format")
+            if reasoning.clear is not None:
+                self._unsupported("OpenAI reasoning does not support normalized reasoning clearing")
+            if (
+                reasoning.effort is not None
+                and reasoning.effort not in self.model_spec.reasoning_efforts
+            ):
+                self._unsupported(
+                    f"OpenAI model {self.model} does not support reasoning effort "
+                    f"{reasoning.effort.value}"
+                )
+            if (
+                reasoning.summary is not None
+                and reasoning.summary not in self.model_spec.reasoning_summaries
+            ):
+                self._unsupported(
+                    f"OpenAI model {self.model} does not support reasoning summary "
+                    f"{reasoning.summary.value}"
                 )
 
-        if isinstance(payload.get("context_management"), list):
-            payload["context_management"] = tuple(
-                ContextCompaction.model_validate(item, strict=False)
-                for item in payload["context_management"]
+        sampling = request.sampling
+        if (
+            sampling.max_tokens is not None
+            and sampling.max_tokens > self.model_spec.response_tokens
+        ):
+            self._unsupported(
+                f"OpenAI model {self.model} supports at most "
+                f"{self.model_spec.response_tokens} output tokens"
             )
-        if isinstance(payload.get("include"), list):
-            payload["include"] = tuple(payload["include"])
-        if isinstance(payload.get("instructions"), list):
-            payload["instructions"] = tuple(
-                TypeAdapter(InputMessage).validate_python(item, strict=False)
-                for item in payload["instructions"]
-            )
-        if isinstance(payload.get("service_tier"), str):
-            payload["service_tier"] = ServiceTier(payload["service_tier"])
-        if isinstance(payload.get("truncation"), str):
-            payload["truncation"] = Truncation(payload["truncation"])
+        if (
+            sampling.temperature is not None
+            and SamplingField.TEMPERATURE not in self.model_spec.sampling_fields
+        ):
+            self._unsupported(f"OpenAI model {self.model} does not support temperature")
+        if (
+            sampling.top_p is not None
+            and SamplingField.TOP_P not in self.model_spec.sampling_fields
+        ):
+            self._unsupported(f"OpenAI model {self.model} does not support top_p")
+        if sampling.stop:
+            self._unsupported("OpenAI Responses does not support normalized stop sequences")
+        if sampling.seed is not None:
+            self._unsupported("OpenAI Responses does not support normalized seed")
+        if sampling.frequency_penalty is not None:
+            self._unsupported("OpenAI Responses does not support normalized frequency penalty")
+        if sampling.presence_penalty is not None:
+            self._unsupported("OpenAI Responses does not support normalized presence penalty")
+        if sampling.logprobs is not None:
+            self._unsupported("OpenAI Responses does not support normalized logprobs toggle")
+        if sampling.logit_bias:
+            self._unsupported("OpenAI Responses does not support normalized logit bias")
 
-        request = CreateResponseRequest.model_validate(payload)
-        remaining_tokens = self.compute_remaining_tokens(argument.prop.prepared_input)
-        max_output_tokens = request.max_output_tokens
-        if max_output_tokens is not None and max_output_tokens > self.max_response_tokens:
-            warning_message = (
-                f"Provided 'max_output_tokens' ({max_output_tokens}) exceeds max "
-                f"({self.max_response_tokens}). Truncating to {remaining_tokens}."
-            )
-            logger.warning(warning_message)
-            request = request.model_copy(update={"max_output_tokens": remaining_tokens})
-        return request
+    def _input_message(self, message: Message) -> responses_api.InputMessage:
+        content: list[responses_api.InputContent] = []
+        for part in message.content:
+            if isinstance(part, TextContent):
+                content.append(responses_api.InputText(type="input_text", text=part.text))
+            else:
+                content.append(
+                    responses_api.InputImage(
+                        type="input_image",
+                        detail=part.detail.value if part.detail is not None else "auto",
+                        image_url=part.url,
+                    )
+                )
+        return responses_api.InputMessage(
+            role=message.role,
+            content=tuple(content),
+        )
 
-    def _extract_output_text(self, response: Response) -> list[str]:
-        outputs = []
-        for output in response.output:
-            if not isinstance(output, OutputMessage):
-                continue
-            outputs.extend(
-                content.text for content in output.content if isinstance(content, OutputText)
+    def _response_format(self, request: LanguageModelRequest) -> responses_api.OutputFormat:
+        response_format = request.response_format
+        if isinstance(response_format, JsonSchemaResponseFormat):
+            return responses_api.JsonSchemaFormat(
+                type="json_schema",
+                name=response_format.name,
+                description=response_format.description,
+                schema=cast("JsonValue", response_format.json_schema.to_builtin()),
+                strict=response_format.strict,
             )
-        return outputs
+        if isinstance(response_format, JsonObjectResponseFormat):
+            return responses_api.JsonObjectFormat(type="json_object")
+        return responses_api.TextFormat(type="text")
 
-    def _extract_thinking(self, response: Response) -> str | None:
-        if not self.model_spec.reasoning:
+    def _reasoning_config(
+        self,
+        request: LanguageModelRequest,
+    ) -> responses_api.ReasoningConfig | None:
+        if not self.model_spec.reasoning_fields:
             return None
+
+        default_effort = (
+            responses_api.ReasoningEffort.HIGH
+            if self.model in _HIGH_REASONING_EFFORT_MODELS
+            else responses_api.ReasoningEffort.MEDIUM
+        )
+        reasoning = request.reasoning
+        effort = (
+            responses_api.ReasoningEffort(reasoning.effort.value)
+            if reasoning is not None and reasoning.effort is not None
+            else default_effort
+        )
+        summary = (
+            responses_api.ReasoningSummary(reasoning.summary.value)
+            if reasoning is not None and reasoning.summary is not None
+            else None
+        )
+        return responses_api.ReasoningConfig(effort=effort, summary=summary)
+
+    def _parse_response(
+        self, response: APIResponse[responses_api.Response]
+    ) -> LanguageModelResponse:
+        raw = response.data
+        error_metadata = self._execution_metadata(response)
+        try:
+            metadata = self._response_metadata(response)
+        except ValidationError as error:
+            msg = "OpenAI response metadata was invalid"
+            raise InvalidResponseError(msg, metadata=error_metadata) from error
+        finish_reason = self._finish_reason(raw, error_metadata)
+
+        if any(isinstance(item, responses_api.CompactionOutput) for item in raw.output):
+            msg = "OpenAI returned an unsupported output item"
+            raise InvalidResponseError(msg, metadata=error_metadata)
+
+        reasoning = self._reasoning_text(raw)
+        messages = [item for item in raw.output if isinstance(item, responses_api.OutputMessage)]
+        if reasoning is not None and len(messages) != 1:
+            msg = "OpenAI reasoning output requires exactly one assistant message"
+            raise InvalidResponseError(msg, metadata=error_metadata)
+
+        try:
+            outputs = tuple(
+                self._language_output(
+                    index,
+                    message,
+                    reasoning if index == 0 else None,
+                    error_metadata,
+                    finish_reason,
+                )
+                for index, message in enumerate(messages)
+            )
+            return LanguageModelResponse(outputs=outputs, metadata=metadata)
+        except ValidationError as error:
+            msg = "OpenAI response could not become a normalized language response"
+            raise InvalidResponseError(msg, metadata=error_metadata) from error
+
+    def _language_output(
+        self,
+        index: int,
+        message: responses_api.OutputMessage,
+        reasoning: TextContent | None,
+        error_metadata: ErrorMetadata,
+        finish_reason: FinishReason,
+    ) -> LanguageModelOutput:
+        if message.status is not responses_api.ItemStatus.COMPLETED and not (
+            message.status is responses_api.ItemStatus.INCOMPLETE
+            and finish_reason is not FinishReason.STOP
+        ):
+            msg = f"OpenAI assistant output status was {message.status.value!r}"
+            raise InvalidResponseError(msg, metadata=error_metadata)
+
+        text = tuple(
+            TextContent(text=part.text)
+            for part in message.content
+            if isinstance(part, responses_api.OutputText)
+        )
+        refusal = "".join(
+            part.refusal for part in message.content if isinstance(part, responses_api.Refusal)
+        )
+        return LanguageModelOutput(
+            index=index,
+            message=AssistantOutputMessage(content=text, reasoning=reasoning),
+            refusal=refusal or None,
+            finish_reason=finish_reason,
+        )
+
+    def _finish_reason(
+        self,
+        response: responses_api.Response,
+        error_metadata: ErrorMetadata,
+    ) -> FinishReason:
+        if response.status is responses_api.ResponseStatus.COMPLETED:
+            return FinishReason.STOP
+        if response.status is responses_api.ResponseStatus.FAILED:
+            return FinishReason.ERROR
+        if response.status is responses_api.ResponseStatus.INCOMPLETE:
+            details = response.incomplete_details
+            if details is not None and details.reason == "max_output_tokens":
+                return FinishReason.LENGTH
+            if details is not None and details.reason == "content_filter":
+                return FinishReason.CONTENT_FILTER
+
+        detail = f": {response.error.message}" if response.error is not None else ""
+        msg = f"OpenAI response status was {response.status.value!r}{detail}"
+        raise InvalidResponseError(msg, metadata=error_metadata)
+
+    def _reasoning_text(self, response: responses_api.Response) -> TextContent | None:
+        parts: list[str] = []
         for output in response.output:
-            if output.type == "reasoning":
-                texts = [summary.text for summary in output.summary]
-                if texts:
-                    return "\n".join(texts)
-        return None
+            if not isinstance(output, responses_api.ReasoningOutput):
+                continue
+            parts.extend(summary.text for summary in output.summary)
+            parts.extend(content.text for content in output.content)
+        return TextContent(text="\n".join(parts)) if parts else None
 
-    def forward(self, argument):  # pyright: ignore[reportIncompatibleMethodOverride]
-        request = self.build_request(argument)
-        response = self.call_request(request)
-        return self.parse_response(response)
+    def _response_metadata(
+        self,
+        response: APIResponse[responses_api.Response],
+    ) -> ResponseMetadata:
+        raw = response.data
+        normalized_usage = self._usage(response)
+        return ResponseMetadata(
+            provider=self.provider,
+            model=self.model,
+            status_code=response.metadata.status_code,
+            request_id=response.metadata.request_id,
+            retry_after=self._retry_after(response.metadata.retry_after),
+            response_id=raw.id,
+            created_at=raw.created_at,
+            usage=normalized_usage,
+        )
 
-    def call_request(self, request: CreateResponseRequest) -> APIResponse[Response]:
-        return self.client.create_response(request)
-
-    def usage_record_from_metadata(self, metadata: dict) -> EngineUsageRecord | None:
-        usage = metadata["raw_output"].usage
+    def _usage(
+        self,
+        response: APIResponse[responses_api.Response],
+    ) -> TokenUsage | None:
+        usage = response.data.usage
         if usage is None:
             return None
-
-        return EngineUsageRecord(
+        if (
+            usage.total_tokens != usage.input_tokens + usage.output_tokens
+            or usage.input_tokens_details.cached_tokens > usage.input_tokens
+            or usage.output_tokens_details.reasoning_tokens > usage.output_tokens
+        ):
+            msg = "OpenAI token usage was inconsistent"
+            raise InvalidResponseError(msg, metadata=self._execution_metadata(response))
+        return TokenUsage(
             prompt_tokens=usage.input_tokens,
             completion_tokens=usage.output_tokens,
             total_tokens=usage.total_tokens,
-            prompt_breakdown={"cached_tokens": usage.input_tokens_details.cached_tokens},
-            completion_breakdown={
-                "reasoning_tokens": usage.output_tokens_details.reasoning_tokens,
-            },
+            cached_prompt_tokens=usage.input_tokens_details.cached_tokens,
+            reasoning_tokens=usage.output_tokens_details.reasoning_tokens,
         )
 
-    def parse_response(self, response: APIResponse[Response]):
-        raw_output = response.data
-        if raw_output.status is not ResponseStatus.COMPLETED:
-            detail = f": {raw_output.error.message}" if raw_output.error else ""
-            msg = (
-                "LanguageModelEngine requires a completed response; "
-                f"received status {raw_output.status.value!r}{detail}"
-            )
-            raise ValueError(msg)
+    def _execution_metadata(
+        self,
+        response: APIResponse[responses_api.Response],
+    ) -> ErrorMetadata:
+        return self._error_metadata(response.metadata)
 
-        metadata = {
-            "raw_output": raw_output,
-            "response": response,
-        }
+    def _error_metadata(self, metadata: OpenAIResponseMetadata) -> ErrorMetadata:
+        request_id = metadata.request_id
+        retry_after = self._retry_after(metadata.retry_after)
+        return ErrorMetadata(
+            provider=self.provider,
+            model=self.model,
+            request_id=request_id,
+            retry_after=retry_after,
+        )
 
-        thinking = self._extract_thinking(raw_output)
-        if thinking:
-            metadata["thinking"] = thinking
+    @staticmethod
+    def _retry_after(value: float | None) -> float | None:
+        return value if value is not None and value >= 0 and isfinite(value) else None
 
-        return self._extract_output_text(raw_output), metadata
+    @staticmethod
+    def _unsupported(message: str) -> None:
+        raise UnsupportedFeatureError(message)
