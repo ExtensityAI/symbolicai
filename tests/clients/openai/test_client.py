@@ -10,11 +10,14 @@ from symai.clients.openai.responses import (
     InputMessage,
     InputText,
     ListInputItemsParams,
+    OutputMessage,
+    OutputText,
     ReasoningConfig,
     ReasoningEffort,
     ReasoningSummary,
     Response,
     RetrieveResponseParams,
+    URLCitation,
 )
 
 
@@ -132,8 +135,15 @@ def test_responses_posts_typed_request_without_tool_surface():
     with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
         response = Client(api_key="test-key", http_client=http_client).create_response(request)
 
-    assert response.data.output[1].content[0].text == "answer"
-    assert response.data.output[1].content[0].annotations[0].url == "https://example.com"
+    output = response.data.output[1]
+    assert isinstance(output, OutputMessage)
+    content = output.content[0]
+    assert isinstance(content, OutputText)
+    assert content.text == "answer"
+    annotation = content.annotations[0]
+    assert isinstance(annotation, URLCitation)
+    assert annotation.url == "https://example.com"
+    assert response.data.usage is not None
     assert response.data.usage.output_tokens_details.reasoning_tokens == 1
     assert response.metadata.request_id == "request-id"
     assert isinstance(response, BaseModel)
@@ -234,7 +244,9 @@ def test_response_lifecycle_operations_are_typed():
     assert retrieved.data.status == "completed"
     assert deleted.data.deleted is True
     assert cancelled.data.status == "cancelled"
-    assert items.data.data[0].role == "user"
+    item = items.data.data[0]
+    assert isinstance(item, InputMessage)
+    assert item.role == "user"
 
 
 def test_embeddings_posts_batch_and_parses_vectors():

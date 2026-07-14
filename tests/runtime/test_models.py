@@ -56,9 +56,9 @@ from symai.runtime.models import (
 
 def test_public_models_are_strict_frozen_and_forbid_extra_fields():
     with pytest.raises(ValidationError):
-        TextContent(text=1)
+        TextContent.model_validate({"text": 1})
     with pytest.raises(ValidationError):
-        TextContent(text="hello", unexpected=True)
+        TextContent.model_validate({"text": "hello", "unexpected": True})
 
     content = TextContent(text="hello")
     with pytest.raises(ValidationError):
@@ -147,7 +147,7 @@ def test_role_specific_messages_accept_only_their_content_contracts():
     assert UserMessage(content=(text, image)).role == "user"
 
     with pytest.raises(ValidationError):
-        SystemMessage(content=(image,))
+        SystemMessage.model_validate({"content": (image,)})
     with pytest.raises(ValidationError):
         UserMessage(content=())
 
@@ -377,7 +377,7 @@ def test_runtime_configuration_is_frozen_nonempty_and_redacts_api_keys():
     engine = ProviderEngineConfig(
         provider=Provider.DEEPSEEK,
         model="deepseek-v4-flash",
-        api_key="top-secret",
+        api_key=SecretStr("top-secret"),
         transport=transport,
     )
     config = RuntimeConfig(language_model=engine)

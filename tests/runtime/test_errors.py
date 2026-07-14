@@ -70,10 +70,12 @@ def test_execution_error_metadata_is_optional():
 
 def test_error_metadata_is_strict_and_retry_after_is_finite_non_negative():
     with pytest.raises(ValidationError):
-        ErrorMetadata(provider="openai", model="gpt-5.5")
+        ErrorMetadata.model_validate({"provider": "openai", "model": "gpt-5.5"})
     with pytest.raises(ValidationError):
         ErrorMetadata(provider=Provider.OPENAI, model="gpt-5.5", retry_after=-0.1)
     with pytest.raises(ValidationError):
         ErrorMetadata(provider=Provider.OPENAI, model="gpt-5.5", retry_after=float("inf"))
     with pytest.raises(ValidationError):
-        ErrorMetadata(provider=Provider.OPENAI, model="gpt-5.5", unknown="raw")
+        ErrorMetadata.model_validate(
+            {"provider": Provider.OPENAI, "model": "gpt-5.5", "unknown": "raw"}
+        )
