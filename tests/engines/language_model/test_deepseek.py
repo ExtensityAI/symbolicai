@@ -369,6 +369,36 @@ def test_reasoning_only_output_is_preserved_without_invented_content() -> None:
     assert response.outputs[0].message.reasoning == TextContent(text="thought")
 
 
+def test_content_filtered_null_output_is_preserved_without_invented_text() -> None:
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json=_chat_json(
+                choices=[
+                    _choice(
+                        finish_reason="content_filter",
+                        content=None,
+                        reasoning_content=None,
+                    )
+                ]
+            ),
+        )
+
+    client, http_client = _client(handler)
+    try:
+        response = LanguageModelEngine(client=client, model="deepseek-v4-flash").execute(
+            LanguageModelRequest(messages=(UserMessage(content=(TextContent(text="hello"),)),))
+        )
+    finally:
+        http_client.close()
+
+    output = response.outputs[0]
+    assert output.finish_reason is FinishReason.CONTENT_FILTER
+    assert output.message.content == ()
+    assert output.text == ""
+    assert output.refusal is None
+
+
 def test_optional_usage_counters_normalize_without_false_relations() -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(
@@ -533,18 +563,21 @@ def test_unsupported_reasoning_efforts_fail_before_transport(
     assert calls == 0
 
 
-def test_invalid_response_model_is_rejected() -> None:
+def test_response_model_identity_is_preserved_without_exact_equality_rejection() -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json=_chat_json(model="different-model"))
+        return httpx.Response(200, json=_chat_json(model="deepseek-v4-flash-2026-07-01"))
 
     client, http_client = _client(handler)
     try:
-        with pytest.raises(InvalidResponseError, match="model"):
-            LanguageModelEngine(client=client, model="deepseek-v4-flash").execute(
-                LanguageModelRequest(messages=(UserMessage(content=(TextContent(text="hello"),)),))
-            )
+        response = LanguageModelEngine(client=client, model="deepseek-v4-flash").execute(
+            LanguageModelRequest(messages=(UserMessage(content=(TextContent(text="hello"),)),))
+        )
     finally:
         http_client.close()
+
+    assert response.outputs[0].text == "answer"
+    assert response.metadata.requested_model == "deepseek-v4-flash"
+    assert response.metadata.response_model == "deepseek-v4-flash-2026-07-01"
 
 
 def test_invalid_response_object_is_rejected_by_wire_parser() -> None:

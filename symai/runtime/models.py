@@ -5,7 +5,15 @@ from enum import StrEnum
 from math import isfinite
 from typing import Annotated, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator, model_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    SecretStr,
+    field_validator,
+    model_validator,
+)
 
 
 class FrozenModel(BaseModel):
@@ -343,7 +351,11 @@ class RateLimitMetadata(FrozenModel):
 
 class ResponseMetadata(FrozenModel):
     provider: Provider
-    model: str = Field(min_length=1)
+    requested_model: str = Field(
+        min_length=1,
+        validation_alias=AliasChoices("requested_model", "model"),
+    )
+    response_model: str | None = Field(default=None, min_length=1)
     status_code: int = Field(ge=100, le=599)
     request_id: str | None = None
     retry_after: NonNegativeFiniteFloat | None = None
@@ -352,6 +364,10 @@ class ResponseMetadata(FrozenModel):
     system_fingerprint: str | None = None
     usage: TokenUsage | None = None
     rate_limit: RateLimitMetadata | None = None
+
+    @property
+    def model(self) -> str:
+        return self.requested_model
 
 
 class LanguageModelOutput(FrozenModel):
@@ -362,8 +378,18 @@ class LanguageModelOutput(FrozenModel):
 
     @model_validator(mode="after")
     def validate_content_reasoning_or_refusal(self) -> Self:
-        if not self.message.content and self.message.reasoning is None and self.refusal is None:
-            msg = "Language model outputs require content, reasoning, or refusal"
+        has_content = any(part.text for part in self.message.content)
+        has_reasoning = self.message.reasoning is not None and bool(self.message.reasoning.text)
+        if (
+            not has_content
+            and not has_reasoning
+            and self.refusal is None
+            and self.finish_reason is not FinishReason.CONTENT_FILTER
+        ):
+            msg = (
+                "Language model outputs require nonempty content, reasoning, refusal, "
+                "or a content-filter finish reason"
+            )
             raise ValueError(msg)
 
         return self

@@ -291,9 +291,6 @@ class LanguageModelEngine:
     ) -> LanguageModelResponse:
         raw = response.data
         error_metadata = self._error_metadata(response.metadata)
-        if raw.model != self.model:
-            msg = "DeepSeek response model did not match the request"
-            raise InvalidResponseError(msg, metadata=error_metadata)
         if not raw.choices:
             msg = "DeepSeek response did not contain choices"
             raise InvalidResponseError(msg, metadata=error_metadata)
@@ -351,7 +348,8 @@ class LanguageModelEngine:
         raw = response.data
         return ResponseMetadata(
             provider=self.provider,
-            model=self.model,
+            requested_model=self.model,
+            response_model=raw.model,
             status_code=response.metadata.status_code,
             request_id=response.metadata.request_id,
             retry_after=self._retry_after(response.metadata.retry_after),

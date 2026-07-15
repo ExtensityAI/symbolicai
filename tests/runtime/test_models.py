@@ -330,6 +330,34 @@ def test_language_output_supports_refusal_without_invented_assistant_text():
         )
 
 
+def test_language_output_allows_empty_only_for_terminal_content_filter():
+    output = LanguageModelOutput(
+        index=0,
+        message=AssistantOutputMessage(),
+        finish_reason=FinishReason.CONTENT_FILTER,
+    )
+
+    assert output.text == ""
+    assert output.message.content == ()
+    assert output.refusal is None
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        AssistantOutputMessage(content=(TextContent(text=""),)),
+        AssistantOutputMessage(reasoning=TextContent(text="")),
+    ],
+)
+def test_successful_output_rejects_empty_content_and_reasoning(message):
+    with pytest.raises(ValidationError):
+        LanguageModelOutput(
+            index=0,
+            message=message,
+            finish_reason=FinishReason.STOP,
+        )
+
+
 def test_embedding_vectors_require_non_negative_indices_and_finite_values():
     metadata = ResponseMetadata(provider=Provider.OPENAI, model="embedding", status_code=200)
     vector = EmbeddingVector(index=0, values=(0.1, -0.2))

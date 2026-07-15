@@ -280,9 +280,6 @@ class LanguageModelEngine:
     ) -> LanguageModelResponse:
         raw = response.data
         error_metadata = self._execution_metadata(response)
-        if raw.model != self.model:
-            msg = "OpenAI response model did not match the request"
-            raise InvalidResponseError(msg, metadata=error_metadata)
         try:
             metadata = self._response_metadata(response)
         except ValidationError as error:
@@ -382,7 +379,8 @@ class LanguageModelEngine:
         normalized_usage = self._usage(response)
         return ResponseMetadata(
             provider=self.provider,
-            model=self.model,
+            requested_model=self.model,
+            response_model=raw.model,
             status_code=response.metadata.status_code,
             request_id=response.metadata.request_id,
             retry_after=self._retry_after(response.metadata.retry_after),

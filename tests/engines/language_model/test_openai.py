@@ -418,25 +418,26 @@ def test_provider_errors_are_normalized_with_chained_cause(
         assert caught.value.metadata.retry_after == provider_error.metadata.retry_after
 
 
-def test_response_model_must_match_requested_model() -> None:
+def test_dated_response_model_preserves_requested_and_returned_identity() -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
-        payload = _response_json()
-        payload["model"] = "gpt-5.4-pro"
-        return httpx.Response(200, json=payload)
+        return httpx.Response(
+            200,
+            json=_response_json(model="gpt-5.4-2026-03-05"),
+        )
 
     client, http_client = _client(handler)
     try:
-        with pytest.raises(InvalidResponseError, match="model") as caught:
-            LanguageModelEngine(client=client, model="gpt-5.4").execute(
-                LanguageModelRequest(
-                    messages=(UserMessage(content=(TextContent(text="hello"),)),),
-                )
+        response = LanguageModelEngine(client=client, model="gpt-5.4").execute(
+            LanguageModelRequest(
+                messages=(UserMessage(content=(TextContent(text="hello"),)),),
             )
+        )
     finally:
         http_client.close()
 
-    assert caught.value.metadata is not None
-    assert caught.value.metadata.model == "gpt-5.4"
+    assert response.outputs[0].text == "answer"
+    assert response.metadata.requested_model == "gpt-5.4"
+    assert response.metadata.response_model == "gpt-5.4-2026-03-05"
 
 
 def test_refusal_only_output_is_normalized_without_invented_text() -> None:
