@@ -47,7 +47,7 @@ def language_response(*outputs: tuple[int, str]) -> LanguageModelResponse:
             LanguageModelOutput(
                 index=index,
                 message=AssistantOutputMessage(content=(TextContent(text=text),)),
-                finish_reason=FinishReason.STOP,
+                finish_reason=FinishReason.STOP if text else FinishReason.CONTENT_FILTER,
             )
             for index, text in outputs
         ),
@@ -83,9 +83,30 @@ def runtime_for(
     language: RecordingLanguageEngine | None = None,
     embedding: RecordingEmbeddingEngine | None = None,
 ) -> Runtime:
-    language_handle = EngineHandle(language, lambda: None) if language is not None else None
-    embedding_handle = EngineHandle(embedding, lambda: None) if embedding is not None else None
-    return Runtime(language_model=language_handle, embedding=embedding_handle)
+    handles: list[EngineHandle[object]] = []
+    if language is not None:
+        handles.append(
+            EngineHandle(
+                name="test-language-model",
+                capability="language_model",
+                engine=language,
+                cleanup=lambda: None,
+            )
+        )
+    if embedding is not None:
+        handles.append(
+            EngineHandle(
+                name="test-embedding",
+                capability="embedding",
+                engine=embedding,
+                cleanup=lambda: None,
+            )
+        )
+    return Runtime._from_engine_handles(
+        handles,
+        default_language_model="test-language-model" if language is not None else None,
+        default_embedding="test-embedding" if embedding is not None else None,
+    )
 
 
 def test_semantic_equality_uses_normalized_request_index_and_metadata() -> None:

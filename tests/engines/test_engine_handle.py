@@ -9,19 +9,36 @@ class ArbitraryEngine:
     pass
 
 
-def test_engine_handle_accepts_nonlegacy_engine_and_optional_cleanup() -> None:
+def test_engine_handle_tags_arbitrary_engine_and_optional_cleanup() -> None:
     engine = ArbitraryEngine()
     closed: list[ArbitraryEngine] = []
-    owned = EngineHandle(engine=engine, cleanup=lambda: closed.append(engine))
-    borrowed = EngineHandle(engine=engine)
+    owned = EngineHandle(
+        name="primary",
+        capability="language_model",
+        engine=engine,
+        cleanup=lambda: closed.append(engine),
+    )
+    borrowed = EngineHandle(
+        name="vectors",
+        capability="embedding",
+        engine=engine,
+    )
 
+    assert owned.name == "primary"
+    assert owned.capability == "language_model"
     assert owned.engine is engine
     assert owned.owns_resources is True
+    assert borrowed.name == "vectors"
+    assert borrowed.capability == "embedding"
     assert borrowed.engine is engine
     assert borrowed.owns_resources is False
 
     with pytest.raises(AttributeError):
         owned.engine = ArbitraryEngine()  # type: ignore[reportAttributeAccessIssue]
+    with pytest.raises(AttributeError):
+        owned.name = "changed"  # type: ignore[reportAttributeAccessIssue]
+    with pytest.raises(AttributeError):
+        owned.capability = "embedding"  # type: ignore[reportAttributeAccessIssue]
 
     owned.close()
     owned.close()
@@ -40,7 +57,12 @@ def test_engine_handle_consumes_failing_cleanup_exactly_once() -> None:
         msg = "cleanup failed"
         raise RuntimeError(msg)
 
-    handle = EngineHandle(engine=ArbitraryEngine(), cleanup=fail_cleanup)
+    handle = EngineHandle(
+        name="primary",
+        capability="language_model",
+        engine=ArbitraryEngine(),
+        cleanup=fail_cleanup,
+    )
 
     with pytest.raises(RuntimeError, match="cleanup failed"):
         handle.close()
@@ -58,7 +80,12 @@ def test_engine_handle_cleanup_runs_outside_its_lock() -> None:
     def inspect_handle() -> None:
         observed_ownership.append(handle.owns_resources)
 
-    handle = EngineHandle(engine=ArbitraryEngine(), cleanup=inspect_handle)
+    handle = EngineHandle(
+        name="primary",
+        capability="language_model",
+        engine=ArbitraryEngine(),
+        cleanup=inspect_handle,
+    )
     handle.close()
 
     assert observed_ownership == [False]
@@ -75,7 +102,12 @@ def test_engine_handle_concurrent_close_consumes_cleanup_once() -> None:
         with attempts_lock:
             attempts += 1
 
-    handle = EngineHandle(engine=ArbitraryEngine(), cleanup=cleanup)
+    handle = EngineHandle(
+        name="primary",
+        capability="language_model",
+        engine=ArbitraryEngine(),
+        cleanup=cleanup,
+    )
 
     def close_handle() -> None:
         barrier.wait()

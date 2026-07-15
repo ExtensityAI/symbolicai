@@ -1,23 +1,36 @@
 from collections.abc import Callable
 from threading import Lock
-from typing import Generic, TypeVar
+from typing import Generic, Literal, TypeVar
 
 EngineT_co = TypeVar("EngineT_co", covariant=True)
+EngineCapability = Literal["language_model", "embedding"]
 
 
 class EngineHandle(Generic[EngineT_co]):
     """Engine plus optional resource cleanup owned by its composition root."""
 
-    __slots__ = ("_cleanup", "_engine", "_lock")
+    __slots__ = ("_capability", "_cleanup", "_engine", "_lock", "_name")
 
     def __init__(
         self,
+        name: str,
+        capability: EngineCapability,
         engine: EngineT_co,
         cleanup: Callable[[], None] | None = None,
     ) -> None:
+        self._name = name
+        self._capability = capability
         self._engine = engine
         self._cleanup = cleanup
         self._lock = Lock()
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def capability(self) -> EngineCapability:
+        return self._capability
 
     @property
     def engine(self) -> EngineT_co:

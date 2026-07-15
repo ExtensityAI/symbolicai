@@ -42,7 +42,6 @@ PUBLIC_NAMES = [
     "MetadataLabel",
     "NoActiveRuntimeError",
     "Provider",
-    "ProviderEngineConfig",
     "RateLimitError",
     "RateLimitMetadata",
     "ReasoningConfig",
@@ -85,6 +84,7 @@ FORBIDDEN_PUBLIC_NAMES = {
     "EngineRepository",
     "Expression",
     "Function",
+    "ProviderEngineConfig",
     "Symbol",
     "config_manager",
     "run_server",
@@ -148,6 +148,11 @@ FORBIDDEN_IDENTIFIERS = {
     "run_server",
     "setup_wizard",
 }
+
+
+def test_runtime_models_expose_only_named_engine_configuration() -> None:
+    assert models.NamedEngineConfig.__name__ == "NamedEngineConfig"
+    assert not hasattr(models, "ProviderEngineConfig")
 
 
 def test_public_api_is_exact_ordered_and_direct() -> None:

@@ -1,7 +1,7 @@
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Literal, cast
+from typing import Literal
 
 import httpx
 from pydantic import SecretStr
@@ -13,7 +13,7 @@ from symai.clients.cerebras.client import Client as CerebrasClient
 from symai.clients.deepseek.client import Client as DeepSeekClient
 from symai.clients.openai.client import Client as OpenAIClient
 from symai.runtime.errors import UnsupportedCapabilityError, UnsupportedModelError
-from symai.runtime.models import Provider, ProviderEngineConfig, RuntimeConfig, TransportConfig
+from symai.runtime.models import NamedEngineConfig, Provider, RuntimeConfig, TransportConfig
 from symai.runtime.runtime import EmbeddingEngine, LanguageModelEngine, Runtime
 
 _Capability = Literal["language_model", "embedding"]
@@ -29,7 +29,7 @@ class _EngineFactory:
 @dataclass(frozen=True, slots=True)
 class _ResolvedEngine:
     capability: _Capability
-    config: ProviderEngineConfig
+    config: NamedEngineConfig
     factory: _EngineFactory
 
 
@@ -92,40 +92,35 @@ _FACTORIES: Mapping[tuple[Provider, _Capability], _EngineFactory] = MappingProxy
 
 
 def create_runtime(config: RuntimeConfig) -> Runtime:
-    """Build a single-owner runtime after resolving every configured capability."""
+    """Build a single-owner runtime after resolving every configured instance."""
     resolved = _resolve_config(config)
-    language_model: EngineHandle[LanguageModelEngine] | None = None
-    embedding: EngineHandle[EmbeddingEngine] | None = None
     constructed: list[EngineHandle[_ProviderEngine]] = []
 
     try:
         for engine in resolved:
-            handle = _create_handle(engine)
-            constructed.append(handle)
-            if engine.capability == "language_model":
-                language_model = cast("EngineHandle[LanguageModelEngine]", handle)
-            else:
-                embedding = cast("EngineHandle[EmbeddingEngine]", handle)
+            constructed.append(_create_handle(engine))
 
-        return Runtime(language_model=language_model, embedding=embedding)
+        return Runtime._from_engine_handles(
+            constructed,
+            default_language_model=config.default_language_model,
+            default_embedding=config.default_embedding,
+        )
     except BaseException as error:
         _close_after_construction_failure(constructed, error)
         raise
 
 
 def _resolve_config(config: RuntimeConfig) -> tuple[_ResolvedEngine, ...]:
-    configured: list[tuple[_Capability, ProviderEngineConfig]] = []
-    if config.language_model is not None:
-        configured.append(("language_model", config.language_model))
-    if config.embedding is not None:
-        configured.append(("embedding", config.embedding))
-
+    configured = (
+        *(("language_model", engine) for engine in config.language_models),
+        *(("embedding", engine) for engine in config.embeddings),
+    )
     return tuple(_resolve_engine(capability, engine) for capability, engine in configured)
 
 
 def _resolve_engine(
     capability: _Capability,
-    config: ProviderEngineConfig,
+    config: NamedEngineConfig,
 ) -> _ResolvedEngine:
     factory = _FACTORIES.get((config.provider, capability))
     if factory is None:
@@ -149,7 +144,12 @@ def _create_handle(resolved: _ResolvedEngine) -> EngineHandle[_ProviderEngine]:
         _close_with_note(http_client.close, error)
         raise
 
-    return EngineHandle(engine=engine, cleanup=http_client.close)
+    return EngineHandle(
+        name=resolved.config.name,
+        capability=resolved.capability,
+        engine=engine,
+        cleanup=http_client.close,
+    )
 
 
 def _create_http_client(config: TransportConfig) -> httpx.Client:

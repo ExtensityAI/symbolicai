@@ -84,13 +84,30 @@ def make_runtime(
     embedding_engine: EmbeddingEngine | None = None,
     embedding_cleanup: Callable[[], None] | None = None,
 ) -> Runtime:
-    language_handle = (
-        EngineHandle(language_engine, language_cleanup) if language_engine is not None else None
+    handles: list[EngineHandle[object]] = []
+    if language_engine is not None:
+        handles.append(
+            EngineHandle(
+                name="test-language-model",
+                capability="language_model",
+                engine=language_engine,
+                cleanup=language_cleanup,
+            )
+        )
+    if embedding_engine is not None:
+        handles.append(
+            EngineHandle(
+                name="test-embedding",
+                capability="embedding",
+                engine=embedding_engine,
+                cleanup=embedding_cleanup,
+            )
+        )
+    return Runtime._from_engine_handles(
+        handles,
+        default_language_model=("test-language-model" if language_engine is not None else None),
+        default_embedding="test-embedding" if embedding_engine is not None else None,
     )
-    embedding_handle = (
-        EngineHandle(embedding_engine, embedding_cleanup) if embedding_engine is not None else None
-    )
-    return Runtime(language_model=language_handle, embedding=embedding_handle)
 
 
 def test_current_runtime_requires_explicit_context() -> None:
@@ -238,7 +255,7 @@ def test_close_from_created_cleans_handles_once_and_rejects_later_entry() -> Non
     runtime.close()
     runtime.close()
 
-    assert closed == ["language", "embedding"]
+    assert closed == ["embedding", "language"]
     with pytest.raises(RuntimeClosedError), runtime:
         pass
 
@@ -261,11 +278,20 @@ def test_execute_dispatches_concrete_request_types_with_precise_responses() -> N
     assert embedding_engine.requests == [EMBEDDING_REQUEST]
 
 
+def test_direct_runtime_construction_is_rejected() -> None:
+    with pytest.raises(TypeError, match="create_runtime"):
+        Runtime()
+
+
 @pytest.mark.parametrize("runtime_request", [LANGUAGE_REQUEST, EMBEDDING_REQUEST])
 def test_execute_rejects_missing_capability(
     runtime_request: LanguageModelRequest | EmbeddingRequest,
 ) -> None:
-    runtime = Runtime()
+    runtime = (
+        make_runtime(embedding_engine=EmbeddingEngine())
+        if isinstance(runtime_request, LanguageModelRequest)
+        else make_runtime(language_engine=LanguageEngine())
+    )
 
     with runtime, pytest.raises(UnsupportedCapabilityError):
         runtime.execute(runtime_request)
@@ -474,10 +500,10 @@ def test_close_attempts_every_cleanup_and_groups_all_failures() -> None:
     with pytest.raises(BaseExceptionGroup) as caught:
         runtime.close()
 
-    assert attempts == ["language", "embedding"]
+    assert attempts == ["embedding", "language"]
     assert [str(error) for error in caught.value.exceptions] == [
-        "language failed",
         "embedding failed",
+        "language failed",
     ]
 
     runtime.close()

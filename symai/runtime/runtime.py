@@ -3,6 +3,7 @@ from __future__ import annotations
 from contextvars import ContextVar, Token
 from enum import StrEnum
 from threading import Condition, Lock
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Literal, Protocol, cast, overload
 
 from symai.runtime.errors import (
@@ -18,7 +19,7 @@ from symai.runtime.models import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Mapping, Sequence
     from types import TracebackType
 
     from symai.backend.engine_handle import EngineHandle
@@ -42,27 +43,87 @@ class _RuntimeState(StrEnum):
 class Runtime:
     """Explicit context-scoped owner for normalized execution capabilities."""
 
+    _condition: Condition
+    _construction_order: tuple[EngineHandle[object], ...]
+    _default_embedding: str | None
+    _default_language_model: str | None
+    _embedding: EngineHandle[EmbeddingEngine] | None
+    _engine_handles: Mapping[str, EngineHandle[object]]
+    _in_flight: int
+    _language_model: EngineHandle[LanguageModelEngine] | None
+    _state: _RuntimeState
+    _token: Token[Runtime | None] | None
+
     __slots__ = (
         "_condition",
+        "_construction_order",
+        "_default_embedding",
+        "_default_language_model",
         "_embedding",
+        "_engine_handles",
         "_in_flight",
         "_language_model",
         "_state",
         "_token",
     )
 
-    def __init__(
-        self,
+    def __init__(self) -> None:
+        msg = "Runtime instances must be created with create_runtime()"
+        raise TypeError(msg)
+
+    @classmethod
+    def _from_engine_handles(
+        cls,
+        handles: Sequence[EngineHandle[object]],
         *,
-        language_model: EngineHandle[LanguageModelEngine] | None = None,
-        embedding: EngineHandle[EmbeddingEngine] | None = None,
-    ) -> None:
-        self._condition = Condition(Lock())
-        self._language_model = language_model
-        self._embedding = embedding
-        self._in_flight = 0
-        self._state = _RuntimeState.CREATED
-        self._token: Token[Runtime | None] | None = None
+        default_language_model: str | None,
+        default_embedding: str | None,
+    ) -> Runtime:
+        construction_order = tuple(handles)
+        language_model = cls._resolve_default_handle(
+            construction_order,
+            "language_model",
+            default_language_model,
+        )
+        embedding = cls._resolve_default_handle(
+            construction_order,
+            "embedding",
+            default_embedding,
+        )
+        runtime = cls.__new__(cls)
+        runtime._condition = Condition(Lock())
+        runtime._language_model = cast(
+            "EngineHandle[LanguageModelEngine] | None",
+            language_model,
+        )
+        runtime._embedding = cast("EngineHandle[EmbeddingEngine] | None", embedding)
+        runtime._construction_order = construction_order
+        runtime._engine_handles = MappingProxyType(
+            {handle.name: handle for handle in construction_order}
+        )
+        runtime._default_language_model = default_language_model
+        runtime._default_embedding = default_embedding
+        runtime._in_flight = 0
+        runtime._state = _RuntimeState.CREATED
+        runtime._token = None
+        return runtime
+
+    @staticmethod
+    def _resolve_default_handle(
+        handles: Sequence[EngineHandle[object]],
+        capability: Literal["language_model", "embedding"],
+        default: str | None,
+    ) -> EngineHandle[object] | None:
+        if default is not None:
+            return next(
+                handle
+                for handle in handles
+                if handle.name == default and handle.capability == capability
+            )
+        return next(
+            (handle for handle in handles if handle.capability == capability),
+            None,
+        )
 
     def __enter__(self) -> Runtime:
         with self._condition:
@@ -172,13 +233,11 @@ class Runtime:
             raise BaseExceptionGroup(msg, failures)
 
     def _detach_handles(self) -> Sequence[EngineHandle[object]]:
-        handles: list[EngineHandle[object]] = []
-        if self._language_model is not None:
-            handles.append(self._language_model)
-            self._language_model = None
-        if self._embedding is not None:
-            handles.append(self._embedding)
-            self._embedding = None
+        handles = tuple(reversed(self._construction_order))
+        self._construction_order = ()
+        self._engine_handles = MappingProxyType({})
+        self._language_model = None
+        self._embedding = None
         return handles
 
 

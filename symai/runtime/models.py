@@ -440,7 +440,8 @@ class TransportConfig(FrozenModel):
     connect_retries: int = Field(default=0, ge=0)
 
 
-class ProviderEngineConfig(FrozenModel):
+class NamedEngineConfig(FrozenModel):
+    name: str = Field(min_length=1)
     provider: Provider
     model: str = Field(min_length=1)
     api_key: SecretStr = Field(min_length=1)
@@ -448,13 +449,57 @@ class ProviderEngineConfig(FrozenModel):
 
 
 class RuntimeConfig(FrozenModel):
-    language_model: ProviderEngineConfig | None = None
-    embedding: ProviderEngineConfig | None = None
+    language_models: tuple[NamedEngineConfig, ...] = ()
+    embeddings: tuple[NamedEngineConfig, ...] = ()
+    default_language_model: str | None = None
+    default_embedding: str | None = None
 
     @model_validator(mode="after")
-    def validate_nonempty(self) -> Self:
-        if self.language_model is None and self.embedding is None:
+    def validate_named_engines(self) -> Self:
+        if not self.language_models and not self.embeddings:
             msg = "Runtime configuration requires at least one engine"
             raise ValueError(msg)
 
+        names: set[str] = set()
+        for engine in (*self.language_models, *self.embeddings):
+            if engine.name in names:
+                msg = f"Duplicate engine name: {engine.name}"
+                raise ValueError(msg)
+            names.add(engine.name)
+
+        language_names = {engine.name for engine in self.language_models}
+        embedding_names = {engine.name for engine in self.embeddings}
+        self._validate_default(
+            "default_language_model",
+            self.default_language_model,
+            language_names,
+            embedding_names,
+            "a language model",
+            "embeddings",
+        )
+        self._validate_default(
+            "default_embedding",
+            self.default_embedding,
+            embedding_names,
+            language_names,
+            "an embedding",
+            "language_models",
+        )
         return self
+
+    @staticmethod
+    def _validate_default(
+        field: str,
+        default: str | None,
+        matching_names: set[str],
+        other_names: set[str],
+        capability: str,
+        other_collection: str,
+    ) -> None:
+        if default is None or default in matching_names:
+            return
+        if default in other_names:
+            msg = f"{field} {default!r} belongs to {other_collection}"
+            raise ValueError(msg)
+        msg = f"{field} does not name {capability}: {default!r}"
+        raise ValueError(msg)

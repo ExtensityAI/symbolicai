@@ -31,8 +31,8 @@ from symai.runtime.models import (
     Message,
     MessageRole,
     MetadataLabel,
+    NamedEngineConfig,
     Provider,
-    ProviderEngineConfig,
     RateLimitMetadata,
     ReasoningConfig,
     ReasoningEffort,
@@ -52,6 +52,8 @@ from symai.runtime.models import (
     TransportConfig,
     UserMessage,
 )
+
+_DEFAULT_TRANSPORT = TransportConfig()
 
 
 def test_public_models_are_strict_frozen_and_forbid_extra_fields():
@@ -414,37 +416,133 @@ def test_response_metadata_and_rate_limits_are_frozen_and_bounded():
         RateLimitMetadata(reset_tokens_minute=inf)
 
 
-def test_runtime_configuration_is_frozen_nonempty_and_redacts_api_keys():
+def _named_engine(
+    name: str,
+    *,
+    provider: Provider = Provider.OPENAI,
+    model: str = "gpt-5.4",
+    api_key: str | SecretStr = "test-key",
+    transport: TransportConfig = _DEFAULT_TRANSPORT,
+) -> NamedEngineConfig:
+    return NamedEngineConfig(
+        name=name,
+        provider=provider,
+        model=model,
+        api_key=api_key,
+        transport=transport,
+    )
+
+
+def test_runtime_configuration_is_frozen_and_redacts_api_keys():
     transport = TransportConfig(request_timeout=30.0, connect_timeout=2.0, connect_retries=1)
-    engine = ProviderEngineConfig(
+    engine = _named_engine(
+        "primary",
         provider=Provider.DEEPSEEK,
         model="deepseek-v4-flash",
         api_key=SecretStr("top-secret"),
         transport=transport,
     )
-    config = RuntimeConfig(language_model=engine)
+    config = RuntimeConfig(
+        language_models=(engine,),
+        default_language_model="primary",
+    )
 
     assert engine.api_key.get_secret_value() == "top-secret"
     assert "top-secret" not in repr(engine)
     assert "top-secret" not in engine.model_dump_json()
+    assert config.language_models == (engine,)
     with pytest.raises(ValidationError):
-        config.language_model = None
-    with pytest.raises(ValidationError):
-        RuntimeConfig()
+        config.language_models = ()
     with pytest.raises(ValidationError):
         TransportConfig(request_timeout=inf)
     with pytest.raises(ValidationError):
         TransportConfig(connect_retries=-1)
 
 
-@pytest.mark.parametrize("api_key", ["", SecretStr("")])
-def test_provider_engine_configuration_rejects_empty_api_keys(api_key):
+def test_runtime_configuration_requires_at_least_one_named_engine():
+    with pytest.raises(ValidationError, match="at least one engine"):
+        RuntimeConfig()
+
+
+@pytest.mark.parametrize(
+    ("language_models", "embeddings"),
+    [
+        ((_named_engine("shared"), _named_engine("shared")), ()),
+        (
+            (_named_engine("shared"),),
+            (
+                _named_engine(
+                    "shared",
+                    model="text-embedding-3-small",
+                ),
+            ),
+        ),
+    ],
+)
+def test_runtime_configuration_rejects_globally_duplicate_names(
+    language_models: tuple[NamedEngineConfig, ...],
+    embeddings: tuple[NamedEngineConfig, ...],
+):
+    with pytest.raises(ValidationError, match="Duplicate engine name: shared"):
+        RuntimeConfig(language_models=language_models, embeddings=embeddings)
+
+
+def test_runtime_configuration_treats_names_as_opaque_case_sensitive_identifiers():
+    upper = _named_engine("Tenant")
+    lower = _named_engine("tenant")
+
+    config = RuntimeConfig(language_models=(upper, lower))
+
+    assert tuple(engine.name for engine in config.language_models) == ("Tenant", "tenant")
+
+
+@pytest.mark.parametrize(
+    ("default_field", "default_name", "message"),
+    [
+        ("default_language_model", "missing", "does not name a language model"),
+        ("default_embedding", "missing", "does not name an embedding"),
+        ("default_language_model", "vector", "belongs to embeddings"),
+        ("default_embedding", "chat", "belongs to language_models"),
+    ],
+)
+def test_runtime_configuration_rejects_missing_or_capability_mismatched_defaults(
+    default_field: str,
+    default_name: str,
+    message: str,
+):
+    config: dict[str, object] = {
+        "language_models": (_named_engine("chat"),),
+        "embeddings": (_named_engine("vector", model="text-embedding-3-small"),),
+        default_field: default_name,
+    }
+
+    with pytest.raises(ValidationError, match=message):
+        RuntimeConfig(**config)
+
+
+def test_runtime_configuration_accepts_capability_correct_defaults():
+    config = RuntimeConfig(
+        language_models=(_named_engine("chat"),),
+        embeddings=(_named_engine("vector", model="text-embedding-3-small"),),
+        default_language_model="chat",
+        default_embedding="vector",
+    )
+
+    assert config.default_language_model == "chat"
+    assert config.default_embedding == "vector"
+
+
+def test_named_engine_configuration_rejects_empty_names():
     with pytest.raises(ValidationError):
-        ProviderEngineConfig(
-            provider=Provider.OPENAI,
-            model="gpt-5.5",
-            api_key=api_key,
-        )
+        _named_engine("")
+
+
+@pytest.mark.parametrize("api_key", ["", SecretStr("")])
+def test_named_engine_configuration_rejects_empty_api_keys(
+    api_key: str | SecretStr,
+):
+    with pytest.raises(ValidationError):
+        _named_engine("primary", api_key=api_key)
 
 
 def test_model_feature_metadata_is_strict_frozen_and_typed():

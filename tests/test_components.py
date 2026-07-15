@@ -60,7 +60,17 @@ class RecordingLanguageEngine:
 
 
 def runtime_for(engine: RecordingLanguageEngine) -> Runtime:
-    return Runtime(language_model=EngineHandle(engine, lambda: None))
+    handle = EngineHandle(
+        name="test-language-model",
+        capability="language_model",
+        engine=engine,
+        cleanup=lambda: None,
+    )
+    return Runtime._from_engine_handles(
+        (handle,),
+        default_language_model="test-language-model",
+        default_embedding=None,
+    )
 
 
 def user_text(request: LanguageModelRequest) -> str:
