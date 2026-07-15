@@ -6,7 +6,6 @@ from math import isfinite
 from typing import Annotated, Literal, Self
 
 from pydantic import (
-    AliasChoices,
     BaseModel,
     ConfigDict,
     Field,
@@ -351,10 +350,7 @@ class RateLimitMetadata(FrozenModel):
 
 class ResponseMetadata(FrozenModel):
     provider: Provider
-    requested_model: str = Field(
-        min_length=1,
-        validation_alias=AliasChoices("requested_model", "model"),
-    )
+    requested_model: str = Field(min_length=1)
     response_model: str | None = Field(default=None, min_length=1)
     status_code: int = Field(ge=100, le=599)
     request_id: str | None = None
@@ -364,10 +360,6 @@ class ResponseMetadata(FrozenModel):
     system_fingerprint: str | None = None
     usage: TokenUsage | None = None
     rate_limit: RateLimitMetadata | None = None
-
-    @property
-    def model(self) -> str:
-        return self.requested_model
 
 
 class LanguageModelOutput(FrozenModel):

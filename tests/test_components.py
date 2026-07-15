@@ -25,7 +25,7 @@ from symai.symbol import Symbol
 
 METADATA = ResponseMetadata(
     provider=Provider.OPENAI,
-    model="test-model",
+    requested_model="test-model",
     status_code=200,
     request_id="request-1",
     usage=TokenUsage(prompt_tokens=3, completion_tokens=2, total_tokens=5),

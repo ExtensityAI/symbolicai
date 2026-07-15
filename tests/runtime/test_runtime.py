@@ -32,7 +32,11 @@ LANGUAGE_REQUEST = LanguageModelRequest(
     messages=(UserMessage(content=(TextContent(text="question"),)),)
 )
 EMBEDDING_REQUEST = EmbeddingRequest(inputs=("first", "second"))
-METADATA = ResponseMetadata(provider=Provider.OPENAI, model="test-model", status_code=200)
+METADATA = ResponseMetadata(
+    provider=Provider.OPENAI,
+    requested_model="test-model",
+    status_code=200,
+)
 LANGUAGE_RESPONSE = LanguageModelResponse(
     outputs=(
         LanguageModelOutput(

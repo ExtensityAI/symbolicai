@@ -215,7 +215,8 @@ def test_execute_translates_normalized_request_and_response() -> None:
     assert response.outputs[0].text == "answer"
     assert response.outputs[0].message.reasoning == TextContent(text="thought")
     assert response.metadata.provider.value == "openai"
-    assert response.metadata.model == "gpt-5.4"
+    assert response.metadata.requested_model == "gpt-5.4"
+    assert response.metadata.response_model == "gpt-5.4"
     assert response.metadata.status_code == 200
     assert response.metadata.request_id == "request-id"
     assert response.metadata.retry_after == 1.25
@@ -422,7 +423,7 @@ def test_dated_response_model_preserves_requested_and_returned_identity() -> Non
     def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(
             200,
-            json=_response_json(model="gpt-5.4-2026-03-05"),
+            json=_response_json(model="provider-resolved-openai-model-2026-03-05"),
         )
 
     client, http_client = _client(handler)
@@ -437,7 +438,7 @@ def test_dated_response_model_preserves_requested_and_returned_identity() -> Non
 
     assert response.outputs[0].text == "answer"
     assert response.metadata.requested_model == "gpt-5.4"
-    assert response.metadata.response_model == "gpt-5.4-2026-03-05"
+    assert response.metadata.response_model == "provider-resolved-openai-model-2026-03-05"
 
 
 def test_refusal_only_output_is_normalized_without_invented_text() -> None:

@@ -35,7 +35,7 @@ from symai.symbol import Expression, Symbol
 
 METADATA = ResponseMetadata(
     provider=Provider.OPENAI,
-    model="recording-model",
+    requested_model="recording-model",
     status_code=200,
     request_id="request-10",
 )

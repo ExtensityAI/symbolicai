@@ -243,7 +243,8 @@ def test_execute_translates_normalized_request_and_response() -> None:
     assert response.outputs[1].text == "second"
     assert response.outputs[1].finish_reason is FinishReason.LENGTH
     assert response.metadata.provider is Provider.CEREBRAS
-    assert response.metadata.model == "gpt-oss-120b"
+    assert response.metadata.requested_model == "gpt-oss-120b"
+    assert response.metadata.response_model == "gpt-oss-120b"
     assert response.metadata.request_id == "request-id"
     assert response.metadata.retry_after == 1.25
     assert response.metadata.response_id == "response-id"
@@ -262,6 +263,26 @@ def test_execute_translates_normalized_request_and_response() -> None:
     assert response.metadata.rate_limit.limit_requests_day == 100
     assert response.metadata.rate_limit.remaining_tokens_minute == 900
     assert response.metadata.rate_limit.reset_tokens_minute == 5.5
+
+
+def test_response_model_identity_is_preserved_without_prefix_matching() -> None:
+    returned_model = "provider-resolved-cerebras-model-2026-07-15"
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=_chat_json(model=returned_model))
+
+    client, http_client = _client(handler)
+    try:
+        response = LanguageModelEngine(client=client, model="gpt-oss-120b").execute(
+            LanguageModelRequest(
+                messages=(UserMessage(content=(TextContent(text="hello"),)),),
+            )
+        )
+    finally:
+        http_client.close()
+
+    assert response.metadata.requested_model == "gpt-oss-120b"
+    assert response.metadata.response_model == returned_model
 
 
 def test_non_thinking_effort_sentinel_is_model_specific() -> None:

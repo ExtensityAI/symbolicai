@@ -203,7 +203,8 @@ def test_execute_translates_normalized_request_and_response() -> None:
     assert response.outputs[1].text == "second"
     assert response.outputs[1].finish_reason is FinishReason.LENGTH
     assert response.metadata.provider is Provider.DEEPSEEK
-    assert response.metadata.model == "deepseek-v4-flash"
+    assert response.metadata.requested_model == "deepseek-v4-flash"
+    assert response.metadata.response_model == "deepseek-v4-flash"
     assert response.metadata.request_id == "request-id"
     assert response.metadata.retry_after == 1.25
     assert response.metadata.response_id == "response-id"
@@ -565,7 +566,10 @@ def test_unsupported_reasoning_efforts_fail_before_transport(
 
 def test_response_model_identity_is_preserved_without_exact_equality_rejection() -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json=_chat_json(model="deepseek-v4-flash-2026-07-01"))
+        return httpx.Response(
+            200,
+            json=_chat_json(model="provider-resolved-deepseek-model-2026-07-01"),
+        )
 
     client, http_client = _client(handler)
     try:
@@ -577,7 +581,7 @@ def test_response_model_identity_is_preserved_without_exact_equality_rejection()
 
     assert response.outputs[0].text == "answer"
     assert response.metadata.requested_model == "deepseek-v4-flash"
-    assert response.metadata.response_model == "deepseek-v4-flash-2026-07-01"
+    assert response.metadata.response_model == "provider-resolved-deepseek-model-2026-07-01"
 
 
 def test_invalid_response_object_is_rejected_by_wire_parser() -> None:

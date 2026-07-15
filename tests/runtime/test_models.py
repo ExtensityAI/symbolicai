@@ -304,7 +304,11 @@ def test_language_output_text_concatenates_ordered_parts_without_delimiters():
         ),
         finish_reason=FinishReason.STOP,
     )
-    metadata = ResponseMetadata(provider=Provider.OPENAI, model="gpt-5.5", status_code=200)
+    metadata = ResponseMetadata(
+        provider=Provider.OPENAI,
+        requested_model="gpt-5.5",
+        status_code=200,
+    )
     response = LanguageModelResponse(outputs=(output,), metadata=metadata)
 
     assert output.text == "first second"
@@ -359,7 +363,11 @@ def test_successful_output_rejects_empty_content_and_reasoning(message):
 
 
 def test_embedding_vectors_require_non_negative_indices_and_finite_values():
-    metadata = ResponseMetadata(provider=Provider.OPENAI, model="embedding", status_code=200)
+    metadata = ResponseMetadata(
+        provider=Provider.OPENAI,
+        requested_model="embedding",
+        status_code=200,
+    )
     vector = EmbeddingVector(index=0, values=(0.1, -0.2))
     response = EmbeddingResponse(vectors=(vector,), metadata=metadata)
 
@@ -383,7 +391,8 @@ def test_response_metadata_and_rate_limits_are_frozen_and_bounded():
     )
     metadata = ResponseMetadata(
         provider=Provider.CEREBRAS,
-        model="gpt-oss-120b",
+        requested_model="gpt-oss-120b",
+        response_model="provider-resolved-cerebras-model",
         status_code=200,
         retry_after=0.0,
         created_at=1.0,
@@ -392,10 +401,15 @@ def test_response_metadata_and_rate_limits_are_frozen_and_bounded():
     )
 
     assert metadata.rate_limit is rate_limit
+    assert metadata.requested_model == "gpt-oss-120b"
+    assert metadata.response_model == "provider-resolved-cerebras-model"
+    assert "model" not in metadata.model_dump()
+    with pytest.raises(ValidationError):
+        ResponseMetadata(provider=Provider.OPENAI, model="gpt", status_code=200)
     with pytest.raises(ValidationError):
         metadata.status_code = 500
     with pytest.raises(ValidationError):
-        ResponseMetadata(provider=Provider.OPENAI, model="gpt", status_code=99)
+        ResponseMetadata(provider=Provider.OPENAI, requested_model="gpt", status_code=99)
     with pytest.raises(ValidationError):
         RateLimitMetadata(reset_tokens_minute=inf)
 

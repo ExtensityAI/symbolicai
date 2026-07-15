@@ -28,6 +28,7 @@ def _embedding_json(
     data: list[dict[str, object]] | None = None,
     prompt_tokens: int = 2,
     total_tokens: int = 2,
+    model: str = "text-embedding-3-small",
 ) -> dict[str, object]:
     return {
         "object": "list",
@@ -37,7 +38,7 @@ def _embedding_json(
             {"object": "embedding", "embedding": [1.0, 0.0], "index": 0},
             {"object": "embedding", "embedding": [0.0, 1.0], "index": 1},
         ],
-        "model": "text-embedding-3-small",
+        "model": model,
         "usage": {"prompt_tokens": prompt_tokens, "total_tokens": total_tokens},
     }
 
@@ -85,7 +86,8 @@ def test_execute_translates_request_and_sorts_provider_vectors() -> None:
     assert tuple(vector.index for vector in response.vectors) == (0, 1)
     assert tuple(vector.values for vector in response.vectors) == ((1.0, 0.0), (0.0, 1.0))
     assert response.metadata.provider is Provider.OPENAI
-    assert response.metadata.model == "text-embedding-3-small"
+    assert response.metadata.requested_model == "text-embedding-3-small"
+    assert response.metadata.response_model == "text-embedding-3-small"
     assert response.metadata.status_code == 200
     assert response.metadata.request_id == "request-id"
     assert response.metadata.retry_after == 1.25
@@ -93,6 +95,24 @@ def test_execute_translates_request_and_sorts_provider_vectors() -> None:
     assert response.metadata.usage.prompt_tokens == 2
     assert response.metadata.usage.total_tokens == 2
     assert response.metadata.usage.completion_tokens == 0
+
+
+def test_response_model_identity_is_preserved_without_prefix_matching() -> None:
+    returned_model = "provider-resolved-embedding-model-2026-07-15"
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=_embedding_json(model=returned_model))
+
+    client, http_client = _client(handler)
+    try:
+        response = EmbeddingEngine(client=client, model="text-embedding-3-small").execute(
+            EmbeddingRequest(inputs=("one", "two"), dimensions=2)
+        )
+    finally:
+        http_client.close()
+
+    assert response.metadata.requested_model == "text-embedding-3-small"
+    assert response.metadata.response_model == returned_model
 
 
 def test_default_dimensions_are_omitted_from_provider_request() -> None:
