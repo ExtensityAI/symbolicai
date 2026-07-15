@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 import symai
-from symai import loading
+from symai import decoding, function, loading
 from symai.runtime import config, errors, models, runtime
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,7 +19,10 @@ PUBLIC_NAMES = [
     "AssistantMessage",
     "AssistantOutputMessage",
     "AuthenticationError",
+    "ConstructorDecoder",
     "Content",
+    "DecodeError",
+    "Decoder",
     "DeveloperMessage",
     "EmbeddingRequest",
     "EmbeddingResponse",
@@ -29,6 +32,7 @@ PUBLIC_NAMES = [
     "ErrorMetadata",
     "ExecutionError",
     "FinishReason",
+    "Function",
     "ImageContent",
     "ImageDetail",
     "ImplementationId",
@@ -43,10 +47,13 @@ PUBLIC_NAMES = [
     "LanguageModelRequest",
     "LanguageModelResponse",
     "LogitBias",
+    "MISSING",
     "Message",
     "MetadataLabel",
+    "Missing",
     "NoActiveRuntimeError",
     "ProviderId",
+    "PydanticDecoder",
     "RateLimitError",
     "RateLimitMetadata",
     "ReasoningConfig",
@@ -63,15 +70,18 @@ PUBLIC_NAMES = [
     "SymbolicAIRuntimeError",
     "SystemMessage",
     "TextContent",
+    "TextDecoder",
     "TextResponseFormat",
     "TokenUsage",
     "TransportError",
+    "TypeAdapterDecoder",
     "UnknownEngineError",
     "UnsupportedCapabilityError",
     "UnsupportedFeatureError",
     "UnsupportedModelError",
     "UserMessage",
     "current_runtime",
+    "decode_output",
     "load_runtime",
 ]
 
@@ -79,8 +89,14 @@ DEFINING_MODULE = {
     **{name: config for name in PUBLIC_NAMES if hasattr(config, name)},
     **{name: models for name in PUBLIC_NAMES if hasattr(models, name)},
     **{name: errors for name in PUBLIC_NAMES if hasattr(errors, name)},
+    **{
+        name: decoding
+        for name in PUBLIC_NAMES
+        if hasattr(decoding, name)
+    },
     "Runtime": runtime,
     "current_runtime": runtime,
+    "Function": function,
     "load_runtime": loading,
 }
 
@@ -92,7 +108,6 @@ FORBIDDEN_PUBLIC_NAMES = {
     "Engine",
     "EngineRepository",
     "Expression",
-    "Function",
     "NamedEngineConfig",
     "Provider",
     "ProviderEngineConfig",
@@ -106,6 +121,7 @@ FORBIDDEN_PUBLIC_NAMES = {
 
 DELETED_FILES = {
     "runtime/factory.py",
+    "components.py",
     "context.py",
     "core.py",
     "functional.py",

@@ -8,7 +8,8 @@ from typing import Any, ClassVar, Generic, TypeVar
 import numpy as np
 from box import Box
 
-from symai.operations import language_request, parse_stripped_output
+from symai.decoding import decode_output
+from symai.operations import language_request
 from symai.ops.primitives import (
     CastingPrimitives,
     ComparisonPrimitives,
@@ -23,6 +24,7 @@ from symai.ops.primitives import (
     StringHelperPrimitives,
     TemplateStylingPrimitives,
     ValueHandlingPrimitives,
+    _decoder_for,
 )
 from symai.runtime.runtime import current_runtime
 
@@ -745,10 +747,10 @@ class Expression(Symbol):
             raise TypeError(msg)
 
         response = current_runtime().execute(language_request("", message))
-        value = parse_stripped_output(
+        value = decode_output(
             response,
-            return_type,
-            index=output_index,
+            _decoder_for(return_type),
+            output_index=output_index,
             default=default,
             limit=limit,
         )

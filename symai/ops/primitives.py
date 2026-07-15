@@ -7,6 +7,15 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, Protocol, Self, overload
 
 import numpy as np
+from pydantic import BaseModel
+
+from symai.decoding import (
+    ConstructorDecoder,
+    Decoder,
+    PydanticDecoder,
+    TextDecoder,
+    decode_output,
+)
 
 from symai.operations import (
     combine_request,
@@ -29,8 +38,6 @@ from symai.operations import (
     modify_request,
     negate_request,
     parse_embedding_response,
-    parse_literal_or_text_output,
-    parse_stripped_output,
     query_request,
     rank_request,
     replace_request,
@@ -77,6 +84,14 @@ class Primitive(Protocol):
     ) -> "Symbol": ...
 
 
+def _decoder_for(return_type: type) -> Decoder[object]:
+    if return_type is str:
+        return TextDecoder()
+    if issubclass(return_type, BaseModel):
+        return PydanticDecoder(return_type)
+    return ConstructorDecoder(return_type)
+
+
 def _execute_language_value(
     symbol: Primitive,
     request: LanguageModelRequest,
@@ -93,17 +108,11 @@ def _execute_language_value(
         dynamic_context=symbol.dynamic_context,
     )
     response = current_runtime().execute(request)
-    if literal:
-        return parse_literal_or_text_output(
-            response,
-            index=output_index,
-            default=default,
-            limit=limit,
-        )
-    return parse_stripped_output(
+    decoder = _decoder_for(type(symbol.value) if literal else return_type)
+    return decode_output(
         response,
-        return_type,
-        index=output_index,
+        decoder,
+        output_index=output_index,
         default=default,
         limit=limit,
     )
@@ -155,21 +164,14 @@ def _execute_symbol(
         dynamic_context=symbol.dynamic_context,
     )
     response = current_runtime().execute(request)
-    if literal:
-        value = parse_literal_or_text_output(
-            response,
-            index=output_index,
-            default=default,
-            limit=limit,
-        )
-    else:
-        value = parse_stripped_output(
-            response,
-            return_type,
-            index=output_index,
-            default=default,
-            limit=limit,
-        )
+    decoder = _decoder_for(type(symbol.value) if literal else return_type)
+    value = decode_output(
+        response,
+        decoder,
+        output_index=output_index,
+        default=default,
+        limit=limit,
+    )
     result = symbol._to_type(value)
     if return_metadata:
         return result, response.metadata

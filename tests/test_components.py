@@ -1,10 +1,9 @@
 from collections.abc import Callable
+from importlib.util import find_spec
+import inspect
 from typing import get_type_hints
 
-import pytest
-
-from symai.components import Function
-from symai.runtime.errors import NoActiveRuntimeError
+from symai.function import Function
 from symai.runtime.models import (
     AssistantOutputMessage,
     FinishReason,
@@ -19,7 +18,6 @@ from symai.runtime.models import (
     UserMessage,
 )
 from symai.runtime.runtime import Runtime
-from symai.symbol import Symbol
 
 METADATA = ResponseMetadata(
     provider="openai",
@@ -30,15 +28,14 @@ METADATA = ResponseMetadata(
 )
 
 
-def response(*outputs: tuple[int, str]) -> LanguageModelResponse:
+def response(text: str) -> LanguageModelResponse:
     return LanguageModelResponse(
-        outputs=tuple(
+        outputs=(
             LanguageModelOutput(
-                index=index,
+                index=0,
                 message=AssistantOutputMessage(content=(TextContent(text=text),)),
                 finish_reason=FinishReason.STOP,
-            )
-            for index, text in outputs
+            ),
         ),
         metadata=METADATA,
     )
@@ -60,11 +57,12 @@ class RecordingLanguageEngine:
         pass
 
 
-def runtime_for(engine: RecordingLanguageEngine) -> Runtime:
-    return Runtime(
-        language_models={"test-language-model": engine},
-        default_language_model="test-language-model",
-    )
+def runtime_for(
+    engines: dict[str, RecordingLanguageEngine],
+    *,
+    default: str | None,
+) -> Runtime:
+    return Runtime(language_models=engines, default_language_model=default)
 
 
 def user_text(request: LanguageModelRequest) -> str:
@@ -73,126 +71,93 @@ def user_text(request: LanguageModelRequest) -> str:
     return "".join(part.text for part in message.content if isinstance(part, TextContent))
 
 
-def test_function_builds_normalized_request_and_returns_typed_symbol_with_metadata() -> None:
-    engine = RecordingLanguageEngine(lambda _request: response((0, "7")))
+def test_request_builds_normalized_request_without_execution() -> None:
+    engine = RecordingLanguageEngine(lambda _request: response("unused"))
     function = Function(
-        "Answer with one integer.",
+        "Answer precisely.",
         examples=("2 + 2 => 4",),
-        return_type=int,
         static_context="Use arithmetic.",
         dynamic_context="The caller needs precision.",
         max_tokens=64,
         stop=("END",),
     )
 
-    with runtime_for(engine):
-        result, metadata = function("3 + 4", return_metadata=True)
+    request = function.request("3 +", 4)
 
-    assert isinstance(result, Symbol)
-    assert result.value == 7
-    assert metadata is METADATA
-    assert metadata.usage == TokenUsage(prompt_tokens=3, completion_tokens=2, total_tokens=5)
-    assert engine.requests == [
-        LanguageModelRequest(
-            messages=(
-                SystemMessage(
-                    content=(
-                        TextContent(
-                            text=(
-                                "Answer with one integer.\n"
-                                "<STATIC_CONTEXT/>\nUse arithmetic.\n"
-                                "<DYNAMIC_CONTEXT/>\nThe caller needs precision.\n"
-                                "2 + 2 => 4"
-                            )
-                        ),
-                    )
-                ),
-                UserMessage(content=(TextContent(text="3 + 4"),)),
-            ),
-            sampling=SamplingConfig(max_tokens=64, stop=("END",)),
-        )
-    ]
-
-
-def test_function_requires_an_active_runtime_for_execution() -> None:
-    with pytest.raises(NoActiveRuntimeError):
-        Function("Answer.")("question")
-
-
-def test_function_applies_explicit_default_and_collection_limit() -> None:
-    responses = iter((response((0, "invalid")), response((0, "[1, 2, 3]"))))
-    engine = RecordingLanguageEngine(lambda _request: next(responses))
-
-    with runtime_for(engine):
-        defaulted = Function("Integer.", return_type=int, default=9)("value")
-        limited = Function("List.", return_type=list, limit=2)("values")
-
-    assert defaulted.value == 9
-    assert limited.value == [1, 2]
-
-
-def test_function_rejects_a_default_outside_its_declared_return_type() -> None:
-    with pytest.raises(TypeError, match="default"):
-        Function("Integer.", return_type=int, default="9")
-
-
-def test_function_without_default_propagates_typed_parse_failure() -> None:
-    engine = RecordingLanguageEngine(lambda _request: response((0, "invalid")))
-
-    with runtime_for(engine), pytest.raises(ValueError, match="invalid literal"):
-        Function("Integer.", return_type=int)("value")
-
-
-def test_function_preview_returns_frozen_request_without_execution() -> None:
-    engine = RecordingLanguageEngine(lambda _request: response((0, "unused")))
-    function = Function('Return {"answer": 1}.', max_tokens=8)
-
-    with runtime_for(engine):
-        preview = function("question", preview=True)
-
-    assert preview == LanguageModelRequest(
+    assert request == LanguageModelRequest(
         messages=(
-            SystemMessage(content=(TextContent(text='Return {"answer": 1}.'),)),
-            UserMessage(content=(TextContent(text="question"),)),
+            SystemMessage(
+                content=(
+                    TextContent(
+                        text=(
+                            "Answer precisely.\n"
+                            "<STATIC_CONTEXT/>\nUse arithmetic.\n"
+                            "<DYNAMIC_CONTEXT/>\nThe caller needs precision.\n"
+                            "2 + 2 => 4"
+                        )
+                    ),
+                )
+            ),
+            UserMessage(content=(TextContent(text="3 + 4"),)),
         ),
-        sampling=SamplingConfig(max_tokens=8),
+        sampling=SamplingConfig(max_tokens=64, stop=("END",)),
     )
     assert engine.requests == []
 
 
-def test_function_public_annotations_resolve_at_runtime() -> None:
-    assert get_type_hints(Function.__init__)["examples"]
-    assert get_type_hints(Function.__call__)["return"]
-    assert get_type_hints(Function.batch)["inputs"]
-
-
-def test_function_selects_normalized_output_by_declared_index() -> None:
-    engine = RecordingLanguageEngine(lambda _request: response((1, "second"), (0, "first")))
-
-    with runtime_for(engine):
-        result = Function("Answer.")("question", output_index=1)
-
-    assert result.value == "second"
-
-
-def test_function_batch_executes_stably_and_supports_batch_preview() -> None:
-    engine = RecordingLanguageEngine(
-        lambda request: response((0, str(int(user_text(request)) * 2)))
-    )
-    function = Function("Double.", return_type=int)
-
-    with runtime_for(engine):
-        results = function.batch(("1", "2", "3"))
-        previews = function.batch(("4", "5"), preview=True)
-
-    assert tuple(result.value for result in results) == (2, 4, 6)
-    assert tuple(user_text(request) for request in engine.requests) == ("1", "2", "3")
-    assert tuple(user_text(request) for request in previews) == ("4", "5")
-    assert len(engine.requests) == 3
-
-
-def test_function_batch_rejects_one_string_as_a_sequence() -> None:
+def test_call_returns_exact_normalized_response_and_forwards_engine() -> None:
+    unused = RecordingLanguageEngine(lambda _request: response("unused"))
+    expected = response("selected")
+    selected = RecordingLanguageEngine(lambda _request: expected)
     function = Function("Answer.")
 
-    with pytest.raises(TypeError, match="sequence"):
-        function.batch("not-a-batch")
+    with runtime_for({"unused": unused, "tenant-a": selected}, default="unused") as runtime:
+        actual = function(runtime, "question", engine="tenant-a")
+
+    assert actual is expected
+    assert actual.metadata is METADATA
+    assert unused.requests == []
+    assert tuple(user_text(request) for request in selected.requests) == ("question",)
+
+
+def test_execute_many_is_sequential_and_preserves_nested_input_order() -> None:
+    events: list[str] = []
+    returned: list[LanguageModelResponse] = []
+
+    def execute(request: LanguageModelRequest) -> LanguageModelResponse:
+        text = user_text(request)
+        events.append(text)
+        result = response(text)
+        returned.append(result)
+        return result
+
+    engine = RecordingLanguageEngine(execute)
+    function = Function("Echo.")
+
+    with runtime_for({"ordered": engine}, default="ordered") as runtime:
+        results = function.execute_many(
+            runtime,
+            (("first", 1), ("second", 2), ("third", 3)),
+            engine="ordered",
+        )
+
+    assert events == ["first 1", "second 2", "third 3"]
+    assert results == tuple(returned)
+    assert all(actual is expected for actual, expected in zip(results, returned, strict=True))
+
+
+def test_function_has_one_non_generic_execution_surface() -> None:
+    init_parameters = inspect.signature(Function).parameters
+    call_parameters = inspect.signature(Function.__call__).parameters
+
+    assert not {"default", "return_type", "sym_return_type", "limit"}.intersection(
+        init_parameters
+    )
+    assert not {"preview", "return_metadata", "output_index"}.intersection(call_parameters)
+    assert not hasattr(Function, "batch")
+    assert get_type_hints(Function.request)["return"] is LanguageModelRequest
+    assert get_type_hints(Function.__call__)["return"] is LanguageModelResponse
+
+
+def test_legacy_components_module_is_deleted() -> None:
+    assert find_spec("symai.components") is None

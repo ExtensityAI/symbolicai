@@ -1,11 +1,6 @@
-import ast
 import base64
 import re
-from collections.abc import Callable, Sequence
-from enum import StrEnum
-from typing import TypeVar, cast
-
-from pydantic import BaseModel
+from collections.abc import Sequence
 
 from symai.prompts import (
     CombineText,
@@ -37,15 +32,11 @@ from symai.runtime.models import (
     ImageContent,
     ImageDetail,
     LanguageModelRequest,
-    LanguageModelResponse,
-    ResponseMetadata,
     SamplingConfig,
     SystemMessage,
     TextContent,
     UserMessage,
 )
-
-ValueT = TypeVar("ValueT")
 
 _EQUALS_EXAMPLES = tuple(FuzzyEquals().value)
 _COMPARE_EXAMPLES = tuple(CompareValues().value)
@@ -72,39 +63,6 @@ _INVERT_EXAMPLES = tuple(InvertExpression().value)
 _MEDIA_TYPE_PATTERN = re.compile(
     r"[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*"
 )
-
-
-class BooleanMode(StrEnum):
-    STRICT = "strict"
-    MEDIUM = "medium"
-    TOLERANT = "tolerant"
-
-
-_BOOLEAN_TRUE_VALUES = {
-    BooleanMode.STRICT: frozenset({"true"}),
-    BooleanMode.MEDIUM: frozenset({"true", "yes", "ok", "['true']"}),
-    BooleanMode.TOLERANT: frozenset(
-        {
-            "true",
-            "1",
-            "t",
-            "y",
-            "yes",
-            "yeah",
-            "yup",
-            "certainly",
-            "ok",
-            "['true']",
-        }
-    ),
-}
-
-
-class _Missing:
-    __slots__ = ()
-
-
-_MISSING = _Missing()
 
 
 def language_request(
@@ -459,80 +417,6 @@ def embedding_request(
     )
 
 
-def parse_boolean(value: str, *, mode: BooleanMode = BooleanMode.MEDIUM) -> bool:
-    return value.strip().lower() in _BOOLEAN_TRUE_VALUES[mode]
-
-
-def parse_typed_value(value: str, return_type: type[ValueT]) -> ValueT:
-    if return_type is str:
-        return cast("ValueT", value)
-    if return_type is bool:
-        return cast("ValueT", parse_boolean(value))
-    if return_type in (list, tuple, set, dict):
-        parsed = ast.literal_eval(value)
-        if type(parsed) is not return_type:
-            msg = f"Expected {return_type.__name__}, received {type(parsed).__name__}"
-            raise ValueError(msg)
-        return cast("ValueT", parsed)
-    if issubclass(return_type, BaseModel):
-        return cast("ValueT", return_type.model_validate_json(value))
-    converter = cast("Callable[[str], ValueT]", return_type)
-    return converter(value)
-
-
-def parse_typed_output(
-    response: LanguageModelResponse,
-    return_type: type[ValueT],
-    *,
-    index: int = 0,
-    default: ValueT | _Missing = _MISSING,
-    limit: int | None = None,
-) -> ValueT:
-    text = _output_text(response, index)
-    try:
-        parsed = parse_typed_value(text, return_type)
-    except (SyntaxError, TypeError, ValueError):
-        if isinstance(default, _Missing):
-            raise
-        parsed = default
-    return limit_value(parsed, limit)
-
-
-def parse_stripped_output(
-    response: LanguageModelResponse,
-    return_type: type[ValueT],
-    *,
-    index: int = 0,
-    default: ValueT | _Missing = _MISSING,
-    limit: int | None = None,
-) -> ValueT:
-    text = _strip_text(_output_text(response, index))
-    try:
-        parsed = parse_typed_value(text, return_type)
-    except (SyntaxError, TypeError, ValueError):
-        if isinstance(default, _Missing):
-            raise
-        parsed = default
-    return limit_value(parsed, limit)
-
-
-def parse_literal_or_text_output(
-    response: LanguageModelResponse,
-    *,
-    index: int = 0,
-    default: object | _Missing = _MISSING,
-    limit: int | None = None,
-) -> object:
-    text = _strip_text(_output_text(response, index))
-    try:
-        parsed = _recursive_literal(ast.literal_eval(text))
-    except (SyntaxError, ValueError):
-        parsed = text
-    if parsed == "" and not isinstance(default, _Missing):
-        parsed = default
-    return limit_value(parsed, limit)
-
-
 def parse_embedding_response(response: EmbeddingResponse) -> list[list[float]]:
     indices = tuple(vector.index for vector in response.vectors)
     if len(indices) != len(set(indices)):
@@ -543,67 +427,6 @@ def parse_embedding_response(response: EmbeddingResponse) -> list[list[float]]:
         for vector in sorted(response.vectors, key=lambda vector: vector.index)
     ]
 
-
-def parse_typed_output_with_metadata(
-    response: LanguageModelResponse,
-    return_type: type[ValueT],
-    *,
-    index: int = 0,
-    default: ValueT | _Missing = _MISSING,
-    limit: int | None = None,
-) -> tuple[ValueT, ResponseMetadata]:
-    value = parse_typed_output(
-        response,
-        return_type,
-        index=index,
-        default=default,
-        limit=limit,
-    )
-    return value, response.metadata
-
-
-def limit_value(value: ValueT, limit: int | None) -> ValueT:
-    if limit is None:
-        return value
-    if limit <= 0:
-        msg = "limit must be greater than zero"
-        raise ValueError(msg)
-    if isinstance(value, list):
-        return cast("ValueT", value[:limit])
-    if isinstance(value, tuple):
-        return cast("ValueT", value[:limit])
-    if isinstance(value, dict):
-        return cast("ValueT", dict(tuple(value.items())[:limit]))
-    if isinstance(value, set):
-        msg = "Cannot deterministically limit an unordered set"
-        raise TypeError(msg)
-    return value
-
-
-def _strip_text(value: str) -> str:
-    text = value.strip()
-    if text.startswith("'") and text.endswith("'"):
-        text = text[1:-1].strip()
-    return text
-
-
-def _recursive_literal(value: object) -> object:
-    if isinstance(value, str):
-        try:
-            return _recursive_literal(ast.literal_eval(value))
-        except (SyntaxError, ValueError):
-            return value
-    if isinstance(value, list):
-        return [_recursive_literal(item) for item in value]
-    if isinstance(value, tuple):
-        return tuple(_recursive_literal(item) for item in value)
-    if isinstance(value, set):
-        return {_recursive_literal(item) for item in value}
-    if isinstance(value, dict):
-        return {key: _recursive_literal(item) for key, item in value.items()}
-    return value
-
-
 def _string_tuple(values: Sequence[str], field: str) -> tuple[str, ...]:
     if isinstance(values, str):
         msg = f"{field} must be a sequence of strings, not one string"
@@ -611,9 +434,3 @@ def _string_tuple(values: Sequence[str], field: str) -> tuple[str, ...]:
     return tuple(values)
 
 
-def _output_text(response: LanguageModelResponse, index: int) -> str:
-    for output in response.outputs:
-        if output.index == index:
-            return output.text
-    msg = f"Language response did not contain output index {index}"
-    raise IndexError(msg)

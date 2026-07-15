@@ -2,10 +2,8 @@ import base64
 from collections.abc import Callable
 
 import pytest
-from pydantic import BaseModel, ConfigDict
 
 from symai.operations import (
-    BooleanMode,
     combine_request,
     compare_request,
     contains_request,
@@ -23,17 +21,11 @@ from symai.operations import (
     invert_request,
     isinstanceof_request,
     language_request,
-    limit_value,
     logic_request,
     map_request,
     modify_request,
     negate_request,
-    parse_boolean,
     parse_embedding_response,
-    parse_literal_or_text_output,
-    parse_typed_output,
-    parse_typed_output_with_metadata,
-    parse_typed_value,
     query_request,
     rank_request,
     replace_request,
@@ -169,92 +161,6 @@ def test_representative_prompt_builders_preserve_visible_prompt_text() -> None:
         SystemMessage(content=(TextContent(text=comparison_system),)),
         UserMessage(content=(TextContent(text="4 > 3 =>"),)),
     )
-
-
-@pytest.mark.parametrize(
-    ("value", "mode", "expected"),
-    [
-        ("True", BooleanMode.STRICT, True),
-        ("yes", BooleanMode.MEDIUM, True),
-        ("1", BooleanMode.MEDIUM, False),
-        ("1", BooleanMode.TOLERANT, True),
-        ("certainly", BooleanMode.TOLERANT, True),
-        ("false", BooleanMode.TOLERANT, False),
-    ],
-)
-def test_parse_boolean_uses_explicit_tolerance(
-    value: str, mode: BooleanMode, expected: bool
-) -> None:
-    assert parse_boolean(value, mode=mode) is expected
-
-
-def test_parse_typed_value_handles_scalars_collections_and_pydantic_models() -> None:
-    class Result(BaseModel):
-        model_config = ConfigDict(strict=True, extra="forbid")
-
-        answer: int
-
-    assert parse_typed_value("42", int) == 42
-    assert parse_typed_value("[1, 2]", list) == [1, 2]
-    assert parse_typed_value("{'a': 1}", dict) == {"a": 1}
-    assert parse_typed_value('{"answer": 7}', Result) == Result(answer=7)
-
-    with pytest.raises(ValueError, match="Expected list"):
-        parse_typed_value("{'a': 1}", list)
-
-
-def test_typed_output_applies_defaults_limits_and_returns_normalized_metadata() -> None:
-    response = _response("['one', 'two', 'three']")
-
-    assert parse_typed_output(response, list, limit=2) == ["one", "two"]
-    parsed, metadata = parse_typed_output_with_metadata(response, list, limit=1)
-    assert parsed == ["one"]
-    assert metadata is METADATA
-
-    assert parse_typed_output(_response("not-an-integer"), int, default=9) == 9
-    assert parse_typed_output(
-        _response("not-a-list"),
-        list,
-        default=["one", "two", "three"],
-        limit=2,
-    ) == ["one", "two"]
-    with pytest.raises(ValueError, match="invalid literal"):
-        parse_typed_output(_response("not-an-integer"), int)
-
-
-def test_typed_output_selects_the_explicit_normalized_index() -> None:
-    response = LanguageModelResponse(
-        outputs=(
-            LanguageModelOutput(
-                index=1,
-                message=AssistantOutputMessage(content=(TextContent(text="8"),)),
-                finish_reason=FinishReason.STOP,
-            ),
-            LanguageModelOutput(
-                index=0,
-                message=AssistantOutputMessage(content=(TextContent(text="7"),)),
-                finish_reason=FinishReason.STOP,
-            ),
-        ),
-        metadata=METADATA,
-    )
-
-    assert parse_typed_output(response, int, index=1) == 8
-    with pytest.raises(IndexError, match="output index 2"):
-        parse_typed_output(response, int, index=2)
-
-
-@pytest.mark.parametrize(
-    ("value", "expected"),
-    [
-        ([1, 2, 3], [1, 2]),
-        ((1, 2, 3), (1, 2)),
-        ({"a": 1, "b": 2, "c": 3}, {"a": 1, "b": 2}),
-        ("unchanged", "unchanged"),
-    ],
-)
-def test_limit_value_is_deterministic(value: object, expected: object) -> None:
-    assert limit_value(value, 2) == expected
 
 
 def test_image_and_data_uri_preparation_are_pure() -> None:
@@ -488,8 +394,7 @@ def test_operation_specific_builders_preserve_normalized_request_contract(
     assert normalized_request == expected
 
 
-def test_literal_and_embedding_parsers_are_normalized_and_deterministic() -> None:
-    assert parse_literal_or_text_output(_response("  '['1', '2']'  "), limit=1) == [1]
+def test_embedding_parser_is_normalized_and_deterministic() -> None:
     response = EmbeddingResponse(
         vectors=(
             EmbeddingVector(index=1, values=(3.0, 4.0)),
