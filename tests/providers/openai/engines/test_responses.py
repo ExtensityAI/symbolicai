@@ -96,11 +96,10 @@ def _response_json(
 
 def _client(
     handler: Callable[[httpx.Request], httpx.Response],
-) -> tuple[Client, httpx.Client]:
-    http_client = httpx.Client(transport=httpx.MockTransport(handler))
-    return (
-        Client(api_key=SecretStr("test-key"), http_client=http_client),
-        http_client,
+) -> Client:
+    return Client(
+        api_key=SecretStr("test-key"),
+        transport=httpx.MockTransport(handler),
     )
 
 
@@ -124,9 +123,9 @@ def test_execute_translates_normalized_request_and_response() -> None:
             ),
         )
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ResponsesEngine(client=client, model="gpt-5.4")
     try:
-        engine = ResponsesEngine(client=client, model="gpt-5.4")
         request = LanguageModelRequest(
             messages=(
                 SystemMessage(content=(TextContent(text="system"),)),
@@ -159,10 +158,10 @@ def test_execute_translates_normalized_request_and_response() -> None:
             user="customer-42",
             metadata=(MetadataLabel(key="trace", value="abc"),),
         )
-
+    
         response = engine.execute(request)
     finally:
-        http_client.close()
+        engine.close()
 
     assert captured_body == {
         "input": [
@@ -239,9 +238,9 @@ def test_nonreasoning_model_maps_supported_sampling_and_default_text_format() ->
         captured_body.update(json.loads(request.read()))
         return httpx.Response(200, json=_response_json(model="gpt-4.1"))
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ResponsesEngine(client=client, model="gpt-4.1")
     try:
-        engine = ResponsesEngine(client=client, model="gpt-4.1")
         engine.execute(
             LanguageModelRequest(
                 messages=(UserMessage(content=(TextContent(text="hello"),)),),
@@ -254,7 +253,7 @@ def test_nonreasoning_model_maps_supported_sampling_and_default_text_format() ->
             )
         )
     finally:
-        http_client.close()
+        engine.close()
 
     assert captured_body["temperature"] == 0.25
     assert captured_body["top_p"] == 0.8
@@ -270,15 +269,14 @@ def test_reasoning_model_uses_explicit_default_effort() -> None:
         captured_body.update(json.loads(request.read()))
         return httpx.Response(200, json=_response_json(model="gpt-5.4-pro"))
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ResponsesEngine(client=client, model="gpt-5.4-pro")
     try:
-        ResponsesEngine(client=client, model="gpt-5.4-pro").execute(
-            LanguageModelRequest(
-                messages=(UserMessage(content=(TextContent(text="hello"),)),),
-            )
-        )
+        engine.execute(LanguageModelRequest(
+            messages=(UserMessage(content=(TextContent(text="hello"),)),),
+        ))
     finally:
-        http_client.close()
+        engine.close()
 
     assert captured_body["reasoning"] == {"effort": "high"}
 
@@ -429,15 +427,14 @@ def test_dated_response_model_preserves_requested_and_returned_identity() -> Non
             json=_response_json(model="provider-resolved-openai-model-2026-03-05"),
         )
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ResponsesEngine(client=client, model="gpt-5.4")
     try:
-        response = ResponsesEngine(client=client, model="gpt-5.4").execute(
-            LanguageModelRequest(
-                messages=(UserMessage(content=(TextContent(text="hello"),)),),
-            )
-        )
+        response = engine.execute(LanguageModelRequest(
+            messages=(UserMessage(content=(TextContent(text="hello"),)),),
+        ))
     finally:
-        http_client.close()
+        engine.close()
 
     assert response.outputs[0].text == "answer"
     assert response.metadata.requested_model == "gpt-5.4"
@@ -461,15 +458,14 @@ def test_refusal_only_output_is_normalized_without_invented_text() -> None:
             ),
         )
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ResponsesEngine(client=client, model="gpt-5.4")
     try:
-        response = ResponsesEngine(client=client, model="gpt-5.4").execute(
-            LanguageModelRequest(
-                messages=(UserMessage(content=(TextContent(text="hello"),)),),
-            )
-        )
+        response = engine.execute(LanguageModelRequest(
+            messages=(UserMessage(content=(TextContent(text="hello"),)),),
+        ))
     finally:
-        http_client.close()
+        engine.close()
 
     assert response.outputs[0].text == ""
     assert response.outputs[0].refusal == "cannot comply"
@@ -483,9 +479,9 @@ def test_noncompleted_response_is_invalid(status: str) -> None:
             payload["error"] = {"code": "server_error", "message": "provider failed"}
         return httpx.Response(200, json=payload)
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ResponsesEngine(client=client, model="gpt-5.4")
     try:
-        engine = ResponsesEngine(client=client, model="gpt-5.4")
         with pytest.raises(InvalidResponseError, match=status):
             engine.execute(
                 LanguageModelRequest(
@@ -493,7 +489,7 @@ def test_noncompleted_response_is_invalid(status: str) -> None:
                 )
             )
     finally:
-        http_client.close()
+        engine.close()
 
 
 def test_noncompleted_response_does_not_expose_provider_error_text() -> None:
@@ -504,16 +500,15 @@ def test_noncompleted_response_does_not_expose_provider_error_text() -> None:
         payload["error"] = {"code": "server_error", "message": provider_message}
         return httpx.Response(200, json=payload)
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ResponsesEngine(client=client, model="gpt-5.4")
     try:
         with pytest.raises(InvalidResponseError) as caught:
-            ResponsesEngine(client=client, model="gpt-5.4").execute(
-                LanguageModelRequest(
-                    messages=(UserMessage(content=(TextContent(text="hello"),)),),
-                )
-            )
+            engine.execute(LanguageModelRequest(
+                messages=(UserMessage(content=(TextContent(text="hello"),)),),
+            ))
     finally:
-        http_client.close()
+        engine.close()
 
     assert provider_message not in str(caught.value)
     assert caught.value.metadata is not None
@@ -526,15 +521,14 @@ def test_failed_response_with_usable_output_maps_error_finish_reason() -> None:
         payload["error"] = {"code": "server_error", "message": "provider failed"}
         return httpx.Response(200, json=payload)
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ResponsesEngine(client=client, model="gpt-5.4")
     try:
-        response = ResponsesEngine(client=client, model="gpt-5.4").execute(
-            LanguageModelRequest(
-                messages=(UserMessage(content=(TextContent(text="hello"),)),),
-            )
-        )
+        response = engine.execute(LanguageModelRequest(
+            messages=(UserMessage(content=(TextContent(text="hello"),)),),
+        ))
     finally:
-        http_client.close()
+        engine.close()
 
     assert response.outputs[0].text == "answer"
     assert response.outputs[0].finish_reason is FinishReason.ERROR
@@ -548,9 +542,9 @@ def test_inconsistent_reported_usage_is_invalid() -> None:
         usage["total_tokens"] = 99
         return httpx.Response(200, json=payload)
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ResponsesEngine(client=client, model="gpt-5.4")
     try:
-        engine = ResponsesEngine(client=client, model="gpt-5.4")
         with pytest.raises(InvalidResponseError, match="token usage"):
             engine.execute(
                 LanguageModelRequest(
@@ -558,7 +552,7 @@ def test_inconsistent_reported_usage_is_invalid() -> None:
                 )
             )
     finally:
-        http_client.close()
+        engine.close()
 
 
 @pytest.mark.parametrize(
@@ -595,15 +589,14 @@ def test_incomplete_terminal_response_preserves_partial_output(
         payload["incomplete_details"] = {"reason": reason}
         return httpx.Response(200, json=payload)
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ResponsesEngine(client=client, model="gpt-5.4")
     try:
-        response = ResponsesEngine(client=client, model="gpt-5.4").execute(
-            LanguageModelRequest(
-                messages=(UserMessage(content=(TextContent(text="hello"),)),),
-            )
-        )
+        response = engine.execute(LanguageModelRequest(
+            messages=(UserMessage(content=(TextContent(text="hello"),)),),
+        ))
     finally:
-        http_client.close()
+        engine.close()
 
     assert response.outputs[0].text == "partial"
     assert response.outputs[0].finish_reason is finish_reason
@@ -615,9 +608,9 @@ def test_invalid_provider_metadata_is_normalized() -> None:
         payload["created_at"] = -1
         return httpx.Response(200, json=payload)
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ResponsesEngine(client=client, model="gpt-5.4")
     try:
-        engine = ResponsesEngine(client=client, model="gpt-5.4")
         with pytest.raises(InvalidResponseError, match="metadata") as caught:
             engine.execute(
                 LanguageModelRequest(
@@ -625,7 +618,7 @@ def test_invalid_provider_metadata_is_normalized() -> None:
                 )
             )
     finally:
-        http_client.close()
+        engine.close()
 
     assert isinstance(caught.value.__cause__, ValidationError)
 
@@ -668,9 +661,9 @@ def test_unsupported_provider_output_item_is_not_silently_dropped() -> None:
         )
         return httpx.Response(200, json=payload)
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ResponsesEngine(client=client, model="gpt-5.4")
     try:
-        engine = ResponsesEngine(client=client, model="gpt-5.4")
         with pytest.raises(InvalidResponseError, match="unsupported output"):
             engine.execute(
                 LanguageModelRequest(
@@ -678,4 +671,4 @@ def test_unsupported_provider_output_item_is_not_silently_dropped() -> None:
                 )
             )
     finally:
-        http_client.close()
+        engine.close()

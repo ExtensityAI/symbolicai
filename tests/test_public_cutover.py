@@ -105,6 +105,7 @@ DELETED_FILES = {
     "pre_processors.py",
     "strategy.py",
     "backend/async_bridge.py",
+    "backend/engine_handle.py",
     "backend/base.py",
     "backend/chat_prompts.py",
     "backend/provider_engines.py",
@@ -135,6 +136,7 @@ FORBIDDEN_IDENTIFIERS = {
     "DynamicEngine",
     "Engine",
     "ENGINE_UNREGISTERED",
+    "EngineHandle",
     "EngineRepository",
     "SYMAI_CONFIG",
     "SYMSERVER_CONFIG",
@@ -167,6 +169,16 @@ def test_public_runtime_surface_exposes_errors_not_handles_or_clients() -> None:
     for name in ("Client", "EngineHandle"):
         assert not hasattr(symai, name)
         assert not hasattr(runtime, name)
+
+
+def test_runtime_operation_protocols_are_narrow_and_provider_neutral() -> None:
+    from importlib import import_module
+
+    engines = import_module("symai.runtime.engines")
+    for protocol_name in ("LanguageModelEngine", "EmbeddingEngine"):
+        protocol = getattr(engines, protocol_name)
+        public_members = {name for name in vars(protocol) if not name.startswith("_")}
+        assert public_members == {"close", "execute"}
 
 
 def test_star_import_is_exact_and_old_names_are_absent() -> None:

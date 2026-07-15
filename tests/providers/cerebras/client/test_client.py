@@ -65,7 +65,7 @@ def _completion_json() -> dict[str, object]:
 def _client(handler: Callable[[httpx.Request], httpx.Response]) -> Client:
     return Client(
         api_key=SecretStr("test-key"),
-        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+        transport=httpx.MockTransport(handler),
     )
 
 
@@ -108,11 +108,11 @@ def test_client_rejects_unsafe_api_key_before_request_without_disclosure(
         attempts += 1
         return httpx.Response(200)
 
-    with (
-        httpx.Client(transport=httpx.MockTransport(handler)) as http_client,
-        pytest.raises(ValueError) as exc_info,
-    ):
-        Client(api_key=SecretStr(api_key), http_client=http_client)
+    with pytest.raises(ValueError) as exc_info:
+        Client(
+            api_key=SecretStr(api_key),
+            transport=httpx.MockTransport(handler),
+        )
 
     assert attempts == 0
     assert exc_info.value.args == ()
@@ -120,13 +120,10 @@ def test_client_rejects_unsafe_api_key_before_request_without_disclosure(
 
 
 def test_client_rejects_plaintext_api_key():
-    with (
-        httpx.Client() as http_client,
-        pytest.raises(TypeError) as exc_info,
-    ):
+    with pytest.raises(TypeError) as exc_info:
         Client(
             api_key="test-key",  # pyright: ignore[reportArgumentType]
-            http_client=http_client,
+            transport=httpx.MockTransport(lambda _request: httpx.Response(200)),
         )
 
     assert exc_info.value.args == ()
@@ -405,8 +402,10 @@ def test_client_remains_open_and_never_retries(
         message = "connection refused"
         raise httpx.ConnectError(message, request=request)
 
-    injected = httpx.Client(transport=httpx.MockTransport(handler))
-    client = Client(api_key=SecretStr("test-key"), http_client=injected)
+    client = Client(
+        api_key=SecretStr("test-key"),
+        transport=httpx.MockTransport(handler),
+    )
 
     if error_type is None:
         client.create_chat_completion(_chat_request())
@@ -415,4 +414,4 @@ def test_client_remains_open_and_never_retries(
             client.create_chat_completion(_chat_request())
 
     assert attempts == 1
-    assert injected.is_closed is False
+    client.close()

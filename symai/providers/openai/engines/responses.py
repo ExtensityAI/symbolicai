@@ -90,14 +90,29 @@ class ResponsesEngine:
 
     def __init__(self, *, client: Client, model: str) -> None:
         try:
-            model_spec = MODEL_SPECS[model]
-        except KeyError as error:
-            msg = f"Unsupported OpenAI language model: {model}"
-            raise UnsupportedModelError(msg) from error
+            try:
+                model_spec = MODEL_SPECS[model]
+            except KeyError as error:
+                msg = f"Unsupported OpenAI language model: {model}"
+                raise UnsupportedModelError(msg) from error
 
-        self._client = client
-        self._model: responses_api.Model = cast("responses_api.Model", model)
-        self._model_spec = model_spec
+            self._client = client
+            self._model: responses_api.Model = cast("responses_api.Model", model)
+            self._model_spec = model_spec
+            self._closed = False
+        except BaseException as error:
+            try:
+                client.close()
+            except BaseException as cleanup_error:
+                error.add_note(f"Engine construction cleanup failed: {cleanup_error!r}")
+            raise
+
+    def close(self) -> None:
+        if self._closed:
+            return
+
+        self._closed = True
+        self._client.close()
 
     @property
     def model(self) -> responses_api.Model:

@@ -60,11 +60,11 @@ def test_client_rejects_unsafe_api_key_before_request_without_disclosure(
         attempts += 1
         return httpx.Response(200)
 
-    with (
-        httpx.Client(transport=httpx.MockTransport(handler)) as http_client,
-        pytest.raises(ValueError) as exc_info,
-    ):
-        Client(api_key=SecretStr(api_key), http_client=http_client)
+    with pytest.raises(ValueError) as exc_info:
+        Client(
+            api_key=SecretStr(api_key),
+            transport=httpx.MockTransport(handler),
+        )
 
     assert attempts == 0
     assert exc_info.value.args == ()
@@ -72,13 +72,10 @@ def test_client_rejects_unsafe_api_key_before_request_without_disclosure(
 
 
 def test_client_rejects_plaintext_api_key():
-    with (
-        httpx.Client() as http_client,
-        pytest.raises(TypeError) as exc_info,
-    ):
+    with pytest.raises(TypeError) as exc_info:
         Client(
             api_key="test-key",  # pyright: ignore[reportArgumentType]
-            http_client=http_client,
+            transport=httpx.MockTransport(lambda _request: httpx.Response(200)),
         )
 
     assert exc_info.value.args == ()
@@ -196,10 +193,14 @@ def test_responses_posts_typed_request_without_tool_surface():
         ),
         store=False,
     )
-    with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
-        response = Client(api_key=SecretStr("test-key"), http_client=http_client).create_response(
-            request
-        )
+    client = Client(
+        api_key=SecretStr("test-key"),
+        transport=httpx.MockTransport(handler),
+    )
+    try:
+        response = client.create_response(request)
+    finally:
+        client.close()
 
     output = response.data.output[1]
     assert isinstance(output, OutputMessage)
@@ -294,18 +295,23 @@ def test_response_lifecycle_operations_are_typed():
         assert str(request.url).startswith(url)
         return httpx.Response(200, json=payloads.pop(0))
 
-    with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
-        client = Client(api_key=SecretStr("test-key"), http_client=http_client)
+    client = Client(
+        api_key=SecretStr("test-key"),
+        transport=httpx.MockTransport(handler),
+    )
+    try:
         retrieved = client.retrieve_response(
             "resp_123",
-            RetrieveResponseParams(include=("reasoning.encrypted_content",)),
+            params=RetrieveResponseParams(include=("reasoning.encrypted_content",)),
         )
         deleted = client.delete_response("resp_123")
         cancelled = client.cancel_response("resp_123")
         items = client.list_input_items(
             "resp_123",
-            ListInputItemsParams(limit=10, order="asc"),
+            params=ListInputItemsParams(limit=10, order="asc"),
         )
+    finally:
+        client.close()
 
     assert retrieved.data.status == "completed"
     assert deleted.data.deleted is True
@@ -341,10 +347,14 @@ def test_embeddings_posts_batch_and_parses_vectors():
         dimensions=2,
         encoding_format="float",
     )
-    with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
-        response = Client(api_key=SecretStr("test-key"), http_client=http_client).create_embeddings(
-            request
-        )
+    client = Client(
+        api_key=SecretStr("test-key"),
+        transport=httpx.MockTransport(handler),
+    )
+    try:
+        response = client.create_embeddings(request)
+    finally:
+        client.close()
 
     assert response.data.data[0].embedding == (1.0, 0.0)
     assert response.data.usage.prompt_tokens == 2
@@ -363,9 +373,14 @@ def test_client_maps_auth_and_invalid_success_responses():
         return next(api_responses)
 
     request = CreateResponseRequest(input="hello", model="gpt-5.4")
-    with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
-        client = Client(api_key=SecretStr("test-key"), http_client=http_client)
+    client = Client(
+        api_key=SecretStr("test-key"),
+        transport=httpx.MockTransport(handler),
+    )
+    try:
         with pytest.raises(AuthError):
             client.create_response(request)
         with pytest.raises(ResponseError):
             client.create_response(request)
+    finally:
+        client.close()

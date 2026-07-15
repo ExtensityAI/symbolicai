@@ -81,10 +81,10 @@ def test_create_runtime_supports_every_registered_provider_capability(
     def capture_engine(
         model: str,
         api_key: SecretStr,
-        client: httpx.Client,
+        transport: TransportConfig,
     ) -> factory_module._ProviderEngine:
         assert isinstance(api_key, SecretStr)
-        engine = registered.create(model, api_key, client)
+        engine = registered.create(model, api_key, transport)
         constructed.append(engine)
         return engine
 
@@ -109,25 +109,28 @@ def test_create_runtime_supports_every_registered_provider_capability(
         runtime.close()
 
 
-def test_factory_uses_private_runtime_ownership_seam(
+def test_factory_composes_runtime_through_direct_constructor(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def reject_direct_construction(
-        _runtime: Runtime,
-        *_args: object,
-        **_kwargs: object,
-    ) -> None:
-        pytest.fail("factory must not pass handles through Runtime.__init__")
+    captured: dict[str, object] = {}
+    runtime_type = Runtime
 
-    monkeypatch.setattr(Runtime, "__init__", reject_direct_construction)
+    def capture_runtime(**kwargs: object) -> Runtime:
+        captured.update(kwargs)
+        return runtime_type(**kwargs)  # pyright: ignore[reportArgumentType]
+
+    monkeypatch.setattr(factory_module, "Runtime", capture_runtime)
     runtime = factory_module.create_runtime(
         RuntimeConfig(
             language_models=(_engine_config("primary", Provider.OPENAI, "gpt-5.4"),),
             default_language_model="primary",
         )
     )
-
-    runtime.close()
+    try:
+        assert set(cast("dict[str, object]", captured["language_models"])) == {"primary"}
+        assert captured["default_language_model"] == "primary"
+    finally:
+        runtime.close()
 
 
 def test_factory_registry_is_the_complete_four_entry_provider_matrix() -> None:
@@ -179,8 +182,8 @@ def test_invalid_provider_selection_fails_before_transport_allocation(
 ) -> None:
     monkeypatch.setattr(
         factory_module,
-        "_create_http_client",
-        lambda _transport: pytest.fail("transport must not be allocated"),
+        "_create_engine",
+        lambda _resolved: pytest.fail("engine resources must not be allocated"),
     )
 
     with pytest.raises(error, match=message):
@@ -202,8 +205,8 @@ def test_every_configuration_is_resolved_before_any_transport_is_allocated(
     )
     monkeypatch.setattr(
         factory_module,
-        "_create_http_client",
-        lambda _transport: pytest.fail("transport must not be allocated"),
+        "_create_engine",
+        lambda _resolved: pytest.fail("engine resources must not be allocated"),
     )
 
     with pytest.raises(UnsupportedCapabilityError, match="does not support embedding"):
@@ -230,13 +233,22 @@ class _RecordingClient:
 
 
 class _RecordingLanguageEngine:
-    def __init__(self, name: str, calls: list[str]) -> None:
+    def __init__(
+        self,
+        name: str,
+        calls: list[str],
+        client: _RecordingClient,
+    ) -> None:
         self.name = name
         self.calls = calls
+        self.client = client
 
     def execute(self, _request: LanguageModelRequest) -> LanguageModelResponse:
         self.calls.append(self.name)
         return cast("LanguageModelResponse", object())
+
+    def close(self) -> None:
+        self.client.close()
 
 
 def test_same_provider_model_instances_keep_distinct_keys_clients_and_transports(
@@ -244,32 +256,33 @@ def test_same_provider_model_instances_keep_distinct_keys_clients_and_transports
 ) -> None:
     attempts: list[str] = []
     clients: list[_RecordingClient] = []
-    observed: list[tuple[str, str, _RecordingClient]] = []
+    observed: list[tuple[str, str, TransportConfig, _RecordingClient]] = []
     engine_calls: list[str] = []
     engines: list[_RecordingLanguageEngine] = []
-
-    def create_http_client(transport: TransportConfig) -> httpx.Client:
-        client = _RecordingClient(str(transport.request_timeout), attempts)
-        clients.append(client)
-        return cast("httpx.Client", client)
 
     def create_engine(
         model: str,
         api_key: SecretStr,
-        client: httpx.Client,
+        transport: TransportConfig,
     ) -> factory_module._ProviderEngine:
+        client = _RecordingClient(str(transport.request_timeout), attempts)
+        clients.append(client)
         observed.append(
             (
                 model,
                 api_key.get_secret_value(),
-                cast("_RecordingClient", client),
+                transport,
+                client,
             )
         )
-        engine = _RecordingLanguageEngine(api_key.get_secret_value(), engine_calls)
+        engine = _RecordingLanguageEngine(
+            api_key.get_secret_value(),
+            engine_calls,
+            client,
+        )
         engines.append(engine)
         return cast("factory_module._ProviderEngine", engine)
 
-    monkeypatch.setattr(factory_module, "_create_http_client", create_http_client)
     monkeypatch.setattr(
         factory_module,
         "_FACTORIES",
@@ -301,9 +314,12 @@ def test_same_provider_model_instances_keep_distinct_keys_clients_and_transports
             default_language_model="tenant-b",
         )
     )
-    assert observed == [
-        ("same-model", "first-key", clients[0]),
-        ("same-model", "second-key", clients[1]),
+    assert [
+        (model, key, transport.request_timeout, client)
+        for model, key, transport, client in observed
+    ] == [
+        ("same-model", "first-key", 1.0, clients[0]),
+        ("same-model", "second-key", 2.0, clients[1]),
     ]
     assert clients[0] is not clients[1]
     assert attempts == []
@@ -332,20 +348,32 @@ def test_http_client_uses_finite_timeout_and_bounded_connect_retries(
         def __init__(self, *, retries: int) -> None:
             captured["retries"] = retries
 
-    class Client:
+        def close(self) -> None:
+            pass
+
+    class HTTPClient:
         def __init__(self, *, timeout: httpx.Timeout, transport: object) -> None:
             captured["timeout"] = timeout
             captured["transport"] = transport
-            captured["client"] = self
+
+        def close(self) -> None:
+            pass
 
     monkeypatch.setattr(factory_module.httpx, "HTTPTransport", Transport)
-    monkeypatch.setattr(factory_module.httpx, "Client", Client)
-
-    result = factory_module._create_http_client(
-        TransportConfig(request_timeout=30.0, connect_timeout=2.0, connect_retries=3)
+    monkeypatch.setattr(factory_module.httpx, "Client", HTTPClient)
+    config = TransportConfig(
+        request_timeout=30.0,
+        connect_timeout=2.0,
+        connect_retries=3,
     )
 
-    assert result is captured["client"]
+    client = openai.Client(
+        api_key=SecretStr("test-key"),
+        timeout=factory_module._timeout(config),
+        connect_retries=config.connect_retries,
+    )
+    client.close()
+
     timeout = cast("httpx.Timeout", captured["timeout"])
     assert timeout.read == 30.0
     assert timeout.connect == 2.0
@@ -373,7 +401,7 @@ def test_http_client_construction_failure_closes_allocated_transport(
     monkeypatch.setattr(factory_module.httpx, "Client", fail_client)
 
     with pytest.raises(RuntimeError, match="client construction failed") as caught:
-        factory_module._create_http_client(TransportConfig())
+        openai.Client(api_key=SecretStr("test-key"))
 
     assert caught.value is failure
     assert close_attempts == 1
@@ -381,7 +409,7 @@ def test_http_client_construction_failure_closes_allocated_transport(
 
 def _construction_factory(
     create: Callable[
-        [str, SecretStr, httpx.Client],
+        [str, SecretStr, TransportConfig],
         factory_module._ProviderEngine,
     ],
 ) -> factory_module._EngineFactory:
@@ -412,23 +440,20 @@ def test_later_engine_construction_failure_closes_current_and_earlier_resources_
         3.0: _RecordingClient("third", attempts),
     }
     failure = RuntimeError("third construction failed")
-    create_count = 0
-
-    def create_http_client(transport: TransportConfig) -> httpx.Client:
-        return cast("httpx.Client", clients[transport.request_timeout])
 
     def create_engine(
         _model: str,
         _key: SecretStr,
-        _client: httpx.Client,
+        transport: TransportConfig,
     ) -> factory_module._ProviderEngine:
-        nonlocal create_count
-        create_count += 1
-        if create_count == 3:
+        client = clients[transport.request_timeout]
+        if transport.request_timeout == 3.0:
+            client.close()
             raise failure
-        return cast("factory_module._ProviderEngine", object())
-
-    monkeypatch.setattr(factory_module, "_create_http_client", create_http_client)
+        return cast(
+            "factory_module._ProviderEngine",
+            _RecordingLanguageEngine(client.name, [], client),
+        )
     monkeypatch.setattr(
         factory_module,
         "_FACTORIES",
@@ -456,23 +481,28 @@ def test_all_cleanup_failures_become_notes_on_original_construction_error(
     }
     failure = LookupError("runtime construction failed")
 
-    def create_http_client(transport: TransportConfig) -> httpx.Client:
-        return cast("httpx.Client", clients[transport.request_timeout])
+    def create_engine(
+        _model: str,
+        _key: SecretStr,
+        transport: TransportConfig,
+    ) -> factory_module._ProviderEngine:
+        client = clients[transport.request_timeout]
+        return cast(
+            "factory_module._ProviderEngine",
+            _RecordingLanguageEngine(client.name, [], client),
+        )
 
-    def fail_runtime(*_args: object, **_kwargs: object) -> Runtime:
+    def fail_runtime(**_kwargs: object) -> Runtime:
         raise failure
 
-    monkeypatch.setattr(factory_module, "_create_http_client", create_http_client)
     monkeypatch.setattr(
         factory_module,
         "_FACTORIES",
         {
-            (Provider.OPENAI, "language_model"): _construction_factory(
-                lambda *_: cast("factory_module._ProviderEngine", object())
-            ),
+            (Provider.OPENAI, "language_model"): _construction_factory(create_engine),
         },
     )
-    monkeypatch.setattr(factory_module.Runtime, "_from_engine_handles", fail_runtime)
+    monkeypatch.setattr(factory_module, "Runtime", fail_runtime)
 
     with pytest.raises(LookupError, match="runtime construction failed") as caught:
         factory_module.create_runtime(_three_engine_config())

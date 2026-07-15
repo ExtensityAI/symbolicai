@@ -44,11 +44,10 @@ from symai.runtime.models import (
 
 def _client(
     handler: Callable[[httpx.Request], httpx.Response],
-) -> tuple[Client, httpx.Client]:
-    http_client = httpx.Client(transport=httpx.MockTransport(handler))
-    return (
-        Client(api_key=SecretStr("test-key"), http_client=http_client),
-        http_client,
+) -> Client:
+    return Client(
+        api_key=SecretStr("test-key"),
+        transport=httpx.MockTransport(handler),
     )
 
 
@@ -156,9 +155,9 @@ def test_execute_translates_normalized_request_and_response() -> None:
             ),
         )
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ChatCompletionsEngine(client=client, model="deepseek-v4-flash")
     try:
-        engine = ChatCompletionsEngine(client=client, model="deepseek-v4-flash")
         response = engine.execute(
             LanguageModelRequest(
                 messages=(
@@ -179,9 +178,8 @@ def test_execute_translates_normalized_request_and_response() -> None:
                 user="customer_42",
             )
         )
-        assert http_client.is_closed is False
     finally:
-        http_client.close()
+        engine.close()
 
     assert captured_body == {
         "messages": [
@@ -230,17 +228,16 @@ def test_reasoning_disabled_maps_to_provider_thinking_control() -> None:
         captured_body.update(json.loads(request.read()))
         return httpx.Response(200, json=_chat_json())
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ChatCompletionsEngine(client=client, model="deepseek-v4-flash")
     try:
-        ChatCompletionsEngine(client=client, model="deepseek-v4-flash").execute(
-            LanguageModelRequest(
-                messages=(UserMessage(content=(TextContent(text="hello"),)),),
-                reasoning=ReasoningConfig(enabled=False),
-                sampling=SamplingConfig(temperature=0.5, top_p=0.9),
-            )
-        )
+        engine.execute(LanguageModelRequest(
+            messages=(UserMessage(content=(TextContent(text="hello"),)),),
+            reasoning=ReasoningConfig(enabled=False),
+            sampling=SamplingConfig(temperature=0.5, top_p=0.9),
+        ))
     finally:
-        http_client.close()
+        engine.close()
 
     assert captured_body["thinking"] == {"type": "disabled"}
     assert "reasoning_effort" not in captured_body
@@ -324,13 +321,13 @@ def test_unsupported_features_fail_before_client_invocation(
         msg = "client must not be called"
         raise AssertionError(msg)
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ChatCompletionsEngine(client=client, model="deepseek-v4-flash")
     try:
-        engine = ChatCompletionsEngine(client=client, model="deepseek-v4-flash")
         with pytest.raises(UnsupportedFeatureError):
             engine.execute(model_request)
     finally:
-        http_client.close()
+        engine.close()
 
     assert calls == 0
 
@@ -342,13 +339,12 @@ def test_non_thinking_output_uses_none_reasoning() -> None:
             json=_chat_json(choices=[_choice(reasoning_content=None)]),
         )
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ChatCompletionsEngine(client=client, model="deepseek-v4-flash")
     try:
-        response = ChatCompletionsEngine(client=client, model="deepseek-v4-flash").execute(
-            LanguageModelRequest(messages=(UserMessage(content=(TextContent(text="hello"),)),))
-        )
+        response = engine.execute(LanguageModelRequest(messages=(UserMessage(content=(TextContent(text="hello"),)),)))
     finally:
-        http_client.close()
+        engine.close()
 
     assert response.outputs[0].message.reasoning is None
     assert response.outputs[0].text == "answer"
@@ -361,13 +357,12 @@ def test_reasoning_only_output_is_preserved_without_invented_content() -> None:
             json=_chat_json(choices=[_choice(content=None, reasoning_content="thought")]),
         )
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ChatCompletionsEngine(client=client, model="deepseek-v4-flash")
     try:
-        response = ChatCompletionsEngine(client=client, model="deepseek-v4-flash").execute(
-            LanguageModelRequest(messages=(UserMessage(content=(TextContent(text="hello"),)),))
-        )
+        response = engine.execute(LanguageModelRequest(messages=(UserMessage(content=(TextContent(text="hello"),)),)))
     finally:
-        http_client.close()
+        engine.close()
 
     assert response.outputs[0].message.content == ()
     assert response.outputs[0].message.reasoning == TextContent(text="thought")
@@ -388,13 +383,12 @@ def test_content_filtered_null_output_is_preserved_without_invented_text() -> No
             ),
         )
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ChatCompletionsEngine(client=client, model="deepseek-v4-flash")
     try:
-        response = ChatCompletionsEngine(client=client, model="deepseek-v4-flash").execute(
-            LanguageModelRequest(messages=(UserMessage(content=(TextContent(text="hello"),)),))
-        )
+        response = engine.execute(LanguageModelRequest(messages=(UserMessage(content=(TextContent(text="hello"),)),)))
     finally:
-        http_client.close()
+        engine.close()
 
     output = response.outputs[0]
     assert output.finish_reason is FinishReason.CONTENT_FILTER
@@ -417,13 +411,12 @@ def test_optional_usage_counters_normalize_without_false_relations() -> None:
             ),
         )
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ChatCompletionsEngine(client=client, model="deepseek-v4-flash")
     try:
-        response = ChatCompletionsEngine(client=client, model="deepseek-v4-flash").execute(
-            LanguageModelRequest(messages=(UserMessage(content=(TextContent(text="hello"),)),))
-        )
+        response = engine.execute(LanguageModelRequest(messages=(UserMessage(content=(TextContent(text="hello"),)),)))
     finally:
-        http_client.close()
+        engine.close()
 
     assert response.metadata.usage is not None
     assert response.metadata.usage.cached_prompt_tokens == 3
@@ -446,29 +439,28 @@ def test_malformed_choices_are_rejected(
     def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=_chat_json(choices=[choice]))
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ChatCompletionsEngine(client=client, model="deepseek-v4-flash")
     try:
-        engine = ChatCompletionsEngine(client=client, model="deepseek-v4-flash")
         with pytest.raises(InvalidResponseError, match=message):
             engine.execute(
                 LanguageModelRequest(messages=(UserMessage(content=(TextContent(text="hello"),)),))
             )
     finally:
-        http_client.close()
+        engine.close()
 
 
 def test_duplicate_choice_indices_are_rejected() -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=_chat_json(choices=[_choice(), _choice()]))
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ChatCompletionsEngine(client=client, model="deepseek-v4-flash")
     try:
         with pytest.raises(InvalidResponseError, match="duplicate"):
-            ChatCompletionsEngine(client=client, model="deepseek-v4-flash").execute(
-                LanguageModelRequest(messages=(UserMessage(content=(TextContent(text="hello"),)),))
-            )
+            engine.execute(LanguageModelRequest(messages=(UserMessage(content=(TextContent(text="hello"),)),)))
     finally:
-        http_client.close()
+        engine.close()
 
 
 @pytest.mark.parametrize(
@@ -495,14 +487,13 @@ def test_inconsistent_or_negative_usage_is_rejected(usage: dict[str, JsonValue])
     def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=_chat_json(usage=usage))
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ChatCompletionsEngine(client=client, model="deepseek-v4-flash")
     try:
         with pytest.raises(InvalidResponseError, match="usage"):
-            ChatCompletionsEngine(client=client, model="deepseek-v4-flash").execute(
-                LanguageModelRequest(messages=(UserMessage(content=(TextContent(text="hello"),)),))
-            )
+            engine.execute(LanguageModelRequest(messages=(UserMessage(content=(TextContent(text="hello"),)),)))
     finally:
-        http_client.close()
+        engine.close()
 
 
 @pytest.mark.parametrize(
@@ -522,16 +513,15 @@ def test_supported_reasoning_efforts_are_transported_exactly(
         captured_body.update(json.loads(request.read()))
         return httpx.Response(200, json=_chat_json())
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ChatCompletionsEngine(client=client, model="deepseek-v4-flash")
     try:
-        ChatCompletionsEngine(client=client, model="deepseek-v4-flash").execute(
-            LanguageModelRequest(
-                messages=(UserMessage(content=(TextContent(text="hello"),)),),
-                reasoning=ReasoningConfig(effort=effort),
-            )
-        )
+        engine.execute(LanguageModelRequest(
+            messages=(UserMessage(content=(TextContent(text="hello"),)),),
+            reasoning=ReasoningConfig(effort=effort),
+        ))
     finally:
-        http_client.close()
+        engine.close()
 
     assert captured_body["reasoning_effort"] == wire_effort
 
@@ -551,9 +541,9 @@ def test_unsupported_reasoning_efforts_fail_before_transport(
         msg = "client must not be called"
         raise AssertionError(msg)
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ChatCompletionsEngine(client=client, model="deepseek-v4-flash")
     try:
-        engine = ChatCompletionsEngine(client=client, model="deepseek-v4-flash")
         with pytest.raises(UnsupportedFeatureError, match=effort.value):
             engine.execute(
                 LanguageModelRequest(
@@ -562,7 +552,7 @@ def test_unsupported_reasoning_efforts_fail_before_transport(
                 )
             )
     finally:
-        http_client.close()
+        engine.close()
 
     assert calls == 0
 
@@ -574,13 +564,12 @@ def test_response_model_identity_is_preserved_without_exact_equality_rejection()
             json=_chat_json(model="provider-resolved-deepseek-model-2026-07-01"),
         )
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ChatCompletionsEngine(client=client, model="deepseek-v4-flash")
     try:
-        response = ChatCompletionsEngine(client=client, model="deepseek-v4-flash").execute(
-            LanguageModelRequest(messages=(UserMessage(content=(TextContent(text="hello"),)),))
-        )
+        response = engine.execute(LanguageModelRequest(messages=(UserMessage(content=(TextContent(text="hello"),)),)))
     finally:
-        http_client.close()
+        engine.close()
 
     assert response.outputs[0].text == "answer"
     assert response.metadata.requested_model == "deepseek-v4-flash"
@@ -591,14 +580,13 @@ def test_invalid_response_object_is_rejected_by_wire_parser() -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=_chat_json(object_type="future.object"))
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ChatCompletionsEngine(client=client, model="deepseek-v4-flash")
     try:
         with pytest.raises(InvalidResponseError) as caught:
-            ChatCompletionsEngine(client=client, model="deepseek-v4-flash").execute(
-                LanguageModelRequest(messages=(UserMessage(content=(TextContent(text="hello"),)),))
-            )
+            engine.execute(LanguageModelRequest(messages=(UserMessage(content=(TextContent(text="hello"),)),)))
     finally:
-        http_client.close()
+        engine.close()
 
     assert isinstance(caught.value.__cause__, deepseek_errors.ResponseError)
 
@@ -607,14 +595,13 @@ def test_empty_choices_are_rejected() -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=_chat_json(choices=[]))
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ChatCompletionsEngine(client=client, model="deepseek-v4-flash")
     try:
         with pytest.raises(InvalidResponseError, match="choices"):
-            ChatCompletionsEngine(client=client, model="deepseek-v4-flash").execute(
-                LanguageModelRequest(messages=(UserMessage(content=(TextContent(text="hello"),)),))
-            )
+            engine.execute(LanguageModelRequest(messages=(UserMessage(content=(TextContent(text="hello"),)),)))
     finally:
-        http_client.close()
+        engine.close()
 
 
 @pytest.mark.parametrize(
@@ -681,15 +668,15 @@ def test_invalid_json_retains_decode_evidence() -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, content=b"not json")
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ChatCompletionsEngine(client=client, model="deepseek-v4-flash")
     try:
-        engine = ChatCompletionsEngine(client=client, model="deepseek-v4-flash")
         with pytest.raises(InvalidResponseError) as caught:
             engine.execute(
                 LanguageModelRequest(messages=(UserMessage(content=(TextContent(text="hello"),)),))
             )
     finally:
-        http_client.close()
+        engine.close()
 
     assert isinstance(caught.value.__cause__, deepseek_errors.ResponseError)
     assert isinstance(caught.value.__cause__.__cause__, json.JSONDecodeError)
@@ -699,15 +686,15 @@ def test_invalid_schema_retains_validation_evidence() -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"future": "shape"})
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ChatCompletionsEngine(client=client, model="deepseek-v4-flash")
     try:
-        engine = ChatCompletionsEngine(client=client, model="deepseek-v4-flash")
         with pytest.raises(InvalidResponseError) as caught:
             engine.execute(
                 LanguageModelRequest(messages=(UserMessage(content=(TextContent(text="hello"),)),))
             )
     finally:
-        http_client.close()
+        engine.close()
 
     assert isinstance(caught.value.__cause__, deepseek_errors.ResponseError)
     assert isinstance(caught.value.__cause__.__cause__, ValidationError)

@@ -43,12 +43,43 @@ def _parse_response(response: httpx.Response, metadata: ResponseMetadata, model:
 
 
 class Client:
-    """Synchronous caller-owned client for OpenAI Responses and Embeddings."""
+    """Synchronous owner of an OpenAI HTTP connection pool."""
 
-    def __init__(self, *, api_key: SecretStr, http_client: httpx.Client) -> None:
+    def __init__(
+        self,
+        *,
+        api_key: SecretStr,
+        transport: httpx.BaseTransport | None = None,
+        timeout: httpx.Timeout | float = 5.0,
+        connect_retries: int = 0,
+    ) -> None:
         authorization = authorization_header(api_key)
+        owned_transport = transport
+        if owned_transport is None:
+            owned_transport = httpx.HTTPTransport(retries=connect_retries)
+        elif connect_retries:
+            msg = "connect_retries cannot be combined with an injected transport"
+            raise ValueError(msg)
+
+        try:
+            http_client = httpx.Client(timeout=timeout, transport=owned_transport)
+        except BaseException as error:
+            try:
+                owned_transport.close()
+            except BaseException as cleanup_error:
+                error.add_note(f"Client construction cleanup failed: {cleanup_error!r}")
+            raise
+
         self._http_client = http_client
         self._headers = {"authorization": authorization}
+        self._closed = False
+
+    def close(self) -> None:
+        if self._closed:
+            return
+
+        self._closed = True
+        self._http_client.close()
 
     def _request(
         self,
@@ -57,35 +88,33 @@ class Client:
         model: type[T],
         *,
         body: BaseModel | None = None,
-        query: BaseModel | None = None,
+        params: BaseModel | None = None,
     ) -> APIResponse[T]:
         json_body = (
             body.model_dump(mode="json", by_alias=True, exclude_none=True)
             if body is not None
             else None
         )
-        query_params = (
-            query.model_dump(mode="json", exclude_none=True) if query is not None else None
+        query = (
+            params.model_dump(mode="json", by_alias=True, exclude_none=True)
+            if params is not None
+            else None
         )
-
         try:
-            http_response = self._http_client.request(
+            response = self._http_client.request(
                 method,
                 f"{BASE_URL}{path}",
-                headers=self._headers,
                 json=json_body,
-                params=query_params,
+                params=query,
+                headers=self._headers,
             )
         except httpx.RequestError as exc:
             message = "OpenAI request failed before receiving a valid response"
             raise errors.TransportError(message) from exc
 
-        metadata = extract_response_metadata(http_response)
-        _raise_for_status(http_response, metadata)
-        return APIResponse(
-            data=_parse_response(http_response, metadata, model),
-            metadata=metadata,
-        )
+        metadata = extract_response_metadata(response)
+        _raise_for_status(response, metadata)
+        return APIResponse(data=_parse_response(response, metadata, model), metadata=metadata)
 
     def _post(self, path: str, request: BaseModel, model: type[T]) -> APIResponse[T]:
         return self._request("POST", path, model, body=request)
@@ -103,14 +132,15 @@ class Client:
     def retrieve_response(
         self,
         response_id: str,
-        query: responses_api.RetrieveResponseParams | None = None,
+        *,
+        params: responses_api.RetrieveResponseParams | None = None,
     ) -> APIResponse[responses_api.Response]:
         response_path = f"{responses_api.PATH}/{quote(response_id, safe='')}"
         return self._request(
             "GET",
             response_path,
             responses_api.Response,
-            query=query,
+            params=params,
         )
 
     def delete_response(
@@ -138,14 +168,15 @@ class Client:
     def list_input_items(
         self,
         response_id: str,
-        query: responses_api.ListInputItemsParams | None = None,
+        *,
+        params: responses_api.ListInputItemsParams | None = None,
     ) -> APIResponse[responses_api.InputItemList]:
         response_path = f"{responses_api.PATH}/{quote(response_id, safe='')}/input_items"
         return self._request(
             "GET",
             response_path,
             responses_api.InputItemList,
-            query=query,
+            params=params,
         )
 
     def create_embeddings(

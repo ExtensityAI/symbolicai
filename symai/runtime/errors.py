@@ -3,8 +3,9 @@ from typing import Literal
 
 from pydantic import Field
 
-from symai.backend.engine_handle import EngineCapability
 from symai.runtime.models import FrozenModel, NonNegativeFiniteFloat, Provider
+
+type EngineCapability = Literal["language_model", "embedding"]
 
 
 class ErrorMetadata(FrozenModel):

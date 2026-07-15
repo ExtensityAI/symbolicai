@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from contextvars import ContextVar, Token
 from enum import StrEnum
 from threading import Lock, get_ident
 from types import MappingProxyType, TracebackType
-from typing import TYPE_CHECKING, Literal, Protocol, cast, overload
+from typing import Literal, overload
 
+from symai.runtime.engines import EmbeddingEngine, LanguageModelEngine
 from symai.runtime.errors import (
     AmbiguousEngineError,
     EngineCapability,
@@ -23,18 +25,7 @@ from symai.runtime.models import (
     LanguageModelResponse,
 )
 
-if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
-
-    from symai.backend import engine_handle
-
-
-class LanguageModelEngine(Protocol):
-    def execute(self, request: LanguageModelRequest) -> LanguageModelResponse: ...
-
-
-class EmbeddingEngine(Protocol):
-    def execute(self, request: EmbeddingRequest) -> EmbeddingResponse: ...
+type _OwnedEngine = LanguageModelEngine | EmbeddingEngine
 
 
 class _RuntimeState(StrEnum):
@@ -44,23 +35,13 @@ class _RuntimeState(StrEnum):
 
 
 class Runtime:
-    """Explicit context-scoped owner for normalized execution capabilities."""
-
-    _construction_order: tuple[engine_handle.EngineHandle[object], ...]
-    _defaults: Mapping[EngineCapability, str | None]
-    _embeddings: Mapping[str, engine_handle.EngineHandle[EmbeddingEngine]]
-    _engine_handles: Mapping[str, engine_handle.EngineHandle[object]]
-    _language_models: Mapping[str, engine_handle.EngineHandle[LanguageModelEngine]]
-    _lifecycle_lock: Lock
-    _owner_thread_id: int | None
-    _state: _RuntimeState
-    _token: Token[Runtime | None] | None
+    """Single-threaded lifecycle owner for explicitly composed engines."""
 
     __slots__ = (
-        "_construction_order",
-        "_defaults",
+        "_acceptance_order",
+        "_default_embedding",
+        "_default_language_model",
         "_embeddings",
-        "_engine_handles",
         "_language_models",
         "_lifecycle_lock",
         "_owner_thread_id",
@@ -68,75 +49,86 @@ class Runtime:
         "_token",
     )
 
-    def __init__(self) -> None:
-        msg = "Runtime instances must be created with create_runtime()"
-        raise TypeError(msg)
-
-    @classmethod
-    def _from_engine_handles(
-        cls,
-        handles: Sequence[engine_handle.EngineHandle[object]],
+    def __init__(
+        self,
         *,
-        default_language_model: str | None,
-        default_embedding: str | None,
-    ) -> Runtime:
-        construction_order = tuple(handles)
-        engine_handles: dict[str, engine_handle.EngineHandle[object]] = {}
-        language_models: dict[str, engine_handle.EngineHandle[LanguageModelEngine]] = {}
-        embeddings: dict[str, engine_handle.EngineHandle[EmbeddingEngine]] = {}
+        language_models: Mapping[str, LanguageModelEngine] | None = None,
+        embeddings: Mapping[str, EmbeddingEngine] | None = None,
+        default_language_model: str | None = None,
+        default_embedding: str | None = None,
+    ) -> None:
+        language_snapshot = dict(language_models) if language_models is not None else {}
+        embedding_snapshot = dict(embeddings) if embeddings is not None else {}
 
-        for handle in construction_order:
-            if handle.name in engine_handles:
-                msg = f"Duplicate engine name: {handle.name!r}"
-                raise ValueError(msg)
-
-            engine_handles[handle.name] = handle
-            if handle.capability == "language_model":
-                language_models[handle.name] = cast(
-                    "engine_handle.EngineHandle[LanguageModelEngine]",
-                    handle,
-                )
-            else:
-                embeddings[handle.name] = cast(
-                    "engine_handle.EngineHandle[EmbeddingEngine]",
-                    handle,
-                )
-
-        cls._validate_default(
-            "language_model",
+        self._validate_aliases("language-model", language_snapshot)
+        self._validate_aliases("embedding", embedding_snapshot)
+        self._validate_default(
+            "language-model",
             default_language_model,
-            language_models,
+            language_snapshot,
         )
-        cls._validate_default("embedding", default_embedding, embeddings)
+        self._validate_default("embedding", default_embedding, embedding_snapshot)
+        self._validate_engine_identities(language_snapshot, embedding_snapshot)
+        if not language_snapshot and not embedding_snapshot:
+            msg = "Runtime requires at least one engine"
+            raise ValueError(msg)
 
-        runtime = cls.__new__(cls)
-        runtime._construction_order = construction_order
-        runtime._engine_handles = MappingProxyType(engine_handles)
-        runtime._language_models = MappingProxyType(language_models)
-        runtime._embeddings = MappingProxyType(embeddings)
-        runtime._defaults = MappingProxyType(
-            {
-                "language_model": default_language_model,
-                "embedding": default_embedding,
-            }
+        acceptance_order: tuple[_OwnedEngine, ...] = (
+            *language_snapshot.values(),
+            *embedding_snapshot.values(),
         )
-        runtime._lifecycle_lock = Lock()
-        runtime._owner_thread_id = None
-        runtime._state = _RuntimeState.CREATED
-        runtime._token = None
-        return runtime
+        self._acceptance_order = acceptance_order
+        self._language_models = MappingProxyType(language_snapshot)
+        self._embeddings = MappingProxyType(embedding_snapshot)
+        self._default_language_model = default_language_model
+        self._default_embedding = default_embedding
+        self._lifecycle_lock = Lock()
+        self._owner_thread_id: int | None = None
+        self._state = _RuntimeState.CREATED
+        self._token: Token[Runtime | None] | None = None
+
+    @staticmethod
+    def _validate_aliases(
+        operation: str,
+        engines: Mapping[object, object],
+    ) -> None:
+        for alias in engines:
+            if not isinstance(alias, str):
+                msg = f"{operation.capitalize()} engine alias must be a string"
+                raise TypeError(msg)
+            if not alias:
+                msg = f"{operation.capitalize()} engine alias must not be empty"
+                raise ValueError(msg)
 
     @staticmethod
     def _validate_default(
-        capability: EngineCapability,
-        default: str | None,
-        handles: Mapping[str, engine_handle.EngineHandle[object]],
+        operation: str,
+        default: object,
+        engines: Mapping[str, object],
     ) -> None:
-        if default is None or default in handles:
+        if default is None:
+            return
+        if not isinstance(default, str):
+            msg = f"Default {operation} engine alias must be a string"
+            raise TypeError(msg)
+        if default in engines:
             return
 
-        msg = f"Default {capability} engine is not configured: {default!r}"
+        msg = f"Default {operation} engine alias is not configured: {default!r}"
         raise ValueError(msg)
+
+    @staticmethod
+    def _validate_engine_identities(
+        language_models: Mapping[str, LanguageModelEngine],
+        embeddings: Mapping[str, EmbeddingEngine],
+    ) -> None:
+        identities: set[int] = set()
+        for engine in (*language_models.values(), *embeddings.values()):
+            identity = id(engine)
+            if identity in identities:
+                msg = "The same engine object cannot be accepted more than once"
+                raise ValueError(msg)
+            identities.add(identity)
 
     def __enter__(self) -> Runtime:
         with self._lifecycle_lock:
@@ -181,6 +173,7 @@ class Runtime:
     def execute(
         self,
         request: LanguageModelRequest,
+        /,
         *,
         engine: str | None = None,
     ) -> LanguageModelResponse: ...
@@ -189,6 +182,7 @@ class Runtime:
     def execute(
         self,
         request: EmbeddingRequest,
+        /,
         *,
         engine: str | None = None,
     ) -> EmbeddingResponse: ...
@@ -196,6 +190,7 @@ class Runtime:
     def execute(
         self,
         request: LanguageModelRequest | EmbeddingRequest,
+        /,
         *,
         engine: str | None = None,
     ) -> LanguageModelResponse | EmbeddingResponse:
@@ -206,48 +201,56 @@ class Runtime:
                 raise RuntimeClosedError(msg)
 
             if isinstance(request, LanguageModelRequest):
-                handle = self._resolve_engine(
+                selected = self._resolve_engine(
                     "language_model",
                     self._language_models,
+                    self._embeddings,
+                    self._default_language_model,
                     engine,
                 )
             elif isinstance(request, EmbeddingRequest):
-                handle = self._resolve_engine("embedding", self._embeddings, engine)
+                selected = self._resolve_engine(
+                    "embedding",
+                    self._embeddings,
+                    self._language_models,
+                    self._default_embedding,
+                    engine,
+                )
             else:
                 msg = f"Unsupported runtime request type: {type(request).__name__}"
                 raise TypeError(msg)
 
-        if isinstance(request, LanguageModelRequest):
-            language_engine = cast("LanguageModelEngine", handle.engine)
-            return language_engine.execute(request)
-        embedding_engine = cast("EmbeddingEngine", handle.engine)
-        return embedding_engine.execute(request)
+        return selected.execute(request)
 
-    def _resolve_engine(
-        self,
+    @staticmethod
+    def _resolve_engine[EngineT](
         capability: EngineCapability,
-        handles: Mapping[str, engine_handle.EngineHandle[object]],
+        engines: Mapping[str, EngineT],
+        other_engines: Mapping[str, object],
+        default: str | None,
         engine_name: str | None,
-    ) -> engine_handle.EngineHandle[object]:
+    ) -> EngineT:
         if engine_name is not None:
-            selected = self._engine_handles.get(engine_name)
-            if selected is None:
-                raise UnknownEngineError(engine_name)
-            if selected.capability != capability:
+            selected = engines.get(engine_name)
+            if selected is not None:
+                return selected
+            if engine_name in other_engines:
+                other_capability: EngineCapability = (
+                    "embedding" if capability == "language_model" else "language_model"
+                )
                 raise EngineCapabilityError(
                     engine_name,
                     requested_capability=capability,
-                    engine_capability=selected.capability,
+                    engine_capability=other_capability,
                 )
-            return selected
+            raise UnknownEngineError(engine_name)
 
-        default = self._defaults[capability]
         if default is not None:
-            return handles[default]
-        if len(handles) == 1:
-            return next(iter(handles.values()))
-        if handles:
-            raise AmbiguousEngineError(capability, tuple(handles))
+            return engines[default]
+        if len(engines) == 1:
+            return next(iter(engines.values()))
+        if engines:
+            raise AmbiguousEngineError(capability, tuple(engines))
 
         capability_label = capability.replace("_", "-")
         msg = f"Runtime has no {capability_label} capability"
@@ -260,12 +263,15 @@ class Runtime:
                 return
 
             self._state = _RuntimeState.CLOSED
-            handles = self._detach_handles()
+            engines = tuple(reversed(self._acceptance_order))
+            self._acceptance_order = ()
+            self._language_models = MappingProxyType({})
+            self._embeddings = MappingProxyType({})
 
         failures: list[BaseException] = []
-        for handle in handles:
+        for engine in engines:
             try:
-                handle.close()
+                engine.close()
             except BaseException as error:
                 failures.append(error)
 
@@ -283,15 +289,6 @@ class Runtime:
 
         raise RuntimeOwnershipError(operation)
 
-    def _detach_handles(self) -> tuple[engine_handle.EngineHandle[object], ...]:
-        handles = tuple(reversed(self._construction_order))
-        self._construction_order = ()
-        self._engine_handles = MappingProxyType({})
-        self._language_models = MappingProxyType({})
-        self._embeddings = MappingProxyType({})
-        self._defaults = MappingProxyType({})
-        return handles
-
 
 _CURRENT_RUNTIME: ContextVar[Runtime | None] = ContextVar(
     "symai_active_runtime",
@@ -304,4 +301,5 @@ def current_runtime() -> Runtime:
     if runtime is None:
         msg = "No Runtime is active in the current context"
         raise NoActiveRuntimeError(msg)
+
     return runtime

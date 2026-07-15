@@ -45,11 +45,10 @@ def _embedding_json(
 
 def _client(
     handler: Callable[[httpx.Request], httpx.Response],
-) -> tuple[Client, httpx.Client]:
-    http_client = httpx.Client(transport=httpx.MockTransport(handler))
-    return (
-        Client(api_key=SecretStr("test-key"), http_client=http_client),
-        http_client,
+) -> Client:
+    return Client(
+        api_key=SecretStr("test-key"),
+        transport=httpx.MockTransport(handler),
     )
 
 
@@ -69,15 +68,14 @@ def test_execute_translates_request_and_sorts_provider_vectors() -> None:
             ),
         )
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = EmbeddingEngine(client=client, model="text-embedding-3-small")
     try:
-        engine = EmbeddingEngine(client=client, model="text-embedding-3-small")
         response = engine.execute(
             EmbeddingRequest(inputs=("one", "two"), dimensions=2, user="customer-42")
         )
-        assert http_client.is_closed is False
     finally:
-        http_client.close()
+        engine.close()
 
     assert captured_body == {
         "input": ["one", "two"],
@@ -106,13 +104,12 @@ def test_response_model_identity_is_preserved_without_prefix_matching() -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=_embedding_json(model=returned_model))
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = EmbeddingEngine(client=client, model="text-embedding-3-small")
     try:
-        response = EmbeddingEngine(client=client, model="text-embedding-3-small").execute(
-            EmbeddingRequest(inputs=("one", "two"), dimensions=2)
-        )
+        response = engine.execute(EmbeddingRequest(inputs=("one", "two"), dimensions=2))
     finally:
-        http_client.close()
+        engine.close()
 
     assert response.metadata.requested_model == "text-embedding-3-small"
     assert response.metadata.response_model == returned_model
@@ -137,13 +134,12 @@ def test_default_dimensions_are_omitted_from_provider_request() -> None:
             },
         )
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = EmbeddingEngine(client=client, model="text-embedding-3-large")
     try:
-        response = EmbeddingEngine(client=client, model="text-embedding-3-large").execute(
-            EmbeddingRequest(inputs=("one", "two"))
-        )
+        response = engine.execute(EmbeddingRequest(inputs=("one", "two")))
     finally:
-        http_client.close()
+        engine.close()
 
     assert len(response.vectors[0].values) == 3072
 
@@ -229,26 +225,26 @@ def test_malformed_embedding_data_is_rejected(
     def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, content=json.dumps(_embedding_json(data=data)).encode())
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = EmbeddingEngine(client=client, model="text-embedding-3-small")
     try:
-        engine = EmbeddingEngine(client=client, model="text-embedding-3-small")
         with pytest.raises(InvalidResponseError, match=message):
             engine.execute(EmbeddingRequest(inputs=("one", "two"), dimensions=2))
     finally:
-        http_client.close()
+        engine.close()
 
 
 def test_inconsistent_usage_is_rejected() -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=_embedding_json(prompt_tokens=2, total_tokens=3))
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = EmbeddingEngine(client=client, model="text-embedding-3-small")
     try:
-        engine = EmbeddingEngine(client=client, model="text-embedding-3-small")
         with pytest.raises(InvalidResponseError, match="token usage"):
             engine.execute(EmbeddingRequest(inputs=("one", "two"), dimensions=2))
     finally:
-        http_client.close()
+        engine.close()
 
 
 @pytest.mark.parametrize(
@@ -322,13 +318,12 @@ def test_invalid_provider_metadata_is_normalized() -> None:
             json=_embedding_json(),
         )
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = EmbeddingEngine(client=client, model="text-embedding-3-small")
     try:
-        response = EmbeddingEngine(client=client, model="text-embedding-3-small").execute(
-            EmbeddingRequest(inputs=("one", "two"), dimensions=2)
-        )
+        response = engine.execute(EmbeddingRequest(inputs=("one", "two"), dimensions=2))
     finally:
-        http_client.close()
+        engine.close()
 
     assert response.metadata.retry_after is None
 
@@ -344,12 +339,12 @@ def test_normalized_validation_failure_is_chained() -> None:
             ).encode(),
         )
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = EmbeddingEngine(client=client, model="text-embedding-3-small")
     try:
-        engine = EmbeddingEngine(client=client, model="text-embedding-3-small")
         with pytest.raises(InvalidResponseError) as caught:
             engine.execute(EmbeddingRequest(inputs=("one",), dimensions=1))
     finally:
-        http_client.close()
+        engine.close()
 
     assert isinstance(caught.value.__cause__, ValidationError)

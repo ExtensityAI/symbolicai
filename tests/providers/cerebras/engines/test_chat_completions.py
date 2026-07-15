@@ -104,11 +104,10 @@ def _chat_json(
 
 def _client(
     handler: Callable[[httpx.Request], httpx.Response],
-) -> tuple[Client, httpx.Client]:
-    http_client = httpx.Client(transport=httpx.MockTransport(handler))
-    return (
-        Client(api_key=SecretStr("test-key"), http_client=http_client),
-        http_client,
+) -> Client:
+    return Client(
+        api_key=SecretStr("test-key"),
+        transport=httpx.MockTransport(handler),
     )
 
 
@@ -132,9 +131,9 @@ def test_execute_translates_normalized_request_and_response() -> None:
             ),
         )
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ChatCompletionsEngine(client=client, model="gpt-oss-120b")
     try:
-        engine = ChatCompletionsEngine(client=client, model="gpt-oss-120b")
         response = engine.execute(
             LanguageModelRequest(
                 messages=(
@@ -186,9 +185,8 @@ def test_execute_translates_normalized_request_and_response() -> None:
                 user="customer-42",
             )
         )
-        assert http_client.is_closed is False
     finally:
-        http_client.close()
+        engine.close()
 
     assert captured_body == {
         "messages": [
@@ -274,15 +272,14 @@ def test_response_model_identity_is_preserved_without_prefix_matching() -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=_chat_json(model=returned_model))
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ChatCompletionsEngine(client=client, model="gpt-oss-120b")
     try:
-        response = ChatCompletionsEngine(client=client, model="gpt-oss-120b").execute(
-            LanguageModelRequest(
-                messages=(UserMessage(content=(TextContent(text="hello"),)),),
-            )
-        )
+        response = engine.execute(LanguageModelRequest(
+            messages=(UserMessage(content=(TextContent(text="hello"),)),),
+        ))
     finally:
-        http_client.close()
+        engine.close()
 
     assert response.metadata.requested_model == "gpt-oss-120b"
     assert response.metadata.response_model == returned_model
@@ -298,16 +295,15 @@ def test_non_thinking_effort_sentinel_is_model_specific() -> None:
             json=_chat_json(model="zai-glm-4.7", choices=[_choice(reasoning=None)]),
         )
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ChatCompletionsEngine(client=client, model="zai-glm-4.7")
     try:
-        response = ChatCompletionsEngine(client=client, model="zai-glm-4.7").execute(
-            LanguageModelRequest(
-                messages=(UserMessage(content=(TextContent(text="hello"),)),),
-                reasoning=ReasoningConfig(effort=ReasoningEffort.NONE),
-            )
-        )
+        response = engine.execute(LanguageModelRequest(
+            messages=(UserMessage(content=(TextContent(text="hello"),)),),
+            reasoning=ReasoningConfig(effort=ReasoningEffort.NONE),
+        ))
     finally:
-        http_client.close()
+        engine.close()
 
     assert captured_body["reasoning_effort"] == "none"
     assert response.outputs[0].message.reasoning is None
@@ -411,15 +407,14 @@ def test_optional_usage_counters_normalize_without_invented_relations() -> None:
             json=_chat_json(usage={"prompt_tokens": 10}),
         )
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ChatCompletionsEngine(client=client, model="gpt-oss-120b")
     try:
-        response = ChatCompletionsEngine(client=client, model="gpt-oss-120b").execute(
-            LanguageModelRequest(
-                messages=(UserMessage(content=(TextContent(text="hello"),)),),
-            )
-        )
+        response = engine.execute(LanguageModelRequest(
+            messages=(UserMessage(content=(TextContent(text="hello"),)),),
+        ))
     finally:
-        http_client.close()
+        engine.close()
 
     assert response.metadata.usage is not None
     assert response.metadata.usage.prompt_tokens == 10
@@ -443,9 +438,9 @@ def test_malformed_choices_are_rejected(
     def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=_chat_json(choices=[choice]))
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ChatCompletionsEngine(client=client, model="gpt-oss-120b")
     try:
-        engine = ChatCompletionsEngine(client=client, model="gpt-oss-120b")
         with pytest.raises(InvalidResponseError, match=message):
             engine.execute(
                 LanguageModelRequest(
@@ -453,7 +448,7 @@ def test_malformed_choices_are_rejected(
                 )
             )
     finally:
-        http_client.close()
+        engine.close()
 
 
 def test_duplicate_choice_indices_are_rejected() -> None:
@@ -463,9 +458,9 @@ def test_duplicate_choice_indices_are_rejected() -> None:
             json=_chat_json(choices=[_choice(index=0), _choice(index=0)]),
         )
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ChatCompletionsEngine(client=client, model="gpt-oss-120b")
     try:
-        engine = ChatCompletionsEngine(client=client, model="gpt-oss-120b")
         with pytest.raises(InvalidResponseError, match="duplicate"):
             engine.execute(
                 LanguageModelRequest(
@@ -473,7 +468,7 @@ def test_duplicate_choice_indices_are_rejected() -> None:
                 )
             )
     finally:
-        http_client.close()
+        engine.close()
 
 
 def test_inconsistent_reported_usage_is_rejected() -> None:
@@ -485,9 +480,9 @@ def test_inconsistent_reported_usage_is_rejected() -> None:
             ),
         )
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ChatCompletionsEngine(client=client, model="gpt-oss-120b")
     try:
-        engine = ChatCompletionsEngine(client=client, model="gpt-oss-120b")
         with pytest.raises(InvalidResponseError, match="token usage"):
             engine.execute(
                 LanguageModelRequest(
@@ -495,7 +490,7 @@ def test_inconsistent_reported_usage_is_rejected() -> None:
                 )
             )
     finally:
-        http_client.close()
+        engine.close()
 
 
 @pytest.mark.parametrize(
@@ -591,9 +586,9 @@ def test_invalid_normalized_response_is_chained() -> None:
             json=_chat_json(choices=[_choice(content=None, reasoning=None)]),
         )
 
-    client, http_client = _client(handler)
+    client = _client(handler)
+    engine = ChatCompletionsEngine(client=client, model="gpt-oss-120b")
     try:
-        engine = ChatCompletionsEngine(client=client, model="gpt-oss-120b")
         with pytest.raises(InvalidResponseError) as caught:
             engine.execute(
                 LanguageModelRequest(
@@ -601,6 +596,6 @@ def test_invalid_normalized_response_is_chained() -> None:
                 )
             )
     finally:
-        http_client.close()
+        engine.close()
 
     assert isinstance(caught.value.__cause__, ValidationError)

@@ -3,7 +3,6 @@ from collections.abc import Callable
 import pytest
 
 import symai.ops as ops
-from symai.backend.engine_handle import EngineHandle
 from symai.operations import (
     combine_request,
     equals_request,
@@ -67,6 +66,9 @@ class RecordingLanguageEngine:
         self.requests.append(request)
         return self._execute(request)
 
+    def close(self) -> None:
+        pass
+
 
 class RecordingEmbeddingEngine:
     def __init__(self, response: EmbeddingResponse) -> None:
@@ -77,33 +79,22 @@ class RecordingEmbeddingEngine:
         self.requests.append(request)
         return self._response
 
+    def close(self) -> None:
+        pass
+
 
 def runtime_for(
     *,
     language: RecordingLanguageEngine | None = None,
     embedding: RecordingEmbeddingEngine | None = None,
 ) -> Runtime:
-    handles: list[EngineHandle[object]] = []
-    if language is not None:
-        handles.append(
-            EngineHandle(
-                name="test-language-model",
-                capability="language_model",
-                engine=language,
-                cleanup=lambda: None,
-            )
-        )
-    if embedding is not None:
-        handles.append(
-            EngineHandle(
-                name="test-embedding",
-                capability="embedding",
-                engine=embedding,
-                cleanup=lambda: None,
-            )
-        )
-    return Runtime._from_engine_handles(
-        handles,
+    language_models = (
+        {"test-language-model": language} if language is not None else None
+    )
+    embeddings = {"test-embedding": embedding} if embedding is not None else None
+    return Runtime(
+        language_models=language_models,
+        embeddings=embeddings,
         default_language_model="test-language-model" if language is not None else None,
         default_embedding="test-embedding" if embedding is not None else None,
     )

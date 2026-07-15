@@ -60,12 +60,43 @@ def _parse_response(
 
 
 class Client:
-    """Synchronous caller-owned client for the Cerebras chat endpoint."""
+    """Synchronous owner of a Cerebras HTTP connection pool."""
 
-    def __init__(self, *, api_key: SecretStr, http_client: httpx.Client) -> None:
+    def __init__(
+        self,
+        *,
+        api_key: SecretStr,
+        transport: httpx.BaseTransport | None = None,
+        timeout: httpx.Timeout | float = 5.0,
+        connect_retries: int = 0,
+    ) -> None:
         authorization = authorization_header(api_key)
+        owned_transport = transport
+        if owned_transport is None:
+            owned_transport = httpx.HTTPTransport(retries=connect_retries)
+        elif connect_retries:
+            msg = "connect_retries cannot be combined with an injected transport"
+            raise ValueError(msg)
+
+        try:
+            http_client = httpx.Client(timeout=timeout, transport=owned_transport)
+        except BaseException as error:
+            try:
+                owned_transport.close()
+            except BaseException as cleanup_error:
+                error.add_note(f"Client construction cleanup failed: {cleanup_error!r}")
+            raise
+
         self._http_client = http_client
         self._headers = {"authorization": authorization}
+        self._closed = False
+
+    def close(self) -> None:
+        if self._closed:
+            return
+
+        self._closed = True
+        self._http_client.close()
 
     def create_chat_completion(
         self,

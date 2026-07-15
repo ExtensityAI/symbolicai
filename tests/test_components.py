@@ -3,7 +3,6 @@ from typing import get_type_hints
 
 import pytest
 
-from symai.backend.engine_handle import EngineHandle
 from symai.components import Function
 from symai.runtime.errors import NoActiveRuntimeError
 from symai.runtime.models import (
@@ -58,18 +57,14 @@ class RecordingLanguageEngine:
         self.requests.append(request)
         return self._execute(request)
 
+    def close(self) -> None:
+        pass
+
 
 def runtime_for(engine: RecordingLanguageEngine) -> Runtime:
-    handle = EngineHandle(
-        name="test-language-model",
-        capability="language_model",
-        engine=engine,
-        cleanup=lambda: None,
-    )
-    return Runtime._from_engine_handles(
-        (handle,),
+    return Runtime(
+        language_models={"test-language-model": engine},
         default_language_model="test-language-model",
-        default_embedding=None,
     )
 
 
