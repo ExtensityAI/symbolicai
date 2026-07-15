@@ -1,7 +1,9 @@
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from importlib.util import find_spec
 import inspect
 from typing import get_type_hints
+
+import pytest
 
 from symai.function import Function
 from symai.runtime.models import (
@@ -76,8 +78,6 @@ def test_request_builds_normalized_request_without_execution() -> None:
     function = Function(
         "Answer precisely.",
         examples=("2 + 2 => 4",),
-        static_context="Use arithmetic.",
-        dynamic_context="The caller needs precision.",
         max_tokens=64,
         stop=("END",),
     )
@@ -89,12 +89,7 @@ def test_request_builds_normalized_request_without_execution() -> None:
             SystemMessage(
                 content=(
                     TextContent(
-                        text=(
-                            "Answer precisely.\n"
-                            "<STATIC_CONTEXT/>\nUse arithmetic.\n"
-                            "<DYNAMIC_CONTEXT/>\nThe caller needs precision.\n"
-                            "2 + 2 => 4"
-                        )
+                        text="Answer precisely.\n2 + 2 => 4"
                     ),
                 )
             ),
@@ -103,6 +98,23 @@ def test_request_builds_normalized_request_without_execution() -> None:
         sampling=SamplingConfig(max_tokens=64, stop=("END",)),
     )
     assert engine.requests == []
+
+
+def test_examples_accept_only_strings_and_snapshot_sequences() -> None:
+    mutable_examples = ["first"]
+    function = Function(examples=mutable_examples)
+    mutable_examples.append("second")
+
+    assert function.examples == ("first",)
+    assert Function(examples="only").examples == ("only",)
+    with pytest.raises(TypeError, match="examples must contain only strings"):
+        Function(examples=("valid", 1))  # pyright: ignore[reportArgumentType]
+
+
+def test_examples_annotation_has_no_prompt_hierarchy() -> None:
+    annotation = get_type_hints(Function.__init__)["examples"]
+
+    assert annotation == Sequence[str] | str | None
 
 
 def test_call_returns_exact_normalized_response_and_forwards_engine() -> None:
@@ -150,9 +162,14 @@ def test_function_has_one_non_generic_execution_surface() -> None:
     init_parameters = inspect.signature(Function).parameters
     call_parameters = inspect.signature(Function.__call__).parameters
 
-    assert not {"default", "return_type", "sym_return_type", "limit"}.intersection(
-        init_parameters
-    )
+    assert not {
+        "default",
+        "dynamic_context",
+        "limit",
+        "return_type",
+        "static_context",
+        "sym_return_type",
+    }.intersection(init_parameters)
     assert not {"preview", "return_metadata", "output_index"}.intersection(call_parameters)
     assert not hasattr(Function, "batch")
     assert get_type_hints(Function.request)["return"] is LanguageModelRequest

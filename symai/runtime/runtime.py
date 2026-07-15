@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from contextvars import ContextVar, Token
 from enum import StrEnum
 from threading import Lock, get_ident
 from types import MappingProxyType, TracebackType
@@ -12,7 +11,6 @@ from symai.runtime.errors import (
     AmbiguousEngineError,
     EngineCapability,
     EngineCapabilityError,
-    NoActiveRuntimeError,
     RuntimeClosedError,
     RuntimeOwnershipError,
     UnknownEngineError,
@@ -46,7 +44,6 @@ class Runtime:
         "_lifecycle_lock",
         "_owner_thread_id",
         "_state",
-        "_token",
     )
 
     def __init__(
@@ -85,7 +82,6 @@ class Runtime:
         self._lifecycle_lock = Lock()
         self._owner_thread_id: int | None = None
         self._state = _RuntimeState.CREATED
-        self._token: Token[Runtime | None] | None = None
 
     @staticmethod
     def _validate_aliases(
@@ -137,8 +133,6 @@ class Runtime:
                 msg = "Runtime contexts have a single lifecycle and cannot be re-entered"
                 raise RuntimeClosedError(msg)
 
-            token = _CURRENT_RUNTIME.set(self)
-            self._token = token
             self._owner_thread_id = get_ident()
             self._state = _RuntimeState.ACTIVE
             return self
@@ -151,13 +145,6 @@ class Runtime:
     ) -> Literal[False]:
         with self._lifecycle_lock:
             self._require_owner_thread("exit")
-            token = self._token
-            if token is None:
-                msg = "Active runtime context is missing its context token"
-                raise RuntimeError(msg)
-
-            _CURRENT_RUNTIME.reset(token)
-            self._token = None
 
         try:
             self.close()
@@ -288,18 +275,3 @@ class Runtime:
             return
 
         raise RuntimeOwnershipError(operation)
-
-
-_CURRENT_RUNTIME: ContextVar[Runtime | None] = ContextVar(
-    "symai_active_runtime",
-    default=None,
-)
-
-
-def current_runtime() -> Runtime:
-    runtime = _CURRENT_RUNTIME.get()
-    if runtime is None:
-        msg = "No Runtime is active in the current context"
-        raise NoActiveRuntimeError(msg)
-
-    return runtime

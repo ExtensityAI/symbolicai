@@ -8,27 +8,11 @@ import numpy as np
 import pytest
 
 import symai.ops as ops
-import symai.runtime.runtime as runtime_module
 import symai.symbol as symbol_module
 from symai.decoding import ConstructorDecoder, TextDecoder
 from symai.function import Function
 from symai.operations import embedding_request, language_request
 from symai.ops import compare, embed, primitives, rank, reason, text
-from symai.prompts import (
-    CombineText,
-    ContainsValue,
-    ExtractPattern,
-    Format,
-    FuzzyEquals,
-    IncludeText,
-    IsInstanceOf,
-    LogicExpression,
-    MapExpression,
-    Modify,
-    RankList,
-    ReplaceText,
-    SimpleSymbolicExpression,
-)
 from symai.runtime.models import (
     AssistantOutputMessage,
     EmbeddingRequest,
@@ -111,8 +95,6 @@ def embedding_runtime(
     )
 
 
-def examples(prompt: object) -> tuple[str, ...]:
-    return tuple(prompt.value)  # type: ignore[attr-defined]
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,7 +134,7 @@ REMOTE_CASES = (
         language_request(
             "Modify the text to match the criteria:\n",
             "text 'source' modify 'make concise'=>",
-            examples=examples(Modify()),
+            examples=text._MODIFY_EXAMPLES,
         ),
     ),
     RemoteCase(
@@ -175,7 +157,7 @@ REMOTE_CASES = (
             "Transform each element in the input based on the instruction. "
             "Preserve container type and elements that don't match the instruction:\n",
             "text 'source' uppercase names =>",
-            examples=examples(MapExpression()),
+            examples=text._MAP_EXAMPLES,
         ),
     ),
     RemoteCase(
@@ -186,7 +168,7 @@ REMOTE_CASES = (
         language_request(
             "Translate the following text into JSON format.\n",
             "text source format 'JSON' =>",
-            examples=examples(Format()),
+            examples=text._FORMAT_EXAMPLES,
         ),
     ),
     RemoteCase(
@@ -208,7 +190,7 @@ REMOTE_CASES = (
         language_request(
             "Replace text parts by string pattern.\n",
             "text 'source' replace 'old' with 'new'=>",
-            examples=examples(ReplaceText()),
+            examples=text._REPLACE_EXAMPLES,
         ),
     ),
     RemoteCase(
@@ -219,7 +201,7 @@ REMOTE_CASES = (
         language_request(
             "Include information based on description.\n",
             "text 'source' include 'a caveat' =>",
-            examples=examples(IncludeText()),
+            examples=text._INCLUDE_EXAMPLES,
         ),
     ),
     RemoteCase(
@@ -230,7 +212,7 @@ REMOTE_CASES = (
         language_request(
             "Add the two data types in a logical way:\n",
             "source + other =>",
-            examples=examples(CombineText()),
+            examples=text._COMBINE_EXAMPLES,
         ),
     ),
     RemoteCase(
@@ -241,7 +223,7 @@ REMOTE_CASES = (
         language_request(
             "Extract a pattern from text:\n",
             "from 'source' extract 'dates' =>",
-            examples=examples(ExtractPattern()),
+            examples=text._EXTRACT_EXAMPLES,
         ),
     ),
     RemoteCase(
@@ -262,7 +244,7 @@ REMOTE_CASES = (
         language_request(
             "Evaluate the symbolic expression and return only the result:\n",
             "source =>",
-            examples=examples(SimpleSymbolicExpression()),
+            examples=reason._INTERPRET_EXAMPLES,
         ),
     ),
     RemoteCase(
@@ -273,7 +255,7 @@ REMOTE_CASES = (
         language_request(
             "Evaluate the logic expression:\n",
             "expr :source: AND :other: =>",
-            examples=examples(LogicExpression()),
+            examples=reason._LOGIC_EXAMPLES,
         ),
     ),
     RemoteCase(
@@ -284,7 +266,7 @@ REMOTE_CASES = (
         language_request(
             "Make a fuzzy equality comparison. Are the following objects contextually the same?\n",
             "source == other =>",
-            examples=examples(FuzzyEquals()),
+            examples=compare._EQUALS_EXAMPLES,
         ),
         boolean=True,
     ),
@@ -296,7 +278,7 @@ REMOTE_CASES = (
         language_request(
             "Is the information in 'A' semantically contained in 'B'?\n",
             "other in source =>",
-            examples=examples(ContainsValue()),
+            examples=compare._CONTAINS_EXAMPLES,
         ),
         boolean=True,
     ),
@@ -308,7 +290,7 @@ REMOTE_CASES = (
         language_request(
             "Is 'A' semantically an instance of the described type 'B'?\n",
             "source is instance of a programming language =>",
-            examples=examples(IsInstanceOf()),
+            examples=compare._IS_INSTANCE_OF_EXAMPLES,
         ),
         boolean=True,
     ),
@@ -320,10 +302,19 @@ REMOTE_CASES = (
         language_request(
             "Rank the objects from highest to lowest by the requested measure:\n",
             "measure: 'quality' list: source =>",
-            examples=examples(RankList()),
+            examples=rank._RANK_EXAMPLES,
         ),
     ),
 )
+
+
+def test_extract_examples_preserve_packet_responder_text() -> None:
+    packet_examples = tuple(
+        example for example in text._EXTRACT_EXAMPLES if "dfs.DataNode" in example
+    )
+
+    assert len(packet_examples) == 2
+    assert all("dfs.DataNode$PacketResponder" in example for example in packet_examples)
 
 
 @pytest.mark.parametrize("case", REMOTE_CASES, ids=lambda case: case.name)
@@ -336,10 +327,10 @@ def test_language_operation_contract(
     )
     other = RecordingLanguageEngine(language_response("wrong engine"))
     explicit = language_runtime(selected, other)
-    ambient_engine = RecordingLanguageEngine(language_response("ambient"))
-    ambient = Runtime(
-        language_models={"ambient": ambient_engine},
-        default_language_model="ambient",
+    independent_engine = RecordingLanguageEngine(language_response("independent"))
+    independent = Runtime(
+        language_models={"independent": independent_engine},
+        default_language_model="independent",
     )
     source = Symbol("source")
     other_symbol = Symbol("other")
@@ -367,15 +358,12 @@ def test_language_operation_contract(
         wraps.append(value)
         return original_symbol(value)
 
-    def fail_ambient_lookup() -> Runtime:
-        raise AssertionError("ambient Runtime lookup is forbidden")
 
     monkeypatch.setattr(Function, "__call__", record_function_call)
     monkeypatch.setattr(primitives, "decode_output", record_decode)
     monkeypatch.setattr(primitives, "Symbol", record_wrap)
-    monkeypatch.setattr(runtime_module, "current_runtime", fail_ambient_lookup)
 
-    with explicit, ambient:
+    with explicit, independent:
         result = case.invoke(explicit, source, other_symbol)
 
     assert result.value is True if case.boolean else result.value == "decoded"
@@ -385,7 +373,7 @@ def test_language_operation_contract(
     assert other_symbol.value == "other"
     assert selected.requests == [case.request]
     assert other.requests == []
-    assert ambient_engine.requests == []
+    assert independent_engine.requests == []
     assert len(function_calls) == 1
     assert len(decoders) == 1
     assert len(wraps) == 1
@@ -416,11 +404,8 @@ def test_embedding_is_explicit_ordered_and_executes_once_without_function(
     def fail_function(*_args: object, **_kwargs: object) -> LanguageModelResponse:
         raise AssertionError("Embedding must not execute through Function")
 
-    def fail_ambient_lookup() -> Runtime:
-        raise AssertionError("ambient Runtime lookup is forbidden")
 
     monkeypatch.setattr(Function, "__call__", fail_function)
-    monkeypatch.setattr(runtime_module, "current_runtime", fail_ambient_lookup)
 
     runtime = embedding_runtime(selected, other)
     with runtime:

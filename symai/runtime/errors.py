@@ -19,8 +19,6 @@ class SymbolicAIRuntimeError(Exception):
     """Base exception for provider-neutral runtime failures."""
 
 
-class NoActiveRuntimeError(SymbolicAIRuntimeError):
-    """Raised when an operation requires an explicit active runtime."""
 
 
 class RuntimeClosedError(SymbolicAIRuntimeError):

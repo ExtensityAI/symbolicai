@@ -1,5 +1,4 @@
 from collections.abc import Callable, Mapping
-from contextvars import ContextVar, Token
 from importlib import import_module
 from threading import Thread
 from typing import cast
@@ -9,7 +8,6 @@ import pytest
 from symai.runtime.errors import (
     AmbiguousEngineError,
     EngineCapabilityError,
-    NoActiveRuntimeError,
     RuntimeClosedError,
     RuntimeOwnershipError,
     UnknownEngineError,
@@ -27,7 +25,7 @@ from symai.runtime.models import (
     TextContent,
     UserMessage,
 )
-from symai.runtime.runtime import Runtime, current_runtime
+from symai.runtime.runtime import Runtime
 
 LANGUAGE_REQUEST = LanguageModelRequest(
     messages=(UserMessage(content=(TextContent(text="question"),)),),
@@ -343,21 +341,31 @@ def test_runtime_cannot_be_reentered() -> None:
         runtime.__enter__()
 
 
-def test_current_runtime_keeps_temporary_ambient_compatibility() -> None:
-    outer = Runtime(language_models={"outer": LanguageEngine()})
-    inner = Runtime(language_models={"inner": LanguageEngine()})
-
-    with pytest.raises(NoActiveRuntimeError):
-        current_runtime()
+def test_nested_independent_runtimes_execute_and_close_without_ambient_state() -> None:
+    outer_engine = LanguageEngine("outer")
+    inner_engine = LanguageEngine("inner")
+    outer = Runtime(language_models={"outer": outer_engine})
+    inner = Runtime(language_models={"inner": inner_engine})
 
     with outer:
-        assert current_runtime() is outer
+        assert outer.execute(LANGUAGE_REQUEST) is LANGUAGE_RESPONSE
         with inner:
-            assert current_runtime() is inner
-        assert current_runtime() is outer
+            assert outer.execute(LANGUAGE_REQUEST) is LANGUAGE_RESPONSE
+            assert inner.execute(LANGUAGE_REQUEST) is LANGUAGE_RESPONSE
+        assert outer.execute(LANGUAGE_REQUEST) is LANGUAGE_RESPONSE
 
-    with pytest.raises(NoActiveRuntimeError):
-        current_runtime()
+    assert outer_engine.requests == [LANGUAGE_REQUEST, LANGUAGE_REQUEST, LANGUAGE_REQUEST]
+    assert inner_engine.requests == [LANGUAGE_REQUEST]
+    assert outer_engine.close_count == 1
+    assert inner_engine.close_count == 1
+
+
+def test_runtime_has_no_ambient_registry_slot_or_module_state() -> None:
+    runtime_module = import_module("symai.runtime.runtime")
+
+    assert "_token" not in Runtime.__slots__
+    assert not hasattr(runtime_module, "_CURRENT_RUNTIME")
+    assert not hasattr(runtime_module, "current_runtime")
 
 
 def test_foreign_thread_execute_is_rejected_before_engine_touch() -> None:

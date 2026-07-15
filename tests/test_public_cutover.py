@@ -7,97 +7,37 @@ import subprocess
 import sys
 from pathlib import Path
 
-import symai
-from symai import decoding, function, loading
-from symai.runtime import config, errors, models, runtime
+import symai.decoding as decoding
+import symai.function as function
+import symai.loading as loading
+import symai.runtime.config as config
+import symai.runtime.errors as errors
+import symai.runtime.models as models
+import symai.runtime.runtime as runtime
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = ROOT / "symai"
 
-PUBLIC_NAMES = [
+OLD_ROOT_NAMES = {
     "AmbiguousEngineError",
     "AssistantMessage",
-    "AssistantOutputMessage",
     "AuthenticationError",
     "ConstructorDecoder",
-    "Content",
     "DecodeError",
     "Decoder",
-    "DeveloperMessage",
     "EmbeddingRequest",
-    "EmbeddingResponse",
-    "EmbeddingVector",
-    "EngineCapabilityError",
     "EngineSpec",
     "ErrorMetadata",
-    "ExecutionError",
-    "FinishReason",
     "Function",
-    "ImageContent",
-    "ImageDetail",
-    "ImplementationId",
-    "InvalidResponseError",
-    "JsonArray",
-    "JsonEntry",
-    "JsonObject",
-    "JsonObjectResponseFormat",
-    "JsonSchemaResponseFormat",
-    "JsonValue",
-    "LanguageModelOutput",
     "LanguageModelRequest",
-    "LanguageModelResponse",
-    "LogitBias",
-    "MISSING",
-    "Message",
-    "MetadataLabel",
-    "Missing",
     "NoActiveRuntimeError",
-    "ProviderId",
-    "PydanticDecoder",
-    "RateLimitError",
-    "RateLimitMetadata",
-    "ReasoningConfig",
-    "ReasoningEffort",
-    "ReasoningFormat",
-    "ReasoningSummary",
-    "ResponseFormat",
-    "ResponseMetadata",
     "Runtime",
-    "RuntimeClosedError",
     "RuntimeConfig",
-    "RuntimeOwnershipError",
-    "SamplingConfig",
-    "SymbolicAIRuntimeError",
-    "SystemMessage",
-    "TextContent",
+    "Symbol",
     "TextDecoder",
-    "TextResponseFormat",
-    "TokenUsage",
-    "TransportError",
-    "TypeAdapterDecoder",
-    "UnknownEngineError",
-    "UnsupportedCapabilityError",
-    "UnsupportedFeatureError",
-    "UnsupportedModelError",
-    "UserMessage",
     "current_runtime",
     "decode_output",
     "load_runtime",
-]
-
-DEFINING_MODULE = {
-    **{name: config for name in PUBLIC_NAMES if hasattr(config, name)},
-    **{name: models for name in PUBLIC_NAMES if hasattr(models, name)},
-    **{name: errors for name in PUBLIC_NAMES if hasattr(errors, name)},
-    **{
-        name: decoding
-        for name in PUBLIC_NAMES
-        if hasattr(decoding, name)
-    },
-    "Runtime": runtime,
-    "current_runtime": runtime,
-    "Function": function,
-    "load_runtime": loading,
 }
 
 FORBIDDEN_PUBLIC_NAMES = {
@@ -127,6 +67,7 @@ DELETED_FILES = {
     "functional.py",
     "post_processors.py",
     "pre_processors.py",
+    "prompts.py",
     "strategy.py",
     "backend/async_bridge.py",
     "backend/engine_handle.py",
@@ -141,8 +82,7 @@ DELETED_FILES = {
 }
 
 DELETED_TREES = {
-    "backend/mixin",
-    "backend/engines",
+    "backend",
     "extended",
     "models",
     "server",
@@ -155,17 +95,30 @@ FORBIDDEN_MODULE_PATH_FRAGMENTS = FORBIDDEN_IMPORT_PREFIXES
 
 
 FORBIDDEN_IDENTIFIERS = {
+    "_CURRENT_RUNTIME",
+    "_semantic",
     "Argument",
     "CURRENT_ENGINE_VAR",
+    "current_runtime",
+    "dynamic_context",
     "DynamicEngine",
     "Engine",
     "ENGINE_UNREGISTERED",
     "EngineHandle",
     "EngineRepository",
-    "SYMAI_CONFIG",
-    "SYMSERVER_CONFIG",
+    "Expression",
+    "global_context",
+    "NoActiveRuntimeError",
+    "Prompt",
+    "PromptRegistry",
+    "Provider",
+    "Result",
     "run_server",
     "setup_wizard",
+    "static_context",
+    "SYMAI_CONFIG",
+    "SYMSERVER_CONFIG",
+    "sym_return_type",
 }
 
 
@@ -176,25 +129,28 @@ def test_runtime_configuration_has_a_clean_module_cutover() -> None:
         assert not hasattr(models, name)
 
 
-def test_public_api_is_exact_ordered_and_direct() -> None:
-    assert symai.__all__ == PUBLIC_NAMES
-    assert sorted(PUBLIC_NAMES) == PUBLIC_NAMES
-    for name in PUBLIC_NAMES:
-        assert getattr(symai, name) is getattr(DEFINING_MODULE[name], name)
+def test_canonical_modules_own_their_public_types() -> None:
+    from symai.decoding import TextDecoder
+    from symai.function import Function
+    from symai.runtime.runtime import Runtime
+    from symai.symbol import Symbol
+
+    assert Function.__module__ == "symai.function"
+    assert Runtime.__module__ == "symai.runtime.runtime"
+    assert Symbol.__module__ == "symai.symbol"
+    assert TextDecoder.__module__ == "symai.decoding"
 
 
-def test_public_runtime_surface_exposes_errors_not_handles_or_clients() -> None:
+def test_runtime_module_exposes_no_ambient_registry_or_provider_clients() -> None:
     for name in (
-        "AmbiguousEngineError",
-        "EngineCapabilityError",
-        "RuntimeOwnershipError",
-        "UnknownEngineError",
+        "_CURRENT_RUNTIME",
+        "current_runtime",
+        "NoActiveRuntimeError",
+        "Client",
+        "EngineHandle",
     ):
-        assert getattr(symai, name) is getattr(errors, name)
-
-    for name in ("Client", "EngineHandle"):
-        assert not hasattr(symai, name)
         assert not hasattr(runtime, name)
+    assert not hasattr(errors, "NoActiveRuntimeError")
 
 
 def test_runtime_operation_protocols_are_narrow_and_provider_neutral() -> None:
@@ -207,11 +163,11 @@ def test_runtime_operation_protocols_are_narrow_and_provider_neutral() -> None:
         assert public_members == {"close", "execute"}
 
 
-def test_star_import_is_exact_and_old_names_are_absent() -> None:
-    namespace: dict[str, object] = {}
-    exec("from symai import *", namespace)
-    assert sorted(name for name in namespace if name != "__builtins__") == PUBLIC_NAMES
-    for name in FORBIDDEN_PUBLIC_NAMES:
+def test_old_root_names_are_absent_after_canonical_imports() -> None:
+    import symai
+
+    assert not hasattr(symai, "__all__")
+    for name in OLD_ROOT_NAMES | FORBIDDEN_PUBLIC_NAMES:
         assert not hasattr(symai, name)
 
 
@@ -264,6 +220,10 @@ result = {
         for name in seeded_logger_levels
     },
     "resolved_symai_file": str(Path(symai.__file__).resolve()),
+    "public_names": sorted(name for name in vars(symai) if not name.startswith("_")),
+    "symai_modules": sorted(
+        name for name in sys.modules if name == "symai" or name.startswith("symai.")
+    ),
     "warnings": [str(item.message) for item in caught],
     "forbidden_modules": sorted(name for name in sys.modules if name in {
         "symai.backend.settings", "symai.core", "symai.functional", "symai.server",
@@ -289,10 +249,27 @@ print(json.dumps(result))
         "env_unchanged": True,
         "forbidden_modules": [],
         "root_logger_unchanged": True,
+        "public_names": [],
         "seeded_loggers_unchanged": True,
+        "symai_modules": ["symai"],
         "tree_unchanged": True,
         "warnings": [],
     }
+
+
+def test_deleted_modules_have_no_import_spec() -> None:
+    from importlib.util import find_spec
+
+    for module_name in (
+        "symai.backend",
+        "symai.components",
+        "symai.context",
+        "symai.core",
+        "symai.functional",
+        "symai.prompts",
+        "symai.runtime.factory",
+    ):
+        assert find_spec(module_name) is None, module_name
 
 
 def test_deleted_production_tree_and_adapter_inventory() -> None:

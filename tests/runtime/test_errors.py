@@ -7,7 +7,6 @@ from symai.runtime.errors import (
     ErrorMetadata,
     ExecutionError,
     InvalidResponseError,
-    NoActiveRuntimeError,
     RateLimitError,
     RuntimeClosedError,
     SymbolicAIRuntimeError,
@@ -28,7 +27,6 @@ ENGINE_ERROR_NAMES = (
 @pytest.mark.parametrize(
     "error_type",
     [
-        NoActiveRuntimeError,
         RuntimeClosedError,
         UnsupportedCapabilityError,
         UnsupportedModelError,
@@ -42,6 +40,10 @@ ENGINE_ERROR_NAMES = (
 )
 def test_all_runtime_errors_share_provider_neutral_base(error_type):
     assert issubclass(error_type, SymbolicAIRuntimeError)
+
+
+def test_ambient_runtime_error_is_absent() -> None:
+    assert not hasattr(errors_module, "NoActiveRuntimeError")
 
 
 @pytest.mark.parametrize("error_name", ENGINE_ERROR_NAMES)
