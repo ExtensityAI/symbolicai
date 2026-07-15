@@ -117,17 +117,7 @@ DELETED_FILES = {
 
 DELETED_TREES = {
     "backend/mixin",
-    "backend/engines/drawing",
-    "backend/engines/files",
-    "backend/engines/formal",
-    "backend/engines/index",
-    "backend/engines/neurosymbolic",
-    "backend/engines/ocr",
-    "backend/engines/scrape",
-    "backend/engines/search",
-    "backend/engines/speech_to_text",
-    "backend/engines/symbolic",
-    "backend/engines/text_to_speech",
+    "backend/engines",
     "extended",
     "models",
     "server",
@@ -136,10 +126,7 @@ DELETED_TREES = {
 FORBIDDEN_IMPORT_PREFIXES = tuple(
     f"symai.{path.removesuffix('.py').replace('/', '.')}" for path in DELETED_FILES
 ) + tuple(f"symai.{path.replace('/', '.')}" for path in DELETED_TREES)
-FORBIDDEN_MODULE_PATH_FRAGMENTS = (
-    *FORBIDDEN_IMPORT_PREFIXES,
-    "symai.backend.engines.engine_selenium",
-)
+FORBIDDEN_MODULE_PATH_FRAGMENTS = FORBIDDEN_IMPORT_PREFIXES
 
 
 FORBIDDEN_IDENTIFIERS = {
@@ -274,16 +261,40 @@ def test_deleted_production_tree_and_adapter_inventory() -> None:
     for path in DELETED_FILES | DELETED_TREES:
         assert not (PACKAGE / path).exists(), path
 
-    assert {path.name for path in (PACKAGE / "backend/engines/language_model").glob("*.py")} == {
+    assert {path.name for path in (PACKAGE / "providers/_client").glob("*.py")} == {
         "__init__.py",
-        "cerebras.py",
-        "deepseek.py",
-        "openai.py",
+        "errors.py",
+        "headers.py",
+        "models.py",
     }
-    assert {path.name for path in (PACKAGE / "backend/engines/embedding").glob("*.py")} == {
+    assert {
+        path.name for path in (PACKAGE / "providers/openai/client").glob("*.py")
+    } == {
         "__init__.py",
-        "openai.py",
+        "_client.py",
+        "embeddings.py",
+        "errors.py",
+        "headers.py",
+        "responses.py",
+        "transport.py",
     }
+    assert {
+        path.name for path in (PACKAGE / "providers/openai/engines").glob("*.py")
+    } == {"__init__.py", "embedding.py", "responses.py"}
+    for provider in ("cerebras", "deepseek"):
+        assert {
+            path.name for path in (PACKAGE / f"providers/{provider}/client").glob("*.py")
+        } == {
+            "__init__.py",
+            "_client.py",
+            "chat.py",
+            "errors.py",
+            "headers.py",
+            "transport.py",
+        }
+        assert {
+            path.name for path in (PACKAGE / f"providers/{provider}/engines").glob("*.py")
+        } == {"__init__.py", "chat_completions.py"}
 
 
 def _production_ast_violations(package: Path) -> list[str]:

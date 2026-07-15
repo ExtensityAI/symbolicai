@@ -1,0 +1,444 @@
+from math import isfinite
+from types import MappingProxyType
+from typing import cast
+
+from pydantic import JsonValue, ValidationError
+
+from symai.providers.cerebras.client import chat as chat_api
+from symai.providers.cerebras.client import errors as cerebras_errors
+from symai.providers.cerebras.client import Client
+from symai.providers.cerebras.client.transport import APIResponse
+from symai.providers.cerebras.client.transport import ResponseMetadata as CerebrasResponseMetadata
+from symai.runtime.errors import (
+    AuthenticationError,
+    ErrorMetadata,
+    ExecutionError,
+    InvalidResponseError,
+    RateLimitError,
+    TransportError,
+    UnsupportedFeatureError,
+    UnsupportedModelError,
+)
+from symai.runtime.models import (
+    AssistantOutputMessage,
+    ContentType,
+    DeveloperMessage,
+    FinishReason,
+    ImageContent,
+    JsonObjectResponseFormat,
+    JsonSchemaResponseFormat,
+    LanguageModelOutput,
+    LanguageModelRequest,
+    LanguageModelResponse,
+    LanguageModelSpec,
+    Message,
+    MessageRole,
+    Provider,
+    RateLimitMetadata,
+    ReasoningEffort,
+    ReasoningField,
+    ReasoningFormat,
+    ResponseFormatType,
+    ResponseMetadata,
+    SamplingField,
+    SystemMessage,
+    TextContent,
+    TokenUsage,
+    UserMessage,
+)
+
+_ALL_MESSAGE_ROLES = tuple(MessageRole)
+_ALL_RESPONSE_FORMATS = tuple(ResponseFormatType)
+_CEREBRAS_REASONING_FIELDS = (
+    ReasoningField.EFFORT,
+    ReasoningField.FORMAT,
+    ReasoningField.CLEAR,
+)
+_CEREBRAS_REASONING_FORMATS = tuple(ReasoningFormat)
+_CEREBRAS_SAMPLING_FIELDS = tuple(SamplingField)
+
+
+def _normalized_model_spec(spec: chat_api.ModelSpec) -> LanguageModelSpec:
+    reasoning = spec.reasoning
+    return LanguageModelSpec(
+        context_tokens=spec.context_tokens,
+        response_tokens=spec.response_tokens,
+        message_roles=_ALL_MESSAGE_ROLES,
+        content_types=(ContentType.TEXT, ContentType.IMAGE),
+        response_formats=_ALL_RESPONSE_FORMATS,
+        reasoning_fields=_CEREBRAS_REASONING_FIELDS if reasoning is not None else (),
+        reasoning_efforts=tuple(ReasoningEffort(effort.value) for effort in reasoning.efforts)
+        if reasoning is not None
+        else (),
+        reasoning_formats=_CEREBRAS_REASONING_FORMATS if reasoning is not None else (),
+        sampling_fields=_CEREBRAS_SAMPLING_FIELDS,
+        vision=True,
+    )
+
+
+MODEL_SPECS = MappingProxyType(
+    {model: _normalized_model_spec(spec) for model, spec in chat_api.MODEL_SPECS.items()}
+)
+
+_FINISH_REASONS = MappingProxyType(
+    {
+        "stop": FinishReason.STOP,
+        "length": FinishReason.LENGTH,
+        "content_filter": FinishReason.CONTENT_FILTER,
+        "error": FinishReason.ERROR,
+    }
+)
+
+
+class ChatCompletionsEngine:
+    provider = Provider.CEREBRAS
+
+    def __init__(self, *, client: Client, model: str) -> None:
+        try:
+            model_spec = MODEL_SPECS[model]
+        except KeyError as error:
+            msg = f"Unsupported Cerebras language model: {model}"
+            raise UnsupportedModelError(msg) from error
+
+        self._client = client
+        self._model: chat_api.Model = cast("chat_api.Model", model)
+        self._model_spec = model_spec
+
+    @property
+    def model(self) -> chat_api.Model:
+        return self._model
+
+    @property
+    def model_spec(self) -> LanguageModelSpec:
+        return self._model_spec
+
+    def execute(self, request: LanguageModelRequest) -> LanguageModelResponse:
+        provider_request = self._build_request(request)
+        try:
+            response = self._client.create_chat_completion(provider_request)
+        except cerebras_errors.AuthError as error:
+            metadata = self._error_metadata(error.metadata)
+            msg = "Cerebras rejected authentication"
+            raise AuthenticationError(msg, metadata=metadata) from error
+        except cerebras_errors.RateLimitError as error:
+            metadata = self._error_metadata(error.metadata)
+            msg = "Cerebras rate-limited the request"
+            raise RateLimitError(msg, metadata=metadata) from error
+        except cerebras_errors.ResponseError as error:
+            metadata = self._error_metadata(error.metadata)
+            msg = "Cerebras returned an invalid response"
+            raise InvalidResponseError(msg, metadata=metadata) from error
+        except cerebras_errors.TransportError as error:
+            metadata = ErrorMetadata(provider=self.provider, model=self.model)
+            msg = "Cerebras transport failed"
+            raise TransportError(msg, metadata=metadata) from error
+        except cerebras_errors.APIError as error:
+            metadata = self._error_metadata(error.metadata)
+            msg = f"Cerebras API request failed with status {error.metadata.status_code}"
+            raise ExecutionError(msg, metadata=metadata) from error
+
+        return self._parse_response(response)
+
+    def _build_request(self, request: LanguageModelRequest) -> chat_api.CreateChatCompletionRequest:
+        self._validate_request(request)
+        reasoning = request.reasoning
+        sampling = request.sampling
+        return chat_api.CreateChatCompletionRequest(
+            messages=tuple(self._message(message) for message in request.messages),
+            model=self.model,
+            clear_thinking=reasoning.clear if reasoning is not None else None,
+            frequency_penalty=sampling.frequency_penalty,
+            logit_bias={bias.token: bias.value for bias in sampling.logit_bias} or None,
+            logprobs=sampling.logprobs,
+            max_completion_tokens=sampling.max_tokens,
+            presence_penalty=sampling.presence_penalty,
+            reasoning_effort=(
+                chat_api.ReasoningEffort(reasoning.effort.value)
+                if reasoning is not None and reasoning.effort is not None
+                else None
+            ),
+            reasoning_format=(
+                chat_api.ReasoningFormat(reasoning.format.value)
+                if reasoning is not None and reasoning.format is not None
+                else None
+            ),
+            response_format=self._response_format(request),
+            seed=sampling.seed,
+            stop=sampling.stop or None,
+            temperature=sampling.temperature,
+            top_logprobs=sampling.top_logprobs,
+            top_p=sampling.top_p,
+            user=request.user,
+        )
+
+    def _validate_request(self, request: LanguageModelRequest) -> None:
+        if request.metadata:
+            self._unsupported("Cerebras does not support normalized request metadata")
+
+        for message in request.messages:
+            for content in message.content:
+                if isinstance(content, ImageContent) and content.detail is not None:
+                    self._unsupported("Cerebras does not support normalized image detail")
+
+        reasoning = request.reasoning
+        if reasoning is not None:
+            if reasoning.enabled is not None:
+                self._unsupported(
+                    "Cerebras reasoning does not support the normalized enabled field"
+                )
+            if reasoning.summary is not None:
+                self._unsupported("Cerebras reasoning does not support normalized summaries")
+            if (
+                reasoning.effort is not None
+                and reasoning.effort not in self.model_spec.reasoning_efforts
+            ):
+                self._unsupported(
+                    f"Cerebras model {self.model} does not support reasoning effort "
+                    f"{reasoning.effort.value}"
+                )
+            if (
+                reasoning.format is not None
+                and reasoning.format not in self.model_spec.reasoning_formats
+            ):
+                self._unsupported(
+                    f"Cerebras model {self.model} does not support reasoning format "
+                    f"{reasoning.format.value}"
+                )
+
+        sampling = request.sampling
+        if (
+            sampling.max_tokens is not None
+            and sampling.max_tokens > self.model_spec.response_tokens
+        ):
+            self._unsupported(
+                f"Cerebras model {self.model} supports at most "
+                f"{self.model_spec.response_tokens} output tokens"
+            )
+        if len(sampling.stop) > 4:
+            self._unsupported("Cerebras supports at most four stop sequences")
+        if sampling.top_logprobs is not None and sampling.logprobs is not True:
+            self._unsupported("Cerebras top_logprobs requires logprobs to be true")
+
+    def _message(self, message: Message) -> chat_api.Message:
+        if isinstance(message, SystemMessage):
+            content = tuple(
+                chat_api.TextContentPart(type="text", text=part.text) for part in message.content
+            )
+            return chat_api.SystemMessage(role="system", content=content)
+        if isinstance(message, DeveloperMessage):
+            content = tuple(
+                chat_api.TextContentPart(type="text", text=part.text) for part in message.content
+            )
+            return chat_api.DeveloperMessage(role="developer", content=content)
+        if isinstance(message, UserMessage):
+            content = tuple(self._content(part) for part in message.content)
+            return chat_api.UserMessage(role="user", content=content)
+        content = tuple(
+            chat_api.TextContentPart(type="text", text=part.text) for part in message.content
+        )
+        return chat_api.AssistantMessage(
+            role="assistant",
+            content=content or None,
+            reasoning=message.reasoning.text if message.reasoning is not None else None,
+        )
+
+    @staticmethod
+    def _content(
+        content: TextContent | ImageContent,
+    ) -> chat_api.TextContentPart | chat_api.ImageContentPart:
+        if isinstance(content, TextContent):
+            return chat_api.TextContentPart(type="text", text=content.text)
+        return chat_api.ImageContentPart(
+            type="image_url",
+            image_url=chat_api.ImageURL(url=content.url),
+        )
+
+    def _response_format(self, request: LanguageModelRequest) -> chat_api.ResponseFormat:
+        response_format = request.response_format
+        if isinstance(response_format, JsonSchemaResponseFormat):
+            return chat_api.JsonSchemaResponseFormat(
+                type="json_schema",
+                json_schema=chat_api.JsonSchemaSpec(
+                    name=response_format.name,
+                    description=response_format.description,
+                    body=cast("JsonValue", response_format.json_schema.to_builtin()),
+                    strict=response_format.strict,
+                ),
+            )
+        if isinstance(response_format, JsonObjectResponseFormat):
+            return chat_api.JsonObjectResponseFormat(type="json_object")
+        return chat_api.TextResponseFormat(type="text")
+
+    def _parse_response(
+        self,
+        response: APIResponse[chat_api.ChatCompletion],
+    ) -> LanguageModelResponse:
+        raw = response.data
+        error_metadata = self._error_metadata(response.metadata)
+        if not raw.choices:
+            msg = "Cerebras response did not contain choices"
+            raise InvalidResponseError(msg, metadata=error_metadata)
+
+        try:
+            metadata = self._response_metadata(response)
+            seen_indices: set[int] = set()
+            outputs: list[LanguageModelOutput] = []
+            for choice in raw.choices:
+                if choice.index is None:
+                    msg = "Cerebras choice did not contain an index"
+                    raise InvalidResponseError(msg, metadata=error_metadata)
+                if choice.index in seen_indices:
+                    msg = "Cerebras response contained duplicate choice indices"
+                    raise InvalidResponseError(msg, metadata=error_metadata)
+                seen_indices.add(choice.index)
+                outputs.append(self._output(choice, error_metadata))
+            outputs.sort(key=lambda output: output.index)
+            return LanguageModelResponse(outputs=tuple(outputs), metadata=metadata)
+        except (TypeError, ValidationError) as error:
+            msg = "Cerebras response could not become a normalized language response"
+            raise InvalidResponseError(msg, metadata=error_metadata) from error
+
+    def _output(
+        self,
+        choice: chat_api.Choice,
+        error_metadata: ErrorMetadata,
+    ) -> LanguageModelOutput:
+        message = choice.message
+        if message is None:
+            msg = "Cerebras choice did not contain a message"
+            raise InvalidResponseError(msg, metadata=error_metadata)
+        if message.role is not None and message.role != "assistant":
+            msg = "Cerebras choice message was not an assistant message"
+            raise InvalidResponseError(msg, metadata=error_metadata)
+        finish_reason_value = choice.finish_reason
+        if finish_reason_value is None or finish_reason_value not in _FINISH_REASONS:
+            msg = "Cerebras response contained an unsupported finish reason"
+            raise InvalidResponseError(msg, metadata=error_metadata)
+        finish_reason = _FINISH_REASONS[finish_reason_value]
+
+        return LanguageModelOutput(
+            index=cast("int", choice.index),
+            message=AssistantOutputMessage(
+                content=(TextContent(text=message.content),) if message.content is not None else (),
+                reasoning=TextContent(text=message.reasoning) if message.reasoning else None,
+            ),
+            finish_reason=finish_reason,
+        )
+
+    def _response_metadata(
+        self,
+        response: APIResponse[chat_api.ChatCompletion],
+    ) -> ResponseMetadata:
+        raw = response.data
+        usage = self._usage(raw.usage, response.metadata)
+        rate_limit = self._rate_limit(response.metadata)
+        return ResponseMetadata(
+            provider=self.provider,
+            requested_model=self.model,
+            response_model=raw.model,
+            status_code=response.metadata.status_code,
+            request_id=response.metadata.request_id,
+            retry_after=self._retry_after(response.metadata.retry_after),
+            response_id=raw.id,
+            created_at=raw.created,
+            system_fingerprint=raw.system_fingerprint,
+            usage=usage,
+            rate_limit=rate_limit,
+        )
+
+    @staticmethod
+    def _rate_limit(
+        metadata: CerebrasResponseMetadata,
+    ) -> RateLimitMetadata | None:
+        rate_limit = metadata.rate_limit
+        values = (
+            rate_limit.limit_requests_day,
+            rate_limit.limit_tokens_minute,
+            rate_limit.remaining_requests_day,
+            rate_limit.remaining_tokens_minute,
+            rate_limit.reset_requests_day,
+            rate_limit.reset_tokens_minute,
+        )
+        if all(value is None for value in values):
+            return None
+        return RateLimitMetadata(
+            limit_requests_day=rate_limit.limit_requests_day,
+            limit_tokens_minute=rate_limit.limit_tokens_minute,
+            remaining_requests_day=rate_limit.remaining_requests_day,
+            remaining_tokens_minute=rate_limit.remaining_tokens_minute,
+            reset_requests_day=rate_limit.reset_requests_day,
+            reset_tokens_minute=rate_limit.reset_tokens_minute,
+        )
+
+    def _usage(
+        self,
+        usage: chat_api.Usage | None,
+        metadata: CerebrasResponseMetadata,
+    ) -> TokenUsage | None:
+        if usage is None:
+            return None
+        error_metadata = self._error_metadata(metadata)
+        if (
+            usage.prompt_tokens is not None
+            and usage.completion_tokens is not None
+            and usage.total_tokens is not None
+            and usage.total_tokens != usage.prompt_tokens + usage.completion_tokens
+        ):
+            msg = "Cerebras token usage was inconsistent"
+            raise InvalidResponseError(msg, metadata=error_metadata)
+
+        prompt_details = usage.prompt_tokens_details
+        completion_details = usage.completion_tokens_details
+        cached = prompt_details.cached_tokens if prompt_details is not None else None
+        reasoning = completion_details.reasoning_tokens if completion_details is not None else None
+        accepted = (
+            completion_details.accepted_prediction_tokens
+            if completion_details is not None
+            else None
+        )
+        rejected = (
+            completion_details.rejected_prediction_tokens
+            if completion_details is not None
+            else None
+        )
+        if usage.prompt_tokens is not None and cached is not None and cached > usage.prompt_tokens:
+            msg = "Cerebras cached token usage was inconsistent"
+            raise InvalidResponseError(msg, metadata=error_metadata)
+        if usage.completion_tokens is not None:
+            if reasoning is not None and reasoning > usage.completion_tokens:
+                msg = "Cerebras reasoning token usage was inconsistent"
+                raise InvalidResponseError(msg, metadata=error_metadata)
+            if (
+                accepted is not None
+                and rejected is not None
+                and accepted + rejected > usage.completion_tokens
+            ):
+                msg = "Cerebras prediction token usage was inconsistent"
+                raise InvalidResponseError(msg, metadata=error_metadata)
+
+        return TokenUsage(
+            prompt_tokens=usage.prompt_tokens or 0,
+            completion_tokens=usage.completion_tokens or 0,
+            total_tokens=usage.total_tokens or 0,
+            cached_prompt_tokens=cached or 0,
+            reasoning_tokens=reasoning or 0,
+            image_tokens=usage.image_tokens or 0,
+            accepted_prediction_tokens=accepted or 0,
+            rejected_prediction_tokens=rejected or 0,
+        )
+
+    def _error_metadata(self, metadata: CerebrasResponseMetadata) -> ErrorMetadata:
+        return ErrorMetadata(
+            provider=self.provider,
+            model=self.model,
+            request_id=metadata.request_id,
+            retry_after=self._retry_after(metadata.retry_after),
+        )
+
+    @staticmethod
+    def _retry_after(value: float | None) -> float | None:
+        return value if value is not None and value >= 0 and isfinite(value) else None
+
+    @staticmethod
+    def _unsupported(message: str) -> None:
+        raise UnsupportedFeatureError(message)

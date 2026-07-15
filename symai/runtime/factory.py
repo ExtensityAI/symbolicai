@@ -7,11 +7,11 @@ import httpx
 from pydantic import SecretStr
 
 from symai.backend.engine_handle import EngineCapability, EngineHandle
-from symai.backend.engines.embedding import openai as openai_embedding
-from symai.backend.engines.language_model import cerebras, deepseek, openai
-from symai.clients.cerebras.client import Client as CerebrasClient
-from symai.clients.deepseek.client import Client as DeepSeekClient
-from symai.clients.openai.client import Client as OpenAIClient
+from symai.providers import cerebras, deepseek, openai
+from symai.providers.cerebras.engines import chat_completions as cerebras_engine
+from symai.providers.deepseek.engines import chat_completions as deepseek_engine
+from symai.providers.openai.engines import embedding as openai_embedding
+from symai.providers.openai.engines import responses as openai_responses
 from symai.runtime.errors import UnsupportedCapabilityError, UnsupportedModelError
 from symai.runtime.models import NamedEngineConfig, Provider, RuntimeConfig, TransportConfig
 from symai.runtime.runtime import EmbeddingEngine, LanguageModelEngine, Runtime
@@ -38,8 +38,8 @@ def _create_openai_language_model(
     api_key: SecretStr,
     http_client: httpx.Client,
 ) -> LanguageModelEngine:
-    client = OpenAIClient(api_key=api_key, http_client=http_client)
-    return openai.LanguageModelEngine(client=client, model=model)
+    client = openai.Client(api_key=api_key, http_client=http_client)
+    return openai.ResponsesEngine(client=client, model=model)
 
 
 def _create_openai_embedding(
@@ -47,8 +47,8 @@ def _create_openai_embedding(
     api_key: SecretStr,
     http_client: httpx.Client,
 ) -> EmbeddingEngine:
-    client = OpenAIClient(api_key=api_key, http_client=http_client)
-    return openai_embedding.EmbeddingEngine(client=client, model=model)
+    client = openai.Client(api_key=api_key, http_client=http_client)
+    return openai.EmbeddingEngine(client=client, model=model)
 
 
 def _create_cerebras_language_model(
@@ -56,8 +56,8 @@ def _create_cerebras_language_model(
     api_key: SecretStr,
     http_client: httpx.Client,
 ) -> LanguageModelEngine:
-    client = CerebrasClient(api_key=api_key, http_client=http_client)
-    return cerebras.LanguageModelEngine(client=client, model=model)
+    client = cerebras.Client(api_key=api_key, http_client=http_client)
+    return cerebras.ChatCompletionsEngine(client=client, model=model)
 
 
 def _create_deepseek_language_model(
@@ -65,14 +65,14 @@ def _create_deepseek_language_model(
     api_key: SecretStr,
     http_client: httpx.Client,
 ) -> LanguageModelEngine:
-    client = DeepSeekClient(api_key=api_key, http_client=http_client)
-    return deepseek.LanguageModelEngine(client=client, model=model)
+    client = deepseek.Client(api_key=api_key, http_client=http_client)
+    return deepseek.ChatCompletionsEngine(client=client, model=model)
 
 
 _FACTORIES: Mapping[tuple[Provider, _Capability], _EngineFactory] = MappingProxyType(
     {
         (Provider.OPENAI, "language_model"): _EngineFactory(
-            models=openai.MODEL_SPECS,
+            models=openai_responses.MODEL_SPECS,
             create=_create_openai_language_model,
         ),
         (Provider.OPENAI, "embedding"): _EngineFactory(
@@ -80,11 +80,11 @@ _FACTORIES: Mapping[tuple[Provider, _Capability], _EngineFactory] = MappingProxy
             create=_create_openai_embedding,
         ),
         (Provider.CEREBRAS, "language_model"): _EngineFactory(
-            models=cerebras.MODEL_SPECS,
+            models=cerebras_engine.MODEL_SPECS,
             create=_create_cerebras_language_model,
         ),
         (Provider.DEEPSEEK, "language_model"): _EngineFactory(
-            models=deepseek.MODEL_SPECS,
+            models=deepseek_engine.MODEL_SPECS,
             create=_create_deepseek_language_model,
         ),
     }

@@ -6,8 +6,8 @@ import pytest
 from pydantic import SecretStr
 
 import symai.runtime.factory as factory_module
-from symai.backend.engines.embedding.openai import EmbeddingEngine
-from symai.backend.engines.language_model import cerebras, deepseek, openai
+from symai.providers.openai import EmbeddingEngine
+from symai.providers import cerebras, deepseek, openai
 from symai.runtime.errors import UnsupportedCapabilityError, UnsupportedModelError
 from symai.runtime.models import (
     LanguageModelRequest,
@@ -46,19 +46,19 @@ def _engine_config(
             "language_model",
             Provider.OPENAI,
             "gpt-5.4",
-            openai.LanguageModelEngine,
+            openai.ResponsesEngine,
         ),
         (
             "language_model",
             Provider.CEREBRAS,
             "gpt-oss-120b",
-            cerebras.LanguageModelEngine,
+            cerebras.ChatCompletionsEngine,
         ),
         (
             "language_model",
             Provider.DEEPSEEK,
             "deepseek-v4-flash",
-            deepseek.LanguageModelEngine,
+            deepseek.ChatCompletionsEngine,
         ),
         (
             "embedding",
