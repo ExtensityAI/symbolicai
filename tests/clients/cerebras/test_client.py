@@ -3,7 +3,7 @@ from collections.abc import Callable
 
 import httpx
 import pytest
-from pydantic import ValidationError
+from pydantic import SecretStr, ValidationError
 
 from symai.clients.cerebras.chat import (
     ChatCompletion,
@@ -64,14 +64,73 @@ def _completion_json() -> dict[str, object]:
 
 def _client(handler: Callable[[httpx.Request], httpx.Response]) -> Client:
     return Client(
-        api_key="test-key",
+        api_key=SecretStr("test-key"),
         http_client=httpx.Client(transport=httpx.MockTransport(handler)),
     )
 
 
-def test_empty_api_key_is_rejected():
-    with pytest.raises(ValueError, match="api_key"):
-        Client(api_key="", http_client=httpx.Client())
+@pytest.mark.parametrize(
+    "api_key",
+    [
+        "",
+        "secret\rvalue",
+        "secret\nvalue",
+        "secret\x01value",
+        "secret\x7fvalue",
+        " secret",
+        "secret ",
+        "api_key ",
+        " ",
+        "ValueError\n",
+        "TypeError\n",
+    ],
+    ids=[
+        "empty",
+        "cr",
+        "lf",
+        "c0",
+        "del",
+        "leading-space",
+        "trailing-space",
+        "message-collision",
+        "whitespace-only",
+        "value-error-traceback-text",
+        "type-error-traceback-text",
+    ],
+)
+def test_client_rejects_unsafe_api_key_before_request_without_disclosure(
+    api_key: str,
+):
+    attempts = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        return httpx.Response(200)
+
+    with (
+        httpx.Client(transport=httpx.MockTransport(handler)) as http_client,
+        pytest.raises(ValueError) as exc_info,
+    ):
+        Client(api_key=SecretStr(api_key), http_client=http_client)
+
+    assert attempts == 0
+    assert exc_info.value.args == ()
+    assert str(exc_info.value) == ""
+
+
+def test_client_rejects_plaintext_api_key():
+    with (
+        httpx.Client() as http_client,
+        pytest.raises(TypeError) as exc_info,
+    ):
+        Client(
+            api_key="test-key",  # pyright: ignore[reportArgumentType]
+            http_client=http_client,
+        )
+
+    assert exc_info.value.args == ()
+    assert str(exc_info.value) == ""
 
 
 def test_chat_posts_exact_body_and_returns_complete_metadata():
@@ -347,7 +406,7 @@ def test_client_remains_open_and_never_retries(
         raise httpx.ConnectError(message, request=request)
 
     injected = httpx.Client(transport=httpx.MockTransport(handler))
-    client = Client(api_key="test-key", http_client=injected)
+    client = Client(api_key=SecretStr("test-key"), http_client=injected)
 
     if error_type is None:
         client.create_chat_completion(_chat_request())

@@ -4,7 +4,7 @@ from typing import cast
 
 import httpx
 import pytest
-from pydantic import ValidationError
+from pydantic import SecretStr, ValidationError
 
 from symai.backend.engines.embedding.openai import EmbeddingEngine
 from symai.clients.openai import errors as openai_errors
@@ -47,7 +47,10 @@ def _client(
     handler: Callable[[httpx.Request], httpx.Response],
 ) -> tuple[OpenAIClient, httpx.Client]:
     http_client = httpx.Client(transport=httpx.MockTransport(handler))
-    return OpenAIClient(api_key="test-key", http_client=http_client), http_client
+    return (
+        OpenAIClient(api_key=SecretStr("test-key"), http_client=http_client),
+        http_client,
+    )
 
 
 def test_execute_translates_request_and_sorts_provider_vectors() -> None:

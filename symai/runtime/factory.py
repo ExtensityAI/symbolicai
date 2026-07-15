@@ -4,6 +4,7 @@ from types import MappingProxyType
 from typing import Literal, cast
 
 import httpx
+from pydantic import SecretStr
 
 from symai.backend.engine_handle import EngineHandle
 from symai.backend.engines.embedding import openai as openai_embedding
@@ -22,7 +23,7 @@ _ProviderEngine = LanguageModelEngine | EmbeddingEngine
 @dataclass(frozen=True, slots=True)
 class _EngineFactory:
     models: Mapping[str, object]
-    create: Callable[[str, str, httpx.Client], _ProviderEngine]
+    create: Callable[[str, SecretStr, httpx.Client], _ProviderEngine]
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,7 +35,7 @@ class _ResolvedEngine:
 
 def _create_openai_language_model(
     model: str,
-    api_key: str,
+    api_key: SecretStr,
     http_client: httpx.Client,
 ) -> LanguageModelEngine:
     client = OpenAIClient(api_key=api_key, http_client=http_client)
@@ -43,7 +44,7 @@ def _create_openai_language_model(
 
 def _create_openai_embedding(
     model: str,
-    api_key: str,
+    api_key: SecretStr,
     http_client: httpx.Client,
 ) -> EmbeddingEngine:
     client = OpenAIClient(api_key=api_key, http_client=http_client)
@@ -52,7 +53,7 @@ def _create_openai_embedding(
 
 def _create_cerebras_language_model(
     model: str,
-    api_key: str,
+    api_key: SecretStr,
     http_client: httpx.Client,
 ) -> LanguageModelEngine:
     client = CerebrasClient(api_key=api_key, http_client=http_client)
@@ -61,7 +62,7 @@ def _create_cerebras_language_model(
 
 def _create_deepseek_language_model(
     model: str,
-    api_key: str,
+    api_key: SecretStr,
     http_client: httpx.Client,
 ) -> LanguageModelEngine:
     client = DeepSeekClient(api_key=api_key, http_client=http_client)
@@ -141,7 +142,7 @@ def _create_handle(resolved: _ResolvedEngine) -> EngineHandle[_ProviderEngine]:
     try:
         engine = resolved.factory.create(
             resolved.config.model,
-            resolved.config.api_key.get_secret_value(),
+            resolved.config.api_key,
             http_client,
         )
     except BaseException as error:

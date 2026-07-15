@@ -1,6 +1,6 @@
 import httpx
 import pytest
-from pydantic import BaseModel
+from pydantic import BaseModel, SecretStr
 
 from symai.clients.deepseek.chat import CreateChatCompletionRequest, UserMessage
 from symai.clients.deepseek.client import Client
@@ -53,9 +53,9 @@ def test_chat_posts_authenticated_request_and_returns_metadata():
         )
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
-        response = Client(api_key="test-key", http_client=http_client).create_chat_completion(
-            _request()
-        )
+        response = Client(
+            api_key=SecretStr("test-key"), http_client=http_client
+        ).create_chat_completion(_request())
 
     assert response.data.choices[0].message.content == "hi"
     assert response.metadata.status_code == 200
@@ -80,7 +80,9 @@ def test_chat_maps_http_failures(status, error_type):
         httpx.Client(transport=httpx.MockTransport(handler)) as http_client,
         pytest.raises(error_type) as raised,
     ):
-        Client(api_key="test-key", http_client=http_client).create_chat_completion(_request())
+        Client(api_key=SecretStr("test-key"), http_client=http_client).create_chat_completion(
+            _request()
+        )
 
     assert raised.value.metadata.status_code == status
     assert raised.value.metadata.request_id == "request-id"
@@ -101,7 +103,9 @@ def test_chat_maps_invalid_success_responses(body, content_type):
         httpx.Client(transport=httpx.MockTransport(handler)) as http_client,
         pytest.raises(ResponseError) as raised,
     ):
-        Client(api_key="test-key", http_client=http_client).create_chat_completion(_request())
+        Client(api_key=SecretStr("test-key"), http_client=http_client).create_chat_completion(
+            _request()
+        )
 
     assert raised.value.metadata.status_code == 200
     assert raised.value.body == body
@@ -116,15 +120,73 @@ def test_chat_maps_transport_failures():
         httpx.Client(transport=httpx.MockTransport(handler)) as http_client,
         pytest.raises(TransportError) as raised,
     ):
-        Client(api_key="test-key", http_client=http_client).create_chat_completion(_request())
+        Client(api_key=SecretStr("test-key"), http_client=http_client).create_chat_completion(
+            _request()
+        )
 
     assert raised.value.__cause__.__class__ is httpx.ConnectError
     assert raised.value.metadata is None
 
 
-def test_client_rejects_empty_api_key():
+@pytest.mark.parametrize(
+    "api_key",
+    [
+        "",
+        "secret\rvalue",
+        "secret\nvalue",
+        "secret\x01value",
+        "secret\x7fvalue",
+        " secret",
+        "secret ",
+        "api_key ",
+        " ",
+        "ValueError\n",
+        "TypeError\n",
+    ],
+    ids=[
+        "empty",
+        "cr",
+        "lf",
+        "c0",
+        "del",
+        "leading-space",
+        "trailing-space",
+        "message-collision",
+        "whitespace-only",
+        "value-error-traceback-text",
+        "type-error-traceback-text",
+    ],
+)
+def test_client_rejects_unsafe_api_key_before_request_without_disclosure(
+    api_key: str,
+):
+    attempts = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        return httpx.Response(200)
+
+    with (
+        httpx.Client(transport=httpx.MockTransport(handler)) as http_client,
+        pytest.raises(ValueError) as exc_info,
+    ):
+        Client(api_key=SecretStr(api_key), http_client=http_client)
+
+    assert attempts == 0
+    assert exc_info.value.args == ()
+    assert str(exc_info.value) == ""
+
+
+def test_client_rejects_plaintext_api_key():
     with (
         httpx.Client() as http_client,
-        pytest.raises(ValueError, match="api_key must not be empty"),
+        pytest.raises(TypeError) as exc_info,
     ):
-        Client(api_key="", http_client=http_client)
+        Client(
+            api_key="test-key",  # pyright: ignore[reportArgumentType]
+            http_client=http_client,
+        )
+
+    assert exc_info.value.args == ()
+    assert str(exc_info.value) == ""

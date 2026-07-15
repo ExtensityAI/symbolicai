@@ -63,9 +63,10 @@ def test_create_runtime_supports_every_registered_provider_capability(
 
     def capture_engine(
         model: str,
-        api_key: str,
+        api_key: SecretStr,
         client: httpx.Client,
     ) -> factory_module._ProviderEngine:
+        assert isinstance(api_key, SecretStr)
         engine = registered.create(model, api_key, client)
         constructed.append(engine)
         return engine

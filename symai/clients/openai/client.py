@@ -3,12 +3,12 @@ from typing import TypeVar
 from urllib.parse import quote
 
 import httpx
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, SecretStr, ValidationError
 
 import symai.clients.openai.embeddings as embeddings
 import symai.clients.openai.errors as errors
 import symai.clients.openai.responses as responses_api
-from symai.clients._headers import parse_optional_float
+from symai.clients._headers import authorization_header, parse_optional_float
 from symai.clients.openai.transport import APIResponse, ResponseMetadata
 
 BASE_URL = "https://api.openai.com/v1"
@@ -52,12 +52,10 @@ def _parse_response(response: httpx.Response, metadata: ResponseMetadata, model:
 class Client:
     """Synchronous caller-owned client for OpenAI Responses and Embeddings."""
 
-    def __init__(self, *, api_key: str, http_client: httpx.Client) -> None:
-        if not api_key:
-            message = "api_key must not be empty"
-            raise ValueError(message)
+    def __init__(self, *, api_key: SecretStr, http_client: httpx.Client) -> None:
+        authorization = authorization_header(api_key)
         self._http_client = http_client
-        self._headers = {"authorization": f"Bearer {api_key}"}
+        self._headers = {"authorization": authorization}
 
     def _request(
         self,

@@ -1,11 +1,15 @@
 import json
 
 import httpx
-from pydantic import ValidationError
+from pydantic import SecretStr, ValidationError
 
 import symai.clients.cerebras.chat as chat
 import symai.clients.cerebras.errors as errors
-from symai.clients._headers import parse_optional_float, parse_optional_int
+from symai.clients._headers import (
+    authorization_header,
+    parse_optional_float,
+    parse_optional_int,
+)
 from symai.clients.cerebras.transport import (
     APIResponse,
     RateLimitState,
@@ -88,12 +92,10 @@ def _parse_response(
 class Client:
     """Synchronous caller-owned client for the Cerebras chat endpoint."""
 
-    def __init__(self, *, api_key: str, http_client: httpx.Client) -> None:
-        if not api_key:
-            message = "api_key must not be empty"
-            raise ValueError(message)
+    def __init__(self, *, api_key: SecretStr, http_client: httpx.Client) -> None:
+        authorization = authorization_header(api_key)
         self._http_client = http_client
-        self._headers = {"authorization": f"Bearer {api_key}"}
+        self._headers = {"authorization": authorization}
 
     def create_chat_completion(
         self,

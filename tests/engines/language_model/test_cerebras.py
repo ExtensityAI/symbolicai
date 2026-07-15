@@ -4,7 +4,7 @@ from typing import cast
 
 import httpx
 import pytest
-from pydantic import JsonValue, ValidationError
+from pydantic import JsonValue, SecretStr, ValidationError
 
 from symai.backend.engines.language_model.cerebras import LanguageModelEngine
 from symai.clients.cerebras import errors as cerebras_errors
@@ -106,7 +106,10 @@ def _client(
     handler: Callable[[httpx.Request], httpx.Response],
 ) -> tuple[CerebrasClient, httpx.Client]:
     http_client = httpx.Client(transport=httpx.MockTransport(handler))
-    return CerebrasClient(api_key="test-key", http_client=http_client), http_client
+    return (
+        CerebrasClient(api_key=SecretStr("test-key"), http_client=http_client),
+        http_client,
+    )
 
 
 def test_execute_translates_normalized_request_and_response() -> None:

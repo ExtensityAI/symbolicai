@@ -123,7 +123,7 @@ Validate credential header safety at the shared client/header construction bound
 
 **Addresses:** SEC-01.
 
-**Acceptance:** malformed keys never reach httpcore; direct clients and Runtime-created clients behave identically; the raw key is absent from exception strings and tracebacks.
+**Acceptance:** malformed keys never reach httpcore; direct clients and Runtime-created clients behave identically; credential validation has no credential-derived exception text or arguments. Tests compare failures from distinct invalid credentials rather than requiring arbitrary credential bytes to be absent from traceback boilerplate, because a credential can equal structural text such as `ValueError\n`.
 
 ---
 

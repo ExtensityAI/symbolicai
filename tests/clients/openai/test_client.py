@@ -1,6 +1,6 @@
 import httpx
 import pytest
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, SecretStr, ValidationError
 
 from symai.clients.openai.client import Client
 from symai.clients.openai.embeddings import CreateEmbeddingRequest, EmbeddingList
@@ -19,6 +19,70 @@ from symai.clients.openai.responses import (
     RetrieveResponseParams,
     URLCitation,
 )
+
+
+@pytest.mark.parametrize(
+    "api_key",
+    [
+        "",
+        "secret\rvalue",
+        "secret\nvalue",
+        "secret\x01value",
+        "secret\x7fvalue",
+        " secret",
+        "secret ",
+        "api_key ",
+        " ",
+        "ValueError\n",
+        "TypeError\n",
+    ],
+    ids=[
+        "empty",
+        "cr",
+        "lf",
+        "c0",
+        "del",
+        "leading-space",
+        "trailing-space",
+        "message-collision",
+        "whitespace-only",
+        "value-error-traceback-text",
+        "type-error-traceback-text",
+    ],
+)
+def test_client_rejects_unsafe_api_key_before_request_without_disclosure(
+    api_key: str,
+):
+    attempts = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        return httpx.Response(200)
+
+    with (
+        httpx.Client(transport=httpx.MockTransport(handler)) as http_client,
+        pytest.raises(ValueError) as exc_info,
+    ):
+        Client(api_key=SecretStr(api_key), http_client=http_client)
+
+    assert attempts == 0
+    assert exc_info.value.args == ()
+    assert str(exc_info.value) == ""
+
+
+def test_client_rejects_plaintext_api_key():
+    with (
+        httpx.Client() as http_client,
+        pytest.raises(TypeError) as exc_info,
+    ):
+        Client(
+            api_key="test-key",  # pyright: ignore[reportArgumentType]
+            http_client=http_client,
+        )
+
+    assert exc_info.value.args == ()
+    assert str(exc_info.value) == ""
 
 
 def _minimal_response_json(status: str = "completed"):
@@ -133,7 +197,9 @@ def test_responses_posts_typed_request_without_tool_surface():
         store=False,
     )
     with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
-        response = Client(api_key="test-key", http_client=http_client).create_response(request)
+        response = Client(api_key=SecretStr("test-key"), http_client=http_client).create_response(
+            request
+        )
 
     output = response.data.output[1]
     assert isinstance(output, OutputMessage)
@@ -229,7 +295,7 @@ def test_response_lifecycle_operations_are_typed():
         return httpx.Response(200, json=payloads.pop(0))
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
-        client = Client(api_key="test-key", http_client=http_client)
+        client = Client(api_key=SecretStr("test-key"), http_client=http_client)
         retrieved = client.retrieve_response(
             "resp_123",
             RetrieveResponseParams(include=("reasoning.encrypted_content",)),
@@ -276,7 +342,9 @@ def test_embeddings_posts_batch_and_parses_vectors():
         encoding_format="float",
     )
     with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
-        response = Client(api_key="test-key", http_client=http_client).create_embeddings(request)
+        response = Client(api_key=SecretStr("test-key"), http_client=http_client).create_embeddings(
+            request
+        )
 
     assert response.data.data[0].embedding == (1.0, 0.0)
     assert response.data.usage.prompt_tokens == 2
@@ -296,7 +364,7 @@ def test_client_maps_auth_and_invalid_success_responses():
 
     request = CreateResponseRequest(input="hello", model="gpt-5.4")
     with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
-        client = Client(api_key="test-key", http_client=http_client)
+        client = Client(api_key=SecretStr("test-key"), http_client=http_client)
         with pytest.raises(AuthError):
             client.create_response(request)
         with pytest.raises(ResponseError):

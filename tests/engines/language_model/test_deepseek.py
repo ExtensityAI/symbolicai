@@ -4,7 +4,7 @@ from typing import cast
 
 import httpx
 import pytest
-from pydantic import JsonValue, ValidationError
+from pydantic import JsonValue, SecretStr, ValidationError
 
 from symai.backend.engines.language_model.deepseek import LanguageModelEngine
 from symai.clients.deepseek import errors as deepseek_errors
@@ -46,7 +46,10 @@ def _client(
     handler: Callable[[httpx.Request], httpx.Response],
 ) -> tuple[DeepSeekClient, httpx.Client]:
     http_client = httpx.Client(transport=httpx.MockTransport(handler))
-    return DeepSeekClient(api_key="test-key", http_client=http_client), http_client
+    return (
+        DeepSeekClient(api_key=SecretStr("test-key"), http_client=http_client),
+        http_client,
+    )
 
 
 def _choice(
