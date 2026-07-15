@@ -40,31 +40,27 @@ def _engine_config(
 
 
 @pytest.mark.parametrize(
-    ("collection", "capability", "provider", "model", "engine_type"),
+    ("capability", "provider", "model", "engine_type"),
     [
         (
-            "language_models",
             "language_model",
             Provider.OPENAI,
             "gpt-5.4",
             openai.LanguageModelEngine,
         ),
         (
-            "language_models",
             "language_model",
             Provider.CEREBRAS,
             "gpt-oss-120b",
             cerebras.LanguageModelEngine,
         ),
         (
-            "language_models",
             "language_model",
             Provider.DEEPSEEK,
             "deepseek-v4-flash",
             deepseek.LanguageModelEngine,
         ),
         (
-            "embeddings",
             "embedding",
             Provider.OPENAI,
             "text-embedding-3-small",
@@ -73,7 +69,6 @@ def _engine_config(
     ],
 )
 def test_create_runtime_supports_every_registered_provider_capability(
-    collection: str,
     capability: factory_module._Capability,
     provider: Provider,
     model: str,
@@ -100,11 +95,11 @@ def test_create_runtime_supports_every_registered_provider_capability(
     )
     monkeypatch.setattr(factory_module, "_FACTORIES", factories)
 
-    config = RuntimeConfig(
-        **{
-            collection: (_engine_config("primary", provider, model),),
-        }
-    )
+    configured = _engine_config("primary", provider, model)
+    if capability == "language_model":
+        config = RuntimeConfig(language_models=(configured,))
+    else:
+        config = RuntimeConfig(embeddings=(configured,))
     runtime = factory_module.create_runtime(config)
     try:
         assert isinstance(runtime, Runtime)

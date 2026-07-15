@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = ROOT / "symai"
 
 PUBLIC_NAMES = [
+    "AmbiguousEngineError",
     "AssistantMessage",
     "AssistantOutputMessage",
     "AuthenticationError",
@@ -22,6 +23,7 @@ PUBLIC_NAMES = [
     "EmbeddingRequest",
     "EmbeddingResponse",
     "EmbeddingVector",
+    "EngineCapabilityError",
     "ErrorMetadata",
     "ExecutionError",
     "FinishReason",
@@ -53,6 +55,7 @@ PUBLIC_NAMES = [
     "Runtime",
     "RuntimeClosedError",
     "RuntimeConfig",
+    "RuntimeOwnershipError",
     "SamplingConfig",
     "SymbolicAIRuntimeError",
     "SystemMessage",
@@ -61,6 +64,7 @@ PUBLIC_NAMES = [
     "TokenUsage",
     "TransportConfig",
     "TransportError",
+    "UnknownEngineError",
     "UnsupportedCapabilityError",
     "UnsupportedFeatureError",
     "UnsupportedModelError",
@@ -79,6 +83,8 @@ DEFINING_MODULE = {
 
 FORBIDDEN_PUBLIC_NAMES = {
     "Argument",
+    "Client",
+    "EngineHandle",
     "DynamicEngine",
     "Engine",
     "EngineRepository",
@@ -160,6 +166,20 @@ def test_public_api_is_exact_ordered_and_direct() -> None:
     assert sorted(PUBLIC_NAMES) == PUBLIC_NAMES
     for name in PUBLIC_NAMES:
         assert getattr(symai, name) is getattr(DEFINING_MODULE[name], name)
+
+
+def test_public_runtime_surface_exposes_errors_not_handles_or_clients() -> None:
+    for name in (
+        "AmbiguousEngineError",
+        "EngineCapabilityError",
+        "RuntimeOwnershipError",
+        "UnknownEngineError",
+    ):
+        assert getattr(symai, name) is getattr(errors, name)
+
+    for name in ("Client", "EngineHandle"):
+        assert not hasattr(symai, name)
+        assert not hasattr(runtime, name)
 
 
 def test_star_import_is_exact_and_old_names_are_absent() -> None:

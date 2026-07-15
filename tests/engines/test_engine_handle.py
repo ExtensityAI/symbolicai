@@ -1,5 +1,3 @@
-from threading import Barrier, Lock, Thread
-
 import pytest
 
 from symai.backend.engine_handle import EngineHandle
@@ -7,6 +5,16 @@ from symai.backend.engine_handle import EngineHandle
 
 class ArbitraryEngine:
     pass
+
+
+def test_engine_handle_carries_no_cross_thread_synchronization_state() -> None:
+    handle = EngineHandle(
+        name="primary",
+        capability="language_model",
+        engine=ArbitraryEngine(),
+    )
+
+    assert not hasattr(handle, "_lock")
 
 
 def test_engine_handle_tags_arbitrary_engine_and_optional_cleanup() -> None:
@@ -73,7 +81,7 @@ def test_engine_handle_consumes_failing_cleanup_exactly_once() -> None:
     assert handle.owns_resources is False
 
 
-def test_engine_handle_cleanup_runs_outside_its_lock() -> None:
+def test_engine_handle_consumes_cleanup_before_invoking_it() -> None:
     observed_ownership: list[bool] = []
     handle: EngineHandle[ArbitraryEngine]
 
@@ -89,36 +97,3 @@ def test_engine_handle_cleanup_runs_outside_its_lock() -> None:
     handle.close()
 
     assert observed_ownership == [False]
-
-
-def test_engine_handle_concurrent_close_consumes_cleanup_once() -> None:
-    worker_count = 8
-    barrier = Barrier(worker_count)
-    attempts = 0
-    attempts_lock = Lock()
-
-    def cleanup() -> None:
-        nonlocal attempts
-        with attempts_lock:
-            attempts += 1
-
-    handle = EngineHandle(
-        name="primary",
-        capability="language_model",
-        engine=ArbitraryEngine(),
-        cleanup=cleanup,
-    )
-
-    def close_handle() -> None:
-        barrier.wait()
-        handle.close()
-
-    workers = [Thread(target=close_handle) for _ in range(worker_count)]
-    for worker in workers:
-        worker.start()
-    for worker in workers:
-        worker.join(timeout=2)
-
-    assert all(not worker.is_alive() for worker in workers)
-    assert attempts == 1
-    assert handle.owns_resources is False

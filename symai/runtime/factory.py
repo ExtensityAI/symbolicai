@@ -1,12 +1,12 @@
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Literal
+from typing import TypeAlias
 
 import httpx
 from pydantic import SecretStr
 
-from symai.backend.engine_handle import EngineHandle
+from symai.backend.engine_handle import EngineCapability, EngineHandle
 from symai.backend.engines.embedding import openai as openai_embedding
 from symai.backend.engines.language_model import cerebras, deepseek, openai
 from symai.clients.cerebras.client import Client as CerebrasClient
@@ -16,7 +16,7 @@ from symai.runtime.errors import UnsupportedCapabilityError, UnsupportedModelErr
 from symai.runtime.models import NamedEngineConfig, Provider, RuntimeConfig, TransportConfig
 from symai.runtime.runtime import EmbeddingEngine, LanguageModelEngine, Runtime
 
-_Capability = Literal["language_model", "embedding"]
+_Capability: TypeAlias = EngineCapability
 _ProviderEngine = LanguageModelEngine | EmbeddingEngine
 
 
@@ -111,11 +111,10 @@ def create_runtime(config: RuntimeConfig) -> Runtime:
 
 
 def _resolve_config(config: RuntimeConfig) -> tuple[_ResolvedEngine, ...]:
-    configured = (
-        *(("language_model", engine) for engine in config.language_models),
-        *(("embedding", engine) for engine in config.embeddings),
+    return (
+        *(_resolve_engine("language_model", engine) for engine in config.language_models),
+        *(_resolve_engine("embedding", engine) for engine in config.embeddings),
     )
-    return tuple(_resolve_engine(capability, engine) for capability, engine in configured)
 
 
 def _resolve_engine(

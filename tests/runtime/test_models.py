@@ -54,6 +54,7 @@ from symai.runtime.models import (
 )
 
 _DEFAULT_TRANSPORT = TransportConfig()
+_DEFAULT_API_KEY = SecretStr("test-key")
 
 
 def test_public_models_are_strict_frozen_and_forbid_extra_fields():
@@ -407,7 +408,9 @@ def test_response_metadata_and_rate_limits_are_frozen_and_bounded():
     assert metadata.response_model == "provider-resolved-cerebras-model"
     assert "model" not in metadata.model_dump()
     with pytest.raises(ValidationError):
-        ResponseMetadata(provider=Provider.OPENAI, model="gpt", status_code=200)
+        ResponseMetadata.model_validate(
+            {"provider": Provider.OPENAI, "model": "gpt", "status_code": 200}
+        )
     with pytest.raises(ValidationError):
         metadata.status_code = 500
     with pytest.raises(ValidationError):
@@ -421,7 +424,7 @@ def _named_engine(
     *,
     provider: Provider = Provider.OPENAI,
     model: str = "gpt-5.4",
-    api_key: str | SecretStr = "test-key",
+    api_key: SecretStr = _DEFAULT_API_KEY,
     transport: TransportConfig = _DEFAULT_TRANSPORT,
 ) -> NamedEngineConfig:
     return NamedEngineConfig(
@@ -517,7 +520,7 @@ def test_runtime_configuration_rejects_missing_or_capability_mismatched_defaults
     }
 
     with pytest.raises(ValidationError, match=message):
-        RuntimeConfig(**config)
+        RuntimeConfig.model_validate(config)
 
 
 def test_runtime_configuration_accepts_capability_correct_defaults():
@@ -538,11 +541,17 @@ def test_named_engine_configuration_rejects_empty_names():
 
 
 @pytest.mark.parametrize("api_key", ["", SecretStr("")])
-def test_named_engine_configuration_rejects_empty_api_keys(
-    api_key: str | SecretStr,
-):
+def test_named_engine_configuration_rejects_empty_api_keys(api_key: object):
     with pytest.raises(ValidationError):
-        _named_engine("primary", api_key=api_key)
+        NamedEngineConfig.model_validate(
+            {
+                "name": "primary",
+                "provider": Provider.OPENAI,
+                "model": "gpt-5.4",
+                "api_key": api_key,
+                "transport": _DEFAULT_TRANSPORT,
+            }
+        )
 
 
 def test_model_feature_metadata_is_strict_frozen_and_typed():

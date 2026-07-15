@@ -1,6 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
+import symai.runtime.errors as errors_module
 from symai.runtime.errors import (
     AuthenticationError,
     ErrorMetadata,
@@ -16,6 +17,13 @@ from symai.runtime.errors import (
     UnsupportedModelError,
 )
 from symai.runtime.models import Provider
+
+ENGINE_ERROR_NAMES = (
+    "UnknownEngineError",
+    "EngineCapabilityError",
+    "AmbiguousEngineError",
+    "RuntimeOwnershipError",
+)
 
 
 @pytest.mark.parametrize(
@@ -35,6 +43,63 @@ from symai.runtime.models import Provider
 )
 def test_all_runtime_errors_share_provider_neutral_base(error_type):
     assert issubclass(error_type, SymbolicAIRuntimeError)
+
+
+@pytest.mark.parametrize("error_name", ENGINE_ERROR_NAMES)
+def test_runtime_selection_and_ownership_errors_share_runtime_base(
+    error_name: str,
+) -> None:
+    error_type = getattr(errors_module, error_name, None)
+
+    assert error_type is not None
+    assert issubclass(error_type, SymbolicAIRuntimeError)
+
+
+def test_unknown_engine_error_has_safe_structured_payload() -> None:
+    error = errors_module.UnknownEngineError("missing")
+
+    assert error.engine_name == "missing"
+    assert vars(error) == {"engine_name": "missing"}
+    assert "missing" in str(error)
+
+
+def test_engine_capability_error_has_safe_structured_payload() -> None:
+    error = errors_module.EngineCapabilityError(
+        "vectors",
+        requested_capability="language_model",
+        engine_capability="embedding",
+    )
+
+    assert error.engine_name == "vectors"
+    assert error.requested_capability == "language_model"
+    assert error.engine_capability == "embedding"
+    assert vars(error) == {
+        "engine_name": "vectors",
+        "requested_capability": "language_model",
+        "engine_capability": "embedding",
+    }
+
+
+def test_ambiguous_engine_error_freezes_sorted_safe_names() -> None:
+    names = ["zeta", "alpha"]
+    error = errors_module.AmbiguousEngineError("language_model", names)
+    names.append("secret-that-was-not-part-of-the-error")
+
+    assert error.capability == "language_model"
+    assert error.engine_names == ("alpha", "zeta")
+    assert vars(error) == {
+        "capability": "language_model",
+        "engine_names": ("alpha", "zeta"),
+    }
+    assert str(error).endswith("alpha, zeta")
+
+
+def test_runtime_ownership_error_does_not_expose_thread_identifiers() -> None:
+    error = errors_module.RuntimeOwnershipError("execute")
+
+    assert error.operation == "execute"
+    assert vars(error) == {"operation": "execute"}
+    assert str(error) == "Runtime execute must run on its owner thread"
 
 
 @pytest.mark.parametrize(
