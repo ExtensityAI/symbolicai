@@ -3,13 +3,13 @@ from typing import Literal
 
 from pydantic import Field
 
-from symai.runtime.models import FrozenModel, NonNegativeFiniteFloat, Provider
+from symai.runtime.models import FrozenModel, NonNegativeFiniteFloat, ProviderId
 
 type EngineCapability = Literal["language_model", "embedding"]
 
 
 class ErrorMetadata(FrozenModel):
-    provider: Provider
+    provider: ProviderId
     model: str = Field(min_length=1)
     request_id: str | None = None
     retry_after: NonNegativeFiniteFloat | None = None

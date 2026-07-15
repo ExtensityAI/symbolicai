@@ -33,7 +33,7 @@ from symai.runtime.models import (
     LanguageModelSpec,
     Message,
     MessageRole,
-    Provider,
+    ProviderId,
     ReasoningEffort,
     ReasoningField,
     ReasoningSummary,
@@ -86,7 +86,7 @@ MODEL_SPECS = MappingProxyType(
 
 
 class ResponsesEngine:
-    provider = Provider.OPENAI
+    provider: ProviderId = "openai"
 
     def __init__(self, *, client: Client, model: str) -> None:
         try:

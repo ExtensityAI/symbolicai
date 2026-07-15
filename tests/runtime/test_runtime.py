@@ -23,7 +23,6 @@ from symai.runtime.models import (
     LanguageModelOutput,
     LanguageModelRequest,
     LanguageModelResponse,
-    Provider,
     ResponseMetadata,
     TextContent,
     UserMessage,
@@ -35,7 +34,7 @@ LANGUAGE_REQUEST = LanguageModelRequest(
 )
 EMBEDDING_REQUEST = EmbeddingRequest(inputs=("first", "second"))
 METADATA = ResponseMetadata(
-    provider=Provider.OPENAI,
+    provider="openai",
     requested_model="test-model",
     status_code=200,
 )

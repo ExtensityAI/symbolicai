@@ -3,13 +3,14 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from math import isfinite
+from re import fullmatch
 from typing import Annotated, Literal, Self
 
 from pydantic import (
     BaseModel,
+    BeforeValidator,
     ConfigDict,
     Field,
-    SecretStr,
     field_validator,
     model_validator,
 )
@@ -19,10 +20,19 @@ class FrozenModel(BaseModel):
     model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
 
 
-class Provider(StrEnum):
-    OPENAI = "openai"
-    CEREBRAS = "cerebras"
-    DEEPSEEK = "deepseek"
+def _normalize_provider_id(value: object) -> str:
+    if not isinstance(value, str):
+        msg = "Provider ID must be a string"
+        raise ValueError(msg)
+
+    normalized = value.lower()
+    if fullmatch(r"[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?", normalized) is None:
+        msg = "Provider ID must be a nonempty canonical identifier without whitespace"
+        raise ValueError(msg)
+    return normalized
+
+
+ProviderId = Annotated[str, BeforeValidator(_normalize_provider_id)]
 
 
 class ImageDetail(StrEnum):
@@ -349,7 +359,7 @@ class RateLimitMetadata(FrozenModel):
 
 
 class ResponseMetadata(FrozenModel):
-    provider: Provider
+    provider: ProviderId
     requested_model: str = Field(min_length=1)
     response_model: str | None = Field(default=None, min_length=1)
     status_code: int = Field(ge=100, le=599)
@@ -434,72 +444,3 @@ class EmbeddingModelSpec(FrozenModel):
     dimensions: int = Field(gt=0)
 
 
-class TransportConfig(FrozenModel):
-    request_timeout: PositiveFiniteFloat = 600.0
-    connect_timeout: PositiveFiniteFloat = 10.0
-    connect_retries: int = Field(default=0, ge=0)
-
-
-class NamedEngineConfig(FrozenModel):
-    name: str = Field(min_length=1)
-    provider: Provider
-    model: str = Field(min_length=1)
-    api_key: SecretStr = Field(min_length=1)
-    transport: TransportConfig = TransportConfig()
-
-
-class RuntimeConfig(FrozenModel):
-    language_models: tuple[NamedEngineConfig, ...] = ()
-    embeddings: tuple[NamedEngineConfig, ...] = ()
-    default_language_model: str | None = None
-    default_embedding: str | None = None
-
-    @model_validator(mode="after")
-    def validate_named_engines(self) -> Self:
-        if not self.language_models and not self.embeddings:
-            msg = "Runtime configuration requires at least one engine"
-            raise ValueError(msg)
-
-        names: set[str] = set()
-        for engine in (*self.language_models, *self.embeddings):
-            if engine.name in names:
-                msg = f"Duplicate engine name: {engine.name}"
-                raise ValueError(msg)
-            names.add(engine.name)
-
-        language_names = {engine.name for engine in self.language_models}
-        embedding_names = {engine.name for engine in self.embeddings}
-        self._validate_default(
-            "default_language_model",
-            self.default_language_model,
-            language_names,
-            embedding_names,
-            "a language model",
-            "embeddings",
-        )
-        self._validate_default(
-            "default_embedding",
-            self.default_embedding,
-            embedding_names,
-            language_names,
-            "an embedding",
-            "language_models",
-        )
-        return self
-
-    @staticmethod
-    def _validate_default(
-        field: str,
-        default: str | None,
-        matching_names: set[str],
-        other_names: set[str],
-        capability: str,
-        other_collection: str,
-    ) -> None:
-        if default is None or default in matching_names:
-            return
-        if default in other_names:
-            msg = f"{field} {default!r} belongs to {other_collection}"
-            raise ValueError(msg)
-        msg = f"{field} does not name {capability}: {default!r}"
-        raise ValueError(msg)

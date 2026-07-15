@@ -30,7 +30,6 @@ from symai.runtime.models import (
     LanguageModelRequest,
     LogitBias,
     MetadataLabel,
-    Provider,
     ReasoningConfig,
     ReasoningEffort,
     ReasoningFormat,
@@ -100,7 +99,7 @@ def _chat_json(
 def test_model_catalog_exposes_normalized_deepseek_capabilities() -> None:
     engine = ChatCompletionsEngine(client=cast("Client", object()), model="deepseek-v4-flash")
 
-    assert engine.provider is Provider.DEEPSEEK
+    assert engine.provider == "deepseek"
     assert engine.model == "deepseek-v4-flash"
     assert engine.model_spec.context_tokens == 1_000_000
     assert engine.model_spec.response_tokens == 384_000
@@ -203,7 +202,7 @@ def test_execute_translates_normalized_request_and_response() -> None:
     assert response.outputs[0].finish_reason is FinishReason.STOP
     assert response.outputs[1].text == "second"
     assert response.outputs[1].finish_reason is FinishReason.LENGTH
-    assert response.metadata.provider is Provider.DEEPSEEK
+    assert response.metadata.provider == "deepseek"
     assert response.metadata.requested_model == "deepseek-v4-flash"
     assert response.metadata.response_model == "deepseek-v4-flash"
     assert response.metadata.request_id == "request-id"

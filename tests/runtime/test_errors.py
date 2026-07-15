@@ -16,7 +16,6 @@ from symai.runtime.errors import (
     UnsupportedFeatureError,
     UnsupportedModelError,
 )
-from symai.runtime.models import Provider
 
 ENGINE_ERROR_NAMES = (
     "UnknownEngineError",
@@ -112,7 +111,7 @@ def test_provider_execution_errors_share_execution_base(error_type):
 
 def test_execution_error_carries_frozen_normalized_metadata():
     metadata = ErrorMetadata(
-        provider=Provider.CEREBRAS,
+        provider="cerebras",
         model="gpt-oss-120b",
         request_id="req-1",
         retry_after=2.5,
@@ -133,14 +132,16 @@ def test_execution_error_metadata_is_optional():
     assert error.metadata is None
 
 
-def test_error_metadata_is_strict_and_retry_after_is_finite_non_negative():
+def test_error_metadata_has_open_provider_ids_and_finite_non_negative_retry_after():
+    metadata = ErrorMetadata.model_validate({"provider": "ACME_Local", "model": "gpt-5.5"})
+    assert metadata.provider == "acme_local"
     with pytest.raises(ValidationError):
-        ErrorMetadata.model_validate({"provider": "openai", "model": "gpt-5.5"})
+        ErrorMetadata(provider="invalid provider", model="gpt-5.5")
     with pytest.raises(ValidationError):
-        ErrorMetadata(provider=Provider.OPENAI, model="gpt-5.5", retry_after=-0.1)
+        ErrorMetadata(provider="openai", model="gpt-5.5", retry_after=-0.1)
     with pytest.raises(ValidationError):
-        ErrorMetadata(provider=Provider.OPENAI, model="gpt-5.5", retry_after=float("inf"))
+        ErrorMetadata(provider="openai", model="gpt-5.5", retry_after=float("inf"))
     with pytest.raises(ValidationError):
         ErrorMetadata.model_validate(
-            {"provider": Provider.OPENAI, "model": "gpt-5.5", "unknown": "raw"}
+            {"provider": "openai", "model": "gpt-5.5", "unknown": "raw"}
         )

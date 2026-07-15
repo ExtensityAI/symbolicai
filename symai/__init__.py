@@ -1,3 +1,5 @@
+from symai.loading import load_runtime
+from symai.runtime.config import EngineSpec, ImplementationId, RuntimeConfig
 from symai.runtime.errors import (
     AmbiguousEngineError,
     AuthenticationError,
@@ -16,7 +18,6 @@ from symai.runtime.errors import (
     UnsupportedFeatureError,
     UnsupportedModelError,
 )
-from symai.runtime.factory import create_runtime
 from symai.runtime.models import (
     AssistantMessage,
     AssistantOutputMessage,
@@ -40,7 +41,6 @@ from symai.runtime.models import (
     LogitBias,
     Message,
     MetadataLabel,
-    Provider,
     RateLimitMetadata,
     ReasoningConfig,
     ReasoningEffort,
@@ -48,13 +48,12 @@ from symai.runtime.models import (
     ReasoningSummary,
     ResponseFormat,
     ResponseMetadata,
-    RuntimeConfig,
+    ProviderId,
     SamplingConfig,
     SystemMessage,
     TextContent,
     TextResponseFormat,
     TokenUsage,
-    TransportConfig,
     UserMessage,
 )
 from symai.runtime.runtime import Runtime, current_runtime
@@ -70,11 +69,13 @@ __all__ = [
     "EmbeddingResponse",
     "EmbeddingVector",
     "EngineCapabilityError",
+    "EngineSpec",
     "ErrorMetadata",
     "ExecutionError",
     "FinishReason",
     "ImageContent",
     "ImageDetail",
+    "ImplementationId",
     "InvalidResponseError",
     "JsonArray",
     "JsonEntry",
@@ -89,7 +90,7 @@ __all__ = [
     "Message",
     "MetadataLabel",
     "NoActiveRuntimeError",
-    "Provider",
+    "ProviderId",
     "RateLimitError",
     "RateLimitMetadata",
     "ReasoningConfig",
@@ -108,13 +109,12 @@ __all__ = [
     "TextContent",
     "TextResponseFormat",
     "TokenUsage",
-    "TransportConfig",
     "TransportError",
     "UnknownEngineError",
     "UnsupportedCapabilityError",
     "UnsupportedFeatureError",
     "UnsupportedModelError",
     "UserMessage",
-    "create_runtime",
     "current_runtime",
+    "load_runtime",
 ]

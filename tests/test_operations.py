@@ -77,7 +77,6 @@ from symai.runtime.models import (
     ImageDetail,
     LanguageModelOutput,
     LanguageModelResponse,
-    Provider,
     ResponseMetadata,
     SamplingConfig,
     SystemMessage,
@@ -86,7 +85,7 @@ from symai.runtime.models import (
 )
 
 METADATA = ResponseMetadata(
-    provider=Provider.OPENAI,
+    provider="openai",
     requested_model="gpt-5.4",
     status_code=200,
     request_id="request-id",

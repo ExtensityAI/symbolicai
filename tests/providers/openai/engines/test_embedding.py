@@ -20,7 +20,7 @@ from symai.runtime.errors import (
     UnsupportedFeatureError,
     UnsupportedModelError,
 )
-from symai.runtime.models import EmbeddingRequest, Provider
+from symai.runtime.models import EmbeddingRequest
 
 
 def _embedding_json(
@@ -86,7 +86,7 @@ def test_execute_translates_request_and_sorts_provider_vectors() -> None:
     }
     assert tuple(vector.index for vector in response.vectors) == (0, 1)
     assert tuple(vector.values for vector in response.vectors) == ((1.0, 0.0), (0.0, 1.0))
-    assert response.metadata.provider is Provider.OPENAI
+    assert response.metadata.provider == "openai"
     assert response.metadata.requested_model == "text-embedding-3-small"
     assert response.metadata.response_model == "text-embedding-3-small"
     assert response.metadata.status_code == 200

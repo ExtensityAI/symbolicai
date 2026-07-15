@@ -24,7 +24,7 @@ from symai.runtime.models import (
     EmbeddingRequest,
     EmbeddingResponse,
     EmbeddingVector,
-    Provider,
+    ProviderId,
     ResponseMetadata,
     TokenUsage,
 )
@@ -45,7 +45,7 @@ MODEL_SPECS = MappingProxyType(
 
 
 class EmbeddingEngine:
-    provider = Provider.OPENAI
+    provider: ProviderId = "openai"
 
     def __init__(self, *, client: Client, model: str) -> None:
         try:

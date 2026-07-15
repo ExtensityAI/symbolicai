@@ -32,7 +32,6 @@ from symai.runtime.models import (
     LanguageModelRequest,
     LogitBias,
     MetadataLabel,
-    Provider,
     ReasoningConfig,
     ReasoningEffort,
     ReasoningFormat,
@@ -243,7 +242,7 @@ def test_execute_translates_normalized_request_and_response() -> None:
     assert response.outputs[0].finish_reason is FinishReason.STOP
     assert response.outputs[1].text == "second"
     assert response.outputs[1].finish_reason is FinishReason.LENGTH
-    assert response.metadata.provider is Provider.CEREBRAS
+    assert response.metadata.provider == "cerebras"
     assert response.metadata.requested_model == "gpt-oss-120b"
     assert response.metadata.response_model == "gpt-oss-120b"
     assert response.metadata.request_id == "request-id"

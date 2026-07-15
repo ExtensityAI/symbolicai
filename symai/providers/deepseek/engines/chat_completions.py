@@ -34,7 +34,7 @@ from symai.runtime.models import (
     LanguageModelSpec,
     Message,
     MessageRole,
-    Provider,
+    ProviderId,
     ReasoningEffort,
     ReasoningField,
     ResponseFormatType,
@@ -105,7 +105,7 @@ _FINISH_REASONS = MappingProxyType(
 
 
 class ChatCompletionsEngine:
-    provider = Provider.DEEPSEEK
+    provider: ProviderId = "deepseek"
 
     def __init__(self, *, client: Client, model: str) -> None:
         try:

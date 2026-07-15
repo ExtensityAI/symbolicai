@@ -11,7 +11,6 @@ from symai.runtime.models import (
     LanguageModelOutput,
     LanguageModelRequest,
     LanguageModelResponse,
-    Provider,
     ResponseMetadata,
     SamplingConfig,
     SystemMessage,
@@ -23,7 +22,7 @@ from symai.runtime.runtime import Runtime
 from symai.symbol import Symbol
 
 METADATA = ResponseMetadata(
-    provider=Provider.OPENAI,
+    provider="openai",
     requested_model="test-model",
     status_code=200,
     request_id="request-1",

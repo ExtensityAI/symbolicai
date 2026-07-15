@@ -216,7 +216,7 @@ def test_execute_translates_normalized_request_and_response() -> None:
     assert len(response.outputs) == 1
     assert response.outputs[0].text == "answer"
     assert response.outputs[0].message.reasoning == TextContent(text="thought")
-    assert response.metadata.provider.value == "openai"
+    assert response.metadata.provider == "openai"
     assert response.metadata.requested_model == "gpt-5.4"
     assert response.metadata.response_model == "gpt-5.4"
     assert response.metadata.status_code == 200

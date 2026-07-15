@@ -8,7 +8,8 @@ import sys
 from pathlib import Path
 
 import symai
-from symai.runtime import errors, factory, models, runtime
+from symai import loading
+from symai.runtime import config, errors, models, runtime
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = ROOT / "symai"
@@ -24,11 +25,13 @@ PUBLIC_NAMES = [
     "EmbeddingResponse",
     "EmbeddingVector",
     "EngineCapabilityError",
+    "EngineSpec",
     "ErrorMetadata",
     "ExecutionError",
     "FinishReason",
     "ImageContent",
     "ImageDetail",
+    "ImplementationId",
     "InvalidResponseError",
     "JsonArray",
     "JsonEntry",
@@ -43,7 +46,7 @@ PUBLIC_NAMES = [
     "Message",
     "MetadataLabel",
     "NoActiveRuntimeError",
-    "Provider",
+    "ProviderId",
     "RateLimitError",
     "RateLimitMetadata",
     "ReasoningConfig",
@@ -62,23 +65,23 @@ PUBLIC_NAMES = [
     "TextContent",
     "TextResponseFormat",
     "TokenUsage",
-    "TransportConfig",
     "TransportError",
     "UnknownEngineError",
     "UnsupportedCapabilityError",
     "UnsupportedFeatureError",
     "UnsupportedModelError",
     "UserMessage",
-    "create_runtime",
     "current_runtime",
+    "load_runtime",
 ]
 
 DEFINING_MODULE = {
+    **{name: config for name in PUBLIC_NAMES if hasattr(config, name)},
     **{name: models for name in PUBLIC_NAMES if hasattr(models, name)},
     **{name: errors for name in PUBLIC_NAMES if hasattr(errors, name)},
     "Runtime": runtime,
     "current_runtime": runtime,
-    "create_runtime": factory,
+    "load_runtime": loading,
 }
 
 FORBIDDEN_PUBLIC_NAMES = {
@@ -90,7 +93,11 @@ FORBIDDEN_PUBLIC_NAMES = {
     "EngineRepository",
     "Expression",
     "Function",
+    "NamedEngineConfig",
+    "Provider",
     "ProviderEngineConfig",
+    "TransportConfig",
+    "create_runtime",
     "Symbol",
     "config_manager",
     "run_server",
@@ -98,6 +105,7 @@ FORBIDDEN_PUBLIC_NAMES = {
 }
 
 DELETED_FILES = {
+    "runtime/factory.py",
     "context.py",
     "core.py",
     "functional.py",
@@ -145,9 +153,11 @@ FORBIDDEN_IDENTIFIERS = {
 }
 
 
-def test_runtime_models_expose_only_named_engine_configuration() -> None:
-    assert models.NamedEngineConfig.__name__ == "NamedEngineConfig"
-    assert not hasattr(models, "ProviderEngineConfig")
+def test_runtime_configuration_has_a_clean_module_cutover() -> None:
+    assert config.EngineSpec.__name__ == "EngineSpec"
+    assert config.RuntimeConfig.__name__ == "RuntimeConfig"
+    for name in ("NamedEngineConfig", "ProviderEngineConfig", "TransportConfig"):
+        assert not hasattr(models, name)
 
 
 def test_public_api_is_exact_ordered_and_direct() -> None:
